@@ -55,9 +55,9 @@ for that answer to live, because the declaration is per-child and the rule is pe
 
 ## The fork, so it is not decided by accident
 
-There are at least three shapes and they are not equivalent, which is why the fork is written up as
+The three shapes are not equivalent, which is why the fork is
 [§303 (the region)](../decisions/0303-the-retention-declaration-says-nothing-about-the-region.md)
-rather than left to a lane:
+and not a lane's:
 
 - **Widen `Retention`** into an enum over both objects, so one field says what is kept of each. One
   noun to learn, and the two are genuinely one question about one child.

@@ -8,7 +8,7 @@ raised: 2026-10-15
 Raised 2026-10-15 by the lane for milestone 652 (twelve `DECISION` gates cite only sections that
 are already ruled). Milestone 376 (nothing turns a device back off) was filed by
 [milestone 220 (this kernel drives no clock or reset controller)](../roadmap/0220-jh7110-clock-and-reset.md)'s
-lane when it wrote the first code in this tree that turns a device on and deliberately did not
+lane. That lane wrote the first code in this tree that turns a device on, and deliberately did not
 write its inverse. A driver process that exits, faults or is revoked leaves its device clocked and running
 forever, and nothing in the system can reclaim that. *(Section number provisional until the merge
 queue lands it.)*
@@ -26,7 +26,7 @@ Three questions, in the order the block asked them:
 ## What this tree already does in the analogous case
 
 Milestone 220 kept the whole clock-and-reset controller in the kernel, on the recorded argument
-that granting it would widen a driver's authority rather than confine it: the STG window covers
+that granting it would widen a driver's authority rather than confine it. The STG window covers
 USB, both PCIe root ports and the DMA engine, not one device. The crate
 (`crates/jh7110_clock_and_reset`) exposes `discover`, the offset and mask arithmetic and the two
 read-back predicates, and offers no gate and no assert. Its own doc for the TRNG reset line says
@@ -55,18 +55,18 @@ limitation beside the feature: "nothing here can turn a clock off or assert a re
 | **B** | The kernel reclaims at job death: a spawned job's enables are recorded where they are made, and the kernel undoes exactly that job's enables, refcounted per shared line, when its subtree dies. | Bookkeeping in the kernel's controller path and a refcount, and no new surface at all; the driver never learns that power management happened. |
 | **C** | Measure before building: radon runs with the STG domain ungated and gated, and the number decides whether anything downstream of this question is worth a milestone. | A bench session and a person at the board, and the honest possibility that the answer is "not yet worth it", which is a real answer. |
 
-Recommendation: C, then B if the number justifies, and A only if a driver ever needs to
+Recommendation: C, then B if the number justifies. A waits for a driver that ever needs to
 power-manage a device the kernel's controller did not enable. The reasoning is the block's own,
-and it is three facts rather than a mood: the teardown a driver asks for is a different question
-from a controller a driver holds, and the first has no consumer in this tree; the per-job unit is
-the more elegant of the two reclaim shapes and it needs the refcount anyway, so B contains what A
-would have needed of mechanism; and a milestone justified by tidiness rather than a number is the
+and it is three facts rather than a mood. The teardown a driver asks for is a different question
+from a controller a driver holds, and the first has no consumer in this tree. The per-job unit is
+the more elegant of the two reclaim shapes, and it needs the refcount anyway, so B contains what A
+would have needed of mechanism. And a milestone justified by tidiness rather than a number is the
 implementation-convenience tenet running backwards. §86 is the precedent for spending the
 measurement before spending the surface.
 
 The effort test, stated because the skill asks: B is more work than A's minimal ask and would
-still be the choice, because A spends irrevocable surface on a capability whose consumer does not
-exist, and B spends reversible bookkeeping on a path the kernel already walks at every death.
+still be the choice. A spends irrevocable surface on a capability whose consumer does not exist.
+B spends reversible bookkeeping on a path the kernel already walks at every death.
 
 ## Whether the premise is true
 

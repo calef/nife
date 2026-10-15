@@ -8,11 +8,11 @@ raised: 2026-10-15
 Raised 2026-10-15 by the lane for milestone 652 (twelve `DECISION` gates cite only sections that
 are already ruled). The fork belongs to
 milestone 172 (a capability-native subprocess primitive), whose gate has named it
-since the block was written: [§219 (how the shell names an installed program to the
-spawner)](0219-naming-an-installed-program-to-the-spawner.md) decided how a caller *starts* a child,
+since the block was written. [§219 (how the shell names an installed program to the
+spawner)](0219-naming-an-installed-program-to-the-spawner.md) decided how a caller *starts* a child.
 [§264 (fork is declined, and spawn is supported)](0264-fork-is-declined-and-spawn-is-supported.md)
-declined `fork` and
-made spawn the supported path, and what neither settles is the other half of `cargo`'s loop, "run
+declined `fork` and made spawn the supported path. What neither settles is the other half of
+`cargo`'s loop, "run
 this, block until it is done, give me its output". §264 already says the supported shape is "name a
 program, say what it is handed, get a handle to wait on"; the handle to wait on is the part that
 does not exist. *(Section number provisional until the merge queue lands it.)*
@@ -47,8 +47,8 @@ today by receiving on the child's supervision endpoint. What that receive return
 and a fault site, where `cargo` wants an exit code.
 
 Prior art, recalled and marked as such: Fuchsia reaches the same place without `fork` by making
-process creation return a process handle and delivering the return code through that handle's
-signal set; Unix's `waitpid` is the same idea with a pid as the handle. The tree cites Fuchsia's
+process creation return a process handle, and delivers the return code through that handle's
+signal set. Unix's `waitpid` is the same idea with a pid as the handle. The tree cites Fuchsia's
 `fdio` shape approvingly in [§10 (process model)](0010-capability-microkernel.md)'s own text, which
 is the precedent this proposal works inside.
 

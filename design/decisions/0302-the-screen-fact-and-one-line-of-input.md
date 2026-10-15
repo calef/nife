@@ -9,7 +9,8 @@ Raised 2026-10-15 by the lane for milestone 652 (twelve `DECISION` gates cite on
 are already ruled). Milestone 334 (color and the pager: the spawn protocol's other two thirds) has
 waited on this fork since
 [milestone 40 (documentation as a system service)](../roadmap/0040-documentation-service.md)'s block named
-it: [§106 (the terminal_sink_caretaker narrowing)](0106-tail-output-narrowing.md) took the spawn protocol's narrowing for a tail stage's *primary output* and did not extend
+it. [§106 (the terminal_sink_caretaker narrowing)](0106-tail-output-narrowing.md) took the spawn protocol's narrowing for a tail stage's *primary output*.
+It did not extend
 it to telling a stage that it ends at a real screen, or to granting one line of input without
 granting the keyboard. Both widen a protocol two programs agree on, so both are an architect's.
 *(Section number provisional until the merge queue lands it.)*
@@ -67,9 +68,9 @@ For one line of input:
 | **E** | Composition: the pager asks an endpoint the shell endows per line, and the shell forwards each line from its own terminal holding. | No protocol change, and the shell stands in the loop for every line a pager ever shows, which is a permanent context switch and a reason the shell can never be replaced while a pager runs. |
 | **F** | Refuse: `mdr` renders and cannot page. | Today's state, and the sixth program that wants a screen meets the gap with a habit instead of a protocol. |
 
-Recommendation: B and D together. B is the capability-native form of the fact the documentation
-crate already asked for ("the shell knows and passes the answer in": presence of the narrowed
-capability *is* the passing), it needs no new wire word, and it extends §106's slice in the
+Recommendation: B and D together. B is the capability-native form of what the documentation crate
+already asked for, "the shell knows and passes the answer in". Presence of the narrowed
+capability *is* the passing. It needs no new wire word, and it extends §106's slice in the
 direction §106 was already going. D is the input half's direct answer, and the badge mechanism is
 the tree's own precedent for saying "this capability may do exactly this much" on the terminal.
 The effort test, stated because the skill asks: E is less work than D and would still lose, because

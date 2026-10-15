@@ -13,7 +13,7 @@ Phase one is sequenced after 47, because it wants `jobs`
 alongside the other builtins on the same shell surface. Phase two is `ThreadControlBlock::SUSPEND`/`RESUME`, which
 [DECISIONS §24 (interrupting the foreground)](../decisions/0024-interrupting-the-foreground.md)
 deferred; the fork is written up as
-[§300 (the paused state)](../decisions/0300-tcb-suspend-resume-the-paused-state.md), and the block
+[§300 (the paused state)](../decisions/0300-tcb-suspend-resume-the-paused-state.md). The block
 asks for it to be designed as one surface with the fault endpoint and for all three of §24's
 triggers at once.
 

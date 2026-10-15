@@ -9,10 +9,10 @@ Raised 2026-10-15 by the lane for milestone 652 (twelve `DECISION` gates cite on
 are already ruled), which
 wrote the open fork into the place an open decision lives. The fork is
 [§24 (interrupting the foreground)](0024-interrupting-the-foreground.md)'s own deferral, older
-than the block that waits on it: milestone 48 (job control: `jobs`, `wait`, `kill`, `fg`, `bg`, and
-a stopped state) has gated on it since it was recorded, and §24's trigger list in
-`design/open-design-ideas.md` names real job control as trigger 2, which the shell's job-control
-work has fired. *(Section number provisional until the merge queue lands it.)*
+than the block that waits on it. Milestone 48 (job control: `jobs`, `wait`, `kill`, `fg`, `bg`, and
+a stopped state) has gated on it since it was recorded. §24's trigger list in
+`design/open-design-ideas.md` names real job control as trigger 2, and the shell's job-control work
+has fired it. *(Section number provisional until the merge queue lands it.)*
 
 ## What is being decided
 
@@ -60,9 +60,9 @@ which is the model this kernel does not have. A stopped state here has to be a c
 | **C** | Endpoint-only: suspend as a message on the supervision endpoint that the kernel acts on, no TCB method. | New endpoint semantics on the wire two programs already agree on, and it inverts §26's direction, where the kernel is the sender. A supervisor that holds no endpoint, as `build_child`'s callers sometimes do not, cannot pause at all. |
 | **D** | Refuse until a debugger exists; build job control's phase one, which needs no kernel surface. | Leaves trigger 2 fired and unanswered, and the shell simulates `Ctrl-Z` by killing, which is the old behavior wearing a new key. |
 
-Recommendation: B, with A's authority answer. Suspend and resume ride the TCB capability, because
-every spawner in the tree holds the TCB it built through `CAP_INSERT` and START, and the retention
-field of [§142 (what a spawner retains over a child)](0142-spawn-retention.md) exists exactly to
+Recommendation: B, with A's authority answer. Suspend and resume ride the TCB capability.
+Every spawner in the tree holds the TCB it built through `CAP_INSERT` and START, and
+[§142 (what a spawner retains over a child)](0142-spawn-retention.md)'s retention field exists to
 say when a spawner keeps it past START. The stopped event rides
 the supervision endpoint, because "the kernel is the only witness, so it passes the news along" is
 §26's sentence and this is one more kind of news. Resume preserves the registers, or the verb pair
@@ -70,8 +70,8 @@ is a kill with extra steps; seL4's `Resume` restarts, and this proposal asks for
 honest thing: continue where it stopped.
 
 This is a syscall-surface fork, so the recommendation is a recommendation, not a decision. The
-effort test: B costs more than A (one message at suspend, one more event code), and would still be
-the choice, because the supervisor that most wants to know a job stopped is the one holding the
+effort test: B costs more than A, one message at suspend and one more event code, and would still
+be the choice. The supervisor that most wants to know a job stopped is the one holding the
 endpoint, not the TCB.
 
 ## Whether the premise is true

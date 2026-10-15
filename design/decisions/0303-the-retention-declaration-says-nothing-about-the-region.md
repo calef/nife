@@ -7,13 +7,13 @@ raised: 2026-10-15
 
 Raised 2026-10-15 by the lane for milestone 652 (twelve `DECISION` gates cite only sections that
 are already ruled). Milestone 356 (retention declares the thread capability and says nothing about
-the region) has waited on this fork since it was filed while §142 was being built:
+the region) has waited on this fork since it was filed while §142 was being built.
 [§142 (what a spawner retains over a
 child)](0142-spawn-retention.md) gave `ChildEndowment` a
-`retention` field so one struct literal states what a child is given and what its spawner keeps,
-and what it states is the disposal of the child's `ThreadControlBlock`, which the tree's own audit
+`retention` field, so one struct literal states what a child is given and what its spawner keeps.
+What it states is the disposal of the child's `ThreadControlBlock`, which the tree's own audit
 showed is inert after `START`. The capability that actually decides whether a child can be ended is
-the region it was built from, and the endowment says nothing about it. *(Section number provisional
+the region it was built from. The endowment says nothing about it. *(Section number provisional
 until the merge queue lands it.)*
 
 ## What is being decided

@@ -15,11 +15,12 @@ filed 2026-09-16 by milestone 305, which wrote the honest defect for
 `notes/confinement-claims.md`'s row 26 and could not use the result. *(Number provisional until the
 merge queue lands it.)*
 
-Written 2026-09-16 as gated on the syscall surface, and the premise moved after that check:
+Written 2026-09-16 as gated on the syscall surface, and the premise moved after that check.
 [milestone 106 (a wait that ends on either the interrupt or the deadline)](0106-deadline-wait.md)
 built `Timer::ARM`, and [§101 (notification objects)](../decisions/0101-notification-objects.md)'s
-binding ends a blocked `RECEIVE_CAP` at the deadline it signals (`kernel/src/sched/notification.rs`
-records that the binding wakes `RECEIVE`, `RECEIVE_CAP` and `Irq::WAIT` alike). The reporting
+binding ends a blocked `RECEIVE_CAP` at the deadline it signals.
+`kernel/src/sched/notification.rs` records that the binding wakes `RECEIVE`, `RECEIVE_CAP` and
+`Irq::WAIT` alike. The reporting
 usurper is therefore buildable on surface that exists: arm a timer, bind the notification, and the
 receive returns either a capability it should not have or the deadline. The first-class
 non-blocking receive this block priced stays unwritten until a consumer that cannot arm a timer

@@ -18,9 +18,9 @@ not convert these twelve. Every section each one cites is `DECIDED` or `AMENDED`
 would fail the day it was written. **Name provisional**: this file's stem is a lane's coinage.
 
 Since this block was raised, §207 (the roadmap is a graph, and the block says so in fields a
-script can walk) moved the gate out of prose and into the frontmatter, which changes what the
-three dispositions look like: a gate nothing stops a start is `decision_dependencies: none`, a
-fork with a written-up section names its number, and a wait that is not a section at all stays
+script can walk) moved the gate out of prose and into the frontmatter. The three dispositions read
+in today's fields. A gate nothing stops a start is `decision_dependencies: none`. A fork with a
+written-up section names its number. A wait that is not a section at all stays
 `unwritten`, with the paragraph saying what the wait is.
 
 ## What each block got
@@ -48,8 +48,8 @@ rule. The other seven needed no new section, for the reasons in their rows.
 
 Twelve `DECISION` gates cited only ruled sections, so none could take the checked form and all
 twelve could go stale the way [milestone 198 (a package manager)](0198-package-manager.md) did.
-Read on 2026-10-15: five forks became `PROPOSED` sections that gate their blocks by number, three
-gates were answered outright (340 to a person at a settings page, 388 and 417 to `none`, 417's
-because the timer's built mechanism dissolved the fork), three stay bare on purpose because their
-wait is real but is not a section, and 188's fields were already right once the prose stopped
+Read on 2026-10-15. Five forks became `PROPOSED` sections that gate their blocks by number. Three
+gates were answered outright: 340 to a person at a settings page, 388 to `none`, and 417 to `none`
+because the timer's built mechanism dissolved the fork. Three stay bare on purpose, because their
+wait is real but is not a section. And 188's fields were already right once the prose stopped
 describing a token the frontmatter switch retired.
