@@ -1,6 +1,7 @@
 ---
-status: NOT-STARTED
+status: BUILT
 raised: 2026-10-15
+built: 2026-10-15
 milestone_dependencies: 740
 decision_dependencies: none
 machine_requirements: none
@@ -105,6 +106,37 @@ repository the split creates start with it.
 - The cap and the timeout rule above hold, each with a selftest case.
 - calef adds the check to the required checks; the lane cannot.
 - Fatal risk 3's file records the gate as a fact. Its color stays calef's.
+
+## The worth, 2026-10-15 (UTC): built
+
+`.github/workflows/mutation-gate.yml` runs on every pull request and on the merge queue's entries;
+`helpers/mutation_diff_gate.py` holds the verdict, and its selftest runs in `script/lint` beside
+the inflow check's. The run goes through `script/mutation`, so the pinned tool, `-j 2` and the
+per-mutant memory ceiling carry over. The diff is the checkout's first parent on both events,
+which is the pull request's own changes: the block refuses the queue's `base_sha` range, which
+changes as other pull requests land. A required check that never reports on `merge_group` stalls
+the queue, so the gate runs there and takes the diff the block means. The cap and the timeout rule
+each have a selftest case, an incomplete run is exit 2 rather than a pass, and the kill of it: a
+`killed` row never clears a survivor the gate has watched live. The gate is reusable; a repository
+split out of this one inherits it with one `uses:` line and its own ledger.
+
+The key and the ledger reader are imported from `helpers/mutation_inflow.py`, so the gate and the
+weekly census cannot disagree about what a row covers, and the rename chain applies to both
+sides.
+
+The key and the ledger reader are imported from `helpers/mutation_inflow.py`, so the gate and the
+weekly census cannot disagree about what a row covers, and the rename chain applies to both
+sides.
+
+## Follow-on
+
+- **Recorded.** The check blocks nothing until calef adds
+  `mutation gate (a survivor on a changed line cannot merge untriaged)` to the `main` ruleset's
+  required checks; a lane cannot make that settings change. The workflow header says the same
+  where its job name is written.
+- **Recorded.** The gate's first live pull request is this milestone's own. Its diff is Python and
+  workflow edits, which generate no mutants, so the expected result is a clean pass on a diff that
+  generates none; that run is the first observation of the wiring end to end.
 
 ## Index row
 
