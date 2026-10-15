@@ -131,11 +131,7 @@ fn a_text_frame_and_a_verdict_are_told_apart_by_the_first_word() {
     // only that something did.
     assert_eq!(crate::rm::status(dir::EROFS), dir::EROFS as u64);
     assert_ne!(crate::rm::status(dir::EROFS), crate::rm::OK);
-    assert_eq!(
-        crate::rm::OK,
-        0,
-        "success is zero, as every shell expects"
-    );
+    assert_eq!(crate::rm::OK, 0, "success is zero, as every shell expects");
 }
 
 /// **The set the globbing lane grants is exactly what the pattern matches**, checked against the

@@ -8,8 +8,8 @@
 //! Name: provisional (lane maintainer/files-over-1500, 2026-10-12 UTC), for the module and the
 //! file.
 
-use filesystem_protocol::{fs};
 use filesystem_fixture as fixture;
+use filesystem_protocol::fs;
 use grant_plan::nav::{TwoRoots, Which};
 use user_mode_runtime::{call, exit, send};
 

@@ -1,6 +1,5 @@
-use filesystem_protocol::dir;
-use filesystem_protocol::rm as rr;
 use filesystem_fixture::tree;
+use filesystem_protocol::{dir, rm as rr};
 use grant_plan::rmopt;
 
 use super::*;

@@ -258,8 +258,8 @@ impl core::fmt::Write for Line {
 fn a_walk_through_a_confined_grant_is_priced() {
     use core::fmt::Write;
 
-    use filesystem_protocol::dir;
     use filesystem_fixture::walk as tree;
+    use filesystem_protocol::dir;
     skip_without_the_walk!();
     let mut got = [0u8; 2048];
     let Some(len) = walk_with(dir::ENUMERATE | dir::READ | dir::DESCEND, &mut got) else {
@@ -312,8 +312,8 @@ fn a_walk_through_a_confined_grant_is_priced() {
 /// the tree, fails here. The timings print beside the caretaker's for the comparison.
 #[test_case]
 fn a_walk_through_a_bound_grant_is_priced() {
-    use filesystem_protocol::dir;
     use filesystem_fixture::walk as tree;
+    use filesystem_protocol::dir;
     skip_without_the_walk!();
     let Some(spawned) = fs_service::start_std_bound(
         block_server_image(),
@@ -521,8 +521,8 @@ impl Line {
 /// `cargo xtask basalt-fetch`, so a replay that does not run that first would skip here.
 #[test_case]
 fn ripgrep_searches_the_tree_it_was_granted() {
-    use filesystem_protocol::dir;
     use filesystem_fixture::walk as tree;
+    use filesystem_protocol::dir;
     skip_without_rg!();
     let mut got = [0u8; 8192];
     let Some(len) = rg_with(
@@ -569,8 +569,8 @@ fn ripgrep_searches_the_tree_it_was_granted() {
 /// `cargo xtask basalt-fetch`, so a replay that does not run that first would skip here.
 #[test_case]
 fn ripgrep_without_enumerate_is_refused_rather_than_empty() {
-    use filesystem_protocol::dir;
     use filesystem_fixture::walk as tree;
+    use filesystem_protocol::dir;
     skip_without_rg!();
     let mut got = [0u8; 8192];
     let Some(len) = rg_with(dir::READ | dir::DESCEND, tree::RG_SEARCH, &mut got) else {
@@ -604,8 +604,8 @@ fn ripgrep_without_enumerate_is_refused_rather_than_empty() {
 /// `cargo xtask basalt-fetch`, so a replay that does not run that first would skip here.
 #[test_case]
 fn ripgrep_reaches_a_named_file_without_enumerate() {
-    use filesystem_protocol::dir;
     use filesystem_fixture::walk as tree;
+    use filesystem_protocol::dir;
     skip_without_rg!();
     let mut got = [0u8; 1024];
     let Some(len) = rg_with(dir::READ | dir::DESCEND, tree::RG_NAMED, &mut got) else {

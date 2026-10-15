@@ -375,8 +375,8 @@ fn fs_demo(mut motd: File) {
         .expect("read_to_string through std::fs failed");
     println!("read_to_string {}", text.len());
 
-    let meta = std::fs::metadata(filesystem_fixture::MOTD_NAME)
-        .expect("metadata through std::fs failed");
+    let meta =
+        std::fs::metadata(filesystem_fixture::MOTD_NAME).expect("metadata through std::fs failed");
     assert!(meta.is_file(), "the motd is a regular file");
     println!("metadata len {}", meta.len());
 
@@ -385,8 +385,8 @@ fn fs_demo(mut motd: File) {
     // opening the same file twice, once each way, and comparing the bytes: `/motd` and `motd` are
     // one file. It was `InvalidFilename` until 2026-08-18, which was the honest answer for a
     // system with no namespace to root a path in rather than a position.
-    let by_name = std::fs::read(filesystem_fixture::MOTD_NAME)
-        .expect("reading motd by name failed");
+    let by_name =
+        std::fs::read(filesystem_fixture::MOTD_NAME).expect("reading motd by name failed");
     let rooted = format!("/{}", filesystem_fixture::MOTD_NAME);
     let by_root = std::fs::read(&rooted).expect("reading motd by absolute path failed");
     assert_eq!(by_name, by_root, "`/motd` and `motd` named different files");
@@ -890,11 +890,7 @@ fn descent_transcript() {
     // A name in the middle of a path has to be a directory. The server answers `ENOTDIR` for an
     // `OPENDIR` of a file, and that is a fact about the name rather than about the capability, so it
     // does not read as a refusal.
-    match File::open(format!(
-        "{}/{}",
-        filesystem_fixture::MOTD_NAME,
-        tree::INNER
-    )) {
+    match File::open(format!("{}/{}", filesystem_fixture::MOTD_NAME, tree::INNER)) {
         Err(e) if e.kind() == ErrorKind::NotADirectory => println!("through a file refused"),
         other => panic!("a path walking through a file was not refused: {other:?}"),
     }

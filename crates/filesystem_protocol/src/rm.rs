@@ -1,5 +1,5 @@
 //! **What the `rm` program reports, and how a diagnostic is told from the verdict**
-//! (milestone 47's `rm -r`, `components/src/rm.rs`).
+//! (milestone 47 (navigation and naming)'s `rm -r`, `components/src/rm.rs`).
 //!
 //! **Where these two words travel** (corrected 2026-08-17). `rm` declares the sink contract
 //! (`grant_plan::OutputSpec::Bytes`), so its report is framed text and then `byte_sink_protocol`'s
@@ -22,9 +22,9 @@
 //! nothing, which is `rm(1)`'s default behaviour asserted rather than assumed: a `SEND` blocks
 //! until somebody receives it, so a line that was emitted cannot be missed by looking later.
 //!
-//! This module stayed in the protocol crate when the rest of the fixture moved out (milestone 886,
-//! calef's ruling): the exit-status convention is words shipping programs send each other, not
-//! test data.
+//! This module stayed in the protocol crate when the rest of the fixture moved out (milestone 886
+//! (the filesystem test fixture moves to its own crate), calef's ruling): the exit-status
+//! convention is words shipping programs send each other, not test data.
 
 /// The exit status of a run in which everything named was removed. `rm(1)`: "exits 0 if all
 /// of the named files or file hierarchies were removed".

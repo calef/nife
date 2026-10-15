@@ -190,13 +190,12 @@ pub(crate) fn redoxfs_crash_check_after_run() -> bool {
 /// with a different process and the pinned engine. It is also what closes the write blocker
 /// notes/fs-server.md used to record, so it belongs in the gate, not in a comment.
 pub(crate) fn redoxfs_check_after_run() -> bool {
-    redoxfs_reads_back(
-        filesystem_fixture::MOTD_NAME,
-        filesystem_fixture::MOTD,
-    ) && redoxfs_reads_back(
-        filesystem_fixture::SCRATCH_NAME,
-        filesystem_fixture::WRITE_PATTERN,
-    ) && redoxfs_subtree_was_confined()
+    redoxfs_reads_back(filesystem_fixture::MOTD_NAME, filesystem_fixture::MOTD)
+        && redoxfs_reads_back(
+            filesystem_fixture::SCRATCH_NAME,
+            filesystem_fixture::WRITE_PATTERN,
+        )
+        && redoxfs_subtree_was_confined()
         && redoxfs_glob_grant_took_exactly_the_match()
 }
 

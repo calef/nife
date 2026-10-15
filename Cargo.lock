@@ -1519,7 +1519,6 @@ name = "walk_pricing"
 version = "0.1.0"
 dependencies = [
  "filesystem_fixture",
- "filesystem_protocol",
  "grant_plan",
 ]
 
@@ -1573,7 +1572,6 @@ dependencies = [
  "compositor",
  "documentation",
  "filesystem_fixture",
- "filesystem_protocol",
  "globally_unique_identifier_partition_table",
  "grant_plan",
  "graphics_protocol",

@@ -1,5 +1,5 @@
-use filesystem_protocol::dir;
 use filesystem_fixture::twodir as t;
+use filesystem_protocol::dir;
 
 use super::*;
 use crate::sched;

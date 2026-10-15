@@ -191,16 +191,8 @@ pub(crate) fn mkredoxfs_of(mib: &str) -> bool {
     // way motd is, from the shared `filesystem_fixture` constants.
     let witness_victim = workspace_root().join("target/redoxfs-witness-victim.tmp");
     let witness_usurper = workspace_root().join("target/redoxfs-witness-usurper.tmp");
-    if std::fs::write(
-        &witness_victim,
-        filesystem_fixture::SHARED_VICTIM_BODY,
-    )
-    .is_err()
-        || std::fs::write(
-            &witness_usurper,
-            filesystem_fixture::SHARED_USURPER_BODY,
-        )
-        .is_err()
+    if std::fs::write(&witness_victim, filesystem_fixture::SHARED_VICTIM_BODY).is_err()
+        || std::fs::write(&witness_usurper, filesystem_fixture::SHARED_USURPER_BODY).is_err()
     {
         eprintln!("mkredoxfs: cannot stage the shared-frame witness files");
         return false;
@@ -212,12 +204,7 @@ pub(crate) fn mkredoxfs_of(mib: &str) -> bool {
     };
     redoxfs_host(&["mkfs", &img, mib])
         && redoxfs_host(&["put", &img, filesystem_fixture::MOTD_NAME, &motd])
-        && redoxfs_host(&[
-            "put",
-            &img,
-            filesystem_fixture::SCRATCH_NAME,
-            &scratch,
-        ])
+        && redoxfs_host(&["put", &img, filesystem_fixture::SCRATCH_NAME, &scratch])
         && redoxfs_host(&[
             "put",
             &img,
@@ -986,12 +973,7 @@ pub(crate) fn mkredoxfs_crash() -> bool {
     }
     let initial = initial.display().to_string();
     redoxfs_host(&["mkfs", &img, "16"])
-        && redoxfs_host(&[
-            "put",
-            &img,
-            filesystem_fixture::crash::NAME,
-            &initial,
-        ])
+        && redoxfs_host(&["put", &img, filesystem_fixture::crash::NAME, &initial])
 }
 
 /// Where the GPT-partitioned test image is written. The runners derive exactly this name from

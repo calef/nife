@@ -133,7 +133,8 @@ nifefs = { version = "0.1.0", path = "../crates/nifefs" }
 direct_memory_access_validator = { version = "0.1.0", path = "../crates/direct_memory_access_validator" }
 filesystem_protocol = { version = "0.1.0", path = "../crates/filesystem_protocol" }
 # Optional, and only for the `bench` feature's filesystem benchmark (see the feature below):
-# the throughput and walk shapes are test data (milestone 886), and nothing that boots links them.
+# the throughput and walk shapes are test data since milestone 886 (the filesystem test fixture
+# moves to its own crate), and nothing that boots links them.
 filesystem_fixture = { version = "0.1.0", path = "../crates/filesystem_fixture", optional = true }
 graphics_protocol = { version = "0.1.0", path = "../crates/graphics_protocol" }
 # The entropy contract (milestone 56, DECISIONS §44). The kernel wires the entropy service and its
@@ -255,7 +256,8 @@ board = []
 # without MAEE, and one built without it refuses a hart with it. riscv64 only. Name provisional.
 board_th1520 = ["board"]
 # The benchmark boot (milestone 21): run the microbenchmarks and halt. See script/bench.
-# `filesystem_fixture` joins it optional (milestone 886): the filesystem bench speaks the
+# `filesystem_fixture` joins it optional (milestone 886 (the filesystem test fixture moves to its
+# own crate)): the filesystem bench speaks the
 # throughput benchmark's shape, which is test data, so the booting kernel never links it.
 bench = ["dep:coremark", "dep:byte_sink_protocol", "dep:filesystem_fixture"]
 # The instruction-count instrument (milestone 78): boot under `-icount shift=0,sleep=off`, where

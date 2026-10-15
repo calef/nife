@@ -41,7 +41,11 @@ instance cost a 234-second watchdog timeout that said "livelock".
 
 Replayed on all three ISAs. The hunk is portable code, so one patch serves every leg. On 2026-10-03 (UTC), `cargo xtask test --arch riscv64 --test two_shells_with_different_roots_cannot_name_each_others_files` and the same with `--arch x86_64` both came back red at `system_tests/src/user/shell_navigation_tests.rs:99`, the assertion this record predicts, which is where aarch64 was already red.
 
-Re-cut 2026-10-15 (UTC) by lane milestone/886-the-filesystem-test-fixture-moves-to-its-own-crate: the hunk's context line names the readiness word, which moved from `filesystem_protocol::fixture::READY` to `filesystem_protocol::READY` (milestone 886). The mutation is unchanged. Replayed red on aarch64 the same day, at the vacuity guard this record predicts, then reverted.
+Re-cut 2026-10-15 (UTC) by the milestone 886 (the filesystem test fixture moves to its own crate)
+lane: the hunk's
+context line names the readiness word, which moved from `filesystem_protocol::fixture::READY`
+to `filesystem_protocol::READY`. The mutation is unchanged. Replayed red on aarch64
+the same day, at the vacuity guard this record predicts, then reverted.
 
 diff --git a/components/src/fs_subtree_caretaker.rs b/components/src/fs_subtree_caretaker.rs
 --- a/components/src/fs_subtree_caretaker.rs

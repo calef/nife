@@ -28,8 +28,8 @@
 
 use alloc::vec::Vec;
 
-use filesystem_protocol::dir;
 use filesystem_fixture::walk as tree;
+use filesystem_protocol::dir;
 use redoxfs::Disk;
 use syscall::error::Result;
 

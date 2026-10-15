@@ -1080,8 +1080,8 @@ fn touch_mtime_probes(nav: &mut Nav, touched: &([u8; 16], usize), v: &mut u64) {
 /// cannot exercise. A raw `fs::MKDIR` mints a **fresh** directory attenuated to `WRITE` and not
 /// `SETTIME`, one level below the shell's own root, and both mtime verbs are sent straight to it.
 fn touch_mtime_without_settime(nav: &Nav, name: &[u8], v: &mut u64) {
-    use filesystem_protocol::dir;
     use filesystem_fixture::navscape as nb;
+    use filesystem_protocol::dir;
 
     let narrow_rights = dir::ALL & !dir::SETTIME;
     let r = nav.name_call(fs::MKDIR, nav.here(), name, narrow_rights);

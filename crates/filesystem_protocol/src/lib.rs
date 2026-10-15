@@ -319,7 +319,8 @@ pub mod xattr;
 /// is distinguishable from a hang in the serve/client path, and a booted-but-empty run is caught.
 ///
 /// This word stayed in the protocol crate when the test fixture moved out to
-/// `filesystem_fixture` (milestone 886, calef's ruling): it is a word shipping programs send
+/// `filesystem_fixture` (milestone 886 (the filesystem test fixture moves to its own crate),
+/// calef's ruling): it is a word shipping programs send
 /// each other, and every other protocol here keeps its readiness word in its own crate
 /// (`entropy_protocol`, `byte_sink_protocol`, `login_protocol`).
 pub const READY: u64 = 0xF5_0BEEF5;

@@ -85,13 +85,13 @@ pub const SHARED_UNEXPECTED: u64 = 0x599B_ADDD;
 /// `fs_test_client`'s SMB verify role, removed with the SMB implementation on 2026-08-30
 /// (notes/smb.md), and the end-to-end leg it checked (the count already non-zero because
 /// something *above* the guest process had flushed the device) needed a network client to
-/// cause that flush. So [`crate::fs::SYNC`] and the block server's `VIRTIO_BLK_T_FLUSH` are
+/// cause that flush. So [`filesystem_protocol::fs::SYNC`] and the block server's `VIRTIO_BLK_T_FLUSH` are
 /// still wired and still correct, and nothing gates them any more. The vocabulary is kept
 /// rather than deleted because the classification is the useful half and re-homing the witness
 /// onto a role that does not need a network is a small piece of work with no design question
 /// in it; see this lane's report.
 ///
-/// The witness asks [`crate::fs::SYNC`] twice and reads the count each answer carries.
+/// The witness asks [`filesystem_protocol::fs::SYNC`] twice and reads the count each answer carries.
 /// **Two independent things are being checked**, which is why one verdict is not enough:
 ///
 /// 1. The count was **already non-zero** when the witness first asked. Nothing in this process
@@ -106,9 +106,9 @@ pub mod durability {
     /// this process's own sync moved the count again. The only passing verdict.
     pub const DURABLE: u64 = 1;
     /// The count was zero when the witness first asked, so **no flush ever reached the
-    /// device** before it ran: nothing above this process reached `crate::fs::SYNC`.
+    /// device** before it ran: nothing above this process reached `filesystem_protocol::fs::SYNC`.
     pub const NEVER_FLUSHED: u64 = 2;
-    /// [`crate::fs::SYNC`] answered `EOPNOTSUPP`: this device offers no
+    /// [`filesystem_protocol::fs::SYNC`] answered `EOPNOTSUPP`: this device offers no
     /// `VIRTIO_BLK_F_FLUSH`, so the claim cannot be backed here at all. **Not a bug in this
     /// tree**, and it must not be reported as one; it is the honest answer for a device that
     /// does not do the thing, and a run that met it should say so and stop rather than pass.
@@ -304,7 +304,7 @@ pub const VERDICT: u64 = 0xE5_CA9E00;
 /// exists so "it cannot reach a sibling" is a claim about a directory that is really there and
 /// that the process one hop up the chain really can open, the same reason the per-file
 /// attacker's neighbour is a real file. `deeper` is inside the grant, so a second descent has
-/// somewhere to go and [`crate::dir::DESCEND`] has something to withhold.
+/// somewhere to go and [`filesystem_protocol::dir::DESCEND`] has something to withhold.
 ///
 /// ```text
 ///   /            motd  scratch  sub/  other/
@@ -613,7 +613,7 @@ pub mod walk {
     /// The width region: one directory holding [`WIDE_COUNT`] files.
     pub const WIDE: &str = "wide";
     /// Files in [`WIDE`]. 128 four-byte names are 768 bytes of `READDIR` records
-    /// ([`crate::dirent::record_len`]), so the whole listing is one page and the slope is per
+    /// ([`filesystem_protocol::dirent::record_len`]), so the whole listing is one page and the slope is per
     /// entry rather than per page. Pricing a page boundary would want more than 680 names.
     pub const WIDE_COUNT: usize = 128;
     /// The control: [`WIDE`]'s shape with one file, so the difference is entries alone.
@@ -621,7 +621,7 @@ pub mod walk {
     /// The byte region.
     pub const SIZES: &str = "sizes";
     /// Its files and their sizes. 4 KiB is one page; 256 KiB is sixteen of the file channel's
-    /// largest requests ([`crate::fs::TRANSFER_MAX`] at the time of writing).
+    /// largest requests ([`filesystem_protocol::fs::TRANSFER_MAX`] at the time of writing).
     pub const SIZE_FILES: [(&str, usize); 3] =
         [("s4k", 4096), ("s64k", 65_536), ("s256k", 262_144)];
     /// What every file in [`CHAIN`], [`WIDE`] and [`NARROW`] holds. Sixteen bytes, so a small
@@ -1116,7 +1116,7 @@ pub mod attrs {
     /// not wasted space, it is somebody else's metadata on a file that never asked for it.
     pub const GONE_AFTER_UNLINK: u64 = 1 << 4;
     /// A value past [`filesystem_protocol::xattr::MAX_VALUE`] was refused with
-    /// [`filesystem_protocol::xattr::E2BIG`], loudly, rather than stored short (DECISIONS §42).
+    /// [`filesystem_protocol::xattr::E2BIG`], loudly, rather than stored short (DECISIONS §42 (a filesystem declares what it offers and must be truthful)).
     pub const OVERSIZE_REFUSED: u64 = 1 << 5;
     /// The store's directory could not be opened, created, or descended into. A client that
     /// could name it could read any file's attributes as ordinary bytes.

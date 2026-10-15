@@ -282,8 +282,8 @@ pub(super) fn rg_search() {
         println!("bench-probe: rg_search skipped (no rg in the archive; cargo xtask basalt-fetch)");
         return;
     };
-    use filesystem_protocol::dir;
     use filesystem_fixture::walk as tree;
+    use filesystem_protocol::dir;
     let hz = crate::arch::timer::frequency();
     let mut searched = [0u64; RG_SEARCH_RUNS];
     let mut whole = [0u64; RG_SEARCH_RUNS];

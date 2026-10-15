@@ -159,13 +159,13 @@ is what cost the three hours. The verification now asks the queue.
 
 ## The drain judges a new pull request against a stale `main`
 
-`merge-drain.sh`'s surface pass diffs each unlabelled pull request head against
+`merge-drain.sh`'s surface pass diffs each unlabeled pull request head against
 `git merge-base origin/main <head>` in its own checkout, and runs
 `helpers/architect-label-rules.py` on the result. That `main` is whatever the pass fetched, which
 can be one merge behind the base a just-opened pull request really branched from. Observed
-2026-10-15 (UTC) on #2202, an empty claim draft opened seconds after #2193 merged: the drain's
+2026-10-15 (UTC) on #2202, an empty claim draft opened seconds after #2193 merged. The drain's
 `main` predated the merge, so the empty diff contained #2193's edits to `design/decisions/0203` and
-`0299`, the decisions rule fired, and the drain added `needs-architect` by its #1792 policy. The
+`0299`. The decisions rule fired, and the drain added `needs-architect` by its #1792 policy. The
 add cost calef the glance the policy prices it at.
 
 `architect-label.yml` is not exposed the same way: it resolves the pull request's own base at run
