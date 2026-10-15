@@ -240,6 +240,7 @@ jobs:
       # nothing. The cap wraps the whole invocation and fires as a failure with its own
       # summary: "split this pull request or triage by hand", never a pass.
       - name: Mutate the changed lines
+        id: mutate
         run: |
           rc=0
           timeout --kill-after=30s "${CAP_MINUTES}m" script/mutation --in-diff pr.diff || rc=$?
@@ -260,7 +261,8 @@ jobs:
           # exit without one means the diff generated none (no Rust on the changed lines the
           # corpus leaves in). Found on this repository's own pull request, run 38804878586,
           # which the helper failed closed on; the pass says what it is, as the corpus summary
-          # above does.
+          # above does. Run 38805337619 caught the repair half-done: `exit 0` ends this step,
+          # not the job, so the deciding step reads the output below and skips itself.
           if [ ! -f mutants.out/outcomes.json ]; then
             {
               echo "### Mutation gate: clean"
@@ -269,10 +271,15 @@ jobs:
               echo "`.cargo/mutants.toml` leaves in. This pass is not a mutation result."
             } >> "$GITHUB_STEP_SUMMARY"
             echo "==> no mutants generated; passing with the summary that says so"
+            echo "mutants=none" >> "$GITHUB_OUTPUT"
             exit 0
           fi
 
+      # Skipped, never failed, when the diff generated no mutants: the step above has said what
+      # the pass is. `!= 'none'` fails toward deciding, the same reading every gate here puts on
+      # an empty output.
       - name: Decide against the triage ledger
+        if: steps.mutate.outputs.mutants != 'none'
         run: |
           python3 helpers/mutation_diff_gate.py gate \
             --run-dir mutants.out --triage "$TRIAGE" --renames "$RENAMES" \
