@@ -44,7 +44,7 @@ printf '%s\n' \
     'A link: [§2](../design/decisions/0002-second.md).' \
     'A bare §3 with no filename.' \
     'A path and a sigil: design/decisions/0003-third.md, §3.' > "$work/notes/citing.md"
-printf '%s\n' '/* §4 (fourth): design/decisions/0004-fourth.md */' > "$work/notes/code.c"
+printf '%s\n' '/* §4 (kernel shape): design/decisions/0004-fourth.md */' > "$work/notes/code.c"
 
 git -C "$work" init -q
 git -C "$work" -c user.email=lane@example.com -c user.name=lane add -A
@@ -120,7 +120,7 @@ grep -q 'A bare §3 with no filename\.' "$work/notes/citing.md" \
     || fail "step 4: a bare sigil was rewritten"
 grep -q '0004-third\.md, §4\.' "$work/notes/citing.md" \
     || fail "step 4: a sigil beside its filename did not move"
-grep -q '§5 (fourth): design/decisions/0005-fourth\.md' "$work/notes/code.c" \
+grep -q '§5 (kernel shape): design/decisions/0005-fourth\.md' "$work/notes/code.c" \
     || fail "step 3/4: the code comment did not move"
 # The list shows where the files now stand, not where they were.
 printf '%s' "$out" | grep -q "design/decisions/0004-third.md:[0-9]*: §3 restates itself nowhere." \
