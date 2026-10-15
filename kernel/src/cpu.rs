@@ -440,6 +440,11 @@ pub fn init_this_cpu(id: usize) {
 }
 
 /// This core's private block, in one instruction.
+///
+/// **From preemptible code it may be a core the caller has since left**: a tick between this and
+/// the field it reads can move the thread, and the address in hand still names the old core. Fine
+/// for a hint; wrong for the running thread's name, which `arch::read_current_thread` reads in one
+/// step (notes/scheduler.md, "The costs migration made real").
 pub fn current() -> &'static PerCpu {
     // SAFETY: `init_this_cpu` set TPIDR_EL1 to the address of an element of the `'static`
     // `PERCPU` array, and nothing else ever writes TPIDR_EL1. The one window where this would be

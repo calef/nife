@@ -7,8 +7,12 @@ use super::*;
 
 /// The thread running on **this core** right now.
 ///
-/// Per-CPU as of §11 step 3b (`cpu::PerCpu::current`); it used to be one field on the global
-/// `IpcTables`. Reading it is a plain atomic load and needs no lock: it is this core's own slot.
+/// Per-CPU (`cpu::PerCpu::current`), and needs no lock: it is this core's own slot. **The read is
+/// the architecture's, because it must be indivisible from a preemptible caller**, and
+/// `cpu::current().current.load()` is not. A kernel thread migrated between finding the block and
+/// reading the field gets another thread's name, and `adopt_address_space` then binds a new space
+/// to that thread and leaves its caller with none. `arch::read_current_thread` has each ISA's
+/// answer; `smp::tests::a_migrated_kernel_thread_reads_its_own_name` fails on all three without it.
 ///
 /// `#[inline(always)]` on riscv64: it is on every IPC and must land in `.text.hot` with its
 /// caller. Which codegen unit this module falls in decides whether LLVM inlines it on its own,
@@ -17,7 +21,7 @@ use super::*;
 /// forcing it there grows aarch64's `syscall_entry` past its band.
 #[cfg_attr(target_arch = "riscv64", inline(always))]
 pub(super) fn current_thread_id() -> ThreadId {
-    cpu::current().current.load(Ordering::Relaxed)
+    crate::arch::read_current_thread()
 }
 
 /// **The running thread's capability table, per core** (provisional name, 2026-10-04 UTC): what

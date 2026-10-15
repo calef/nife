@@ -90,37 +90,27 @@ considered had to be JH7110-class or better.
 
 ## BUGS
 
-- **A user thread can lose the translation of its own text while it runs, cause unknown.** Seen
-  twice, on two architectures, so the cause is in shared kernel code rather than in one port's TLB
-  handling:
-  - riscv64, merge-group run 38284891615 (2026-10-12 UTC), `thead-c906`: `network_time_client`
-    killed by an instruction page fault with `pc == stval == 0x60000f36`, the second instruction of
-    a function in its first text page.
-  - x86_64, merge-group run 38506029610 (2026-10-14 UTC), the AMD-Vi leg: `date`, the first stage of
-    `pipeline_tests`' `date | wc`, killed with `rip == addr == 0x60002102` and error code `0x14`
-    (a ring-3 fetch from a page not present). That address is the instruction after the `syscall`
-    in `user_mode_runtime::syscall::trap6`. The per-core trace rings show `date` ran that page twice
-    on core 1, blocked sending to `wc`, `wc` ran on core 1 and woke it, and `date` faulted on its
-    first fetch after being switched back in. The VT-d leg of the same job ran the same suite clean.
+- **A user thread killed at a pc it was just running, under the reserved root, had no space in its
+  scheduler record when it was switched in.** The switch installs `reserved_root()` (the kernel root,
+  ASID 0) for a thread whose `space` is `None`, and its first user fetch faults. One path is known to
+  cause it: a split read of the caller's own name in `sched::adopt_address_space`, which binds the
+  new space to another thread. That thread then runs in a stranger's space. The read is now
+  indivisible ([scheduler.md](scheduler.md), "The costs migration made real").
+  - riscv64, cpu matrix run 38672377106 (2026-10-14 UTC), `rv64`. A credentialer service, spawned
+    through `user::run`, was killed after the `ecall` in `user_mode_runtime::syscall::trap6`, under
+    ASID 0, with no space in its record. It died starting up: the first `identity_provisioner` sat
+    in its `CALL` on the provision endpoint, which had no receiver. Nothing else that clears or
+    withholds a space applies to a kernel-spawned service, so this is that path.
+  - riscv64, merge-group run 38284891615 (2026-10-12 UTC), `thead-c906`, and `x86_64`, merge-group
+    run 38506029610 (2026-10-14 UTC), the AMD-Vi leg. `network_time_client` is spawned through
+    `user::run`, so it fits either side. `date` gets its space from the progenitor's `CONFIGURE`,
+    so it fits only as the thread handed another program's space. Neither report could tell, so
+    neither is proven.
 
-  QEMU's TCG caches neither a not-present entry nor a paging-structure entry on either ISA, and
-  every root change in those windows flushed. So at the refill, either the live root was not the
-  thread's or the thread's own tables no longer mapped its text. Neither has reproduced. On riscv64,
-  fifteen local full `thead-c906` legs ran with two probes, and they saw no return to U-mode under a
-  root other than the thread's own and no write into a frame between its free and its next
-  allocation. On x86_64, 206 runs of `pipeline_tests` ran under round-robin TCG, 265 under
-  multi-threaded TCG (what CI's x86_64 host runs) and 300 under multi-threaded TCG with
-  `NIFE_IOMMU=amd`. Reading the x86_64 code ruled out lazy text mapping, since the loader maps every
-  page before the thread adopts the space, and the `CR3` comparison in `switch_user_root`, which
-  reads the register. It also ruled out revocation and table-cut records outliving their space, a
-  double free (the allocator asserts) and the e1000e DMA plane, which is never freed.
-
-  The riscv64 and x86_64 kill reports both name the half next time. riscv64 prints the live `satp`
-  and the leaf a walk finds. x86_64 prints the live `CR3` root and every level of the walk with
-  whether each table's frame is still allocated (`Mapper::walk`), so a cleared entry, a table freed
-  while linked and a frame written over each read differently. Both say, in a `system_tests`
-  build, whether the live root is the thread's own. aarch64's kill report prints neither, and
-  should before the next occurrence lands there.
+  The next sighting says which it is. In a `system_tests` build the riscv64 and `x86_64` kill
+  reports compare the live root with the record's, and say when the record holds no space. A
+  sighting under the thread's own root is some other cause. aarch64's kill report prints neither the
+  root nor a walk, and should before the next occurrence lands there.
 
 ---
 
