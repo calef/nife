@@ -152,8 +152,21 @@
 #
 #   There are no index rows any more, so no row title can drift from its file's H1.
 #
+# ---- --renumber-from ---------------------------------------------------------------------------
+#
+# `script/decisions --renumber-from <n> [--by <k>] [--dry-run]` moves every decision numbered <n>
+# and above up by <k>, default 1. Milestone 499 (a renumber that cannot cite the wrong section).
+# The full contract is at the mode itself, below
+# the checks; in one line: §194 (sessions interleave rather than serialize, and a renumber is the
+# price) makes the collision normal, and this does the shift the collision forces without the
+# silent miscitation a by-number rewrite produces, because every mechanical edit is keyed on the
+# filename and every bare `§` the filename cannot disambiguate is printed for a person instead of
+# rewritten.
+#
 #   script/decisions               print the index, grouped by status (script/fatal-risks reads it)
 #   script/decisions --check       validate; non-zero on a problem (wired into script/lint)
+#   script/decisions --renumber-from <n> [--by <k>] [--dry-run]
+#                                  the collision shift; exits 1 while bare sigils await a person
 #
 # Name: recorded (DECISIONS §134, which writes the `script/` family's split down). Introduced
 # 2026-07-30 with the decision index. §134 states the rule nobody had recorded until then: what
@@ -166,21 +179,58 @@ set -e
 
 ROOT="$(CDPATH='' cd -- "$(dirname -- "$0")/.." && pwd)"
 
-exec python3 - "$ROOT" "${1:-}" <<'PY'
+exec python3 - "$ROOT" "$@" <<'PY'
 import os
 import re
 import subprocess
 import sys
 
-root, mode = sys.argv[1], sys.argv[2]
-# Anything else is refused rather than read as the default, so a caller still running the retired
-# `--index` or `--write-index` fails where it can see why instead of getting a report it did not ask
-# for.
-if mode not in ("", "--check"):
-    print(f"decisions: unknown argument {mode!r}. `script/decisions` prints the index and "
-          f"`--check` validates; the committed table and `--write-index` were retired on "
-          f"2026-10-12 (UTC)", file=sys.stderr)
+root = sys.argv[1]
+
+# Three modes: no argument prints the index, `--check` validates, and `--renumber-from <n>`
+# shifts a collided run (milestone 499). Anything else is refused rather than read as the
+# default, so a caller still running the retired `--index` or `--write-index` fails where it can
+# see why instead of getting a report it did not ask for.
+mode = ""
+renumber_from = 0
+renumber_by = 1
+dry_run = False
+args = sys.argv[2:]
+
+
+def refuse(text):
+    print(f"decisions: {text}", file=sys.stderr)
     sys.exit(2)
+
+
+i = 0
+while i < len(args):
+    arg = args[i]
+    if arg == "--check" and mode == "":
+        mode = "--check"
+    elif arg == "--renumber-from" and mode == "":
+        if i + 1 >= len(args) or not args[i + 1].isdigit():
+            refuse("--renumber-from needs the first section number to move, as a number")
+        mode = "--renumber-from"
+        renumber_from = int(args[i + 1])
+        i += 1
+    elif arg == "--by" and mode == "--renumber-from":
+        if i + 1 >= len(args) or not args[i + 1].isdigit() or int(args[i + 1]) < 1:
+            refuse("--by needs a shift of at least 1")
+        renumber_by = int(args[i + 1])
+        i += 1
+    elif arg == "--dry-run" and mode == "--renumber-from":
+        dry_run = True
+    elif arg in ("--index", "--write-index"):
+        refuse(f"unknown argument {arg!r}. `script/decisions` prints the index and `--check` "
+               f"validates; the committed table and `--write-index` were retired on "
+               f"2026-10-12 (UTC)")
+    else:
+        refuse(f"unknown argument {arg!r}. `script/decisions` prints the index, `--check` "
+               f"validates, and `--renumber-from <n>` shifts a collided run up by `--by <k>` "
+               f"(default 1; `--dry-run` computes and writes nothing)")
+    i += 1
+
 d = os.path.join(root, "design", "decisions")
 
 # The lifecycle, in the order a decision travels it. See design/decisions/README.md.
@@ -298,6 +348,257 @@ def check_frontmatter(fname, fm):
             problems.append(f"{fname}: superseded_by is {fm['superseded_by']!r}, not a section "
                             f"number")
     return status
+
+
+# ---- --renumber-from: the shift a collision forces -------------------------------------------
+#
+# Milestone 499. §194 (sessions interleave rather than serialize, and a renumber is the price) is
+# why this exists: two sessions minting from one range renumber the loser at every landing, and
+# doing that by hand is the most citation-dangerous edit in the tree, because a `§` rewritten by
+# number can be silently wrong and still pass every gate here: the section it now names exists.
+# The five steps are the shape of the renumbers of 2026-09-19, keyed on what a collision cannot
+# make ambiguous, the filename:
+#
+#   1. Rename descending, so no rename clobbers the next one.
+#   2. Bump each file's own `# N.` heading with its file, in the same pass, so a heading can
+#      never disagree with its name.
+#   3. Rewrite citations keyed on the filename, never on the number.
+#   4. Move a `§N` sigil only on a line that already names the file it belongs to.
+#   5. Print every remaining bare sigil in the moved range for a person to read, and exit 1
+#      while any remain. This is the step that earns the tool. It is an admission that the last
+#      few cannot be decided mechanically, and it turns them from a silent rewrite into a list.
+#
+# What it refuses, before touching anything, and why:
+#
+#   - Two files claiming one number. That is the mid-merge state, and a filename-keyed renumber
+#     cannot choose between them: run it on the branch whose run is moving, BEFORE merging the
+#     branch whose landing collided, while the numbers are still unique.
+#   - Uncommitted tracked changes. The renumber rewrites every tracked file that cites a moved
+#     section; committed first, what it did is one reviewable diff.
+#   - A shift that crosses 9999. Filenames are padded to exactly four digits (calef, 2026-10-07
+#     UTC); outgrowing the width renames the directory again and is its own decision.
+#
+# `superseded_by` is the one number moved by value rather than by filename. It is frontmatter, a
+# field the schema owns and this script reads, not prose carrying an intent a regex can misread,
+# and where the superseding decision moves the field moves with it. The bare-sigil rule stays as
+# §194 states it because prose is where "meant the section one below" lives.
+#
+# BUGS
+#   Step 5 cannot be gated. Telling an intended citation from an unintended one is reading prose
+#   for intent, which this tree already priced at `git grep -w TODO`'s 82% false-positive rate.
+#   The tool lists; a person decides.
+#
+#   The list is short exactly when the tool is used as designed, on a run that has not landed and
+#   is cited only by its own branch. Run it across landed history and the list is the honest
+#   price of the renumber that design/decisions/README.md refuses; read it (start with
+#   `--dry-run`) before deciding the shift is worth it.
+#
+#   Untracked files are not scanned, because `git grep` does not see them. A session citing a
+#   moved section from an untracked note rechecks that note by hand.
+
+
+def renumber():
+    entries = {}  # number -> (filename, frontmatter, H1 line index, H1 text)
+    for fname in sorted(os.listdir(d)):
+        path = os.path.join(d, fname)
+        if fname == "README.md" or os.path.isdir(path):
+            continue
+        if not FNAME.fullmatch(fname):
+            sys.exit(f"decisions --renumber-from: {fname} is not <NNNN>-<slug>.md. Run "
+                     f"`script/decisions --check` first and settle what it reports")
+        num = int(fname[:4])
+        if num in entries:
+            sys.exit(f"decisions --renumber-from: §{num} is claimed by two files, "
+                     f"{entries[num][0]} and {fname}. A renumber keyed on the filename cannot "
+                     f"choose between them, which is the mid-merge state: run this on the branch "
+                     f"whose run is moving, before merging the branch whose landing collided, "
+                     f"while the numbers are still unique")
+        lines = open(path, encoding="utf-8").read().split("\n")
+        fm, body = parse_frontmatter(fname, lines)
+        # parse_frontmatter records schema problems for --check; a renumber does not judge the
+        # schema, and this mode exits before anything prints that list. What it refuses here is
+        # only what breaks the mechanics.
+        if fm is None:
+            sys.exit(f"decisions --renumber-from: {fname}: the frontmatter does not parse, so "
+                     f"the heading this mode must bump cannot be found reliably")
+        while body < len(lines) and not lines[body].strip():
+            body += 1
+        h1 = lines[body] if body < len(lines) else ""
+        if not re.match(rf"# {num}\. (\S.*)$", h1):
+            sys.exit(f"decisions --renumber-from: {fname}: the first line after the frontmatter "
+                     f"is not '# {num}. <title>', so step 2 (the heading moves with its file) "
+                     f"has nothing to bump")
+        entries[num] = (fname, fm, body, h1)
+
+    moved = sorted(n for n in entries if n >= renumber_from)
+    if not moved:
+        sys.exit(f"decisions --renumber-from: no decision is numbered {renumber_from} or above; "
+                 f"nothing to move")
+    if moved[-1] + renumber_by > 9999:
+        sys.exit(f"decisions --renumber-from: §{moved[-1]} + {renumber_by} crosses 9999. "
+                 f"Filenames are padded to exactly four digits (calef, 2026-10-07 UTC); a "
+                 f"renumber that outgrows the width renames the directory again and is its own "
+                 f"decision")
+    new_num = {n: n + renumber_by for n in moved}
+
+    dirty = subprocess.run(["git", "status", "--porcelain", "--untracked-files=no"], cwd=root,
+                           capture_output=True, text=True).stdout
+    if dirty.strip():
+        sys.exit("decisions --renumber-from: the working tree has uncommitted tracked changes:\n"
+                 + "\n".join(f"  {line}" for line in dirty.splitlines())
+                 + "\n  The renumber rewrites every tracked file that cites a moved section. "
+                   "Commit first, so what it did is one reviewable diff")
+
+    # The padded stem ("0157-what-a-subshell-copies") names the file, and the appendix directory
+    # beside it when one exists, and nothing else: two files cannot hold one number, so no other
+    # stem begins with this one. Step 3 keys every rewrite on that string.
+    stem = {n: entries[n][0][:-3] for n in moved}
+    stem_map = {stem[n]: ("%04d%s" % (new_num[n], stem[n][4:]), n) for n in moved}
+
+    def named_on(line):
+        """The moved numbers whose filename stems the line itself names, step 4's key, decided
+        on the line as it arrived."""
+        named = set()
+        for old, (_new, n) in stem_map.items():
+            if old in line:
+                named.add(n)
+        return named
+
+    def rewrite(line):
+        """One line after steps 3 and 4, with the count of sigils the line's filenames vouched
+        for. Two named numbers on one line cannot cascade into each other: the sigil pass makes
+        one decision per occurrence, on the numbers the line arrived with."""
+        named = named_on(line)
+        for old, (new, _n) in stem_map.items():
+            if old in line:
+                line = line.replace(old, new)
+        count = 0
+
+        def bump(m):
+            nonlocal count
+            n = int(m.group(1))
+            if n not in named:
+                return m.group(0)
+            count += 1
+            return f"§{new_num[n]}"
+
+        line = re.sub(r"§([0-9]+)", bump, line)
+        return line, count
+
+    scan = ["--", ":!vendor", ":!patches", ":!*.lock"]
+    edits = {}  # repo-relative path -> {1-based line number: replacement}
+    sigils_moved = 0
+    found = subprocess.run(
+        ["git", "grep", "-I", "-n", "-F"]
+        + sum((["-e", s] for s in stem_map), []) + scan,
+        cwd=root, capture_output=True, text=True).stdout
+    for raw in found.splitlines():
+        rel, lineno, line = raw.split(":", 2)
+        new_line, k = rewrite(line)
+        sigils_moved += k
+        if new_line != line:
+            edits.setdefault(rel, {})[int(lineno)] = new_line
+
+    # Step 2: each moved file's own heading, bumped with its file. Composed with any stem edit
+    # the scan already planned for that line, so a heading naming another moved file loses
+    # neither fix.
+    for n in moved:
+        rel = os.path.join("design", "decisions", entries[n][0])
+        line = edits.get(rel, {}).get(entries[n][2] + 1, entries[n][3])
+        edits.setdefault(rel, {})[entries[n][2] + 1] = \
+            re.sub(rf"^# {n}\. ", f"# {new_num[n]}. ", line)
+
+    # The field, moved by value wherever its target moved, in the moving files and in the
+    # decision that points at them.
+    for n, (fname, fm, _body, _h1) in entries.items():
+        target = fm.get("superseded_by", "")
+        if not target.isdigit() or int(target) not in new_num:
+            continue
+        rel = os.path.join("design", "decisions", fname)
+        lines = open(os.path.join(d, fname), encoding="utf-8").read().split("\n")
+        for i, line in enumerate(lines[:lines.index("---", 1)], start=1):
+            if re.fullmatch(rf"superseded_by: {target}", line):
+                edits.setdefault(rel, {})[i] = f"superseded_by: {new_num[int(target)]}"
+                break
+
+    titles = {n: re.match(rf"# {n}\. (\S.*)$", entries[n][3]).group(1).strip() for n in moved}
+
+    # A listed path has to survive the list: after the real run the file stands at its new name,
+    # so the person reads a path that exists. A dry run renames nothing and shows old paths.
+    def shown(rel):
+        if dry_run:
+            return rel
+        for old, (new, _n) in stem_map.items():
+            if old in rel:
+                return rel.replace(old, new)
+        return rel
+
+    # Step 5, the honest floor: the bare sigils the rewrite leaves behind, decided on each line
+    # as it arrived, since a moved sigil's new number can itself sit in the moved range and no
+    # test on the rewritten text can tell the two apart.
+    bare = []
+    found = subprocess.run(
+        ["git", "grep", "-I", "-n", "-E", "§[0-9]+"] + scan,
+        cwd=root, capture_output=True, text=True).stdout
+    for raw in found.splitlines():
+        rel, lineno, line = raw.split(":", 2)
+        named = named_on(line)
+        if any(int(m.group(1)) in new_num and int(m.group(1)) not in named
+               for m in re.finditer(r"§([0-9]+)", line)):
+            bare.append(f"  {shown(rel)}:{lineno}: {line.strip()}")
+    found = subprocess.run(
+        ["git", "grep", "-I", "-n", "-E", r"^#{1,6} [0-9]+\. "] + scan,
+        cwd=root, capture_output=True, text=True).stdout
+    for raw in found.splitlines():
+        rel, lineno, line = raw.split(":", 2)
+        h = re.match(r"#{1,6} ([0-9]+)\. (.*)$", line)
+        n = int(h.group(1))
+        # A heading in citation form names its decision by title, which is what distinguishes it
+        # from a subsection of its own file; the file's own H1 is step 2's, already bumped.
+        own_h1 = (n in moved and rel == os.path.join("design", "decisions", entries[n][0])
+                  and int(lineno) == entries[n][2] + 1)
+        if n in new_num and h.group(2).strip() == titles.get(n) and not own_h1:
+            bare.append(f"  {shown(rel)}:{lineno}: {line.strip()}")
+
+    if not dry_run:
+        for rel, line_edits in edits.items():
+            path = os.path.join(root, rel)
+            lines = open(path, encoding="utf-8").read().split("\n")
+            for lineno, text in line_edits.items():
+                lines[lineno - 1] = text
+            with open(path, "w", encoding="utf-8") as f:
+                f.write("\n".join(lines))
+        # Step 1: descending, so no rename clobbers the next one.
+        for n in sorted(moved, reverse=True):
+            new_stem = stem_map[stem[n]][0]
+            os.rename(os.path.join(d, entries[n][0]), os.path.join(d, new_stem + ".md"))
+            if os.path.isdir(os.path.join(d, stem[n])):
+                os.rename(os.path.join(d, stem[n]), os.path.join(d, new_stem))
+
+    would = "would " if dry_run else ""
+    dirs = sum(1 for n in moved if os.path.isdir(os.path.join(d, stem[n])))
+    tail = "" if not dirs else " and %d appendix director%s" % (dirs, "y" if dirs == 1 else "ies")
+    print(f"decisions --renumber-from {renumber_from} --by {renumber_by}"
+          f"{' (dry run)' if dry_run else ''}: {would}rename {len(moved)} file"
+          f"{'s' if len(moved) != 1 else ''}{tail}, "
+          f"{would}rewrite {len(edits)} file{'s' if len(edits) != 1 else ''}, "
+          f"{would}move {sigils_moved} sigil{'s' if sigils_moved != 1 else ''} on lines that "
+          f"name their file")
+    if not bare:
+        print("decisions: nothing is left for a person; run `script/decisions --check`")
+        sys.exit(0)
+    print(f"decisions: {len(bare)} bare mention{'s' if len(bare) != 1 else ''} in the moved "
+          f"range that no filename disambiguates. A person reads each of:")
+    for line in bare:
+        print(line)
+    print("  Fix each by hand where it meant the old numbering, leave it where it did not, then "
+          "run `script/decisions --check`")
+    sys.exit(1)
+
+
+if mode == "--renumber-from":
+    renumber()
+    sys.exit(0)
 
 
 # The field-shaped forms, matched against a line's stripped text.

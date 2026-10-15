@@ -41,7 +41,7 @@ Full rows: [records-and-indexes.md](scripts/records-and-indexes.md).
 
 | script | what it does |
 |---|---|
-| `script/decisions` | Index `design/decisions/`; `--check` is gated in `lint`. |
+| `script/decisions` | Index `design/decisions/`; `--check` is gated in `lint`; `--renumber-from <n>` shifts a collided run up by `--by <k>`, keyed on the filename, per §194 (sessions interleave rather than serialize). |
 | `script/roadmap` | Index the milestones; `--ready`, `--unclaimed`, `--outstanding`, `--proposed`. |
 | `script/journeys` | Progress against the end-to-end user journeys. |
 | `script/citations` | Does each `§N` or `milestone N` gloss match what it cites? `--ratchet` gates added lines. |

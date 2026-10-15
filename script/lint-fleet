@@ -155,6 +155,11 @@ python3 "$(dirname "$0")/../helpers/smelter-token" --selftest >/dev/null
 #     lane with neither or both of `--debt-paydown` and `--new-work`, before git, `gh` or the disk.
 #     Both tools are stubs here, so a refusal that regresses fails this rather than claiming.
 "$(dirname "$0")/../helpers/claim-selftest.sh" >/dev/null
+#     And the decisions renumber, milestone 499 (a renumber that cannot cite the wrong section),
+#     provisional name: the collision shift of §194 (sessions interleave rather than serialize),
+#     planted in a fixture tree, renaming descending
+#     and listing what no filename disambiguates instead of rewriting it.
+"$(dirname "$0")/../helpers/decisions-renumber-selftest.sh" >/dev/null
 #     And the hourly build-output prune (helpers/prune_build_output.py, name provisional): which
 #     worktrees' `target/` may go, including a `wip/` worker judged by its parent lane. Fixture
 #     directories and stubbed git, so it reads no real worktree and asks GitHub nothing.
