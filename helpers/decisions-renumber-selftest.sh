@@ -1,11 +1,17 @@
 #!/bin/sh
 #
-# Selftest for `script/decisions --renumber-from` (milestone 499), run by script/lint-fleet. One
+# Selftest for `script/decisions --renumber-from` (milestone 499 (a renumber that cannot cite the
+# wrong section)), run by script/lint-fleet. One
 # command rewrites every tracked file that cites a moved section, so the failure to guard is the
 # one the mode exists to prevent: a citation that still resolves but names the wrong section. A
 # small fixture tree holds each step to its promise: rename descending, bump the heading with its
 # file, rewrite citations keyed on the filename, move a sigil only where a filename
 # disambiguates, and list the bare ones for a person with a non-zero exit.
+#
+# The fixture reuses the tree's real section numbers, because the citation gates read this file:
+# §2 (QEMU virt primary), §3 (crate ecosystem), §4 (kernel shape) and §5 (preemptive threads) name
+# what those numbers are in this tree, once each, which is the ratchet's per-file gloss; the
+# fixture's own sections are titled for the test and mean nothing here.
 #
 # Name: provisional, 2026-10-15 (UTC), after the other helpers/*-selftest.sh.
 
@@ -44,7 +50,7 @@ printf '%s\n' \
     'A link: [§2](../design/decisions/0002-second.md).' \
     'A bare §3 with no filename.' \
     'A path and a sigil: design/decisions/0003-third.md, §3.' > "$work/notes/citing.md"
-printf '%s\n' '/* §4 (kernel shape): design/decisions/0004-fourth.md */' > "$work/notes/code.c"
+printf '%s\n' '/* §4: design/decisions/0004-fourth.md */' > "$work/notes/code.c"
 
 git -C "$work" init -q
 git -C "$work" -c user.email=lane@example.com -c user.name=lane add -A
@@ -120,7 +126,7 @@ grep -q 'A bare §3 with no filename\.' "$work/notes/citing.md" \
     || fail "step 4: a bare sigil was rewritten"
 grep -q '0004-third\.md, §4\.' "$work/notes/citing.md" \
     || fail "step 4: a sigil beside its filename did not move"
-grep -q '§5 (kernel shape): design/decisions/0005-fourth\.md' "$work/notes/code.c" \
+grep -q '§5: design/decisions/0005-fourth\.md' "$work/notes/code.c" \
     || fail "step 3/4: the code comment did not move"
 # The list shows where the files now stand, not where they were.
 printf '%s' "$out" | grep -q "design/decisions/0004-third.md:[0-9]*: §3 restates itself nowhere." \

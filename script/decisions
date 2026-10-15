@@ -155,7 +155,8 @@
 # ---- --renumber-from ---------------------------------------------------------------------------
 #
 # `script/decisions --renumber-from <n> [--by <k>] [--dry-run]` moves every decision numbered <n>
-# and above up by <k>, default 1. Milestone 499. The full contract is at the mode itself, below
+# and above up by <k>, default 1. Milestone 499 (a renumber that cannot cite the wrong section).
+# The full contract is at the mode itself, below
 # the checks; in one line: §194 (sessions interleave rather than serialize, and a renumber is the
 # price) makes the collision normal, and this does the shift the collision forces without the
 # silent miscitation a by-number rewrite produces, because every mechanical edit is keyed on the
@@ -498,11 +499,14 @@ def renumber():
         if new_line != line:
             edits.setdefault(rel, {})[int(lineno)] = new_line
 
-    # Step 2: each moved file's own heading, bumped with its file.
+    # Step 2: each moved file's own heading, bumped with its file. Composed with any stem edit
+    # the scan already planned for that line, so a heading naming another moved file loses
+    # neither fix.
     for n in moved:
         rel = os.path.join("design", "decisions", entries[n][0])
-        h1 = re.sub(rf"^# {n}\. ", f"# {new_num[n]}. ", entries[n][3])
-        edits.setdefault(rel, {})[entries[n][2] + 1] = h1
+        line = edits.get(rel, {}).get(entries[n][2] + 1, entries[n][3])
+        edits.setdefault(rel, {})[entries[n][2] + 1] = \
+            re.sub(rf"^# {n}\. ", f"# {new_num[n]}. ", line)
 
     # The field, moved by value wherever its target moved, in the moving files and in the
     # decision that points at them.
