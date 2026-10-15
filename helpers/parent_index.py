@@ -20,10 +20,11 @@ Name: provisional, minted 2026-10-11 by lane/split-parent-is-an-index, as is the
 calef names things; expect these to change.
 
 **What a parent is.** A Rust file that declares at least one child module out of line (`mod x;`,
-any visibility, any `cfg`), other than a child named `tests` or `proofs`. That one definition
-covers the three shapes §282 names: a `foo.rs` beside a `foo/` directory, a `mod.rs`, and a crate
-root that declares children. A file whose only children are its own `tests` or `proofs` has had
-its tests moved out, not its code split, so it is not a parent.
+any visibility, any `cfg`), other than a child named `tests`, `proofs` or `verification`. That one
+definition covers the three shapes §282 names: a `foo.rs` beside a `foo/` directory, a `mod.rs`, and
+a crate root that declares children. A file whose only children are its own tests or Kani harnesses
+has had them moved out, not its code split, so it is not a parent. `verification` is the other name
+the tree gives a harness module, and `.cargo/mutants.toml` excludes both files by name.
 
 **What an index holds.** Inner docs (`//!`) and inner attributes (`#![..]`), `mod x;` lines, `use`
 and `pub use` (with `extern crate`), and an inline module whose body holds only those, as
@@ -71,7 +72,7 @@ import sys
 
 SMALL = 3      # code lines: an item this size or smaller may stay unmarked
 HANDFUL = 8    # how many such items a parent may hold before none of them may
-TEST_CHILDREN = ('tests', 'proofs')
+TEST_CHILDREN = ('tests', 'proofs', 'verification')
 BASELINE = 'design/parent-index-baseline.tsv'
 COLUMN = 'code_lines'
 
@@ -693,6 +694,12 @@ pub mod gamma {
     check('a file whose only children are tests and proofs is not a parent',
           judge('fn f() {\n    a();\n    b();\n    c();\n}\n#[cfg(test)]\nmod tests;\n'
                 '#[cfg(kani)]\nmod proofs;\n') is None)
+    check('a file whose only child is its Kani `verification` module is not a parent',
+          judge('fn f() {\n    a();\n    b();\n    c();\n}\n#[cfg(kani)]\nmod verification;\n')
+          is None)
+    check('a harness child beside a code child still makes a parent',
+          judge('fn f() {\n    a();\n    b();\n    c();\n}\nmod widths;\n'
+                '#[cfg(kani)]\nmod verification;\n') is not None)
     check('an inline `mod tests { .. }` does not make a parent',
           judge('mod tests {\n    fn t() {}\n}\n') is None)
 
