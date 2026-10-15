@@ -51,7 +51,7 @@
 //!   `timer::init`, not anything in this file.
 //! - **Each core's counter is its own**, zeroed at that core's init. [`cycles`] reads the current
 //!   core's; a caller that cannot rule out migration must check the core did not change, as
-//!   `bench::cycles_per_tick` does.
+//!   `bench::cycle_probe::cycles_per_tick` does.
 //! - **The counter is never stopped**, as in the other two halves.
 
 use core::sync::atomic::{AtomicU8, AtomicU64, Ordering};
@@ -75,9 +75,10 @@ use crate::cpu::{self, MAX_CPUS};
 ///   comparing one operation's cost meets the same quantity: user plus kernel. A3 (`P` set, EL0
 ///   only) would have made aarch64 the one architecture whose IPC figures exclude the kernel that
 ///   does the IPC.
-/// - **It is the only value both things built here can run under.** `bench::cycles_per_tick` reads
-///   the counter at EL1, and the EL0 grant test (`a_granted_thread_reads_the_cycle_counter_...`)
-///   reads it at EL0. `P` = 1 would stop the first and `U` = 1 the second.
+/// - **It is the only value both things built here can run under.**
+///   `bench::cycle_probe::cycles_per_tick` reads the counter at EL1, and the EL0 grant test
+///   (`a_granted_thread_reads_the_cycle_counter_...`) reads it at EL0. `P` = 1 would stop the
+///   first and `U` = 1 the second.
 /// - **EL2 runs nothing in this kernel.** `boot.s` drops to EL1 and never installs an EL2 vector
 ///   table, so `NSH` changes nothing measurable on argon or QEMU; it would matter only under a
 ///   hypervisor that let a guest program it.
@@ -262,10 +263,10 @@ pub fn outcome_on(cpu: usize) -> CycleCounter {
 /// One `mrs`, no trap and no call, so a caller may put this on either side of the thing it is
 /// measuring. **Only meaningful as a difference of two reads on the same core**: see this module's
 /// BUGS. It counts EL0 and EL1, per [`PMCCFILTR_COUNT_EL0_AND_EL1`].
-// The consumers are the bench probe (`bench::cycles_per_tick`, `--features bench`) and the tests. A
-// production boot has nothing to measure, so it has no caller, the same call the other two halves
-// make; the counter is still started and printed in every build, because whether this machine has
-// one is a fact about the machine.
+// The consumers are the bench probe (`bench::cycle_probe::cycles_per_tick`, `--features bench`)
+// and the tests. A production boot has nothing to measure, so it has no caller, the same call the
+// other two halves make; the counter is still started and printed in every build, because whether
+// this machine has one is a fact about the machine.
 #[cfg_attr(
     not(any(test, feature = "system_tests", feature = "bench")),
     allow(dead_code)

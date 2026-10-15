@@ -280,9 +280,9 @@ pub fn outcome() -> CycleCounter {
 /// counter is narrow. It is a count of cycles the core ran, not a duration, and it does not become
 /// one by dividing by a nominal clock: that is the whole reason it exists beside the TSC rather than
 /// instead of it.
-// The consumers are the bench probe (`bench::cycles_per_tick`, `--features bench`) and this
-// module's own tests. A production boot has nothing to measure, so it has no caller, and marking
-// that rather than manufacturing one is the same call `arch::riscv64::pmu::cycles` makes. The
+// The consumers are the bench probe (`bench::cycle_probe::cycles_per_tick`, `--features bench`)
+// and this module's own tests. A production boot has nothing to measure, so it has no caller, and
+// marking that rather than manufacturing one is the same call `arch::riscv64::pmu::cycles` makes. The
 // counter is still configured and printed in every build, because *whether this machine has one* is
 // a fact about the machine and belongs on the boot line either way.
 #[cfg_attr(

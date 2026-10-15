@@ -36,11 +36,12 @@
 # the split to 30 and 25 and costs this sentence one of its five examples. The argument is
 # unaffected: four single-word entry points still outnumber nothing, and the deciding reason below
 # never rested on the count.) What decided it is that `icount` is load-bearing in at least
-# five places that are not prose: QEMU's `-icount shift=0,sleep=off`, the cargo feature
-# `--features icount`, `feature = "icount"` in both ISAs' `timer.rs` and in `bench.rs`, and the CI
-# check named `bench (icount regression tripwire)`. **QEMU's flag is not ours to rename.** So
-# spelling the script out gives one thing three spellings across a boundary we do not control,
-# which is the split state milestone 265 spent 424 files ending for `_proto`.
+# four places that are not prose: QEMU's `-icount shift=0,sleep=off`, the cargo feature
+# `--features icount`, `feature = "icount"` in `arch/riscv64/timer.rs`, `boot.rs`, `lib.rs` and
+# `riscv64_boot.rs`, and the CI check named `bench (icount regression tripwire)`. **QEMU's flag is
+# not ours to rename.** So spelling the script out gives one thing three spellings across a
+# boundary we do not control, which is the split state milestone 265 (a truncation that collides)
+# spent 424 files ending for `_proto`.
 #
 # **The expansion does teach, and that is conceded rather than denied.** "Instruction count" says
 # what is counted, which is the `dma` case rather than the `pci` case. The 2026-09-05 rule does not
