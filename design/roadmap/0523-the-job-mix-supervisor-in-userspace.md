@@ -137,7 +137,7 @@ numbers are not quotable by the instrument's own published standard.
 
 Milestone 240 (the soak reports what happened and not where, so an eightfold difference cannot be explained) found that placement decides throughput on radon by up to fifteenfold.
 `kernel/src/job_mix.rs` answers it with `sched::spawn_reporting_placement`
-(`kernel/src/sched.rs:883-887`), which returns the core the kernel picked, and prints a
+(`sched/inspection.rs`), which returns the core the kernel picked, and prints a
 `job-mix-census:` line per core. `crates/board_console/src/lottery.rs` reads those lines to judge a
 draw, and `notes/job-mix.md` step 3 tells the operator to read them before reading any number.
 

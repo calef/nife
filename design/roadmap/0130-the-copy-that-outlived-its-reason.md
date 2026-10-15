@@ -49,7 +49,7 @@ falsify.
 The drift is real, and one instance is semantically different.
 `components/src/terminal_sink_caretaker.rs:101` calls `exit()` and never traps. That is a different
 outcome, not a different spelling: `sched::exit` reports `EVENT_EXIT` where `sched::fault` reports
-`EVENT_FAULT` (`kernel/src/sched.rs:1185-1196`), so a panic there would tell a supervisor the
+`EVENT_FAULT` (`sched/departure.rs`), so a panic there would tell a supervisor the
 program finished cleanly. **It is latent, not a live bug**, and the block says so rather than
 inflating it: the adapter is built with `fault: None`
 (`crates/system_initializer/src/lib.rs:605-618`), so nothing observes the difference today. It
