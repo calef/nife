@@ -21,7 +21,7 @@ set -e
 cd "$(dirname "$0")/.."
 
 # The checks call python3 helpers that import tomllib, stdlib since 3.11. Found 2026-10-15
-# (milestone 352) when the pre-push gate died mid-run on a 3.9 system python. Fail here, with
+# (milestone 352 (DECISIONS 113's rename reaches the prose)) when the pre-push gate died mid-run on a 3.9 system python. Fail here, with
 # the fix, rather than several checks in.
 if ! python3 -c 'import tomllib' >/dev/null 2>&1; then
     echo "script/lint: python3 has no tomllib; this tree's checks need Python 3.11 or newer." >&2

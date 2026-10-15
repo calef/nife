@@ -35,7 +35,7 @@ Each split is chosen so that the authority is the smallest thing that still does
 - The spawner's budget is WRITE without GRANT. It may spend memory; it may not lend it. Nothing
   it builds can be endowed with a budget of its own.
 - Each instance is built in its own region, split off the budget, so reaping it is one
-  `MemoryRegion::DESTROY` (§16) and one instance's corpse cannot pin another's memory. A LIFO reap returns
+  `MemoryRegion::DESTROY` (§16 (object revocation)) and one instance's corpse cannot pin another's memory. A LIFO reap returns
   the pages to the budget (§16's return-of-pages), so the restart loop is not a leak.
 - The supervisor holds no memory at all. Its entire power is to ask the spawner for a rebuild of
   one program. A compromised supervisor is a restart loop, not a foothold.

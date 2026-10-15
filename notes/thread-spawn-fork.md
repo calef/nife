@@ -58,7 +58,7 @@ the kernel boundary at all. It is a userspace consumer of machinery that has
 existed since milestone 19c.3.
 
 **Multi-holder kernel objects already exist, and Rendezvous is the precedent.** DECISIONS §16
-records that `MemoryRegion::DESTROY` "refuses... [while] an endpoint in it has a blocked waiter". The supervision handshake of
+(object revocation) records that `MemoryRegion::DESTROY` "refuses... [while] an endpoint in it has a blocked waiter". The supervision handshake of
 §26 (the fault endpoint) is two different processes each holding a capability that names the *same*
 Rendezvous object. A spawner grants a supervision endpoint into a child's reserved slot, and both
 sides act on the one object. So "a kernel object with more than one holder, and

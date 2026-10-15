@@ -7,7 +7,7 @@ that spends what it was granted.
 ## The region had to become delegable first
 
 Making `--mem N` real, and not parsed-and-ignored, needed a kernel fix, recorded as an amendment
-to DECISIONS §16. `MemoryRegion::SPLIT` minted its child budget with `WRITE` alone, so it could be spent
+to DECISIONS §16 (object revocation). `MemoryRegion::SPLIT` minted its child budget with `WRITE` alone, so it could be spent
 but never delegated (`SEND_CAP` and `CAP_INSERT` both gate on `GRANT`). A memory region was the one object
 type no process could hand on, which quietly foreclosed the whole feature.
 

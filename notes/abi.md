@@ -114,9 +114,9 @@ is the contract, and it is per program, published in that program's own source:
 - the input driver gets the line rendezvous at slot 0 and its RX interrupt capability at slot 1.
 - the shell holds five rendezvouses (slots 0–4) and two shared pages.
 - a **std program** (milestone 27) gets an untyped budget at slot 0 (its heap) and a WRITE rendezvous
-  at slot 1 (stdout/stderr). A std program *given the network* (milestone 27 phase two) also gets a
-  WRITE `Stack` rendezvous at slot 2 (net_stack's socket contract, DECISIONS §25) and a second untyped
-  budget at slot 3 (the per-socket shared frames `std::net` mints). Absent slots 2 and 3, `std::net`
+  at slot 1 (stdout/stderr). A std program *given the network* (milestone 27 (Rust `std` on the native ABI) phase two) also gets a
+  WRITE `Stack` rendezvous at slot 2 (net_stack's socket contract, DECISIONS §25 (socket identity)). A
+  second untyped budget at slot 3 holds the per-socket shared frames `std::net` mints. Absent slots 2 and 3, `std::net`
   returns `Unsupported`: no ambient network, felt from inside the process. See notes/std.md.
 - a std program *given a directory* (milestone 27 phase two, the FS half) gets a WRITE FS-service
   endpoint at slot 4, plus the page it shares with the FS server mapped at `0x1100_0000`. That

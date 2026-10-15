@@ -34,8 +34,9 @@ is nothing for it to do that this doesn't already do better.
 
 ## BUGS
 
-- The `user::AddressSpace` description above predates region-owned teardown (milestone 135's
-  `Backing`): the struct records no `frames` vec any more. The root is a `PageFrame`, the region the
+- The `user::AddressSpace` description above predates region-owned teardown: milestone 135
+  (the region claim, under loom) replaced the frame list with `Backing`. The struct records no
+  `frames` vec any more. The root is a `PageFrame`, the region the
   space was retyped from is the record of what it owns, and teardown is `memory_region::destroy`, one
   call. The test's assertion is unchanged.
 

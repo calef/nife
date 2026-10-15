@@ -15,7 +15,7 @@ DECISIONS §24 deferred, so it is a kernel-surface fork for calef; the block ask
 designed as one surface with the fault endpoint and for all three of §24's triggers at once.
 
 In brief. Shell job control, in two phases split by whether they need a new kernel primitive.
-Phase one needs none; phase two is `ThreadControlBlock::SUSPEND`/`RESUME`, which DECISIONS §24 deferred and whose
+Phase one needs none; phase two is `ThreadControlBlock::SUSPEND`/`RESUME`, which DECISIONS §24 (interrupting the foreground process) deferred and whose
 own trigger list names "real job control (`fg`/`bg`, a stopped-process state) in the shell" as trigger
 2. That trigger has now fired.
 

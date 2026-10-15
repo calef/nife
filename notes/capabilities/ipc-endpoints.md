@@ -103,7 +103,7 @@ thread blocked on the other end:
 *(Milestone 8 has since shipped; this is the record of the last piece of scaffolding and why it
 came down in that order. See [userspace-drivers.md](../userspace-drivers.md).)*
 
-The thing on the other end of that rendezvous was a kernel thread. Milestone 8 made it a userspace process: the console driver leaves the kernel,
+The thing on the other end of that rendezvous was a kernel thread. Milestone 8 (the console driver leaves the kernel) made it a userspace process: the console driver leaves the kernel,
 `Object::Console` becomes a `Rendezvous` to a console *server*, and `write` becomes an ordinary
 `SEND` to it. Everything 7e built (rendezvouses, blocking, the rendezvous guarantee, message-in-registers) is
 exactly the machinery that move needs, which is why it came first.

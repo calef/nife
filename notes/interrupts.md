@@ -216,7 +216,7 @@ interrupt.
 
 ## An interrupt is not a rendezvous
 
-IPC on a rendezvous (milestone 7e) is synchronous: a sender waits for a receiver. An interrupt
+IPC on a rendezvous, the milestone 7e (user mode) shape, is synchronous: a sender waits for a receiver. An interrupt
 cannot wait. It fires whether or not the driver happens to be blocked in `WAIT` at that instant,
 and it must not be lost if the driver is a hair late.
 

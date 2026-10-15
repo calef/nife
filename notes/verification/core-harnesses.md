@@ -16,7 +16,7 @@ Eight harnesses in `crates/capability/src/lib.rs`, under `#[cfg(kani)]`:
 | `from_bits_cannot_forge_a_right` | an attacker-controlled syscall register cannot conjure an undefined right |
 | `subset_matches_allows` | the two phrasings of the order agree, so a bug in one shows against the other |
 | `derive_never_widens_rights` | the central theorem, on the real `CapabilityTable::derive` |
-| `split_never_widens_rights` | authority never widens at the *other* mint site: `Cap::mint_child` (the inheriting mint `MemoryRegion::SPLIT` now uses) hands a child no more than the parent held (milestone 35, below) |
+| `split_never_widens_rights` | authority never widens at the *other* mint site: `Cap::mint_child` (the inheriting mint `MemoryRegion::SPLIT` now uses) hands a child no more than the parent held (milestone 35 (Prove the DMA-confinement boundary), below) |
 | `a_deleted_capability_stays_deleted` | for every table state, once `delete` succeeds the slot answers `NoSuchSlot` to both `get` and a second `delete` (the consume-on-use mechanism behind the one-shot Reply) |
 | `delete_touches_only_its_slot` | deleting any slot leaves every other slot exactly as it was (consuming one caller's Reply cannot orphan another's) |
 
