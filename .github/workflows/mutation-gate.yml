@@ -4,6 +4,9 @@ name: mutation gate
 #   #2220, a throwaway pull request staging one untested function in `crates/glob`
 #   (`staged_gate_observation`): five survivor keys, all the staged function's, each listed with
 #   what clears it. That is the red this gate exists to raise, on the trigger it will live on.
+#   Also observed the same day, run 38804878586: this repository's own pull request, a diff with
+#   no Rust, went red because no mutants were generated and outcomes.json was absent, which the
+#   helper rightly read as a broken run; the no-mutants pass below is that run's repair.
 
 # **A surviving mutant on a line this pull request changed cannot merge untriaged** (roadmap
 # 924, provisional: calef's ruling "Reopen, build it", 2026-10-15 UTC, on milestone 479 (a
@@ -251,6 +254,22 @@ jobs:
               echo "\`script/mutation\` exited $rc: a broken run, not a survivor count, and never a pass."
             } >> "$GITHUB_STEP_SUMMARY"
             exit "$rc"
+          fi
+          # Exit 0 with no outcomes.json is the one shape that is not a verdict the tool wrote
+          # down: cargo-mutants writes outcomes.json whenever it had mutants to test, so a clean
+          # exit without one means the diff generated none (no Rust on the changed lines the
+          # corpus leaves in). Found on this repository's own pull request, run 38804878586,
+          # which the helper failed closed on; the pass says what it is, as the corpus summary
+          # above does.
+          if [ ! -f mutants.out/outcomes.json ]; then
+            {
+              echo "### Mutation gate: clean"
+              echo
+              echo "The diff generated no mutants: no Rust on the changed lines that"
+              echo "`.cargo/mutants.toml` leaves in. This pass is not a mutation result."
+            } >> "$GITHUB_STEP_SUMMARY"
+            echo "==> no mutants generated; passing with the summary that says so"
+            exit 0
           fi
 
       - name: Decide against the triage ledger
