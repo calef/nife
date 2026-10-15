@@ -32,7 +32,7 @@ USB, both PCIe root ports and the DMA engine, not one device. The crate
 read-back predicates, and offers no gate and no assert. Its own doc for the TRNG reset line says
 why the asymmetry is the silicon's: the line is *shared* (`devm_reset_control_get_shared`
 upstream), the same line resets the PL080 DMA engine, so "deasserting it is safe; asserting it
-would reset a neighbour, which is why nothing in this crate offers an assert". Linux's clock
+would reset a neighbor, which is why nothing in this crate offers an assert". Linux's clock
 framework buys its way out with refcounting this tree does not have.
 
 [§86 (whether an NVMe driver can leave the kernel)](0086-el0-nvme-driver.md) is the tree's own precedent for the shape of the answer, and its words fit: "the irreversible
