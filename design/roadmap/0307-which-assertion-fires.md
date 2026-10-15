@@ -8,7 +8,7 @@ built: 2026-09-16
 ## Why this exists
 
 Milestone 305 found two independent cases where **the assertion a reader would quote is not the
-assertion doing the work**, and one where a test could not fail at all, and said in its own block
+assertion doing the work**, and one where a test could not fail at all. It said in its own block
 that a sweep would probably find more. This is that sweep, over all 26 rows of
 `notes/confinement-claims.md`, which are the confinement claims this project makes in public.
 
@@ -51,7 +51,7 @@ Neither the defect nor its consequence is exotic. The constant's own doc comment
 real address width is `CAP_REG.MGAW`-defined and this driver has never narrowed to it, so the mask is
 a number somebody could plausibly change. And the harness's own doc comment explains why the failure
 would be bad: QEMU's model and real silicon fault a transaction over a reserved bit rather than
-ignoring it, so the symptom is an IOMMU whose every translation fails, which reads as broken hardware
+ignoring it. The symptom is an IOMMU whose every translation fails, which reads as broken hardware
 rather than as a bad table.
 
 The surprise is that the tree had already recorded the opposite. Forty lines up, the comment on
@@ -61,12 +61,12 @@ move on the portable leaf."* It did not work that way. A lane that had just avoi
 for a precedent and picked the one harness in the crate still caught in it, and that sentence then
 stood as the tree's only statement about the question. The comment is corrected here rather than
 deleted, because the citation is the more interesting half: this is `AGENTS.md`'s ladder failing at
-rung four exactly as it says it will, and the rung-one fix is that the constant is now a literal that
+rung four exactly as it says it will. The rung-one fix is that the constant is now a literal that
 no implementation can reach.
 
 The host twin `a_vtd_leaf_sets_no_bit_outside_read_write_and_address` was blind for a second,
-independent reason, which is worth naming because a literal alone would not have fixed it: its one
-concrete address `0x10_0000` carries no bits above 51, so the encoder's masking was never exercised
+independent reason, which is worth naming because a literal alone would not have fixed it. Its one
+concrete address `0x10_0000` carries no bits above 51. So the encoder's masking was never exercised
 and a widened mask changed nothing it could observe. It runs three addresses now and catches the same
 defect in microseconds, which is where this tree prefers to catch things.
 
@@ -128,8 +128,8 @@ enough to confirm that there is no excuse for leaving one unconfirmed.
   lane's.
 - **No shipping code changed in this milestone.** Every edit is inside `#[cfg(test)]`,
   `#[cfg(kani)]`, or a `cfg`-gated constant, plus prose. That is worth stating because a milestone
-  about the quality of evidence should not be mistaken for one that changed the system, and because
-  it is why the architecture gates below are the relevant ones rather than a three-way boot matrix.
+  about the quality of evidence should not be mistaken for one that changed the system. And it is
+  why the architecture gates below are the relevant ones rather than a three-way boot matrix.
 
 ## Follow-on
 
@@ -171,4 +171,4 @@ enough to confirm that there is no excuse for leaving one unconfirmed.
 
 ## Index row
 
-Milestone 305 (the six kernel confinement rows get a falsification a machine can replay) found two cases where the assertion a reader would quote is not the assertion doing the work and predicted a sweep would find more. This is that sweep, over all 26 rows of `notes/confinement-claims.md`. **The finding is a second proof that could not fail**, and it is a Kani harness rather than a kernel test, which is where nobody was looking: `no_vtd_entry_ever_sets_a_reserved_bit` stated all three assertions *and* its `assume` through the three constants the encoder builds its entry out of, so `(pa & M) | bits` setting no bit outside `M | R | W` held for every value of `M`. Widening `VTD_ADDR_MASK` over bits a VT-d entry really reserves left it **SUCCESSFUL, 0 of 45 failed**, while every translated DMA would fault as broken hardware. The tree had recorded the opposite forty lines away, citing this harness as the example of avoiding that exact trap. Fixed, measured both ways, and the shape found six more times: 17 rows fire as advertised, 8 have a quotable assertion that cannot run, 1 was answered by refusing to look.
+Milestone 305 (the six kernel confinement rows get a falsification a machine can replay) found two cases where the assertion a reader would quote is not the assertion doing the work and predicted a sweep would find more. This is that sweep, over all 26 rows of `notes/confinement-claims.md`. **The finding is a second proof that could not fail**, and it is a Kani harness rather than a kernel test, which is where nobody was looking. `no_vtd_entry_ever_sets_a_reserved_bit` stated all three assertions *and* its `assume` through the three constants the encoder builds its entry out of. So `(pa & M) | bits` setting no bit outside `M | R | W` held for every value of `M`. Widening `VTD_ADDR_MASK` over bits a VT-d entry really reserves left it **SUCCESSFUL, 0 of 45 failed**, while every translated DMA would fault as broken hardware. The tree had recorded the opposite forty lines away, citing this harness as the example of avoiding that exact trap. Fixed, measured both ways, and the shape found six more times: 17 rows fire as advertised, 8 have a quotable assertion that cannot run, 1 was answered by refusing to look.

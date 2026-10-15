@@ -31,8 +31,8 @@ script/undefined-behavior-check  5429.38s user  18.55s system  47% cpu  3:09:41.
 ```
 
 Three hours nine minutes, and green. No failure appeared behind the leak, which is worth saying
-plainly because the workflow's header warns to expect one: `cargo miri test` stops at the first
-failure, and the last time this job was taken apart a three-week red turned out to have three
+plainly because the workflow's header warns to expect one. `cargo miri test` stops at the first
+failure. The last time this job was taken apart a three-week red turned out to have three
 causes. This time the first fix was the only fix.
 
 And it passes in CI, which is the measurement that settles it. `workflow_dispatch` on this
@@ -58,14 +58,14 @@ every frame. It worked. What it required was that each test *remember* to write
 `a_multi_page_grant_maps_its_whole_pages_and_not_the_partial_tail`, written afterwards, did not.
 One test out of four, five frames, five weeks of red.
 
-That is `AGENTS.md`'s ladder, rung four, failing the way rung four fails, and the whole list of
+That is `AGENTS.md`'s ladder, rung four, failing the way rung four fails. The whole list of
 sites confirms it: `page_frame_at` was the only function allocating, `page_frame` the only other
 caller of it, and the thread-local `PHYS` had no third writer anywhere in the crate. Nothing was
 subtle. Binding the missing line would have restored the identical defect for the next test
 author, and the next author is exactly who this file says cannot be relied on to remember.
 
-So the fix goes up the ladder to rung one, *make the wrong state unrepresentable*: `frame` and
-`frame_at` are now methods on `FramePool`, the free functions are gone, and **a test that allocates
+So the fix goes up the ladder to rung one, *make the wrong state unrepresentable*. `frame` and
+`frame_at` are now methods on `FramePool`, the free functions are gone. **A test that allocates
 a frame without holding a pool does not compile.** The receiver is otherwise unused, and that is the
 point of it.
 
@@ -113,7 +113,7 @@ and the crate's other thirty pass unchanged.
 ## BUGS
 
 - **Nothing checks that a new fixture in some *other* crate does not do the same thing.** This
-  milestone made one fixture's leak unrepresentable; the general shape (a test that allocates host
+  milestone made one fixture's leak unrepresentable. The general shape (a test that allocates host
   memory and lets the process clean up) is caught only by the weekly Miri run, which is exactly the
   detection latency that let this sit for five weeks. `script/cadence-check` shortens the latency on
   the *job going quiet*, not on the job going red.
@@ -151,8 +151,8 @@ and the crate's other thirty pass unchanged.
   the reason stated there: twenty-one call sites in a file that is not failing. `script/lint` cannot
   check it, because "a test that allocates and forgets a guard" is not a grep.
 - **Recorded.** An edit outside this lane's own roadmap block, named here because AGENTS.md says a
-  lane edits its own block and only that: `notes/undefined-behavior.md`'s item 3 said the `paging`
-  leak was "fixed", which stopped being true five weeks ago and is the §76 shape of a record
+  lane edits its own block and only that. `notes/undefined-behavior.md`'s item 3 said the `paging`
+  leak was "fixed". That stopped being true five weeks ago and is the §76 shape of a record
   describing a system that no longer exists. Corrected in place, with the recurrence and why the
   second fix went up a rung.
 
@@ -163,7 +163,7 @@ red since 2026-08-11, and the cause was never undefined behavior: `crates/paging
 leaked five zeroed host frames, which `cargo test` ignores and Miri's default leak check does not.
 The interesting part is that the guard was not missing. `PoolGuard` had been added on 2026-08-03 for
 exactly this leak, and a test written afterwards simply did not bind one, which is AGENTS.md's rung
-four failing the way rung four fails; binding the missing line would have restored the identical
+four failing the way rung four fails. Binding the missing line would have restored the identical
 defect for the next author. So allocation moved onto the pool itself and a test that allocates a
 frame without holding one no longer compiles. calef refused both alternatives on 2026-09-17,
 `-Zmiri-ignore-leaks` globally and a `paging`-scoped ignore, on the ground that a permanent

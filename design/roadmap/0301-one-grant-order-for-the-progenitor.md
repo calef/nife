@@ -17,20 +17,20 @@ Nothing outside this repository ever acted on the slot numbers, which is what ma
 this cheap to settle.
 
 This is a numbered block rather than a proposal because `design/roadmap/proposals/` carries exactly
-one status by design (`helpers/roadmap_proposals.py` matches `PROPOSED` and nothing else), so a
-proposal cannot be retired in place; the terminal vocabulary lives on numbered blocks. Its status is
+one status by design (`helpers/roadmap_proposals.py` matches `PROPOSED` and nothing else). A proposal
+cannot be retired in place; the terminal vocabulary lives on numbered blocks. Its status is
 `SUPERSEDED` rather than `REMOVED`, because this was never built and did not need to be: other work
 answered it. Milestones 54 and 55 both record that the vocabulary has no word for their own case
-("built, then removed"); that question is theirs and is deliberately left open here rather than
+("built, then removed"). That question is theirs and is deliberately left open here rather than
 papered over with a shared word.
 
 ## What settled it
 
 Milestone 166 did precisely what *What it would take* below asks for. It split milestone 19d's test
-roles out of the boot path into `spawn_hello`, so the kernel no longer hands the interactive system a
+roles out of the boot path into `spawn_hello`. The kernel no longer hands the interactive system a
 report endpoint nothing receives on and a test interrupt no component waits for. Both boards now
 number the interactive capabilities identically from slot 0, `components/src/progenitor.rs`'s two
-`BootEndowment` tables became one, and the `cfg` this proposal was written about is gone.
+`BootEndowment` tables became one. The `cfg` this proposal was written about is gone.
 
 The one genuine per-architecture difference left is the *shape* of the console authority, a device
 page on aarch64 and riscv64 against an `x86_64` `PortRange` (milestone 299 (the x86 port-range
@@ -61,7 +61,7 @@ the boot capabilities in a different order:
 Every row after the first is displaced by exactly the two capabilities aarch64 grants and the
 interactive system never uses: a report endpoint nothing receives on, and a test interrupt no
 component waits for. They are there because **aarch64's boot path is shared with milestone 19d's
-test roles**, which enter `hello` through the same function with the same endowment, and whose slot
+test roles**, which enter `hello` through the same function with the same endowment. Their slot
 numbering is written into `fixtures/src/hello.rs`'s role catalog and into six `spawn_hello` tests.
 
 ## What it would take
@@ -72,15 +72,15 @@ test roles, so both boards number the interactive capabilities identically from 
 
 The work is not the kernel side. It is that 19d's roles read fixed slot numbers (`REPORT = 1`,
 `TEST_IRQ = 3`, `UART_DEV = 2`) and each is named in `hello.rs` and asserted from the kernel's test
-module. Renumbering them is mechanical and the blast radius is a whole milestone's worth of reading,
-which is exactly why 266 did not fold it in: a boot failure and a renumbered test suite arriving in
+module. Renumbering them is mechanical and the blast radius is a whole milestone's worth of reading.
+That is exactly why 266 did not fold it in: a boot failure and a renumbered test suite arriving in
 one change is the ambiguity that milestone forbade itself.
 
 ## Why it is worth doing rather than living with
 
 The `cfg` is data rather than code and it sits in one file beside the table it disagrees with, which
 is the cheapest place to notice it. But it is still one architectural difference inside the first
-process, in a milestone whose argument was that there should not be one, and DECISIONS §19's failure
+process, in a milestone whose argument was that there should not be one. DECISIONS §19's failure
 mode is precisely a fact that is true on one ISA and quietly not on another.
 
 ## What it is not
@@ -91,9 +91,9 @@ and that difference is rule 1 working. Only the order is arbitrary.
 
 ## Index row
 
-`components/src/progenitor.rs` held two `BootEndowment` tables under a `cfg`, because aarch64's boot
+`components/src/progenitor.rs` held two `BootEndowment` tables under a `cfg`. aarch64's boot
 path was shared with milestone 19d (run a real workload)'s test roles and so granted a report
 endpoint and a test interrupt the interactive system never used, displacing every slot after the
 first. Milestone 166 (one boot loader, reached two inconsistent ways) settled it by splitting those
-roles out into `spawn_hello`, so both boards number the interactive capabilities identically from
+roles out into `spawn_hello`. Both boards number the interactive capabilities identically from
 slot 0, the two tables are one, and the `cfg` is gone.
