@@ -6,6 +6,7 @@
 use std::path::Path;
 use std::process::Command;
 use std::sync::atomic::Ordering;
+use std::time::Duration;
 
 use crate::archive::{initial_ramdisk_x86, x86_initial_ramdisk_path};
 use crate::disk::{disk_path, mkdisk, mknvmedisk, nvme_disk_path};
@@ -951,7 +952,8 @@ fn uefi_test_image(package: &str) -> bool {
     let status = watch.wait(&mut child, &format!("x86_64 ovmf {package}"));
     let (lines, exited) = watch.finish();
     let transcript: String = lines.iter().map(|l| l.text.clone() + "\n").collect();
-    let passed = status.is_some_and(|s| s.code() == Some(i32::from(X86_DEBUG_EXIT_SUCCESS)));
+    let code = status.and_then(|s| s.code());
+    let passed = code == Some(i32::from(X86_DEBUG_EXIT_SUCCESS));
     let accounted = crate::time_record::account("x86_64 ovmf", package, &lines, exited, passed);
 
     let mut ok = true;
@@ -973,10 +975,13 @@ fn uefi_test_image(package: &str) -> bool {
     // to speak cargo's success convention while this one has only ever had one caller.
     if !passed {
         eprintln!(
-            "uefi-test: qemu exited {:?}, not {X86_DEBUG_EXIT_SUCCESS} (the harness's own success \
-             status through isa-debug-exit)",
-            status.and_then(|s| s.code())
+            "uefi-test: the {package} boot failed: qemu exited {code:?}, not \
+             {X86_DEBUG_EXIT_SUCCESS}, after {} s",
+            exited.as_secs()
         );
+        for line in exit_verdict_lines(code, exited, &transcript) {
+            eprintln!("uefi-test:   {line}");
+        }
         ok = false;
     }
     if !accounted {
@@ -988,6 +993,89 @@ fn uefi_test_image(package: &str) -> bool {
     ok
 }
 
+/// **At a failed boot, say which exit path produced the status, and retire the VT-d theory.**
+///
+/// The number alone cannot: `1` is both the guest's failure write and QEMU's own error exit, and
+/// neither the transcript nor QEMU's stderr rides on the line that prints the number. The shapes
+/// below are the whole protocol. The guest writes `code >> 1` to the exit device's port and QEMU
+/// reports `(written << 1) | 1`, so every status the device can produce is odd and 0 is not one of
+/// them. What backs the readings: the summary print and the success write are adjacent statements
+/// in `kernel/src/testing.rs`, and past that point the one in-tree writer of the failure code is
+/// the panic arm, which prints `[PANIC]` first (`kernel/src/panic.rs`); QEMU exits 0 on a SIGTERM,
+/// which is how both the `NIFE_UEFI_TIMEOUT` bound and the host watchdog end a boot (measured on
+/// Homebrew QEMU 11.1.2, 2026-10-15); a QEMU that fails before or during the boot exits 1 with its
+/// reason on stderr, which this boot streams to ours. Name provisional (this lane; calef names the
+/// interfaces).
+fn exit_verdict_lines(code: Option<i32>, exited: Duration, transcript: &str) -> Vec<String> {
+    let mut lines = vec![
+        // Milestone 215 named this family of QEMU lines the escape test's own expected faults: the
+        // masked fault-event interrupt (this kernel polls, it does not take the interrupt) and the
+        // escape's translation failure. They are what a passing confinement test looks like from
+        // outside, and they are the only thing in a red run's output that invites a wrong theory
+        // about QEMU versions or firmware.
+        "the qemu-system-x86_64 VT-d lines in this run's output (`Interrupt Mask set, irq is not \
+         generated`, `vtd_iommu_translate: detected translation failure`) are the escape test's \
+         own expected faults (milestone 215), not a cause"
+            .to_string(),
+    ];
+    match code {
+        // The host watchdog (or a failed wait) ended the child, and printed its own line naming
+        // the stage that overran. Nothing here can add to it.
+        None => lines.push(
+            "the boot was ended for us; the HOST WATCHDOG line above names the stage. A hang, \
+             not an exit the guest chose"
+                .to_string(),
+        ),
+        // The guest's failure write and QEMU's own error exit share this number, so the
+        // transcript decides: a green summary means the write came after the suite's own verdict.
+        Some(1) => {
+            if transcript.contains("test result: ok.") {
+                lines.push(
+                    "1 is the status the failure code produces (the guest writes 0, the device \
+                     reports (0 << 1) | 1), and the transcript shows the suite's green summary, \
+                     so it was written after that verdict. In this tree one writer does that: the \
+                     panic arm, which prints `[PANIC]` first; a transcript with no `[PANIC]` \
+                     points instead at QEMU's own error exit, whose reason would be on stderr \
+                     above"
+                        .to_string(),
+                );
+            } else {
+                lines.push(
+                    "1 is the status the failure code produces (the guest writes 0) and also \
+                     QEMU's own error exit. No summary in the transcript, so either the guest \
+                     wrote failure before reaching one, or QEMU failed before or under the \
+                     guest; QEMU's reason, if any, is on stderr above"
+                        .to_string(),
+                );
+            }
+        }
+        // Not the device's: whatever ended QEMU, the guest's exit write is not it. The elapsed
+        // time separates a bound that spent its whole 180 s from a boot that stopped early.
+        Some(0) => lines.push(format!(
+            "0 is not a status isa-debug-exit can produce (its statuses are all odd): the \
+             guest's exit write is not what ended this boot, which ran {} s. The \
+             NIFE_UEFI_TIMEOUT bound lands here, because QEMU exits 0 on the SIGTERM that ends \
+             it; so does a reset the guest or firmware asked for, which -no-reboot turns into \
+             an exit rather than a loop",
+            exited.as_secs()
+        )),
+        // Odd and not 1 or 3: the device produced it, and the guest wrote a code this harness
+        // never writes. That is an anomaly in its own right and is worth the number spelled out.
+        Some(c) if c % 2 == 1 => lines.push(format!(
+            "the guest wrote {} through isa-debug-exit, which is neither of the harness's two \
+             codes (success writes 1, failure writes 0)",
+            c >> 1
+        )),
+        // Even: the device cannot produce it, so QEMU was ended from the host side without its
+        // cooperation; 137 is the killer's SIGKILL after a SIGTERM QEMU did not act on.
+        Some(c) => lines.push(format!(
+            "{c} is not a status isa-debug-exit can produce (its statuses are all odd): QEMU \
+             was ended from the host side"
+        )),
+    }
+    lines
+}
+
 /// The process status a passing `x86_64` suite produces, which is not zero and cannot be.
 ///
 /// `isa-debug-exit` terminates QEMU with `(value << 1) | 1`, so every status it can report is odd.
@@ -995,3 +1083,75 @@ fn uefi_test_image(package: &str) -> bool {
 /// `kernel/src/arch/x86_64/semihosting.rs`, and `helpers/qemu-runner-x86_64.sh` translates the same
 /// number for cargo's benefit. Three files naming one number is the cost of a convention QEMU owns.
 const X86_DEBUG_EXIT_SUCCESS: u8 = 3;
+
+#[cfg(test)]
+mod exit_verdict_tests {
+    use super::*;
+
+    fn lines(code: Option<i32>, transcript: &str) -> Vec<String> {
+        exit_verdict_lines(code, Duration::from_secs(41), transcript)
+    }
+
+    #[test]
+    fn every_failure_says_the_vtd_lines_are_expected() {
+        for code in [None, Some(0), Some(1), Some(7), Some(137)] {
+            let lines = lines(code, "");
+            assert!(
+                lines[0].contains("milestone 215"),
+                "code {code:?}: first line must retire the VT-d theory, got {:?}",
+                lines[0]
+            );
+        }
+    }
+
+    #[test]
+    fn a_one_after_a_green_summary_points_after_the_verdict() {
+        let lines = lines(Some(1), "test result: ok. 277 passed, 101 skipped\n");
+        assert!(
+            lines.iter().any(|l| l.contains("after that verdict")),
+            "{lines:?}"
+        );
+        assert!(lines.iter().any(|l| l.contains("`[PANIC]`")), "{lines:?}");
+    }
+
+    #[test]
+    fn a_one_without_a_summary_names_qemus_own_error_exit() {
+        let lines = lines(Some(1), "nife uefi_loader: milestone 87\n");
+        assert!(
+            lines.iter().any(|l| l.contains("QEMU's own error exit")),
+            "{lines:?}"
+        );
+    }
+
+    #[test]
+    fn zero_is_reported_as_not_the_devices() {
+        let lines = lines(Some(0), "");
+        assert!(
+            lines
+                .iter()
+                .any(|l| l.contains("not a status isa-debug-exit can produce")),
+            "{lines:?}"
+        );
+        // The bound and a reset share this shape, so the line must give the reader the elapsed
+        // time that separates them.
+        assert!(
+            lines.iter().any(|l| l.contains("NIFE_UEFI_TIMEOUT") && l.contains("41 s")),
+            "{lines:?}"
+        );
+    }
+
+    #[test]
+    fn an_odd_status_decodes_the_value_the_guest_wrote() {
+        let lines = lines(Some(7), "");
+        assert!(
+            lines.iter().any(|l| l.contains("the guest wrote 3")),
+            "{lines:?}"
+        );
+    }
+
+    #[test]
+    fn a_watchdog_kill_defers_to_the_watchdogs_own_line() {
+        let lines = lines(None, "test result: ok. 277 passed, 101 skipped\n");
+        assert!(lines.iter().any(|l| l.contains("HOST WATCHDOG")), "{lines:?}");
+    }
+}
