@@ -222,9 +222,9 @@ in the exact terms SECURITY.md puts in scope. It moved from latent to live when 
 ask the progenitor to build a caretaker, which happened on 2026-09-27 (finding 1(d) in
 [filesystem-findings.md](shared-page-audit/filesystem-findings.md); corrected 2026-10-11 UTC, since
 this case had said that day was still ahead). Milestone 599 (a frame per filesystem client channel)
-is this case's lane, and it built on 2026-09-27: calef ruled badged endpoints, the witness proves
-isolation on all three architectures, and the production progenitor's pool is what remains (599's
-own "What is left"; noted 2026-10-15 UTC).
+is this case's lane, and it built on 2026-09-27. Calef ruled badged endpoints. The witness proves
+isolation on all three architectures. What remains is the production progenitor's pool, 599's own
+"What is left" (noted 2026-10-15 UTC).
 
 **B. A harness that can make a virtio device misbehave.** The case is finding 6 and the honesty gap
 under it. This tree tests DMA confinement by making the *driver* attack (`crates/virtio`'s
