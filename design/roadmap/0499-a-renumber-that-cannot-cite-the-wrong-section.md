@@ -1,7 +1,8 @@
 ---
-status: NOT-STARTED
+status: IN-PROGRESS
 raised: 2026-09-19
 promoted_from: a-renumber-that-cannot-cite-the-wrong-section
+branch: milestone/499-decisions-renumber-from
 milestone_dependencies: none
 decision_dependencies: none
 machine_requirements: none
