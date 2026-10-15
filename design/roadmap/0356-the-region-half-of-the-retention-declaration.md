@@ -2,7 +2,7 @@
 status: NOT-STARTED
 raised: 2026-09-03
 milestone_dependencies: none
-decision_dependencies: unwritten
+decision_dependencies: 303
 machine_requirements: none
 specific_machine: none
 needs_person: no
@@ -55,8 +55,9 @@ for that answer to live, because the declaration is per-child and the rule is pe
 
 ## The fork, so it is not decided by accident
 
-There are at least three shapes and they are not equivalent, which is why this is `DECISION` rather
-than a lane:
+There are at least three shapes and they are not equivalent, which is why the fork is written up as
+[§303 (the region)](../decisions/0303-the-retention-declaration-says-nothing-about-the-region.md)
+rather than left to a lane:
 
 - **Widen `Retention`** into an enum over both objects, so one field says what is kept of each. One
   noun to learn, and the two are genuinely one question about one child.

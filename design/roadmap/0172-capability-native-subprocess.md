@@ -2,7 +2,7 @@
 status: NOT-STARTED
 raised: 2026-08-25
 milestone_dependencies: none
-decision_dependencies: unwritten
+decision_dependencies: 301
 machine_requirements: none
 specific_machine: none
 needs_person: no
@@ -72,9 +72,11 @@ way, and that is calef's call, not this block's.
 
 ## What it needs
 
-- The actual design fork, raised per DECISIONS §10 (process model: capability-based, microkernel),
-  before any code: is this a new syscall method on an existing object, a new object type, or a
-  userspace-only composition of `build_child` plus an existing notification mechanism (DECISIONS
+- The actual design fork, written up as
+  [§301 (exit status and output)](../decisions/0301-exit-status-and-output.md) per DECISIONS §10
+  (process model: capability-based, microkernel): is this a new syscall method on an existing object, a
+  new object type, or a userspace-only composition of `build_child` plus an existing notification
+  mechanism (DECISIONS
   §101 (notification objects))? Answer with the six-questions discipline this
   tree already applies to forks like it (what does the tree already do in the analogous case, what
   does it cost measured rather than asserted, how reversible is it).
@@ -98,10 +100,12 @@ that gap is ever closed, and what `git`'s optional hook/external-tool features
 
 The actual shape of the primitive (new syscall vs. composition of existing ones), whether it is
 scoped to a single synchronous child or a small pool, and whether stdin/stdout are pipes, shared
-memory rings, or something else. All of that is the DECISION this milestone's gate names.
+memory rings, or something else. All of that is
+[§301 (exit status and output)](../decisions/0301-exit-status-and-output.md)'s question.
 
 ## Index row
 
 The real architectural piece the self-hosting question surfaced: `cargo`/`rustc` need to spawn a
 process per compilation unit and to invoke a linker, structurally, with no bypass. DECISIONS §10
-already rejected Unix-shaped fork/exec but explicitly endorsed the additive direction (Fuchsia's `fdio` shape); this is that direction applied to one more convenience. Gate: DECISION.
+already rejected Unix-shaped fork/exec but explicitly endorsed the additive direction (Fuchsia's `fdio` shape); this is that direction applied to one more convenience. What remains open is the wait:
+[§301 (exit status and output)](../decisions/0301-exit-status-and-output.md).

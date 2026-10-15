@@ -2,7 +2,7 @@
 status: NOT-STARTED
 raised: 2026-09-03
 milestone_dependencies: none
-decision_dependencies: unwritten
+decision_dependencies: 302
 machine_requirements: none
 specific_machine: none
 needs_person: no
@@ -17,8 +17,10 @@ in the spawn wiring tells a stage it ends at a real screen. No program in this t
 output.
 
 Both halves widen a protocol two programs agree on, which is the same shape as
-DECISIONS §106 itself and the same reason §106 was calef's. A spawn-protocol bit is on a wire, so it
-cannot be un-shipped once a program is written against it.
+[DECISIONS §106 (the terminal_sink_caretaker narrowing)](../decisions/0106-tail-output-narrowing.md)
+itself and the same reason §106 was calef's. A spawn-protocol bit is on a wire, so it
+cannot be un-shipped once a program is written against it. The fork is written up as
+[§302 (the screen fact, and one line of input)](../decisions/0302-the-screen-fact-and-one-line-of-input.md).
 
 **In brief.** DECISIONS §106 narrowed the spawn protocol for a tail stage's *primary output*, which
 is what lets `doc <page>` render at the prompt with no `| wc` in front of it. It built the narrowest

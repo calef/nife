@@ -2,7 +2,7 @@
 status: NOT-STARTED
 raised: 2026-09-04
 milestone_dependencies: none
-decision_dependencies: unwritten
+decision_dependencies: 304
 machine_requirements: none
 specific_machine: none
 needs_person: no
@@ -15,8 +15,9 @@ promoted by milestone 433 on 2026-09-19. Checked against the tree that day and n
 `crates/jh7110_clock_and_reset` exposes `discover`, the offset and mask arithmetic, and the two
 read-back predicates (`clocks_running`, `was_already_up`), with no path that gates a clock or
 asserts a reset, and `kernel/src/drivers/jh7110_clock_and_reset.rs` still offers no teardown. The
-decision the gate names is unanswered: nothing in `design/decisions/` takes up who may turn a device
-off.
+decision the gate names is written up as
+[§304 (who may turn a device off)](../decisions/0304-who-may-turn-a-device-off.md): the three
+questions, the options and the recommendation are there, and it waits on calef.
 
 The mechanism is small; who is allowed to hold it is an architect's, because the
 answer decides whether a capability variant appears on the syscall surface (§10, §16).

@@ -2,7 +2,7 @@
 status: NOT-STARTED
 raised: 2026-07-31
 milestone_dependencies: 47
-decision_dependencies: unwritten
+decision_dependencies: 300
 machine_requirements: none
 specific_machine: none
 needs_person: no
@@ -11,8 +11,11 @@ needs_person: no
 
 Phase one is sequenced after 47, because it wants `jobs`
 alongside the other builtins on the same shell surface. Phase two is `ThreadControlBlock::SUSPEND`/`RESUME`, which
-DECISIONS §24 deferred, so it is a kernel-surface fork for calef; the block asks for it to be
-designed as one surface with the fault endpoint and for all three of §24's triggers at once.
+[DECISIONS §24 (interrupting the foreground)](../decisions/0024-interrupting-the-foreground.md)
+deferred; the fork is written up as
+[§300 (the paused state)](../decisions/0300-tcb-suspend-resume-the-paused-state.md), and the block
+asks for it to be designed as one surface with the fault endpoint and for all three of §24's
+triggers at once.
 
 In brief. Shell job control, in two phases split by whether they need a new kernel primitive.
 Phase one needs none; phase two is `ThreadControlBlock::SUSPEND`/`RESUME`, which DECISIONS §24 (interrupting the foreground process) deferred and whose
@@ -72,7 +75,8 @@ reaping by matching the
 child's recorded `fault_ep`, which nobody can satisfy once the supervisor's endpoint is gone.
 
 Sequencing. Phase one after milestone 47 (navigation and naming), because it wants `jobs` alongside
-the other builtins and the same shell surface. Phase two is gated on nothing but the SUSPEND decision. Effort: 1 lane estimated per
+the other builtins and the same shell surface. Phase two is gated on nothing but
+[§300 (the paused state)](../decisions/0300-tcb-suspend-resume-the-paused-state.md). Effort: 1 lane estimated per
 phase, noting estimates for unbuilt work are guesses on a history-calibrated scale.
 
 ## Index row
