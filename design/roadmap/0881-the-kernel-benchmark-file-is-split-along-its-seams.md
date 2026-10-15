@@ -1,8 +1,9 @@
 ---
-status: NOT-STARTED
+status: BUILT
 raised: 2026-10-11
+built: 2026-10-12
 milestone_dependencies: none
-decision_dependencies: 266
+decision_dependencies: 266, 282
 machine_requirements: none
 specific_machine: none
 needs_person: no
@@ -16,9 +17,10 @@ Rust source file stays under 2,000 lines) sets the ceiling. Milestone 840 (the s
 split along its seams) is the model. This file is compiled only under `--features bench`, and its
 one entry point, `bench::run`, never returns.
 
-The cut and every module name below are calef's call. A lane writes them up as a
-`status: PROPOSED` file in `design/decisions/` before it moves a line, and its pull request
-carries `needs-architect`.
+The cut and every module name are calef's call. He ruled the shape on 2026-10-11 (UTC) in §282
+(when a file is split, the parent becomes an index) while answering milestone 872 (the user-mode
+file is split along its seams). The merge of #1988 applied it here the next day; every module name
+ships provisional.
 
 Reuse: not applicable; this moves code and adds none. The kernel already holds two benchmark
 siblings under their own features, `network_bench.rs` and `storage_bench.rs`.
@@ -89,7 +91,12 @@ Every name here is provisional. The modules are private to `bench`.
 `tp_batch` and `tp_best`, and E4 uses its `busy`. The parent ends near 180 lines, and no new file
 is near 1,500.
 
-## What an architect has to rule
+## What an architect had to rule
+
+Answered 2026-10-12 (UTC) by the merge of #1988 under §282. The three answers: 1 the split, by
+family, taken finer than this block proposed, twelve children each named for the family it holds.
+2 child modules of `bench`, the parent an index, as recommended. 3 the names in the what-was-built
+table ship provisional. The questions stay here as they were asked.
 
 1. Split by family, or move one family out. The recommendation is by family, for the reason above.
    The one-family move is less work, so this recommendation is not about effort; it holds at equal
@@ -145,8 +152,64 @@ Found with `grep` at `396187b0b`.
 4. `script/fastpath-footprint` is unchanged on each architecture.
 5. Each new module carries a `//! Name:` block marked provisional.
 
+## What was built
+
+Built 2026-10-12 (UTC) on `f38ed4aa2`, in pull request #1988, by lane
+`maintainer/last-three-over-2000` under §282, in the same sweep that took 879's file, before an
+881 lane was cut. `kernel/src/bench.rs` went from 2,110 lines to 75. Every name below is
+provisional.
+
+| file | lines | holds |
+|---|---|---|
+| `bench.rs` | 75 | the index: module docs, every `mod` line, the re-imports |
+| `bench/timing.rs` | 31 | the iteration counts, `WARMUP`, `timed` |
+| `bench/sequence.rs` | 75 | `run`, every row in the fixed order a baseline is read in |
+| `bench/switch.rs` | 161 | `yield_switch` and the three x86_64 TSS port-map rows |
+| `bench/ipc.rs` | 214 | the kernel-thread IPC rows: `ipc_rtt`, `relay_rtt`, `call_reply`, `broker_rtt` |
+| `bench/spawn_map.rs` | 152 | `spawn_reap`, `map_new`, `rfence_self` |
+| `bench/cycle_probe.rs` | 163 | `cycles_per_tick`, the per-architecture probes, `TCG_VIRT_CNTFRQ_HZ` |
+| `bench/el0.rs` | 317 | the EL0 roles, `null_syscall_el0`, `ctx_switch_el0`, `ipc_rtt_el0`, `sink_throughput`, `map_el0`, `spawn_el0` |
+| `bench/compute.rs` | 25 | `coremark_compute` |
+| `bench/thread_scaling.rs` | 144 | milestone 134's tier A set-up and E1's `ipc_thread_scaling`, `real_single_hart_or_skip` |
+| `bench/app_displacement.rs` | 238 | E4, `app_displacement`, and its `Racy` buffer |
+| `bench/filesystem.rs` | 419 | `fs_read`, `fs_throughput`, `fs_walk`, `fs_walk_bound`, `rg_search` and their readers |
+| `bench/smp_throughput.rs` | 250 | `tp_batch`, `tp_best`, `busy`, the `tc_*` pair, `smp_throughput` |
+
+The done-when list, checked on `d5d232015`:
+
+1. The parent is 75 lines and the largest child (`filesystem.rs`) is 419. The file-length row is
+   gone from `design/file-length-baseline.tsv`, removed in the split; the baseline holds no rows
+   at all now.
+2. Code moved only: #1988's line-multiset check against the old file found nothing changed beyond
+   `pub(super)`, the module headers and the index lines. `bench::run` keeps its path. The only
+   Rust files outside `bench` the split touched are two doc-pointer files the exception covers
+   (`crates/job_mix/src/lib.rs`, `fixtures/src/job_mix_task.rs`). The lane that recorded this
+   block re-pointed the comments the section above names, in the three `pmu.rs` files and
+   `smp.rs`, under the same exception.
+3. `script/bench --check` passed on aarch64, riscv64 and x86_64 in #1988, within the 10%
+   tripwire, and the nightly floor restamps since carry no row change. The rows are string
+   literals that moved whole, and the order lives in `bench/sequence.rs`.
+4. `script/fastpath-footprint` is unchanged on aarch64 and x86_64. On riscv64 the floor was
+   re-recorded in #1988 with the reason, on the fs_service leg's codegen-unit partition and not
+   this file's, by milestone 872's precedent; `bench/fastpath-riscv64.txt` carries the why.
+5. All twelve new modules carry a `//! Name:` block marked provisional.
+
+## Follow-on
+
+- **Recorded.** The two `bench.rs:NNNN` citations this block found already drifted stand in other
+  milestones' blocks, which this lane may not edit. 0101 cites `ipc_rtt_el0` by line in
+  `bench.rs`; the row lives in `kernel/src/bench/el0.rs` now. 0811 cites `fs_service` by line in
+  `bench.rs`, the file rows; they live in `kernel/src/bench/filesystem.rs` now. The milestone 74
+  (cycle counters) row in `notes/dependency-census/dependencies.tsv` quotes
+  `bench::cycles_per_tick` inside a dated census, and the register of measures' two M5 rows name
+  it the old way. Whether a dated record gets repointed is a maintainer's call, the same one
+  292's census needs. Listed on pull request #2204 for a maintainer lane.
+- **Decision.** Every module name is provisional and is calef's to rule, per
+  `design/decisions/0282-when-a-file-is-split-the-parent-becomes-an-index.md`.
+
 ## Index row
 
-`kernel/src/bench.rs` is 2,110 lines and grew 262 in 17 days. It is a list of benchmark rows in
-families, joined only by the order `run` calls them. This moves each family into a private child
-module and leaves `bench.rs` as the run order. The cut and every name are an architect's call.
+`kernel/src/bench.rs` held every benchmark row in one 2,110-line file, a list of free functions
+joined only by the order `run` called them. It is now a 75-line index of twelve child modules
+under `kernel/src/bench/`, each named for the family it holds, as §282 rules. Every module name is
+provisional.

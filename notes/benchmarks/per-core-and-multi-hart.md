@@ -9,7 +9,7 @@ because under `-icount` all vCPUs share one virtual clock, and an idle hart's `w
 forward (the 2026-07-28 finding in [the icount drift appendix](icount-drift-and-provenance.md)). So
 the deterministic suite measures per-core path length and is blind, by construction, to §28's whole
 job: spreading work across the four harts. The `smp_*` benches
-(`kernel/src/bench.rs::smp_throughput`) are the one measurement that shows it, and their method
+(`kernel/src/bench/smp_throughput.rs`) are the one measurement that shows it, and their method
 differs on purpose.
 
 Run them with `script/bench --real --smp` (HVF, 4 harts). Plain `--real` is single-hart on purpose
