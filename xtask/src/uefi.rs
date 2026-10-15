@@ -869,6 +869,17 @@ fn screen_watch(
 ///   calef carries to the bench; a regression that only the shipping image has would otherwise be
 ///   gated by nothing.
 pub(crate) fn uefi_test() -> bool {
+    // **A test boot is a test boot however it is reached.** The system_tests image's confinement
+    // suite asserts the DMA-escape role in the archive's NVMe server, and fails by name without
+    // it (that is 857654808's guard speaking: the attacker stays out of every boot that is not
+    // `cargo xtask test`). But this boot is never a shipped image; it stages a test kernel and a
+    // test archive under `target/esp-test`. Setting the switch here gives a bare
+    // `cargo xtask uefi-test` the same archive `test`'s tail packs, which it has not had since
+    // 857654808 (2026-10-04) and which every bare run between then and 2026-10-15 failed on.
+    // When `test` is the caller the switch is already on and this is a no-op. The cost is the one
+    // 857654808 already recorded: switching between a test and any other boot recompiles
+    // `components`, because cargo fingerprints features. See `CONFINEMENT_ATTACKERS`.
+    crate::CONFINEMENT_ATTACKERS.store(true, std::sync::atomic::Ordering::Relaxed);
     if !initial_ramdisk_x86() || !mkdisk() || !mknvmedisk() {
         return false;
     }
