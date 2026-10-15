@@ -36,8 +36,8 @@ architecture.
 
 | starter | call site | spawns | arch | what the process is handed |
 |---|---|---|---|---|
-| `fs_service::root_directory` | `kernel/src/user.rs:2463` | `block_driver` (`fs_service.rs:466`), `redoxfs_server` (`fs_service.rs:600`) | all | virtio: a `Virtio` cap, an `Irq`, DMA pages as spawn-time mappings; the FS server gets a `MemoryRegion` budget and the channel pages |
-| the NVMe arm of the above | `fs_service.rs:436`, only when booted from NVMe | `non_volatile_memory_express` (§86's data plane) | all (exercised on `x86_64`) | BAR0's doorbell page and a DMA run, as mappings; the kernel keeps the admin plane |
+| `fs_service::root_directory` | `boot_progenitor` (`user/progenitor_boot.rs`) | `block_driver` (`spawn_block_server`, `fs_service/wiring.rs`), `redoxfs_server` (`spawn_fs_server`, `fs_service/wiring.rs`) | all | virtio: a `Virtio` cap, an `Irq`, DMA pages as spawn-time mappings; the FS server gets a `MemoryRegion` budget and the channel pages |
+| the NVMe arm of the above | `nvme_disk` (`fs_service/wiring.rs`), only when booted from NVMe | `non_volatile_memory_express` (§86's data plane) | all (exercised on `x86_64`) | BAR0's doorbell page and a DMA run, as mappings; the kernel keeps the admin plane |
 | `boot_clock_page` | `user.rs:2442` → `user.rs:3188` | `clock` (`clock_service.rs:58`) | all | the clock page, and the RTC page as a mapping on aarch64 and riscv64; on `x86_64` a CMOS reading as an argument (§130) |
 | `boot_instruction_entropy` | `user.rs:2545` → `user.rs:3331` | `entropy` in instruction mode | `x86_64`, aarch64 with `FEAT_RNG`; riscv64 answers `None` | two endpoints; no device |
 | `boot_usb_keyboard` | `user.rs:2704` → `user.rs:2944` | `usb_keyboard_driver` | all | an `Irq`, about a dozen xHCI register pages and eleven DMA pages as mappings |
@@ -112,8 +112,8 @@ window into a restarted driver.
 2. `block_driver` and `redoxfs_server` on the virtio path. Every capability exists. The file
    endpoint is created by the supervisor, not the server, so a client's capability outlives a
    restart (milestone 23 (live replacement)'s "a supervisor restores the service with no authority
-   it did not already hold"). `fs_service::start_crash` and `recover_crash` (`fs_service.rs:721`,
-   `:773`) already prove a respawned server recovers the same disk. Slots 5 and 6 become the device
+   it did not already hold"). `fs_service::start_crash` and `recover_crash` (both in
+   `fs_service/crash.rs`) already prove a respawned server recovers the same disk. Slots 5 and 6 become the device
    trio.
 3. The NVMe arm, then `install_service::confirm`. Moving confirm into the progenitor retires the
    foot gun its own header names (`install_service.rs:325`): the single-user window now holds

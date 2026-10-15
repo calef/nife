@@ -143,6 +143,7 @@ Found with `grep` at `396187b0b`. A lane has to carry each one.
   `design/roadmap/0811-boot-services-leave-the-kernel.md` and the ones in milestones 292 and 849
   are best replaced with function names. Those in the dated audit report and in
   `notes/swish-check-flake.md` describe the file as it was and stay.
+  **Done.** Repointed by lane `maintainer/stale-line-citations` (#2206).
 - 28 tracked files outside this block name the path. `notes/fs-server.md` and
   `notes/dir-capability.md` point a reader at items that will move.
 - `helpers/qemu-runner-aarch64.sh` and `helpers/qemu-runner-x86_64.sh` name the file in comments,
