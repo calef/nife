@@ -30,8 +30,14 @@
 #    milestone 74's file quoting a paragraph of notes/benchmarks.md that milestone 101 had retracted:
 #    the arithmetic was gone from the note and the quote of it was still in the roadmap.
 #
-# Both are the same primitive, which is why they are one script: does this text still say what that
-# document says. Neither existing gate can ask it, because neither reads the target's content.
+# 3. **A phrase quoted after a path must still be in that file** (milestone 644, a `--ratchet` rule
+#    on added lines only). `notes/foo.md, "a heading"` is the third citation shape, and the one a
+#    document split breaks: the split moves the section and leaves the path pointing at the main
+#    page. Twelve stale quotations of this shape were live on main at 8fad33799 when the rule
+#    landed, nine of them rot; the ratchet refuses new ones and sweeps nothing.
+#
+# All three are the same primitive, which is why they are one script: does this text still say what
+# that document says. Neither existing gate can ask it, because neither reads the target's content.
 #
 # ---------------------------------------------------------------------------------------------
 # The tolerance rule, which is the only design work here
@@ -176,8 +182,16 @@ def normalized(text):
     affordable. A note wraps at 100 columns and a block quote of it wraps at 96 after the `> `
     prefix, so byte equality would fail on every correct quote in the tree and the check would be
     thrown away in a week.
+
+    Straight and curly double quotes go too, and that is not only for tidiness: this tree writes
+    headings that scare-quote a term (`## What "stable" would mean`) and citations that quote the
+    heading without the scare quotes. The quotes are punctuation around one word, not words, and a
+    containment check that counted them would fail a correct citation on a typographical
+    convention. Apostrophes stay: "M-74's" and "milestone 74's" are different words, and a
+    quotation that abbreviates is a paraphrase the path-then-quote ratchet is right to refuse.
     """
-    text = text.replace("`", "").replace("*", "").replace("“", '"').replace("”", '"')
+    text = text.replace("`", "").replace("*", "")
+    text = text.replace('"', "").replace("“", "").replace("”", "")
     text = text.replace("’", "'")
     return re.sub(r"\s+", " ", text).strip().lower()
 
@@ -330,6 +344,40 @@ ANY_CITE = re.compile(r"(§|(?<![a-zA-Z])[Mm]ilestone )(\d+)([a-z]?)")
 # re-typed the pattern would agree with itself while the gate went blind.
 PREFILTER = r"(§[0-9]+[a-z]?|[Mm]ilestone [0-9]+[a-z]?)(\*\*|__|\*|_|`)?,?([[:space:]]*\(|[[:space:]]*$)"
 
+# ---- the path-then-quote citation (milestone 644) ------------------------------
+# The tree cites a section of a document in a third shape: a path, then a comma, then a quoted
+# phrase from the file that path names.
+#
+#     notes/interrupts.md, "Testing it with no device"
+#
+# This is the shape a document split breaks. A split moves the section and leaves the path pointing
+# at the main page, and nothing about the line stops looking right; the audit that raised this
+# (design/audit-reports/2026-09-24-split-documents-read-from-the-inbound-side.md, finding 5) found
+# 12 stale quotations of this shape live on main at 8fad33799, nine of them rot.
+#
+# The shape is three tokens and the comma is load-bearing: it is what separates a citation from a
+# possessive (`AGENTS.md's "old wording"`, the historical form the audit accepted three of and this
+# regex must keep refusing) and from a search-term list (`kani_lib.c`, "machine model macos", where
+# the "path" is a search string). What remains of the code-syntax risk is absorbed at resolution:
+# the rule only judges a match whose path names a file from the repository root, so a usage
+# template (`runs.txt, "<run_id> <lane>"`) and a search string name nothing and are skipped. The
+# six-character floor keeps `"Per-IPC"`-length fragments of code from reading as phrases.
+#
+# The phrase must sit on the path's line. A citation whose phrase wraps is invisible, the same
+# one-line reach `CITE` has; see the BUGS in notes/citations.md.
+PATH_QUOTE = re.compile(
+    r"`?([a-zA-Z0-9_./-]+\.(?:md|rs|toml|c|h|sh|txt))`?"
+    r"[^\S\n]*,[^\S\n]*"
+    r"[\"“]([^\"”“\n]{6,})[\"”]"
+)
+
+# The marker that exempts one deliberate quotation: the phrase records old wording on purpose
+# (the audit's accepted findings 7 and 8 are the precedent: a provenance line and a correction
+# quote what the text USED to say, and no current-text check can ever accept them). It is greped
+# on the citing line and the one above, the reach helpers/line_citations.py allows its own marker,
+# and the reason travels with the line a reader is already reading.
+QUOTE_EXCEPTION = "quotation: exception"
+
 # ---- the selftest ------------------------------------------------------------
 # `script/citations --selftest` drives the scanner over fixtures built to trip it, and it runs
 # BEFORE the candidate grep so it costs nothing: no subprocess, no tree.
@@ -385,6 +433,31 @@ PATH_FIXTURES = [
     ('"Decision 2" in design/init-and-granular-spawn.md', None),
 ]
 
+# The path-then-quote scanner, pinned the same way. The loud fixtures are the citation forms the
+# tree writes; the quiet ones are the neighbors it must keep refusing: the historical possessive,
+# a phrase under the six-character floor, a quotation with no comma citing, and a code string with
+# no path before its comma. A match whose path names no file from the root (`runs.txt` in a usage
+# template, `kani_lib.c` in a list of search strings) is dropped at resolution, not here, so those
+# cases still MATCH and the fixtures show it.
+QUOTE_FIXTURES = [
+    ("plain", 'see notes/interrupts.md, "Testing it with no device" for the split.',
+     [("notes/interrupts.md", "Testing it with no device")]),
+    ("backticked path",
+     'the contract is `notes/benchmarks.md`, "the map is a tie (zeroing-bound)" and it holds',
+     [("notes/benchmarks.md", "the map is a tie (zeroing-bound)")]),
+    ("curly quotes", 'notes/load-sensitive-assertions.md, “the queue is the admission”',
+     [("notes/load-sensitive-assertions.md", "the queue is the admission")]),
+    ("a search-term list matches and resolution drops it",
+     'searches for `kani_lib.c`, "machine model macos" and "signed char apple" found nothing',
+     [("kani_lib.c", "machine model macos")]),
+    # ---- the quiet ones -------------------------------------------------------
+    ("the historical possessive is not a citation",
+     'AGENTS.md\'s "kernel/src measures 40% comments" is stale.', []),
+    ("a five character phrase is under the floor", 'notes/x.md, "abcde"', []),
+    ("no comma, no citation", 'notes/x.md "some phrase here"', []),
+    ("a code string with no path", 'write!(f, ", title: ")', []),
+]
+
 
 def selftest():
     bad = []
@@ -403,6 +476,12 @@ def selftest():
         print(f"  {'ok  ' if ok else 'FAIL'}  path: {gloss[:48]}")
         if not ok:
             bad.append(f"path {gloss!r}: wanted {want!r}, got {got!r}")
+    for name, text, want in QUOTE_FIXTURES:
+        got = [(m.group(1), m.group(2)) for m in PATH_QUOTE.finditer(text)]
+        ok = got == want
+        print(f"  {'ok  ' if ok else 'FAIL'}  quote: {name}")
+        if not ok:
+            bad.append(f"quote {name}: wanted {want}, got {got}")
     print()
     if bad:
         for b in bad:
@@ -411,8 +490,8 @@ def selftest():
               "worse\nthan a red gate: the tree's confidence in it does not move while its "
               "coverage does.", file=sys.stderr)
         return 1
-    print(f"citations: {len(SELFTEST) + len(PATH_FIXTURES)} fixtures, every shape still seen and "
-          "every near-miss still quiet")
+    print(f"citations: {len(SELFTEST) + len(PATH_FIXTURES) + len(QUOTE_FIXTURES)} fixtures, every "
+          "shape still seen and every near-miss still quiet")
     return 0
 
 
@@ -804,6 +883,63 @@ if mode == "--ratchet":
             else:
                 kept.add(n)
         added[path] = kept
+
+    # ---- the path-then-quote ratchet (milestone 644) -----------------------------
+    # A phrase quoted after a path, on a line this branch adds, must still be in the file that path
+    # names. The measurement is the audit's (finding 5): 12 stale quotations of this shape were
+    # live on main at 8fad33799, nine rot from document splits and rewrites, and nothing could see
+    # them. Like the gloss ratchet this judges added lines only, so the existing tree is nobody's
+    # debt here; unlike the gloss ratchet it has no per-file memory, because the unit is the
+    # quotation and its target, not a number and its file.
+    #
+    # A match whose path does not resolve from the repository root is skipped, which is what keeps
+    # search-term lists and usage templates out: they name no file, so there is nothing to check
+    # and nothing to be wrong about. A quotation that is stale ON PURPOSE carries
+    # `quotation: exception. Reason: ...` on its line or the one above, the same marking
+    # helpers/line_citations.py allows, and the reason travels on the line a reader is reading.
+    stale = []
+    for path in sorted(added):
+        raw = head_blob(path)
+        if raw is None:
+            continue
+        text, starts = prepared(path, raw)
+        raw_lines = raw.split("\n")
+        for m in PATH_QUOTE.finditer(text):
+            lineno = starts[m.start()] + 1
+            if lineno not in added[path]:
+                continue
+            target, phrase = m.group(1), m.group(2)
+            full = os.path.join(root, target)
+            if not os.path.isfile(full):
+                continue
+            body = open(full, errors="replace").read()
+            if target.endswith(".md"):
+                body = blank_fenced_blocks(body)
+            if normalized(phrase) in normalized(body):
+                continue
+            above = raw_lines[lineno - 2] if lineno >= 2 else ""
+            if QUOTE_EXCEPTION in raw_lines[lineno - 1] or QUOTE_EXCEPTION in above:
+                continue
+            stale.append((f"{path}:{lineno}", target, phrase))
+
+    if stale:
+        for where, target, phrase in stale:
+            print(f"citations: {where}: the phrase quoted after {target} is not in that file",
+                  file=sys.stderr)
+            print(f"      quoted: {phrase[:72]}", file=sys.stderr)
+        print("", file=sys.stderr)
+        print("A split moves the section and leaves the path pointing at the main page; a rewrite",
+              file=sys.stderr)
+        print("changes the words and leaves the quotation praising what is gone. Quote what the",
+              file=sys.stderr)
+        print("file says now, read before writing it. A quotation that records old wording on",
+              file=sys.stderr)
+        print("purpose carries this on its line or the one above:", file=sys.stderr)
+        print("", file=sys.stderr)
+        print("    quotation: exception. Reason: ...", file=sys.stderr)
+        print("", file=sys.stderr)
+        print("See notes/citations.md.", file=sys.stderr)
+        sys.exit(1)
 
     ungloss = []
     for path in sorted(added):
