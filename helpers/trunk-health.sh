@@ -201,10 +201,11 @@ cadence() {
 	python3 helpers/watcher_watch.py check --quiet 2>/dev/null || true
 }
 
-# --- DUE: a cadence that says "a person must now do something" (milestone 495) ------------------
+# --- DUE: a cadence that says "a person must now do something" ----------------------------------
 #
 # **A due cadence is not a dead one, and the two cadences that mean "due" reached this watcher only
-# as the second thing.** The stranger cadence (`script/stranger-test --due`) and the audit cadence
+# as the second thing** (milestone 495 (a cadence that says "due" reaches nobody, and the watcher
+# cannot tell due from dead)). The stranger cadence (`script/stranger-test --due`) and the audit cadence
 # (`script/audits --due`) both exist to say "a person must now do something", and red in the Actions
 # tab is their correct output, not their failure. `script/cadence-check` answers only whether a
 # scheduled workflow has stopped *succeeding*, so a job correctly reporting due and a job that is
