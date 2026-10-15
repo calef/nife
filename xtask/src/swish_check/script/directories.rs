@@ -1,6 +1,7 @@
 //! **Directory grants at the prompt**: `rm` through a caretaker the progenitor builds for
 //! one command (milestone 31 (a capability shell: designation is authorization), phase 3), and `xargs` batching a pattern that matches more
-//! names than one grant carries (milestone 109).
+//! names than one grant carries (milestone 109 (`xargs`: batching a grant too large to hand
+//! over)).
 //!
 //! Cut from the table in `script.rs` verbatim by milestone 900 (the swish-check script
 //! splits by topic before it crosses the ceiling).
