@@ -3293,6 +3293,13 @@ python3 helpers/interface_stability.py --selftest >/dev/null
 # fixtures with no git and no network. The weekly mutation workflow is the only thing that runs the
 # real check, so a change to these rules is verified here, where it lands.
 python3 helpers/mutation_inflow.py --selftest >/dev/null
+# Milestone 924 (provisional): the diff gate (helpers/mutation_diff_gate.py), the rules a
+# per-pull-request survivor must meet to merge: equivalent or gap clears, killed never does (the
+# gate just watched the mutant live), a timeout is untriaged the same as a survivor, an
+# incomplete run is exit 2 and the cap always fails. Against fixtures, with no git and no cargo.
+# The gate workflow is the only thing that runs the real decision, so a change to these rules is
+# verified here, where it lands.
+python3 helpers/mutation_diff_gate.py --selftest >/dev/null
 
 # The architect-label diff rules, the live architect-ruled read, record-ruling and the hold-release
 # rerun are checked by script/lint-fleet since milestone 889, as are the merge-watcher,
