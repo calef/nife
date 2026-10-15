@@ -20,6 +20,15 @@
 set -e
 cd "$(dirname "$0")/.."
 
+# The checks call python3 helpers that import tomllib, stdlib since 3.11. Found 2026-10-15
+# (milestone 352) when the pre-push gate died mid-run on a 3.9 system python. Fail here, with
+# the fix, rather than several checks in.
+if ! python3 -c 'import tomllib' >/dev/null 2>&1; then
+    echo "script/lint: python3 has no tomllib; this tree's checks need Python 3.11 or newer." >&2
+    echo "  Put a newer python3 first on PATH and rerun, e.g. PATH=\"/<dir-with-python3.11+>:\$PATH\" script/lint" >&2
+    exit 1
+fi
+
 # This project's own QEMU, if `script/ci-qemu` has built one. This file matches its own
 # "the project's QEMU is on PATH" rule below, because a checker's source necessarily
 # carries every pattern it looks for; taking the line is cheaper than an exemption.
