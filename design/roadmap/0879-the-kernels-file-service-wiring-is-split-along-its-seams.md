@@ -1,8 +1,9 @@
 ---
-status: NOT-STARTED
+status: BUILT
 raised: 2026-10-11
+built: 2026-10-12
 milestone_dependencies: none
-decision_dependencies: 266
+decision_dependencies: 266, 282
 machine_requirements: none
 specific_machine: none
 needs_person: no
@@ -26,9 +27,9 @@ The file is a child module of `kernel/src/user.rs`, which milestone 872 (the ker
 file is split along its seams) covers. The two are independent, with the two caveats under "What
 moving the code breaks".
 
-The cut and every module name below are calef's call. A lane writes them up as a
-`status: PROPOSED` file in `design/decisions/` before it moves a line, and its pull request
-carries `needs-architect`.
+The cut and every module name are calef's call. He ruled the shape on 2026-10-11 (UTC) in §282
+(when a file is split, the parent becomes an index), while ruling milestone 872's fork, and the
+merge of #1988 applied it here the next day; every module name ships provisional.
 
 Reuse: not applicable; this moves code and adds none. The precedent is in this file's own
 directory: `std_spawn` and `test_install` are the two child modules already split out of it.
@@ -98,7 +99,12 @@ The parent ends near 950 lines, far under 840's standard of 3,000, and no new fi
 `spawn_caretaker` has callers only in `grant`, so it moves there and stays private. The `std`
 spawns call `narrow_dir_held`, which is `pub` and resolves through the parent's re-export.
 
-## What an architect has to rule
+## What an architect had to rule
+
+Answered 2026-10-12 (UTC) by the merge of #1988 under §282. The four answers: 1 the full cut,
+all seventeen modules; 2 private children re-exported whole, so no `fs_service::` path changed;
+3 the witness and the sink stand alone; 4 the names in the what-was-built table ship provisional.
+The questions stay here as they were asked.
 
 1. The full cut, or only the `std` move. The recommendation is the full cut. The smaller step
    leaves 66 lines of headroom in a file that grew 2,132 to 2,407 between 2026-09-27 and
@@ -164,9 +170,68 @@ line range above must be re-measured.
 5. The citations listed above that are kept current name a function, not a line.
 6. Each new module carries a `//! Name:` block marked provisional.
 
+## What was built
+
+Built 2026-10-12 (UTC) on `7b8b1df11`, in pull request #1988, by lane
+`maintainer/last-three-over-2000` under §282. No 879 lane was ever cut: the ruling that answered
+this block's fork covered the work, and the sweep took the file with it.
+`kernel/src/user/fs_service.rs` went from 2,258 lines to 63. Every name below is provisional.
+
+| file | lines | holds |
+|---|---|---|
+| `fs_service.rs` | 63 | the index: module docs, every `mod` line, the re-exports |
+| `fs_service/wiring.rs` | 391 | wiring the service: the block and FS servers, `wire_servers`, the readiness sentinels, the NVMe arm, `spawn_fs_client` and `start` |
+| `fs_service/std_start.rs` | 333 | every `start_std*`, `NarrowedStd`, `BoundStd`, `bind_subtree` |
+| `fs_service/client.rs` | 167 | spawning a client of the service, and the waits that order it after the servers and caretakers it depends on |
+| `fs_service/directory_grant.rs` | 230 | the per-directory grant: `narrow_dir`, `narrow_dir_held`, `spawn_caretaker`, `start_granted_dir`, `root_directory` |
+| `fs_service/crash.rs` | 150 | milestone 37 (prove RedoxFS's crash consistency)'s crash service: `CrashRun`, `start_crash`, `recover_crash` |
+| `fs_service/two_dirs.rs` | 145 | two directory grants to one process |
+| `fs_service/set_grant.rs` | 140 | the set grant: `SetGrant`, `start_granted_set` |
+| `fs_service/std_spawn.rs` | 128 | the shared `std` spawn (child since milestone 835) |
+| `fs_service/shared_frame_witness.rs` | 125 | the shared-frame witness, two live clients on one service |
+| `fs_service/stack_watermark.rs` | 120 | the FS server's stack size, the poison its pages are filled with, and the high-water read |
+| `fs_service/test_files.rs` | 118 | test-only reads and writes at the file service's root |
+| `fs_service/file_grant.rs` | 115 | `Grant`, `start_granted` |
+| `fs_service/file_sink.rs` | 109 | the file sink and the file source |
+| `fs_service/channel.rs` | 102 | the file and block channels, and where every party maps them |
+| `fs_service/test_install.rs` | 98 | `install_for_test` (child since milestone 809) |
+| `fs_service/client_windows.rs` | 97 | the client windows, one file channel per live client |
+| `fs_service/images.rs` | 80 | the server, `mkfs` and block-driver images, and their refusal sentences |
+
+The done-when list, checked on `0f22bc9a4`:
+
+1. The parent is 63 lines and the largest child (`wiring.rs`) is 391. The file-length row is gone
+   from `design/file-length-baseline.tsv`, removed in the same change; the baseline holds no rows
+   at all now.
+2. Code moved only: the split's line-multiset check against the old file found nothing changed
+   beyond `pub(super)`, the module headers and the index. An item a sibling reaches became
+   `pub(super)`, the same set of modules that saw it before. The six Rust files outside the block
+   that changed are the doc pointers done-when 5 asks for. No `fs_service::` path changed.
+3. `script/test` passed on all three ISAs in #1988's CI (the aarch64 and riscv64 shard in 11m14s,
+   the x86_64 shard in 8m57s), with no test body changed.
+4. See 1.
+5. The doc pointers outside `design/` name the child file now: the three caretaker components,
+   the filesystem protocol's fixture, `fixtures/src/fs_test_client.rs` and
+   `notes/dir-capability.md`. The line citations inside three other milestones' blocks still
+   stand; see Follow-on.
+6. All fifteen new modules carry a `//! Name:` block marked provisional. `std_spawn.rs` and
+   `test_install.rs` are not new; they carry the milestones (835, 809) that cut them.
+
+## Follow-on
+
+- **Recorded.** The `fs_service.rs:NNNN` citations this block said are kept current stand in
+  three other milestones' blocks, which this lane may not edit. 0811 cites the images, the NVMe
+  arm and the crash pair by line; those live in `fs_service/images.rs`, `fs_service/wiring.rs`
+  and `fs_service/crash.rs` now. 292's role-constant census cites constants that exist nowhere
+  in the tree, and its other two sites are gone with them, so that whole table is a dated record
+  now. 849 cites the `rg` spawn inside `start_std_full`, which lives in `fs_service/std_start.rs`
+  now. Listed on pull request #2199 for a maintainer lane.
+- **Decision.** Every module name is provisional and is calef's to rule, per
+  `design/decisions/0282-when-a-file-is-split-the-parent-becomes-an-index.md`.
+
 ## Index row
 
-`kernel/src/user/fs_service.rs` is 2,258 lines and has twice shed just enough to pass §266's
-ratchet. It holds the file service and a dozen test rigs built on it, and no tests of its own.
-This moves each rig into a private child module beside the two already split out, leaving the
-service itself at about 950 lines. The cut and every name are an architect's call.
+`kernel/src/user/fs_service.rs` held the file service and a dozen test rigs built on it, 2,258
+lines with no tests of its own. It is now a 63-line index of seventeen child modules under
+`kernel/src/user/fs_service/`, each named for what it holds, as §282 rules. Every module name is
+provisional.
