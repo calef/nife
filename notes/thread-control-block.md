@@ -1,4 +1,4 @@
-# The TCB (Thread Control Block)
+# The thread control block (TCB)
 
 *(Written during milestone 14 phase B, when "where do TCBs live" became a decision.)*
 

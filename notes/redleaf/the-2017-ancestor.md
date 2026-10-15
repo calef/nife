@@ -107,7 +107,7 @@ re-derived numbers, their six unsafe categories run against this tree file by fi
 - The apples-to-apples comparison is with seL4, which draws the boundary in the same place:
   *"of the order of ten thousand lines of source code (10 kSLOC)"* (the seL4 Foundation whitepaper).
 
-And the meta-gap is the one worth closing. `notes/tcb.md` is about the *Thread* Control Block,
+And the meta-gap is the one worth closing. `notes/thread-control-block.md` is about the *Thread* Control Block,
 and its own acronym-collision section says the Trusted Computing Base sense *"is unrelated"*. No
 metric column tracks the trusted core's size, so the split above is a snapshot with nothing watching
 it. Proposed as `design/roadmap/0535-the-trusted-core-has-no-size.md` rather than fixed here.

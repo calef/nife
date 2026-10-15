@@ -40,7 +40,7 @@ The two numbers that decide anything are the last two, and neither is a data str
 The brief for this lane said "`MAX_THREADS` is 128 and the thread pool is a static BSS array". That
 was true at milestone 14 (kernel) phase B.2 and stopped being true at 19c.2. The static pool is
 gone, and every `Thread` now lives at the start of one page drawn from `kmem` or from a user process's own
-untyped (`sched.rs:80-93`, notes/tcb.md). The table is `generational_table::Table<TcbPtr, 128>`, about 2 KiB of
+untyped (`sched.rs:80-93`, notes/thread-control-block.md). The table is `generational_table::Table<TcbPtr, 128>`, about 2 KiB of
 pointers.
 
 So the question "what does a per-thread deadline field cost in bytes" has an answer nobody has to

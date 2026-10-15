@@ -82,7 +82,7 @@ _start(x0, x1, x2) -> !
 
 `START` (the TCB method) is what hands those three words to the new EL0 thread; the kernel routes
 them through `Thread::start_args` into `x0`/`x1`/`x2` at first entry (milestone 19e widened `START`
-from one argument to three; see notes/tcb.md). Their meaning is the program's to define, with one
+from one argument to three; see notes/thread-control-block.md). Their meaning is the program's to define, with one
 reserved case:
 
 - For most programs, `x0`/`x1`/`x2` are plain arguments. A least_authority_demo takes its input `n` in `x1`. A

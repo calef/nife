@@ -675,7 +675,7 @@ pub struct Thread {
     /// **Did this thread's TCB page come from `kmem`** (recycle it on death) or from a user
     /// process's own region (leave it; the region reclaims it at destroy)? True for every
     /// kernel-created thread; false for a user-retyped TCB (19c.3). The page-origin half of the
-    /// same owned-vs-borrowed question kernel stacks answered with "one owner" (notes/tcb.md).
+    /// same owned-vs-borrowed question kernel stacks answered with "one owner" (notes/thread-control-block.md).
     pub(crate) thread_control_block_kmem: bool,
 
     /// **Marked for forcible teardown** (DECISIONS §16 amendment): a region's owner called
