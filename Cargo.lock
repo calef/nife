@@ -530,6 +530,7 @@ version = "0.1.0"
 dependencies = [
  "address_space_map",
  "machine_statistics_protocol",
+ "number_writer",
 ]
 
 [[package]]
@@ -867,6 +868,10 @@ dependencies = [
 ]
 
 [[package]]
+name = "number_writer"
+version = "0.1.0"
+
+[[package]]
 name = "once_cell"
 version = "1.21.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1053,6 +1058,7 @@ name = "slabtop"
 version = "0.1.0"
 dependencies = [
  "address_space_map",
+ "number_writer",
 ]
 
 [[package]]
@@ -1512,6 +1518,7 @@ name = "vmstat"
 version = "0.1.0"
 dependencies = [
  "machine_statistics_protocol",
+ "number_writer",
 ]
 
 [[package]]
