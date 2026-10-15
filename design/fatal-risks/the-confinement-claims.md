@@ -345,6 +345,23 @@ tests; its report said 27. The lane reproduced every booted row on each ISA it a
 It does not count toward criterion (c). calef ruled on 2026-10-14 (UTC): "pass 8 does not count."
 The count stays 0. The verdict is unchanged, and moving the color stays calef's.
 
+### The ninth outsider pass (2026-10-13, milestone 914)
+
+Added under §216, from milestone 914 (a ninth outsider pass attacks the confinement claim), whose
+number is PROVISIONAL. The ninth pass ran blind, milestone 633 (an outside agent attacks the
+confinement claim)'s posture, in Claude's cloud runner, at the commit that brings milestone 824 (a
+retype mints no right its budget lacks) to main. The record is
+[`notes/confinement-outsider-pass-9.md`](../../notes/confinement-outsider-pass-9.md).
+
+The session was configured for `claude-fable-5-1` and served by `claude-opus-4-8`, so it is not the
+Fable pass the pair calls for. It found no escape. Its one near miss, claim 17, is already milestone
+799 (the shadow descriptor is published in two stores). It booted 20 of the 27 bootable rows by the
+brief's counting: five rows reran their existing tests, which the brief does not count, and two it
+graded untestable. Every row it booted reproduces on all three ISAs it applies to.
+
+It does not count toward criterion (c). calef ruled on 2026-10-15 (UTC): "Does not count." The count
+stays 0. The verdict is unchanged, and moving the color stays calef's.
+
 ### Added 2026-10-03: row 27's hand-off was tested on one of the two `x86_64` boots
 
 From 2026-09-23 to 2026-10-03 (UTC), `port_holder_transmits_then_a_non_holder_faults` (row 27 of

@@ -1,6 +1,7 @@
 ---
-status: PARTIAL
+status: BUILT
 raised: 2026-10-13
+built: 2026-10-15
 milestone_dependencies: 824
 decision_dependencies: none
 machine_requirements: none
@@ -94,6 +95,13 @@ full.
 - Its tests are on main as `system_tests/src/user/ninth_pass_*`, and every one holds on patagonia
   on all three ISAs.
 
+## Result
+
+BUILT, 2026-10-15 (UTC). The pass ran on 2026-10-13 and is recorded in
+`notes/confinement-outsider-pass-9.md`. It does not count toward criterion (c). calef ruled on
+2026-10-15 (UTC): "Does not count." The count stays 0. Risk 7's page and appendix cite the pass
+under §216.
+
 ## Done means
 
 - The dry run recorded, then every bootable row booted, or the pass recorded in full and marked
@@ -149,9 +157,9 @@ Minimal setup, in the order the launch brief's prompt runs it:
 
 ## Follow-on
 
-- **Outstanding.** The Fable pass itself: a fresh session that is served by Fable, at the pinned
-  commit, held to the 27-of-34 floor. The prompt is unchanged; check the served model before
-  counting.
+- **Milestone 920.** The Fable pass itself is pass 11, started through milestone 920 (an outsider
+  pass is launched, pinned and floor-checked)'s launcher beside GLM's pass 10 at one pinned commit.
+  The launcher checks the served model before a pass counts.
 - **Done.** Every row pass 9 booted reproduces on patagonia, one ISA at a time, at the pinned
   commit and on main: 13 of 13 tests on aarch64 and riscv64, 18 of 18 on x86_64. Its tests are on
   main as `ninth_pass_*`, each reviewer commit carrying `Co-Authored-By: Claude Opus 4.8`, and the
