@@ -109,6 +109,37 @@ pub fn trap() -> ! {
     }
 }
 
+/// Require that `ok` holds, or die on the line that does not.
+///
+/// The one way a nife program says "no". There is no error value to return, and limping past a
+/// failed check turns a detected mistake into an undetected one. A failed check must be
+/// indistinguishable from a broken program, because it is one, and dying where the mistake was is
+/// the only way to say that: [`trap`], at the call.
+///
+/// Every program leans on this shape. Before it lived here, each wrote the same three lines out by
+/// hand, and the copies had already drifted on what saying no meant; the panic handler ends in
+/// [`trap`] too, so the drift changed the path and not the instruction.
+///
+/// # Examples
+///
+/// ```ignore
+/// require(reply == 0);
+/// require(frame >= 0);
+/// ```
+///
+/// Name: provisional (milestone 408's lane, 2026-10-15 UTC). The kernel spends `require` on a
+/// mismatch that must not be recovered from (`trust::require`, which halts), so the same idea one
+/// privilege level down wears the same word. Refused `check`, what every copy was called, because
+/// it is one of the generic words design/naming.md names a failure mode: half the tree checks
+/// something, and the crate every program links is the worst place to spend a vague word. Refused
+/// `insist` (unusual enough to need explaining) and `must` (reads as a modal verb at the call
+/// site, so the line parses as a fragment rather than a call).
+pub fn require(ok: bool) {
+    if !ok {
+        trap()
+    }
+}
+
 /// **The panic handler every nife program wants**, as a macro so it stays per-final-binary.
 ///
 /// Write `user_mode_runtime::panic_handler!();` once at the top level of a binary and it expands to a
