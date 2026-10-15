@@ -82,8 +82,9 @@ rows) is 62%, give or take about 15 points at 95% confidence. The first backfill
 a larger sample before anything is swept.
 
 Each row maps to the rule below. The first two rows lose nothing when the number goes. The history
-belongs in the commit message under §298 (a document states what is in force now), and the code
-comment is the same case in another medium. A design pointer is better made to the note that
+row is already ruled: §267 (a comment states the constraint as it is now) sends "found by milestone
+N" to the commit message, and milestone 860 (comments state the constraint as it is now) began that
+sweep. This proposal adds the provenance row, which §267 does not reach, and a gate for both. A design pointer is better made to the note that
 describes the subsystem, which is kept current, than to a block that records how the work was
 planned. The fourth row is the real debt: the reason lives in a block, and the reader of the code
 has to leave the file to learn a constraint the comment should have stated.
