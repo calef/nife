@@ -12,10 +12,10 @@
 
 use std::sync::LazyLock;
 
-use super::*;
-
 pub(super) use after_reboot::{FROM_BASALT, SWISH_CHECK_AFTER_REBOOT};
 pub(super) use line::{JOB_DID_NOT_RUN, Line, interrupted_at_prompt, keys, line};
+
+use super::*;
 
 mod after_reboot;
 mod clock_config;
@@ -40,7 +40,6 @@ mod words;
 /// placed them there beside the gpu's four. See the same line in [`SWISH_CHECK_AFTER_REBOOT`].
 pub(super) const SWISH_CHECK_KEYBOARD_BOOT: &[Line] =
     &[line(0, "caps", &["slots held: 0 1 2", " 21 62\n"])];
-
 
 /// The text this gate types and what each line must answer. `None` is a line whose answer is
 /// checked by a later one rather than by itself, which is every line that writes a file.
@@ -73,7 +72,6 @@ pub(super) static SWISH_CHECK_SCRIPT: LazyLock<Vec<Line>> = LazyLock::new(|| {
     ]
     .concat()
 });
-
 
 /// **The lines after which this gate presses `^C`**, once the shell has said the job is running.
 /// Each runs until interrupted, so without the keystroke the prompt never comes back. A program

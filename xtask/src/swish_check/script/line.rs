@@ -49,7 +49,11 @@ pub(in crate::swish_check) const JOB_DID_NOT_RUN: [&str; 2] = [
 ];
 
 /// A [`Line`], positionally, so the script reads as the prompt does. The name is provisional.
-pub(in crate::swish_check) const fn line(jobs: u8, typed: &'static str, answer: &'static [&'static str]) -> Line {
+pub(in crate::swish_check) const fn line(
+    jobs: u8,
+    typed: &'static str,
+    answer: &'static [&'static str],
+) -> Line {
     Line {
         typed,
         echoed: typed,
@@ -80,4 +84,3 @@ pub(in crate::swish_check) const fn keys(
 pub(in crate::swish_check) fn interrupted_at_prompt(typed: &str) -> bool {
     typed.ends_with('\x03')
 }
-

@@ -364,4 +364,3 @@ pub(in crate::swish_check) const FROM_BASALT: &[&str] = &[
     "jig install rmle",
     "jig install demos",
 ];
-
