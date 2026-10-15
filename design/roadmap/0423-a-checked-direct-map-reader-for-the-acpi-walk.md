@@ -34,13 +34,13 @@ surviving claim is this block's. It is `SUPERSEDED` by this one and by milestone
 ## In brief
 
 Milestone 304's lane named `kernel/src/arch/x86_64/machine.rs`'s ACPI walk as its strongest
-remaining target and declined to take it: 836 lines over firmware-supplied lengths, checksums and
-counts, whose volatile half reads raw pointers into the direct map. It called finding that seam a
+remaining target and declined to take it. 836 lines over firmware-supplied lengths, checksums and
+counts. Its volatile half reads raw pointers into the direct map. It called finding that seam a
 design question rather than a mechanical one, and was right.
 
 **Milestone 319 changed the size of the question rather than answering it.** With
 `crates/machine_discovery` proved, every decision about what those bytes *mean* now lives in a crate
-Kani reaches. What is left on the kernel side is one operation repeated: read N bytes at a physical
+Kani reaches. What is left on the kernel side is one operation repeated. Read N bytes at a physical
 address through the direct map and hand them to a parser. The 836 lines are mostly the walk's
 sequencing, and the part that is a trust boundary is a single accessor.
 
@@ -49,14 +49,14 @@ sequencing, and the part that is a trust boundary is a single accessor.
 **Does that accessor take a bound, and what does it do when the bound is exceeded?**
 
 Today each read is a raw pointer plus a length the table itself supplied. An RSDT whose `length`
-field says 64 KiB is a 64 KiB read at whatever physical address the RSDP pointed at, and nothing
+field says 64 KiB is a 64 KiB read at whatever physical address the RSDP pointed at. Nothing
 between the firmware's number and the dereference says how much of the direct map is legitimately
 readable.
 
 The analogous question is answered on the other two architectures. `dtb::Dtb::from_ptr` takes the
-blob's own length, validates the header before anything else is read, and every reader below it is
-proved total (`be32_is_total`, `be64_is_total`, milestone 18). The x86 walk has no equivalent
-because ACPI is not one blob: it is a linked structure of independent tables, each reached from a
+blob's own length, validates the header before anything else is read. Every reader below it is
+proved total (`be32_is_total`, `be64_is_total`, milestone 18). The x86 walk has no equivalent,
+because ACPI is not one blob. It is a linked structure of independent tables, each reached from a
 physical address inside another one.
 
 ## What is in scope
@@ -81,13 +81,13 @@ place left where a firmware number reaches a dereference with no proved step bet
 ## Index row
 
 Milestone 304 named `kernel/src/arch/x86_64/machine.rs`'s ACPI walk as its strongest remaining
-target and declined it: 836 lines over firmware-supplied lengths, checksums and counts, whose
+target and declined it. 836 lines over firmware-supplied lengths, checksums and counts, whose
 volatile half reads raw pointers into the direct map. Milestone 319 changed the size of that
-question rather than answering it, by proving `crates/machine_discovery`, so every decision about
+question rather than answering it, by proving `crates/machine_discovery`. Every decision about
 what the bytes mean now lives where Kani reaches and what is left on the kernel side is one
-operation repeated: read N bytes at a physical address through the direct map and hand them to a
+operation repeated. Read N bytes at a physical address through the direct map and hand them to a
 parser. The question is whether that accessor takes a bound and what it does when the bound is
-exceeded, since an RSDT whose `length` field says 64 KiB is a 64 KiB read at whatever the RSDP
+exceeded. An RSDT whose `length` field says 64 KiB is a 64 KiB read at whatever the RSDP
 pointed at. The other two architectures answer it: `dtb::Dtb::from_ptr` takes the blob's own length
 and validates the header before anything is read. Whether the bound is per-read or a region
 capability the walk holds is the part that could go either way, and the accessor's name is an

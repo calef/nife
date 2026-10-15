@@ -88,6 +88,6 @@ loaders, and `spawn_init` was already stale before that. Re-counted 2026-09-19 a
 occurrences across 40-odd files, against the roughly 35 the filing lane saw mid-rename. A reader who
 greps either one finds prose describing a function that exists nowhere, with nothing saying what it
 became, which is the newcomer principle failing in the way this tree cares about most. The edits are
-mechanical and the judgment is the whole job: a `BUILT` block narrating history keeps the old name, a
+mechanical and the judgment is the whole job. A `BUILT` block narrating history keeps the old name, a
 measurement table keeps the name it was measured under, a quotation never moves, and `spawn_init`
 may not have one successor at all.

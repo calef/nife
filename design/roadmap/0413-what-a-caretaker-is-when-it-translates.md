@@ -11,14 +11,14 @@ needs_person: no
 # 413. What a `caretaker` is, when the thing it holds is not the thing it hands out
 
 Promoted from the proposal `what-a-caretaker-is-when-it-translates`, filed
-2026-09-14 by the milestone 292 lane while naming the program that puts a file behind a byte sink,
-which had been `ROLE_FILE` inside a three-role binary and so had never needed a name of its own.
+2026-09-14 by the milestone 292 lane while naming the program that puts a file behind a byte sink.
+That program had been `ROLE_FILE` inside a three-role binary and so had never needed a name of its own.
 *(Number provisional until the merge queue lands it.)*
 
 The decision is
 §189 (which of two definitions `caretaker` carries, and what the translating shape is called), written
 up 2026-09-19 by milestone 435's slice-c lane because this gate named no section. That section also
-records why the three sections a reader might stop at do not answer this one: §92 decides a
+records why the three sections a reader might stop at do not answer this one. §92 decides a
 caretaker's *lifetime*, §56 assumes definition A rather than choosing it, and §106 takes the
 `terminal_sink_caretaker` narrowing as a behavior rather than as a name.
 `caretaker` is a word five programs already carry and every future narrowing
@@ -60,7 +60,7 @@ ruling behind it and definition A has only prose. The prose is more precise.
 
 The lane needed a name for the file-behind-a-sink program, and `file_sink_caretaker` was the
 consistency answer: the same adapter as `terminal_sink_caretaker`, for a different backend. It was
-refused on collision instead, because `fs_file_caretaker` already exists and is a different thing,
+refused on collision instead, because `fs_file_caretaker` exists and is a different thing,
 and two names a reader must hold apart cost more than the consistency buys. That is a local answer
 to a global question, which is why it leaves this behind rather than closing it.
 
@@ -70,9 +70,9 @@ becomes the honest name and the collision is a cost to accept rather than a reas
 ## What a decision needs to settle
 
 1. **Which definition `caretaker` carries.** If it is A (narrowing, same protocol), then
-   `terminal_sink_caretaker` is misnamed and there is a second word owed for the translating shape
-   (`adapter` is the word both `sink_tests` and notes/sink-protocol.md already use in prose, and it
-   is the word this tree reaches for when it is not naming a file).
+   `terminal_sink_caretaker` is misnamed and there is a second word owed for the translating shape.
+   `adapter` is the word both `sink_tests` and notes/sink-protocol.md already use in prose, and it
+   is the word this tree reaches for when it is not naming a file.
 2. **Whether `file_sink` should be `file_sink_caretaker`**, which follows from 1, and whether the
    `fs_file_caretaker` collision is tolerable if it does.
 3. **Whether `caretaker` should say what it holds or what it hands out.** `terminal_sink_caretaker`
@@ -88,8 +88,8 @@ Anything about `byte_sink_protocol`, which is a wire contract named for what it 
 
 `caretaker` is spelled two ways in this tree and both are load-bearing. Under the narrowing
 definition a caretaker serves the same protocol its client speaks and takes away authority rather
-than vocabulary, which is `fs_file_caretaker`, `fs_subtree_caretaker` and `fs_nameset_caretaker`;
-under the translating one it speaks one protocol and hands out another, which is
+than vocabulary, which is `fs_file_caretaker`, `fs_subtree_caretaker` and `fs_nameset_caretaker`.
+Under the translating one it speaks one protocol and hands out another, which is
 `terminal_sink_caretaker`, a name calef ratified on 2026-08-03. Milestone 292 needed the word for
 the file-behind-a-sink program, refused `file_sink_caretaker` on collision with the existing and
 different `fs_file_caretaker`, and shipped `file_sink` provisionally, which is a local answer to a

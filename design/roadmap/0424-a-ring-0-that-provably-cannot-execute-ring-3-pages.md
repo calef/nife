@@ -18,11 +18,11 @@ Nothing has to land first; the SMAP half owes a syscall-path measurement before 
 ships, and that measurement is part of the work rather than a precondition on starting it.
 
 **Premise re-checked 2026-09-19 and still true, both halves.** `CR4.SMEP` is set and says so at boot
-(`kernel/src/arch/x86_64/mod.rs`), and there is still no test anywhere that makes ring 0 fetch from a
-user page. `CR4.SMAP` and `PSTATE.PAN` are both still off, and both `x86_64/mmu.rs` and
+(`kernel/src/arch/x86_64/mod.rs`). There is still no test anywhere that makes ring 0 fetch from a
+user page. `CR4.SMAP` and `PSTATE.PAN` are both still off. Both `x86_64/mmu.rs` and
 `aarch64/mmu.rs` still say so at
 `permit_kernel_access_to_user_pages`, which is therefore still the function that permits nothing.
-The kernel still has no fault-recovery path for its own faults: nothing in `kernel/` matches an
+The kernel still has no fault-recovery path for its own faults. Nothing in `kernel/` matches an
 expected-fault slot, which is the expensive half this block prices.
 
 ## What is being proposed
@@ -43,29 +43,29 @@ Milestone 313's audit found the claim "the kernel cannot execute a confined comp
 stated nowhere, true on aarch64 and riscv64 by the encoders and the hardware, and false on `x86_64`
 because nothing set SMEP. The bit is set now and a boot line says so, and that is rung three: a
 setting with a transcript, not a claim with a test. A test would need ring 0 to take a page fault
-on purpose and recover, and this kernel has no fault-recovery path for its own faults, which is also
+on purpose and recover, and this kernel has no fault-recovery path for its own faults. That is also
 the thing a SMAP test needs. Building that path once serves both.
 
 ## What it costs, honestly
 
-The recovery path is the expensive half and it is a design question: a per-CPU "expected fault"
+The recovery path is the expensive half and it is a design question. A per-CPU "expected fault"
 slot the trap handler consults before it panics is the small shape, and it has to be written so
 that nothing but a test can arm it. SMAP itself is `stac`/`clac` around every kernel access to
 user memory, of which there are few by design (the shared-page contracts carry no lengths and the
-syscall surface moves words in registers), so the number may be small, but it is a number this tree
+syscall surface moves words in registers). So the number may be small, but it is a number this tree
 asks for before turning a protection on.
 
 ## Index row
 
 Milestone 313's audit found the claim "the kernel cannot execute a confined component's code"
 stated nowhere, true on aarch64 and riscv64 by the encoders and the hardware, and false on x86_64
-because nothing set SMEP. The bit is set now and a boot line says so, which is a setting with a
+because nothing set SMEP. The bit is set now and a boot line says so. That is a setting with a
 transcript rather than a claim with a test. Two halves go in one lane because they need the same new
-thing: a kernel test on all three architectures that ring 0 cannot fetch from a user page, each with
-a falsification record and each with the defect written where there is one (a user page without
+thing. A kernel test on all three architectures that ring 0 cannot fetch from a user page, each with
+a falsification record. Each with the defect written where there is one (a user page without
 `PXN` on aarch64, nothing on riscv64 where the hardware refuses unconditionally, an unset
-`CR4.SMEP` on x86_64); and then `CR4.SMAP` and `PSTATE.PAN`, so a kernel bug that strays into the
+`CR4.SMEP` on x86_64). And `CR4.SMAP` and `PSTATE.PAN`, so a kernel bug that strays into the
 low half faults instead of succeeding quietly. The expensive half is the fault-recovery path both
-need, a per-CPU expected-fault slot the trap handler consults before it panics, written so that
-nothing but a test can arm it. SMAP owes its syscall-path cost as a number before it ships, which is
+need. A per-CPU expected-fault slot the trap handler consults before it panics, written so that
+nothing but a test can arm it. SMAP owes its syscall-path cost as a number before it ships. That is
 what `permit_kernel_access_to_user_pages`'s `BUGS` has asked for since it was written.

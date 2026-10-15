@@ -8,7 +8,7 @@ promoted_from: sub-tripwire-drift-accumulates-across-baseline-saves
 
 Items 1, 2 and 3 are built and item 4 is refused. Item 1 landed 2026-09-15 as
 commit `ba99c83`, item 2 on 2026-09-23 in PR #1126 under milestone 302 (a baseline records what it was saved against, and a stale one
-fails loudly), and item 3 on 2026-09-26 in
+fails loudly). Item 3 landed on 2026-09-26 in
 PR #1375, as the report calef ruled for in §190 (must an icount baseline save record why it moved). Promoted from the proposal
 `sub-tripwire-drift-accumulates-across-baseline-saves`, filed 2026-09-15 by the baseline-audit lane,
 which calef asked for after PR #886 found a regression that had hidden under the 10% threshold.
@@ -40,7 +40,7 @@ first-parent history of the three baseline files from git alone and computes, pe
 architecture, the per-iteration move since a fixed anchor. It compounds on the compiler term
 `cargo xtask bench --restamp` has carried since the last `--save`, read back from its `# why:`
 ledger, because a restamp moves `# toolchain:` without moving a number. `script/metrics` publishes
-it in the bold backlog's shape: `notes/project-metrics/baseline-drift.csv` (the largest upward move
+it in the bold backlog's shape. They are `notes/project-metrics/baseline-drift.csv` (the largest upward move
 and the rows past 5%, per architecture per week, restated from 2026W31), a chart of rows past 5% on
 `notes/project-metrics.md` with a generated line under it, and the generated appendix
 `notes/project-metrics/baseline-drift.md`. That appendix lists every row, then every save since the
@@ -101,7 +101,7 @@ thing on aarch64 and riscv64 the same day, classifying the +6.5% as intended fea
 shows 91 to 93% of it is removable.
 
 This is the move milestone 237 (the cycle-counter grant costs 136 bytes of IPC fastpath) exists to
-refuse, one instrument over: re-saving because the number moved, which launders growth into the new
+refuse, one instrument over. Re-saving because the number moved launders growth into the new
 normal and retires the gate that was supposed to catch it.
 
 ## What to do, cheapest first
@@ -175,15 +175,15 @@ Do 1 now, as its own commit. Do 2 next, because it is small and because it is th
 item 3 would otherwise have to invent. Hold 3 until 2 has been in the tree long enough to say
 whether the attributions it collects are good enough to gate on. Do not do 4.
 
-The reversibility test says the same thing: 1 and 2 are undoable in an afternoon and nobody outside
+The reversibility test says the same thing. 1 and 2 are undoable in an afternoon and nobody outside
 this tree has acted on them, while 3 writes a second committed floor that every future measurement is
-compared against, which is a fact that other work starts depending on.
+compared against. That is a fact other work starts depending on.
 
 ## How this bears on the toolchain-bump decision, which has since been answered
 
 Corrected 2026-09-19. This section was written against calef's then-open decision 2 from PR #883
 (`icount-baselines-drift-after-a-toolchain-bump.md`, since promoted as milestone 577 (the icount
-baselines predate the pinned nightly) and closed in the same act): should a toolchain bump
+baselines predate the pinned nightly) and closed in the same act). Should a toolchain bump
 re-baseline in the
 same pull request, or fail loudly? He ruled on 2026-09-16 and it is milestone 302, a baseline
 that records what it was saved against and fails loudly when it is stale, which is the "fail
@@ -194,7 +194,7 @@ That proposal's premise is that a new nightly's codegen invalidates the baseline
 measured it: across `nightly-2026-08-27` and `nightly-2026-09-15` the toolchain term is ~0, and
 the QEMU upgrade term is also ~0. On that evidence, a bump-triggered automatic re-baseline would
 have written a new floor for a cause that measured zero, and in doing so would have absorbed
-milestone 139's regression under a toolchain label, which is exactly what `44890a8a` did by hand.
+milestone 139's regression under a toolchain label. That is exactly what `44890a8a` did by hand.
 That is an argument for the "fail loudly" half of the proposal's own option and against the
 "re-baseline in the same pull request" half, and it is a measurement rather than a preference. It is
 the half calef took.
@@ -241,11 +241,11 @@ the half calef took.
 
 `cargo xtask bench --check` fails at more than 10% drift against the last saved baseline and
 `--save` rewrites that baseline, so successive sub-threshold steps accumulate and the gate never
-fires: riscv64's `ctx_switch` is +10.78% cumulative in steps that never reached +6.2%, and the
-gate has fired zero times on any of the five rows audited, while `coremark` is flat to four decimal
+fires. riscv64's `ctx_switch` is +10.78% cumulative in steps that never reached +6.2%, and the
+gate has fired zero times on any of the five rows audited. `coremark` is flat to four decimal
 places across every save on all three architectures. Two saves on 2026-09-15 blessed a removable
 regression into the floor on a toolchain attribution that milestone 300 later measured at ~0. Item
 1, pulling the ungated x86_64 leg into CI, landed the same day as commit `ba99c83`. Item 2 made a
 save record its reasons beside the number (PR #1126). Item 3, ruled by calef on 2026-09-26 as a
 report rather than a gate, publishes cumulative drift per row since the audit's anchors with every
-save's reasons in the weekly metrics (PR #1375); 15 rows were past 5% on the day it shipped.
+save's reasons in the weekly metrics (PR #1375). 15 rows were past 5% on the day it shipped.

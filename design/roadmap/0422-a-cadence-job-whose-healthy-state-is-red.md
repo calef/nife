@@ -46,21 +46,21 @@ And these four look identical to each other, which is the part that actually cos
 2026-09-07  audits: 7 on record, DUE: documentation, security   exit 1
 ```
 
-An audit was overdue every week for a month, the mechanism said so on schedule every time, and no
+An audit was overdue every week for a month. The mechanism said so on schedule every time, and no
 audit was run. Milestone 92 built this tripwire to stop auditing depending on somebody remembering
 to ask. The tripwire fired four times and auditing still depended on somebody remembering.
 
 ## Why `script/cadence-check` does not cover it
 
-Milestone 238's check asks when a workflow last succeeded, and reports one whose last success is
+Milestone 238's check asks when a workflow last succeeded. It reports one whose last success is
 more than fifteen days old. That is the right question for a job whose healthy state is green, and it
 is why the mutation and undefined-behavior workflows were caught.
 
 For `audit-cadence` it is the wrong question in both directions. A job that is *supposed* to be red
-has no green to be stale against, so a firing tripwire is indistinguishable from a dead one; and a
+has no green to be stale against, so a firing tripwire is indistinguishable from a dead one. And a
 job that has **never** succeeded is reported forever on a condition it can never clear, which
 generates exactly the standing alarm that teaches a reader to stop looking. It caught milestone 311's
-path bug by coincidence: this workflow had never succeeded, so it tripped the never-succeeded arm,
+path bug by coincidence. This workflow had never succeeded, so it tripped the never-succeeded arm,
 for a reason unrelated to the defect.
 
 ## What it would report
@@ -75,25 +75,25 @@ failed *with the same final line*. Sketch, for whoever builds it:
   finding; say so rather than folding it in.
 
 **The delivery is `helpers/trunk-health.sh`, not a new scheduled workflow**, for the reason
-`script/cadence-check`'s header already states and this proposal must not undo: a scheduled workflow
+`script/cadence-check`'s header already states and this proposal must not undo. A scheduled workflow
 that watches scheduled workflows dies the way its subjects die.
 
 ## The open question, which is what makes this a proposal rather than a lane brief
 
 Who is the report for, and what closes it? A repeat report on `audit-cadence` says "run the
-audit", and running an audit is a lane and a day, not a fix somebody applies between tasks. Reported
-to a maintainer session it becomes rung four again, a message somebody has to read; reported into a
+audit". Running an audit is a lane and a day, not a fix somebody applies between tasks. Reported
+to a maintainer session it becomes rung four again, a message somebody has to read. Reported into a
 pull request there is no pull request to hang it on. AGENTS.md's answer for work waiting on a person
 is the `needs-architect` label and a `## What I need from you` comment, and neither has a home when
 the finding belongs to no branch.
 
-That is an architect's call, not a lane's, and it is the same question the steward's own "it
+That is an architect's call, not a lane's. It is the same question the steward's own "it
 reported and never acted" failure of 2026-08-04 raised without settling.
 
 ## What this does not propose
 
 Not making the job green when an audit is due. A cadence checker that cannot report "overdue" is
-decoration, and the workflow's own header and `design/audit-reports/README.md`'s `BUGS` both already
+decoration. The workflow's own header and `design/audit-reports/README.md`'s `BUGS` both already
 say that closing this by editing the index is the one thing that makes the mechanism a lie. The
 ambiguity is the cost of a correct design, and the fix is a second signal rather than a quieter
 first one.
@@ -101,10 +101,10 @@ first one.
 ## Index row
 
 `.github/workflows/audit-cadence.yml` reports that an audit is due by failing, which is deliberate
-and correct, and the consequence nobody priced is that red is ambiguous: a firing tripwire and a
+and correct, and the consequence nobody priced is that red is ambiguous. A firing tripwire and a
 `FileNotFoundError` are the same row in the Actions tab, and so are four consecutive weeks of the
 same true report. An audit was overdue every week for a month, the mechanism said so on schedule
-every time, and no audit ran, which is milestone 92's tripwire firing four times into a process that
+every time, and no audit ran. That is milestone 92's tripwire firing four times into a process that
 still depended on somebody remembering. `script/cadence-check` cannot cover it, because a job whose
 healthy state is red has no green to be stale against and a job that never succeeded is reported for
 ever. The proposal is to report a repeat rather than a color, from `helpers/trunk-health.sh` rather

@@ -22,7 +22,7 @@ Premise re-checked 2026-09-19: still due, more overdue, and the sibling is gone.
 against a trigger of 10 and 33 days on the calendar. The security half is no longer due: it was
 audited on 2026-09-17 by milestone 313, so `documentation` is the only standing example rather than
 one of a pair. The worklist head has also moved since this was filed, which is the ranking working
-as designed rather than a correction: `notes/architecture-list-sweep.md` now leads at 20 of 20 cited
+as designed rather than a correction. `notes/architecture-list-sweep.md` now leads at 20 of 20 cited
 paths moved over 117 commits, and `0284-finish-the-progenitor-rename.md` has fallen to 11 of 16.
 Re-run `script/audits --worklist` rather than working from the table below.
 
@@ -52,7 +52,7 @@ the document was last edited. Its head on 2026-09-17:
 ```
 
 Read `notes/documentation-audit.md` first. It is the procedure, it says what counts as a finding,
-and it is honest that the ranking has never read a sentence: a document at the top may be perfectly
+and it is honest that the ranking has never read a sentence. A document at the top may be perfectly
 true, and one absent from the list may be a year out of date. 138 of 269 documents cite no resolvable
 code path and are simply not on it.
 
@@ -79,12 +79,12 @@ A report in `design/audit-reports/`, both index rows, every finding dispositione
 
 The documentation audit was last run on 2026-08-17 and is overdue by eleven times its milestone
 trigger, which `script/audits --due` has reported every week since. Unlike the security audit it
-arrives with its scope already computed: `script/audits --worklist` ranks every document by how many
-of the files it cites have moved since the document was last edited, and
+arrives with its scope already computed. `script/audits --worklist` ranks every document by how many
+of the files it cites have moved since the document was last edited.
 `notes/documentation-audit.md` is the procedure and is honest that the ranking has never read a
-sentence, so a document at the top may be perfectly true and 138 of 269 cite no resolvable code path
+sentence. A document at the top may be perfectly true and 138 of 269 cite no resolvable code path
 at all. One measured scope to start from is milestone 311's finding that eight distinct
-`components/` and `fixtures/` paths cited in backticks across the tree do not resolve, six of them
-historical prose that the rename rule says to keep and two live rot, which is the argument for
+`components/` and `fixtures/` paths cited in backticks across the tree do not resolve. Six are
+historical prose that the rename rule says to keep and two are live rot. That is the argument for
 routing this class to a reader rather than to a gate. What closes it is a report in
 `design/audit-reports/`, both index rows, and every finding dispositioned.
