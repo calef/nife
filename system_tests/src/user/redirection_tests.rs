@@ -29,7 +29,7 @@ pub(super) fn transcript(out: &mut [u8; TRANSCRIPT_MAX]) -> Option<usize> {
             program("redoxfs_server")?,
             program("fs_subtree_caretaker")
                 .expect("no fs_subtree_caretaker program in the initial ramdisk"),
-            filesystem_protocol::fixture::tree::REDIR,
+            filesystem_fixture::tree::REDIR,
             dir::ALL,
         )?;
         let Some(w) = pipeline_service::start_redirecting(dir, dir::ALL) else {

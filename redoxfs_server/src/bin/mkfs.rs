@@ -57,7 +57,7 @@
 
 extern crate alloc;
 
-use filesystem_protocol::fixture::blank;
+use filesystem_fixture::blank;
 use filesystem_protocol::{blk, req};
 use globally_unique_identifier_partition_table::GloballyUniqueIdentifierPartitionTable;
 use globally_unique_identifier_partition_table::guid::types;

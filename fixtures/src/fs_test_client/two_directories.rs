@@ -8,7 +8,8 @@
 //! Name: provisional (lane maintainer/files-over-1500, 2026-10-12 UTC), for the module and the
 //! file.
 
-use filesystem_protocol::{fixture, fs};
+use filesystem_protocol::{fs};
+use filesystem_fixture as fixture;
 use grant_plan::nav::{TwoRoots, Which};
 use user_mode_runtime::{call, exit, send};
 
@@ -36,7 +37,7 @@ use crate::channel::put_page;
 ///   already argues (the endpoint is the boundary), witnessed here with two live caretakers
 ///   rather than inferred from one.
 pub(crate) fn two_dir() -> ! {
-    use filesystem_protocol::fixture::twodir as t;
+    use filesystem_fixture::twodir as t;
     use fixture::tree;
 
     /// Grant A's endpoint: `fs_service::start_granted_two_dirs`' slot 0.

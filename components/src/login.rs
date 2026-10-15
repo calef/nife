@@ -1344,7 +1344,7 @@ fn store_caretaker(
     .is_ok_and(|child| start_child(child, lo, hi, spec));
     let verdict = if started { receive(ready).0 } else { 0 };
     cap_delete(ready);
-    if verdict != filesystem_protocol::fixture::READY {
+    if verdict != filesystem_protocol::READY {
         cap_delete(narrow_ep);
         return None;
     }
@@ -1540,14 +1540,14 @@ fn mint(own_ut: u64, care: Option<&elf::Elf>, identity: &[u8]) -> Option<(u64, u
     // **This is also where "the credential is real but nobody ever provisioned this identity's
     // subtree" is answered**, and deliberately with no special case: `identity_provisioner` didn't
     // run, or its `MKDIR` never reached this file service's disk, so the caretaker's `OPENDIR`
-    // against `identity` comes back `ENOENT` and it reports [`filesystem_protocol::fixture::DESCENT_REFUSED`]
+    // against `identity` comes back `ENOENT` and it reports [`filesystem_protocol::DESCENT_REFUSED`]
     // here instead of `READY`, which this function already turns into `None` and this program's
     // caller already folds into `login_protocol::DENIED`, indistinguishable from a wrong password. See
     // this program's BUGS for why that fold is the considered answer for this case too, not merely
     // an accident of reusing the same code path.
     let (verdict, _, _) = receive(ready);
     cap_delete(ready);
-    if verdict != filesystem_protocol::fixture::READY {
+    if verdict != filesystem_protocol::READY {
         cap_delete(narrow_ep);
         // **`region` used to be abandoned here.** The caretaker's `OPENDIR` was refused, so it has
         // already called `exit()` (`fs_subtree_caretaker.rs`'s own descent handshake): nothing is

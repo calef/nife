@@ -273,7 +273,7 @@ pub const fn classify(ret: i64) -> Sent {
 /// **Shared fixtures for the sink tests**: the bytes an indifferent writer writes, the file a file
 /// sink writes them into, and the sentinels its report carries. One definition, so the component
 /// and the kernel-side test cannot disagree about what "the same bytes" means. Same split
-/// `filesystem_protocol::fixture` makes for the filesystem contract.
+/// `filesystem_fixture` makes for the filesystem contract.
 pub mod fixture {
     use super::Sent;
 
@@ -289,7 +289,7 @@ pub mod fixture {
 
     /// A sink reports this once its destination is open and before it takes a byte, so a hang in
     /// opening the file is distinguishable from a hang in the serve path. Same discipline as
-    /// `filesystem_protocol::fixture::READY`.
+    /// `filesystem_protocol::READY`.
     pub const READY: u64 = 0x5142_0000_0000_0001;
 
     /// A sink reports this after end-of-stream, with the byte total in the second word.

@@ -280,7 +280,7 @@ pub const fn is_authenticated(r0: u64) -> bool {
     matches!(code(r0), Some(MATCH))
 }
 
-/// **The one login the gates share**, in `filesystem_protocol::fixture`'s shape and for its reason: several
+/// **The one login the gates share**, in `filesystem_fixture`'s shape and for its reason: several
 /// programs have to agree on an account down to the byte, and a second copy of it somewhere would
 /// drift silently into a wrong answer that looks like a bug in the code under test.
 ///

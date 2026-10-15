@@ -1,0 +1,20 @@
+[package]
+name = "filesystem_fixture"
+version = "0.1.0"
+edition = "2024"
+license.workspace = true
+
+# The filesystem test fixture, moved out of the protocol crate by milestone 886 (the filesystem
+# test fixture moves to its own crate): the names and contents of the files the test image ships,
+# the witnesses' verdict words, and the shapes of the walk and throughput benchmarks. It is test
+# data rather than wire contract, so it does not end in `_protocol`, and nothing that boots
+# depends on it. The protocol words that once lived beside it (`READY`, `DESCENT_REFUSED`, and the
+# `rm` status convention) stayed in `filesystem_protocol`, per calef's ruling on 886.
+#
+# Name: provisional (proposed by block 886); calef names crates.
+
+[lints]
+workspace = true
+
+[dependencies]
+filesystem_protocol = { version = "0.1.0", path = "../filesystem_protocol" }

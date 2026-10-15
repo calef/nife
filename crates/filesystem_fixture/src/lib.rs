@@ -1,3 +1,23 @@
+//! **The filesystem test fixture**: the names and contents of the files the test image ships, the
+//! witnesses' verdict words, and the shapes of the `walk` and `throughput` benchmarks, in one place
+//! so the three programs that touch them agree: the host build (`cargo xtask`, which writes these
+//! into the RedoxFS image with the host tool), the client (which reads and writes them through the
+//! FS server), and the kernel test (which asserts the client's report). Not part of either wire
+//! protocol; a shared constant, like a test vector.
+//!
+//! Moved out of `filesystem_protocol` by milestone 886 (the filesystem test fixture moves to its
+//! own crate), which also ruled where the line sits: the protocol words shipping programs send
+//! each other (`READY`, `DESCENT_REFUSED`, and `rm`'s status convention) stayed in
+//! `filesystem_protocol`; everything here is test data or a test hook, and nothing that boots
+//! depends on this crate. It is `no_std` and depends on `filesystem_protocol` alone
+//! (`throughput::UNIT` is that crate's `fs::TRANSFER_MAX`).
+//!
+//! Name: provisional (proposed by block 886, its crate-root name lifted; considered and refused
+//! `filesystem_test_image`, which names the shipped files but not the verdict words or the
+//! benchmark shapes). Calef names crates.
+
+#![no_std]
+
 /// A file the image ships with; the client reads it back through a granted directory capability.
 pub const MOTD_NAME: &str = "motd";
 /// Its exact contents. Longer than eight bytes so the report's head word is a real prefix.
@@ -120,7 +140,7 @@ pub const THROUGHPUT_NAME: &str = "throughput";
 pub mod throughput {
     /// **The transfer unit: the whole file channel, which is the most a single `filesystem_protocol`
     /// request can carry.** Still not a tuning choice *here*: it is
-    /// [`super::super::fs::TRANSFER_MAX`], so this phase always measures the protocol's own
+    /// [`filesystem_protocol::fs::TRANSFER_MAX`], so this phase always measures the protocol's own
     /// ceiling and the tuning lives at the one constant that sets that ceiling.
     ///
     /// It was 4096 until milestone 138 step 3, because the region a request moved bytes
@@ -129,7 +149,7 @@ pub mod throughput {
     /// comparison against a system whose client may pass a differently sized buffer is
     /// comparing two different things, and **that caveat did not go away when the number got
     /// bigger**; see notes/benchmarks.md.
-    pub const UNIT: usize = super::super::fs::TRANSFER_MAX;
+    pub const UNIT: usize = filesystem_protocol::fs::TRANSFER_MAX;
 
     /// **Bytes moved per phase, held constant across transfer sizes on purpose.** 1 MiB, which
     /// is small for a throughput benchmark and is bounded by the fixture image (16 MiB) rather
@@ -238,27 +258,6 @@ pub mod throughput {
     }
 }
 
-/// The FS server's readiness sentinel: sent once, after it has opened the RedoxFS image over blk
-/// IPC and before it serves clients. The test waits for it, so a hang in `open` (the blk path)
-/// is distinguishable from a hang in the serve/client path, and a booted-but-empty run is caught.
-pub const READY: u64 = 0xF5_0BEEF5;
-
-/// **A caretaker's descent was refused**, sent on the same endpoint [`READY`] would have gone
-/// out on, with the errno in the second word. The caretaker then exits without serving.
-///
-/// It exists because of who waits for the handshake. Under `kernel::user::fs_service` the waiter
-/// is a test, and a caretaker that panicked instead of answering cost that test a 60-second
-/// watchdog and a legible failure. Under `system_initializer` the waiter is **init**, which is
-/// the spawn service for the whole prompt and has no other thread: a caretaker that panicked
-/// there would park init in `RECEIVE` forever and the machine would never take another command.
-/// A grant naming a directory that is not there is an ordinary thing to type, so the honest
-/// answer has to be a message rather than a corpse.
-///
-/// Name: provisional (2026-08-17, milestone 31 (a capability shell) phase 3): it names the one
-/// step that can fail before a caretaker serves anything, which is the single `OPENDIR` its
-/// whole attenuation lives in.
-pub const DESCENT_REFUSED: u64 = 0xF5_0DEAD5;
-
 /// **The attacker's report: a bitmap of what got through**, not a pass/fail. Each bit says one
 /// specific thing happened, so the test asserts an *expected set* rather than "zero", and a
 /// failure names itself. That shape is what lets one attacker serve as its own negative control:
@@ -305,7 +304,7 @@ pub const VERDICT: u64 = 0xE5_CA9E00;
 /// exists so "it cannot reach a sibling" is a claim about a directory that is really there and
 /// that the process one hop up the chain really can open, the same reason the per-file
 /// attacker's neighbour is a real file. `deeper` is inside the grant, so a second descent has
-/// somewhere to go and [`super::dir::DESCEND`] has something to withhold.
+/// somewhere to go and [`crate::dir::DESCEND`] has something to withhold.
 ///
 /// ```text
 ///   /            motd  scratch  sub/  other/
@@ -353,7 +352,7 @@ pub mod tree {
     /// capability and that the capability it mints is not wider than the one that made it.
     pub const MADE_DIR: &str = "dir-by-atk";
     /// What the attacker renames [`MADE`] to, if its capability carries
-    /// [`super::super::dir::REMOVE`]. The post-run host check looks for a name with this prefix
+    /// [`filesystem_protocol::dir::REMOVE`]. The post-run host check looks for a name with this prefix
     /// in [`SUB`] **and** a [`MADE`] one that was not renamed, which is `REMOVE` being enforced
     /// witnessed from outside the guest: one capability moved a name and another could not.
     pub const MOVED: &str = "moved-by-atk";
@@ -371,8 +370,8 @@ pub mod tree {
     /// through the open handle after.
     pub const NAV_BODY: &[u8] = b"CRK47-NAV: a name can go while the bytes stay\n";
     /// The directory a navigating shell makes with `mkdir` and leaves behind. It stays because
-    /// the shell never empties it: [`super::super::fs::UNLINK`] refuses a directory and
-    /// [`super::super::fs::RMDIR`] refuses a non-empty one, so a directory with a name in it
+    /// the shell never empties it: [`filesystem_protocol::fs::UNLINK`] refuses a directory and
+    /// [`filesystem_protocol::fs::RMDIR`] refuses a non-empty one, so a directory with a name in it
     /// takes two deliberate steps to remove and neither of them is one word.
     pub const NAV_DIR: &str = "nav-dir";
     /// The directory a navigating shell makes, puts [`NAV_INSIDE`] in, and then removes with
@@ -492,7 +491,7 @@ pub mod tree {
     /// controls, and they are two different controls: [`GLOB_MISS`] is a **file that exists,
     /// sits one directory entry away, and is not in the set**, which is what a set-attenuated
     /// capability must not be able to name; [`GLOB_DIR`] is a directory, so the type bit
-    /// [`super::super::nameset::IS_DIR`] carries has something to be wrong about.
+    /// [`filesystem_protocol::nameset::IS_DIR`] carries has something to be wrong about.
     pub const GLOBSET: &str = "globset";
     /// The pattern the shell expands, and the whole of what `rm *.txt` designates here. Pinned
     /// against the matcher by a host test, so the set the kernel test states literally is
@@ -568,13 +567,13 @@ pub mod tree {
     pub const ROOT_ENTRIES: [&str; 9] = [
         GLOBMANY,
         GLOBSET,
-        super::MOTD_NAME,
+        crate::MOTD_NAME,
         OTHER,
         REDIR,
         RMTREE,
-        super::SCRATCH_NAME,
+        crate::SCRATCH_NAME,
         SUB,
-        super::walk::ROOT,
+        crate::walk::ROOT,
     ];
 }
 
@@ -772,21 +771,21 @@ pub mod dirscape {
     /// **It asked for a right its capability did not carry, and got it.** Never allowed, and
     /// this is the bit that answers "can a child's rights exceed its parent's".
     pub const WIDENED: u64 = 1 << 3;
-    /// It enumerated the granted directory. Expected only with [`super::super::dir::ENUMERATE`].
+    /// It enumerated the granted directory. Expected only with [`filesystem_protocol::dir::ENUMERATE`].
     pub const ENUMERATED: u64 = 1 << 4;
     /// It descended one level inside the grant. Expected only with
-    /// [`super::super::dir::DESCEND`].
+    /// [`filesystem_protocol::dir::DESCEND`].
     pub const DESCENDED: u64 = 1 << 5;
-    /// It created a name inside the grant. Expected only with [`super::super::dir::CREATE`].
+    /// It created a name inside the grant. Expected only with [`filesystem_protocol::dir::CREATE`].
     pub const CREATED: u64 = 1 << 6;
     /// It made a **directory** inside the grant and got a capability to it. Expected only with
-    /// [`super::super::dir::CREATE`] and [`super::super::dir::DESCEND`] together.
+    /// [`filesystem_protocol::dir::CREATE`] and [`filesystem_protocol::dir::DESCEND`] together.
     pub const MADE_A_DIR: u64 = 1 << 12;
     /// Its write to a file inside the grant was accepted **and read back**. Expected only with
-    /// [`super::super::dir::WRITE`].
+    /// [`filesystem_protocol::dir::WRITE`].
     pub const WROTE: u64 = 1 << 7;
     /// **It renamed a name inside its grant.** Expected only with
-    /// [`super::super::dir::REMOVE`] and [`super::super::dir::CREATE`] together, which is what
+    /// [`filesystem_protocol::dir::REMOVE`] and [`filesystem_protocol::dir::CREATE`] together, which is what
     /// makes this the bit that gives the `REMOVE` rung something to fail.
     pub const RENAMED: u64 = 1 << 8;
     /// An enumeration it was allowed to make returned a name that is not in the granted
@@ -803,13 +802,13 @@ pub mod dirscape {
     /// that reaches nothing is trivially unescapable.
     pub const GRANTED_ACCESS_FAILED: u64 = 1 << 11;
     /// **It listed the extended attributes of the file inside its grant** (milestone 61).
-    /// Expected wherever [`super::super::dir::READ`] is held, which is every configuration that
+    /// Expected wherever [`filesystem_protocol::dir::READ`] is held, which is every configuration that
     /// can open the file at all: an attribute is part of what a file *is*, so a capability that
     /// may read the file may read what is attached to it. Before milestone 61 the caretaker
     /// answered `EOPNOTSUPP` and this bit was never set.
     pub const READ_ATTRS: u64 = 1 << 14;
     /// **It set an extended attribute on that file and read it back with its type code.**
-    /// Expected only with [`super::super::dir::WRITE`], which is [`WROTE`]'s rule applied to the
+    /// Expected only with [`filesystem_protocol::dir::WRITE`], which is [`WROTE`]'s rule applied to the
     /// third way of changing a file.
     ///
     /// The interesting part is *who* enforces it: `fs_subtree_caretaker` performs no check, so
@@ -823,7 +822,7 @@ pub mod dirscape {
     /// (milestone 61's name-set witness). Never allowed.
     ///
     /// A set capability's whole property is that `rm *.txt` cannot reach `notes.md`. `rm` asks
-    /// that question with [`super::super::dir::REMOVE`] and nothing else; this asks it with
+    /// that question with [`filesystem_protocol::dir::REMOVE`] and nothing else; this asks it with
     /// `READ`, because the milestone taught `fs_nameset_caretaker` four verbs that read and it
     /// would be a poor trade to close an attribute gap by opening a naming one.
     pub const REACHED_AN_UNMATCHED_NAME: u64 = 1 << 16;
@@ -879,13 +878,13 @@ pub mod twotrees {
     pub const MOUNT: &str = "/second";
     /// `pwd` printed `/` at the start: one root, whatever the shell holds.
     pub const PWD_STARTS_AT_ROOT: u64 = 1 << 0;
-    /// `ls /` named [`super::tree::INNER`] and the mount point, and not
-    /// [`super::tree::SECRET`]: a mount point is listed in its parent.
+    /// `ls /` named [`crate::tree::INNER`] and the mount point, and not
+    /// [`crate::tree::SECRET`]: a mount point is listed in its parent.
     pub const LISTED_ROOT: u64 = 1 << 1;
     /// `cd` to the mount point moved the shell into the second tree, and `pwd` printed the
     /// mount path.
     pub const MOVED_INTO_MOUNT: u64 = 1 << 2;
-    /// `ls` inside the mount named [`super::tree::SECRET`] and not [`super::tree::INNER`].
+    /// `ls` inside the mount named [`crate::tree::SECRET`] and not [`crate::tree::INNER`].
     pub const LISTED_MOUNT: u64 = 1 << 3;
     /// A relative name opened inside the mount, over the second tree's own endpoint.
     pub const OPENED_RELATIVE_IN_MOUNT: u64 = 1 << 4;
@@ -899,7 +898,7 @@ pub mod twotrees {
     /// mount.
     pub const ROOT_CLAMPED: u64 = 1 << 7;
     /// `<` planned against a file under the mount opened in the second tree and read
-    /// [`super::tree::SECRET_BODY`]: the per-command grant carried its tree through to the open.
+    /// [`crate::tree::SECRET_BODY`]: the per-command grant carried its tree through to the open.
     pub const REDIRECTED_FROM_MOUNT: u64 = 1 << 9;
     /// A bare `cd` came back to `/` from inside the mount.
     pub const HOME_IS_ROOT: u64 = 1 << 10;
@@ -949,15 +948,15 @@ pub mod navscape {
     /// nothing, which [`ABSOLUTE_REACHED_INNER`] and [`ABSOLUTE_REACHED_SECRET`] are the
     /// measurement of rather than the claim.
     pub const ABSOLUTE_IS_MY_ROOT: u64 = 1 << 3;
-    /// It opened [`super::tree::INNER`], which exists only in [`super::tree::SUB`].
+    /// It opened [`crate::tree::INNER`], which exists only in [`crate::tree::SUB`].
     pub const REACHED_INNER: u64 = 1 << 4;
-    /// It opened [`super::tree::SECRET`], which exists only in [`super::tree::OTHER`].
+    /// It opened [`crate::tree::SECRET`], which exists only in [`crate::tree::OTHER`].
     pub const REACHED_SECRET: u64 = 1 << 5;
     /// `ls` of its own root returned a listing.
     pub const LISTED: u64 = 1 << 6;
-    /// That listing named [`super::tree::INNER`].
+    /// That listing named [`crate::tree::INNER`].
     pub const SAW_INNER: u64 = 1 << 7;
-    /// That listing named [`super::tree::SECRET`]. A listing is a rendering of authority, so the
+    /// That listing named [`crate::tree::SECRET`]. A listing is a rendering of authority, so the
     /// pair of these two bits is the property stated in what the two shells can *see* as well as
     /// in what they can open.
     pub const SAW_SECRET: u64 = 1 << 8;
@@ -991,16 +990,16 @@ pub mod navscape {
     /// And once the name inside it was taken out, `RMDIR` removed it. Without this, the bit
     /// above is equally true of a `RMDIR` that refuses everything.
     pub const RMDIR_REMOVED_EMPTY: u64 = 1 << 19;
-    /// It opened [`super::tree::INNER`] **by absolute path**, `/inner`, which exists only in
-    /// [`super::tree::SUB`].
+    /// It opened [`crate::tree::INNER`] **by absolute path**, `/inner`, which exists only in
+    /// [`crate::tree::SUB`].
     ///
     /// The pair with [`ABSOLUTE_REACHED_SECRET`] is why absolute paths cost nothing here: the
     /// same two probes as [`REACHED_INNER`] and [`REACHED_SECRET`], asked with a leading slash,
     /// and each shell reaches exactly the one its own root contains. A `/` rooted in a global
     /// namespace would make both shells reach both.
     pub const ABSOLUTE_REACHED_INNER: u64 = 1 << 20;
-    /// It opened [`super::tree::SECRET`] by absolute path, `/secret`, which exists only in
-    /// [`super::tree::OTHER`].
+    /// It opened [`crate::tree::SECRET`] by absolute path, `/secret`, which exists only in
+    /// [`crate::tree::OTHER`].
     pub const ABSOLUTE_REACHED_SECRET: u64 = 1 << 21;
     /// **`cd /..` was refused and nothing moved.** The negative control on the syntax: an
     /// absolute path meets the same wall `..` does, because your root is the only root there
@@ -1009,7 +1008,7 @@ pub mod navscape {
     /// `touch` on a name that was not there created it: the name now opens and its size is
     /// zero. The create half of milestone 47's `touch`, made a measurement rather than a claim.
     pub const TOUCH_CREATED: u64 = 1 << 23;
-    /// `touch` on a name that was already there, holding [`super::tree::NAV_TOUCH_BODY`],
+    /// `touch` on a name that was already there, holding [`crate::tree::NAV_TOUCH_BODY`],
     /// left it holding exactly that afterward. Without this bit, [`TOUCH_CREATED`] is equally
     /// true of a `touch` that quietly truncates whatever it finds.
     pub const TOUCH_PRESERVED: u64 = 1 << 24;
@@ -1020,7 +1019,7 @@ pub mod navscape {
     /// stamp agree on what "before" means.
     pub const TOUCH_MTIME_ADVANCED: u64 = 1 << 25;
     /// **`touch -t 2030-01-01T00:00:00Z`, typed as a real command line, produced a mtime that
-    /// reads back as exactly [`super::tree::NAV_TOUCH_AT_UNIX`] and not the value
+    /// reads back as exactly [`crate::tree::NAV_TOUCH_AT_UNIX`] and not the value
     /// [`TOUCH_MTIME_ADVANCED`] just observed.** This is DECISIONS §112 made a measurement: a
     /// `touch -t` that silently fell back to "now" would still be a later timestamp than the
     /// bare touch before it, so the *exact* comparison, not merely "later", is what makes this
@@ -1041,14 +1040,14 @@ pub mod navscape {
     /// bit's sibling and clear this one, and a caretaker that refused everything would clear
     /// both.
     pub const TOUCH_AT_REFUSED_WITHOUT_SETTIME: u64 = 1 << 28;
-    /// **`ls` of a bound name listed the real directory it points at**: [`super::tree::NAV_BIND_MARKER`]
-    /// appeared in a listing of [`super::tree::NAV_BIND_ALIAS`], which this shell never `mkdir`ed
+    /// **`ls` of a bound name listed the real directory it points at**: [`crate::tree::NAV_BIND_MARKER`]
+    /// appeared in a listing of [`crate::tree::NAV_BIND_ALIAS`], which this shell never `mkdir`ed
     /// or `cd`ed into directly. `bind`'s own claim (milestone 47/154), made a measurement: a
     /// bound name reaches what the position it was given reaches, over the real wire.
     pub const BIND_REACHED_TARGET: u64 = 1 << 29;
     /// **`..` from inside a bound path landed at the bind's own real parent**, not at some
     /// boundary invented at the alias: `cd /<alias>` followed by one `cd ..` rendered
-    /// [`super::tree::NAV_DIR`]'s own run-indexed path (`pwd` shows the real tree, not the
+    /// [`crate::tree::NAV_DIR`]'s own run-indexed path (`pwd` shows the real tree, not the
     /// name used to reach it, because a position has no memory of how it was reached). Proves
     /// `bind` composes the underlying position's own resolution rather than re-clamping at
     /// the alias.
@@ -1072,7 +1071,7 @@ pub mod globscape {
     /// **The names `echo` printed and the names the grant carries are the same bytes.** The
     /// headline: the expansion you see is the authority that moves.
     pub const AGREED: u64 = 1 << 1;
-    /// The expansion contains neither [`super::tree::GLOB_MISS`] nor [`super::tree::GLOB_DIR`],
+    /// The expansion contains neither [`crate::tree::GLOB_MISS`] nor [`crate::tree::GLOB_DIR`],
     /// which exist in the same directory and are one entry away. Without this, [`AGREED`] is
     /// equally true of a shell that expanded a pattern to everything it could see.
     pub const EXCLUDED_A_STRANGER: u64 = 1 << 2;
@@ -1088,46 +1087,6 @@ pub mod globscape {
     /// Something that should have worked did not, so nothing above proves anything. Always a
     /// failure.
     pub const GLOB_FAILED: u64 = 1 << 6;
-}
-
-/// **What the `rm` program reports, and how a diagnostic is told from the verdict**
-/// (milestone 47's `rm -r`, `components/src/rm.rs`).
-///
-/// **Where these two words travel** (corrected 2026-08-17). `rm` declares the sink contract
-/// (`grant_plan::OutputSpec::Bytes`), so its report is framed text and then `byte_sink_protocol`'s
-/// `OPERATION_EOF`; the status and the removal count ride in the two words that end-of-stream message
-/// leaves free. They used to ride on [`VERDICT`], a word the sink contract has no meaning for,
-/// which no reader but a guest test could have decoded.
-///
-/// `rm` is a **program**, not a shell builtin, so it holds a report endpoint and nothing that
-/// names a terminal. Two kinds of message go out on it, and they are told apart by the first
-/// word, which is what makes "silent on success" checkable from the far end:
-///
-/// - **A line of text**, framed exactly as every std program's stdout is (`w0` = the byte count,
-///   at most 16, and the bytes little-endian in `w1`|`w2`). Diagnostics always go out this way;
-///   `-v` adds one line per name removed.
-/// - **The verdict**, once, last: `w0` = [`crate::fixture::VERDICT`], `w1` = the exit status, `w2` = how
-///   many names were removed.
-///
-/// A byte count is at most 16 and [`crate::fixture::VERDICT`] is far larger, so the two never collide. A
-/// receiver that takes the verdict as its **first** message therefore knows the run printed
-/// nothing, which is `rm(1)`'s default behaviour asserted rather than assumed: a `SEND` blocks
-/// until somebody receives it, so a line that was emitted cannot be missed by looking later.
-pub mod rm {
-    /// The exit status of a run in which everything named was removed. `rm(1)`: "exits 0 if all
-    /// of the named files or file hierarchies were removed".
-    pub const OK: u64 = 0;
-
-    /// A non-zero exit status **is the errno of the first failure**, rather than a generic 1.
-    ///
-    /// `rm(1)` promises only "a value >0", so this is a choice, and it is the one that costs
-    /// nothing and says more: a test that expected `EROFS` and got `ENOENT` has learned that the
-    /// walk stopped somewhere else than it thought. The [`super::super::dir::explain`] sentence
-    /// for that number is what the program prints as its diagnostic, so the status word and the
-    /// text a human reads come from the same decision.
-    pub const fn status(errno: i32) -> u64 {
-        errno as u64
-    }
 }
 
 /// **What the extended-attribute witness reports** (milestone 57), a bitmap for the reason every
@@ -1156,8 +1115,8 @@ pub mod attrs {
     /// on-device half of "deletion is in the same transaction as the file's": a leaked blob is
     /// not wasted space, it is somebody else's metadata on a file that never asked for it.
     pub const GONE_AFTER_UNLINK: u64 = 1 << 4;
-    /// A value past [`super::super::xattr::MAX_VALUE`] was refused with
-    /// [`super::super::xattr::E2BIG`], loudly, rather than stored short (DECISIONS §42).
+    /// A value past [`filesystem_protocol::xattr::MAX_VALUE`] was refused with
+    /// [`filesystem_protocol::xattr::E2BIG`], loudly, rather than stored short (DECISIONS §42).
     pub const OVERSIZE_REFUSED: u64 = 1 << 5;
     /// The store's directory could not be opened, created, or descended into. A client that
     /// could name it could read any file's attributes as ordinary bytes.
@@ -1190,7 +1149,7 @@ pub mod attrs {
     /// Its value: opaque bytes, which is exactly what `streams_xattr` stores.
     pub const VALUE: &[u8] = b"CRK57: an opaque byte string\n";
     /// Its type code, `'CSTR'` in BFS's spelling. Non-zero on purpose: a layer that silently
-    /// wrote [`super::super::xattr::RAW`] would pass a test whose fixture used the default.
+    /// wrote [`filesystem_protocol::xattr::RAW`] would pass a test whose fixture used the default.
     pub const KIND: u32 = 0x4353_5452;
 }
 

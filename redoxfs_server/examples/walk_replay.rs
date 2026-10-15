@@ -13,7 +13,7 @@
 use std::time::Instant;
 
 use filesystem_protocol::dir;
-use filesystem_protocol::fixture::walk as tree;
+use filesystem_fixture::walk as tree;
 use redoxfs::{DiskMemory, FileSystem};
 use redoxfs_server::walk_model::{self, Counting};
 use redoxfs_server::{CachedDisk, NameCopy, Server};

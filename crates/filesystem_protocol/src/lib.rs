@@ -314,11 +314,34 @@ pub mod nameset;
 /// not, and [`fs::SETXATTR`] answers `EINVAL` rather than truncating it.
 pub mod xattr;
 
-/// The phase-2 end-to-end test fixture, in one place so the three programs that touch it agree: the
-/// host build (`cargo xtask`, which writes these into the RedoxFS image with the host tool), the
-/// client (which reads and writes them through the FS server), and the kernel test (which asserts
-/// the client's report). Not part of either wire protocol; a shared constant, like a test vector.
-pub mod fixture;
+/// The FS server's readiness sentinel: sent once, after it has opened the RedoxFS image over blk
+/// IPC and before it serves clients. The test waits for it, so a hang in `open` (the blk path)
+/// is distinguishable from a hang in the serve/client path, and a booted-but-empty run is caught.
+///
+/// This word stayed in the protocol crate when the test fixture moved out to
+/// `filesystem_fixture` (milestone 886, calef's ruling): it is a word shipping programs send
+/// each other, and every other protocol here keeps its readiness word in its own crate
+/// (`entropy_protocol`, `byte_sink_protocol`, `login_protocol`).
+pub const READY: u64 = 0xF5_0BEEF5;
+
+/// **A caretaker's descent was refused**, sent on the same endpoint [`READY`] would have gone
+/// out on, with the errno in the second word. The caretaker then exits without serving.
+///
+/// It exists because of who waits for the handshake. Under `kernel::user::fs_service` the waiter
+/// is a test, and a caretaker that panicked instead of answering cost that test a 60-second
+/// watchdog and a legible failure. Under `system_initializer` the waiter is **init**, which is
+/// the spawn service for the whole prompt and has no other thread: a caretaker that panicked
+/// there would park init in `RECEIVE` forever and the machine would never take another command.
+/// A grant naming a directory that is not there is an ordinary thing to type, so the honest
+/// answer has to be a message rather than a corpse.
+///
+/// Name: provisional (2026-08-17, milestone 31 (a capability shell) phase 3): it names the one
+/// step that can fail before a caretaker serves anything, which is the single `OPENDIR` its
+/// whole attenuation lives in. It moved here from the fixture with [`READY`] (milestone 886).
+pub const DESCENT_REFUSED: u64 = 0xF5_0DEAD5;
+
+/// What the `rm` program reports, and how a diagnostic is told from the verdict.
+pub mod rm;
 
 #[cfg(test)]
 mod tests;

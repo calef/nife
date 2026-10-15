@@ -101,7 +101,7 @@ const SPIN_BOUND: u32 = 50_000_000;
 
 /// The bring-up step words this server reports on its readiness endpoint, in the `0xDEAD_..`
 /// shape `entropy_protocol::bringup_failure` established, so a boot transcript reads the same way
-/// across services. A report of [`filesystem_protocol::fixture::READY`] means a command went to
+/// across services. A report of [`filesystem_protocol::READY`] means a command went to
 /// the controller and came back.
 const STEP_BAD_HANDOFF: u64 = 0xDEAD_0001;
 const STEP_FIRST_READ: u64 = 0xDEAD_0002;
@@ -265,7 +265,7 @@ pub extern "C" fn _start(arg0: u64, arg1: u64, arg2: u64) -> ! {
     // the controller how it is.
     let first = plane.transfer(0, 0, false);
     let report = if first.is_ok() {
-        filesystem_protocol::fixture::READY
+        filesystem_protocol::READY
     } else {
         STEP_FIRST_READ
     };

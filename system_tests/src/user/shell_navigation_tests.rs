@@ -1,5 +1,5 @@
 use filesystem_protocol::dir;
-use filesystem_protocol::fixture::{navscape as nb, tree};
+use filesystem_fixture::{navscape as nb, tree};
 
 use super::*;
 use crate::sched;
@@ -79,7 +79,7 @@ pub(super) fn navigate(root: &'static str, run: u64) -> Option<u64> {
     let [tag, verdict, ..] = sched::ipc_receive(report);
     assert_eq!(
         tag,
-        filesystem_protocol::fixture::VERDICT,
+        filesystem_fixture::VERDICT,
         "the shell's report is not a verdict word",
     );
     Some(verdict)

@@ -233,7 +233,7 @@ pub extern "C" fn _start(name_lo: u64, name_hi: u64, spec: u64) -> ! {
         panic!();
     }
 
-    send(REPORT, filesystem_protocol::fixture::READY, 0, 0);
+    send(REPORT, filesystem_protocol::READY, 0, 0);
     serve(r0, name, grant::is_writable(spec));
 }
 

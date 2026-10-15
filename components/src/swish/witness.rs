@@ -242,7 +242,7 @@ const REPORT: u64 = 1;
 /// The lines below are literally command lines, parsed by `grant_plan::parse` and executed by
 /// [`builtin`], which is the same path the prompt takes.
 pub(super) fn navigate(spec: u64) -> ! {
-    use filesystem_protocol::fixture::{VERDICT, navscape as nb, tree};
+    use filesystem_fixture::{VERDICT, navscape as nb, tree};
     let run = filesystem_protocol::grant::spec_len(spec) as u64;
     let mut nav = Nav::rooted(filesystem_protocol::grant::spec_rights(spec));
     let mut v = 0u64;
@@ -331,7 +331,7 @@ pub(super) fn navigate(spec: u64) -> ! {
 /// [`navigate`]'s steps 1 to 4b: `pwd` and `..` at the root, then the two files reached plainly
 /// and with a leading slash.
 fn probe_root_and_reach(nav: &mut Nav, v: &mut u64) {
-    use filesystem_protocol::fixture::{navscape as nb, tree};
+    use filesystem_fixture::{navscape as nb, tree};
 
     // 1. `pwd` at the start. The root of your namespace renders as `/` because it is the root of
     //    the only namespace you have.
@@ -386,7 +386,7 @@ fn probe_root_and_reach(nav: &mut Nav, v: &mut u64) {
 
 /// [`navigate`]'s steps 5 and 6: what `ls` shows, then down one level and back.
 fn probe_listing_and_descent(nav: &mut Nav, v: &mut u64) {
-    use filesystem_protocol::fixture::{navscape as nb, tree};
+    use filesystem_fixture::{navscape as nb, tree};
 
     // 5. `ls`. A listing is a rendering of authority, so what is in it is checked and not merely
     //    counted: a name from the other shell's root appearing here would be an escape even though
@@ -418,7 +418,7 @@ fn probe_listing_and_descent(nav: &mut Nav, v: &mut u64) {
 /// [`navigate`]'s steps 8 and 9: create two files, then `UNLINK` one while still holding it.
 /// Reports and exits if either file cannot be created.
 fn probe_unlink_while_held(nav: &mut Nav, run: u64, v: &mut u64) {
-    use filesystem_protocol::fixture::{VERDICT, navscape as nb, tree};
+    use filesystem_fixture::{VERDICT, navscape as nb, tree};
 
     // 8. Two files: one that stays, so the other's absence afterwards is a fact about `rm` rather
     //    than about a shell that created nothing.
@@ -472,7 +472,7 @@ fn probe_directory_removal(
     cmd: &mut [u8; 32],
     v: &mut u64,
 ) {
-    use filesystem_protocol::fixture::{navscape as nb, tree};
+    use filesystem_fixture::{navscape as nb, tree};
 
     // 10. `UNLINK` of a **directory** is refused, and so is `RMDIR` of a directory with a name in
     //     it. Together they are the safety property this lane rests on: **no single call on this
@@ -520,7 +520,7 @@ fn probe_bind(
     cmd: &mut [u8; 32],
     v: &mut u64,
 ) {
-    use filesystem_protocol::fixture::{navscape as nb, tree};
+    use filesystem_fixture::{navscape as nb, tree};
 
     // 12. **`bind`**, milestone 47's "blocked on a second grant" closed by milestone 154: name a
     //     position this shell already reached (a directory nested inside the one it made at step
@@ -609,7 +609,7 @@ fn probe_bind(
 /// Nothing here may print: this wiring maps no terminal page, so [`print`] would fault. Every
 /// step below is one that answers in a value.
 pub(super) fn two_trees(spec: u64) -> ! {
-    use filesystem_protocol::fixture::{VERDICT, tree, twotrees as tt};
+    use filesystem_fixture::{VERDICT, tree, twotrees as tt};
     const A: u64 = 0;
     const B: u64 = 1;
     const REPORT: u64 = 2;
@@ -659,7 +659,7 @@ pub(super) fn two_trees(spec: u64) -> ! {
 /// [`two_trees`]' moves: where it starts, into the mount and out of it, and the refusals that
 /// must not move it.
 fn two_tree_moves(nav: &mut Nav) -> u64 {
-    use filesystem_protocol::fixture::{tree, twotrees as tt};
+    use filesystem_fixture::{tree, twotrees as tt};
     let mut v = 0u64;
     let inner = tree::INNER.as_bytes();
     let secret = tree::SECRET.as_bytes();
@@ -731,7 +731,7 @@ fn two_tree_moves(nav: &mut Nav) -> u64 {
 /// [`two_trees`]' per-command grants, planned and opened under the mount. Its own frame because
 /// each planned `Endowment` is a kilobyte or more in a debug build.
 fn two_tree_grants(nav: &mut Nav) -> u64 {
-    use filesystem_protocol::fixture::{tree, twotrees as tt};
+    use filesystem_fixture::{tree, twotrees as tt};
     let mut v = 0u64;
 
     if let Ok(g) = grant_plan::redirect_target(b"/second/secret", holdings(nav), false)
@@ -761,7 +761,7 @@ fn two_tree_grants(nav: &mut Nav) -> u64 {
 /// [`two_trees`]' `rm` step, alone in its frame and called from [`two_trees`] itself, because the
 /// planner under it is the deepest chain this witness reaches and nothing else should sit under it.
 fn two_tree_rm(nav: &mut Nav) -> u64 {
-    use filesystem_protocol::fixture::twotrees as tt;
+    use filesystem_fixture::twotrees as tt;
     if let Command::Run(rspec) = grant_plan::parse(b"rm /second/secret")
         && let Ok(e) =
             grant_plan::plan(&rspec, holdings(nav), grant_plan::expand::Expansion::none())
@@ -833,7 +833,7 @@ impl Text {
 /// direction: a pattern that matched nothing, a pattern where one cannot mean anything, and a line
 /// with no pattern in it at all.
 pub(super) fn globbing(spec: u64) -> ! {
-    use filesystem_protocol::fixture::{VERDICT, globscape as gb, tree};
+    use filesystem_fixture::{VERDICT, globscape as gb, tree};
     let mut nav = Nav::rooted(filesystem_protocol::grant::spec_rights(spec));
     let mut v = 0u64;
 
@@ -973,7 +973,7 @@ fn open_dir(nav: &Nav, name: &[u8]) -> Option<u64> {
 /// no-op half. A `touch` that truncated what it found would satisfy the first check and fail this
 /// one, which is why the two are chained with early returns rather than nested as one question.
 fn touch_twice(nav: &mut Nav, touched: &([u8; 16], usize), cmd: &mut [u8; 32], v: &mut u64) {
-    use filesystem_protocol::fixture::{navscape as nb, tree};
+    use filesystem_fixture::{navscape as nb, tree};
 
     let Some(Say::Nothing) = run_line(nav, line(cmd, b"touch ", touched)) else {
         return;
@@ -1023,9 +1023,9 @@ fn touch_twice(nav: &mut Nav, touched: &([u8; 16], usize), cmd: &mut [u8; 32], v
 /// Two claims, and they are chained deliberately (early return on the first) because the second
 /// is only meaningful once the first held: `TOUCH_MTIME_ADVANCED` establishes what "the mtime
 /// this file had a moment ago" is, and `TOUCH_AT_ROUND_TRIPPED` is checked against *that*
-/// value, not against zero (`filesystem_protocol::fixture::navscape`).
+/// value, not against zero (`filesystem_fixture::navscape`).
 fn touch_mtime_probes(nav: &mut Nav, touched: &([u8; 16], usize), v: &mut u64) {
-    use filesystem_protocol::fixture::{navscape as nb, tree};
+    use filesystem_fixture::{navscape as nb, tree};
 
     let Some(before) = mtime_of(nav, name_of(touched)) else {
         return;
@@ -1081,7 +1081,7 @@ fn touch_mtime_probes(nav: &mut Nav, touched: &([u8; 16], usize), v: &mut u64) {
 /// `SETTIME`, one level below the shell's own root, and both mtime verbs are sent straight to it.
 fn touch_mtime_without_settime(nav: &Nav, name: &[u8], v: &mut u64) {
     use filesystem_protocol::dir;
-    use filesystem_protocol::fixture::navscape as nb;
+    use filesystem_fixture::navscape as nb;
 
     let narrow_rights = dir::ALL & !dir::SETTIME;
     let r = nav.name_call(fs::MKDIR, nav.here(), name, narrow_rights);
@@ -1102,7 +1102,7 @@ fn touch_mtime_without_settime(nav: &Nav, name: &[u8], v: &mut u64) {
             fs::SETMTIME_AT,
             dir_handle,
             inner,
-            filesystem_protocol::fixture::tree::NAV_TOUCH_AT_UNIX,
+            filesystem_fixture::tree::NAV_TOUCH_AT_UNIX,
         ) < 0
         {
             *v |= nb::TOUCH_AT_REFUSED_WITHOUT_SETTIME;

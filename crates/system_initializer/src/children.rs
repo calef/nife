@@ -154,7 +154,7 @@ pub(super) fn build_caretaker(
     // it will reach through the handle that one request minted.
     let (verdict, _, _) = receive(ready);
     cap_delete(ready);
-    if verdict == filesystem_protocol::fixture::READY {
+    if verdict == filesystem_protocol::READY {
         Some(narrow_ep)
     } else {
         // A refused descent. The caretaker has already exited; the endpoint goes back, and the

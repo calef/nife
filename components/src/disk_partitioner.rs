@@ -13,7 +13,7 @@
 //! | [`ROLE_VERIFY`] | read the disk back and report what is on it |
 //!
 //! `ROLE_VERIFY` is a separate process with no entropy endpoint, so "the refusal wrote nothing" is a
-//! reading, not an assertion. The layout is `filesystem_protocol::fixture::blank`, 2048-block
+//! reading, not an assertion. The layout is `filesystem_fixture::blank`, 2048-block
 //! aligned; placement is this program's policy, which the partition-table crate refuses to make.
 //! Every block is read before the table is laid over it: the primary table is 34 logical blocks and
 //! a transfer is eight, so writing whole transfer blocks would zero the start of a partition.
@@ -46,7 +46,7 @@
 #![allow(missing_docs)]
 #![no_main]
 
-use filesystem_protocol::fixture::blank;
+use filesystem_fixture::blank;
 use filesystem_protocol::{blk, req};
 use globally_unique_identifier_partition_table::entry::{Entry, NAME_UNITS};
 use globally_unique_identifier_partition_table::guid::types;

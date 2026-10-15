@@ -213,12 +213,12 @@ fn the_redoxfs_server_serves_redoxfs_over_a_capability_contract() {
     let [head, status, attrs, ..] = sched::ipc_receive(report);
     assert_eq!(
         status,
-        filesystem_protocol::fixture::SUCCESS,
+        filesystem_fixture::SUCCESS,
         "the client did not report success: a check in the read or write path failed",
     );
     assert_eq!(
         &head.to_le_bytes()[..],
-        &filesystem_protocol::fixture::MOTD[..8],
+        &filesystem_fixture::MOTD[..8],
         "the client read the wrong motd bytes off the RedoxFS image",
     );
     // Milestone 57: the same attribute witness, the same exact expected set. The layer is the
@@ -269,7 +269,7 @@ fn a_read_only_per_file_grant_survives_an_attacker() {
 /// test's control here too). See the aarch64 twin.
 #[test_case]
 fn a_writable_per_file_grant_writes_that_file_and_still_only_that_file() {
-    use filesystem_protocol::fixture::escape;
+    use filesystem_fixture::escape;
     let Some(verdict) = attack_a_grant(
         filesystem_protocol::grant::READ | filesystem_protocol::grant::WRITE,
         true,
@@ -294,9 +294,9 @@ fn attack_a_grant(rights: u64, writable: bool) -> Option<u64> {
         program("fs_test_client").expect("no fs_test_client program in the initial ramdisk"),
         fs_service::Grant {
             name: if writable {
-                filesystem_protocol::fixture::SCRATCH_NAME
+                filesystem_fixture::SCRATCH_NAME
             } else {
-                filesystem_protocol::fixture::MOTD_NAME
+                filesystem_fixture::MOTD_NAME
             },
             rights,
             role: 2, // ROLE_ATTACKER
@@ -313,7 +313,7 @@ fn attack_a_grant(rights: u64, writable: bool) -> Option<u64> {
     let [tag, verdict, ..] = sched::ipc_receive(report);
     assert_eq!(
         tag,
-        filesystem_protocol::fixture::VERDICT,
+        filesystem_fixture::VERDICT,
         "the attacker's report is not a verdict word",
     );
     Some(verdict)

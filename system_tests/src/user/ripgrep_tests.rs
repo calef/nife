@@ -151,7 +151,7 @@ fn run_confined(
         program("redoxfs_server").expect("no redoxfs_server program in the initial ramdisk"),
         caretaker_image(),
         image,
-        filesystem_protocol::fixture::walk::ROOT,
+        filesystem_fixture::walk::ROOT,
         rights,
         line.map(str::as_bytes),
     )?;
@@ -259,7 +259,7 @@ fn a_walk_through_a_confined_grant_is_priced() {
     use core::fmt::Write;
 
     use filesystem_protocol::dir;
-    use filesystem_protocol::fixture::walk as tree;
+    use filesystem_fixture::walk as tree;
     skip_without_the_walk!();
     let mut got = [0u8; 2048];
     let Some(len) = walk_with(dir::ENUMERATE | dir::READ | dir::DESCEND, &mut got) else {
@@ -313,7 +313,7 @@ fn a_walk_through_a_confined_grant_is_priced() {
 #[test_case]
 fn a_walk_through_a_bound_grant_is_priced() {
     use filesystem_protocol::dir;
-    use filesystem_protocol::fixture::walk as tree;
+    use filesystem_fixture::walk as tree;
     skip_without_the_walk!();
     let Some(spawned) = fs_service::start_std_bound(
         block_server_image(),
@@ -364,7 +364,7 @@ fn a_walk_through_a_bound_grant_is_priced() {
 /// and after the grant is taken back even its own root is gone.
 #[test_case]
 fn a_bound_grant_reaches_nothing_outside_it() {
-    use filesystem_protocol::fixture::walk as tree;
+    use filesystem_fixture::walk as tree;
     use filesystem_protocol::{dir, fs};
     skip_without_the_walk!();
     let Some(grant) = fs_service::bind_subtree(
@@ -404,13 +404,13 @@ fn a_bound_grant_reaches_nothing_outside_it() {
     );
     assert_eq!(call(fs::req(fs::CLOSE, h as u64, 0), 0, b), 0);
 
-    let len = stage(filesystem_protocol::fixture::MOTD_NAME);
+    let len = stage(filesystem_fixture::MOTD_NAME);
     assert_eq!(
         call(fs::req(fs::OPEN, fs::ROOT, len), dir::READ, b),
         -2,
         "the image root's motd is not in the subtree, so it is not there (ENOENT)",
     );
-    let len0 = stage_in(grant.shared, filesystem_protocol::fixture::MOTD_NAME);
+    let len0 = stage_in(grant.shared, filesystem_fixture::MOTD_NAME);
     let theirs = call(fs::req(fs::OPEN, fs::ROOT, len0), dir::READ, 0);
     assert!(
         theirs >= 0,
@@ -522,7 +522,7 @@ impl Line {
 #[test_case]
 fn ripgrep_searches_the_tree_it_was_granted() {
     use filesystem_protocol::dir;
-    use filesystem_protocol::fixture::walk as tree;
+    use filesystem_fixture::walk as tree;
     skip_without_rg!();
     let mut got = [0u8; 8192];
     let Some(len) = rg_with(
@@ -570,7 +570,7 @@ fn ripgrep_searches_the_tree_it_was_granted() {
 #[test_case]
 fn ripgrep_without_enumerate_is_refused_rather_than_empty() {
     use filesystem_protocol::dir;
-    use filesystem_protocol::fixture::walk as tree;
+    use filesystem_fixture::walk as tree;
     skip_without_rg!();
     let mut got = [0u8; 8192];
     let Some(len) = rg_with(dir::READ | dir::DESCEND, tree::RG_SEARCH, &mut got) else {
@@ -605,7 +605,7 @@ fn ripgrep_without_enumerate_is_refused_rather_than_empty() {
 #[test_case]
 fn ripgrep_reaches_a_named_file_without_enumerate() {
     use filesystem_protocol::dir;
-    use filesystem_protocol::fixture::walk as tree;
+    use filesystem_fixture::walk as tree;
     skip_without_rg!();
     let mut got = [0u8; 1024];
     let Some(len) = rg_with(dir::READ | dir::DESCEND, tree::RG_NAMED, &mut got) else {
