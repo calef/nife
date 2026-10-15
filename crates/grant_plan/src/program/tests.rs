@@ -178,3 +178,14 @@ fn same_bytes_is_equality_of_length_and_every_byte() {
     assert!(!same_bytes(b"abc", b"ab"));
     assert!(!same_bytes(b"ba", b"aa"));
 }
+
+/// **`jig` resolves names in the root zone and no other program resolves any** (milestone 892 (a
+/// std program at the prompt holds the network and a resolver), calef's ruling Q5 on #1884). The
+/// table is the whole of who may resolve, since an installed manifest cannot carry a zone.
+#[test]
+fn only_jig_has_a_resolver_zone_and_it_is_the_root() {
+    for &p in Prog::ALL {
+        let expected = if p == Prog::Jig { Some("") } else { None };
+        assert_eq!(p.resolver_zone(), expected, "{}", p.name());
+    }
+}

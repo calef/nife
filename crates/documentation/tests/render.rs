@@ -1131,3 +1131,12 @@ fn a_line_with_fewer_markers_than_the_fence_was_opened_at_is_not_over_read() {
     let out = plain(">> ```text\n>\n>> x\n>> ```\n", 40);
     assert!(out.contains('x'), "{out:?}");
 }
+
+#[test]
+fn an_empty_one_column_table_still_ends_each_of_its_lines() {
+    // A column whose every cell is empty has width zero, so only the margin moves the output
+    // column off zero. `close_line` ends a line only when the column is past zero, so a cell or
+    // rule that scaled the column by its width, rather than adding the width, would run the rows
+    // together.
+    assert_eq!(plain("| |\n|-|\n| |\n", 80), "  \n  \n  \n");
+}

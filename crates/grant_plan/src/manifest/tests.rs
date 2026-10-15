@@ -13,6 +13,22 @@ fn word_rights_are_the_filesystem_contracts() {
     assert_eq!(WordGrant::Create.rights(), read | dir::WRITE | dir::CREATE);
 }
 
+/// **The index store opens its directory with exactly a word grant's rights**: none when
+/// forbidden, read-only's for `jig list` and `jig install`, and create's for `jig update`, whose
+/// first run makes the copy. Pinned against the filesystem contract's bits, so a reading verb
+/// that could write, or a writing one that could not create, fails here.
+#[test]
+fn the_index_store_opens_with_a_word_grants_rights() {
+    use filesystem_protocol::dir;
+    let read = dir::ENUMERATE | dir::READ | dir::DESCEND;
+    assert_eq!(IndexStore::Forbidden.rights(), None);
+    assert_eq!(IndexStore::ReadOnly.rights(), Some(read));
+    assert_eq!(
+        IndexStore::ReadWrite.rights(),
+        Some(read | dir::WRITE | dir::CREATE)
+    );
+}
+
 // ---- survivor triage of the 2026-10-03 census ---------------------------------------------
 
 /// An option set is at most sixteen distinct letters or digits, and sixteen is allowed.

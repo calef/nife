@@ -99,8 +99,18 @@ fn non_errors_decode_to_none() {
 /// enumerates is a claim about a set, and it rots exactly like prose does.**
 #[test]
 fn rights_are_distinct_single_bits() {
-    use super::rights::{ENUMERATE, GRANT, READ, WRITE};
-    assert_eq!([READ, WRITE, GRANT, ENUMERATE], [1, 2, 4, 8]);
+    use super::rights::{BIND, ENUMERATE, GRANT, READ, WRITE};
+    assert_eq!([READ, WRITE, GRANT, ENUMERATE, BIND], [1, 2, 4, 8, 16]);
+}
+
+/// **`ALL` is every right and `SPEND_ONLY` is every right but `GRANT`**, as numbers. The kernel's
+/// compile-time twin check runs only in a kernel build, so on the host nothing else would see a
+/// budget minted with a right missing, or a leaf's budget that could still lend.
+#[test]
+fn all_is_every_right_and_spend_only_lacks_grant_alone() {
+    use super::rights::{ALL, SPEND_ONLY};
+    assert_eq!(ALL, 0b1_1111);
+    assert_eq!(SPEND_ONLY, 0b1_1011);
 }
 
 /// The fault-endpoint slot is a valid slot index. Its value is `CAPABILITY_TABLE_SLOTS - 1` by

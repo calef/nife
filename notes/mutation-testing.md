@@ -8,8 +8,8 @@ if the line were wrong.
 
 It is a report, not a gate, until the weekly numbers deserve one.
 
-This page is enough to run the tool, read its numbers and triage a survivor. The per-crate history,
-and how each number got to where it is, lives in the [appendices](#appendices).
+This page is enough to run the tool, read its numbers and triage a survivor. The per-crate history
+lives in the [appendices](#appendices).
 
 ## Running it
 
@@ -21,7 +21,7 @@ $ script/mutation-census --add-run <id>   # record a green weekly run in the tre
 $ script/mutation-census --compare 2026-09-19 2026-09-21
 ```
 
-A full local run takes hours. The weekly `mutation testing` workflow (`.github/workflows/mutation.yml`)
+A full local run takes hours. The weekly workflow (`.github/workflows/mutation.yml`)
 runs the same command eight-way sharded with `--sharding round-robin`, so each shard is a uniform
 sample of every crate.
 
@@ -289,3 +289,4 @@ architect's.
 | [inflow-2026-10-03](mutation-testing/inflow-2026-10-03.md) | survivors merged pull requests added on their own lines, and whether anything triages them | 2026-10-03: 600 since 09-21; no weekly report exists |
 | [inflow-2026-10-12-triage](mutation-testing/inflow-2026-10-12-triage.md) | both failed inflow jobs, triaged | 2026-10-12: 710 keys |
 | [census-2026-10-12-residue](mutation-testing/census-2026-10-12-residue.md) | the 2026-10-12 residue | 2026-10-14 |
+| [inflow-2026-10-14-triage](mutation-testing/inflow-2026-10-14-triage.md) | the 2026-10-14 inflow | 44 keys |

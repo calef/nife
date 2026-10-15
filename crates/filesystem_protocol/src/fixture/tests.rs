@@ -344,6 +344,27 @@ fn the_wide_directory_names_are_n_and_three_digits() {
     assert_eq!(&wide_name(987), b"n987");
 }
 
+/// **The match list's three regions meet where the shape says**, spelled out by hand: the chain's
+/// top and bottom, the wide directory's first and last, and the narrow file. The kernel harness and
+/// the host's `rg` both compare against [`fixture::walk::rg_match_path`], so a wrong path here
+/// would be agreed on by both sides and fail neither.
+#[test]
+fn the_rg_match_paths_meet_at_the_region_boundaries() {
+    use fixture::walk::*;
+    let path = |i| {
+        let mut buf = [0u8; 32];
+        let len = rg_match_path(i, &mut buf);
+        std::string::String::from_utf8(buf[..len].to_vec()).unwrap()
+    };
+    assert_eq!(path(0), "chain/f");
+    assert_eq!(path(1), "chain/c/f");
+    assert_eq!(path(8), "chain/c/c/c/c/c/c/c/c/f");
+    assert_eq!(path(9), "wide/n000");
+    assert_eq!(path(10), "wide/n001");
+    assert_eq!(path(136), "wide/n127");
+    assert_eq!(path(137), "narrow/n000");
+}
+
 /// What a full walk of the priced tree must find, derived by hand from the shape: four region
 /// directories and eight chain levels below the first make 12 directories; nine chain files, 128
 /// wide, one narrow and three sized make 141 files. The programs assert their counts against

@@ -753,3 +753,56 @@ fn a_manifest_note_names_the_kind_of_output_it_asks_for() {
     assert!(asks(OutputSpec::Silent).contains("asks for: no output"));
     assert!(asks(OutputSpec::Bytes).contains("asks for: output bytes"));
 }
+
+/// **A slot number's column is three wide**, so the kind after it lines up: two spaces after a
+/// one-digit slot and one after a two-digit one, 10 being the first.
+#[test]
+fn a_slot_column_pads_one_and_two_digit_slots_to_one_width() {
+    assert_eq!(shown(|o| write_slot(9, o)), "    cap 9  ");
+    assert_eq!(shown(|o| write_slot(10, o)), "    cap 10 ");
+}
+
+/// **The index store's rows say what the verb gets** (milestone 801 (packages over the
+/// internet)): `jig update` the copy read and written, `jig list` read only, and both at the
+/// directory slot with the sources page. A line that designates a directory of its own takes
+/// that slot, so the store is not printed there.
+#[test]
+fn the_jig_preview_shows_the_index_store_the_verb_holds_and_yields_it_to_a_designated_directory() {
+    let preview = |line: &[u8]| {
+        shown(|o| {
+            write_capabilities(
+                line,
+                128,
+                Holdings::default(),
+                None,
+                None,
+                &mut |_| Ok(NameSet::empty()),
+                o,
+            );
+        })
+    };
+    let update = preview(b"jig update");
+    assert!(
+        update.contains("cap 4  endpoint  dir      /activation/indexes  read and write."),
+        "{update}"
+    );
+    assert!(
+        update.contains("cap 18 frame     sources  read-only."),
+        "{update}"
+    );
+    let list = preview(b"jig list");
+    assert!(
+        list.contains("cap 4  endpoint  dir      /activation/indexes  read-only."),
+        "{list}"
+    );
+    let mut designated = endowment(Prog::Jig);
+    designated.dir = Some(grant_plan::DirGrant {
+        which: grant_plan::nav::Which::A,
+        dir: Cwd::root(),
+        names: listing(&[b"x.nifepkg"]),
+        subtree: false,
+    });
+    let own = shown(|o| write_preview(&designated, &Holdings::default(), None, o));
+    assert!(!own.contains("/activation/indexes"), "{own}");
+    assert!(!own.contains("sources"), "{own}");
+}

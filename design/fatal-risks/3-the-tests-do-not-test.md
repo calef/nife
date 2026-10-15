@@ -69,5 +69,8 @@ Both inflow lists are triaged, 710 keys with 554 killed, 153 equivalent and 3 ga
 2026-10-12 census that neither list named, 102 mutants, are triaged too: 13 killed and 48
 equivalent ([residue](../../notes/mutation-testing/census-2026-10-12-residue.md)). Of the 16 gaps
 recorded before that, 9 are now killed, 2 are equivalent and 5 remain. Run
-[38654094250](https://github.com/nifeos/nife/actions/runs/38654094250), dispatched 2026-10-14
-23:26 UTC, is the census that measures this; it is pending.
+[38654094250](https://github.com/nifeos/nife/actions/runs/38654094250), 2026-10-14: 98 crates,
+20,065 mutants, 18,588 viable, 752 missed, 296 timeouts, 96.0% killed. Its inflow job listed 45 new
+keys on lines merged pull requests wrote, 43 of them untriaged. Those 43 and one unattributed key
+are triaged: 36 killed and 8 equivalent
+([inflow triage](../../notes/mutation-testing/inflow-2026-10-14-triage.md)).

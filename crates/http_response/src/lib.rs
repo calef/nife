@@ -533,4 +533,14 @@ mod tests {
         assert_eq!(roomy.feed(&head), Ok(&b""[..]));
         assert_eq!(roomy.status(), Some(302));
     }
+
+    /// A head that fills the reader's buffer to its last byte is accepted, so its headers must be
+    /// readable too: the lookup's slice ends inside the buffer even when nothing is left over.
+    #[test]
+    fn a_head_that_exactly_fills_the_buffer_still_answers_header() {
+        const HEAD: &[u8] = b"HTTP/1.1 302 Found\r\nLocation: /p\r\nContent-Length: 0\r\n\r\n";
+        let mut r = Response::<{ HEAD.len() }>::with_room();
+        assert_eq!(r.feed(HEAD), Ok(&b""[..]));
+        assert_eq!(r.header(b"location"), Some(&b"/p"[..]));
+    }
 }
