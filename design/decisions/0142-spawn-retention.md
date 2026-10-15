@@ -10,13 +10,7 @@ ratified_by: calef
 Answered 2026-09-03 by calef, after working the options through in
 conversation: R4 declaring R0. Retention becomes a declared field on `ChildEndowment`, and what it
 declares today is what the tree already does, which is retain nothing. The reasoning, including why
-this unblocks milestone 133 rather than deferring it, is in "The decision" at the end. Written 2026-09-03 by the research lane `maintainer/research-spawn-retention`,
-which was asked for options and costs and is forbidden to pick. *(The number 141 is **provisional**,
-and it is knowingly contended: `maintainer/decision-141-application-is-grant` was also holding 141
-when this was written, found by listing remote branches before briefing. It is numbered 141 here
-anyway because `script/decisions --check` fails on a gap, so a lane cannot reserve a number by
-skipping one. The integrator mints the real one at merge, per AGENTS.md, and one of the two will be
-renumbered.)*
+this unblocks milestone 133 rather than deferring it, is in "The decision" at the end.
 
 No recommendation, deliberately. This is upstream of a syscall-surface question and it is itself
 a convention every future spawn path is written against, so it sits in the *move fast on what can be
@@ -263,9 +257,8 @@ say rather than to thirty call sites and an unwritten habit. So the two are not 
 
 - Proposal A makes `MemoryRegion::DESTROY` finish what it starts, so a hung component's region
   becomes reclaimable. That is the capacity problem this whole area exists for.
-- The stranded-caller half, split out of milestone 133 onto
-  `maintainer/mint-254-stranded-caller` and not yet on `main`, frees its stranded callers: `Gone`
-  does not reach a reply-parked caller today, so a server that merely died strands them too.
+- Milestone 254 (a caller stranded by a server that died is stranded forever) frees the stranded
+  callers: they wake with `abi::Error::Gone`, so a server that merely died does not strand them.
 - Together they close the compounding: one hang stops costing one region per caller in flight, and
   stops costing the one.
 

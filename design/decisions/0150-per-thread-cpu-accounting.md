@@ -12,13 +12,11 @@ window this section named, by §204 (how userspace asks where a thread runs), wh
 widened `SURVEY` return with a selector. Everything else here stands: tick-sampled, per-thread,
 scheduled on-CPU time is unchanged, and only how the figure reaches a reader moved.
 
-Raised as a fork on 2026-08-26 by the lane of milestone 126 (who else is running, and who is
-allowed to ask), investigated rather than built because it crosses the syscall surface. Ruled
-option 2, scheduled on-CPU time, when the maintainer surfaced the fork while ratifying names.
-*(Number provisional until the merge queue lands it.)*
+It crosses the syscall surface, so it is decided here rather than built on the way past. Ruled
+option 2, scheduled on-CPU time.
 
-What was blocked: `top`, entirely. Nothing else in milestone 126 depended on it. It is
-unblocked now, as milestone 282.
+What it unblocks: `top`, which is milestone 282 (a thread's CPU time, and the `top` it makes
+possible). Nothing else in milestone 126 (who else is running, and who is allowed to ask) depends on it.
 
 ## The premise the fork had to correct first
 

@@ -5,12 +5,8 @@ raised: 2026-09-05
 
 # 146. Archive and compression: which pieces we write, which we take, and which we refuse
 
-*Amended 2026-09-26: rule text says "an architect" where it said calef, per §217 (every architect
-holds the whole role). Records and quotations keep his name.*
-
 Raised by calef, 2026-09-05, on being told no milestone covered archive
 utilities: *"Mint it. However we should debate write it and vendor it for each piece."*
-*(Section number provisional until the merge queue lands it.)*
 
 This is [§46](0046-dependency-rule.md) applied piece by piece, not a new rule.
 §46's test is already written and this section's job is to run it honestly on seven candidates and

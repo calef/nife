@@ -11,10 +11,8 @@ Reopened and reversed 2026-09-15. The original ruling (calef, 2026-08-25, *"Rati
 permanently"*) stood on a premise the boot-to-a-prompt goal has since falsified; calef reversed it to
 option 1, the port-range capability, on 2026-09-15, on this file's own named trigger. The
 reasoning below is kept as the record of what was decided and why it held while it held; the reversal
-is the last section. Raised 2026-08-23 by milestone 161's
-lane, which found it while wiring the x86_64 console and could not decide it: what a capability *is*
-is the centre of this system's claim, not an implementation choice a lane makes on the way past. The
-number is **provisional**, minted by a lane against the current README rather than by an integrator.
+is the last section. What a capability *is* is the centre of this system's claim, not an
+implementation choice a lane makes on the way past.
 
 What is blocked: nothing today, and one thing soon. Milestone 161's boot is entirely in ring 0,
 so the kernel drives COM1 directly and no grant is needed. What is blocked is a userspace console

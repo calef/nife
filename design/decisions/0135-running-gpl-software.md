@@ -15,8 +15,7 @@ amendments below. Raised the same day, from the question of whether to delete th
 implementation: *"Isn't delivering GPL software on nife as stand alone programs a worth
 demonstration in itself? There is a lot of GPL software we would want to run."* And then the
 sharpening that changed the answer: *"does GPL and LGPL need to be shipped in an image as
-aggregation? Can't it be installed through our to be delivered package manager?"* *(Section number
-provisional until the merge queue lands it.)*
+aggregation? Can't it be installed through our to be delivered package manager?"*
 
 <!-- writing-standards: exception. Marked 2026-09-27 (UTC) by the maintainer recording calef's
      GPL-packages amendment, below. Reason: this edit only appends an amendment section; the
@@ -77,8 +76,8 @@ GPL programs, and nothing in it should be read as refusing them.
 
 ## The delivery channel, which is calef's correction and the better answer
 
-The first draft of this section said GPL programs ship in the image as aggregation. **That is legal
-and it is not the right default**, because aggregation still makes nife the distributor, with every
+Shipping GPL programs in the image as aggregation **is legal and it is not the right default**,
+because aggregation still makes nife the distributor, with every
 obligation that follows: offering source for what we ship, and under GPLv3 supplying installation
 information as well.
 
@@ -171,8 +170,7 @@ Requires.
 ## What was refused
 
 Shipping GPL in a conveyed image as the default. Legal, and it makes nife the distributor for no
-gain once a package manager exists. The first draft kept it as the interim answer; amendment 1
-retired the need for one, so it is now simply refused.
+gain once a package manager exists.
 
 Refusing GPL software outright, which is where the tree's instinct was drifting. It would forfeit
 `git`, `nano`, and most of the corpus milestone 123 (the demonstration: somebody else's software,

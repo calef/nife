@@ -8,8 +8,8 @@ ratified_by: calef
 # 152. The port-range capability: object and method semantics on the syscall surface
 
 calef, 2026-09-15, ratified the object, its one method, and the x86-only scope
-together, when milestone 299 landed the working driver behind them. **Number provisional**, minted by a
-lane against the current README; the integrator renumbers if the merge queue collides it. This section
+together, when milestone 299 (the x86 port-range capability) landed the working driver behind
+them. This section
 records the one thing milestone 299 puts on the capability surface, because a new object type there is
 calef's to ratify (§10, §16) and the *move fast on what can be undone* tenet files the syscall surface
 under the irreversible category. **The provisional names for the object, its method, and their fields

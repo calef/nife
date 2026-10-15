@@ -7,11 +7,7 @@ ratified_by: calef
 
 # 140. The words a finished milestone may use to say what happened to the work it named
 
-*Amended 2026-09-26: rule text says "an architect" where it said calef, per §217 (every architect
-holds the whole role). Records and quotations keep his name.*
-
-Ratified 2026-09-03 by calef, who took the vocabulary as it stands: *"Ratify proposed."* The seven words are the gate's, and `Proposed.` is the one he was asked about. *(Number provisional. Section numbers are the integrator's at merge, per
-AGENTS.md, and this one was written by the milestone 247 lane.)*
+Ratified 2026-09-03 by calef, who took the vocabulary as it stands: *"Ratify proposed."* The seven words are the gate's, and `Proposed.` is the one he was asked about.
 
 ## What is being decided
 

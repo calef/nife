@@ -42,10 +42,6 @@ nothing to forget.
 
 ## Amended 2026-09-26: `user suspend` and `user resume`
 
-*Amendment provisional until the merge queue lands it, since it was recorded in one pull request
-with four provisionally numbered sections. Recorded by the maintainer at 18:35Z and corrected at 18:37Z;
-those are times of recording, not of the rulings.*
-
 calef, 2026-09-26 (UTC): *"user suspend and user resume"*. This answers the trigger this section left
 open below. The fork was raised by the lane for milestone 152 (authority that outlives the session
 that requested it) as the second question in `notes/durable-delegation.md`. That note lands with

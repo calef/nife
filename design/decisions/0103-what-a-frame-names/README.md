@@ -9,13 +9,10 @@ its measured costs, moved word for word on 2026-10-12 (UTC) and grouped by the o
 - [`large-frames.md`](large-frames.md): option D.
 - [`one-page-frames.md`](one-page-frames.md): options B and C.
 
-*Name: provisional, minted 2026-10-12 (UTC) by maintainer/prose-budget-paydown, which split the
-parent under §212 (a prose budget). The directory follows §212's siting default. calef names
+*Name: provisional. The directory follows §212 (a prose budget)'s siting default. calef names
 directories.*
 
-- `frame-runs` Name: provisional, minted 2026-10-12 (UTC) by maintainer/prose-budget-paydown, for
-  option A's reading and costs. calef names files.
-- `large-frames` Name: provisional, minted 2026-10-12 (UTC) by maintainer/prose-budget-paydown, for
-  option D's reading and costs. calef names files.
-- `one-page-frames` Name: provisional, minted 2026-10-12 (UTC) by maintainer/prose-budget-paydown,
-  for options B and C, which keep a `Frame` one page. calef names files.
+- `frame-runs` Name: provisional. For option A's reading and costs. calef names files.
+- `large-frames` Name: provisional. For option D's reading and costs. calef names files.
+- `one-page-frames` Name: provisional. For options B and C, which keep a `Frame` one page. calef
+  names files.

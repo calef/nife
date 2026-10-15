@@ -9,10 +9,7 @@ ratified_by: calef
 
 calef, 2026-09-19 (16:32 UTC), in conversation with the maintainer: *"Yes, drop
 MILESTONE 23 from the gate"*, as recommended below. Milestone 198's gate now reads `DECISION` alone.
-*(Section number provisional until the merge queue lands it.)* Proposed the same day by milestone
-198's scoping lane (`milestone/198-package-manager-scoping`) as
-`design/roadmap/proposals/what-the-package-manager-waits-on.md`, and moved here by the maintainer
-when calef ruled. The text below is the proposal as he ruled on it.
+The text below is the proposal as he ruled on it.
 
 What it changes. Milestone 198's `Gate:` line reads `DECISION` alone, naming the format,
 activation and trust forks in the sibling proposals as the decisions it waits on. Milestone 39's gate

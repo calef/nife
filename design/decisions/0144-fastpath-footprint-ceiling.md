@@ -13,17 +13,12 @@ decided, not built). Bringing a 1,200-word section to 4 bold spans per 1,000 wor
 the section's owner, not something to hide inside a correction (the measured class is recorded in
 design/roadmap/0586-a-prose-ratchet-in-lint.md). Remove this marker when that rewrite lands. -->
 
-*Amended 2026-09-26: rule text says "an architect" where it said calef, per §217 (every architect
-holds the whole role). Records and quotations keep his name.*
-
-*Amended 2026-10-03 (correction): the delta against main below is decided and not built. Until
-milestone 336 (design/roadmap/0336-fastpath-footprint-against-main.md, NOT-STARTED) the gate still
-compares against `bench/fastpath-*.txt`, which is why those files and their re-saves exist.
-Correction recorded by the maintainer session 2026-10-03, found by the #1505 lane. No ruling text
-changed.*
+*The delta against main below is decided and not built. Until milestone 336
+(design/roadmap/0336-fastpath-footprint-against-main.md, NOT-STARTED) the gate compares against
+`bench/fastpath-*.txt`, which is why those files and their re-saves exist.*
 
 calef, 2026-09-04, after three failures of the stored-baseline design in three
-days. *(Number provisional until the merge queue lands it.)*
+days.
 
 ## What is being decided
 
@@ -41,19 +36,16 @@ to re-record. This replaces the baseline files.
 Plus an absolute ceiling of 16 KiB, per architecture, on `script/fastpath-footprint`'s `total`.
 Only an architect raises it.
 
-Amended 2026-09-04, the same day, because milestone 188 moved both terms this sentence named. It
-read "on the sum of `ipc_fastpath` and `syscall_entry`", and phases 1 to 3 of milestone 188 (the IPC
-fastpath: the gate measures a shape userspace does not use) changed what each of those is:
+`total` follows phases 1 to 3 of milestone 188 (the IPC fastpath: the gate measures a shape
+userspace does not use):
 
-- `ipc_fastpath` measured the SEND/RECV shape, which essentially no service in this tree runs.
-  The gate now reports `ipc_send_recv` and `ipc_call_reply` separately and takes the worse of the
-  two, since one round trip is one shape or the other.
-- **aarch64's `syscall_entry` counted all sixteen exception-vector entries** where an `svc` fetches
-  one, so 1,892 of its 3,304 bytes were never fetched.
+- The gate reports `ipc_send_recv` and `ipc_call_reply` separately and takes the worse of the two,
+  since one round trip is one shape or the other.
+- aarch64's `syscall_entry` counts the one 128-byte exception-vector entry an `svc` fetches, not
+  all sixteen (`ENTRY_SLICE`).
 
-So the ceiling's subject is `max(ipc_send_recv, ipc_call_reply) + syscall_entry`, which is what the
-script now prints as `total`. That is the same claim this section already made, evaluated on
-numbers that are true.
+So the ceiling's subject is `max(ipc_send_recv, ipc_call_reply) + syscall_entry`, which the script
+prints as `total`.
 
 ## Why a delta alone is not enough
 

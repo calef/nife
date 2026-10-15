@@ -9,11 +9,10 @@ the `BUGS`. A reader can act on it without opening anything here.
 - [`format-history.md`](format-history.md): the patch spellings weighed before the unified diff, and
   what each later amendment found in the tree.
 
-*Name: provisional, minted 2026-10-12 (UTC) by maintainer/prose-budget-paydown, which split the
-parent under §212 (a prose budget). The directory follows §212's siting default. calef names
+*Name: provisional. The directory follows §212 (a prose budget)'s siting default. calef names
 directories.*
 
-- `background` Name: provisional, minted 2026-10-12 (UTC) by maintainer/prose-budget-paydown, for
-  the parent's "Why now", "Two failures" and "Prior art" sections. calef names files.
-- `format-history` Name: provisional, minted 2026-10-12 (UTC) by maintainer/prose-budget-paydown,
-  for the spellings the parent's format sections weighed and amended. calef names files.
+- `background` Name: provisional. For the parent's "Why now", "Two failures" and "Prior art"
+  sections. calef names files.
+- `format-history` Name: provisional. For the spellings the parent's format sections weighed and
+  amended. calef names files.

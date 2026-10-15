@@ -50,8 +50,8 @@ handle; whether a verb on that handle may end a running thread is 133's question
 - Milestone 133 itself. Options and a mapping; no winner.
 - Detection. Deciding a child *is* stuck is milestone 106's timed wait and milestone 23's
   residual.
-- The stranded caller, which was being split out of 133 into a milestone of its own on
-  `maintainer/mint-254-stranded-caller` as this was written.
+- The stranded caller, which is milestone 254 (a caller stranded by a server that died is stranded
+  forever).
 - Milestone 244's endowment table. Cited above because R4 shares its shape; the two are the same
   subject from opposite sides, and folding them together would put a proof question and an authority
   question in one lane.

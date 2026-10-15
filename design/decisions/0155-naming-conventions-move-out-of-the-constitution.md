@@ -7,9 +7,6 @@ ratified_by: calef
 
 # 155. The naming conventions move out of the constitution, and the note becomes the rule
 
-*Amended 2026-09-26: rule text says "an architect" where it said calef, per §217 (every architect
-holds the whole role). Records and quotations keep his name.*
-
 calef, 2026-09-18: `AGENTS.md` keeps the naming authority and nothing else;
 `design/naming.md` becomes the authority for the conventions. The file moves from `notes/` in the
 same ruling, because a document that is normative is not a note.

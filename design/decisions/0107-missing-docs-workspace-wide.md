@@ -44,7 +44,7 @@ workspace = true` (all 57) now warns by default. The 7 crates with a real remain
 per `notes/doc-coverage.md`) carry an explicit `#![allow(missing_docs)]`, citing this decision and
 their own item count, so the opt-out is visible at the crate rather than implied by its absence from
 a list. The 50 per-crate `#![warn(missing_docs)]` opt-ins are removed as redundant; the workspace
-default now covers what they used to state individually.
+default covers them.
 
 What this buys, per the roadmap doc's own framing: a crate added tomorrow is checked by
 default, closing the gap the doc's own BUGS section named ("nothing requires a new crate to adopt

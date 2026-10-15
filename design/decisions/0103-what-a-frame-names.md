@@ -12,7 +12,7 @@ The fork this was researching was answered while it was being researched. calef 
 on 2026-08-20 (§102, a `Frame` names a run), which is the same answer L4 reached and which this
 survey found Barrelfish had already built. So nothing here is waiting on anybody.
 
-**It is kept, and renumbered from a provisional 101 to 103**, because the four recalled claims it
+**It is kept**, because the four recalled claims it
 checked are the reason a reader should trust §102 rather than merely obey it: two of the four
 framings a maintainer offered from memory turned out to be wrong, and finding that out is what
 separates a decision from a guess. The pricing in section 3 is also the closest thing this tree has

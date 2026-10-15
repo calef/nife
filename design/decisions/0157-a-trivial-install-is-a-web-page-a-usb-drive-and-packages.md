@@ -12,12 +12,12 @@ calef, 2026-09-19 (16:40 UTC), in conversation with the maintainer:
 > A trivial install is a web page that lets one download and install a minimal system via a USB
 > drive. That minimal system can then be expanded by installing packages over the internet.
 
-*(Section number provisional until the merge queue lands it.)* This replaces the definition the
-scoping lane recommended below (D2, a downloadable QEMU run bundle as the first rung). It is closest
-to the lane's D1, and goes past it in two ways D1 did not: the system is installed onto the
-machine, not only run from the stick, and it grows over the network afterwards. The lane's
-proposal follows unchanged as the evidence he ruled on; its "Recommendation" and "proposed first
-slice" are therefore superseded as a definition, though its measurements of today stand.
+This replaces the definition the scoping lane recommended below (D2, a downloadable QEMU run bundle
+as the first rung). It is closest to the lane's D1, and goes past it in two ways D1 did not: the
+system is installed onto the machine, not only run from the stick, and it grows over the network
+afterwards. The lane's proposal follows unchanged as the evidence he ruled on; its "Recommendation"
+and "proposed first slice" are therefore superseded as a definition, though its measurements of
+today stand.
 
 ## Amended 2026-09-19 (17:12 UTC): the stick is made by one program, unsigned for now
 
