@@ -20,7 +20,8 @@
 # design/roadmap/0420-the-rest-of-the-x86-64-fixture-set.md.
 #
 # The kernel halts with `hlt` (arch::halt), so QEMU does not exit on its own. Bound any interactive
-# run with helpers/qemu-bounded.sh (see CLAUDE.md, "Never leave QEMU running").
+# run with helpers/qemu-bounded.sh. The rule the bound enforces:
+# notes/skills/qemu-hygiene/SKILL.md, "Never leave QEMU running".
 
 set -e
 

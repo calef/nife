@@ -116,7 +116,8 @@
 # directory inside it (a person running a gate there by hand; its first run met exactly that). And
 # it refuses if any process holds the scratch worktree's `target/nifefs.img` (`lsof`), because a
 # QEMU holding it fails the next suite with a lock error that looks like a bug in the entry under
-# test (AGENTS.md, "Never leave QEMU running"). Every rung runs in its own process group with a time
+# test (notes/skills/qemu-hygiene/SKILL.md, "Never leave QEMU running"). Every rung runs in its own
+# process group with a time
 # bound, and on exit every QEMU whose command line names the scratch worktree is killed at the root.
 #
 # Name: provisional, minted 2026-09-24 for this lane. `preflight` is the aviation word for the
