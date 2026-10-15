@@ -43,3 +43,22 @@ base, there was a median of 16 asks per pull request, each answered by one paren
 distribution is skewed rather than flat. 8 of the 42 would have been silent, and the one outlier is
 #970 at 893, which landed 24 proposal files at once. That number is the cost of writing 24 new
 documents that cite the roadmap heavily, which is exactly the case the gate is for.
+
+## The third shape: a phrase quoted after a path (milestone 644)
+
+A path that resolves from the repository root, then a comma, then a quoted phrase of six characters
+or more, must quote the file the path names, on a line the branch adds, under the attributed
+quotations' normalization. Root-only resolution is the guard that keeps non-citations out: a search
+string (`kani_lib.c`, "machine model macos") and a usage template (`runs.txt, "<run_id>"`) name no
+file, so there is nothing to check and nothing to be wrong about. The comma is what keeps the
+historical possessive (`AGENTS.md's "old wording"`, where an audit accepted three deliberate old
+wordings) from reading as a citation.
+
+Two limits, both the price of not guessing. The reach is one line, like `CITE`'s: a citation whose
+phrase wraps off its path's line is invisible. And a walk-up shorthand (`kani-upstream.md` for
+`notes/kani-upstream.md`, written from a sibling directory) resolves nowhere and is skipped, because
+resolving it by search is how the 2026-09-24 audit's scanner quoted the wrong README. A quotation
+that is stale on purpose carries `quotation: exception. Reason: ...` on its line or the one above,
+the reach `helpers/line_citations.py` allows its own marker. The landed rule measured 12 stale
+quotations of the shape on main at `8fad33799`; the block has the split, and the corpus's records
+(logs, the generated index, the baseline-drift page, the dependency census) stay out of it.
