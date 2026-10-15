@@ -54,7 +54,7 @@ pub(super) fn swish_check_leg(arch: &str) -> bool {
     // The panic probe halts the kernel and the input-race probe proves itself on the first
     // script, so neither boots again.
     let one_boot = matches!(probe(), Probe::Panic | Probe::InputRace);
-    swish_check_boot(arch, SWISH_CHECK_SCRIPT, true, None)
+    swish_check_boot(arch, &SWISH_CHECK_SCRIPT, true, None)
         && (one_boot
             || swish_check_boot(
                 arch,
