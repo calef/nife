@@ -96,7 +96,9 @@ is near 1,500.
 Answered 2026-10-12 (UTC) by the merge of #1988 under §282. The three answers: 1 the split, by
 family, taken finer than this block proposed, twelve children each named for the family it holds.
 2 child modules of `bench`, the parent an index, as recommended. 3 the names in the what-was-built
-table ship provisional. The questions stay here as they were asked.
+table ship provisional. Ruled 2026-10-15 (UTC): the cut stands, no veto, and every module name
+goes to the naming queue (`script/names --unratified`) with every other provisional name, to
+review and ratify there. The questions stay here as they were asked.
 
 1. Split by family, or move one family out. The recommendation is by family, for the reason above.
    The one-family move is less work, so this recommendation is not about effort; it holds at equal
@@ -204,7 +206,8 @@ The done-when list, checked on `d5d232015`:
   `bench::cycles_per_tick` inside a dated census, and the register of measures' two M5 rows name
   it the old way. Whether a dated record gets repointed is a maintainer's call, the same one
   292's census needs. Listed on pull request #2204 for a maintainer lane.
-- **Decision.** Every module name is provisional and is calef's to rule, per
+- **Decision.** Ruled 2026-10-15 (UTC): the cut stands, and the names go to the naming queue with
+  every other provisional name, per
   `design/decisions/0282-when-a-file-is-split-the-parent-becomes-an-index.md`.
 
 ## Index row
