@@ -48,10 +48,10 @@ changed is `script/audits`' derivation and `script/lint`'s registry, both host-s
 
 - **Milestone 622.** The fence re-adjudication, more owed than when it was minted: the gate counts
   23 fences against the 13 `notes/memory-ordering.md`'s table adjudicates.
-- **Milestone 383.** The gate for a backticked in-tree path that does not resolve; the nine dead
-  proposal-path citations this sweep re-counted are its exact population.
-- **Milestone 407.** The block's own mechanical sweep, still unstarted; this sweep re-verified its
-  premise's counter-example at the address it moved to.
+- **Milestone 383.** The backticked-path gate; the nine dead proposal-path citations this sweep
+  re-counted are its exact population.
+- **Milestone 407.** Its mechanical sweep is still unstarted; this sweep re-verified its premise's
+  counter-example at the address it moved to.
 - **Recorded.** The baseline discontinuity finding 9 leaves: this audit's ABI cell is the first
   taken under the crate-walking derivation, and the report records it where the next delta's
   reader meets it.
@@ -70,7 +70,8 @@ in the verification appendix were corrected and all nine converted into counted 
 derivations in `script/lint`'s registry, so the class cannot rot again. The ABI-constants
 trigger's derivation, which read only `crates/abi/src/lib.rs` while the crate grew per-object
 modules and held 95 constants where the counter saw 6, was made to walk the crate; this audit's
-baseline row is the first taken under it. What it left: milestone 622 owes more than when it was
-minted, 23 fences against the 13 adjudicated; milestone 383's gate is the exact population the
-nine dead proposal-path citations keep feeding; and milestone 0407's mechanical sweep is still
-unstarted.
+baseline row is the first taken under it. What it left: milestone 622 (the fence inventory is
+re-adjudicated) owes more than when it was minted, 23 fences against the 13 adjudicated;
+milestone 383 (a gate for a backticked in-tree path that does not resolve) is the exact
+population the nine dead proposal-path citations keep feeding; and milestone 407 (one definition
+of the numbers a kernel test and its program agree on) is still unstarted.

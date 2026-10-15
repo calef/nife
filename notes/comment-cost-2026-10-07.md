@@ -1,8 +1,7 @@
 # What Rust comments cost, 2026-10-07 (provisional name)
 
 Measured 2026-10-07 (UTC), read-only, at base `47a1d85f3`, by lane/comment-cost-measurement. calef
-asked for it after #1799 ran the whole suite, CPU matrix included. That change's only Rust edits
-were path references to a moved proposal. calef: "We should also consider if the code comments are
+asked for it after #1799 ran the whole suite, CPU matrix included. calef: "We should also consider if the code comments are
 just too verbose. We know there is a cost to that verbosity." This note measures; the forks at the
 end are calef's. The scripts are in [comment-cost-2026-10-07/](comment-cost-2026-10-07/) and run
 from the repository root (`OUT=<dir>` sets where they write).
@@ -73,8 +72,8 @@ still runs (`draft gate`, `clippy`) and the rest.
 All 18 comment-only pull requests spent 5,918 such minutes, 2,662 of them in the merge queue; the
 other 11 needed a full run for their notes.
 
-Caveats. Earlier pushes to a branch may have carried code that a later push removed, so the
-pull-request half overstates; the merge-group half (730) is the firm figure. A merge group that
+Caveats. Earlier pushes may have carried code a later push removed, so the pull-request half
+overstates; the merge-group half (730) is the firm figure. A merge group that
 held another pull request's code would have run everything anyway. The repository is public and
 hosted minutes are free, so the cost is pool contention and queue latency, not money. The prose
 gate exists because twelve prose pull requests on 2026-10-05 got required jobs cancelled for want
@@ -182,11 +181,11 @@ The top 20 files by comment lines:
 100 lines of `//!`, 11,076 lines between them.
 
 Reading cost, at the rough rate of 4 bytes per token (an estimate, not a tokenizer count). At the
-base the median Rust file was 14.3 KB, of which 56% is comment; the mean 25.9 KB. Re-measured
-2026-10-15 (UTC), after the split series: median 9.2 KB, mean 15.0 KB, 1,225 Rust files where the
-base had 669. `kernel/src/sched.rs` was 481 KB at the base, about 120,000 tokens; an agent could
-not read it whole in one call. It has since been split into `kernel/src/sched/`. The tree's Rust
-grew from about 4.3 to 4.6 million tokens; the comment mass is unchanged, 2.5 million. Comment
+base the median Rust file was 14.3 KB, 56% of it comment; the mean 25.9 KB. Re-measured
+2026-10-15 (UTC), after the split series: median 9.2 KB, mean 15.0 KB, 1,225 files where the
+base had 669. `kernel/src/sched.rs` was 481 KB at the base, about 120,000 tokens; no agent could
+read it whole in one call. It has since been split into `kernel/src/sched/`. The tree's Rust
+grew from 4.3 to 4.6 million tokens; the comment mass is unchanged, 2.5 million. Comment
 lines sit mostly in long blocks: 48% of them
 are in blocks over 10 lines, 20% in blocks over 40.
 
@@ -195,9 +194,9 @@ Milestone-title parentheticals are only 0.5% of comment bytes.
 ## 4. Thirty comment blocks, judged against CLAUDE.md's rule
 
 A block is a run of adjacent comment lines of one kind. 28,536 blocks; median 2 lines, mean 4.8.
-Thirty were drawn uniformly with seed 20261007 ([q4.py](comment-cost-2026-10-07/q4.py)). Keep means
-it explains a constraint the code cannot show. Cut means it restates the next line. Move means it is
-a finding, history or design essay that a note should hold.
+Thirty were drawn uniformly with seed 20261007 ([q4.py](comment-cost-2026-10-07/q4.py)). Move means
+the block is a finding, history or design essay that a note should hold; keep and cut are
+AGENTS.md's own rule.
 
 **Keep 24 (80%), cut 4 (13%), move 2 (7%).**
 
@@ -248,7 +247,7 @@ yourself loudly" produces when the correction is written at the site and never r
   remains is the gate itself: the lexer is new code deciding what is tested, and a wrong skip is a
   red `main`.
 - Prior art. Bazel and Buck key on file content hashes, not token streams, so neither does this
-  (from memory). Cargo itself rebuilds on any byte change. This would be unusual.
+  (from memory); Cargo itself rebuilds on any byte change. This would be unusual.
 - **Recommendation: option 2**, with the lexer's self-test in `script/lint` beside the gate's own,
   and the decision printed per file like every other. Reversible: a one-line revert. The saving is
   modest, so if calef prefers not to grow a tokenizer in a gate, option 1 is defensible, and fork (b)
@@ -265,7 +264,7 @@ yourself loudly" produces when the correction is written at the site and never r
   deliberate history. Proposal paths are 77% dead, by construction.
 - Prior art. Rust API guideline C-LINK ("Prose contains hyperlinks to relevant things") is about
   rustdoc intra-doc links, which `rustdoc` checks at build time; a path in plain text is checked by
-  nothing. This tree's own `notes/citations.md` is the analogous case for `§N` and milestones.
+  nothing.
 - **Recommendation: option 3.** It also makes fork (a) matter less, because a proposal promotion or
   a file rename no longer touches `.rs` at all. A proposal not yet minted has no stable name; cite
   it by its slug in words, or by the milestone once minted. The gate in (2) catches the next

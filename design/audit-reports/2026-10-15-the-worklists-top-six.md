@@ -1,7 +1,8 @@
 # Documentation sweep, 2026-10-15: the worklist's top six, read for what a reader would act on
 
-*Documentation audit, run by milestone 427's lane on 2026-10-15 (UTC) at base `8fad33799`. The
-procedure is [notes/documentation-audit.md](../../notes/documentation-audit.md); the index is
+*Documentation audit, run 2026-10-15 (UTC) at base `8fad33799` by the lane of milestone 427 (the
+documentation sweep the worklist already ranks). The procedure is
+[notes/documentation-audit.md](../../notes/documentation-audit.md); the index is
 [README.md](README.md). The file name is provisional, like every audit report's.*
 
 **Kind:** documentation. **Lens:** the staleness worklist's top six, read for the claims a reader
@@ -106,7 +107,8 @@ and defines nothing.
 The block's central exhibit, a test that re-declares constants a crate already publishes, moved
 with the system tests to `system_tests/src/user/live_swap_tests.rs`. The re-declaration is still
 there, so the argument stands; three citations now point where it lives. Four references to
-`swap_proto` and `credential_proto` keep the spellings milestone 265 renamed away from, in a live
+`swap_proto` and `credential_proto` keep the spellings milestone 265 (`_proto` is a truncation,
+and it collides with the other word it could be short for) renamed away from, in a live
 proposal a reader would act on; they name the current crates.
 
 ### 8. FIXED and gated: five of the core-harnesses appendix's nine counts were wrong
@@ -145,13 +147,13 @@ than papered over.
 
 ## What wants a lane of its own
 
-- Milestone 622, the fence re-adjudication, is more owed than when it was minted: the gate counts
-  23 fences against the 13 this note's table adjudicates.
-- Milestone 383, the gate for a backticked path that does not resolve. The proposal-path corpses
-  this sweep re-counted (9 dead sites, every slug promoted) are that gate's exact population, and
-  the note that counts them is the worklist's head.
-- Milestone 0407 itself. Its sweep is mechanical, its crate-name question is priced, and nothing
-  has started it.
+- Milestone 622 (the fence inventory is re-adjudicated) is more owed than when it was minted: the
+  gate counts 23 fences against the 13 this note's table adjudicates.
+- Milestone 383 (a gate for a backticked in-tree path that does not resolve). The proposal-path
+  corpses this sweep re-counted (9 dead sites, every slug promoted) are that gate's exact
+  population, and the note that counts them is the worklist's head.
+- Milestone 0407 (one definition of the numbers a kernel test and its program agree on) itself.
+  Its sweep is mechanical, its crate-name question is priced, and nothing has started it.
 
 ## Process notes on the mechanism itself
 
