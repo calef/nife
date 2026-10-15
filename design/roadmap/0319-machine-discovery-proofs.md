@@ -232,7 +232,7 @@ in a tracked form:
    walk is 836 lines, but with this crate proved, what is left on the kernel side of the seam is
    *reading N bytes at a physical address through the direct map* and handing them here. Every
    decision about what those bytes mean is now in a proved crate. That suggests the design decision
-   milestone 304's lane wanted is a smaller one than "how do we prove a volatile walk". It is whether
+   milestone 304 (only ever compiled one architecture)'s lane wanted is a smaller one than "how do we prove a volatile walk". It is whether
    the direct-map read itself gets a checked accessor with a bound, which is the same question
    `dtb::Dtb::from_ptr` already answered on the other two architectures. Wants a lane, and wants
    calef on the accessor's name.
