@@ -120,7 +120,7 @@ it is now a property of this system rather than a claim about other ones.
 ## What is still scaffolding
 
 - The shared buffer is wired up at spawn by the kernel, not delegated at runtime. Handing
-  memory over as a first-class `Frame` capability (so a process can share a page it already holds,
+  memory over as a first-class `PageFrame` capability (so a process can share a page it already holds,
   with rights that narrow) is the natural next object type. Today the sharing is static.
 - There is one client and one server. A real console multiplexes many clients; that is a
   server-side concern (a queue, a lock) and does not change the kernel.

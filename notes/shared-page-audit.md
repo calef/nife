@@ -73,7 +73,7 @@ Stated because a scope nobody wrote down is a scope nobody can check.
 - The arch and assembly layer. That is [arch-audit.md](arch-audit.md)'s, and re-reading it would
   be the failure this milestone exists to avoid.
 - Capability lifetime races between revocation and an in-flight use (generational names,
-  `Untyped::DESTROY`, `Endpoint::REAP`). Named in the milestone as a candidate lens and left for a
+  `MemoryRegion::DESTROY`, `Rendezvous::REAP`). Named in the milestone as a candidate lens and left for a
   later one; it is a different question and mixing it in would have diluted both.
 - The census of `unsafe`. A candidate lens, a whole audit of its own.
 - The supply chain, the boot trust root, and the DMA/IOMMU descriptor validator. The last has

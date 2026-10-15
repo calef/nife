@@ -14,7 +14,7 @@ encoded as a bearer string). Only the first third is built here. Names wait on `
 (§41), and are never meant to arrive as a string on this table at all.
 
 The wire encoding is a read-only page, the same rights-ladder shape the clock page uses. No
-capability, or a `Frame` with `READ`. A config value is never something a person designates on a
+capability, or a `PageFrame` with `READ`. A config value is never something a person designates on a
 command line. There is nothing to propose or set from inside the process that holds it, so an
 endpoint (as the clock's propose half uses) would be the wrong shape here.
 
@@ -46,7 +46,7 @@ atomics at all.
   conservative universal defaults). They are chosen because nothing holds a *different* default to
   pass explicitly: the shell exists, but the "a shell holds its own default" mechanism does not
   (this note's own second BUGS entry). The page is mapped read-only into a std program at
-  `CONFIG_PAGE_STD` (`0x1300_0000`), granting a `Frame` with `READ` at `CONFIG_SLOT` (7), the same
+  `CONFIG_PAGE_STD` (`0x1300_0000`), granting a `PageFrame` with `READ` at `CONFIG_SLOT` (7), the same
   shape as the
   clock's slot 5.
 - `patches/std-nife/overlay/std/src/sys/pal/nife/rt.rs`: `CONFIG_SLOT`/`CONFIG_PAGE` constants,

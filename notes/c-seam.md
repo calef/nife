@@ -165,7 +165,7 @@ untyped region the instance was built in. Three consequences, all of them the po
 
 - The C heap is the process's own memory budget. There is no ambient allocator to leak into.
 - A C leak exhausts that instance, visibly, and reaches no other process's memory.
-- The single `Untyped::DESTROY` that reaps the corpse reclaims the heap along with everything else, so
+- The single `MemoryRegion::DESTROY` that reaps the corpse reclaims the heap along with everything else, so
   a restart loop is not a leak.
 
 One real cost of the C ABI shows up here and cannot be shimmed away: `free(p)` carries no size,
@@ -226,7 +226,7 @@ This is the part that feeds an open design fork, so it is written down precisely
 
 `c_confiner` restarts its child, and to restart it must first reap it: the corpse is
 dead-until-reaped (§26.4), and its region stays pinned until somebody says otherwise. Reaping is
-`Untyped::DESTROY`, which needs `WRITE` on the region. **`WRITE` on a region is also exactly what
+`MemoryRegion::DESTROY`, which needs `WRITE` on the region. **`WRITE` on a region is also exactly what
 builds a process from it** (`RETYPE`, `RETYPE_OBJ`, `SPLIT`). There is no narrower right.
 
 - What it had to hold: a full-rights untyped budget, for its whole life. From that it can split

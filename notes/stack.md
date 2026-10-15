@@ -99,7 +99,7 @@ fault, no output. The last thing printed was the name of the test.
 ## The bug
 
 ```rust
-let mut taken = [None; 1024];        // [Option<Frame>; 1024] = 16 KiB
+let mut taken = [None; 1024];        // [Option<PageFrame>; 1024] = 16 KiB
 ...
 for frame in taken.into_iter().flatten() {
     memory::free(frame);

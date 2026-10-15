@@ -36,7 +36,7 @@ The records this file cites by number:
 
   `TZ`, `LANG` and `TERM` are seeded from a grant (milestone 47's environment-variable fork,
   DECISIONS §111, `environment_protocol`). A process granted an inert-configuration page
-  (`rt::CONFIG_SLOT`, a `Frame` with `READ`, the same rights-ladder shape as the clock) has those
+  (`rt::CONFIG_SLOT`, a `PageFrame` with `READ`, the same rights-ladder shape as the clock) has those
   three keys in its table from the first line of `main` onward. `pal::nife::init` reads them before
   the program's own code runs. A process granted no such page is seeded with nothing. This is the
   *inert configuration* third of the milestone's own three-way split of what Unix puts in one map.
@@ -133,7 +133,7 @@ The records this file cites by number:
   wire.
 - `SystemTime` is real wall-clock time when the program was granted a clock (milestone 51,
   DECISIONS §43, notes/clock.md).
-  A std program's wall-clock authority is slot 5 (a `Frame` capability naming the clock page,
+  A std program's wall-clock authority is slot 5 (a `PageFrame` capability naming the clock page,
   with `READ`) plus a read-only mapping of that page at `rt::CLOCK_PAGE`. `SystemTime::now()` is
   the offset it finds there plus the ambient monotonic counter: two loads and an add, no server
   round trip, and nothing the program can write. `Instant` is untouched and cannot be perturbed by a

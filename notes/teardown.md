@@ -32,6 +32,14 @@ Record-all-frames is strictly cheaper here than walk-and-reclaim: O(frames), no 
 no per-leaf TLB dance. So a reclaiming `unmap` was considered and deliberately not built. There
 is nothing for it to do that this doesn't already do better.
 
+## BUGS
+
+- The `user::AddressSpace` description above predates region-owned teardown: milestone 135
+  (the region claim, under loom) replaced the frame list with `Backing`. The struct records no
+  `frames` vec any more. The root is a `PageFrame`, the region the
+  space was retyped from is the record of what it owns, and teardown is `memory_region::destroy`, one
+  call. The test's assertion is unchanged.
+
 Recorded-accepted by milestone 94's sweep (2026-08-04): this is a decision with its reason
 attached, not an unbuilt feature, and an audit may pass over it. Read it narrowly. It says a
 reclaiming `unmap` buys teardown nothing; it does not say the ABI needs no unmap at all. Milestone

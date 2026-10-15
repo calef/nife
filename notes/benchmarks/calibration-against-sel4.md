@@ -85,7 +85,7 @@ That is the same class of mistake in the other direction: a debug number in a re
   silicon, which milestone 24 (a second aarch64 board) and milestone 74's PMU are for.
 - Their fastpath is on and we have none. seL4's published figures are its best case, with the
   `Call`/`ReplyRecv` fastpath enabled. Ours is the fully general path every time: scheduler lock,
-  proved rendezvous, generational Tid checks. Read the ratio as "the general path is within a small
+  proved rendezvous, generational ThreadId checks. Read the ratio as "the general path is within a small
   factor of a tuned fastpath on this silicon", a statement about headroom, not about having matched
   them.
 - Their round trip is two syscalls; the `ipc_rtt_el0` benchmark's is four. seL4 fuses send-and-wait

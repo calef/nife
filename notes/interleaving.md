@@ -35,7 +35,7 @@ have no atomic protocol at all, and finding that out is most of what the survey 
 
 | Candidate | What it actually is | Reachable by loom |
 |---|---|---|
-| The IPC sender queue (`crates/inter_process_communication`) | zero atomics. `Endpoint` is plain data under the `SCHED` `IrqSafeMutex` | nothing to explore |
+| The IPC sender queue (`crates/inter_process_communication`) | zero atomics. `Rendezvous` is plain data under the `SCHED` `IrqSafeMutex` | nothing to explore |
 | `crates/intrusive_fifo` (the run queues) | zero atomics. Single-owner with interrupts masked, plus an `UnsafeCell` | nothing to explore |
 | `crates/generational_table` (the thread table) | zero atomics. Under `SCHED` | nothing to explore **as atomics**, and that reading was too narrow: `crates/memory_regions` is a `generational_table` table under a lock, and its protocol had a real double free in it. See the `thread_wake_handshake` and `memory_regions` sections of [what-was-modeled.md](interleaving/what-was-modeled.md) |
 | The reaper handoff (`PerCpu::switched_from`) | one `AtomicU64`, both accesses `Relaxed`, written and read **by the same core** with interrupts masked. The atomic is interior mutability, not synchronization | nothing to explore |

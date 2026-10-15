@@ -17,7 +17,7 @@ the machine down. No remote attacker, no crypto, single core, runs under QEMU or
 The core boundaries are sound, and the review confirmed each with reasoning rather than assertion:
 
 - The capability boundary. No method is invocable without its rights (SEND needs WRITE, RECEIVE
-  needs READ, `Untyped MAP` needs WRITE, `Irq` needs READ). Userspace only ever names a capability
+  needs READ, `MemoryRegion::MAP` needs WRITE, `Irq` needs READ). Userspace only ever names a capability
   *slot*, which `CapabilityTable::get` bounds-checks; the object index inside (endpoint id, untyped region,
   intid) always comes from a kernel-minted capability, never a user register. Rights cannot widen,
   and delegation is not even exposed to userspace yet. No process can reach another's CapabilityTable,
@@ -26,7 +26,7 @@ The core boundaries are sound, and the review confirmed each with reasoning rath
   invariant* (there is no writable-and-executable constructor, proved over all of them by a test).
   EL0 cannot name, read, write, or execute any kernel high-half address. `map_physical`
   (arbitrary-physical mapping) is not reachable from EL0; the only user mapping path is
-  `Untyped MAP`, which is confined to the process's own budget and own low half.
+  `MemoryRegion::MAP`, which is confined to the process's own budget and own low half.
 - TLB discipline. Stack VAs and address spaces are flushed on reuse, so a new owner cannot read
   a dead owner's data.
 - The scheduler and locks. No third instance of the two bugs milestone 9 (A virtio-blk driver at EL0, and an interrupt) fixed (interrupt
@@ -55,7 +55,7 @@ Now it degrades: a failed spawn returns a sentinel result to the shell ("could n
 process") and the service keeps serving. Per-process spawn *quotas* are the real fix and are
 deferred with untyped kernel objects; not turning OOM into a panic is the cheap, honest hardening.
 
-3. A failed `Untyped MAP` silently burned the process's own budget. The syscall retyped a page
+3. A failed `MemoryRegion::MAP` silently burned the process's own budget. The syscall retyped a page
 before attempting the map, so a bad `va` (misaligned, or high-half) spent a page for nothing. Now
 those cheap cases are rejected before any page is retyped. (An already-mapped `va` still costs one
 page, which is process-local and bounded by the untyped, so it is left as-is.)

@@ -5,7 +5,7 @@ An appendix to [notes/process-view.md](../process-view.md), which summarizes it.
 
 ## The method
 
-`pmap` works on both ISAs, over `abi::aspace::LIST`: `Endpoint::SURVEY`'s split one object type
+`pmap` works on both ISAs, over `abi::address_space::LIST`: `Rendezvous::SURVEY`'s split one object type
 over. `abi::aspace::MAP_INTO` needs `WRITE`, the authority to shape a space; `LIST` needs
 `ENUMERATE`, the authority to look. A capability holding `ENUMERATE` alone lists every mapping and
 cannot make one. `kernel::user::pmap_tests` proves that in both directions, with the discipline
@@ -29,7 +29,7 @@ page.
 `components/src/builder.rs`, `crates/supervision_protocol::build_child_space`,
 `fixtures/src/hello.rs`'s `aspace_builder`, `fixtures/src/os_primitives_benchmarker.rs`'s
 `spawn_one`, and `kernel/src/bench.rs`'s `map_el0` harness. Every one retypes and maps. Every one
-except `hello.rs`'s deliberately-unconfigured demo consumes the capability at `Tcb::CONFIGURE`, all
+except `hello.rs`'s deliberately-unconfigured demo consumes the capability at `ThreadControlBlock::CONFIGURE`, all
 inside the one thread that started it. None delegates an `Object::AddressSpace` capability to a
 different program.
 
@@ -39,12 +39,12 @@ This is the audit's actual finding rather than an assumption: there was nothing 
 
 ## What building it found, which the fork's wording did not anticipate
 
-`Tcb::CONFIGURE` does not only consume the caller's capability. It removes the space's entry from
-the registry that `user_aspace_root` (and so `LIST`) resolves through (`take_user_aspace`). So the
+`ThreadControlBlock::CONFIGURE` does not only consume the caller's capability. It removes the space's entry from
+the registry that `user_address_space_root` (and so `LIST`) resolves through (`take_user_address_space`). So the
 instant a space is bound to a thread, every capability that ever named it reads as an empty listing
 rather than a live one. That includes a capability already sitting in some other program's
 capability table. `kernel::user::pmap_tests::a_capability_outliving_its_space_reads_as_empty`
-proves this directly. It calls `take_user_aspace` the way `configure_tcb` does, and shows `LIST`
+proves this directly. It calls `take_user_address_space` the way `thread_control_block_configure` does, and shows `LIST`
 answers `DONE`.
 
 Combine that with the delegation-audit finding above: nothing hands an `Object::AddressSpace`

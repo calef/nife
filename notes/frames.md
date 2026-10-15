@@ -35,7 +35,7 @@ it read-only, `WRITE` to map it read/write, `GRANT` to pass it on.
 seL4 splits "get a page" from "put it in your address space," and so do we, because the split is what
 makes a page a first-class, delegatable object rather than something that only exists mapped.
 
-- `Untyped::RETYPE` carves one page out of the caller's untyped and mints a `PageFrame` capability for
+- `MemoryRegion::RETYPE` carves one page out of the caller's untyped and mints a `PageFrame` capability for
   it, full rights, into the caller's capability table. Nothing is mapped. The caller now *holds a page* and
   can map it, or delegate it, or delegate it and never map it.
 - `PageFrame::MAP(va, writable, untyped_slot)` maps the page at `va`. A read/write mapping needs `WRITE`
@@ -43,13 +43,13 @@ makes a page a first-class, delegatable object rather than something that only e
   untyped named by `untyped_slot`, so like everything a process spends, mapping a page frame comes out of
   its own budget and the kernel allocates nothing.
 
-Contrast `Untyped::MAP`, which does both at once (retype a page and map it writable). That is the
+Contrast `MemoryRegion::MAP`, which does both at once (retype a page and map it writable). That is the
 convenient path for a process's private memory. `RETYPE` + `MAP` is the path when the page is going
 to be shared, because between the two steps is where the delegation happens.
 
 ## Sharing is delegation applied to memory
 
-Because a `PageFrame` is an ordinary capability, it travels over an endpoint with `SEND_CAP`, and the
+Because a `PageFrame` is an ordinary capability, it travels over a rendezvous with `SEND_CAP`, and the
 rights narrow on the way exactly as they do for any delegation (see [delegation.md](delegation.md)).
 So the whole sharing protocol is:
 
@@ -68,7 +68,7 @@ the test checks by trying.
 A page shared into two address spaces cannot be owned by either, or the first one to die frees memory
 the other is still using. nife sidesteps this cleanly because of how teardown already works: an
 `AddressSpace` frees only the page frames it recorded at spawn (`self.frames`) plus its page tables and
-root. A page mapped at *runtime*, by `Untyped::MAP` or `PageFrame::MAP`, is never in that list, so
+root. A page mapped at *runtime*, by `MemoryRegion::MAP` or `PageFrame::MAP`, is never in that list, so
 teardown does not free it. A page frame's page (and the page tables that map it) belong to the untyped
 region they came from, and are reclaimed only when that region is destroyed, wholesale, the way
 untyped memory always is. So when the producer exits, its mapping of the shared page goes away

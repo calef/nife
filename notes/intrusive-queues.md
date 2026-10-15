@@ -17,7 +17,7 @@ because of what it removes:
   legal anywhere, including the paths where allocation is forbidden (our §9: IRQ context). The
   scheduler used to pre-reserve VecDeque capacity so a push from the timer IRQ could never
   reallocate; that standing apology is gone, because the rule became structural.
-- The lookup. The old queues held Tids; every pop paid a table lookup to reach the thread.
+- The lookup. The old queues held thread ids; every pop paid a table lookup to reach the thread.
   An intrusive pop hands back the TCB itself. The migration path got the full benefit: draining
   an inbox into a run queue is now pure pointer movement and touches no table at all, which is
   why `drain_inbox` needs no scheduler lock.
@@ -46,8 +46,8 @@ The queue borrows nodes it does not own, and the borrow checker cannot see any o
 safety is a discipline, stated once and kept:
 
 1. **A queued thread is `Ready`, and only `Finished` threads are reaped**, so a queued TCB is
-   never freed. This is the load-bearing rule, and it is why `sched::tcb_ptr` (the one place a
-   Tid becomes a pointer) documents it rather than each push site re-arguing it.
+   never freed. This is the load-bearing rule, and it is why `sched::thread_control_block_ptr` (the one place a
+   ThreadId becomes a pointer) documents it rather than each push site re-arguing it.
 2. **The `Box` in the thread table pins the address** (phase B replaces it with a TCB page from
    untyped, pinned the same way).
 3. **Only the queue that holds a thread touches its link**, under that queue's synchronization:
@@ -76,7 +76,7 @@ different ways. The race:
 3. B switches into T's **stale context** while A is still running T's present one. Two cores in
    one thread, on two different ideas of its registers.
 
-The window existed with Tid queues too; the pointer rewire only shifted the timing enough to
+The window existed with thread-id queues too; the pointer rewire only shifted the timing enough to
 observe it. The tell that it was old: the kernel had already solved the *same race for death*.
 A `Finished` thread cannot be freed while its core is still switching off its stack, so §11
 reaps it from its successor, after the switch (`finish_switch`). Being woken is the same
@@ -113,10 +113,10 @@ stricter model, the fix is `UnsafeCell`-based link access, and this paragraph is
 why. The Kani harnesses are unaffected: they drive the queues with standalone nodes and no
 aliasing `&mut`.
 
-## Where Tids still live
+## Where thread ids still live
 
-Phases A.2 and A.3 moved all the *queues* to pointers; what still speaks generational Tids is
-the capability payloads (`Reply(Tid)`), the per-CPU `current`/`idle`/`to_reap` slots, and the
+Phases A.2 and A.3 moved all the *queues* to pointers; what still speaks generational thread ids is
+the capability payloads (`Reply(ThreadId)`), the per-CPU `current`/`idle`/`to_reap` slots, and the
 kernel's own bookkeeping around table lookups, all safely (see notes/generational-names.md).
 That is the design doc's D2 path proceeding one structure at a time; the payloads fall last,
 behind the safety mechanism the generational table already provides.
