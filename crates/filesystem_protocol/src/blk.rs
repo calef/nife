@@ -45,8 +45,16 @@ pub const FLUSH: u64 = 4;
 /// silently corrupt.
 pub const BLOCK_SIZE: usize = PAGE;
 
-/// The number of 512-byte virtio sectors in one filesystem block (`BLOCK_SIZE / 512 = 8`).
-pub const SECTORS_PER_BLOCK: u64 = (BLOCK_SIZE as u64) / 512;
+/// The logical block size a partition table counts in: the 512-byte sector every disk this
+/// project has met presents and the unit the virtio blk wire counts in. Nothing on the wire
+/// reports it (`disk_surveyor`'s BUGS), so it is stated here once and every consumer takes it
+/// from here. It left the test fixture for this crate in milestone 886, so the shipping
+/// installer could state its table's unit without depending on test data.
+/// Name: provisional (milestone 886); calef names public items.
+pub const SECTOR_BYTES: u64 = 512;
+
+/// The number of sectors in one filesystem block (`BLOCK_SIZE / SECTOR_BYTES = 8`).
+pub const SECTORS_PER_BLOCK: u64 = (BLOCK_SIZE as u64) / SECTOR_BYTES;
 
 /// **How many blocks the shared region spans, and the most one [`READ`] or [`WRITE`] may carry**
 /// (milestone 138 step 4). Chosen equal to `fs::TRANSFER_PAGES` on purpose: it is the same
