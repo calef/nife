@@ -426,7 +426,7 @@ fn jh7110_clock_bring_up() -> Option<jh7110_clock_and_reset::Report> {
 /// Name: recorded (design/roadmap/0388-an-acronym-sweep-the-tree-can-do-at-once.md). The same
 /// received-spelling question as `jh7110_trng_device`, sharpened by calef's 2026-09-13 ruling
 /// that the crate spelling this block's clocks expands to `jh7110_clock_and_reset`. The function
-/// waits on the ruling that block asks for; it does not rule for itself.
+/// waits on the name ratification queue beside its sibling; it does not rule for itself.
 pub fn jh7110_crg_window() -> Option<jh7110_clock_and_reset::Found> {
     crate::memory::jh7110_clock_and_reset()
 }

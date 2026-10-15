@@ -1,5 +1,6 @@
 ---
-status: PARTIAL
+status: BUILT
+built: 2026-10-15
 raised: 2026-09-05
 milestone_dependencies: none
 decision_dependencies: 154
@@ -36,19 +37,19 @@ on 2026-10-15 and found no live identifier outside those classes. Two `ipc` modu
 provisional by the 2026-10-12 file splits sit inside the IPC-concept clause and are on
 `script/names`'s worklist, which is where a provisional name belongs.
 
-What is left is one ruling, per name, on the two public kernel functions the renames deliberately
-did not touch. `kernel/src/user/entropy_service.rs` still exports `jh7110_trng_device` and
-`jh7110_crg_window`, so the file reads `jh7110_entropy::discover` inside a function called
-`jh7110_trng_device`, and `jh7110_clock_and_reset::Found` inside one called `jh7110_crg_window`.
-They are a genuinely harder case than the crates were, and that is why the 2026-09-13 renames
-left them: unlike a crate name, each of these names the **hardware block**, whose device-tree
-spelling is the vendor's (`starfive,jh7110-trng`, and mainline's driver file is `jh7110-trng.c`)
-and whose boot-log wording throughout the tree is "JH7110 TRNG", so the "abbreviation we receive
-rather than author" clause in design/naming.md may cover them where it did not cover the crate.
-A lane should not guess: AGENTS.md puts public function names in an architect's hands. Both
-functions now carry `Name: recorded` blocks citing this milestone, so they wait on
-`script/names`'s worklist instead of invisibly, and the ruling is asked on the lane's pull
-request with `needs-architect`.
+With the sweep done, what remains is the ratification of the two public kernel functions the
+renames deliberately did not touch. `kernel/src/user/entropy_service.rs` still exports
+`jh7110_trng_device` and `jh7110_crg_window`, so the file reads `jh7110_entropy::discover` inside
+a function called `jh7110_trng_device`, and `jh7110_clock_and_reset::Found` inside one called
+`jh7110_crg_window`. They are a genuinely harder case than the crates were, and that is why the
+2026-09-13 renames left them: unlike a crate name, each of these names the **hardware block**,
+whose device-tree spelling is the vendor's (`starfive,jh7110-trng`, and mainline's driver file is
+`jh7110-trng.c`) and whose boot-log wording throughout the tree is "JH7110 TRNG", so the
+"abbreviation we receive rather than author" clause in design/naming.md may cover them where it
+did not cover the crate. Both now carry `Name: recorded` blocks citing this milestone, so they
+wait on `script/names`'s worklist instead of invisibly. An unratified name is a worklist item and
+never a blocker (AGENTS.md): ratification happens on the name ratification queue, and blocks no
+pull request (calef, 2026-10-15).
 
 ## Why it cannot be done a name at a time
 
@@ -97,25 +98,25 @@ retired on 2026-09-15 by milestone 298; the provenance is at commit `0652c981`).
 Settled for the five deratified names, each by a maintainer lane whose pull request and whose
 crate's provenance block carry the ruling and the survivor census.
 
-What is left is the BUGS below: one ruling, asked and waiting.
+Settled as far as a lane reaches for the two functions: they are `recorded` on the worklist, and
+their ratification is the name ratification queue's, which blocks no pull request.
 
 ## Follow-on
 
-- **Outstanding.** The ruling on `jh7110_trng_device` and `jh7110_crg_window`, asked on this lane's
-  pull request with `needs-architect`. Checked 2026-10-15: both functions carry `Name: recorded`
-  blocks citing this milestone and wait on `script/names --unratified`, and the token census for
-  the five moved names found no live identifier outside the survivor classes their provenance
-  blocks record.
+- **Recorded.** The limitation lives beside the two functions, in `kernel/src/user/entropy_service.rs`'s
+  `Name: recorded` blocks: `jh7110_trng_device` and `jh7110_crg_window` wait on the name
+  ratification queue (`script/names --unratified`, 2026-10-15). A name ratification blocks no
+  pull request (calef, 2026-10-15).
 
 ## BUGS
 
-- **`jh7110_trng_device` and `jh7110_crg_window` wait on calef's ruling, per name.** The question
-  each answers: does the abbreviation the vendor gives the hardware block stay in our identifier
-  for it, or does §154's test expand it the way it expanded the crates? The ask, with the census
-  and the options, is on the lane's pull request. On a keep ruling, the `recorded` blocks are
-  ratified in place and this block closes. On a rename ruling, the functions move and so do the
-  identifiers that name the same blocks (`TRNG_VA`, `TRNG_BRING_UP`), while the vendor's
-  `compatible` strings, the fixture files and the cited driver file stay received spellings.
+- **`jh7110_trng_device` and `jh7110_crg_window` are named on the worklist and not yet
+  ratified.** Each names a hardware block the vendor spells with the acronym
+  (`starfive,jh7110-trng`; `syscrg`, `stgcrg`, `aoncrg`), so the received-spelling clause in
+  design/naming.md may cover them where it did not cover the crates. Both carry `Name: recorded`
+  blocks in `kernel/src/user/entropy_service.rs` citing this milestone; ratification is the name
+  ratification queue's (`script/names --unratified`) and blocks no pull request (calef,
+  2026-10-15).
 
 ## Index row
 
@@ -130,7 +131,8 @@ halves. The four names milestone 264 surfaced were all ruled by calef on 2026-09
 milestones 265, 290 and 298, including the nested case, where he drew a line rather than applying
 the rule harder: DNS stays whole because it is the `pci` case one level down. The five deratified
 names moved under §154 the week it was decided (#949, #955, #963, #965, #1229), each crate's
-provenance block carrying the ruling and the survivor census. What is left is the larger half's last
-two names: the public kernel functions `jh7110_trng_device` and `jh7110_crg_window`, which survived
-the 2026-09-13 crate renames and are a genuinely harder case, because each names a hardware block
-whose device-tree spelling is the vendor's.
+provenance block carrying the ruling and the survivor census. The larger half's last two names are
+the public kernel functions `jh7110_trng_device` and `jh7110_crg_window`, which survived the
+2026-09-13 crate renames because each names a hardware block whose device-tree spelling is the
+vendor's; both are `recorded` on the name ratification queue, which ratifies names and blocks no
+pull request (calef, 2026-10-15).
