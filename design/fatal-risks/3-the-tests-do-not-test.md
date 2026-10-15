@@ -19,9 +19,8 @@ it did not happen. On 2026-09-21 the 38 baseline crates read 96.1% against
 compiles ([`notes/mutation-testing.md`](../../notes/mutation-testing.md)).
 
 It stays amber on the standard this entry holds: milestone 85's rule that every survivor becomes a
-test, an exclusion carrying its reason, or a recorded gap. The 2026-09-21 census counted 771 missed
-survivors; after #1277's 164 kills and triage, 414 are projected, measured at the next census
-([triage](../../notes/mutation-testing/census-2026-09-21-triage.md)), and
+test, an exclusion carrying its reason, or a recorded gap. The latest census, 2026-10-12, counted 1,577 missed
+survivors, and every one of its survivor keys has a row in the triage record (the facts below), and
 milestone 326 (nobody has been assigned to turn a mutation score upward) owns the repair. Green is a ruled
 condition rather than a number (calef, 2026-09-20): inflow, meaning the survivors a merged pull
 request adds on its own lines are triaged.
@@ -29,7 +28,7 @@ request adds on its own lines are triaged.
 Two caveats. This verdict speaks for the host-testable corpus and not for the kernel, where a census
 is roughly 500 runner-hours against 52 minutes today. And one convention is load-bearing and
 unchecked: whether a timeout counts as a kill moves this entry two points. That rule rests on a
-hand-check of 96 timeouts in August; 206 stood on 2026-09-21.
+hand-check of 96 timeouts in August; 303 stood on 2026-10-12.
 
 Fact, 2026-10-04: milestone 745 (count the error paths no test reaches), a provisional number, found that no test executes 586 of the host crates' 1,150 Result-family error paths (51%). 490 of them are a `?` whose error side never ran. A further 1,159 are in the kernel and services, where no coverage run reaches ([untested error paths](../../notes/untested-error-paths.md)).
 
@@ -57,3 +56,18 @@ provisional; [part five](../../notes/mutation-testing/census-2026-10-03-triage-p
 runs on Linux and lane re-runs on macOS, and one function's `cfg!` branch made three mutants read
 caught locally and missed in every census. A per-crate re-run of the last 39 crates also found 35
 missed survivors in code merged after that census, with no triage row.
+
+Fact, 2026-10-14: two censuses followed (`script/mutation-census --list`). Run
+[37307759312](https://github.com/nifeos/nife/actions/runs/37307759312), 2026-10-05: 89 crates,
+16,660 mutants, 15,447 viable, 728 missed, 272 timeouts, 95.3% killed. Run
+[38252397727](https://github.com/nifeos/nife/actions/runs/38252397727), 2026-10-12: 98 crates,
+19,771 mutants, 18,366 viable, 1,577 missed, 303 timeouts, 91.4% killed, and 93.6% over the 89
+crates in both. Most of the rise is three drivers merged in the window: `e1000e` went from 60
+missed to 285, and `designware_ethernet` and `designware_mobile_storage` arrived with 257 and 205.
+Both inflow lists are triaged, 710 keys with 554 killed, 153 equivalent and 3 gaps
+([inflow triage](../../notes/mutation-testing/inflow-2026-10-12-triage.md)). The 61 keys of the
+2026-10-12 census that neither list named, 102 mutants, are triaged too: 13 killed, 46 equivalent
+and 2 recorded gaps ([residue](../../notes/mutation-testing/census-2026-10-12-residue.md)). Of the 16 gaps recorded
+before that, 9 are now killed and 7 remain. Run
+[38654094250](https://github.com/nifeos/nife/actions/runs/38654094250), dispatched 2026-10-14
+23:26 UTC, is the census that measures this; it is pending.
