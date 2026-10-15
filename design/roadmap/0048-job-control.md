@@ -10,12 +10,11 @@ needs_person: no
 # 48. Job control: `jobs`, `wait`, `kill`, `fg`, `bg`, and a stopped state
 
 Phase one is sequenced after 47, because it wants `jobs`
-alongside the other builtins on the same shell surface. Phase two is `ThreadControlBlock::SUSPEND`/`RESUME`, which
-[DECISIONS §24 (interrupting the foreground)](../decisions/0024-interrupting-the-foreground.md)
-deferred; the fork is written up as
-[§300 (the paused state)](../decisions/0300-tcb-suspend-resume-the-paused-state.md). The block
-asks for it to be designed as one surface with the fault endpoint and for all three of §24's
-triggers at once.
+alongside the other builtins on the same shell surface. Phase two is `ThreadControlBlock::SUSPEND`/`RESUME`.
+[§300 (the paused state)](../decisions/0300-tcb-suspend-resume-the-paused-state.md) decided it on
+2026-10-15: the verbs ride the TCB capability, resume continues at the PC, and §26 carries no
+stopped event. The pair is designed once for all three of §24's triggers: job control, a
+userspace pager, and a debugger.
 
 In brief. Shell job control, in two phases split by whether they need a new kernel primitive.
 Phase one needs none; phase two is `ThreadControlBlock::SUSPEND`/`RESUME`, which DECISIONS §24 (interrupting the foreground process) deferred and whose
@@ -75,8 +74,8 @@ reaping by matching the
 child's recorded `fault_ep`, which nobody can satisfy once the supervisor's endpoint is gone.
 
 Sequencing. Phase one after milestone 47 (navigation and naming), because it wants `jobs` alongside
-the other builtins and the same shell surface. Phase two is gated on nothing but
-[§300 (the paused state)](../decisions/0300-tcb-suspend-resume-the-paused-state.md). Effort: 1 lane estimated per
+the other builtins and the same shell surface. Phase two is startable:
+[§300 (the paused state)](../decisions/0300-tcb-suspend-resume-the-paused-state.md) is decided. Effort: 1 lane estimated per
 phase, noting estimates for unbuilt work are guesses on a history-calibrated scale.
 
 ## Index row
