@@ -1,5 +1,5 @@
 ---
-status: PROPOSED
+status: NOT-STARTED
 raised: 2026-10-15
 milestone_dependencies: 740
 decision_dependencies: none
@@ -7,10 +7,11 @@ machine_requirements: none
 specific_machine: none
 needs_person: no
 ---
-# A survivor on a pull request's own lines cannot merge untriaged
+# 924. A survivor on a pull request's own lines cannot merge untriaged
 
-This proposes reopening milestone 479 (a blocking `--in-diff` mutation gate), which is REFUSED. The
-reopening is calef's to rule on; nothing here is switched on until he does.
+This is the rule milestone 479 (a blocking `--in-diff` mutation gate) refused. calef ruled on 2026-10-15
+(UTC), asked whether 479 reopens as this rule: *"Reopen, build it."* The number 924 is provisional
+until the merge queue lands it.
 
 calef raised it on 2026-10-15 (UTC), after the census of 2026-10-14 found 43 untriaged survivors on
 lines that pull requests merged in the two days since the previous census: *"Nobody will read an
@@ -95,8 +96,19 @@ the first code to leave this repository), moves programs in `components`, which 
 at all. So the gate is needed here first, and building it as a reusable piece is what lets each
 repository the split creates start with it.
 
-## The ask
+## Done means
 
-One ruling: whether 479 reopens as this rule. If yes, 479 becomes SUPERSEDED by the number this
-proposal is given, and a lane builds the workflow, adds it to the required checks, and records it
-against fatal risk 3. If no, 479's refusal gains this proposal as the record of what was weighed.
+- A reusable workflow and `helpers/` script run `cargo mutants --in-diff` on a pull request and fail
+  on a survivor with no `equivalent` or `gap` row, or with only a `killed` row.
+- A pull request touching only `kernel/**` or `components/**` passes with the summary "no mutants:
+  outside the corpus".
+- The cap and the timeout rule above hold, each with a selftest case.
+- calef adds the check to the required checks; the lane cannot.
+- Fatal risk 3's file records the gate as a fact. Its color stays calef's.
+
+## Index row
+
+The mutation gate on the diff, switched on. A surviving mutant on a line a pull request changed
+blocks the merge until a test kills it or a ledger row says why it cannot be killed, so new code
+stops arriving less tested than the census allows. It covers the host crates only; the kernel and
+`components` generate no mutants.
