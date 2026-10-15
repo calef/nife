@@ -83,7 +83,11 @@ Measured at the lane's base `8fad33799`: 128 citations in the shape, 125 with a 
 - 10 were stale, and this lane fixed them: six QEMU pointers and the lane-count pointer aimed at
   text the skills split had moved out of AGENTS.md and CLAUDE.md, a comment in
   `crates/swap_protocol` quoting a sentence `notes/hung-component.md` no longer has, a census row
-  abbreviating "milestone 74's" to "M-74's" inside its quotation, and this block's example.
+  quoting milestone 74 (cycle counters) with "M-74's" where the heading says "milestone 74's", and
+  this block's example. The census row is also the ratchet's third excluded record, after the
+  baseline-drift page: an append-only record whose evidence column quotes headings verbatim cannot
+  carry glosses, so `notes/dependency-census/dependencies.tsv` is out of the corpus with that
+  reason beside the exclusion in the script.
 - 1 was not rot: design/roadmap/0610 quotes "What stable would mean" and the note's heading is
   `## What "stable" would mean`. Normalization now drops double-quote punctuation, which its
   docstring had claimed all along, and the citation passes with no edit.
