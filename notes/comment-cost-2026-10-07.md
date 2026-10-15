@@ -16,9 +16,11 @@ Result.
 - 205 of 1,109 Rust file edits (18%) changed comments and nothing else. Most rode along with code.
 - The leading cause of a comment-only edit is a fact going stale (24 of 58 pull requests), not a
   moved reference (4). But path citations rot: 10 of the 13 `design/roadmap/proposals/` paths cited
-  in Rust comments today point at nothing.
-- Comments are 57% of the bytes in this tree's Rust and 40% of its non-blank lines. The kernel runs
-  0.92 comment lines per code line; seL4's C runs 0.15, Redox's kernel 0.09, Linux's `kernel/` 0.33,
+  in Rust comments at the base point at nothing, and on the 2026-10-15 (UTC) re-measure all 9 still
+  cited do, every slug behind them having since been promoted.
+- Comments are 54.6% of the bytes in this tree's Rust and 37.3% of its non-blank lines (57% and
+  40% at the base; re-measured 2026-10-15 UTC). The kernel runs 0.86 comment lines per code line
+  (0.92 at the base); seL4's C runs 0.15, Redox's kernel 0.09, Linux's `kernel/` 0.33,
   and Rust's `core` 1.22.
 - In a uniform sample of 30 comment blocks, 24 keep, 4 cut and 2 move. The blocks that hold the
   bytes are long ones, and a line-weighted sample of 15 found 3 that belong in a note.
@@ -43,7 +45,8 @@ commit, exactly as CI would.
 | already prose-only, no Rust (skipped today) | 84 |
 
 The other 11 of the 18 also changed a note some code names (`notes/e1000e.md`, the fatal-risks
-README), so they would run everything regardless. #1799, still open, is an eighth of the first kind.
+README), so they would run everything regardless. #1799, merged 2026-10-07 UTC, is an eighth of the
+first kind.
 
 Doctests. None of the 18 changed the code inside a doc comment's fence once the fenced blocks
 were extracted and compared ([q1c.py](comment-cost-2026-10-07/q1c.py)). One (#1512) edited a line
@@ -104,9 +107,9 @@ in 10 pull requests replaced a file path. And the paths that remain are rotting 
 | ... of which `design/roadmap/proposals/` | 13 | no | 10 |
 | a pull request number | 182 | no | not checked |
 
-The dead source paths are mostly rename sweeps that stopped at code: `crates/slots` (8 sites, now
-`generational_table`), `crates/regions` (7, now `memory_regions`), `crates/wake_handshake` (3, now
-`thread_wake_handshake`). The proposal paths are dead by design, since promotion renames the file.
+The dead source paths are mostly rename sweeps that stopped at code: `crates/slots` (7 sites at
+the 2026-10-15 UTC re-measure, now `generational_table`), `crates/regions` (2, now
+`memory_regions`), `crates/wake_handshake` (3, now `thread_wake_handshake`). The proposal paths are dead by design, since promotion renames the file.
 The chain that produced #1799 is typical: #1507 cited `proposals/the-install-gates-run-nowhere.md`,
 and #1527 rewrote it to milestone 712 (the install gates run nowhere) eight hours later; #1756 cited
 `proposals/the-package-client-becomes-a-program.md`, and #1799 rewrites it to its new milestone number a day
@@ -178,11 +181,14 @@ The top 20 files by comment lines:
 `components/src/login.rs` opens with a 689-line module doc. 75 files carry more than
 100 lines of `//!`, 11,076 lines between them.
 
-Reading cost, at the rough rate of 4 bytes per token (an estimate, not a tokenizer count). The
-median Rust file is 14.3 KB, about 3,600 tokens, of which 56% is comment. The mean is 25.9 KB, about
-6,500. `kernel/src/sched.rs` is 481 KB, about 120,000 tokens, 65% comment: an agent cannot read it
-whole in one call, and two thirds of what it pages through is prose. The tree's Rust is about 4.3
-million tokens, 2.5 million of them comment. Comment lines sit mostly in long blocks: 48% of them
+Reading cost, at the rough rate of 4 bytes per token (an estimate, not a tokenizer count). At the
+base the median Rust file was 14.3 KB, about 3,600 tokens, of which 56% is comment, and the mean
+25.9 KB, about 6,500. Re-measured 2026-10-15 (UTC), after the split series: median 9.2 KB, mean
+15.0 KB, 1,225 Rust files where the base had 669. `kernel/src/sched.rs` was 481 KB at the base,
+about 120,000 tokens, 65% comment: an agent could not read it whole in one call, and two thirds of
+what it paged through was prose. It has since been split into `kernel/src/sched/`. The tree's Rust
+is about 4.6 million tokens at the re-measure, 2.5 million of them comment, the same comment mass
+the base held. Comment lines sit mostly in long blocks: 48% of them
 are in blocks over 10 lines, 20% in blocks over 40.
 
 Milestone-title parentheticals are only 0.5% of comment bytes.
@@ -286,4 +292,5 @@ yourself loudly" produces when the correction is written at the site and never r
 - **Recommendation: option 2**, because the density measured is not the problem and the long blocks
   are; it reuses §212's ratchet rather than inventing a rule. This one is calef's rule, so the data
   is here and the call is his. If calef wants the rule itself to move, option 3's wording is Linux's,
-  quoted above.
+  quoted above. 2026-10-15 (UTC): a proposal now before him takes option 2's shape for `kernel/`,
+  `design/roadmap/proposals/kernel-comments-in-the-linux-style.md`.
