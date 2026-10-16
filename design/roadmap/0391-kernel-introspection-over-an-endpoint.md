@@ -30,7 +30,7 @@ section for the general case is misreading it"* and that the introspection quest
 own section when there is an actual fact to expose rather than in the abstract."*
 
 So no `design/decisions/` section is minted here, and that is the answer rather than an omission.
-Milestone 269 is the consumer §149 named. It is still `NOT-STARTED`. Writing this fork up before
+Milestone 269 (`machine` at the prompt) is the consumer §149 named. It is still `NOT-STARTED`. Writing this fork up before
 it is taken would put the general case in front of calef on the narrow case's momentum, which is the
 exact thing §149 refused. The section gets minted when 269 is taken.
 
