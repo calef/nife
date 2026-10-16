@@ -55,7 +55,7 @@ readable.
 
 The analogous question is answered on the other two architectures. `dtb::Dtb::from_ptr` takes the
 blob's own length, validates the header before anything else is read. Every reader below it is
-proved total (`be32_is_total`, `be64_is_total`, milestone 18, verify the capability core). The x86
+proved total (`be32_is_total`, `be64_is_total`, milestone 18 (verify the capability core)). The x86
 walk has no equivalent,
 because ACPI is not one blob. It is a linked structure of independent tables, each reached from a
 physical address inside another one.

@@ -105,7 +105,8 @@ It is not a `git mv`, and this block exists partly to say so before four lanes d
   and `kernel/src/bench.rs`.
 - 354 to 380, `milestone/433-slice-2`, 2026-09-19. All 27 promoted, every premise read against
   the tree before its status was written. Twenty are `NOT-STARTED` and verified, four `SUPERSEDED`:
-  354 by milestone 250 on the day it was filed, and 361 by milestone 188's re-measurement.
+  354 by milestone 250 (an unviable mutant is a hole that reads as a pass) on the day it was
+  filed, and 361 by milestone 188 (the IPC fastpath)'s re-measurement.
   Milestone 303 (a server and no disk it can find) superseded 362 and 364, with the newer x86_64
   fixture block. Two are `BUILT` (375 by the radon bench session
   the same evening it was proposed, 380 by the §144 (the fastpath footprint gate) amendment the same day). One is `PARTIAL` (378,
@@ -227,8 +228,8 @@ done here.
   further: the answer usually arrives before the next merge, so the habit that would work is the
   lane closing the proposal it just answered. Recorded in `notes/roadmap.md`.
 - **Milestone 326.** The two mutation-testing proposals in the pile (354 and 418) were both checked
-  against milestone 326's (nobody assigned to turn a mutation score upward) live triage rather than
-  assumed either way. Neither is covered by it:
+  against the live triage of milestone 326 (nobody assigned to turn a mutation score upward) rather
+  than assumed either way. Neither is covered by it:
   354 is about a mutant that never built, and 418 is about a constant `cargo mutants` cannot mutate.
 
 ## Index row

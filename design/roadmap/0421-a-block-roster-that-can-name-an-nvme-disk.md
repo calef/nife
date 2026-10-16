@@ -11,8 +11,8 @@ needs_person: no
 # 421. The block roster cannot name an NVMe disk, and the reason it could not has just gone away
 
 Promoted from the proposal `a-block-roster-that-can-name-an-nvme-disk`,
-filed 2026-09-17 by the milestone 261 lane (the EL0 NVMe server; the milestone is the NVMe driver
-leaving the kernel). That lane closed the question this was
+filed 2026-09-17 by the milestone 261 (the NVMe driver leaves the kernel) lane (the EL0 NVMe
+server). That lane closed the question this was
 waiting on and deliberately did not take the work, because the work is a wire shape and that is the
 expensive category. *(Number provisional until the merge queue lands it.)*
 
