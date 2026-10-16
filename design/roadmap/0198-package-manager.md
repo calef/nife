@@ -19,8 +19,8 @@ Under §159 (only a new kernel needs a reboot), a package update needs no reboot
 does.
 
 Rung 3a's producer half is the one archive file §197 ruled a package is (`crates/package_archive`,
-written and read by one definition), `cargo xtask package` turning a reviewed recipe into a package,
-its digest and a catalog line, and the fuzz target and Kani harnesses §197 accepted as the
+written and read by one definition). `cargo xtask package` turns a reviewed recipe into a package,
+its digest and a catalog line. And the fuzz target and Kani harnesses §197 accepted are the
 container's price. Rung 3a's consumer half is built: the image carries a package catalog, a host
 serves the package over plain HTTP, and `net_stack`'s client accepts it only by the image's digest,
 on aarch64 and riscv64. The table §208 (installing is granting) versions is in
@@ -38,9 +38,9 @@ option D with gate D2, all built. Every earlier fork is ruled:
 [§197](../decisions/0197-a-package-is-one-archive-file.md),
 [§208](../decisions/0208-installing-is-granting.md) and §196 (nife carries TLS). The rulings of §157
 (a trivial install is a web page, a USB drive, and packages over the internet) gate later rungs,
-each on a milestone of its own: the install layout on milestone 515 (rung 2a), Secure Boot on
-milestone 500 (a stick that boots with Secure Boot on) for rungs 1d and 4, and publication is an
-architect's act at rung 4.
+each on a milestone of its own. The install layout waits on milestone 515 (rung 2a). Secure Boot
+waits on milestone 500 (a stick that boots with Secure Boot on) for rungs 1d and 4. And publication
+is an architect's act at rung 4.
 
 In brief, from calef on 2026-08-30: *"I don't think we expose nife to third parties (aka other
 customers) until we have a package manager and a trivial install process."* And, in the same breath,
@@ -84,9 +84,10 @@ running beside all of them, then 1d, then 4.
   milestone 192 prices at *"months rather than weeks"* and 242 itself declines to price. It is split
   on purpose so that 2 and 3 do not wait on it: on xenon, the installer and the package client
   can be driven over the serial console. 1c is on rung 4's critical path and on nothing else's.
-- 1a is one attended boot, and it should capture two more facts while it is there: the PCI
+- 1a is one attended boot, and it should capture two more facts while it is there. The PCI
   survey now prints every function (`kernel/src/pci.rs`, since 2026-09-18), which names xenon's
-  network card for 3b, and the `vt-d` line's DMAR scope, which milestone 261 names as its
+  network card for 3b. And the `vt-d` line's DMAR scope, which milestone 261 (the NVMe driver
+  leaves the kernel, on the machine that can finally confine it) names as its
   load-bearing unknown.
 - Rung 2 is one milestone plus 261's bench step. The partitioner and `mkfs` exist; what is new
   is a layout sized to the disk, the loader handing its own file over, the ESP, and the boot mount.
@@ -139,9 +140,10 @@ and the rungs that are calef's acts are named there rather than here.
 - **Done.** Every archive build runs `cargo xtask package` end to end since 2026-09-24.
 - **Done.** The digest: calef ruled C on 2026-10-07 (UTC), a plain SHA-256 written
   `sha256:<hex>`, built the same day. §197 (a package is one archive file) records it.
-- **Recorded.** No compression, a `u32` ceiling on a member and on a package, a catalog that is
-  one file in `target/` rather than a repository index, a package source compiled into the
-  progenitor, and a recipe that cannot say where its source came from (`crates/package_archive`'s and `xtask/src/package.rs`'s BUGS sections, and
+- **Recorded.** No compression. A `u32` ceiling on a member and on a package. A catalog that is
+  one file in `target/` rather than a repository index. A package source compiled into the
+  progenitor. And a recipe that cannot say where its source came from
+  (`crates/package_archive`'s and `xtask/src/package.rs`'s BUGS sections, and
   `notes/packages.md`).
 - **Recorded.** `packages/uptime.recipe.toml` records no digest on purpose, because the program it names
   is rebuilt by this checkout whenever anything it links changes (the recipe's own comment).
@@ -171,7 +173,7 @@ and the rungs that are calef's acts are named there rather than here.
 - A third party cannot author a package without cloning this repository, because the `nife-dev`
   toolchain, the target specifications and the linker script exist only as build steps inside it
   (`helpers/build-ripgrep.sh` is the one out-of-tree build and it needs them). §151 (the goal of the repository split is independent release)'s
-  "third-party programs" needs a downloadable toolchain: §235 (the OS is built and updated from
+  "third-party programs" needs a downloadable toolchain. §235 (the OS is built and updated from
   packages) ruled an SDK archive for it, proposal P4 of milestone 607 (nife is built and updated
   from packages).
 - The cold build time a stranger pays was not measured, because two other lanes were gating on
