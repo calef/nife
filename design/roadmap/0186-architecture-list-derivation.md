@@ -11,7 +11,7 @@ needs_person: no
 # 186. Derive the architecture list, and close what it does not reach
 
 Built. Of the sweep's eleven silent gaps, ten are closed (findings 3, 6 and 11 by other work, which
-is why this block says to re-check a row before acting on it), one is milestone 187's, and one is
+is why this block says to re-check a row before acting on it), one is milestone 187's. One is
 left open with its reason below. Phases 1, 2 and 3 are done. The sweep is
 `notes/architecture-list-sweep.md` and it is this milestone's worklist; this block says what "done"
 means and in what order, and does not restate the table.
@@ -86,11 +86,11 @@ gated before, so each is a commit and a green run with no follow-on work possibl
   rather than a fallback.
 - Option C is refused, and the refusal is the valuable half. A gate comparing each
   per-architecture file set against the one list would ship with six exceptions against sixteen
-  file-set families: three legitimately incomplete (the `dtb` fixtures, the port notes, the
-  shootdown notes) and three recorded gaps awaiting their own milestones (`targets/*.json`,
+  file-set families. Three are legitimately incomplete (the `dtb` fixtures, the port notes, the
+  shootdown notes), and three are recorded gaps awaiting their own milestones (`targets/*.json`,
   `bench/fastpath-*.txt`, `fastpath_pad.rs`). An exception table more than a third the size of the
   gate it guards is the limitation `script/stack-frame-check`'s own `BUGS` already records about
-  itself, in the entry saying its table is maintained by hand and a function that moves keeps its
+  itself, in the entry saying its table is maintained by hand. A function that moves keeps its
   exemption with nothing noticing. It would also not have caught the finding that prompted the
   sweep, which was a string inside a script rather than a missing file.
 
@@ -114,7 +114,7 @@ a fourth architecture arrives.
   `ROOTS` table.
 
 `script/stack-frame-check` is already done and is the model for this phase. Pull request #567
-widened it, ran it, found `iommu::init`'s 12,504-byte frame, and then held x86_64 out of the
+widened it, ran it, found `iommu::init`'s 12,504-byte frame. It then held x86_64 out of the
 *default* set while making it reachable through `--arch`, with a `BUGS` entry recording what was
 found and saying that dispositioning the offender is not that gate's call. `main` stayed green by
 naming the finding rather than by not looking. Every phase-3 item should end that way, and the
@@ -136,18 +136,18 @@ unbounded tail.
 `kernel/src/arch/aarch64/` and `kernel/src/arch/riscv64/` in full, about 6,200 lines, and has never
 read `kernel/src/arch/x86_64/`, which is 18 files and 6,797 lines, larger than the two it did
 read combined. It is finding 8 of the sweep and it is genuinely an architecture-list gap, but the
-work is not widening a list: it is reading 6,797 lines of hand-written assembly and low-level Rust
-looking for the bug class that audit defines, in the least-verified code in the trusted computing
+work is not widening a list. It is reading 6,797 lines of hand-written assembly and low-level Rust
+looking for the bug class that audit defines. That is in the least-verified code in the trusted computing
 base, on an ISA whose secondary bring-up and VT-d driver have no analogue in what was audited. That
 does not fit beside a `rustup target add` line.
 
 Proposed, provisionally, as its own milestone: audit the x86_64 arch tree, on
 `notes/arch-audit.md`'s terms. The number is the integrator's to mint; this block does not claim
-one. Two things argue for doing it soon rather than eventually: the audit cadence
+one. Two things argue for doing it soon rather than eventually. The audit cadence
 (`script/audits`, `.github/workflows/audit-cadence.yml`) counts audits against elapsed time and
-shipped components and has no notion of an architecture, so a whole unaudited ISA reads to it as
-a tree in good standing and nothing will ever raise it; and the note's own argument is that with no
-prover for assembly, an audit by reading is the compensating control, which means a third of the
+shipped components and has no notion of an architecture. A whole unaudited ISA reads to it as
+a tree in good standing, and nothing will ever raise it. The note's own argument is that with no
+prover for assembly, an audit by reading is the compensating control. A third of the
 arch tree currently has neither.
 
 No prior art outside the tree was consulted. `AGENTS.md` asks for it read rather than recalled,
@@ -197,9 +197,9 @@ remembering to write an arm.
 
 x86_64 got a compiler fence, and the reason is per-site rather than a default. Every call site
 in those five programs asks for store-store (descriptor before available index; index before notify)
-or load-load (used index before the payload it gates), both of which TSO gives for the write-back
-memory a coherent DMA agent shares, and the store-load case it does not give is unreachable because
-every notify and register access in these drivers leaves the process through a serializing syscall.
+or load-load (used index before the payload it gates). Both are orders TSO gives for the write-back
+memory a coherent DMA agent shares. The store-load case, the one TSO does not give, is unreachable,
+because every notify and register access in these drivers leaves the process through a serializing syscall.
 `components/src/non_volatile_memory_express.rs` keeps `dmb sy` and a real `mfence` and did not join
 the shared function: its doorbell is a direct store to a device-typed page in this address space,
 with no syscall between the ring stores and it. Same hardware, different answer, which is what makes
@@ -239,9 +239,9 @@ in `kernel/src/pci.rs` is fixed.
 - **Done.** Findings 2, 4, 5, 7 and 9 are closed, and the CI target lists the sweep did not name
   are closed with them.
 - **Recorded.** Hardcoded two-architecture lists that remain are decisions with their reasons in
-  place: `script/stack-frame-check`'s default set and its CI job (x86_64 held out behind `--arch`
-  for `iommu::init`'s frame), `script/lint`'s clippy block for the build-mode features x86_64 does
-  not compile, and `xtask`'s `icount` (no x86_64 leg, reason in its source). Not checked by any
+  place. `script/stack-frame-check`'s default set and its CI job (x86_64 held out behind `--arch`
+  for `iommu::init`'s frame). `script/lint`'s clippy block for the build-mode features x86_64 does
+  not compile. And `xtask`'s `icount` (no x86_64 leg, reason in its source). Not checked by any
   mechanism: nothing stops a new gate spelling its own list.
 - **Recorded.** `virtio_ring_barrier` is a provisional name. It is a new public function, which
   is an architect's call; it sits in `user_mode_runtime::virtio` and carries that module's `virtio_`
@@ -257,10 +257,10 @@ in `kernel/src/pci.rs` is fixed.
 ## Index row
 
 `script/stack-frame-check` gated two of three architectures ten days after the third became a test
-target, with nothing in its BUGS section saying so; the sweep in notes/architecture-list-sweep.md
+target, with nothing in its BUGS section saying so. The sweep in notes/architecture-list-sweep.md
 found eleven silent gaps in nine files, beside nine recorded gaps that are working as designed.
 Everything in the tree that stayed complete at three is a Rust `match` the compiler pushed on or a
-file whose absence a build notices; everything stale is a string in a shell script, a YAML step,
+file whose absence a build notices. Everything stale is a string in a shell script, a YAML step,
 or a TOML array. Phased so each widening is its own commit and its own green run, since newly
 gating an architecture surfaces real offenders (`--arch x86_64` already found a 12,504-byte
 frame). Recommends deriving the one list `rust-toolchain.toml` already carries, refuses a file-set
