@@ -14,7 +14,7 @@ the first code in this tree that turns a device on and deliberately did not writ
 promoted by milestone 433 on 2026-09-19. Checked against the tree that day and nothing has moved:
 `crates/jh7110_clock_and_reset` exposes `discover`, the offset and mask arithmetic, and the two
 read-back predicates (`clocks_running`, `was_already_up`), with no path that gates a clock or
-asserts a reset, and `kernel/src/drivers/jh7110_clock_and_reset.rs` still offers no teardown. The
+asserts a reset. `kernel/src/drivers/jh7110_clock_and_reset.rs` still offers no teardown. The
 decision the gate names is unanswered: nothing in `design/decisions/` takes up who may turn a device
 off.
 
@@ -67,7 +67,7 @@ forever with nothing able to reclaim it. On a board with one TRNG that costs not
 the same SoC's USB, PCIe and DMA blocks it is the whole of device power management. The lane
 refused to just add the inverse, for a reason in the hardware: the JH7110's TRNG reset is documented
 as shared, the same line resets the PL080 DMA engine, so "turn my device off" is "reset a block my
-neighbor is using", and the refcounting Linux gets from its clock framework does not exist here.
+neighbor is using". The refcounting Linux gets from its clock framework does not exist here.
 Three questions make it calef's. Who may gate a clock, since a teardown a driver can ask for is a
 different question from a controller a driver can hold and the first may need no new syscall
 surface. What the unit of reclamation is, per-device with a refcount or per-job off §40's subtree
