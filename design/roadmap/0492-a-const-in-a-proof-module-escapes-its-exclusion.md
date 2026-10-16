@@ -44,8 +44,9 @@ number is small; it grows the next time a harness needs a computed bound.
 
 Why it is worth an entry rather than a shrug. It is the third appearance of one defect.
 Milestone 244 found `system_initializer` scored 191-mutants-0-caught because `--exclude` does not
-remove a package from the dependency graph. Milestone 280 found `uefi_loader`'s `[[bin]]` half
-scored on a file nothing compiles. Milestone 326 found 36 of `timetable`'s 48 survivors were its own
+remove a package from the dependency graph. Milestone 280 (unexplained holes in the published score)
+found `uefi_loader`'s `[[bin]]` half scored on a file nothing compiles. Milestone 326 (nobody has
+been assigned to turn a mutation score upward) found 36 of `timetable`'s 48 survivors were its own
 proof harnesses, because the module-path regex cannot see a module that is its own file. Each time
 the number moved for a reason that was arithmetic rather than a finding, and each time it was found
 by somebody triaging by hand. This one is the same defect keyed on the item kind instead of the
