@@ -1479,6 +1479,7 @@ dependencies = [
  "counter_frequency_protocol",
  "current_cpu_protocol",
  "entropy_protocol",
+ "socket_protocol",
  "user_mode_heap",
 ]
 
