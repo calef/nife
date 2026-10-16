@@ -107,7 +107,7 @@ It is not a `git mv`, and this block exists partly to say so before four lanes d
   the tree before its status was written. Twenty are `NOT-STARTED` and verified, four `SUPERSEDED`:
   354 by milestone 250 (an unviable mutant is a hole that reads as a pass) on the day it was
   filed, and 361 by milestone 188 (the IPC fastpath)'s re-measurement.
-  Milestone 303 (a server and no disk it can find) superseded 362 and 364, with the newer x86_64
+  Milestone 303 (a server and no disk it can find) answered 362 and 364, with the newer x86_64
   fixture block. Two are `BUILT` (375 by the radon bench session
   the same evening it was proposed, 380 by the §144 (the fastpath footprint gate) amendment the same day). One is `PARTIAL` (378,
   whose parser and reporting arrived as milestones 161 and 317 and whose xenon reading has not been
