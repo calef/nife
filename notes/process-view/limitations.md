@@ -152,7 +152,7 @@ one line.
 
 - `pmap` cannot be reached from the interactive prompt against any real process. See "What
   building it found" in [pmap-listing.md](pmap-listing.md). Every `Object::AddressSpace` capability
-  is minted and consumed within its own builder's thread, `Tcb::CONFIGURE` removes the space from the registry
+  is minted and consumed within its own builder's thread, `ThreadControlBlock::CONFIGURE` removes the space from the registry
   the instant it binds to a thread, and nothing shipped here delegates one to a second program.
   `ps`'s `Manifest::domain` has no analogue because there is nothing alive to wire it to. Fixing
   this is a spawn-protocol question, not a `pmap` change, and it is not decided here.

@@ -33,7 +33,7 @@ stale number acceptable, because it says a refresh is arriving on its own. The 9
 2026-08-03 and 2,529 commits have landed since.
 
 **The symptom is described and deliberately not diagnosed** by the lane that found it, because the
-step logs have aged out of `gh`: on the most recent run all four shards died together about fourteen
+step logs have aged out of `gh`. On the most recent run all four shards died together about fourteen
 minutes in with `The runner has received a shutdown signal`, which is the shape of a run being
 reclaimed rather than a defect in a shard. On the three before it, shard 4 died in about twenty
 seconds every time while its siblings ran for half an hour. Whether that is a memory kill, an
@@ -101,13 +101,13 @@ the same failure is a straight line into the wall:
 ```
 
 A mutant turns a bound into an unbounded allocation, the
-machine goes, and the runner agent goes with it. The per-mutant timeout cannot catch this: it is
+machine goes, and the runner agent goes with it. The per-mutant timeout cannot catch this. It is
 auto-derived at 28 to 51 seconds on this tree, and 16 GB is gone well inside that, so a mutant that
 allocates rather than spins is a hang the clock never gets to name. A sampler whose interval is
 longer than the event it watches for reports innocence, which is worse than reporting nothing.
 
 So `-j 2` is not the constraint, since one runaway takes 14 GB by itself. The workflow now shards
-eight ways with `--sharding round-robin`, and that is damage control rather than a repair: it
+eight ways with `--sharding round-robin`, and that is damage control rather than a repair. It
 does not stop a shard dying, it makes a lost shard cost an eighth of every crate instead of all of a
 few, so a partial report is still a report about every crate. Nothing is measured less: the same
 9,857 mutants are attempted. The repair is a bound on what one mutant may allocate, and it is handed
@@ -116,7 +116,7 @@ off rather than guessed at, below.
 A number came back, the workflow published its first report ever, and the number is lower. The
 eight-way round-robin run had one shard survive, and because round-robin samples every crate rather
 than an alphabetical block, that one shard is a uniform one-eighth of the whole corpus across all
-60 crates: 83.4% of viable mutants killed, against the baseline's 92.4% from 2026-08-03. (The
+60 crates. 83.4% of viable mutants killed, against the baseline's 92.4% from 2026-08-03. (The
 earlier four-way run's surviving shard read 74.4%, but it was an alphabetical slice of mostly
 post-baseline crates and is not comparable to anything; both are tabulated in
 notes/mutation-testing.md.)
@@ -190,13 +190,13 @@ six full-screen sweeps, each 317,856 pixels, several doing per-pixel work heavy 
 `expected_screen_pixel` in others). One of them,
 `a_damaged_composite_leaves_the_rest_of_the_screen_alone`, was measured at over 44 minutes without
 finishing; it is strided here, with a pinned sample, and dropped to 57 seconds. The other five
-are not, and they are why the run still does not fit its budget: with that one fixed, a later run
+are not, and they are why the run still does not fit its budget. With that one fixed, a later run
 sat in `the_checksum_catches_a_wrong_surface` alone for more than 40 minutes, and the whole rest
 of the workspace outside this crate takes well under a minute to reach. `compositor` is the entire
 remaining cost of `script/undefined-behavior-check`.
 
 Each needs its own judgment rather than one blanket stride, which is why this is a lane and not a
-line in this milestone: `the_scene_exercises_overlap_clipping_and_background` asserts *counts* of
+line in this milestone. `the_scene_exercises_overlap_clipping_and_background` asserts *counts* of
 visible pixels per window, so a stride changes the numbers it checks, and
 `every_screen_pixel_distinguishes_its_owner` is making a completeness claim that a naive sample
 weakens. The strided one shows the shape to copy: never skip the rows that carry the claim, and pin
@@ -230,7 +230,7 @@ Whichever wins, more gets measured, not less: a runaway mutant that today destro
 recorded as one caught mutant, and the other 1,200 in that shard would finish.
 
 This was not built here because each attempt costs a twenty-minute CI round trip and the failure
-mode of a bad cap is a build that breaks confusingly rather than loudly, which is the wrong thing to
+mode of a bad cap is a build that breaks confusingly rather than loudly. That is the wrong thing to
 ship under a feedback loop that slow.
 
 ## Follow-on
@@ -261,7 +261,7 @@ ship under a feedback loop that slow.
   holds the three shapes and the measurement behind them.
 - **Done.** Re-read fatal risk 3 against the new number. calef ruled it on 2026-09-19 and
   `design/fatal-risks/README.md` now reads MEASURED, AMBER. The 83.4% this bullet was written against
-  turned out not to exist: the workflow this milestone repaired went on to complete all eight shards
+  turned out not to exist. The workflow this milestone repaired went on to complete all eight shards
   on 2026-09-14, and the census put the tree at 91.7% over 64 crates with the baseline's own 38 up
   from 92.4% to 93.6%. The amber half is the two findings a census can show and a sample cannot, and
   they are named in the entry.

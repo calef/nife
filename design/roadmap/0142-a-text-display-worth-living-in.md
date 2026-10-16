@@ -260,13 +260,13 @@ Minted by calef on 2026-08-20, on seeing the Kaypro-style font land: he wants So
 Higher Contrast and Menlo Regular 11, and the sentence that is the milestone is *"a text display
 so good that people would use it outside of a GUI."* Four axes, and the font is the smallest: the
 surface, the terminal, the type and the color. The finding that makes the expensive axis cheap is
-that a monospace grid puts every glyph on an integer cell boundary, so the rasteriser belongs at
+that a monospace grid puts every glyph on an integer cell boundary. So the rasteriser belongs at
 build time and the runtime keeps a coverage table exactly as `bitfont` keeps a bit table, which is
 what preserves the three-party pixel-exact proof. Increments one and two (the scanout, first grown
 to 1280x720 via DECISIONS §102 then retargeted 2026-08-27 to 924x344 for a 132x43 grid at the
 shipping 7x8 cell, and a real terminal: scrollback, UTF-8, arrow keys) are built. Increment five
-is partial (truecolour and the line renditions built 2026-09-26; the faces are ruled and wait on the atlas), the
-navigation cluster is in the keymap, and scrollback from the keyboard is a proposal because its
+is partial (truecolour and the line renditions built 2026-09-26; the faces are ruled and wait on the
+atlas). The navigation cluster is in the keymap, and scrollback from the keyboard is a proposal because its
 route needs a new opcode. Six, the palette, is built (the gate of milestone 141, a palette worth
 looking at). Three and four remain NOT-STARTED; the ruling of 2026-10-05 UTC and milestone 141 is
 built, so nothing blocks them.

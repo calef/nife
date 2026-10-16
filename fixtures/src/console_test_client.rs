@@ -33,7 +33,7 @@
 #![no_main]
 
 use abi::Error;
-use user_mode_runtime::{exit, receive, send};
+use user_mode_runtime::{exit, receive, require, send};
 
 /// The page shared with the console server. We write text here; the server reads it. Mapped
 /// read/write here, read-only there. Must match `components/src/console.rs`'s `SHARED_VA`.
@@ -50,8 +50,8 @@ pub extern "C" fn _start(_arg0: u64, _arg1: u64, _arg2: u64) -> ! {
 
     // These cannot fail: this program is only ever spawned WITH the console, so `print` holds its
     // capabilities. A failure traps, which is what we want if the wiring is wrong.
-    check(print(b"      hello from EL0, printed by a driver that also runs at EL0.\n").is_ok());
-    check(print(b"      the kernel never saw these bytes.\n").is_ok());
+    require(print(b"      hello from EL0, printed by a driver that also runs at EL0.\n").is_ok());
+    require(print(b"      the kernel never saw these bytes.\n").is_ok());
 
     // Done, so exit. This used to spin ("so the timer can prove it still preempts us"), which the
     // dedicated `interrupt_ignorer` binary proves better and without leaving a CPU-bound thread
@@ -83,14 +83,6 @@ fn print(bytes: &[u8]) -> Result<(), Error> {
     // Wait for the server to finish reading the buffer before we touch it again.
     let (_ack, _, _) = receive(REPLY);
     Ok(())
-}
-
-/// The only way this program can say "no": a trap, which the kernel treats as a fault and kills us
-/// for. A failed check must be indistinguishable from a broken program, because it is one.
-fn check(ok: bool) {
-    if !ok {
-        user_mode_runtime::trap()
-    }
 }
 
 user_mode_runtime::panic_handler!();

@@ -43,7 +43,8 @@ green.
 The obvious repair, calling `parse` and `read` from the harness, is what the harness's author
 avoided, and the reason is probably tractability: `parse` walks a directory over a symbolic image.
 So this is a **restructuring** question rather than a harness question, and it is the shape
-DECISIONS §46 rule 1 already describes: factor the acceptance condition and the slice bounds into
+DECISIONS §46 (thin primitives or whole subsystems) rule 1 already describes. Factor the acceptance
+condition and the slice bounds into
 functions small enough for the prover, which both the implementation and the harness then call.
 `elf`'s `check_segment_bounds` is the worked example already in the tree: a leaf factored out of a
 loop precisely so a bounded model checker can quantify over it, with the real parser calling the
@@ -100,7 +101,7 @@ whole family. Every harness was read.
   This refusal is milestone 470 (design/roadmap/0470-a-gate-on-harness-quality.md), which carries it
   with the condition that would change it.
 - **Refused.** The mechanical narrowing this block predicted, greping for harnesses that never call
-  the crate. It is easy to run and it is the wrong question: almost every harness that recomputes
+  the crate. It is easy to run and it is the wrong question. Almost every harness that recomputes
   something also calls the crate, so the interesting cases are the mixed ones, and 211 had already
   measured its own extractor flagging three findings for the wrong reason and missing a family.
   Every one of the 148 was read instead.
@@ -109,7 +110,7 @@ whole family. Every harness was read.
   harness into this defect silently, and nothing re-checks the cleared set.
 - **Recorded.** `design/roadmap/0213-harnesses-that-duplicate-the-implementation.md`. One finding is
   a floor and a lower one than 211's eleven. A harness with the crate on neither side of its
-  assertion is the pure form and there was one; a harness whose subject comes from the crate can
+  assertion is the pure form and there was one. A harness whose subject comes from the crate can
   still rest on a recomputed *assumption*, and telling a safe restatement from an unsafe one took
   reading the code.
 - **Recorded.** `design/roadmap/0213-harnesses-that-duplicate-the-implementation.md`. A model of a
@@ -127,7 +128,7 @@ whole family. Every harness was read.
 Found beside milestone 211's sweep, which was looking for a different defect. `nifefs::the_validation_implies_reads_slice_is_in_bounds` calls neither `parse` nor `read`: it
 recomputes both functions' arithmetic inline and proves a property of the copy, so a rewrite of `read` leaves it green. Its own comments say "exactly parse's acceptance condition", which is a
 claim in prose standing where evidence should be, and DECISIONS §134 exists to stop that. The
-repair is a restructuring rather than a harness edit, along the lines of `elf::check_segment_bounds`, and whether it earns its keep was the first thing decided: it does,
+repair is a restructuring rather than a harness edit, along the lines of `elf::check_segment_bounds`. Whether it earns its keep was the first thing decided: it does,
 because the duplication was in the implementation before it was in the harness. Swept 2026-09-02:
 148 harnesses read, one measured blind, two more recorded as having the shape and not being
 findings.

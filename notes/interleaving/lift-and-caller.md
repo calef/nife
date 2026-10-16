@@ -19,7 +19,7 @@ pub fn destroy(region: u64) {
     let Some((base, size)) = REGIONS.lock().bounds(region) else { return };
     crate::revoke::revoke_region(base, size);
     for i in 0..(size / FRAME_SIZE) {
-        memory::free(Frame::from_addr(base + i * FRAME_SIZE));
+        memory::free(PageFrame::from_addr(base + i * FRAME_SIZE));
     }
 }
 ```

@@ -20,14 +20,14 @@ kernel test.
 
 Every host crate has this for free: `cargo test <name>` and `cargo kani --harness <name> --exact`
 both work, which is why DECISIONS §134's falsification sweep is thirty seconds over twenty-five
-records. **The kernel half of that table is not affordable at all**: one falsification costs a full
+records. **The kernel half of that table is not affordable at all**. One falsification costs a full
 suite run of about four minutes, and milestone 202 measured 234 of those seconds as a single hung
 test whose break manifested as a watchdog timeout.
 
 ## Why it is worth its own block
 
 It is not only 202's problem. Every lane that has waited out a whole suite to see one test has paid
-this, and the tree records the shape without naming the cause: the load-sensitive assertions, the
+this, and the tree records the shape without naming the cause. The load-sensitive assertions, the
 scanout checks, the two-core crash hunt, and this session's own `ci-build` runs that failed on timing
 under load and told us nothing about the change under test.
 
@@ -83,7 +83,7 @@ cheap, which is worth knowing before anybody promises a fast inner loop.
   architectures, so filtering an architecture-specific test without an architecture fails on the
   other two legs. The failure message names the cause.
 - **Milestone 323.** Build the sweep that
-  replays kernel falsification records. Three pieces, each a decision rather than plumbing: extend
+  replays kernel falsification records. Three pieces, each a decision rather than plumbing. Extend
   §134's `Falsification:` comment convention from `#[kani::proof]` to `#[test_case]`, teach
   `script/falsifications` a second replay verb (`cargo xtask test --arch <a> --test <name>` per
   architecture, beside today's `cargo kani --harness <name> --exact`), and settle where kernel

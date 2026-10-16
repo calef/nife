@@ -30,7 +30,7 @@ The frame is what makes this more than a naming preference. §25 already decided
 shared frame is the granted thing and the socket id is bookkeeping. A listener has no frame, so under
 that decision it has nothing to grant, and the split falls out rather than being imposed. This is the
 tree's existing habit of splitting authority by what a holder can *do* rather than by what it names,
-which is `Frame` versus `DeviceFrame` and `WRITE` versus `GRANT` on one object.
+which is `PageFrame` versus `DeviceFrame` and `WRITE` versus `GRANT` on one object.
 
 So `ACCEPT` carries the socket id to install the connection at (`CALL(req(OPERATION_ACCEPT, lsid),
 target_sid)`), the client must have attached a frame there first, and `target_sid == lsid` is

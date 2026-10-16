@@ -51,8 +51,8 @@ them stop depending on firmware to agree.
 
 aarch64: `PMUSERENR_EL0 = 0`, per core. In `kernel/src/arch/aarch64/timer.rs`, beside the
 existing `CNTKCTL_EL1.EL0VCTEN` write rather than in a PMU driver that does not exist. The two
-writes are one decision seen twice (may EL0 read the coarse counter, may it read the fine one), and
-on riscv64 both answers live in a single CSR, so putting the aarch64 pair at one site is what makes
+writes are one decision seen twice (may EL0 read the coarse counter, may it read the fine one). On
+riscv64 both answers live in a single CSR, so putting the aarch64 pair at one site is what makes
 the three architectures legible side by side. `timer::init` is the per-core init: `smp.rs`'s
 `secondary_main` calls it, which is what "per core" required, since `PMUSERENR_EL0` is banked per PE.
 
@@ -68,7 +68,7 @@ register. Both are boards with no EL0 cycle-counter door to close.
 riscv64: `csrs scounteren, TM` became `csrw scounteren, TM`. One instruction, and it turns the
 comment four lines above it into the thing the code does. The whole-register write also clears the
 `HPM` bits (3..31) for the U-mode hardware performance counters, which nothing in this tree reads and
-which nothing ever claimed were open; a zero in this CSR can only take a U-mode read permission away,
+which nothing ever claimed were open. A zero in this CSR can only take a U-mode read permission away,
 never add one, so the wider write cannot open anything the narrower one would have shut.
 
 x86_64: a second door nobody had looked at, and it did close. The brief said to leave this
@@ -76,16 +76,16 @@ architecture alone in code, and that was right about the bit it named and wrong 
 architecture. `CR4.TSD` (bit 2) gates `rdtsc` and stays clear, for the reason below. `CR4.PCE`
 (bit 8) gates `rdpmc`, which reads a performance counter by index, and fixed counter 2
 (`CPU_CLK_UNHALTED.REF_TSC`) runs at the TSC rate, so an open `PCE` is a second path to a cycle-rate
-instrument reached by a different instruction. Nobody had looked when this block was minted; a
+instrument reached by a different instruction. Nobody had looked when this block was minted. A
 research lane checking whether x86 has any user-readable clock besides the TSC found it in the ISA
-while this lane was working, and the maintainer routed it here because it is the same defect shape
+while this lane was working. The maintainer routed it here because it is the same defect shape
 the other two architectures had.
 
 `arch::init` now establishes it clear, per core, beside the GDT and the IDT. `smp.rs`'s
 `secondary_main` calls that function and `boot.s`'s AP path jumps to `secondary_main`, so the
-secondaries are covered by the same line. It cost nothing, as forecast: nothing in this tree
-reads a performance counter from ring 3, and nothing under `arch/x86_64/` programs a perf MSR at all,
-so with the counters unprogrammed an open `PCE` would have exposed zeros or firmware's leftovers
+secondaries are covered by the same line. It cost nothing, as forecast. Nothing in this tree
+reads a performance counter from ring 3, and nothing under `arch/x86_64/` programs a perf MSR at all.
+With the counters unprogrammed, an open `PCE` would have exposed zeros or firmware's leftovers
 rather than anything useful.
 
 And it reads `CR4` back rather than trusting the reset value, which is this milestone's whole
@@ -101,15 +101,15 @@ x86_64's `rdtsc`: nothing in the kernel, and two records. The position is writte
 meets it:
 a `BUGS` section on `crates/user_rt`'s `x86_64` `now()`, and a subsection of `notes/x86-port/user-mode-runtime.md`
 carrying the three-architecture table. Both say the same three things, which are what the brief asked
-for: the TSC is ambient here, it was inherited from the reset value rather than chosen, and
-closing it today costs `Instant`, `thread::sleep`, the random seed, smoltcp's timestamps and the
+for. The TSC is ambient here, inherited from the reset value rather than chosen. Closing it today
+costs `Instant`, `thread::sleep`, the random seed, smoltcp's timestamps and the
 benchmark harness at once, because on this architecture `now()` is `rdtsc` and there is no coarse
 alternative to fall back to.
 
 ### How it was verified, and what verification is not available
 
 Nothing broke. `script/test` is green on all three architectures, which is the load-bearing
-result: had anything in this tree been reading a counter it did not have permission to read, closing
+result. Had anything in this tree been reading a counter it did not have permission to read, closing
 these bits is exactly what would have surfaced it, and the brief asked for that to be reported
 loudly. There was nothing to report, on any of the three.
 
@@ -175,9 +175,9 @@ aarch64 now writes `PMUSERENR_EL0 = 0` in its per-core timer init, gated on `ID_
 scounteren, TM` became a `csrw`, so the comment claiming CY and IR "stay closed" is now made true
 by the instruction beside it. This changed no policy: both architectures end where the tree
 already believed they were, and stop depending on firmware to agree. `CR4.TSD` was deliberately
-left alone, because on `x86_64` `now()` is `rdtsc` and closing it would break `Instant`, `thread::sleep`, the random seed, smoltcp's timestamps and the benchmark harness at once; that
+left alone, because on `x86_64` `now()` is `rdtsc` and closing it would break `Instant`, `thread::sleep`, the random seed, smoltcp's timestamps and the benchmark harness at once. That
 position is recorded in `notes/x86-port/user-mode-runtime.md` and in a `BUGS` section on `user_rt`'s `now()`. `CR4.PCE` was a second door nobody had looked at, found mid-lane by a research lane reading
-the ISA: it gates `rdpmc`, fixed counter 2 runs at the TSC rate, and nothing here reads a
+the ISA. It gates `rdpmc`, fixed counter 2 runs at the TSC rate, and nothing here reads a
 performance counter from ring 3, so `arch::init` now establishes it clear per core at no cost. It
 reads `CR4` back rather than trusting the reset value, and that paid: OVMF leaves five bits set
 that this kernel never wrote (`0x668` against the PVH boot's `0x20`), though bit 8 was clear in

@@ -13,8 +13,8 @@ The premise in that title is false and the title is kept anyway, because milesto
 fourth board would have to be for, so that GICv3 is bought rather than justified) cites this
 milestone by that name. The sections below say what is actually true of the board that runs
 milestone 159 (a real hardware entropy source: the JH7110's TRNG). The token follows milestone
-218's (every boot of the VisionFive 2 needs a human typing four commands into U-Boot) precedent:
-the route is built and has not run on radon, so the status says what the outcome is rather than
+218's (every boot of the VisionFive 2 needs a human typing four commands into U-Boot) precedent.
+The route is built and has not run on radon, so the status says what the outcome is rather than
 what was built.
 
 Everything that does not need the board is built, host-tested and merged; what
@@ -101,12 +101,12 @@ facts out: which spelling it was, and what the node's `status` says.
 
 **`status` is reported and not acted on**, which is the decision. Refusing a node the firmware calls
 disabled would be correct device-tree semantics and wrong here, and this tree already has the reason
-written down in the other direction: the same DTB marks the S7 monitor core `status = "okay"` and
+written down in the other direction. The same DTB marks the S7 monitor core `status = "okay"` and
 claims it has an Sv39 MMU, and both are false (notes/visionfive2.md, "Second bench stop"). A tree
 that lies about `status` in one direction has not earned obedience in the other. So the boot tour's
 failure line now carries the tree's own two words (`tree says starfive,trng, status disabled`)
-beside the bring-up diagnostic, because those two facts together are what triage needs: an all-zero
-register window on a node the firmware calls disabled is a clock or a reset nobody ungated, which is
+beside the bring-up diagnostic, because those two facts together are what triage needs. An all-zero
+register window on a node the firmware calls disabled is a clock or a reset nobody ungated. That is
 milestone 220's (a clock and reset controller, because the first real device needs one) territory
 rather than a driver bug.
 
@@ -171,9 +171,9 @@ there was no bench session. Two commands and one boot settle all of it.
   having ungated a block it calls disabled, and 220 is where it goes. This milestone's work makes
   that outcome distinguishable from "no such device", which it was not before.
 - **Refused.** Shipping a fuller DTB from the card, or an overlay, or a `fdt mknode` sequence in the
-  boot script. All three were priced and all three lost to a four-line decoder change: they make
-  this project the author of a hardware description, they change every discovery input at once on a
-  board nobody can currently test, and the boot-script route additionally depends on the vendor
+  boot script. All three were priced and all three lost to a four-line decoder change. They make
+  this project the author of a hardware description, and they change every discovery input at once
+  on a board nobody can currently test. The boot-script route depends on the vendor
   U-Boot's `fdt` subcommands and on a node path with an upper-case C in it. The one thing they would
   buy over the decoder change is flipping `status` to `okay`, and that buys nothing: U-Boot has no
   driver for this block either way, so no `fdt set` ungates a clock.

@@ -42,10 +42,10 @@ The kernel did not change. No new object, no new syscall, no `dup2`, no pipe buf
   date | wc
 
   shell: SPLIT a region off its own budget
-         RETYPE one page of it into an Endpoint          <- this is the pipe
-         spawn date, delegating the endpoint  WRITE      <- into date's slot 0
-         spawn wc,   delegating the endpoint  READ       <- into wc's slot 1
-         read wc's answer off its own result endpoint
+         RETYPE one page of it into a Rendezvous          <- this is the pipe
+         spawn date, delegating the rendezvous  WRITE      <- into date's slot 0
+         spawn wc,   delegating the rendezvous  READ       <- into wc's slot 1
+         read wc's answer off its own result rendezvous
          DESTROY the region                              <- this is what ends a stalled writer
 ```
 

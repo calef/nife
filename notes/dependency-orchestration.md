@@ -156,7 +156,7 @@ behalf.
 **No non-cooperative fallback.** notes/hung-component.md's own finding applies here directly: the one
 step a dependency-aware supervisor needs from a dependent (telling it to degrade) is exactly the step
 a hang makes unavailable. If `broker` itself stopped answering without dying, this mechanism has
-nothing to say about restoring service through it: `broker` is not `Endpoint::REAP`-collectable any
+nothing to say about restoring service through it: `broker` is not `Rendezvous::REAP`-collectable any
 more than the console component was, and nothing here builds the fallback notes/hung-component.md
 already declined to build. This is not new work avoided; it is the same open decision (a timed wait,
 and what a supervisor may do about a component that never cooperates) inherited rather than

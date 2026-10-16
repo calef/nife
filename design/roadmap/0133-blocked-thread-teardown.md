@@ -18,8 +18,8 @@ they were written, because the argument they record is what the decision was mad
 changed is only that it is no longer open.
 
 **Why A and not B, so it is not relitigated.** A's one live risk was that it would settle *what a
-spawner retains over a child after `START`* by accident. `DECISIONS` §142, what a spawner retains
-over a child after `START`, settled that on its own terms the same day: retention becomes a declared
+spawner retains over a child after `START`* by accident. `DECISIONS` §142 (what a spawner retains
+over a child after `START`) settled that on its own terms the same day. Retention becomes a declared
 field on `ChildEndowment`, and what it declares today is what the tree already does, which is retain
 nothing. Settling it removed the accident and freed A to ship, which that section says in as many
 words. **B stays open behind a customer that does not exist**: a terminate
@@ -64,9 +64,9 @@ do not wake the victim at all.
 What the research established, and it reframes the work. The mechanism is close to free and the
 authority is the whole problem. `thread::WaitRole` is a closed enumeration of three places a blocked
 thread can be (an endpoint's sender queue, its receiver queue, or no queue at all for a `CALL`
-caller); `handshake.wait_on` names the endpoint; `set_ipc_aborted` plus `wake` is the existing
-abort-and-resume pair; `Endpoint::remove_sender` already exists for surgical unlinking and its
-receiver twin is the same twelve lines; and `reap_region_objects` already reaches into an endpoint
+caller). `handshake.wait_on` names the endpoint. `set_ipc_aborted` plus `wake` is the existing
+abort-and-resume pair. `Endpoint::remove_sender` already exists for surgical unlinking and its
+receiver twin is the same twelve lines. And `reap_region_objects` already reaches into an endpoint
 *outside* the region being destroyed, with its reasoning written down. So the kernel could end any
 blocked thread today in about thirty lines with no new syscall. **What has never been decided is who
 may ask, and that is the milestone.**
@@ -89,13 +89,13 @@ holding something. If this milestone ends as `RECORDED`, that is a result.
 
 **What is not in scope.** Detection. Deciding that a component *is* hung needs milestone 106's timed
 wait and is milestone 23's residual, not this one's; this milestone is about what can be done to a
-thread already known to be stuck, whether it is stuck because a peer hung, because a peer died, or
+thread already known to be stuck. It may be stuck because a peer hung, because a peer died, or
 because it was written wrong.
 
 ## What was built
 
 `sched::region_reap_verdict` grows a fourth answer, `RegionReap::FinishInPlace`, and
-`reap_region_objects` grows a phase that acts on it: a resident that is `Blocked` and off its
+`reap_region_objects` grows a phase that acts on it. A resident that is `Blocked` and off its
 kernel stack is unlinked from whatever queue holds it, every outstanding `Object::Reply` naming it
 is deleted from every capability table, and its state is written straight to `Finished`. It is
 never woken and never runs another instruction. `crates/inter_process_communication` gains `Rendezvous::remove_receiver`,
@@ -108,7 +108,7 @@ was added to the syscall surface, no right was added, and no new error is visibl
 
 Both queues are asked, rather than the recorded `WaitRole`. The research described the role as
 deciding which queue holds the thread, and it does not: `ipc_call`'s `Send::Blocked` arm records a
-caller as `WaitRole::Reply` while queueing it as a *sender*, so role and queue disagree on every
+caller as `WaitRole::Reply` while queueing it as a *sender*. So role and queue disagree on every
 call that meets no server. Each remove compares pointers and reports whether it found anything, so
 asking the wrong queue costs one drain-and-repush of a short queue and cannot be wrong.
 
@@ -127,7 +127,7 @@ checked against the mutation it is meant to catch:
 - `tearing_down_a_reply_parked_caller_sweeps_the_reply_capability` stages the hardest shape: a
   caller whose `CALL` was collected, so it sits on no queue at all, with the test itself holding the
   one-shot `Reply`. Deleting the sweep from `sched::finish_blocked_resident` leaves the capability
-  in its slot and fails that test **and only that test**, which is the point of having it: a change
+  in its slot and fails that test **and only that test**, which is the point of having it. A change
   that traded a permanent block for a forgeable reply would pass every capacity assertion above it.
 
 `crates/inter_process_communication` gains a Kani harness, `removing_a_waiter_preserves_the_invariant`, whose interesting
@@ -141,7 +141,7 @@ case is the miss rather than the hit, because the kernel asks both queues on eve
   complementary rather than alternatives: this milestone reclaims the hung component's own region,
   254 frees its stranded callers. They also took one of seL4's two answers to the stale-reply hazard
   each, and the merge folded their two copies of the sweep into one function,
-  `sched::delete_reply_caps_naming`, so the invariant they share (no unconsumed reply capability
+  `sched::delete_reply_caps_naming`. So the invariant they share (no unconsumed reply capability
   names a thread that has left its park) has one implementation. 254's removal-phase
   `strand_callers_of` also runs on the residents this milestone finishes, so a hung *server* ended
   here frees its own clients for free.
@@ -194,7 +194,7 @@ Milestone 23's case (c): `DESTROY` arms a kill that `schedule()` spends only for
 thread, so a permanently `Blocked` one is refused forever and its region never returns. One hang
 can cost two unreclaimable regions (its own and its stranded caller's), which makes the hangs an
 unattended backup target survives a function of spare budget. **calef chose proposal A on
-2026-09-03**, *`DESTROY` finishes what it starts*: such a resident is unlinked from whatever queue
+2026-09-03**, *`DESTROY` finishes what it starts*. Such a resident is unlinked from whatever queue
 holds it, every outstanding `Reply` capability naming it is swept out of every capability table,
 and it is written to `Finished` without ever being woken. The authority is the untyped capability,
 unchanged, and nothing is added to the syscall surface

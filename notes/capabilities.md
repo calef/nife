@@ -47,9 +47,9 @@ memory. Userspace never sees a single byte of it. Userspace sees an integer.
 ```
   What the process says            What the kernel has
   ---------------------            -----------------------------------------------
-      cap 0            ────────►    { Endpoint,  obj: 0x4012_3000,  rights: SEND       }
-      cap 1            ────────►    { Frame,     obj: 0x4008_1000,  rights: READ|WRITE }
-      cap 2            ────────►    { Tcb,       obj: 0x4009_2000,  rights: ALL        }
+      cap 0            ────────►    { Rendezvous,         obj: 0x4012_3000,  rights: SEND       }
+      cap 1            ────────►    { PageFrame,          obj: 0x4008_1000,  rights: READ|WRITE }
+      cap 2            ────────►    { ThreadControlBlock, obj: 0x4009_2000,  rights: ALL        }
       cap 3            ────────►    { empty }
 ```
 

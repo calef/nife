@@ -10,9 +10,9 @@ capability slots. Every such name can outlive what it named. A Unix pid you stas
 may belong to a different process today; that is a real bug class (pid reuse races), and Unix
 mitigates it with ceremony (pidfds) rather than by construction.
 
-We had the same exposure in miniature: a `Tid` inside a `Reply` capability, or parked in a wait
+We had the same exposure in miniature: a `ThreadId` inside a `Reply` capability, or parked in a wait
 queue, can in principle outlive its thread. The old thread table was safe against that only in
-the weak sense: a dead Tid's map lookup failed, because ids came from a global counter and were
+the weak sense: a dead ThreadId's map lookup failed, because ids came from a global counter and were
 never reused. Never-reused names are safe but unbounded, and the map holding them was unbounded
 too, which milestone 14 forbids.
 
@@ -39,7 +39,7 @@ short-lived objects, and stored references that must fail safely rather than dan
 The path to capability-only thread naming (design doc, D2) ends with capabilities carrying
 direct thread references. seL4 makes that safe with the CDT: destroying a TCB revokes every
 capability naming it. We deferred the CDT. Generational names are the other way to be safe:
-a `Reply(Tid)` whose caller is gone resolves to nothing, checked at use, no revocation sweep
+a `Reply(ThreadId)` whose caller is gone resolves to nothing, checked at use, no revocation sweep
 required. The table is therefore the first step of the capability-only path, not a detour;
 the intrusive-list work (D1) removes the lookups one structure at a time, and what remains of
 the table at the end is exactly this validity check.

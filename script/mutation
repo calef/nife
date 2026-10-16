@@ -28,8 +28,10 @@
 # and timeouts exit 0 here, loudly; only a broken run (unmutated tree failing its own tests, tool
 # error) fails. The weekly `mutation testing` workflow runs this sharded and publishes the report.
 #
-# Scope: `--workspace` minus the exclusions in .cargo/mutants.toml, which are the crates whose lines
-# cannot execute on the host (the same set script/coverage exempts, for the same reason). Timeouts
+# Scope: `--workspace` minus the host-excluded set, which this script derives from
+# helpers/host-excluded-crates.sh and passes to cargo-mutants on the command line (the crates whose
+# lines cannot build for the host; the same set script/coverage exempts, for the same reason), and
+# minus the judgment exclusions in .cargo/mutants.toml, each with its reason there. Timeouts
 # are cargo-mutants' auto timeouts, derived from the baseline build and test times per package.
 #
 # Not in script/ci-build's table or script/test, on purpose: both are gates a developer waits on, and this
@@ -195,8 +197,19 @@ if [ "$(uname -s)" = "Darwin" ] && [ "${MUTATION_MEMORY_LIMIT_KB:-0}" = "0" ]; t
     echo "    machine. Set MUTATION_MEMORY_LIMIT_KB to bound it; see helpers/memory-bounded-runner.sh" >&2
 fi
 
+# The derived exclusions ride on the command line (the shape roadmap 393 chose: .cargo/mutants.toml
+# is not the record for the host-excluded set). Paths mode gives globs, the same form
+# .cargo/mutants.toml's exclude_globs took, and `set -f` keeps the shell from expanding them
+# against the tree before cargo-mutants sees one.
+bare_paths=$(helpers/host-excluded-crates.sh paths) || exit 1
+bare_excludes=""
+for p in $bare_paths; do
+    bare_excludes="$bare_excludes --exclude $p/**"
+done
+set -f
 rc=0
-cargo mutants --workspace -j 2 "$@" -- -- --test-threads=4 || rc=$?
+cargo mutants --workspace -j 2 $bare_excludes "$@" -- -- --test-threads=4 || rc=$?
+set +f
 case "$rc" in
     0) echo "==> mutants: every mutant caught" ;;
     2|3) echo "==> mutants: survivors found (exit $rc); a report, not a gate. Triage per the note:" ;;

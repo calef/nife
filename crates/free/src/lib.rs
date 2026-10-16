@@ -57,6 +57,7 @@
 #![cfg_attr(not(test), no_std)]
 
 use machine_statistics_protocol::Snapshot;
+use number_writer::{write_right, write_signed};
 
 /// The job pool this prompt's jobs are carved from (the machine's one pool; see BUGS), as
 /// `MemoryRegion::USAGE` answered: pages held, and pages spent.
@@ -150,41 +151,6 @@ fn row(label: &[u8], total: u64, used: u64, free: u64, out: &mut dyn FnMut(&[u8]
     out(b"\n");
 }
 
-/// A `u64` right-aligned in `width` columns.
-pub fn write_right(v: u64, width: usize, out: &mut dyn FnMut(&[u8])) {
-    let mut buf = [b' '; 24];
-    let mut i = buf.len();
-    let mut v = v;
-    loop {
-        i -= 1;
-        buf[i] = b'0' + (v % 10) as u8;
-        v /= 10;
-        if v == 0 {
-            break;
-        }
-    }
-    let start = buf.len().saturating_sub(width.max(buf.len() - i));
-    out(&buf[start..]);
-}
-
-fn write_signed(v: i64, out: &mut dyn FnMut(&[u8])) {
-    if v < 0 {
-        out(b"-");
-    }
-    let mut buf = [0u8; 20];
-    let mut i = buf.len();
-    let mut n = v.unsigned_abs();
-    loop {
-        i -= 1;
-        buf[i] = b'0' + (n % 10) as u8;
-        n /= 10;
-        if n == 0 {
-            break;
-        }
-    }
-    out(&buf[i..]);
-}
-
 #[cfg(test)]
 mod tests {
     use machine_statistics_protocol::{WORDS, build_header, word};
@@ -266,22 +232,6 @@ mod tests {
             out.contains("Yours:          16          16           0"),
             "{out}"
         );
-    }
-
-    fn right(v: u64, width: usize) -> String {
-        let mut out = Vec::new();
-        write_right(v, width, &mut |b| out.extend_from_slice(b));
-        String::from_utf8(out).unwrap()
-    }
-
-    /// A column pads short numbers and never cuts a long one: the digits decide the width when
-    /// they outrun it.
-    #[test]
-    fn a_number_wider_than_its_column_is_printed_whole() {
-        assert_eq!(right(5, 3), "  5");
-        assert_eq!(right(0, 2), " 0");
-        assert_eq!(right(12345, 3), "12345");
-        assert_eq!(right(u64::MAX, 4), "18446744073709551615");
     }
 
     #[test]

@@ -15,7 +15,7 @@ From '214. A test that prints "skipping" and returns is counted as passed', unde
 
 > Rung one, a `#[test_case]` returning `Result<(), Skipped>` so `?` carries an absent fixture out
 > of a helper and into the runner. It is the better mechanism on paper and it would have caught
-> the helper cases structurally, and it is a return-type change on every `#[test_case]` in the
+> the helper cases structurally. It is a return-type change on every `#[test_case]` in the
 > tree plus an `Ok(())` on the end of each, for a defect the console check catches at the moment
 > it happens. If the helper shape recurs, that is the argument for paying for it.
 >
