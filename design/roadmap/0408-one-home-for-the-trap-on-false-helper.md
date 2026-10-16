@@ -39,7 +39,8 @@ premise moved again before the work started: the same grep then found **ten** co
 `fs_test_client/` directory whose `channel.rs` carries the copy that `crash`, `proof` and
 `throughput` share, and `memory_region_depleter` was already out. Two spellings said no: eight
 copies called `trap()` (hello through a local `fail()` wrapper) and folded straight over, and the
-two panic copies (`block_driver`, `channel`) went to `require` like the rest, so one path says no.
+two panic copies (`block_driver`, `channel`) went to `require` like the rest. One path now says no
+for both spellings.
 `block_driver`'s copy had no callers at all: the `virtio` code its comment said it supplied
 `crate::check` for became its own crate in 291 and names no such path, so deletion was the fold.
 `crates/loaded_image_check` keeps its closure. It is not this shape: its failure path is a
