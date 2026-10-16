@@ -12,15 +12,15 @@ needs_person: no
 Filed as a proposal on 2026-09-04 by the milestone 133 lane; promoted by
 milestone 433 on 2026-09-19. Read against `script/fastpath-footprint` that day and every part of the
 premise is intact. The riscv64 entry set is still the flat list `trap_entry`, `trap_return`,
-`riscv_trap_dispatch`, `riscv_trap_body`; the failure message still prints a percentage and two
+`riscv_trap_dispatch`, `riscv_trap_body`. The failure message still prints a percentage and two
 sentences of advice and no per-symbol delta, which is the item this file prices as worth doing
-first; and the three `#[inline(never)]` patches are all still in the tree, on
+first. The three `#[inline(never)]` patches are all still in the tree, on
 `arch::riscv64::timer::tick`, `drivers::plic::disable` and `syscall::dispatch`, each with the
 measurement written beside it. Milestone 188's phase 2 changed what aarch64's entry set contains
 (one vector slot and `exception_restore` rather than all sixteen entries) and left it just as flat.
 
 Nothing is owed. It wants a lane because the fix is a judgment about what the
-number is *for*, and getting that wrong in either direction costs something real: a looser gate
+number is *for*, and getting that wrong in either direction costs something real. A looser gate
 stops catching regressions, and a tighter one fails changes that are not regressions.
 
 In brief. The `ipc_fastpath` half of this gate is a **closure** with a `COLD` exclusion, so
@@ -33,7 +33,7 @@ else into one of them.
 ## What happened, since the abstract version of this is easy to wave away
 
 `riscv_trap_body` is in the riscv64 entry set for a correct reason the script argues carefully: on
-this ISA an `ecall` arrives through the same handler as a page fault and a timer interrupt, so those
+this ISA an `ecall` arrives through the same handler as a page fault and a timer interrupt. Those
 bytes really are on a syscall's path. But that handler has arms, and **the timer arm is not one a
 syscall fetches.**
 
@@ -48,7 +48,7 @@ disassemblies symbol by symbol: `syscall::dispatch`, `trap_entry`, `trap_return`
 The lane closed it with `#[inline(never)]` on `timer::tick`, which restores 1870 exactly and is
 defensible on its own (a `jal` once per 10 ms tick costs nothing). That is a patch on the symptom
 and the next one will look different, because nothing stops LLVM folding a different arm of a
-different handler in next month, and the person who meets it will have to re-derive all of the
+different handler in next month. The person who meets it will have to re-derive all of the
 above from a percentage.
 
 ## It happened again the next day, so "the next one will look different" is now observed
@@ -81,7 +81,7 @@ Three things this instance settles that the milestone 133 one could only assert:
 trap path, no timer and no syscall. It failed this gate on aarch64 at 35.1%, and the sign is
 the point: `syscall_entry` shrank, 3304 to 2144, because
 `_RNvNt...6kernel7syscall8dispatch` (1160 bytes) vanished from the symbol table entirely. LLVM
-folded the dispatcher into the exception handler in the new build and not the old one, and the only
+folded the dispatcher into the exception handler in the new build and not the old one. The only
 plausible trigger is that the lane added a dependency to the `kernel` crate, which is a
 whole-crate codegen perturbation and not a change to any measured path. `exception_dispatch` and
 `exception_vectors` were unchanged.
@@ -134,9 +134,11 @@ The `ipc_fastpath` half of `script/fastpath-footprint` is a closure with a `COLD
 `syscall_entry` half is flat, summing whole symbols with no way to exclude anything, which is fine
 only while those symbols hold nothing but what a syscall fetches. Three times in two days an
 inlining flip moved bytes that no syscall fetches into that number: `timer::tick` folded into
-`riscv_trap_body` under milestone 133's change, +12.1%; `plic::disable` under a one-line toolchain
-bump, +10.4%; and `syscall::dispatch` vanishing into the exception handler under milestone 220's,
--35.1%, a failure that reads as good news and would have locked in an under-measurement if anyone
+`riscv_trap_body` under milestone 133 (ending a permanently blocked thread, and deciding who may)'s
+change, +12.1%. `plic::disable` under a one-line toolchain
+bump, +10.4%. And `syscall::dispatch` vanishing into the exception handler under milestone 220 (this
+kernel drives no clock or reset controller, and the first real device will need one)'s,
+-35.1%. That failure reads as good news and would have locked in an under-measurement if anyone
 had taken the win. Each was closed with `#[inline(never)]` on the callee, which is a patch on the symptom, and
 each cost a lane a build and a two-disassembly diff to name one symbol. Any perturbation of the
 kernel crate can hand a lane this failure, in either direction, on any of three ISAs. Reporting the
