@@ -83,16 +83,33 @@ fn the_disk_surveyor_reads_a_table_gptfdisk_wrote() {
         "the surveyor counted {total} devices; the kernel put {} in the page",
         w.devices,
     );
-    assert!(
-        mmio >= 4,
-        "at least four mmio disks are attached when this test runs (nifefs, RedoxFS, the crash \
-         image, the GPT image, and since milestone 57's write half the blank one); the roster names \
-         {mmio}",
-    );
-    assert_eq!(
-        pci, 1,
-        "one virtio-blk-pci disk is attached (§18's transport)"
-    );
+    // The two shapes the same five fixtures take. On the virt boards they are five mmio slots
+    // and one PCI function (milestone 215's nifefs disk); on `q35` there is no virtio-mmio bus
+    // at all, so since milestone 420 all five are PCI functions, in the same ordinal order.
+    // Either way every device is on one bus or the other, and the kernel's own read of the same
+    // frame, below, must agree with the program's count.
+    if cfg!(target_arch = "x86_64") {
+        assert_eq!(
+            mmio, 0,
+            "q35 has no virtio-mmio bus, yet the roster names {mmio} mmio disks"
+        );
+        assert_eq!(
+            pci as usize, w.devices,
+            "every block device on q35 is a PCI function; the roster split {mmio}/{pci} \
+             disagrees"
+        );
+    } else {
+        assert!(
+            mmio >= 4,
+            "at least four mmio disks are attached when this test runs (nifefs, RedoxFS, the \
+             crash image, the GPT image, and since milestone 57's write half the blank one); the \
+             roster names {mmio}",
+        );
+        assert_eq!(
+            pci, 1,
+            "one virtio-blk-pci disk is attached (§18's transport)"
+        );
+    }
     assert_eq!(total, mmio + pci, "every device is on one bus or the other");
 
     // And the kernel's own read of the same frame agrees, computed through the same contract crate
@@ -245,14 +262,21 @@ const R_NO_FS: u64 = 0x_4E_4F_46_53_00;
 
 /// The entropy service's request rendezvous, wiring the service if this is the first test to ask.
 ///
-/// The mmio transport, because both `virt` machines offer it with nothing in the way and this test
-/// is not about the bus; `entropy_tests` runs the same service over both.
+/// The bus this machine has, because this test is not about the bus (`entropy_tests` runs the
+/// same service over both): the virt boards offer virtio-mmio with nothing in the way, and `q35`
+/// has no virtio-mmio bus at all, so it asks for the PCIe transport there (milestone 420's
+/// `virtio-rng-pci`).
 ///
-/// Returns `None` if the mmio virtio-rng device is not attached (milestone 145: correct on a bare
-/// board boot with no `NIFE_RNG`-equivalent).
+/// Returns `None` if the bus asked for has no virtio-rng device (milestone 145: correct on a
+/// bare board boot with no `NIFE_RNG`-equivalent).
 fn entropy_rendezvous() -> Option<crate::sched::RendezvousId> {
     let image = program("entropy").expect("no entropy program in the initial ramdisk");
-    let w = entropy_service::ensure(image, entropy_service::Bus::Mmio)?;
+    let bus = if cfg!(target_arch = "x86_64") {
+        entropy_service::Bus::Pci
+    } else {
+        entropy_service::Bus::Mmio
+    };
+    let w = entropy_service::ensure(image, bus)?;
     if let Some(report) = w.wait_for_ready() {
         assert_eq!(
             report[0],
@@ -307,7 +331,7 @@ fn the_write_half_needs_a_disk_and_an_entropy_rendezvous_and_holds_nothing_else(
         assert_eq!(word, filesystem_protocol::READY);
     }
     let Some(entropy) = entropy_rendezvous() else {
-        crate::testing::skip!("no virtio-rng device on the mmio bus (NIFE_RNG not set?)");
+        crate::testing::skip!("no virtio-rng device on the bus this fixture asks for (NIFE_RNG not set?)");
     };
     let maker = program("mkfs").expect("no mkfs program in the initial ramdisk");
     use filesystem_fixture::blank;

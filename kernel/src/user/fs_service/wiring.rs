@@ -200,6 +200,13 @@ pub(in crate::user) fn spawn_block_server(
     let dma = crate::memory::alloc_contiguous_zeroed(1 + BLK_PAGES)
         .expect("no DMA region for the block server")
         .addr();
+    // TEMPORARY INSTRUMENTATION (lane 420, do not commit): who got what.
+    crate::println!(
+        "  m420dbg      : block server dev rid {:#x} dma {:#x} scope {:?}",
+        dev.rid.map(|r| r).unwrap_or(0),
+        dma,
+        dev.rid.map(crate::iommu::scope_of)
+    );
     let blk_shared = dma + FRAME_SIZE; // the data pages start right after the rings page
 
     let blk_ep = crate::sched::create_rendezvous(); // FS server WRITE (CALL) -> block server READ
