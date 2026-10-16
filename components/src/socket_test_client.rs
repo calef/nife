@@ -53,7 +53,7 @@ use core::sync::atomic::{AtomicU64, Ordering};
 use abi::rights;
 use domain_name_system::{Query, Reject, TcpReply};
 use socket_protocol::*;
-use user_mode_runtime::mapped_window::{MappedWindow, PAGE};
+use user_mode_runtime::socket_frame::Frame;
 use user_mode_runtime::{
     call, call_receiving, cap_delete, exit, map_page_frame, now, receive, receive_cap,
     retype_into_page_frame, send, send_capability,
@@ -114,13 +114,14 @@ const NO_ANSWER: u64 = 2;
 /// Where the client maps its shared frame.
 const PAGE_FRAME_VA: u64 = address_space_map::pair_page(0x0000_0000_00A0_0000);
 
-/// The window onto that frame (milestone 139; see `user_mode_runtime::mapped_window`). A `static`, not a
-/// `const`, for the same reason the type's own doc names as its second valid case: the range is
-/// only actually mapped once `attach_page_frame`'s `PageFrame::MAP` succeeds, and every `r8`/`w8`/`r16le`/
-/// `w16le` call in this file happens after that, during the protocol exchanges `attach_page_frame` is
-/// called to set up.
+/// The shared frame at that address, read and written through
+/// `user_mode_runtime::socket_frame::Frame`'s methods (milestone 410 (six copies of the
+/// shared-frame accessors)). A `static`, not a `const`, for the reason `Frame::new`'s safety
+/// contract names: the frame is only actually mapped once `attach_page_frame`'s `PageFrame::MAP`
+/// succeeds, and every access below happens after that, during the protocol exchanges
+/// `attach_page_frame` is called to set up.
 // SAFETY: `attach_page_frame` maps this frame writable at PAGE_FRAME_VA before any read or write below runs.
-static WINDOW: MappedWindow = unsafe { MappedWindow::new(PAGE_FRAME_VA, PAGE) };
+static SHARED_FRAME: Frame = unsafe { Frame::new(PAGE_FRAME_VA) };
 
 /// slirp's guest-visible nameserver address (a NAT to the *host's* resolver, not a resolver), the
 /// gateway that hosts slirp's own TFTP server, and the guestfwd echo peer the runners attach.
@@ -211,22 +212,6 @@ const UDP_GRANTED_PORT: u64 = 5354;
 /// resolver behaviour, not a widened timeout.
 const DNS_ATTEMPTS: u32 = 3;
 
-// `va` is an absolute address, `PAGE_FRAME_VA + <some offset>`, computed at every call site; `WINDOW`
-// wants an offset, so these subtract the base back out and let its own bounds check (milestone
-// 139) stand in for the hand-written "va is inside the frame" this used to assert only in prose.
-fn w8(va: u64, v: u8) {
-    WINDOW.w8(va - PAGE_FRAME_VA, v);
-}
-fn w16le(va: u64, v: u16) {
-    WINDOW.w16(va - PAGE_FRAME_VA, v);
-}
-fn r8(va: u64) -> u8 {
-    WINDOW.r8(va - PAGE_FRAME_VA)
-}
-fn r16le(va: u64) -> u16 {
-    WINDOW.r16(va - PAGE_FRAME_VA)
-}
-
 /// [`TEST_UDP_TFTP_HELD`]: open the socket, say so, and wait for the go before using it. The wait
 /// is the window in which `socket_squatter` tries every way it has to reach this socket.
 fn udp_tftp_held() -> ! {
@@ -302,23 +287,6 @@ fn socket_take() -> ! {
     attach_page_frame();
     keep(SOCKET, socket, true);
     tftp_on_socket()
-}
-
-/// The source endpoint a UDP RECEIVE reply left in the frame header (`socket_protocol`'s layout note).
-fn receive_source() -> ([u8; 4], u16) {
-    let mut ip = [0u8; 4];
-    for (i, b) in ip.iter_mut().enumerate() {
-        *b = r8(PAGE_FRAME_VA + OFF_DST_IP + i as u64);
-    }
-    (ip, r16le(PAGE_FRAME_VA + OFF_DST_PORT))
-}
-
-/// Set the shared frame's destination header.
-fn set_dst(ip: [u8; 4], port: u16) {
-    for (i, &b) in ip.iter().enumerate() {
-        w8(PAGE_FRAME_VA + OFF_DST_IP + i as u64, b);
-    }
-    w16le(PAGE_FRAME_VA + OFF_DST_PORT, port);
 }
 
 /// Report `code` and stop.
@@ -418,12 +386,6 @@ fn attach_page_frame() {
     FRAME.store(frame, Ordering::Relaxed);
 }
 
-/// Write a byte at `*at` and advance it.
-fn put8(v: u8, at: &mut u64) {
-    w8(*at, v);
-    *at += 1;
-}
-
 /// **`TEST_NAME_RESOLUTION`**: the gating exchange against the runners' name server, then the
 /// non-gating one against the host's resolver, reported together as `(gating, real)`. One role and
 /// one `net_stack` for both, because every stack a test starts holds a virtio slot for the rest of
@@ -476,15 +438,13 @@ fn ask_over_tcp(query: &Query) -> Result<Result<domain_name_system::Answer, Reje
 }
 
 fn exchange_over_tcp(query: &Query) -> Result<Result<domain_name_system::Answer, Reject>, u64> {
-    set_dst(NAME_SERVER_IP, domain_name_system::PORT);
+    SHARED_FRAME.set_dst(NAME_SERVER_IP, domain_name_system::PORT);
     if on(SOCKET, OPERATION_CONNECT, 0).0 != CONNECT_ESTABLISHED {
         return Err(0x2);
     }
     let mut request = [0u8; 2 + domain_name_system::UDP_MESSAGE_MAX];
     let n = query.request_tcp(&mut request).map_err(|_| 0x3u64)?;
-    for (i, &b) in request[..n].iter().enumerate() {
-        w8(PAGE_FRAME_VA + OFF_PAYLOAD + i as u64, b);
-    }
+    SHARED_FRAME.payload_write(&request[..n]);
     if on(SOCKET, OPERATION_SEND, n as u64).0 != n as u64 {
         return Err(0x4);
     }
@@ -497,9 +457,7 @@ fn exchange_over_tcp(query: &Query) -> Result<Result<domain_name_system::Answer,
             return Err(0x5); // the peer went away (or the stack failed) before the reply was whole
         }
         let got = got as usize;
-        for (i, b) in chunk[..got].iter_mut().enumerate() {
-            *b = r8(PAGE_FRAME_VA + OFF_PAYLOAD + i as u64);
-        }
+        SHARED_FRAME.payload_read(got, &mut chunk);
         match reply.feed(&chunk[..got]) {
             Ok(true) => break,
             Ok(false) => {}
@@ -517,23 +475,22 @@ fn echo_at(address: [u8; 4]) -> u64 {
     if open(OPERATION_OPEN_TCP, SOCKET, 0) != REP_OK {
         return 0xE1F1;
     }
-    set_dst(address, ECHO_PORT);
+    SHARED_FRAME.set_dst(address, ECHO_PORT);
     let mut code = OK;
     if on(SOCKET, OPERATION_CONNECT, 0).0 != CONNECT_ESTABLISHED {
         code = 0xE1F2;
     } else {
-        for (i, &b) in MSG.iter().enumerate() {
-            w8(PAGE_FRAME_VA + OFF_PAYLOAD + i as u64, b);
-        }
+        SHARED_FRAME.payload_write(MSG);
         if on(SOCKET, OPERATION_SEND, MSG.len() as u64).0 != MSG.len() as u64 {
             code = 0xE1F3;
-        } else if on(SOCKET, OPERATION_RECEIVE, 0).0 != MSG.len() as u64
-            || MSG
-                .iter()
-                .enumerate()
-                .any(|(i, &b)| r8(PAGE_FRAME_VA + OFF_PAYLOAD + i as u64) != b)
-        {
+        } else if on(SOCKET, OPERATION_RECEIVE, 0).0 != MSG.len() as u64 {
             code = 0xE1F4;
+        } else {
+            let mut echoed = [0u8; MSG.len()];
+            SHARED_FRAME.payload_read(MSG.len(), &mut echoed);
+            if &echoed[..] != MSG {
+                code = 0xE1F4; // the echoed bytes differ
+            }
         }
     }
     let _ = close(SOCKET);
@@ -566,10 +523,8 @@ fn ask_the_host_resolver() -> u64 {
     };
     let mut reply = [0u8; DATA_MAX];
     for _ in 0..DNS_ATTEMPTS {
-        for (i, &b) in request[..n].iter().enumerate() {
-            w8(PAGE_FRAME_VA + OFF_PAYLOAD + i as u64, b);
-        }
-        set_dst(DNS_IP, DNS_PORT);
+        SHARED_FRAME.payload_write(&request[..n]);
+        SHARED_FRAME.set_dst(DNS_IP, DNS_PORT);
         if on(SOCKET, OPERATION_SENDTO, n as u64).0 != REP_OK {
             return 0xE011;
         }
@@ -578,9 +533,7 @@ fn ask_the_host_resolver() -> u64 {
             continue;
         }
         let rlen = rlen as usize;
-        for (i, b) in reply[..rlen].iter_mut().enumerate() {
-            *b = r8(PAGE_FRAME_VA + OFF_PAYLOAD + i as u64);
-        }
+        SHARED_FRAME.payload_read(rlen, &mut reply);
         return match query.accept(&reply[..rlen]) {
             Ok(_) => OK,
             Err(Reject::NoSuchName | Reject::ServerError(_) | Reject::Truncated) => NO_ANSWER,
@@ -613,22 +566,23 @@ fn udp_tftp() -> ! {
 /// The TFTP round trip on the UDP socket kept as [`SOCKET`], whose frame is attached, then `CLOSE`
 /// it and report.
 fn tftp_on_socket() -> ! {
-    // RRQ: { u16 opcode = 1 } filename 0 "octet" 0
-    let mut p = PAGE_FRAME_VA + OFF_PAYLOAD;
-    put8(0x00, &mut p);
-    put8(0x01, &mut p);
-    for &c in TFTP_NAME {
-        put8(c, &mut p);
-    }
-    put8(0x00, &mut p);
-    for &c in b"octet" {
-        put8(c, &mut p);
-    }
-    put8(0x00, &mut p);
-    let qlen = p - (PAGE_FRAME_VA + OFF_PAYLOAD);
+    // RRQ: { u16 opcode = 1 } filename 0 "octet" 0, staged in a local buffer and written to the
+    // frame in one go.
+    let mut rrq = [0u8; 2 + TFTP_NAME.len() + 1 + 5 + 1];
+    rrq[1] = 0x01;
+    let mut at = 2;
+    rrq[at..at + TFTP_NAME.len()].copy_from_slice(TFTP_NAME);
+    at += TFTP_NAME.len();
+    rrq[at] = 0x00;
+    at += 1;
+    rrq[at..at + 5].copy_from_slice(b"octet");
+    at += 5;
+    rrq[at] = 0x00;
+    at += 1;
+    SHARED_FRAME.payload_write(&rrq[..at]);
 
-    set_dst(GW_IP, TFTP_PORT);
-    if on(SOCKET, OPERATION_SENDTO, qlen).0 != REP_OK {
+    SHARED_FRAME.set_dst(GW_IP, TFTP_PORT);
+    if on(SOCKET, OPERATION_SENDTO, at as u64).0 != REP_OK {
         done(0xE041);
     }
 
@@ -638,10 +592,10 @@ fn tftp_on_socket() -> ! {
     if rlen == REP_ERR || rlen < 4 + TFTP_BODY.len() as u64 {
         done(0xE042);
     }
-    let opcode = ((r8(PAGE_FRAME_VA + OFF_PAYLOAD) as u16) << 8)
-        | r8(PAGE_FRAME_VA + OFF_PAYLOAD + 1) as u16;
-    let block = ((r8(PAGE_FRAME_VA + OFF_PAYLOAD + 2) as u16) << 8)
-        | r8(PAGE_FRAME_VA + OFF_PAYLOAD + 3) as u16;
+    let mut data = [0u8; 4 + TFTP_BODY.len()];
+    SHARED_FRAME.payload_read(rlen as usize, &mut data);
+    let opcode = ((data[0] as u16) << 8) | data[1] as u16;
+    let block = ((data[2] as u16) << 8) | data[3] as u16;
     if opcode != 3 {
         done(0xE043); // an ERROR packet (opcode 5) means the fixture is missing: see the runners
     }
@@ -649,7 +603,7 @@ fn tftp_on_socket() -> ! {
         done(0xE044);
     }
     for (i, &b) in TFTP_BODY.iter().enumerate() {
-        if r8(PAGE_FRAME_VA + OFF_PAYLOAD + 4 + i as u64) != b {
+        if data[4 + i] != b {
             done(0xE045); // the bytes came back changed
         }
     }
@@ -659,7 +613,7 @@ fn tftp_on_socket() -> ! {
     // from a real port. The port is deliberately not pinned to 69: TFTP's own protocol has the
     // server answer from a transfer-id port of its choosing (RFC 1350 §4), so asserting 69 would
     // pin a libslirp implementation detail.
-    let (src_ip, src_port) = receive_source();
+    let (src_ip, src_port) = (SHARED_FRAME.dst_ip(), SHARED_FRAME.dst_port());
     if src_ip != GW_IP {
         done(0xE046); // the reported source is not the server that answered
     }
@@ -675,13 +629,10 @@ fn tftp_on_socket() -> ! {
     // Addressed to the DATA's reported source rather than to :69, which is what TFTP's TID scheme
     // asks for and is the first real consumer of the source endpoint: replying to the querier is
     // exactly the move any UDP responder makes.
-    let mut a = PAGE_FRAME_VA + OFF_PAYLOAD;
-    put8(0x00, &mut a);
-    put8(0x04, &mut a);
-    put8(0x00, &mut a);
-    put8(0x01, &mut a);
-    set_dst(src_ip, src_port);
-    let _ = on(SOCKET, OPERATION_SENDTO, a - (PAGE_FRAME_VA + OFF_PAYLOAD));
+    let ack = [0x00u8, 0x04, 0x00, 0x01];
+    SHARED_FRAME.payload_write(&ack);
+    SHARED_FRAME.set_dst(src_ip, src_port);
+    let _ = on(SOCKET, OPERATION_SENDTO, ack.len() as u64);
 
     let _ = close(SOCKET);
     done(OK);
@@ -695,15 +646,13 @@ fn tcp_echo() -> ! {
         done(0xE020);
     }
 
-    set_dst(ECHO_IP, ECHO_PORT);
+    SHARED_FRAME.set_dst(ECHO_IP, ECHO_PORT);
     let (outcome, _) = on(SOCKET, OPERATION_CONNECT, 0);
     if outcome != CONNECT_ESTABLISHED {
         done(0xE021); // handshake did not complete (refused/reset)
     }
 
-    for (i, &b) in MSG.iter().enumerate() {
-        w8(PAGE_FRAME_VA + OFF_PAYLOAD + i as u64, b);
-    }
+    SHARED_FRAME.payload_write(MSG);
     let (sent, _) = on(SOCKET, OPERATION_SEND, MSG.len() as u64);
     if sent != MSG.len() as u64 {
         done(0xE022);
@@ -713,10 +662,10 @@ fn tcp_echo() -> ! {
     if rlen != MSG.len() as u64 {
         done(0xE023); // the echo did not come back whole
     }
-    for (i, &b) in MSG.iter().enumerate() {
-        if r8(PAGE_FRAME_VA + OFF_PAYLOAD + i as u64) != b {
-            done(0xE024); // the echoed bytes differ
-        }
+    let mut echoed = [0u8; MSG.len()];
+    SHARED_FRAME.payload_read(MSG.len(), &mut echoed);
+    if &echoed[..] != MSG {
+        done(0xE024); // the echoed bytes differ
     }
 
     let _ = close(SOCKET);
@@ -734,7 +683,7 @@ fn tcp_echo() -> ! {
 /// page being taken back and attached again.
 fn tcp_reopen() -> ! {
     attach_page_frame();
-    set_dst(ECHO_IP, ECHO_PORT);
+    SHARED_FRAME.set_dst(ECHO_IP, ECHO_PORT);
 
     // The first connection.
     if open(OPERATION_OPEN_TCP, SOCKET, 0) != REP_OK {
@@ -870,15 +819,13 @@ fn serve_one_inbound(base: u64) {
     if rlen != IN_MSG.len() as u64 {
         done(base + 1);
     }
-    for (i, &b) in IN_MSG.iter().enumerate() {
-        if r8(PAGE_FRAME_VA + OFF_PAYLOAD + i as u64) != b {
-            done(base + 2); // something connected and said something else
-        }
+    let mut got = [0u8; IN_MSG.len()];
+    SHARED_FRAME.payload_read(IN_MSG.len(), &mut got);
+    if &got[..] != IN_MSG {
+        done(base + 2); // something connected and said something else
     }
 
-    for (i, &b) in OUT_MSG.iter().enumerate() {
-        w8(PAGE_FRAME_VA + OFF_PAYLOAD + i as u64, b);
-    }
+    SHARED_FRAME.payload_write(OUT_MSG);
     let (sent, _) = on(CONNECTION, OPERATION_SEND, OUT_MSG.len() as u64);
     if sent != OUT_MSG.len() as u64 {
         done(base + 3);
@@ -992,7 +939,7 @@ fn fetch_and_verify(stem: &str, tampered: bool, expected: &measured_boot::Digest
 }
 
 fn exchange(stem: &str, tampered: bool, expected: &measured_boot::Digest) -> u64 {
-    set_dst(PACKAGE_IP, PACKAGE_PORT);
+    SHARED_FRAME.set_dst(PACKAGE_IP, PACKAGE_PORT);
     if on(SOCKET, OPERATION_CONNECT, 0).0 != CONNECT_ESTABLISHED {
         return 0xE093;
     }
@@ -1009,9 +956,7 @@ fn exchange(stem: &str, tampered: bool, expected: &measured_boot::Digest) -> u64
     let Some(n) = http_response::get_request(PACKAGE_PEER_HOST, path, &mut request) else {
         return 0xE094;
     };
-    for (i, &b) in request[..n].iter().enumerate() {
-        w8(PAGE_FRAME_VA + OFF_PAYLOAD + i as u64, b);
-    }
+    SHARED_FRAME.payload_write(&request[..n]);
     if on(SOCKET, OPERATION_SEND, n as u64).0 != n as u64 {
         return 0xE095;
     }
@@ -1025,9 +970,7 @@ fn exchange(stem: &str, tampered: bool, expected: &measured_boot::Digest) -> u64
             return 0xE096; // the peer went away (or the stack failed) before the body was whole
         }
         let got = got as usize;
-        for (i, b) in chunk[..got].iter_mut().enumerate() {
-            *b = r8(PAGE_FRAME_VA + OFF_PAYLOAD + i as u64);
-        }
+        SHARED_FRAME.payload_read(got, &mut chunk);
         let Ok(body) = response.feed(&chunk[..got]) else {
             return 0xE097; // not an HTTP response this client accepts
         };
@@ -1066,7 +1009,7 @@ fn tcp_drain(peer: u64) -> ! {
     if open(OPERATION_OPEN_TCP, SOCKET, 0) != REP_OK {
         done(0xE0A0);
     }
-    set_dst(ip, port);
+    SHARED_FRAME.set_dst(ip, port);
     if on(SOCKET, OPERATION_CONNECT, 0).0 != CONNECT_ESTABLISHED {
         done(0xE0A1); // nobody listening at the peer, or no route to it
     }
