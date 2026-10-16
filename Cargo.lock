@@ -109,6 +109,7 @@ dependencies = [
  "job_mix",
  "machine_discovery",
  "screen_console",
+ "video_terminal",
 ]
 
 [[package]]

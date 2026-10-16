@@ -60,3 +60,9 @@ screen_console = { version = "0.1.0", path = "../screen_console" }
 # reads" is asserted against the crate the kernel actually links rather than against a second
 # painter written here. Same rule as `uefi_loader`'s handoff tests.
 machine_discovery = { version = "0.1.0", path = "../machine_discovery" }
+# **The second writer** (milestone 377): the display terminal's default colours are that crate's
+# choice, and `screen::decode` is proven against the scheme as `video_terminal::Attr::DEFAULT`
+# defines it, not against a copy of two RGB words that could drift. Ours, in this workspace,
+# sans-IO with `bitmap_font` as its one dependency, no `unsafe`: §46's concern is external code
+# and this is none.
+video_terminal = { version = "0.1.0", path = "../video_terminal" }
