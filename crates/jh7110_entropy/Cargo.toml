@@ -2,6 +2,7 @@
 name = "jh7110_entropy"
 version = "0.1.0"
 edition = "2024"
+publish = false     # the default; the allowlist lint (milestone 887) holds the exception
 license.workspace = true
 
 # Name: PROVISIONAL (milestone 159's lane, 2026-08-24). Chip-qualified and unambiguous rather than

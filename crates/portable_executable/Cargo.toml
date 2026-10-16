@@ -10,6 +10,7 @@
 name = "portable_executable"
 version = "0.1.0"
 edition = "2024"
+publish = false     # the default; the allowlist lint (milestone 887) holds the exception
 license.workspace = true
 
 [lints]

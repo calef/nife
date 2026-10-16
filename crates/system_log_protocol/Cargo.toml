@@ -2,6 +2,7 @@
 name = "system_log_protocol"
 version = "0.1.0"
 edition = "2024"
+publish = false     # the default; the allowlist lint (milestone 887) holds the exception
 license.workspace = true
 
 # The system log's wire contracts (milestone 613 (a system log service: the in-memory half), for

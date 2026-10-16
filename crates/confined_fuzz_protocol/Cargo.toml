@@ -2,6 +2,7 @@
 name = "confined_fuzz_protocol"
 version = "0.1.0"
 edition = "2024"
+publish = false     # the default; the allowlist lint (milestone 887) holds the exception
 license.workspace = true
 
 # What the confined syscall fuzzer and the kernel test that conducts it agree on (milestone 779

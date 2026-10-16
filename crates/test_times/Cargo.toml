@@ -5,6 +5,7 @@
 name = "test_times"
 version = "0.1.0"
 edition = "2024"
+publish = false     # the default; the allowlist lint (milestone 887) holds the exception
 license.workspace = true
 
 # The grammar of the kernel suite's per-test time record (§254 (a gate prints what each item cost), Fork 1). The kernel prints it and

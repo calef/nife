@@ -2,6 +2,7 @@
 name = "universally_unique_identifier"
 version = "0.1.0"
 edition = "2024"
+publish = false     # the default; the allowlist lint (milestone 887) holds the exception
 license.workspace = true
 
 # The UUID of RFC 9562, as a value: sixteen bytes in the RFC's own byte order, the canonical text

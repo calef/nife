@@ -2,6 +2,7 @@
 name = "argument_protocol"
 version = "0.1.0"
 edition = "2024"
+publish = false     # the default; the allowlist lint (milestone 887) holds the exception
 license.workspace = true
 
 # The argument page (milestone 205 (how a foreign program is told what to do), DECISIONS §170 (how a foreign program is told what to do)):

@@ -2,6 +2,7 @@
 name = "byte_sink_protocol"
 version = "0.1.0"
 edition = "2024"
+publish = false     # the default; the allowlist lint (milestone 887) holds the exception
 license.workspace = true
 
 # The byte-sink contract of milestone 50 (notes/sink-protocol.md): the one framing every

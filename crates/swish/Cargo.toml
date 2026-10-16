@@ -2,6 +2,7 @@
 name = "swish"
 version = "0.1.0"
 edition = "2024"
+publish = false     # the default; the allowlist lint (milestone 887) holds the exception
 license.workspace = true
 
 # The shell's logic, lifted out of `components/src/swish.rs` so it is host-testable and Kani-reachable

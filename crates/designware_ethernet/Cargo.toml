@@ -2,6 +2,7 @@
 name = "designware_ethernet"
 version = "0.1.0"
 edition = "2024"
+publish = false     # the default; the allowlist lint (milestone 887) holds the exception
 license.workspace = true
 
 # no_std for the kernel and for `net_stack`, std for host tests, the §7 (the testing harness) pure-logic split every

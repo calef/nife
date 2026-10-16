@@ -2,6 +2,7 @@
 name = "domain_name_system"
 version = "0.1.0"
 edition = "2024"
+publish = false     # the default; the allowlist lint (milestone 887) holds the exception
 license.workspace = true
 
 # The DNS wire format for a stub resolver (RFC 1035, RFC 7766 for TCP): a query for one host name's

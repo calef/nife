@@ -2,6 +2,7 @@
 name = "std_runtime_protocol"
 version = "0.1.0"
 edition = "2024"
+publish = false     # the default; the allowlist lint (milestone 887) holds the exception
 license.workspace = true
 
 # The std runtime contract (milestone 595 (provisional)): which capability slot a `std` program's

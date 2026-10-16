@@ -1138,6 +1138,51 @@ if [ -f "$dependabot" ] && grep -qE '^[[:space:]]*ignore:' "$dependabot" &&
     exit 1
 fi
 
+# The publish allowlist (milestone 887, from 857's Fork 3). `crates/publish-allowlist.txt` names the
+# crates calef has ruled onto crates.io; every other crate in `crates/` carries `publish = false`,
+# and the two states are the whole rule. A manifest that drops the line without an entry fails
+# here, so "publishable" is never implicit: a crate becomes releasable by a diff that touches the
+# allowlist, which is a reviewable event, and a stale entry (a crate that no longer exists) fails
+# too, because a list nobody prunes stops meaning anything. helpers/crate_release.py reads the
+# same file for script/metrics' stage column; this check is what keeps its reading true.
+echo "==> the publish allowlist"
+python3 - <<'PYALLOWLIST'
+import sys
+import tomllib
+from pathlib import Path
+
+allowlist_path = Path('crates/publish-allowlist.txt')
+if not allowlist_path.is_file():
+    print('lint: crates/publish-allowlist.txt is missing. Every crate carries publish = false and', file=sys.stderr)
+    print('lint: the allowlist is the one file that holds the exception; an empty file is a fine start.', file=sys.stderr)
+    sys.exit(1)
+entries = [line.split('#')[0].strip() for line in allowlist_path.read_text().splitlines()]
+entries = [e for e in entries if e]
+crates = sorted(p.parent.name for p in Path('crates').glob('*/Cargo.toml'))
+bad = False
+for entry in entries:
+    if entry not in crates:
+        print(f'lint: {allowlist_path}: {entry} names no crate under crates/ (stale entry)', file=sys.stderr)
+        bad = True
+allowlisted = set(entries)
+for crate in crates:
+    manifest = tomllib.loads((Path('crates') / crate / 'Cargo.toml').read_text())
+    publish = manifest.get('package', {}).get('publish')
+    if crate in allowlisted:
+        if publish is not True:
+            print(f'lint: crates/{crate}: on the allowlist, so its manifest must say publish = true '
+                  f'(now: {publish!r})', file=sys.stderr)
+            bad = True
+    elif publish is not False:
+        print(f'lint: crates/{crate}: drops publish = false without being on the allowlist. '
+              'A crate becomes publishable only by a diff that names it in crates/publish-allowlist.txt, '
+              'which is 857 Fork 3 (the crates.io team and the trusted publisher) plus a ruling.', file=sys.stderr)
+        bad = True
+if bad:
+    sys.exit(1)
+print('==> publish allowlist: every crate is false, or on the list and true')
+PYALLOWLIST
+
 # The third citation gate, and the one that reads what a citation points AT (milestone 97). The two
 # above prove a `§N` or a `milestone N` resolves to SOME entry; neither can prove it resolves to the
 # RIGHT one, and both say so in their own headers. Twenty-eight comments credited the two-tier `^C`
