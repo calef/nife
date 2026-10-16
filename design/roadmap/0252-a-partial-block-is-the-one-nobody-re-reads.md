@@ -38,8 +38,8 @@ different section or different words. Milestone 247's seven dispositions may fit
 already exists, and it is exactly what milestone 16's first two items needed.
 
 Resolve that before sweeping, and say which way it went. Reusing `## Follow-on` unchanged is the
-cheaper answer and probably the right one, since a second section name is a second thing to remember;
-but if the words do not fit, forcing them would produce dispositions that lie in a new way.
+cheaper answer and probably the right one, since a second section name is a second thing to remember.
+But if the words do not fit, forcing them would produce dispositions that lie in a new way.
 
 What the gate can and cannot do is unchanged from 247 and should not be overclaimed: it can check
 that the claims are enumerated and that each resolves to something that exists. It cannot check that
@@ -123,7 +123,8 @@ That call is an architect's, so the block says so rather than moving.
 ## Follow-on
 
 - **Milestone 357.** `IN-PROGRESS`, `NOT-STARTED`, `OPTIONAL` and `RECORDED` are still outside
-  this, as the `BUGS` above says, and the sweep found a worked example of a false one: milestone 75
+  this, as the `BUGS` above says, and the sweep found a worked example of a false one. Milestone 75
+  (who may read the cycle counter, and by what authority)
   reads NOT-STARTED on a `DECISION` gate for a decision made 2026-09-02 and built twice that week,
   and three blocks cite it as a live blocker.
   `design/roadmap/0357-the-statuses-the-follow-on-gate-does-not-cover.md`.

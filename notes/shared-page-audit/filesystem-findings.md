@@ -66,9 +66,9 @@ job (`std_grep needle docs > out.txt`). A write between the caretaker's
 re-staging and the server's read opens a name the set never approved. The case is
 `notes/a-set-grant-at-the-prompt.md`; milestone 599 (a frame per
 filesystem client channel)'s production pool closes it. The second event is unchanged. A confined
-program granted an untyped budget could retype a second `Tcb` into its own address space. It could
+program granted an untyped budget could retype a second `ThreadControlBlock` into its own address space. It could
 then scribble the page from a helper thread while its main thread is parked in `CALL`. Today's
-confined programs are granted two endpoints and no budget, so they cannot.
+confined programs are granted two rendezvouses and no budget, so they cannot.
 
 Disposition: proposed as a milestone. See "What wants a lane" in the parent. The fix is a frame per
 client channel rather than a frame per service, which is a wiring change across `fs_service.rs` and

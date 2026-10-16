@@ -11,13 +11,14 @@ reason a first bench boot of its driver fails.
 two lines off a serial console. See "The bench settled the premise" below.
 
 **Status deliberately did not move on 2026-09-04, and this block's last three sections are that
-lane's report of why**, the shape milestone 218 (every boot of the VisionFive 2 needs a human
-typing four commands into U-Boot) established for work that is written and has never run on the
-board, and the shape milestone 159 chose for the same reason on its own first two passes. The
+lane's report of why**. The shape is that of milestone 218 (every boot of the VisionFive 2 needs a
+human typing four commands into U-Boot), for work that is written and has never run on the
+board. Milestone 159 chose the same shape for the same reason on its own first two passes.
+The
 driver, its host tests, the absence-path kernel test and the bench procedure all landed;
 **QEMU's riscv64 `virt` machine has no clock or reset controller of any kind**, so no phase of
 this runs end to end in an emulator. `PARTIAL` names a phase that does. `NOT-STARTED` is not right
-either, and it is less right than it was; it is still the closer of the two words this vocabulary
+either, and it is less right than it was. It is still the closer of the two words this vocabulary
 has, and the gap is written out here rather than folded into a token that would overstate it.
 
 **In brief.** nife has never programmed a clock or a reset line. Every device it has driven came up
@@ -73,8 +74,8 @@ milestone 159's own table routes here rather than to a defect in that driver.
 
 Two independent signals agree. The device tree marks the node `status disabled` and the
 register window reads nothing. Milestone 239 (radon's device tree does not describe the TRNG, so a working driver never runs)
-deliberately *reports* `status` without acting on it, because that same tree calls the S7 monitor
-core `okay` and gives it an MMU it does not have; here the tree and the hardware say the same
+deliberately *reports* `status` without acting on it. That same tree calls the S7 monitor
+core `okay` and gives it an MMU it does not have. Here the tree and the hardware say the same
 thing, so the agreement is corroboration rather than circularity.
 
 The mechanism that made this attributable was built before the answer was known, which is the
@@ -108,15 +109,15 @@ separate the two candidate failures. It cost a diagnostic word and it saved a be
 What CI actually exercises is the absence path, and saying so is the point. QEMU's `virt`
 board names no clock controller, so `memory::init` records no window, nothing is mapped, and
 nothing is stored. `no_clock_window_is_mapped_where_there_is_no_jh7110` pins exactly that, because
-the dangerous failure is silent in the other direction: `jh7110_crg::discover` deliberately never
+the dangerous failure is silent in the other direction. `jh7110_crg::discover` deliberately never
 fails to produce an address (falling back to the constant both trees agree on), and a caller that
 took it unconditionally would store to `0x1023_0000` on every board this kernel boots.
 
 ## Where it lives, and why the kernel holds it
 
 The block left this open as the interesting question. It is answered by reusing DECISIONS §86
-(whether an NVMe driver can leave the kernel, and what capability would let it) rather than by
-inventing a second argument: the kernel keeps the admin plane, EL0 gets the data path, and no
+(whether an NVMe driver can leave the kernel, and what capability would let it) rather than
+inventing a second argument. The kernel keeps the admin plane, EL0 gets the data path, and no
 new syscall surface is added. Three things make a clock controller a stronger case for that
 split than NVMe was:
 
@@ -153,7 +154,7 @@ split than NVMe was:
   It mattered that it landed first: once the clock works the symptom disappears and the defect
   would not have.
 - **Recorded.** A third instance of `script/fastpath-footprint`'s flat entry set moving under an
-  inlining flip, and the first in the *shrinking* direction: adding a dependency to the `kernel`
+  inlining flip, and the first in the *shrinking* direction. Adding a dependency to the `kernel`
   crate made LLVM fold `syscall::dispatch` into the aarch64 exception handler, so the gate reported
   `syscall_entry` 35% smaller while the code a syscall fetches was identical. Closed the way the
   tree already closes this, with `#[inline(never)]` and the reasoning beside it, and written up in
@@ -161,7 +162,7 @@ split than NVMe was:
   mechanism question.
 - **Refused.** A general JH7110 clock driver covering all five domains and every clock. The
   milestone's own `BUGS` named unbounded scope as its main risk and the two ends differ by an
-  order of magnitude; the arithmetic here is general enough that a second domain is a table entry
+  order of magnitude. The arithmetic here is general enough that a second domain is a table entry
   rather than a rewrite, so building the other four before anything needs them would be work with
   no reader.
   This refusal is milestone 474 (design/roadmap/0474-a-general-jh7110-clock-driver.md), which carries
@@ -169,7 +170,7 @@ split than NVMe was:
 - **Recorded.** The crate name `jh7110_crg` is provisional and unratified, as milestone 159's
   `jh7110_trng` and `Bus::Jh7110` already are. It carries its two refusals in its own header,
   beside the name, and shows up on `script/names --unratified`, which is a worklist rather than a
-  wall: an unratified name never blocks anyone's build, so this stays a standing state and not a
+  wall. An unratified name never blocks anyone's build, so this stays a standing state and not a
   thing to wait on.
 
 ## BUGS
@@ -191,7 +192,7 @@ Linux's JH7110 TRNG driver takes two clocks and a reset line before touching a r
 never programmed either. The premise stopped being a prediction on 2026-09-04: radon's TRNG
 register file read back all zeros on two byte-identical boots, and the vendor tree independently
 marks the node disabled. A driver was written 2026-09-04 and radon was powered off with no bench
-session, so the token says what the outcome is rather than what was built: the STG domain's
+session, so the token says what the outcome is rather than what was built. It holds the STG domain's
 arithmetic, the TRNG's three-step plan resolved identically from mainline Linux and the vendor
 U-Boot, a kernel-resident controller with §86's argument for why, and a boot-tour line whose *before* words can refute the whole premise. QEMU's `virt` has no clock controller, so CI
 exercises only the absence path. The block carries the bench procedure and what each outcome would

@@ -15,7 +15,7 @@ that decision was made against, kept as written.
 nife's capability model gives every `Thread` (TCB) its own private `AddressSpace`, and that
 space is consumed at bind time and owned outright for automatic teardown. Nothing lets
 two TCBs point at the same address space today, and that is not an oversight: it is exactly
-what `Tcb::CONFIGURE`'s own contract says (`crates/abi/src/lib.rs`): the `aspace_slot` capability
+what `ThreadControlBlock::CONFIGURE`'s own contract says (`crates/abi/src/lib.rs`): the `aspace_slot` capability
 "is **consumed**: it becomes the thread's, and dies with it." `kernel/src/thread.rs` mirrors it
 on the `Thread` struct: `space: Option<AddressSpace>` is "owned, so the reaper's `drop` unmaps
 and frees the entire address space when the thread dies."
@@ -31,7 +31,7 @@ right now.
 
 | Option | Shape | Loses because |
 |---|---|---|
-| **A. Shared VSpace, kernel-level** | `Tcb::CONFIGURE`'s existing contract changes so an `AddressSpace` capability can be *bound* to more than one TCB instead of consumed by the first one. The object itself gains multi-holder liveness tracking. | Real cost: a syscall-surface change, the exact irreversible category CLAUDE.md names. Not proposed as a loser, just costed below. |
+| **A. Shared VSpace, kernel-level** | `ThreadControlBlock::CONFIGURE`'s existing contract changes so an `AddressSpace` capability can be *bound* to more than one TCB instead of consumed by the first one. The object itself gains multi-holder liveness tracking. | Real cost: a syscall-surface change, the exact irreversible category CLAUDE.md names. Not proposed as a loser, just costed below. |
 | **B. Sibling processes, shared frames** | Keep every existing verb's contract unchanged (`RETYPE_OBJ`, `MAP_INTO`, `CONFIGURE`, `CAP_INSERT`, `START`, all exactly as they are). A "thread" is a second TCB with its own fresh `AddressSpace`, into which the parent re-maps its own frames at matching virtual addresses. | Looks free (no syscall touched) until you account for what a *growing* heap needs: every future allocation has to be mapped into every sibling space, at the same VA, before either side can safely dereference it. That is a live synchronization protocol built from scratch in userspace, is race-prone the instant two "threads" grow the heap concurrently (which is the ordinary case), and no prior art actually does this for the general shared-heap case. Costed in full below. |
 | **C. Decline** | `thread::spawn` stays `Unsupported`, permanently rather than "phase one". Parallelism on nife stays process-plus-IPC-shaped, which is what the rest of the system already is. | Not really a loser: it is the cheapest, most reversible option and the one this note ends up suggesting for *now*, precisely because it forecloses nothing. |
 
@@ -57,17 +57,17 @@ process the same way a std program's PAL would spawn a thread. So Option B needs
 the kernel boundary at all. It is a userspace consumer of machinery that has
 existed since milestone 19c.3.
 
-**Multi-holder kernel objects already exist, and Endpoint is the precedent.** DECISIONS §16
-records that `Untyped::DESTROY` "refuses... [while] an endpoint in it has a blocked waiter". The supervision handshake of
+**Multi-holder kernel objects already exist, and Rendezvous is the precedent.** DECISIONS §16
+(object revocation) records that `MemoryRegion::DESTROY` "refuses... [while] an endpoint in it has a blocked waiter". The supervision handshake of
 §26 (the fault endpoint) is two different processes each holding a capability that names the *same*
-Endpoint object. A spawner grants a supervision endpoint into a child's reserved slot, and both
+Rendezvous object. A spawner grants a supervision endpoint into a child's reserved slot, and both
 sides act on the one object. So "a kernel object with more than one holder, and
 liveness tracking to match" is not a new category for this kernel to reason about. Option A would be
-extending a pattern that Endpoint already proves out, to AddressSpace. If a thread also
+extending a pattern that Rendezvous already proves out, to AddressSpace. If a thread also
 needs to invoke capabilities the spawning thread already holds, for IO from a worker), it would
 extend it to CapabilityTable too.
 
-Frame sharing across address spaces is already the tree's workhorse pattern for exactly one
+Page-frame sharing across address spaces is already the tree's workhorse pattern for exactly one
 of the two things Option B needs. `notes/net.md`, `notes/framebuffer-contract.md` and
 `notes/line-discipline.md` all describe the same shape: one side mints a frame, keeps its own
 mapping, and grants a capability the other side maps into its own space at a VA of its own
@@ -148,7 +148,7 @@ scratch:
   `CONFIGURE` (the progenitor, every service spawn today) is written against the consuming contract, and
   `design/decisions/` would owe a section under §10/§16's existing surface, not a new syscall number.
 - `kernel/src/thread.rs`: `Thread.space` stops being uniquely owned; needs the same
-  liveness-tracking shape `Endpoint` already has (§16's "region... an endpoint in it has a
+  liveness-tracking shape `Rendezvous` already has (§16's "region... an endpoint in it has a
   blocked waiter" check), so `AddressSpace` teardown waits for the last referencing TCB, not the
   first one's exit. This is the biggest single piece, and it is bounded: the region-ownership and
   generational-staleness machinery §16 already built for object revocation is the mechanism to

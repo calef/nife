@@ -115,7 +115,7 @@ option-1 half.
 It does not settle which option §121 picks. That is an architect's call per the decision's closing
 question; this section changes only what he decides with.
 
-It does not build option 1 either. There is no port-range capability, no `Untyped::SPLIT`-derived
+It does not build option 1 either. There is no port-range capability, no `MemoryRegion::SPLIT`-derived
 granting and no syscall surface change. `bench_write_io_bitmap` is deliberately not wired to the live
 TSS's `iomap_base`, so nothing here can be mistaken for the real mechanism.
 

@@ -11,7 +11,7 @@
 
 use filesystem_protocol::fs;
 use user_mode_runtime::mapped_window::MappedWindow;
-use user_mode_runtime::{call, exit, send};
+use user_mode_runtime::{call, exit, require, send};
 
 /// The file-service endpoint: the client's whole authority to the filesystem. Naming a file over it
 /// is a request the server resolves under the one directory this endpoint is bound to.
@@ -32,13 +32,6 @@ const FILE_VA: u64 = address_space_map::pair_page(0x0000_0000_0060_0000);
 // calls).
 pub(crate) const WINDOW: MappedWindow =
     unsafe { MappedWindow::new(FILE_VA, fs::TRANSFER_MAX as u64) };
-
-/// A failed check is a fault, not a wrong answer: panic, and the handler traps.
-pub(crate) fn check(ok: bool) {
-    if !ok {
-        panic!();
-    }
-}
 
 /// Copy `bytes` into the shared page (a name to open, or data to write).
 pub(crate) fn put_page(bytes: &[u8]) {
@@ -78,7 +71,7 @@ const STAGE_OPEN: u64 = 1;
 const STAGE_READ: u64 = 2;
 pub(crate) const STAGE_WRITE: u64 = 3;
 
-/// **Report a refused request instead of faulting.** A `check` failure traps, and a trapped client
+/// **Report a refused request instead of faulting.** A [`require`] failure traps, and a trapped client
 /// tells the waiting test only that something went wrong; the server's *reason* dies with it. This
 /// sends it instead, so the reason reaches the kernel test's assertion, which prints the value it
 /// compared against `SUCCESS`.
@@ -105,7 +98,7 @@ pub(crate) fn write(handle: u64, offset: u64, data: &[u8]) {
     if (r0 as i64) < 0 {
         fail(STAGE_WRITE, r0);
     }
-    check(r0 as usize == data.len());
+    require(r0 as usize == data.len());
 }
 
 /// Read up to `n` bytes from `handle` at `offset` into the shared page; returns the count.

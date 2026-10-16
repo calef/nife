@@ -23,7 +23,7 @@
 //!   the terminal ignores it; the shell, running this engine itself in raw mode, answers it with
 //!   [`LineDisc::pending`] and [`LineDisc::insert_text`] (§227 (how Tab reaches the shell)).
 //! - **No output-side state**: newline translation is the free function [`expand_output`],
-//!   because output shares no state with input editing (notes/tcb.md on the tty layer).
+//!   because output shares no state with input editing (notes/thread-control-block.md on the tty layer).
 //!
 //! Name: ratified 2026-07-30 (calef) for the word and 2026-08-01 for the spelling, replacing
 //! `linedisc` and then `lineedit`. Refused `linedisc` (a Unix term of art from the model this OS

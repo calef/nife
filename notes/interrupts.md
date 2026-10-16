@@ -216,11 +216,11 @@ interrupt.
 
 ## An interrupt is not a rendezvous
 
-IPC on an endpoint (milestone 7e) is synchronous: a sender waits for a receiver. An interrupt
+IPC on a rendezvous, the milestone 7e (user mode) shape, is synchronous: a sender waits for a receiver. An interrupt
 cannot wait. It fires whether or not the driver happens to be blocked in `WAIT` at that instant,
 and it must not be lost if the driver is a hair late.
 
-So the notification is asynchronous, and the mechanism is one counter: `Endpoint::pending`. If
+So the notification is asynchronous, and the mechanism is one counter, the rendezvous's `pending` count. If
 a thread is waiting, the interrupt wakes it. If not, `pending` is incremented, and the next `WAIT`
 drains it instead of blocking. An interrupt that fires one instruction before the driver calls
 `WAIT` is remembered, not dropped. There is a test named exactly that.

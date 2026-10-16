@@ -23,7 +23,7 @@ an article. calef: *"It really seems like we should be writing files aka Wikiped
 
 The tree had already half-built it without a rule. Of the eighteen most frequent all-caps tokens
 in the markdown, six already own a note: `notes/qemu.md`, `notes/dma.md` (386 lines),
-`notes/iommu.md`, `notes/uart.md`, `notes/tcb.md`, `notes/abi.md`. Nobody planned that. It happened
+`notes/iommu.md`, `notes/uart.md`, `notes/thread-control-block.md`, `notes/abi.md`. Nobody planned that. It happened
 because those are concepts and concepts get notes here, which is the convention this decision
 extends rather than invents.
 
@@ -67,7 +67,7 @@ note per acronym":
 
 **Flat rather than `notes/terms/`**, also calef's, and the reason is that the six which already
 exist are flat. Nesting would break every link pointing at them today, to buy a separation between
-short notes and long ones that `notes/tcb.md` (54 lines) and `notes/mmu.md` (93) show this tree does
+short notes and long ones that `notes/thread-control-block.md` (54 lines) and `notes/mmu.md` (93) show this tree does
 not make anyway.
 
 Measured, so the size is a number: the markdown tree (notes/, design/, the root files)
@@ -84,7 +84,7 @@ The deliverable, in three parts:
    `notes/ecam.md`). Each carries the expansion, what the term means *in this tree*, and where the
    concept is used. **TCB is the case that justifies the whole milestone**: here it is the trusted
    computing base *and* a thread control block, both senses live in this tree, and
-   `notes/tcb.md` already exists and must carry both rather than one. A note that starts as three
+   `notes/thread-control-block.md` already exists and must carry both rather than one. A note that starts as three
    sentences is a stub and that is fine; six of these are already substantial pages.
 
    Every term note gets a `notes/README.md` line, like every other note. That index is the

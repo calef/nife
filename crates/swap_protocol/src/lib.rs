@@ -1059,7 +1059,8 @@ pub fn serve(version: u64, xform: fn(u64) -> u64, log_base: u64, device: bool, w
             // answer. It is also the only shape whose blocked-ness is *provable* rather than raced.
             // A `SEND` followed by a `RECEIVE` would leave a window in which this thread was still
             // `Ready`, and the operator surveying inside that window would read a state it must not
-            // be able to read (see notes/hung-component.md, "why the wedge is a CALL").
+            // be able to read, which is why the reply is kept:
+            // notes/hung-component.md, "The wedge is a CALL whose reply the operator keeps".
             //
             // What is deliberately *not* done first: no `log_put`, so the witness page carries a
             // real gap at this sequence number, and no `reply`, so the caller stays parked awaiting

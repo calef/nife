@@ -274,7 +274,7 @@ fn stop_boot_check_leg(child: &mut std::process::Child) {
     // *wrapper* that runs the emulator as a plain child rather than `exec`-ing into it, so
     // `child.kill()` alone orphans the emulator rather than ending it. The other two runners
     // `exec`, so this finds nothing there. Best effort, silent either way. Same reasoning as
-    // `run_bench`; see AGENTS.md, "Never leave QEMU running".
+    // `run_bench`; see notes/skills/qemu-hygiene/SKILL.md, "Never leave QEMU running".
     let _ = Command::new("pkill")
         .args(["-9", "-P", &child.id().to_string()])
         .status();

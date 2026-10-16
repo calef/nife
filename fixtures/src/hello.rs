@@ -68,7 +68,7 @@
 /// interactive boot's own use of it is in `crates/system_initializer`; what is left here is milestone
 /// 19d's test roles, which build a child out of one budget and hand it two or three capabilities.
 use supervision_protocol::{Child, ChildEndowment, Retention};
-use user_mode_runtime::{exit, interrupt_wait, map_page_frame, receive, send};
+use user_mode_runtime::{exit, interrupt_wait, map_page_frame, receive, require, send};
 
 /// Roles, as passed in `x0` by the kernel.
 // Roles 0, 2, 7, 9 to 19 and 42 were the milestone 7-19 capability demonstrations and the granted
@@ -212,7 +212,7 @@ fn init_irq(initial_ramdisk_len: u64) -> ! {
     let Ok(child) = build_child(MEMORY_REGION, &elf, caps, &[]) else {
         fail_report(REPORT)
     };
-    check(start_child(child, IRQ_CHILD, 0, 0));
+    require(start_child(child, IRQ_CHILD, 0, 0));
     exit();
 }
 
@@ -244,7 +244,7 @@ fn init_least_authority_demo(initial_ramdisk_len: u64) -> ! {
     };
     // x0 is unused (a standalone binary needs no role selector); the input is in x1 (the multi-arg
     // START that 19e added).
-    check(start_child(child, 0, WORKER_INPUT, 0));
+    require(start_child(child, 0, WORKER_INPUT, 0));
     exit();
 }
 
@@ -267,7 +267,7 @@ fn init_coremark(initial_ramdisk_len: u64) -> ! {
     let Ok(child) = build_child(MEMORY_REGION, &elf, caps, &[]) else {
         fail_report(REPORT)
     };
-    check(start_child(child, 0, 0, 0)); // no args: the workload's iteration count is fixed
+    require(start_child(child, 0, 0, 0)); // no args: the workload's iteration count is fixed
     exit();
 }
 
@@ -340,7 +340,7 @@ fn init_console(initial_ramdisk_len: u64) -> ! {
     let Ok(child) = build_child(MEMORY_REGION, &elf, caps, maps) else {
         fail_report(REPORT)
     };
-    check(start_child(child, 0, 0, 0)); // no role selector: console is its own binary
+    require(start_child(child, 0, 0, 0)); // no role selector: console is its own binary
 
     // Now init is the client. Write a line into the shared page, ask the server to print it.
     let msg = b"nife: the console server was built and started by userspace init.
@@ -350,7 +350,7 @@ fn init_console(initial_ramdisk_len: u64) -> ! {
         let dst = core::slice::from_raw_parts_mut(SHARED_VA as *mut u8, msg.len());
         dst.copy_from_slice(msg);
     }
-    check(send(request, msg.len() as u64, 0, 0) == 0); // the server prints, then acks on reply
+    require(send(request, msg.len() as u64, 0, 0) == 0); // the server prints, then acks on reply
     let (acked, _, _) = receive(reply);
     send(REPORT, acked, 0, 0); // report the length the server acknowledged
     exit();
@@ -392,7 +392,7 @@ fn init_build(initial_ramdisk_len: u64, device: bool) -> ! {
     match build_child(MEMORY_REGION, &elf, caps, maps) {
         Ok(child) => {
             let role = if device { DEV_CHILD } else { CHILD };
-            check(start_child(child, role, 0, 0));
+            require(start_child(child, role, 0, 0));
         }
         Err(_) => {
             send(REPORT, 0, 0, 0);
@@ -488,22 +488,6 @@ fn retype_page_frame(untyped: u64) -> Result<u64, ()> {
 /// dispose of its TCB capability as [`build_child`] declared. True if the kernel started it.
 fn start_child(child: Child, arg0: u64, arg1: u64, arg2: u64) -> bool {
     supervision_protocol::start_child(child, arg0, arg1, arg2)
-}
-
-/// The only way this program can say "no": a `brk`, which the kernel treats as a fault and kills
-/// us for. A failed check must be indistinguishable from a broken program, because it is one.
-fn check(ok: bool) {
-    if !ok {
-        fail();
-    }
-}
-
-/// Trap, killing this program where the mistake was. Kept as a local name because the call sites
-/// above read as "this build step failed", not as "execute a breakpoint"; the instruction itself
-/// is `user_mode_runtime`'s since milestone 130. The comment this replaces called it "the one arch-specific
-/// line in the program", which was true of `hello` and false of the tree: there were forty-eight.
-fn fail() -> ! {
-    user_mode_runtime::trap()
 }
 
 user_mode_runtime::panic_handler!();

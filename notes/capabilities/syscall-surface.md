@@ -145,6 +145,6 @@ the user's bytes becomes unsound, and the fix is to copy them under a lock. The 
 
 Invoking the `Console` capability lands in the kernel, which owns the PL011. That is a
 milestone away from what §10 (process model) promised. At milestone 8 (console driver) the console driver leaves the
-kernel, `Object::Console` becomes an `Endpoint` to a userspace console *server*, and the kernel
+kernel, `Object::Console` becomes a `Rendezvous` to a userspace console *server*, and the kernel
 stops knowing what a UART is. Until that happens we have a capability system with a monolithic
 kernel underneath it, which is honest scaffolding and not the destination.

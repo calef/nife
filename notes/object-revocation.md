@@ -1,7 +1,7 @@
 # Object revocation: tearing a process back down
 
-Retype-from-untyped (milestone 19) let a process build its own kernel objects from EL0: an address
-space, a TCB, an endpoint, all carved out of an untyped region it holds. What it could not do was
+Retype from a memory region (milestone 19) let a process build its own kernel objects from EL0: an address
+space, a TCB, a rendezvous, all carved out of a region it holds. What it could not do was
 tear them back down. Every object permanently pinned its region, so the system could build
 processes but never fully reap them, untenable for the thesis (run real workloads on real machines):
 a workload that comes and goes must be able to leave.
@@ -18,12 +18,12 @@ its siblings) and it is the machinery milestone 19 (run a real workload) decline
 
 nife already had a different lever, and it decided the design:
 
-- **Objects carry generational names.** A `Tcb`, `Endpoint`, or `AddressSpace` capability holds a
+- **Objects carry generational names.** A `ThreadControlBlock`, `Rendezvous`, or `AddressSpace` capability holds a
   `(generation, slot)` name into a registry (`crates/generational_table`, notes/generational-names.md). Free the
   registry slot and every outstanding capability to that object stops resolving, *forever*, because
   its generation no longer matches. Invalidation is a side effect of freeing the object, with no
   capability to hunt down: the milestone-14 machinery, reused for teardown.
-- **Frames do not carry names.** A `Frame` capability holds a raw physical address, so frame
+- **Frames do not carry names.** A `PageFrame` capability holds a raw physical address, so frame
   revocation under §13 (untyped reclamation) must find and delete every matching capability, which is why frames need a
   revocation *log* and objects do not.
 
@@ -41,7 +41,7 @@ purely additive layer on top (derivation-edge recording at delegation sites, a s
 
 ## The trigger: explicit destroy by the owner, and why not auto-on-exit
 
-The reclaim trigger is `Untyped::DESTROY`, invoked by whoever holds the untyped capability, not
+The reclaim trigger is `MemoryRegion::DESTROY`, invoked by whoever holds the region's capability, not
 automatic on thread exit. The reason is the capability model itself: **a region belongs to whoever
 created it, not to the thread that happens to live in it.** The thread is an occupant; the owner holds
 the untyped cap; the occupant never does. Reclamation destroys memory, which is an authority, and in
@@ -64,12 +64,12 @@ already latent in the code (the reaper recycled kmem TCB pages and explicitly le
 reaper calls while holding `SCHED`. So if `destroy` (or the object reaping it triggers) took
 `SCHED`, it would self-deadlock against the reaper. That single fact split the implementation:
 
-- `reap_region_objects` (takes `SCHED`) is the caller-driven step. It scans the thread and endpoint
+- `reap_region_objects` (takes `SCHED`) is the caller-driven step. It scans the thread and rendezvous
   registries for objects whose backing page lies in the region. It refuses if any is still in use (a
-  Ready/Running/Blocked thread, or an endpoint with a blocked waiter), and otherwise tears the
-  dead ones down. `reap_aspaces_in_region` does the same for unbound address spaces under the aspace
+  Ready/Running/Blocked thread, or a rendezvous with a blocked waiter), and otherwise tears the
+  dead ones down. `reap_address_spaces_in_region` does the same for unbound address spaces under the address-space
   registry lock, a second lock domain, sequenced never nested.
-- `untyped::destroy` (never takes `SCHED`) is the memory half: it frees the region's frames and
+- `memory_region::destroy` (never takes `SCHED`) is the memory half: it frees the region's frames and
   removes its slot. It stays `SCHED`-free the way it always was (its `revoke_region` takes the
   revocation lock, not `SCHED`, and `AddressSpace::Drop` forgets its own records first so the
   scheduler-taking cap-deletion path is never reached).
@@ -77,10 +77,10 @@ reaper calls while holding `SCHED`. So if `destroy` (or the object reaping it tr
 `sched::reclaim_region` sequences them: refuse-if-children, reap objects, reap aspaces, unpin, destroy.
 It must run outside any `Drop`.
 
-## Untyped subdivision: SPLIT, and the one honest tradeoff
+## Region subdivision: SPLIT, and the one honest tradeoff
 
-For a spawner to reclaim per child, each child needs its own reclaimable region. `Untyped::SPLIT`
-carves pages off a parent untyped's unspent budget into a new child untyped (seL4's
+For a spawner to reclaim per child, each child needs its own reclaimable region. `MemoryRegion::SPLIT`
+carves pages off a parent region's unspent budget into a new child region (seL4's
 untyped-retype-into-untyped). The child is independently reclaimable.
 
 A naive version has a double-free trap: a child's pages are part of the parent's run, so if both the child and the parent were destroyed, the parent's
@@ -99,20 +99,20 @@ derivation tree buys, and we still do not build one.
 
 ## Region slots became generational, retiring the lifetime cap
 
-The untyped region table is a generational `generational_table::Table`: `destroy` removes a region's
-slot, bumping its generation (so every stale `Untyped` capability fails, the same stale-safety as
+The region table is a generational `generational_table::Table`: `destroy` removes a region's
+slot, bumping its generation (so every stale `MemoryRegion` capability fails, the same stale-safety as
 everything else), and the next `create` reuses it. The bound is on *concurrent* regions, which turns
 a one-shot reclaim into a repeatable one. Not a fixed array whose slots are never reused, because
 its entries would bound region *creations over the kernel's lifetime*, and a system that spawns and
 reaps without end would wedge after 256 regions ever.
 
-## Endpoints: wake a blocked waiter with an error
+## Rendezvouses: wake a blocked waiter with an error
 
-An endpoint in a reclaimed region must be torn down too, or its page is freed while the registry
+A rendezvous in a reclaimed region must be torn down too, or its page is freed while the registry
 still points at it. Revoking one drains its wait queues: each blocked thread is popped
-off (which frees its intrusive link), marked aborted, and woken, then the endpoint is removed from the
+off (which frees its intrusive link), marked aborted, and woken, then the rendezvous is removed from the
 registry, its generational name going stale. The woken thread's blocking `ipc_receive`/`ipc_send` returns
-an error (the endpoint is gone), so a waiter blocked forever cannot pin a region forever, and the
+an error (the rendezvous is gone), so a waiter blocked forever cannot pin a region forever, and the
 reclaim always makes progress.
 
 ### The sweep runs before the refusal, and that ordering is the whole of milestone-scale bug
@@ -130,29 +130,29 @@ tests left the boot with 216 free frames of 29307 and no free run longer than 11
 `Unmappable(OutOfFrames)` in whichever later test asked for a long run. notes/frames.md is the full
 receipt.
 
-Sweeping first needs no new mechanism: removing an endpoint already aborts and wakes its
-waiters, the transition a doomed resident needs before it can die. The region's endpoints go on
+Sweeping first needs no new mechanism: removing a rendezvous already aborts and wakes its
+waiters, the transition a doomed resident needs before it can die. The region's rendezvouses go on
 every pass, refusal or not.
 
 The objection worth answering is that this makes a *refused* reclaim destructive. It already was, and
 `reclaim_region`'s BUGS section says so: a refusal arms §16's kill on every live resident. Ending the
-region's endpoints in the same pass is the same commitment one object over, and the caller has by then
+region's rendezvouses in the same pass is the same commitment one object over, and the caller has by then
 said the region is going away. It must not be a surprise, hence this note and a long comment at the
 sweep.
 
-The remaining limit: a service blocked on an endpoint *not* in any region being reclaimed still
+The remaining limit: a service blocked on a rendezvous *not* in any region being reclaimed still
 cannot be woken, so cannot be reclaimed. `user::holding::Holding` reports
 that as a failed release, and the practical answer is to give a service's
-endpoints a region of its own, which is what the net wiring now does.
+rendezvouses a region of its own, which is what the net wiring now does.
 
 The delicate part was the IPC core, the block-and-wake path where the lost-wakeup hang once lived.
-Two things kept the hot path intact. First, `endpoint_of` became fallible: a stale
-`Endpoint` capability (its endpoint reclaimed out from under a holder) used to reach a name that always
+Two things kept the hot path intact. First, `rendezvous_of` became fallible: a stale
+`Rendezvous` capability (its rendezvous reclaimed out from under a holder) used to reach a name that always
 resolved, so a miss panicked; now it returns `None` and the caller aborts cleanly. Second, the abort
 is routed through a per-thread `ipc_aborted` flag rather than changing `ipc_receive`/`ipc_send`'s
 return types (66 callers). The IPC primitive sets the flag inside its existing lock and the syscall
 layer reads-and-clears it, so no extra lock lands on the fast path and the IPC benchmark does not move.
-Kernel-side IPC callers never set the flag (their endpoints are never revoked), so they are untouched.
+Kernel-side IPC callers never set the flag (their rendezvouses are never revoked), so they are untouched.
 
 ## What the tests prove
 
@@ -164,14 +164,14 @@ witness that memory came back rather than leaked:
 - a started, run, and exited child's regions reclaim, and reclaim is *refused* while it is still live;
 - `SPLIT` carves reclaimable children and commits the parent;
 - 320 create+destroy cycles (past the old 256 cap) all succeed, proving slot reuse;
-- an idle endpoint's region reclaims, and a region whose endpoint has a blocked waiter reclaims
+- an idle rendezvous's region reclaims, and a region whose rendezvous has a blocked waiter reclaims
   too, waking that waiter with its IPC aborted rather than refusing
-  (`a_blocked_waiter_wakes_with_an_error_when_its_endpoint_is_revoked`). An earlier draft of this line said it
+  (`a_blocked_waiter_wakes_with_an_error_when_its_rendezvous_is_revoked`). An earlier draft of this line said it
   "refuses until the waiter is gone", which the test beside it has contradicted for some time.
 
 ## The surface, and what remains
 
-New EL0 methods on the `Untyped` object (the syscall boundary stays the three calls; these are methods
+New EL0 methods on the `MemoryRegion` object (the syscall boundary stays the three calls; these are methods
 under `invoke`): `SPLIT` (subdivide) and `DESTROY` (reclaim). See `crates/abi` for the contract and
 `design/decisions/` for the record.
 

@@ -1,6 +1,7 @@
 ---
-status: NOT-STARTED
+status: BUILT
 raised: 2026-09-19
+built: 2026-10-15
 promoted_from: a-renumber-that-cannot-cite-the-wrong-section
 milestone_dependencies: none
 decision_dependencies: none
@@ -56,3 +57,8 @@ used on 2026-09-19, for the third shift and the fourth, lives in a session scrat
 ## Index row
 
 When two sessions mint from the same range and one lands first, the other's whole run shifts.
+
+## Follow-on
+
+- **Recorded.** The proposal's two limitations, that step 5 cannot be gated and that the mode does
+  not prevent the collision it models, live beside the mode in `script/decisions`.

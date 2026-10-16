@@ -151,7 +151,7 @@ error. Both halves are proved, and the refusal turns out to have two forms:
 
 A capture client holds a read-only mapping of the screen and the window list, so it can screenshot
 and enumerate with no verb to call, and its attempt to write the screen faults. It is also the
-screen-sharing case: one grant with three uses, revocable through `Frame::REVOKE`
+screen-sharing case: one grant with three uses, revocable through `PageFrame::REVOKE`
 ([compositor/screen-sharing.md](compositor/screen-sharing.md)).
 
 ## How the isolation, the damage and the picture are proved
@@ -173,20 +173,20 @@ The most useful finding of this milestone is a limit, and it shaped everything a
 A process here has exactly one blocking wait point. A thread can be parked in one `RECEIVE`. There
 is no wait-any and no non-blocking receive (DECISIONS §24 (interrupting the foreground process)
 records the same gap from the shell's side). And two threads cannot share an address space
-(`Tcb::CONFIGURE` *consumes* the aspace capability, and the address space dies with the thread). A
+(`ThreadControlBlock::CONFIGURE` *consumes* the address-space capability, and the address space dies with the thread). A
 compositor has three classes of sender: its clients, an input source, and whoever may read the
-screen. Distinguishing classes of sender is what endpoints are for, and one endpoint per class needs
+screen. Distinguishing classes of sender is what rendezvouses are for, and one rendezvous per class needs
 one wait point per class.
 
 So the constraint is structural, not stylistic: **a component that must distinguish more than one
-class of sender must either be more than one process, or route everything through one endpoint and
+class of sender must either be more than one process, or route everything through one rendezvous and
 carry authority somewhere else.** This design took the second road, and it turned out well (the
-memory-carried authority is stronger than a per-class endpoint would have been, and it removed
+memory-carried authority is stronger than a per-class rendezvous would have been, and it removed
 authorization code rather than adding it). But the road was not chosen freely, and the honest record
 says so.
 
 Either form of the primitive, a wait-any or threads sharing an address space, would change three
-things. The compositor could hold one endpoint per client and gain sender identity, a screenshot
+things. The compositor could hold one rendezvous per client and gain sender identity, a screenshot
 could be a consistent served copy, and input delivery could stop being a blocking `CALL`
 ([compositor/missing-primitive.md](compositor/missing-primitive.md)).
 

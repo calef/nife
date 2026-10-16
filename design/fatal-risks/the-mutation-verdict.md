@@ -119,9 +119,12 @@ about three orders of magnitude behind inflow.
 > nobody is editing, which is a different defect wanting a different repair.
 
 Three things about that wording are deliberate. It does not say "the blocking gate is on", because
-that would make this verdict hostage to a decision milestone 479 (a blocking `--in-diff` mutation
-gate) refused. The measurement is available without the gate, at four seconds on a documentation
-change. It keeps clause (b) even though inflow dominates, because an inflow-only condition cannot
+the verdict is a measurement and not a settings read: clause (a) is answered by
+`cargo mutants --in-diff` runs whether or not a gate consumes them. The gate exists (milestone 924
+(a survivor on a pull request's own lines cannot merge untriaged), the reopening of milestone 479
+(a blocking `--in-diff` mutation gate) that the 2026-10-14 census's 43 untriaged survivors
+earned); the measurement, at four seconds on a documentation change, is still what the verdict
+reads. It keeps clause (b) even though inflow dominates, because an inflow-only condition cannot
 see `Rect::area` at all and that failure is silent by construction: nobody is editing the code, so
 nothing prompts anyone to look. And it is a floor rather than a target, since a percentage target
 can be met by excluding awkward crates, which is what milestone 85's rule exists instead of.

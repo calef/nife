@@ -63,7 +63,7 @@ and row 7 is the one-row descender. Caps and digits fill rows 0 to 6, x-height l
 That geometry is most of the argument for the font. 128 / 7 is 18 columns where 128 / 8 was
 16, on the same 128x64 scanout, at the same 1024-byte table. Milestone 29's other candidate,
 `gohufont-14`, has better letterforms and gives four rows of text, and four rows is not a terminal.
-No larger scanout is reachable today (a `Frame` names one page and the display driver has nine
+No larger scanout is reachable today (a `PageFrame` names one page and the display driver has nine
 capability table slots left), so a narrower cell is the only lever there is.
 
 The division has a remainder: 18 cells of 7 is 126, so two

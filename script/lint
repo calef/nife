@@ -20,6 +20,15 @@
 set -e
 cd "$(dirname "$0")/.."
 
+# The checks call python3 helpers that import tomllib, stdlib since 3.11. Found 2026-10-15
+# (milestone 352 (DECISIONS 113's rename reaches the prose)) when the pre-push gate died mid-run on a 3.9 system python. Fail here, with
+# the fix, rather than several checks in.
+if ! python3 -c 'import tomllib' >/dev/null 2>&1; then
+    echo "script/lint: python3 has no tomllib; this tree's checks need Python 3.11 or newer." >&2
+    echo "  Put a newer python3 first on PATH and rerun, e.g. PATH=\"/<dir-with-python3.11+>:\$PATH\" script/lint" >&2
+    exit 1
+fi
+
 # This project's own QEMU, if `script/ci-qemu` has built one. This file matches its own
 # "the project's QEMU is on PATH" rule below, because a checker's source necessarily
 # carries every pattern it looks for; taking the line is cheaper than an exemption.
@@ -356,9 +365,10 @@ cargo clippy -p components -p fixtures -p user_mode_runtime --target x86_64-unkn
 # counting arm of `IrqSafeMutex::lock` and the reaper's timing (kernel/src/lock_wait.rs).
 #
 # On BOTH ISAs since milestone 41. riscv64 was linted only under `watchdog_probe` before, so the
-# whole riscv `shell` boot path (`user::riscv_shell_boot` and the console it builds) was compiled
-# by `cargo xtask` and checked by nobody. Parity is a gate, not an aspiration (DECISIONS §19), and
-# that applies to the gate itself.
+# whole riscv `shell` boot path (`user::riscv_shell_boot` then; `boot_progenitor` since milestone
+# 166) and the console it builds were compiled by `cargo xtask` and checked by nobody.
+# Architectural parity is a gate, not an aspiration (DECISIONS §19 (architectural parity is a
+# tenet)), and that applies to the gate itself.
 for tgt in aarch64-unknown-none-softfloat riscv64imac-unknown-none-elf; do
     for feat in shell bench icount board fastpath_pad soak_test cycle_counter_grant lock_wait; do
         echo "==> clippy: kernel --features $feat ($tgt)"
@@ -386,6 +396,67 @@ done
 echo "==> clippy: kernel --features watchdog_probe (x86_64)"
 cargo clippy -p kernel --features watchdog_probe --target x86_64-unknown-none --all-targets -- \
     -D warnings -A dead_code -A clippy::reversed_empty_ranges
+
+# The UEFI loader's binaries, which nothing above compiles (milestone 508 (`script/lint` does not
+# build the UEFI binary, so lint-clean code can fail `script/test`)). The host pass lints
+# this crate's library and its tests, but the [[bin]] carries `required-features = ["uefi"]`, so
+# every pass above skips it exactly as `cargo build --workspace` does: a warning or an error in
+# the binary that boots xenon was invisible here and surfaced only in `script/test`'s x86_64 leg,
+# behind an emulator boot. Milestone 243 (a machine with no serial port has no way to say
+# anything)'s lane hit that in one direction, a loader edit that
+# passed this file and failed the UEFI build, which is the gap this stage closes.
+#
+# The tree produces one boot file per architecture, and `cargo xtask stick` writes all three. The
+# list is written out rather than derived (milestone 401's rule; a selector that matches nothing
+# passes by checking nothing), and each stanza prints its own line:
+#
+#   target                        boot file         how it is made
+#   x86_64-unknown-uefi           BOOTX64.EFI       PE/COFF from rustc
+#   aarch64-unknown-uefi          BOOTAA64.EFI      PE/COFF from rustc
+#   riscv64imac-unknown-none-elf  BOOTRISCV64.EFI   a static PIE, converted by crates/portable_executable
+#
+# riscv64 has no UEFI target in rustc at all (the comment beside rust-toolchain.toml's target
+# list says so), so its boot file compiles for the plain none-elf target and the stick turns the
+# ELF into a PE image. This stage checks that compile and deliberately takes none of the stick's
+# RUSTFLAGS: every one of them is a link argument (`-pie`, `--no-dynamic-linker`, `--entry`), and
+# a check build links nothing.
+#
+# `--features uefi` is what turns the bin on, and the loader's build script refuses to run without
+# a kernel to embed. So the three kernels the stick builds come first (the same three invocations,
+# so the artifacts are shared), and each stanza hands its own architecture's kernel over by
+# ABSOLUTE path: a build script's working directory is its package, not this tree, and the
+# generated `include_bytes!` is relative to the generated file. The archive variable stays unset,
+# which is the loader's legitimate tour build and keeps the measured-boot seal out of a lint
+# gate; `refuse_an_unsealed_pair` runs only when both paths are set, and the seal is `cargo xtask
+# uefi-image`'s own check.
+echo "==> uefi_loader: build the three kernels the boot files embed (see the note above)"
+cargo build -p kernel --target x86_64-unknown-none
+cargo build -p kernel --target aarch64-unknown-none-softfloat
+cargo build -p kernel --target riscv64imac-unknown-none-elf --features board
+
+echo "==> clippy: uefi_loader --features uefi (x86_64-unknown-uefi)"
+NIFE_UEFI_KERNEL="$PWD/target/x86_64-unknown-none/debug/kernel" \
+    cargo clippy -p uefi_loader --bin uefi_loader --features uefi \
+    --target x86_64-unknown-uefi -- -D warnings
+
+echo "==> clippy: uefi_loader --features uefi (aarch64-unknown-uefi)"
+NIFE_UEFI_KERNEL="$PWD/target/aarch64-unknown-none-softfloat/debug/kernel" \
+    cargo clippy -p uefi_loader --bin uefi_loader --features uefi \
+    --target aarch64-unknown-uefi -- -D warnings
+
+echo "==> clippy: uefi_loader --features uefi (riscv64imac-unknown-none-elf, the stick's PE payload)"
+NIFE_UEFI_KERNEL="$PWD/target/riscv64imac-unknown-none-elf/debug/kernel" \
+    cargo clippy -p uefi_loader --bin uefi_loader --features uefi \
+    --target riscv64imac-unknown-none-elf -- -D warnings
+
+# The fourth configuration of the same bin: `uefi,screen_hold`, which `cargo xtask uefi-boot`
+# builds for the screen gate and nothing else builds. The `screen_hold` code itself is
+# host-linted through the package's self dev-dependency, but only for the host; this is the
+# firmware-target build of it.
+echo "==> clippy: uefi_loader --features uefi,screen_hold (x86_64-unknown-uefi, uefi-boot's build)"
+NIFE_UEFI_KERNEL="$PWD/target/x86_64-unknown-none/debug/kernel" \
+    cargo clippy -p uefi_loader --bin uefi_loader --features uefi,screen_hold \
+    --target x86_64-unknown-uefi -- -D warnings
 
 # `--clippy`: stop after the last clippy pass. `.githooks/pre-push` called this so the clippy gate
 # had exactly one copy, here, until milestone 630 measured the rest of lint at about 29 s more and
@@ -592,6 +663,27 @@ if [ -n "$cfi_bad" ]; then
     exit 1
 fi
 echo "CFI: every hand-written .s file with an exported symbol carries call-frame information"
+
+# Every committed `.dtb` is what the `.dts` beside it compiles to. The device-tree fixtures
+# commit both halves of each pair, and a sweep can edit the text without reaching the binary
+# beside it: five blobs kept a name the tree had renamed away five weeks earlier, because nothing
+# read the property and nothing compared the bytes (milestone 491 (a committed .dtb is checked
+# against what its .dts compiles to)). The helper compiles each source with `dtc` and diffs
+# the DECOMPILED structure of the two blobs (`dtc -I dtb -O dts` on both sides), so one local
+# tool produced both texts and a `dtc` version difference cannot fail a contributor; a
+# difference that survives is a real drift.
+#
+# Where `dtc` is absent the check skips, and its own output says what that is worth: a skip is a
+# pass on a machine without the tool, and CI's lint job installs `dtc`, so the gate is real
+# where the merge queue runs. That split is the design, not a shortcut.
+#
+# It is a comparison, so it covers only the blobs that HAVE a source beside them. Bench images,
+# font atlases, the RedoxFS test image and the QEMU-dumped fixtures have no source to compare
+# against; the helper prints their count rather than passing over them in silence. An empty pair
+# set fails rather than passing (milestone 401 (a gate that selects the set it judges)).
+echo "==> every committed .dtb matches its .dts"
+python3 "$(dirname "$0")/../helpers/lint_dtb_matches_dts.py" --selftest >/dev/null
+python3 "$(dirname "$0")/../helpers/lint_dtb_matches_dts.py" || exit 1
 
 # The machine description prints on every boot (milestone 267).
 #
@@ -2033,6 +2125,48 @@ REGISTRY = {
         'how many workspace packages carry at least one Kani proof harness',
         lambda: len(_harness_hits()),
     ),
+    # The per-crate harness counts notes/verification/core-harnesses.md marks. One entry per crate
+    # that appendix covers, added by milestone 427 (the documentation sweep the worklist already
+    # ranks) after five of its nine counts were found wrong: a count that rots silently in prose
+    # had already cost two sweeps their re-derivation. A lane landing a harness in one of these
+    # crates bumps the number beside the marker in the same commit, which is the forcing function
+    # the total `kani-harnesses` marker already exercises.
+    'capability-harnesses': (
+        'how many Kani proof harnesses crates/capability carries',
+        lambda: _harness_hits().get('capability', 0),
+    ),
+    'memory-regions-harnesses': (
+        'how many Kani proof harnesses crates/memory_regions carries',
+        lambda: _harness_hits().get('memory_regions', 0),
+    ),
+    'paging-harnesses': (
+        'how many Kani proof harnesses crates/paging carries',
+        lambda: _harness_hits().get('paging', 0),
+    ),
+    'page-frames-harnesses': (
+        'how many Kani proof harnesses crates/page_frames carries',
+        lambda: _harness_hits().get('page_frames', 0),
+    ),
+    'device-tree-blob-harnesses': (
+        'how many Kani proof harnesses crates/device_tree_blob carries',
+        lambda: _harness_hits().get('device_tree_blob', 0),
+    ),
+    'inter-process-communication-harnesses': (
+        'how many Kani proof harnesses crates/inter_process_communication carries',
+        lambda: _harness_hits().get('inter_process_communication', 0),
+    ),
+    'generational-table-harnesses': (
+        'how many Kani proof harnesses crates/generational_table carries',
+        lambda: _harness_hits().get('generational_table', 0),
+    ),
+    'intrusive-fifo-harnesses': (
+        'how many Kani proof harnesses crates/intrusive_fifo carries',
+        lambda: _harness_hits().get('intrusive_fifo', 0),
+    ),
+    'address-space-identifier-harnesses': (
+        'how many Kani proof harnesses crates/address_space_identifier carries',
+        lambda: _harness_hits().get('address_space_identifier', 0),
+    ),
     'markdown-files': (
         'how many markdown files the tree carries outside target/ and vendor/, which is the corpus '
         "README.md's reading order sends a newcomer into",
@@ -2903,6 +3037,18 @@ echo "==> workflow steps that swallow a failure"
 python3 "$(dirname "$0")/../helpers/workflow_swallows.py" --selftest
 python3 "$(dirname "$0")/../helpers/workflow_swallows.py"
 
+# 12c. **Every file under .github/workflows/ parses** (milestone 861 (every workflow file parses);
+#     helpers/workflow_parses.py, name provisional). A comment line that loses its `#` to a
+#     line-wrap slip passes every text gate here: the pin and swallow checks match their regexes
+#     and wave the rest through. GitHub does not wave it through; the file never starts a run, and
+#     for ci.yml and verify.yml that is every pull request waiting on a required check nothing can
+#     post. The parser is `ruby -ryaml`, which the runner image and this macOS both carry; the
+#     helper's header says what it cannot see. Fixtures first, because a green run looks the same
+#     as a parser that cannot fire.
+echo "==> every workflow file parses"
+python3 "$(dirname "$0")/../helpers/workflow_parses.py" --selftest
+python3 "$(dirname "$0")/../helpers/workflow_parses.py"
+
 # 13. **The kernel links no crate only its tests use, and no fixture unless a feature asks**
 #     (milestone 609 (the system tests leave the kernel crate)). The kernel crate used to link
 #     `ps`, `pgrep`, `pmap` and `network_time_protocol` as ordinary dependencies, for nothing but
@@ -3283,6 +3429,13 @@ python3 helpers/interface_stability.py --selftest >/dev/null
 # fixtures with no git and no network. The weekly mutation workflow is the only thing that runs the
 # real check, so a change to these rules is verified here, where it lands.
 python3 helpers/mutation_inflow.py --selftest >/dev/null
+# Milestone 924 (provisional): the diff gate (helpers/mutation_diff_gate.py), the rules a
+# per-pull-request survivor must meet to merge: equivalent or gap clears, killed never does (the
+# gate just watched the mutant live), a timeout is untriaged the same as a survivor, an
+# incomplete run is exit 2 and the cap always fails. Against fixtures, with no git and no cargo.
+# The gate workflow is the only thing that runs the real decision, so a change to these rules is
+# verified here, where it lands.
+python3 helpers/mutation_diff_gate.py --selftest >/dev/null
 
 # The architect-label diff rules, the live architect-ruled read, record-ruling and the hold-release
 # rerun are checked by script/lint-fleet since milestone 889, as are the merge-watcher,

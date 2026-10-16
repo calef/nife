@@ -45,7 +45,7 @@ pre-rename estimate; see the table below.
 | `EpId` | `RendezvousId` | **done**, with `Endpoint`: 216 occurrences across 43 files, once the type alias's own call sites were counted |
 | `Tid` | `ThreadId` | **done**, with `Tcb`: 82 occurrences across 13 `.rs` files by fresh count |
 
-Plus the four companions §113 also decided in the same entry: `TcbPtr` ->
+Plus the four companions §113 also decided in the same entry. `TcbPtr` ->
 `ThreadControlBlockPointer` (done, with `Tcb`; 11 occurrences, `kernel/src/sched.rs` only), `TidSet`
 -> `ThreadIdSet` (done, with `Tcb`; 6 occurrences, `kernel/src/user/survey_tests.rs` only), `EpFail`
 -> `RendezvousFailure` (done, with `Endpoint`), `FreeVas` -> `FreeAddressSpace` (done, with
@@ -70,7 +70,7 @@ not have to re-derive them:
   directly and it may need updating rather than blind search-and-replace.
 - `Aspace`/`AddressSpace` had no collision of this shape (checked directly: `crates/compositor`, the
   file that collided with both `Frame` and `Untyped`/`Region`, has no "aspace" or "address space"
-  vocabulary of its own), but it did have a real near-collision nobody had recorded:
+  vocabulary of its own). It did have a real near-collision nobody had recorded:
   `kernel/src/user.rs` already defines `pub struct AddressSpace`, the kernel-internal page-table
   object, predating the rename. Not a blocker in the end. It is the same pattern
   `Object::Rendezvous(RendezvousId)` already uses naming `struct Rendezvous`: a capability variant
@@ -80,15 +80,15 @@ not have to re-derive them:
 ## Scope and sequencing
 
 Pure rename, no behaviour change, the same discipline milestone 98's `IpcTables` rename used
-(itself one of the smaller names in this same family -- read that milestone's own completed work,
-once merged, as the template for how to gate and verify a rename of this shape here). Milestone
+(itself one of the smaller names in this same family). Read that milestone's own completed work,
+once merged, as the template for how to gate and verify a rename of this shape here. Milestone
 69's proof obligation applies to any renamed type a Kani harness references by name.
 
 Do the biggest, most-cited name first and measure the real diff before committing to doing all
 seven in one lane. `Endpoint`/`Rendezvous` is both the largest measured surface and the one most
 likely to touch generated or macro-derived code (IPC message types, proof harnesses) in ways a
 smaller rename like `Tcb`/`ThreadControlBlock` will not. If the full set turns out too large for one
-safe, reviewable commit, split by name rather than doing all seven partially -- an inconsistent tree
+safe, reviewable commit, split by name rather than doing all seven partially. An inconsistent tree
 where `Aspace` is renamed and `Endpoint` is not is a worse intermediate state than finishing one name
 completely and stopping.
 
@@ -104,7 +104,7 @@ be once measured -- not decided here.
 
 ## What it unblocks
 
-Nothing else is gated on this; it closes the gap between a decision calef made and the code
+Nothing else is gated on this. It closes the gap between a decision calef made and the code
 actually reflecting it, which is its own reason to exist per DECISIONS §113's whole argument: a
 name only works if a reader meets it. All eleven names are done (`Endpoint`/`EpId`/`EpFail`,
 `Tcb`/`TcbPtr`/`Tid`/`TidSet`, `Aspace`/`FreeVas`, `Frame`, and `Untyped`); no reader meets a
@@ -114,7 +114,7 @@ contraction or borrowed abbreviation from this list anywhere in the tree anymore
 
 - **Refused.** `DeviceFrame` was left unrenamed. It is not one of §113's eleven names or the
   `CSpace` amendment, its own doc comment already disambiguates it from the compositor's frame ("a
-  device's MMIO page"), and companion-renaming an unlisted sibling is the scope creep AGENTS.md's
+  device's MMIO page"). Companion-renaming an unlisted sibling is the scope creep AGENTS.md's
   naming section asks a lane not to take on its own initiative.
 - **Refused.** Local bindings and parameters that merely spell a renamed concept (`ep`, `aspace`,
   `tid`, `tcb`) were left alone across all seven names. A local binding names nothing a reader meets
@@ -132,4 +132,5 @@ contraction or borrowed abbreviation from this list anywhere in the tree anymore
 ## Index row
 
 All seven names built across five lanes and green on all three ISAs, each measured far larger than
-§113's own estimate once its ABI module and lowercase identifier family were counted: `Endpoint`/`EpId`/`EpFail` -> `Rendezvous`/`RendezvousId`/`RendezvousFailure`, `Tcb`/`Tid`/`TcbPtr`/`TidSet` -> `ThreadControlBlock`/`ThreadId`/`ThreadControlBlockPointer`/`ThreadIdSet`, `Aspace`/`FreeVas` -> `AddressSpace`/`FreeAddressSpace`, `Frame` -> `PageFrame`, `Untyped` -> `MemoryRegion`.
+§113's own estimate once its ABI module and lowercase identifier family were counted. The renames:
+`Endpoint`/`EpId`/`EpFail` -> `Rendezvous`/`RendezvousId`/`RendezvousFailure`, `Tcb`/`Tid`/`TcbPtr`/`TidSet` -> `ThreadControlBlock`/`ThreadId`/`ThreadControlBlockPointer`/`ThreadIdSet`, `Aspace`/`FreeVas` -> `AddressSpace`/`FreeAddressSpace`, `Frame` -> `PageFrame`, `Untyped` -> `MemoryRegion`.

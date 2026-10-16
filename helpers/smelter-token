@@ -58,12 +58,10 @@ BUGS
   somebody widens the App further in the web UI.
 - Two sessions that find the cache stale at the same moment both mint. Tokens are independent, so
   this costs an API call, not correctness.
-- The selftest fails on a host whose `python3` is the macOS CLT 3.9 (patagonia, 2026-10-10): that
-  interpreter writes `__pycache__` bytecode into the selftest's own sandbox HOME, so the "home and
-  working directory untouched" check trips on the interpreter's litter rather than on anything the
-  script kept. Homebrew 3.14 (what CI and a normal `script/lint` run pick up) does not. Run it with
-  `PYTHONDONTWRITEBYTECODE=1`, or point `python3` at Homebrew, until the selftest scrubs or forbids
-  the caches itself.
+- The selftest sets `PYTHONDONTWRITEBYTECODE=1` for everything it runs, because the macOS CLT 3.9
+  interpreter writes `__pycache__` bytecode into the sandbox HOME it is handed and the "home and
+  working directory untouched" check must judge what this script keeps, not the interpreter's
+  litter (a host where `python3` is CLT 3.9, like patagonia, cannot pass without it).
 """
 
 import base64
@@ -473,6 +471,10 @@ def selftest():
             # helper does may write a git or gh configuration file anywhere.
             "HOME": home,
             "XDG_CONFIG_HOME": os.path.join(home, ".config"),
+            # Forbid bytecode, so the check judges what this helper keeps and not the
+            # interpreter's litter: the macOS CLT 3.9 writes `__pycache__` caches into the
+            # sandbox HOME it is handed, which nothing here can prevent from inside.
+            "PYTHONDONTWRITEBYTECODE": "1",
             # The stub is on loopback, so a proxy in the caller's environment must not carry the
             # requests away. Without this the selftest failed on any machine with HTTPS_PROXY set,
             # found 2026-10-12 (UTC) by milestone 889 (the tree's gates stop depending on the fleet

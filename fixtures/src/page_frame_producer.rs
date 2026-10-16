@@ -23,7 +23,7 @@
 #![allow(missing_docs)]
 #![no_main]
 
-use user_mode_runtime::{exit, map_page_frame, retype_into_page_frame, send_capability};
+use user_mode_runtime::{exit, map_page_frame, require, retype_into_page_frame, send_capability};
 
 const MEMORY_REGION: u64 = 0; // retype the frame and draw page tables from here
 const CHANNEL: u64 = 1; // delegate the frame to the consumer over here
@@ -34,10 +34,10 @@ pub extern "C" fn _start(_arg0: u64, _arg1: u64, _arg2: u64) -> ! {
     // Retype: a page out of our budget becomes a PageFrame capability we hold. Nothing is mapped
     // yet.
     let frame = retype_into_page_frame(MEMORY_REGION);
-    check(frame >= 0);
+    require(frame >= 0);
 
     // Map it read/write; the page tables to reach PAGE_FRAME_VA come from the same region.
-    check(map_page_frame(
+    require(map_page_frame(
         frame as u64,
         PAGE_FRAME_VA,
         true,
@@ -57,14 +57,6 @@ pub extern "C" fn _start(_arg0: u64, _arg1: u64, _arg2: u64) -> ! {
     send_capability(CHANNEL, frame as u64, abi::rights::READ, 0);
 
     exit()
-}
-
-/// The only way this program can say "no": a trap, which the kernel treats as a fault and kills us
-/// for. A failed check must be indistinguishable from a broken program, because it is one.
-fn check(ok: bool) {
-    if !ok {
-        user_mode_runtime::trap()
-    }
 }
 
 user_mode_runtime::panic_handler!();

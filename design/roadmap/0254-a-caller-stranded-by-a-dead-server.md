@@ -82,7 +82,7 @@ four trigger sites. All of it is in `kernel/src/sched.rs`; no syscall number, no
 and no ABI change, which is exactly what the block's gate line claimed before it was struck as stale
 on the way to `BUILT`.
 
-The helper does the two things in the order that makes them safe. First the sweep: every
+The helper does the two things in the order that makes them safe. First the sweep. Every
 `Object::Reply(caller)` in every capability table in the machine is deleted, and so is one riding in
 a thread's `outgoing_cap`, which is where a caller that met no server parks its own reply capability
 awaiting a `RECV_CAP` hand-off. Then the abort and the wake, which is `set_ipc_aborted` plus
@@ -106,7 +106,7 @@ capability table can stop existing by three different routes:
 | The server is reaped with its region | `reap_region_objects`, removal phase | an `Embryo`, or a corpse already converted by one of the two above |
 
 The rendezvous trigger cannot be reached by scanning a wait queue, and that is the defect stated
-mechanically: a `CALL` caller whose request was taken is linked on no queue at all, so
+mechanically. A `CALL` caller whose request was taken is linked on no queue at all, so
 `drain_waiters` walks past it and only `wait_on`'s `(ep, WaitRole::Reply)` still records that it is
 waiting. The scan is over `MAX_THREADS`, and it rescans rather than listing, because a
 `[u64; MAX_THREADS]` of victims is a kilobyte of scratch on the deepest frame in the kernel
@@ -137,7 +137,7 @@ first would pass while that were true. Two assertions carry it. `outstanding_rep
 counts every live `Reply` naming the freed caller anywhere in the machine, including `outgoing_cap`,
 and must be zero. And the surviving server in the first test re-reads its own slot through
 `sched::current_cap`, which is the same lookup `abi::reply::REPLY` performs before it ever reaches
-`ipc_reply`, so a capability that is gone there is a reply that cannot be sent at all. Each test
+`ipc_reply`. A capability that is gone there is a reply that cannot be sent at all. Each test
 also asserts the server *held* a live capability beforehand, so neither can pass vacuously.
 
 Note what the sweep is doing and what it is not. `ipc_reply`'s guard still checks the `WaitRole` and
@@ -159,14 +159,9 @@ could still take.
   about 830 ticks per `spawn_reap` iteration. Reading the table once into a 192-byte array of
   victims and skipping an empty table took it to +2.2% and +0.006%. **The baselines were not
   re-recorded.**
-- **It says nothing about a server that is alive and simply never replies**, which is the case that
+- **It says nothing about a server that is alive and simply never replies**. That is the case that
   motivated milestone 133 and is answered by a deadline on `CALL` (milestone 106's fork, not this
   one's) or by ending the thread (133's).
-- Milestone 133's own block and note both still say `Tcb`, a name DECISIONS §113 retired on
-  2026-08-23 in favor of `ThreadControlBlock`. They predate the rename and were never swept, because
-  `script/roadmap`'s staleness gates reach `BUILT`, `REMOVED` and now `PARTIAL` blocks, and 133 is
-  `NOT-STARTED`.
-
 - **A server that is alive and holding a reply capability it never uses still strands its caller**,
   and that is not an oversight: it is the same case the third bullet below names. Nothing here
   fires while the server is running, because nothing has happened that the kernel witnesses.
@@ -188,7 +183,7 @@ could still take.
   fix is `#[cold]` plus `#[inline(never)]` on all three helpers, and `strand_` added to that
   script's `COLD` list beside `revoke`, `destroy` and `delete_frame_caps`, which is the teardown
   family it already names for exactly this reason. What remains is the guarded call sites
-  themselves: +0.6% aarch64, +0.3% riscv64, +1.9% x86_64, all inside the 5% bound, and **the
+  themselves, at +0.6% aarch64, +0.3% riscv64, +1.9% x86_64, all inside the 5% bound. **The
   baselines were not re-recorded**, which is the honest form of a change that is meant to cost
   nothing on the hot path.
 

@@ -15,7 +15,7 @@ The leak was reproduced before it was fixed, which is the part worth keeping. St
 run, signal the wrapper and its detached killer the way `pkill -f` does, and the emulator is
 inherited by pid 1 and runs until somebody notices. `helpers/qemu-bounded-selftest.sh` is that
 reproduction as an artifact. Run against the pre-226 script it fails three of its seven cases (both
-orphan cases and the lock diagnostic); against the current one it passes all seven.
+orphan cases and the lock diagnostic). Against the current one it passes all seven.
 
 What the killer does now. It had one reason to fire, the bound, which bounds a run that is
 allowed to finish and does nothing about a run whose wrapper is killed. It has three:
@@ -27,15 +27,16 @@ allowed to finish and does nothing about a run whose wrapper is killed. It has t
    the one process that knows the child's pid never takes that knowledge with it.
 
 **SIGINT is deliberately not in that trap list.** A shell puts an asynchronous subshell's SIGINT to
-ignore before the subshell can trap it, so listing it would be a lie that reads as coverage. Ctrl-C
+ignore before the subshell can trap it. Listing it would be a lie that reads as coverage. Ctrl-C
 is covered better anyway: the wrapper dies of it, the killer survives it, and reason 2 fires within
 a second.
 
 The early-reader property was verified rather than assumed, since the block named it as a real
 requirement. A real QEMU writing continuously into a pipe whose reader takes five lines and exits is
-still killed at the bound. So is the milestone 38 property beside it: a fast child in a pipeline
+still killed at the bound. So is the milestone 38 (filesystem throughput) property beside it. A fast
+child in a pipeline
 returns at once rather than at the end of the bound, and it now does so because the killer's output
-goes to `/dev/null` instead of into the pipe, which closes that bug at the root rather than at the
+goes to `/dev/null` instead of into the pipe. That closes the bug at the root rather than at the
 cleanup.
 
 **And the macOS constraint was tested, not reasoned about.** `perl -e 'alarm 3; exec @ARGV'` against
@@ -44,7 +45,7 @@ the installed `qemu-system-aarch64` still leaves it running eight seconds later.
 **The lock diagnostic.** On a failing exit, and only then, the wrapper runs `lsof` over the image
 paths in its own command line and prints the pid, ppid, start time and command of anyone holding one
 **for writing**. The write filter is not a refinement, it is the difference between a diagnostic and
-noise: `script/test`'s three legs share one read-only OVMF firmware file, so reporting readers would
+noise. `script/test`'s three legs share one read-only OVMF firmware file, so reporting readers would
 print a holder for every green run that overlapped another lane's x86_64 gate. It reports rather
 than kills, and says to walk the parent chain up first, because a QEMU whose parent is a live
 harness is somebody's gate rather than a leak (AGENTS.md, 2026-08-15).
@@ -66,7 +67,7 @@ does not kill its descendants, so a check honestly reporting "no qemu" is follow
 finds one. Its advice is to ask who holds the file (`lsof target/nifefs.img`) rather than whether a
 process matches a name, and to kill the tree at its root.
 
-That advice is rung four, and this is the instance where rung four failed in the ordinary way: a
+That advice is rung four, and this is the instance where rung four failed in the ordinary way. A
 lane that had read the file still lost time, because the symptom arrives on a *later* run as a lock
 error about a file, with nothing pointing at a leaked process.
 
@@ -94,7 +95,7 @@ something this project did not start.
 - A SIGKILL to the killer defeats all of it, and nothing on macOS can fix that. SIGKILL is not
   trappable and macOS has no `prctl(PR_SET_PDEATHSIG)`, so a supervisor shot in the head cannot hand
   off. `kill -9` at a whole process group is the realistic way to hit it. This is the case the lock
-  diagnostic exists for, and the self-test deliberately does not assert on it: asserting on a known
+  diagnostic exists for, and the self-test deliberately does not assert on it. Asserting on a known
   defect only pins it in place.
 - The parent-alive poll can be fooled by pid reuse. If the wrapper dies abnormally and its pid is
   reused inside the bound, the killer waits out the full bound, which is exactly the old behavior
@@ -105,12 +106,12 @@ something this project did not start.
   a reader, which is deliberate and is the reason the message is quiet on a green run.
 - The self-test is in no gate, so nothing runs it unless a person does. It starts real emulators
   and costs about a minute, which is a poor trade against every lane for a script that changes twice
-  a year. That is rung two declined on purpose, and it is a foot gun: a later simplification of
+  a year. That is rung two declined on purpose, and it is a foot gun. A later simplification of
   `qemu-bounded.sh` will not be caught by CI.
 - **This block does not say how often it happens.** Two occurrences in one lane on one day is what
   prompted it, and nobody swept for others.
 - The macOS constraint that produced this script is unchanged, and was rechecked rather than
-  assumed: `perl`'s alarm is still swallowed by the installed QEMU.
+  assumed. `perl`'s alarm is still swallowed by the installed QEMU.
 - It says nothing about the emulators a killed harness leaves, which AGENTS.md records as a
   separate and larger failure: eleven QEMU processes over one day, the oldest with eight hours of CPU
   time on it.
@@ -146,15 +147,15 @@ something this project did not start.
 ## Index row
 
 Both shapes. The killer had one reason to fire, the bound, which bounds a run allowed to finish
-and does nothing about a run whose wrapper is killed: the emulator was then inherited by pid 1,
+and does nothing about a run whose wrapper is killed. The emulator was then inherited by pid 1,
 held a disk image's write lock, and billed a later run with QEMU's `Failed to get "write"
 lock`, which names a file and no process. It now also polls its parent once a second (covering
-a SIGKILLed wrapper and a dead session, neither of which runs a trap) and traps TERM and HUP,
-so the one process knowing the child's pid does not take it along. SIGINT is deliberately absent:
+a SIGKILLed wrapper and a dead session, neither of which runs a trap) and traps TERM and HUP.
+The one process knowing the child's pid does not take it along. SIGINT is deliberately absent:
 a shell puts an async subshell's SIGINT to ignore before it can be trapped, so listing it would
 read as coverage and be a lie. The leak was reproduced before and after and `helpers/qemu-bounded-selftest.sh` is that reproduction as an artifact: three of seven cases fail
 on the old script, none on the new. The early-reader property and milestone 38's fast-child
 property were both verified against a real QEMU, and `perl`'s alarm is still swallowed, so the
 premise holds. What macOS cannot prevent (SIGKILL to the killer; no PDEATHSIG) gets the other half
-instead: a failing run runs `lsof` over its own image paths and names the holder's pid, ppid and
+instead. A failing run runs `lsof` over its own image paths and names the holder's pid, ppid and
 start time, and says to walk the parent chain up first.
