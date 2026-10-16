@@ -13,7 +13,7 @@ It was minted with no gate and needed none: the measurement was already taken, t
 (`--features soak`) already existed in this tree, and nothing external blocked it.
 
 In brief. Milestone 229 (build the cycle-counter grant DECISIONS 139 decided) put a per-thread
-grant on the context switch, which is where it has to be: `PMUSERENR_EL0` is one register shared by
+grant on the context switch, which is where it has to be. `PMUSERENR_EL0` is one register shared by
 every thread on a core, so the only moment a per-thread grant can mean anything is when a thread
 starts running. The read is the enforcement, not overhead around it.
 
@@ -52,7 +52,7 @@ The other two architectures, measured the same way:
 | riscv64 | 5132 | 5148 | 16 |
 | x86_64 | 6687 | 6687 | 0 |
 
-x86_64's zero is DECISIONS 139 part 3 showing up in the codegen rather than an omission: `rdtsc` is
+x86_64's zero is DECISIONS 139 part 3 showing up in the codegen rather than an omission. `rdtsc` is
 ambient there by decision, its `set_cycle_counter_grant` is an empty function, and LLVM drops the
 field read that feeds it along with the call.
 
@@ -94,7 +94,7 @@ provisional** like everything a lane mints. It is the field it builds
 and that is the answer to this block's first `BUGS` entry. Milestone 229's proofs are the only
 things in the tree that exercise this path (the embryo refusal in `sched::tests`, the EL0 round trip
 and its ungranted-faults half in `user::tests`, the register-field assertions in each architecture's
-`timer::tests`), so folding `test` into the predicate makes every `script/test` run a keep-alive on
+`timer::tests`). Folding `test` into the predicate makes every `script/test` run a keep-alive on
 all three architectures rather than a CI job that only builds it. The release kernel
 `script/fastpath-footprint` measures has no `test` cfg, so production still pays nothing. Confirmed:
 all four suites green with the grant's tests reported `ok`, the negative half faulting with the real
@@ -102,9 +102,9 @@ all four suites green with the grant's tests reported `ok`, the negative half fa
 
 `script/lint` clippies the feature on all three architectures as a second keep-alive, on the two-ISA
 loop `soak` is in plus a line of its own for x86_64. That third line needs saying because it is a
-second exception to a paragraph that already had one: the loop's targets are aarch64 and riscv64
+second exception to a paragraph that already had one. The loop's targets are aarch64 and riscv64
 because seven of the nine build-mode features select a boot path x86_64 has not written, and this
-feature selects no boot path at all, which is why it can be linted there when `shell` and `soak`
+feature selects no boot path at all. That is why it can be linted there when `shell` and `soak`
 cannot.
 
 Gated: `Thread::cycle_counter_grant` and its four initializers, the read out of the locked block
@@ -114,12 +114,12 @@ beside `ttbr0` in `sched::schedule`, the `arch::timer::set_cycle_counter_grant` 
 
 **Deliberately not gated:** milestone 228 (the cycle counters are closed by assumption)'s write of
 the closed default in each `timer::init`. Closing what we claim is closed is right whether or not
-anyone can be granted an exception, and 228 landed for reasons independent of this one, so a
+anyone can be granted an exception, and 228 landed for reasons independent of this one. A
 production kernel still writes `PMUSERENR_EL0` to zero on every core and `scounteren` to `TM` alone
 on every hart.
 
 The switch site keeps its shape through two pairs of one-line functions rather than a fourth
-`#[cfg]` on a sixty-line block, because the value has to leave the lock through a tuple and `#[cfg]`
+`#[cfg]` on a sixty-line block. The value has to leave the lock through a tuple, and `#[cfg]`
 is not allowed on a tuple element. Without the feature `sched::cycle_counter_grant_of` is the
 constant `false` and `install_cycle_counter_grant` is empty, so the optimizer folds the whole thing
 out. A zero-sized `()` in the tuple was the first shape tried and `clippy::let_unit_value` refused
@@ -176,7 +176,7 @@ that a footprint change is intended and understood; do it in the commit that cau
 - A gated path rots unless something builds it. Answered above by folding `test` into the
   predicate, so `script/test` compiles and *runs* it on all three architectures, plus `script/lint`
   compiling the feature without `test`. That is a stronger keep-alive than `soak`'s, which is built
-  and not run; it is not free, because the configuration a production kernel actually ships
+  and not run. It is not free, because the configuration a production kernel actually ships
   (`not(test)`, feature off) is now the one nothing runs, and it is the one whose correctness is
   "this code is absent".
 - **This block does not price milestone 74's arrival.** Unchanged, and cheaper than it looked: the
@@ -198,7 +198,7 @@ that a footprint change is intended and understood; do it in the commit that cau
   on rather than reverting anything, and the churn it meets is 136 bytes in one function.
 - **Recorded.** Folding `test` into the gate makes `script/test` a keep-alive on all three
   architectures, at the cost that the configuration a production kernel actually ships
-  (`not(test)`, feature off) is now the one nothing runs, and it is the one whose correctness is
+  (`not(test)`, feature off) is now the one nothing runs. It is the one whose correctness is
   that the code is absent. `design/roadmap/0237-the-cycle-grant-is-a-measurement-build.md`.
 - **Recorded.** A benchmark build carries 136 more bytes in `sched::schedule` than production, so a
   cycle figure taken with the instrument on is slightly pessimistic about nife. That caveat sits
