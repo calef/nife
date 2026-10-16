@@ -20,7 +20,7 @@ its own milestone's roadmap block. Every milestone also needed a row in one sort
 milestone in flight collided with every other milestone in flight, always, in that one file, and
 `main` moving once re-conflicted every open lane. Pull requests #836, #843, #847, #849, #850, #851,
 #854 and #855 all conflicted in `design/roadmap/README.md`'s index table and nowhere else, several
-of them more than once, and the resolution was mechanical every time: take both sides' rows and
+of them more than once. The resolution was mechanical every time: take both sides' rows and
 sort by number.
 
 AGENTS.md names `kernel/src/user/tests.rs` as the tree's merge hotspot, measured on 2026-08-16. It
@@ -48,7 +48,7 @@ is what decided the shape of this milestone rather than discovering it late.
 
 The summary is a hand-written precis, median 369 characters and up to 1832. Deriving it from
 the block's own opening paragraph was the option that needed no migration, and it was measured
-before it was refused: across 288 milestones the row's summary scored a median similarity of
+before it was refused. Across 288 milestones the row's summary scored a median similarity of
 0.07 against the block's first body paragraph, above 0.4 for three milestones and above 0.6 for
 none. An opening paragraph is written to open a document. Taking it would have silently rewritten
 what the index said about 288 milestones, in one commit, and each of those cells is the tree's own
@@ -141,11 +141,11 @@ back. The cost of not failing is in BUGS below, named rather than hidden.
   behind the blocks. `--check` prints the count and the command on every run, which is rung two for
   detection and rung four for action, and that is an exception AGENTS.md's ladder asks to be
   declared rather than left to read as a design. Three higher rungs were looked at and each cost
-  more than the staleness does: a bot pushing the regeneration to `main` would race the merge queue
+  more than the staleness does. A bot pushing the regeneration to `main` would race the merge queue
   and can evict it, and this tree's own convention (`.github/workflows/metrics.yml`) is that a job
-  must never push to `main`; a `merge=union` attribute on the table would auto-resolve the append
-  conflicts and leave the rows mis-sorted, which trades a visible conflict for a quiet wrong answer;
-  and failing the gate on a stale table brings the hotspot back. A stale *derived* artifact is also
+  must never push to `main`. A `merge=union` attribute on the table would auto-resolve the append
+  conflicts and leave the rows mis-sorted, which trades a visible conflict for a quiet wrong answer.
+  And failing the gate on a stale table brings the hotspot back. A stale *derived* artifact is also
   a much smaller defect than the one it replaces, because nobody has to work out which record is
   right.
 - A lane still cannot see another lane's rows, and now it cannot see their blocks either. Two
@@ -163,12 +163,12 @@ Eight merge conflicts in one session were all in `design/roadmap/README.md`'s in
 nowhere else. Structural rather than unlucky: check 4b
 makes every lane touch its own block, every milestone also needed a row in one sorted table, so
 every milestone in flight collided with every other. The row is now derived from the block. Two of
-the five columns had to move rather than be derived, and measuring that is what decided the shape:
-the summary scored a median similarity of 0.07 against the block's own opening paragraph (an
-opening paragraph opens a document rather than summarizing one), and 129 of 288 blocks did not
+the five columns had to move rather than be derived, and measuring that is what decided the shape.
+The summary scored a median similarity of 0.07 against the block's own opening paragraph (an
+opening paragraph opens a document rather than summarizing one). And 129 of 288 blocks did not
 state their Built date in any parseable position, in at least eight spellings. Both moved verbatim
-into a `## Index row` section; the proof is the reconstruction, which reproduced 271 of 288 rows
-byte for byte, with all 17 differences pre-existing drift in the hand-maintained table (12
+into a `## Index row` section. The proof is the reconstruction, which reproduced 271 of 288 rows
+byte for byte. All 17 differences were pre-existing drift in the hand-maintained table (12
 whitespace, 5 titles the row had abbreviated away from its own H1, two of them dropping backticks
 off command names). A lane now never edits the index. Check 4b did not change: it always asked for
 the block.

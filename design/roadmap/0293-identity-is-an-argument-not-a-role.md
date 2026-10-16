@@ -89,7 +89,7 @@ Six behaviors remain: `LOGIN`, `WRITE_MARKER`, `READ_MARKER`, `LOGOUT`, `HOLD_TE
 principle or an argument. Both were priced.
 
 **Six programs** costs six `[[bin]]` entries, six archive entries, and six copies of the
-connect-and-authenticate preamble: send `CONNECT`, receive `CONNECTED`, receive three capabilities
+connect-and-authenticate preamble. Send `CONNECT`, receive `CONNECTED`, receive three capabilities
 in order, map the delegated page from a scratch region, `place` the credential, send `LOGIN`,
 receive the verdict, then receive five more capabilities in `login_proto`'s fixed order. Avoiding
 six copies means lifting that preamble into a crate, which is a new crate and a new name.
@@ -103,7 +103,7 @@ delegated capabilities arriving in one order on one channel. Six copies of a wir
 places for it to drift, and a drifted copy fails as a mysterious `RECV_CAP` on the wrong object
 rather than as a diff. The sibling lane splitting `fixtures/src/hello.rs` (291, unmerged as this is
 written, which is why it is not cited by number) found the opposite, and it is worth stating as
-evidence rather than as analogy: `hello`'s roles are a catalog (virtio, IPC call,
+evidence rather than as analogy. `hello`'s roles are a catalog (virtio, IPC call,
 revocation, page frames, address-space building, four `init` variants) that share the file and
 nothing else. These six share an authenticated session.
 
@@ -138,7 +138,7 @@ is now a `const` conversion of the first rather than a second literal.
 
 Every other `const ROLE_` in the tree was checked (`fixtures/`, `components/`, `crates/`,
 `kernel/`: 24 files). Every one of them dispatches a role to a *function*. `login_test_client`'s
-`credentials(role)` was the only role-to-data lookup in the repository; the nearest thing to a
+`credentials(role)` was the only role-to-data lookup in the repository. The nearest thing to a
 second is `kernel/src/soak.rs`'s `role_letter`, which maps a role to the character a census prints
 for it, and that is a property of the role rather than an input to it.
 
@@ -154,7 +154,7 @@ limitations, and the fact that a spawn argument is visible wherever a spawn is r
 
 - **Milestone 407.** Numbered on 2026-09-19 by milestone 433's drain of the pile.
   This milestone was briefed to grep the values rather than the constant names, and the grep found
-  the other half of its own file's problem: `kernel/src/user/login_service.rs` and
+  the other half of its own file's problem. `kernel/src/user/login_service.rs` and
   `fixtures/src/login_test_client.rs` declare fifteen of the same constants twice, held in line
   by a `// must match` comment, and the tree holds seventy-six such constants across nineteen file
   pairs. AGENTS.md rule 7 already forbids it. Not fixed here because the fix needs a crate, a crate
@@ -163,8 +163,8 @@ limitations, and the fact that a spawn argument is visible wherever a spawn is r
   `kernel/src/user/live_swap_tests.rs` re-declares locally anyway, which is why the proposal asks
   for a gate and not a convention.
 - **Recorded.** `fixtures/src/login_test_client.rs`'s `BUGS` section, on the two things this
-  milestone does not claim: that an index into a compiled-in roster is not a way to pass a secret to
-  a program (a real one needs a capability to something that holds it, DECISIONS §41), and that a
+  milestone does not claim. An index into a compiled-in roster is not a way to pass a secret to
+  a program (a real one needs a capability to something that holds it, DECISIONS §41). And a
   spawn argument is visible wherever a spawn is recorded, so nothing here is a design for carrying
   real secrets.
 - **Refused.** Splitting the six behaviors into six programs, which is what 290, 291 and 292 did
@@ -179,4 +179,4 @@ which is milestone 115's own rule.
 
 ## Index row
 
-calef ruled this apart from 290/291/292, which he ruled into separate programs (2026-09-14): the answer here is not eleven programs. `fixtures/src/login_test_client.rs` had eleven roles and its first act was a lookup from role number to a pair of byte strings. Classified by code rather than by name: five of the eleven were pure credential, byte-identical runs differing only in that pair (`ROLE_TERM_SECOND` included, whose distinguishing fact was a precondition the caller arranges), and two more were one behavior written twice because the only thing separating them was the identity written into a marker file. `_start` now takes `(behaviour, identity, secret)`, so the wrong-secret run is `LOGIN` with a different secret rather than an arm that could drift from the honest one. Credentials travel as `credential_proto::fixture` indices because nothing here hands a `no_std` program a string it was not compiled against, recorded in the file's BUGS. Six behaviors stayed in one binary and the equal-cost test says so: the preamble they share is the contract under test. 293's premise about `credentialer_test_client` was **false** and checking it was the work; what it did hold was the `PEOPLE` definition two other files hand-copied, one saying it had *chosen* to match. All 24 `const ROLE_` files swept: the only role-to-data lookup in the tree. Behavior names provisional.
+calef ruled this apart from 290/291/292, which he ruled into separate programs (2026-09-14): the answer here is not eleven programs. `fixtures/src/login_test_client.rs` had eleven roles and its first act was a lookup from role number to a pair of byte strings. Classified by code rather than by name: five of the eleven were pure credential, byte-identical runs differing only in that pair (`ROLE_TERM_SECOND` included, whose distinguishing fact was a precondition the caller arranges). Two more were one behavior written twice because the only thing separating them was the identity written into a marker file. `_start` now takes `(behaviour, identity, secret)`, so the wrong-secret run is `LOGIN` with a different secret rather than an arm that could drift from the honest one. Credentials travel as `credential_proto::fixture` indices because nothing here hands a `no_std` program a string it was not compiled against, recorded in the file's BUGS. Six behaviors stayed in one binary and the equal-cost test says so: the preamble they share is the contract under test. 293's premise about `credentialer_test_client` was **false** and checking it was the work; what it did hold was the `PEOPLE` definition two other files hand-copied, one saying it had *chosen* to match. All 24 `const ROLE_` files swept: the only role-to-data lookup in the tree. Behavior names provisional.

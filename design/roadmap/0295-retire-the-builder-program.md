@@ -17,12 +17,12 @@ made.
 ## What was retired, and what it proved
 
 `components/src/builder.rs` was milestone 20's richer-initrd demonstration. The RISC-V boot tour
-entered it directly: the kernel read it out of the archive, measured it against the trust root,
+entered it directly. The kernel read it out of the archive, measured it against the trust root,
 mapped the whole archive in read-only, and granted it **exactly two capabilities**, an untyped budget
-in slot 0 and a report endpoint in slot 1. From those and nothing else it parsed the archive, read
-`least_authority_demo` out of it by name, parsed that ELF in userspace, built a child from its own
+in slot 0 and a report endpoint in slot 1. From those and nothing else it parsed the archive and read
+`least_authority_demo` out of it by name. Parsed that ELF in userspace, it built a child from its own
 budget through the granular verbs (retype an address space, copy and map each segment, retype a TCB,
-endow, configure, start), started it with 9, and the child sent back 81. The kernel never touched the
+endow, configure, start), started it with 9. The child sent back 81. The kernel never touched the
 child's bytes.
 
 The claim was **userspace, not the kernel, composes a process**, made in the smallest form that can
@@ -31,16 +31,16 @@ has never been able to enter it.
 
 ## Why it could go
 
-Milestone 268's item 4 is the whole reason. Nothing halts by default on riscv64 any more: the
-tour now ends in `riscv_hand_over`, so the default build and the card reach the progenitor, which
+Milestone 268's item 4 is the whole reason. Nothing halts by default on riscv64 any more. The
+tour now ends in `riscv_hand_over`, so the default build and the card reach the progenitor. It
 builds the console server, the line discipline, the input driver and `swish` out of its own budget
 through the same verbs, on the same boot the retired step ran on. That is the same claim at the scale
-of a running system, and a person can then type at the result. aarch64 has done this since milestone
+of a running system, and a person can type at the result. aarch64 has done this since milestone
 28.
 
 Milestone 289 had examined this program on the same day and kept it, correctly for the tree as
-it stood: `riscv_shell_boot` was `#[cfg(feature = "shell")]` then, so the **default** riscv64 build, the
-one `script/board-image` writes to a card, halted after the tour and this was the only demonstration
+it stood. `riscv_shell_boot` was `#[cfg(feature = "shell")]` then, so the **default** riscv64 build, the
+one `script/board-image` writes to a card, halted after the tour, and this was the only demonstration
 on that ISA that userspace composes anything. 268 made that premise false on purpose.
 
 ## The risk taken, restated because it was accepted rather than closed
@@ -54,7 +54,7 @@ Where that half went is the question this milestone was told to answer rather th
 answer is half-proved, and the missing half is real:
 
 - **Proved.** `fixtures/src/process_composition_witness.rs` holds the *same two capabilities* `builder`
-  held, a memory region in slot 0 and a report line in slot 1, and from those retypes an address
+  held, a memory region in slot 0 and a report line in slot 1. From those it retypes an address
   space, retypes a frame, maps the frame into the space it built, and proves the kernel enforces
   break-before-make inside it. `kernel::user::tests::a_process_can_build_an_address_space_from_el0`
   asserts the verdict `0b111` on **both** architectures whose test kernel can load a user ELF, under
@@ -94,7 +94,7 @@ All eight were real; one path in the survey was stale and is corrected here.
    stays and its body goes: an archive initrd now prints
    `user ELF    : an archive; the progenitor composes this machine's userspace at the handoff below`,
    which points a board reader at where the claim is made. The bare-ELF arm is untouched.
-   `note_boot_stage(4)` moved up out of the archive arm, because it had only ever fired there: a
+   `note_boot_stage(4)` moved up out of the archive arm, because it had only ever fired there. A
    bare-ELF boot that died in this step used to report the stage before it and read as having died
    one step earlier than it did. The breadcrumb table's rows 4 and 5 are reworded to match.
 2. `kernel/src/user.rs`, `riscv_initrd_demo`. Deleted, 146 lines, including the 2026-08-14
@@ -129,7 +129,7 @@ address-space audit. Both repointed; the audit's finding is unchanged, it has on
 ## `userspace_ran()`: a recognizer that now reads history
 
 The live replacement is `boot_ladder::PROMPT` / `Stage::Prompt`, and it says more than the marker
-it replaces: `init/build` meant userspace built one child from two capabilities, where a prompt
+it replaces. `init/build` meant userspace built one child from two capabilities, where a prompt
 cannot appear unless userspace built the console server, the line discipline, the input driver and
 the shell.
 
@@ -146,8 +146,8 @@ reader meets the tool.
 One of the three unmeasured userspace loaders is gone, and it was the one on the shipped path.
 `notes/trusted-init.md`'s "Still not covered" listed three loaders that build children without
 consulting `measured_boot::PROGRAM_MEASUREMENTS`, and milestone 289 had added a caveat there saying
-the first of them was worse than the framing suggested: `builder` was not a demo somebody runs in
-QEMU, it was the program the kernel measured and entered on the build that goes to a card, and the
+the first of them was worse than the framing suggested. `builder` was not a demo somebody runs in
+QEMU. It was the program the kernel measured and entered on the build that goes to a card, and the
 chain reached the first process and stopped one link short of the only child it built.
 
 That gap is closed by the program going away rather than by the call being added, and the note now
@@ -164,7 +164,7 @@ And the name went without a ruling, which was the point. `builder`'s provisional
 `process_builder` was parked by calef on 2026-09-13 (*"Skip this one because it will go away with
 parity"*). Deleting the file took the name off `script/names --unratified` for free, which is what
 that parking was waiting for. The refusal records that quote the program (`script/names`'s own
-header, `crates/system_initializer`'s provenance block, `design/naming.md`) are kept verbatim: a
+header, `crates/system_initializer`'s provenance block, `design/naming.md`) are kept verbatim. A
 refusal is an account of why a name lost on the day it lost, and one rewritten every time the tree
 moves is one nobody can check.
 
@@ -199,7 +199,7 @@ moves is one nobody can check.
   parked. They are `#[allow(dead_code)]` with the reason written at each, which is the `AGENTS.md`
   "an exception is allowed and must say so" case. Kept rather than deleted because the canary is how
   a board hang gets diagnosed, it was the evidence that overturned the VisionFive 2 "hang"
-  (`notes/visionfive2.md`, fifth stop), its own serialization is loom-checked in
+  (`notes/visionfive2.md`, fifth stop). Its own serialization is loom-checked in
   `crates/memory_corruption_canary_gate`, and unarmed it costs one relaxed load on the tick path.
   What retires this entry is pointing the watcher at a window that can still hang, which the
   handoff's blocking prompt is; inventing that diagnostic for a hang nobody has seen was out of this
@@ -211,4 +211,4 @@ moves is one nobody can check.
 
 ## Index row
 
-Promoted from the 2026-09-14 proposal that asked calef one sentence and got it: *"Retire builder"*, option (b). Milestone 20's richer-initrd demo composed a child from exactly two capabilities and printed the tour's `init/build` line; milestone 268 item 4 made the default riscv64 boot hand over to the progenitor, which makes the same claim at the scale of a whole system on the same boot, so the step was making it twice. Eight surveyed sites, all real, one path stale (`crates/user_rt` is `user_mode_runtime` since 285), plus two live-code citations the survey missed. The accepted risk was priced rather than assumed: the minimality half is half-proved, by `fixtures/src/address_space_witness.rs` holding the same two capabilities on both ISAs under `script/test`, and proved nowhere past the address space, which is milestone 404. The proposal's guess at where the claim went was checked and was wrong: `least_authority_demo` and `grant_plan` are about a child's authority, not a composer's. Closed unasked: the one unmeasured child-loader that ran on the shipped board path. `userspace_ran()` keeps its matcher for the VisionFive 2 capture and its doc now says it reads history, not a live board.
+Promoted from the 2026-09-14 proposal that asked calef one sentence and got it: *"Retire builder"*, option (b). Milestone 20's richer-initrd demo composed a child from exactly two capabilities and printed the tour's `init/build` line. Milestone 268 item 4 made the default riscv64 boot hand over to the progenitor, which makes the same claim at the scale of a whole system on the same boot, so the step was making it twice. Eight surveyed sites, all real, one path stale (`crates/user_rt` is `user_mode_runtime` since 285), plus two live-code citations the survey missed. The accepted risk was priced rather than assumed: the minimality half is half-proved, by `fixtures/src/address_space_witness.rs` holding the same two capabilities on both ISAs under `script/test`, and proved nowhere past the address space, which is milestone 404. The proposal's guess at where the claim went was checked and was wrong: `least_authority_demo` and `grant_plan` are about a child's authority, not a composer's. Closed unasked: the one unmeasured child-loader that ran on the shipped board path. `userspace_ran()` keeps its matcher for the VisionFive 2 capture and its doc now says it reads history, not a live board.
