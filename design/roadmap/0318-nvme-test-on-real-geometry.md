@@ -17,7 +17,7 @@ proves has been weakened to get there.
 ## The assumptions, and how they were found
 
 They were found by reading the test against the bench procedure it is about to be run under, not by
-a gate: nothing in this tree can tell a constant that is a fact about the code from one that is a
+a gate. Nothing in this tree can tell a constant that is a fact about the code from one that is a
 fact about the runner's disk image. Two of the four were named in the lane's brief; the other two
 turned up in the same read, in the helper rather than the test body, which is the more interesting
 half of the finding.
@@ -97,7 +97,7 @@ figure):
 
 The one thing this argument cannot cover is the device answering IDENTIFY with a geometry
 `kernel/src/non_volatile_memory_express.rs::bring_up` refuses: a namespace whose LBA size does not divide 4096 into
-`1..=8` logical blocks makes `blocks_per` `None` and the server never starts, and the test skips
+`1..=8` logical blocks makes `blocks_per` `None` and the server never starts. The test skips
 rather than fails. That is pre-existing behavior, correct, and worth knowing at the bench: **a
 skip is not a pass**, and the transcript distinguishes them.
 
@@ -113,7 +113,7 @@ this milestone would otherwise be most likely to introduce. So each was falsifie
 | both writes sent to block 37 instead of 37 and 38 | `assertion left == right failed: byte 0 of block 37 came back wrong` |
 
 The second is the one worth reading twice: it is a write landing somewhere other than where it
-said, which is exactly the property the retired zeros check was there for, and the new shape
+said, which is exactly the property the retired zeros check was there for. The new shape
 catches it at the *first* read-back rather than at the neighbor.
 
 ## What else assumed QEMU's geometry
@@ -132,7 +132,7 @@ they were found:
 
 **No other block-device test carries the same assumption.** `kernel/src/user/disk_tests.rs` works
 against the tree's own built image through `filesystem_protocol::blank`'s constants, which are
-derived from the partition layout the build produced rather than from a number typed twice; its
+derived from the partition layout the build produced rather than from a number typed twice. Its
 zero-expectations are about blocks the build wrote, not about a disk nobody formatted.
 `crates/non_volatile_memory_express`'s host tests use `8 * 1024 * 1024` as a fixture size, which is correct: those are
 tests *of* `Handoff`'s arithmetic and pick their own geometry rather than meeting a machine's.
@@ -159,22 +159,23 @@ this tree does not have.
   assertions are not vacuous and proves nothing about a real defect reaching them.
 - **Recorded.** The bench procedure in milestone 261's handoff tells the operator to confirm the namespace reads
   about 256 GB rather than 8 MiB. That is now a *diagnostic* rather than a pass condition, since
-  the test no longer cares, and the procedure should say so: the number worth reading off the
+  the test no longer cares. The procedure should say so: the number worth reading off the
   transcript is still the size, because a controller answering 8 MiB on a 256 GB disk means
-  IDENTIFY was misparsed, but it is no longer what turns the test red.
+  IDENTIFY was misparsed. It is no longer what turns the test red.
 
 ## Index row
 
 `a_confined_el0_process_serves_the_block_interface_end_to_end` is milestone 261's proof and fatal
-risk 6's decisive experiment, it passed under QEMU, and four of its assertions were written
+risk 6's decisive experiment, and it passed under QEMU. Four of its assertions were written
 against QEMU's 8 MiB zeroed image and would have gone red on xenon's 256 GB Micron for reasons
-with nothing to do with confinement: the readiness report's size, the `SIZE` answer, a neighbor
-block expected to read as zeros, and an out-of-range block computed from a hardcoded 8 MiB. The
-first two now compare against the geometry the kernel read from IDENTIFY, which is the property
+with nothing to do with confinement. They are the readiness report's size, the `SIZE` answer, a
+neighbor block expected to read as zeros, and an out-of-range block computed from a hardcoded
+8 MiB. The
+first two now compare against the geometry the kernel read from IDENTIFY. That is the property
 they always wanted (*the size survived the handoff into ring 3*, *the server answers what it was
-told*) rather than a fact about the runner's image; the third writes a second distinct pattern to
+told*), not a fact about the runner's image. The third writes a second distinct pattern to
 the neighbor and requires each block to read back its own, which establishes *the write landed
-where it said and not everywhere* without any claim about what the disk held before; the fourth
+where it said and not everywhere* without any claim about what the disk held before. The fourth
 computes `size / BLOCK_SIZE`, the first refused block for any size whether or not it divides
 evenly. Milestone 261's lane flagged the symptom without connecting it: its bench handoff says
 to check that the namespace reads about 256 GB rather than 8 MiB, which is exactly the number two

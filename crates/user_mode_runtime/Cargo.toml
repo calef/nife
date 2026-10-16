@@ -29,3 +29,9 @@ address_space_map = { version = "0.1.0", path = "../address_space_map" }
 # The entropy contract, for `entropy::fill` (lane/uuid-crate, 2026-10-06): the client loop four
 # programs had copied. Dependency-free and no_std, like the other two protocol crates above.
 entropy_protocol = { version = "0.1.0", path = "../entropy_protocol" }
+# The socket contract's frame layout (milestone 410 (six copies of the shared-frame accessors)):
+# `socket_frame::Frame` reads and writes the shared frame through it. Dependency-free and no_std,
+# like the protocol crates above. The type lives here rather than in socket_protocol because it
+# is built on mapped_window, which cannot compile for the host, and socket_protocol's wire format
+# is host-tested; the module doc has the whole reason.
+socket_protocol = { version = "0.1.0", path = "../socket_protocol" }

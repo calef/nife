@@ -29,9 +29,9 @@ rule a survivor is triaged under. No decision is owed and no hardware is involve
 ## The gap this milestone fills
 
 Why it exists, and the shape is worth naming. Four milestones touch mutation testing and
-three of them are repairs to the instrument: 85 built `script/mutation` and triaged the
-baseline's 391 survivors, 238 repaired the workflow's shard indices after it had never once
-succeeded, 277 bounded the runaway mutant that took seven of eight shards every week, and 280
+three of them are repairs to the instrument. 85 built `script/mutation` and triaged the
+baseline's 391 survivors. 238 repaired the workflow's shard indices after it had never once
+succeeded. 277 bounded the runaway mutant that took seven of eight shards every week. And 280
 explained the two crates whose broken suites made a fall look real. Only 85 ever turned a score, once,
 in August. So the tree has an excellent instrument, a working cadence, and nobody pointed at the
 number it produces.
@@ -88,7 +88,7 @@ Detail: `notes/mutation-testing/inflow-2026-10-03.md`.
    a missing test.
 
 3. The rest of the new-crate backlog, as backlog. The 1.9-point gap between the like-for-like
-   93.6% and the corpus 91.7% is the 26 crates that did not exist at baseline, and the eight worst
+   93.6% and the corpus 91.7% is the 26 crates that did not exist at baseline. The eight worst
    crates in the tree are all of them new (`work_steal_slot` 54.2%, `memory_corruption_canary_gate`
    66.7%, `soak_page` 68.2%, `jh7110_entropy` 76.8%, `mdns_proto` 77.3% with 82 survivors, `job_mix`
    77.8%, `schedule_store` 78.4%). New code arriving less tested than old code is what a month of
@@ -146,10 +146,10 @@ Parts 1 and 2 only. Each of these was checked against the tree on 2026-09-19, on
   [`part-3-head.md`](0326-turn-a-mutation-score-upward/part-3-head.md) and in `notes/mutation-testing/new-crate-backlog.md`'s `## 2026-09-20` section.
 - **Outstanding.** The rest of part 3, which is the other seventeen crates that did not exist at
   the August baseline. Nobody has measured one of them per crate, and the census rates they would be
-  picked by are the 2026-09-14 ones. A lane taking this should re-derive before it triages,
-  and should first read `notes/mutation-testing.md` and the crate's recent history: three
+  picked by are the 2026-09-14 ones. A lane taking this should re-derive before it triages.
+  It should first read `notes/mutation-testing.md` and the crate's recent history. Three
   crates chosen off the census have now turned out to be already triaged, retired, or measuring
-  a loom model, and the ledger said so in every case.
+  a loom model. The ledger said so in every case.
 
   Two of the nineteen closed on 2026-09-20, and they were the first work this project routed to a
   cheaper model under DECISIONS §202 (mechanical work goes to a cheaper model). Both reproduce on
@@ -166,14 +166,14 @@ Parts 1 and 2 only. Each of these was checked against the tree on 2026-09-19, on
   `notes/mutation-testing/board-console.md`.
 - **Recorded.** `notes/mutation-testing.md`'s `## Scope and honest caveats` section: a mutant that
   hangs is not a mutant that survived, and this instrument cannot say so. Nine survivors across
-  the two 326 lanes were non-terminating rather than wrong, and cargo-mutants 27.1.0's complete set of
+  the two 326 lanes were non-terminating rather than wrong. cargo-mutants 27.1.0's complete set of
   limits is the clock, which milestone 277 (bound what one mutant may allocate) checked rather than
-  assumed, so a deadlock and a
+  assumed. So a deadlock and a
   slow test produce the same `TIMEOUT` row and `script/mutation --report` lists both as survivors.
   Every triage so far has had to argue the distinction in prose. What would close it is a rule in
   that report comparing a timeout against the package's own baseline test time.
 - **Outstanding.** Part 4, rewriting `.cargo/mutants-baseline.txt`, is deliberately not done. It
-  must follow the triage, which is what its own paragraph says, and it should follow a full census
+  must follow the triage, which is what its own paragraph says. It should follow a full census
   rather than this lane's eight per-crate runs: `--save-baseline` writes what it is given, so
   feeding it eight crates would replace a 38-crate baseline with eight rows.
 - **Milestone 250.** `An unviable mutant is a hole that reads as a pass` already owns the other
@@ -203,8 +203,8 @@ Parts 1 and 2 only. Each of these was checked against the tree on 2026-09-19, on
   The crate's Kani harnesses were checked before the lane started and are not the miscount that
   inflated `timetable`: they are inline `mod verification` blocks in `acpi.rs`, `framebuffer.rs`,
   `riscv64.rs` and `x86_64.rs`, which the `verification::` exclusion does match. Two mutants are an
-  exception the check did not predict, and the finding is the concurrent census-delta lane's rather
-  than this one's: a `const` inside such a block gets no module path in its mutant name, so a
+  exception the check did not predict. The finding is the concurrent census-delta lane's rather
+  than this one's: a `const` inside such a block gets no module path in its mutant name. So a
   module-path regex cannot reach it. `x86_64.rs:314` is the one in this crate, recorded as a gap;
   that lane measured three tree-wide and filed a proposal for the general fix, whose number is
   minted at merge like every other.
@@ -216,18 +216,18 @@ Parts 1 and 2 only. Each of these was checked against the tree on 2026-09-19, on
   contribution at 4. The second is the hypothesis this lane was briefed on, that 43 of the 77
   were one truncation defect and one prefix property would take the crate to roughly 96%. The
   property was written alone and measured alone: it killed 12 and reached 88.1%. Forty-one of
-  the 77 are bounds or offset shapes, so the reading of the list was close, but only twelve are
-  guards a prefix of a valid input can reach, and a prefix loop that asserts only "it returns an
+  the 77 are bounds or offset shapes, so the reading of the list was close. Only twelve are
+  guards a prefix of a valid input can reach. And a prefix loop that asserts only "it returns an
   error" kills half of even those. The note has the argument.
 - **Milestone 793.** Milestone 793 (one crate for the right-aligned number writer three programs each copy). `design/roadmap/0793-one-crate-for-the-copied-right-aligned-number-writer.md`: `write_right` is copied into three programs.
 
 ## Index row
 
 `design/fatal-risks/README.md`'s risk 3 is AMBER rather than green because 771 survivors from the
-2026-09-14 mutation census have never been looked at, and milestone 85's rule is that every one
+2026-09-14 mutation census have never been looked at. Milestone 85's rule is that every one
 becomes a test, an exclusion with a reason, or a recorded gap. Four milestones touch mutation
 testing and three are repairs to the instrument; only 85 ever turned a score, in August. The order
-here is the argument: seven crates that regressed from a score they held, `capability`
-first; then `timetable`'s 48 survivors, because it carries the proof risk 2 calls its strongest
-counterfactual; then the new-crate backlog as backlog; then the six-week-old baseline every weekly
+here is the argument. Seven crates that regressed from a score they held, `capability`
+first. Then `timetable`'s 48 survivors, because it carries the proof risk 2 calls its strongest
+counterfactual. Then the new-crate backlog as backlog. Then the six-week-old baseline every weekly
 report still diffs against.

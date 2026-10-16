@@ -49,7 +49,7 @@ edited: AGENTS.md's syscall-surface paragraph still says `Untyped::SPLIT`.
 
 ## Index row
 
-§113 decided eleven plain names on 2026-08-23 and milestone 158 carried them through the code; the
+§113 decided eleven plain names on 2026-08-23 and milestone 158 carried them through the code. The
 prose kept speaking the retired vocabulary, so a reader met `ThreadControlBlock` in the identifiers
 and `Tcb` in the explanations with nothing saying these were the same thing. This lane brought the
 live prose to the decided vocabulary, checked each name against the code it names, and left closed

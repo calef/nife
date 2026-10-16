@@ -12,9 +12,9 @@ needs_person: no
 Filed 2026-09-03 as an unnumbered proposal by the milestone 247 sweep,
 from milestone 217's block; numbered 2026-09-19 by milestone 433. **Premise re-checked 2026-09-19 and
 it holds, with one correction.** No tool in `script/`, `helpers/` or `xtask` reads a mounted card and
-compares the two artifacts; the only way to find a mismatch is still to power the board and read
+compares the two artifacts. The only way to find a mismatch is still to power the board and read
 `MEASURED BOOT REFUSED`. The `--card` option that writes a matched pair is in `script/board-image`
-rather than in `xtask` as the proposal implies, and it still copies the set as a set rather than
+rather than in `xtask` as the proposal implies. It still copies the set as a set rather than
 verifying one somebody else wrote.
 
 A lane can start today. Both artifacts are files on disk, the expected digest is the
@@ -24,8 +24,8 @@ board.
 **In brief.** A tool that reads a mounted card and reports whether the kernel on it and the archive
 beside it come from the same build. Milestone 217 added a `--card` option that writes a matched
 pair, which narrows who needs this rather than removing the need. A card written by `dd`, by a
-graphical imager, by a colleague, or by an earlier version of this tree carries no guarantee at all,
-and today the only way to find out is to power the board and read the refusal.
+graphical imager, by a colleague, or by an earlier version of this tree carries no guarantee at all.
+Today the only way to find out is to power the board and read the refusal.
 
 ## Why this matters
 
@@ -33,17 +33,17 @@ The mismatch this catches is not hypothetical, and the record of it is what mint
 The VisionFive 2 booted, reached U-mode, and then halted with `MEASURED BOOT REFUSED: 'init' is not
 what this kernel image was built against`, two sha256 digests, and nothing to do about it except
 walk back to the Mac. That is the cost of finding a mismatch after a power cycle instead of before
-one: a bench trip, a card pulled and re-seated, and a serial session spent on a question a file
+one. A bench trip, a card pulled and re-seated, and a serial session spent on a question a file
 comparison answers in a second.
 
 The gate that caught it is a runtime refusal by design, and that is correct: the kernel must refuse
-an archive it was not built against. But a runtime refusal is the last possible moment to learn it,
-and it is the moment when the person is furthest from the tools that can fix it.
+an archive it was not built against. But a runtime refusal is the last possible moment to learn it.
+It is the moment when the person is furthest from the tools that can fix it.
 
 ## What it would take
 
 Read the kernel image and the archive from the mounted path, compute the archive's sha256, and
-compare it against the digest the kernel image was built against, which is the same comparison
+compare it against the digest the kernel image was built against. That is the same comparison
 `measured_boot` performs at boot. Report the two digests on a mismatch, the way the kernel's refusal
 does, so the output of the tool and the output of the board are the same thing said in two places.
 
@@ -61,11 +61,11 @@ without booting it, so a mismatch is found after a power cycle at the bench inst
 ## Index row
 
 A card written by `dd`, by a graphical imager, by a colleague, or by an earlier version of this
-tree carries no guarantee that the kernel on it and the archive beside it come from the same build,
-and today the only way to find out is to power the board and read the refusal. The record of that
-cost is what minted milestone 217: the VisionFive 2 booted, reached U-mode, halted with
+tree carries no guarantee that the kernel on it and the archive beside it come from the same build.
+Today the only way to find out is to power the board and read the refusal. The record of that
+cost is what minted milestone 217. The VisionFive 2 booted, reached U-mode, halted with
 `MEASURED BOOT REFUSED` and two sha256 digests, and there was nothing to do about it except walk back
-to the Mac. The runtime refusal is correct and is the last possible moment to learn it, at the point
+to the Mac. The runtime refusal is correct and is the last possible moment to learn it. That is the point
 where the person is furthest from the tools that can fix it. The work is to read the kernel image and
 the archive from a mounted path, compute the archive's sha256, and make the same comparison
 `measured_boot` makes at boot, reporting both digests the way the board does. Milestone 217's own

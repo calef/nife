@@ -71,7 +71,7 @@ use network_time_protocol::{Packet, Short, Timestamp, leap, mode};
 // two cannot drift, and a per-consumer subset would throw that away.
 #[allow(dead_code)]
 use socket_protocol::*;
-use user_mode_runtime::mapped_window::{MappedWindow, PAGE};
+use user_mode_runtime::socket_frame::Frame;
 use user_mode_runtime::{
     Delivered, badge, cap_delete, map_page_frame, receive_request, reply, reply_capability, send,
 };
@@ -123,8 +123,8 @@ const SERVER_TURNAROUND_NANOS: u64 = 1_000;
 const PAGE_FRAME_VA: u64 = address_space_map::pair_page(0x0000_0000_00A0_0000);
 
 // SAFETY: the `OPERATION_ATTACH_PAGE_FRAME` arm below maps one page read/write at PAGE_FRAME_VA, and it is
-// the first request the client makes, before any of `WINDOW`'s accessors are reached (milestone 139).
-const WINDOW: MappedWindow = unsafe { MappedWindow::new(PAGE_FRAME_VA, PAGE) };
+// the first request the client makes, before any access through `SHARED_FRAME` (milestone 139 (drive the unsafe count down)).
+static SHARED_FRAME: Frame = unsafe { Frame::new(PAGE_FRAME_VA) };
 
 /// `a0` selects an [`srv`] variant, `a1` is the wall-clock time in nanoseconds this server claims.
 #[unsafe(no_mangle)]
@@ -173,7 +173,7 @@ fn server(variant: u64, claimed_nanos: u64) -> ! {
             OPERATION_SENDTO => {
                 // The length the client declared, which is how the real server learns it too.
                 let mut wire = [0u8; network_time_protocol::PACKET_LEN];
-                let n = read_payload(
+                let n = SHARED_FRAME.payload_read(
                     (w1 as usize).min(network_time_protocol::PACKET_LEN),
                     &mut wire,
                 );
@@ -182,7 +182,7 @@ fn server(variant: u64, claimed_nanos: u64) -> ! {
                 reply(to, REP_OK, 0);
                 if !reported {
                     reported = true;
-                    let dst_port = r16le(PAGE_FRAME_VA + OFF_DST_PORT) as u64;
+                    let dst_port = SHARED_FRAME.dst_port() as u64;
                     send(
                         REPORT,
                         RPT_SERVED,
@@ -192,8 +192,8 @@ fn server(variant: u64, claimed_nanos: u64) -> ! {
                 }
             }
             OPERATION_RECEIVE => {
-                write_payload(&pending[..pending_len]);
-                w16le(PAGE_FRAME_VA + OFF_LEN, pending_len as u16);
+                SHARED_FRAME.payload_write(&pending[..pending_len]);
+                SHARED_FRAME.set_len(pending_len as u16);
                 reply(to, pending_len as u64, 0);
             }
             OPERATION_CLOSE => {
@@ -258,40 +258,6 @@ fn stamp(unix_nanos: u64) -> Option<Timestamp> {
         unix_nanos / clock_protocol::NANOS_PER_SEC,
         (unix_nanos % clock_protocol::NANOS_PER_SEC) as u32,
     )
-}
-
-// =================================================================================================
-// The shared frame. Absolute-VA volatile access through `WINDOW` (milestone 139), the same
-// abstraction socket_test_client, network_time_client, keyboard_driver, entropy and virtio_net_transport share.
-// `va` is always `PAGE_FRAME_VA + <an offset constant>`, so subtracting PAGE_FRAME_VA recovers the offset
-// `WINDOW` bounds-checks against.
-// =================================================================================================
-
-fn r8(va: u64) -> u8 {
-    WINDOW.r8(va - PAGE_FRAME_VA)
-}
-fn w8(va: u64, v: u8) {
-    WINDOW.w8(va - PAGE_FRAME_VA, v);
-}
-fn r16le(va: u64) -> u16 {
-    WINDOW.r16(va - PAGE_FRAME_VA)
-}
-fn w16le(va: u64, v: u16) {
-    WINDOW.w16(va - PAGE_FRAME_VA, v);
-}
-
-fn write_payload(bytes: &[u8]) {
-    for (i, &b) in bytes.iter().enumerate() {
-        w8(PAGE_FRAME_VA + OFF_PAYLOAD + i as u64, b);
-    }
-}
-
-fn read_payload(n: usize, out: &mut [u8]) -> usize {
-    let n = n.min(out.len());
-    for (i, b) in out[..n].iter_mut().enumerate() {
-        *b = r8(PAGE_FRAME_VA + OFF_PAYLOAD + i as u64);
-    }
-    n
 }
 
 user_mode_runtime::panic_handler!();
