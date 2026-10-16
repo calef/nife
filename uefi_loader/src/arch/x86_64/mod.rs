@@ -109,6 +109,10 @@ pub fn discover(table: &SystemTable, services: &BootServices) -> Result<Found, &
 
 /// **Everything from "the kernel and the archive are placed" to "the kernel is running".**
 /// Returns only on failure, and only while there is still a console to say so on.
+// Every argument is a distinct fact this boot learned (the devices found, the images placed, which
+// slot started us and from what medium), and the two `Option`s among them have independent
+// meanings; a struct would carry the same nine names one call deeper.
+#[allow(clippy::too_many_arguments)]
 pub fn hand_over(
     handle: Handle,
     table: &SystemTable,

@@ -112,6 +112,10 @@ fn clean_to_coherency(start: u64, end: u64) {
 }
 
 /// Exit boot services and enter the kernel. Returns only on failure, with a console.
+// The argument list is the x86_64 `hand_over`'s, kept in step on purpose: one signature per arch
+// arm of the same seam, with the parameters this architecture does not use yet carried under
+// their own names (see the two `None`s below).
+#[allow(clippy::too_many_arguments)]
 pub fn hand_over(
     handle: Handle,
     table: &SystemTable,

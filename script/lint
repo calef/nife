@@ -388,6 +388,67 @@ echo "==> clippy: kernel --features watchdog_probe (x86_64)"
 cargo clippy -p kernel --features watchdog_probe --target x86_64-unknown-none --all-targets -- \
     -D warnings -A dead_code -A clippy::reversed_empty_ranges
 
+# The UEFI loader's binaries, which nothing above compiles (milestone 508 (`script/lint` does not
+# build the UEFI binary, so lint-clean code can fail `script/test`)). The host pass lints
+# this crate's library and its tests, but the [[bin]] carries `required-features = ["uefi"]`, so
+# every pass above skips it exactly as `cargo build --workspace` does: a warning or an error in
+# the binary that boots xenon was invisible here and surfaced only in `script/test`'s x86_64 leg,
+# behind an emulator boot. Milestone 243 (a machine with no serial port has no way to say
+# anything)'s lane hit that in one direction, a loader edit that
+# passed this file and failed the UEFI build, which is the gap this stage closes.
+#
+# The tree produces one boot file per architecture, and `cargo xtask stick` writes all three. The
+# list is written out rather than derived (milestone 401's rule; a selector that matches nothing
+# passes by checking nothing), and each stanza prints its own line:
+#
+#   target                        boot file         how it is made
+#   x86_64-unknown-uefi           BOOTX64.EFI       PE/COFF from rustc
+#   aarch64-unknown-uefi          BOOTAA64.EFI      PE/COFF from rustc
+#   riscv64imac-unknown-none-elf  BOOTRISCV64.EFI   a static PIE, converted by crates/portable_executable
+#
+# riscv64 has no UEFI target in rustc at all (the comment beside rust-toolchain.toml's target
+# list says so), so its boot file compiles for the plain none-elf target and the stick turns the
+# ELF into a PE image. This stage checks that compile and deliberately takes none of the stick's
+# RUSTFLAGS: every one of them is a link argument (`-pie`, `--no-dynamic-linker`, `--entry`), and
+# a check build links nothing.
+#
+# `--features uefi` is what turns the bin on, and the loader's build script refuses to run without
+# a kernel to embed. So the three kernels the stick builds come first (the same three invocations,
+# so the artifacts are shared), and each stanza hands its own architecture's kernel over by
+# ABSOLUTE path: a build script's working directory is its package, not this tree, and the
+# generated `include_bytes!` is relative to the generated file. The archive variable stays unset,
+# which is the loader's legitimate tour build and keeps the measured-boot seal out of a lint
+# gate; `refuse_an_unsealed_pair` runs only when both paths are set, and the seal is `cargo xtask
+# uefi-image`'s own check.
+echo "==> uefi_loader: build the three kernels the boot files embed (see the note above)"
+cargo build -p kernel --target x86_64-unknown-none
+cargo build -p kernel --target aarch64-unknown-none-softfloat
+cargo build -p kernel --target riscv64imac-unknown-none-elf --features board
+
+echo "==> clippy: uefi_loader --features uefi (x86_64-unknown-uefi)"
+NIFE_UEFI_KERNEL="$PWD/target/x86_64-unknown-none/debug/kernel" \
+    cargo clippy -p uefi_loader --bin uefi_loader --features uefi \
+    --target x86_64-unknown-uefi -- -D warnings
+
+echo "==> clippy: uefi_loader --features uefi (aarch64-unknown-uefi)"
+NIFE_UEFI_KERNEL="$PWD/target/aarch64-unknown-none-softfloat/debug/kernel" \
+    cargo clippy -p uefi_loader --bin uefi_loader --features uefi \
+    --target aarch64-unknown-uefi -- -D warnings
+
+echo "==> clippy: uefi_loader --features uefi (riscv64imac-unknown-none-elf, the stick's PE payload)"
+NIFE_UEFI_KERNEL="$PWD/target/riscv64imac-unknown-none-elf/debug/kernel" \
+    cargo clippy -p uefi_loader --bin uefi_loader --features uefi \
+    --target riscv64imac-unknown-none-elf -- -D warnings
+
+# The fourth configuration of the same bin: `uefi,screen_hold`, which `cargo xtask uefi-boot`
+# builds for the screen gate and nothing else builds. The `screen_hold` code itself is
+# host-linted through the package's self dev-dependency, but only for the host; this is the
+# firmware-target build of it.
+echo "==> clippy: uefi_loader --features uefi,screen_hold (x86_64-unknown-uefi, uefi-boot's build)"
+NIFE_UEFI_KERNEL="$PWD/target/x86_64-unknown-none/debug/kernel" \
+    cargo clippy -p uefi_loader --bin uefi_loader --features uefi,screen_hold \
+    --target x86_64-unknown-uefi -- -D warnings
+
 # `--clippy`: stop after the last clippy pass. `.githooks/pre-push` called this so the clippy gate
 # had exactly one copy, here, until milestone 630 measured the rest of lint at about 29 s more and
 # made the hook run all of it; the flag stays for a person who wants the clippy half alone. Added 2026-09-29 after lane

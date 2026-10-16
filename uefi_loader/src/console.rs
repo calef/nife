@@ -151,13 +151,11 @@ pub(crate) fn say(table: &SystemTable, text: &str) {
     }
     // 128 is longer than any message here and keeps this off the heap, of which there is none.
     let mut utf16 = [0u16; 128];
-    let mut n = 0;
-    for byte in text.bytes() {
+    for (n, byte) in text.bytes().enumerate() {
         if n + 1 >= utf16.len() {
             break;
         }
         utf16[n] = u16::from(byte);
-        n += 1;
     }
     // SAFETY: `con_out` is non-null and the firmware owns it until `ExitBootServices`; the buffer
     // is NUL-terminated because `n + 1 < len` leaves at least one zero behind.
