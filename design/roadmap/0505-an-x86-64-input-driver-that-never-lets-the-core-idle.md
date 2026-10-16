@@ -20,8 +20,8 @@ x86_64 leg. Milestone 299 recorded x86_64's polling input driver as a latency an
 this is the measurement that says it is more than that.
 
 As far as the lane could see, nothing gates it. The `Irq` capability, `irq_wait`/`irq_ack` and the
-input driver's interrupt-driven arm all exist on aarch64 and riscv64. Milestone 299's follow-on
-names what x86_64 lacks: delivering a device line (COM1's legacy IRQ 4, through the IO APIC) to a
+input driver's interrupt-driven arm all exist on aarch64 and riscv64. Milestone 299 (the x86
+port-range capability)'s follow-on names what x86_64 lacks: delivering a device line (COM1's legacy IRQ 4, through the IO APIC) to a
 userspace waiter, where today the kernel delivers only self-directed vectors to a driver. If that
 turns out to need a new capability method or syscall, it becomes a design fork and stops there.
 

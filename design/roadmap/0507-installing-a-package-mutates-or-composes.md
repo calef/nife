@@ -109,7 +109,7 @@ A1 is the cheapest to describe and not the cheapest to build here, because it ne
 table, a removal list and an atomicity answer. A2 is the most expensive. A3 is between. If A3 is
 preferred because it is cheaper than A2, that is effort, and should be said. The non-effort case
 for A3 is that it is the only option in which installing changes only what may be granted, which is
-milestone 47's claim made literal. The non-effort case for A2 is Haiku's and Nix's atomic rollback of
+milestone 47 (navigation and naming)'s claim made literal. The non-effort case for A2 is Haiku's and Nix's atomic rollback of
 a whole system state, which A3 gets only if the table of entries is itself versioned.
 
 ## If calef says no to all three
