@@ -70,10 +70,12 @@ If they want the stronger answer, this proposal is where the weaker one's cost i
 
 ## Follow-on
 
-- **Refused.** Rung one, compiling the blobs at build time. It would make the drift
-  unrepresentable, and it buys a build dependency on `dtc` for every contributor and every CI
-  leg. §46 (thin primitives or whole subsystems) makes that an architect's call. The weaker
-  check above stands until an architect says otherwise.
+- **Refused.** Rung one, compiling the blobs at build time. calef refused it on 2026-10-16
+  (UTC). The blobs are fixtures, and fixtures compiled at build time would vary with the local
+  `dtc`, which is not byte-stable across versions; the test input itself would stop being
+  stable unless `dtc` were pinned too. The dependency's cost would be paid by everyone who
+  builds the tree. The one incident on record is already closed at every push by the check
+  above. Reopens on a second drift incident, or on drift in the sourceless fixtures.
 
 ## Index row
 
