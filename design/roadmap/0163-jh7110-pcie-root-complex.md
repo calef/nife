@@ -32,8 +32,8 @@ every probe in `kernel/src/pci.rs`). But on this board there is no such node, so
 mapped or touched. A real driver for the PLDA controller is what would give that existing,
 already-portable `kernel/src/pci.rs` probe path something real to find.
 
-Getting this working is what would let §18's (verify the capability core) already-built PCIe
-transport layer reach real devices behind it on this board. Concretely: the real M.2 NVMe slot
+Getting this working is what would let §18 (the PCIe transport)'s already-built transport layer
+reach real devices behind it on this board. Concretely: the real M.2 NVMe slot
 (milestone 53's storage half) and any real PCIe-attached NIC, replacing the QEMU-only fake device
 with a real one.
 

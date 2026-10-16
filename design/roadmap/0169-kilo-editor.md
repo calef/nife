@@ -103,5 +103,6 @@ A dependency review of Emacs, nano and vim for a possible nife port found the sa
 three (DECISIONS §31's C-syscall seam), and one real, reusable gap behind it. Nife's terminal
 contract is a line discipline with no raw-keystroke input. Built as `rmle`, a Rust
 reimplementation of `kilo`'s spirit and scope rather than a literal port (the seam as built cannot
-support an interactive event loop; that gap is milestone 181). The raw-keystroke primitive itself
+support an interactive event loop; that gap is milestone 181 (the foreign-language seam,
+extended)). The raw-keystroke primitive itself
 (`OP_RAWMODE`/`OP_READRAW`) is the milestone's own real deliverable.

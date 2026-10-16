@@ -32,7 +32,7 @@ This milestone is exactly that surface: the plumbing and the porcelain built dir
 scoped to local, single-repository, no-subprocess operation. Not in scope: anything that shells out
 by design (hooks, external merge drivers). Also anything that needs the network (`clone`/`fetch`/
 `push` over a wire protocol, which is a separate milestone's problem, likely shared with
-[milestone 174](0174-nife-thin-dev-client.md) (a thin development client)'s remote-build work once that exists).
+[milestone 174 (a thin development client)](0174-nife-thin-dev-client.md)'s remote-build work once that exists).
 
 ## What it needs
 
