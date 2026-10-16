@@ -17,7 +17,8 @@ array, so `gic::init_this_cpu` wrote `GICC_PMR` and `GICC_CTLR` into registers t
 
 **Now the kernel drives both, chooses by the device tree's binding, and asks the hardware whether
 the tree is right before driving anything.** Under `gic-version=3` the boot self-test is 5 of 5
-where milestone 317 recorded 3 of 5 with no ticks. The whole aarch64 suite passes under TCG, and the
+where milestone 317 (the interrupt-remapping flags) recorded 3 of 5 with no ticks. The whole
+aarch64 suite passes under TCG, and the
 suite runs on the physical Apple core under HVF for the first time since QEMU 11.1.1 refused the
 GICv2 machine.
 

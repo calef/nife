@@ -124,6 +124,7 @@ That call is an architect's, so the block says so rather than moving.
 
 - **Milestone 357.** `IN-PROGRESS`, `NOT-STARTED`, `OPTIONAL` and `RECORDED` are still outside
   this, as the `BUGS` above says, and the sweep found a worked example of a false one. Milestone 75
+  (who may read the cycle counter, and by what authority)
   reads NOT-STARTED on a `DECISION` gate for a decision made 2026-09-02 and built twice that week,
   and three blocks cite it as a live blocker.
   `design/roadmap/0357-the-statuses-the-follow-on-gate-does-not-cover.md`.

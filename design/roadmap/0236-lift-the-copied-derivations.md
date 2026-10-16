@@ -126,7 +126,8 @@ diff.
   and `util`, which claim nothing. DECISIONS §39 (a component is named for what it is) says a name
   is a claim.
 - The module is Python in a tree that is otherwise Rust and shell. It adds no dependency
-  (DECISIONS §46 untouched: it imports `re` and nothing else) and no build step. It is a third
+  (DECISIONS §46 (thin primitives or whole subsystems) untouched: it imports `re` and nothing else)
+  and no build step. It is a third
   language in the tooling, and that was accepted rather than argued for at length because the
   alternative was a `cargo build` in front of three `script/` commands.
 

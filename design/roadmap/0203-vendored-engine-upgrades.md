@@ -61,7 +61,8 @@ That is the one where not knowing is not merely untidy.
 5. Produce something a person acts on, not a log line nobody reads.
 6. Carry the update procedure, so the person acting is not reconstructing it: bump the pin,
    re-apply the divergences, regenerate with `script/vendor-verify --write-patch`, extend
-   `vendor/README.md`'s exhaustive list, and run the suite plus milestone 37's crash injector. The
+   `vendor/README.md`'s exhaustive list, and run the suite plus the crash injector from milestone
+   37 (RedoxFS's crash consistency). The
    store's safety claim is the thing a bump risks.
 
 ## Copy `toolchain-bump.yml`, which already does this for the other pin

@@ -143,7 +143,8 @@ name they were written under; the comment in `.cargo/mutants.toml` reads `swish-
 
 **That gate is real and it is not nothing**, which is the fact that makes this milestone a judgment
 rather than an alarm. `script/shell-check` is the only thing in the tree that runs a real init.
-Milestone 96 exists because a fix landing in one init and not the other produced *a boot that reaches
+Milestone 96 (one init: the spawn service written twice) exists because a fix landing in one init
+and not the other produced *a boot that reaches
 userspace and prints nothing at all*, with no fault and no message, three times. What it cannot do is
 tell which of 191 mutations it would have caught, and a gate whose coverage nobody can state is a
 gate nobody can improve.

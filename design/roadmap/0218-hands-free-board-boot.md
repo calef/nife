@@ -253,7 +253,8 @@ Everything above is reasoning. This is what settles it. Steps 1 and 2 need no bo
   6's third half.
 - **Recorded.** A hands-free boot is necessary for the sustained overnight runs
   `design/fatal-risks/README.md` risk 5 names as its decisive experiment, and is nowhere near sufficient.
-  Power cycling is still manual by calef's own 2026-09-04 ruling in milestone 224, so a wedged board
+  Power cycling is still manual by calef's own 2026-09-04 ruling in milestone 224 (nothing can
+  power-cycle radon, so a hung soak needs a person), so a wedged board
   still ends a run. That limitation lives beside the decision, in milestone 224's block.
 
 ## Index row

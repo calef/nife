@@ -43,7 +43,8 @@ green.
 The obvious repair, calling `parse` and `read` from the harness, is what the harness's author
 avoided, and the reason is probably tractability: `parse` walks a directory over a symbolic image.
 So this is a **restructuring** question rather than a harness question, and it is the shape
-DECISIONS §46 rule 1 already describes. Factor the acceptance condition and the slice bounds into
+DECISIONS §46 (thin primitives or whole subsystems) rule 1 already describes. Factor the acceptance
+condition and the slice bounds into
 functions small enough for the prover, which both the implementation and the harness then call.
 `elf`'s `check_segment_bounds` is the worked example already in the tree: a leaf factored out of a
 loop precisely so a bounded model checker can quantify over it, with the real parser calling the

@@ -116,7 +116,8 @@ the inventory to answer it with.
 - **Milestone 238.** The two scheduled workflows that have never once produced a result. The
   mutation sweep: four red runs and zero reports while `design/fatal-risks/README.md` risk 3 stands green
   on a number it says the workflow is refreshing. The Miri check: three weeks red on a missing
-  `CARGO_MANIFEST_DIR` rather than on undefined behavior. 238 was minted the same day from these
+  `CARGO_MANIFEST_DIR` rather than on undefined behavior. Milestone 238 (two scheduled checks have
+  never once succeeded) was minted the same day from these
   two findings.
 - **Recorded.** `notes/check-inventory.md` carries the required-list recommendation and the two
   already-recorded open asks. Three checks would join the ruleset (`re-falsify the harnesses this

@@ -99,7 +99,8 @@ quietly excludes them.
 
 ## Index row
 
-Found by milestone 197's lane. §134 calls the `unfalsified` count the claim's honest denominator,
+Found by milestone 197 (user/ and xtask are out of reach of the prover)'s lane. §134 calls the
+`unfalsified` count the claim's honest denominator,
 and it is currently the wrong one. Milestone 197's record under `user/` is uncounted, milestone
 193's two kernel harnesses carry no record at all, and milestone 202's `kernel/falsifications/` is
 swept by nothing. The number is printed as a fraction of the tree and is a fraction of one

@@ -24,8 +24,9 @@ The explanation is almost certainly placement, and milestone 221 (the soak never
 so build the hook that makes it) already predicted its shape. Its `BUGS` records that the crossing
 count varies by more than 2x between identical runs and names the boot-time placement lottery as the
 cause. Twenty-four threads (four groups of a responder, three callers, a grinder and a tick waiter)
-are placed across four cores at spawn, and nothing rebalances. That is milestone 219's (the boot
-tour ends and the kernel halts, so there is nothing to soak) central finding and a deliberate design
+are placed across four cores at spawn, and nothing rebalances. That is the central finding of
+milestone 219 (the boot tour ends and the kernel halts, so there is nothing to soak) and a
+deliberate design
 following DECISIONS 138 (how a saturated workload is made to hand threads across cores). A core that
 draws two grinders starves its IPC threads, because a grinder is pure compute and never yields.
 

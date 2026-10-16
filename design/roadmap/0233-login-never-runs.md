@@ -35,7 +35,8 @@ while the thing it named was dead.
 ## Why it is coupled to milestone 231
 
 Handing `login` a mapping of the archive costs init capability slots, at exactly the peak
-milestone 230 measured and sized the table against: 21 of 24. With three slots of deliberate
+milestone 230 (shell-check is red on main) measured and sized the table against: 21 of 24. With
+three slots of deliberate
 headroom that its own block calls a guess standing in for a mechanism.
 
 So the fix and the accounting move together, and milestone 231 (nothing counts how many capability

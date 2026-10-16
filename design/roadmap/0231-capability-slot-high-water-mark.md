@@ -52,7 +52,8 @@ x86_64. Milestone 221's soak counters needed a gate at 5.7%; this does not need 
 
 What it does as it approaches: nothing, and that is deliberate. The gauge is passive. What is
 checked is not the boot's distance from the ceiling but whether a recorded measurement has gone
-stale. `kernel::cap::CAPABILITY_TABLE_PEAK_MEASURED` is 21, the number milestone 230 found by
+stale. `kernel::cap::CAPABILITY_TABLE_PEAK_MEASURED` is 21, the number milestone 230 (shell-check is
+red on main) found by
 instrumenting four boots, and a boot that goes past it prints `ABOVE` and fails the gate. That is the
 same shape as this file's `size_of::<Cap>() == 32` assertion, which its own comment calls "the fact,
 not a target". A margin picked from one boot would have been the fourth deleted check; a fact that

@@ -33,7 +33,8 @@ a second.
 
 The early-reader property was verified rather than assumed, since the block named it as a real
 requirement. A real QEMU writing continuously into a pipe whose reader takes five lines and exits is
-still killed at the bound. So is the milestone 38 property beside it. A fast child in a pipeline
+still killed at the bound. So is the milestone 38 (filesystem throughput) property beside it. A fast
+child in a pipeline
 returns at once rather than at the end of the bound, and it now does so because the killer's output
 goes to `/dev/null` instead of into the pipe. That closes the bug at the root rather than at the
 cleanup.

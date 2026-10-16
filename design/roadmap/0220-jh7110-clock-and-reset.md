@@ -11,8 +11,8 @@ reason a first bench boot of its driver fails.
 two lines off a serial console. See "The bench settled the premise" below.
 
 **Status deliberately did not move on 2026-09-04, and this block's last three sections are that
-lane's report of why**. The shape is milestone 218's (every boot of the VisionFive 2 needs a human
-typing four commands into U-Boot), for work that is written and has never run on the
+lane's report of why**. The shape is that of milestone 218 (every boot of the VisionFive 2 needs a
+human typing four commands into U-Boot), for work that is written and has never run on the
 board. Milestone 159 chose the same shape for the same reason on its own first two passes.
 The
 driver, its host tests, the absence-path kernel test and the bench procedure all landed;
