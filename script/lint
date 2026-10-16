@@ -138,6 +138,12 @@ helpers/commit-msg-selftest.sh >/dev/null
 # The partition `--no-cargo` relies on, proved against fixtures (no tree, no cargo).
 helpers/lint-no-cargo-selftest.sh >/dev/null
 
+echo "==> the trunk watcher's cadence stream (a pass that could not ask is a row, never recovery)"
+# Fakes and a scenario table in a scratch tree: no network, no gh, no cargo. The defect it holds is
+# a recovery line printed about a watcher that could not ask, which a green run of everything else
+# would not catch, because it needs the API to fail on cue.
+helpers/trunk-health-cadence-selftest.sh >/dev/null
+
 echo "==> clippy: host crates + xtask"
 # The derived half of the selection (helpers/host-excluded-crates.sh). `kernel` and `system_tests`
 # are excluded by judgment rather than the derivation: they are bare metal through `kernel`,
