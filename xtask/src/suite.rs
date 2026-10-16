@@ -703,9 +703,10 @@ fn x86_64_suite(filtered: bool) -> bool {
     // interrupt on x86_64), because this runner attaches the sibling `-pci.img` as a
     // virtio-blk-pci function, and `mkredoxfs` since milestone 303, because it now attaches the
     // `-redoxfs.img` sibling as a second one. The FS tests reach a real filesystem here. Since
-    // milestone 420 the runner attaches the other three fixtures the same way (the crash disk as
-    // the third function, the GPT and blank disks as the fourth and fifth), so this leg builds
-    // them like the other two legs do.
+    // milestone 420 (x86_64 has one fixture of five and no NIC, GPU, keyboard or RNG) the runner
+    // attaches the other three fixtures the same way (the crash disk as the third function, the
+    // GPT and blank disks as the fourth and fifth), so this leg builds them like the other two
+    // legs do.
     //
     // **It runs after the other two legs, and regenerates every image they wrote**, which is
     // the same freshness discipline the riscv64 leg's own `mkredoxfs` call documents: a leg
@@ -738,7 +739,8 @@ fn x86_64_suite(filtered: bool) -> bool {
     // spawned, and the only thread xtask ever starts (the transcript reader in
     // swish_check_leg) copies pipe bytes into a String and never touches the environment.
     unsafe { std::env::set_var("NIFE_DISK", disk_path()) };
-    // The e1000e NIC (milestone 494), on the riscv64 leg's terms: `attach_test_leg_devices` does
+    // The e1000e NIC (milestone 494 (a driver for the network card a PC actually has)), on the
+    // riscv64 leg's terms: `attach_test_leg_devices` does
     // not export NIFE_NET, so before milestone 420 only a full run had the NIC here (the value
     // the riscv64 leg set leaked into this one), and an `--arch x86_64` run booted NIC-less and
     // skipped its e1000e tests where the same tests run in the full suite. One machine per run,
@@ -902,7 +904,8 @@ fn x86_64_on_amd_vi() -> bool {
 /// the leg that ran last is one that runs the test. A check whose subject did not happen is
 /// worse than no check.
 fn images_after_the_run(legs: ArchLegs, filtered: bool) -> bool {
-    // **Not under a filter** (milestone 210), for the same reason the `--arch x86_64` guard
+    // **Not under a filter** (milestone 210 (no kernel test can be run by name, so one
+    // falsification costs a whole suite)), for the same reason the `--arch x86_64` guard
     // exists: these checks assert what the FS tests WROTE, so a run that did not select them
     // would open a stale image and report "motd did not read back", which is a true statement
     // about a leftover file and a false one about this run.
@@ -920,8 +923,8 @@ fn images_after_the_run(legs: ArchLegs, filtered: bool) -> bool {
         return redoxfs_check_after_run() && blank_check_after_run();
     }
     // Both images: the shared fixture (the write persisted, the filesystem still parses), the
-    // crash test's own disk (milestone 37 (prove RedoxFS's crash consistency, DECISIONS §34
-    // condition 1): after a kill mid-transaction, `cut` is one payload whole), and milestone 57
+    // crash test's own disk (milestone 37 (prove RedoxFS's crash consistency): after a kill
+    // mid-transaction, `cut` is one payload whole), and milestone 57
     // (partitioning and formatting a real drive, and extended attributes)'s blank disk, where the
     // guest wrote both the partition table and the filesystem inside it.
     redoxfs_check_after_run() && redoxfs_crash_check_after_run() && blank_check_after_run()
