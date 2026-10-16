@@ -260,7 +260,7 @@ impl RebootPhase<'_> {
 ///   leg grades the graphical terminal's own surface, and a scanout of any other size is a
 ///   `SET_SCANOUT` bug, not a near miss. `Err` rather than a full grid of `?`s, so a wrong-sized
 ///   dump is skipped and the next poll tries again, exactly as before the merge.
-/// - **The colours**: `video_terminal::Attr::DEFAULT`'s, read from that crate so the scheme
+/// - **The colors**: `video_terminal::Attr::DEFAULT`'s, read from that crate so the scheme
 ///   stays the terminal's own choice rather than a constant copied here. The scale is 1 because
 ///   the terminal paints its grid 1:1 onto the surface, the same 1:1 `Vt::pixel` is graded at
 ///   by [`super::super::scanout`]'s exact text check.

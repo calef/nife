@@ -40,7 +40,7 @@
 /// What `screen_console` paints ink with, as one 24-bit RGB triplet: its own
 /// [`screen_console::ScreenConsole::FOREGROUND`], converted. The value was a hand-copied `0xc8`
 /// with its equality asserted in `xtask` until the dependency that made the question moot
-/// arrived (2026-10-04): the console's reader taking the colour from the crate that paints is
+/// arrived (2026-10-04): the console's reader taking the color from the crate that paints is
 /// the same argument that brought that dependency in.
 pub const INK: [u8; 3] = rgb(screen_console::ScreenConsole::FOREGROUND);
 
@@ -53,7 +53,7 @@ const fn rgb(word: u32) -> [u8; 3] {
 }
 
 /// Where each channel stops being `paper` and starts being `ink`: their midpoint. A midpoint
-/// rather than an exact match, so that a screendump that went through a colour conversion still
+/// rather than an exact match, so that a screendump that went through a color conversion still
 /// reads. Computed from the scheme rather than fixed at `0x60`, because the scheme is data.
 fn ink_thresholds(ink: [u8; 3], paper: [u8; 3]) -> [u8; 3] {
     let mid = |ink: u8, paper: u8| ((u16::from(ink) + u16::from(paper)) / 2) as u8;
@@ -178,12 +178,12 @@ pub struct Screendump {
 /// This is the one decoder in the tree (milestone 377): [`read`] is it with this crate's console
 /// scheme, the painter's own scale and every printable character, and the graphical
 /// `swish-check` leg is it with the display terminal's live screen, `video_terminal::Attr::DEFAULT`'s
-/// own colours, an explicit alphabet and a 1:1 scale. The two schemes stay the two crates' own
+/// own colors, an explicit alphabet and a 1:1 scale. The two schemes stay the two crates' own
 /// choices, as data at the call.
 ///
 /// `scale` is how many screen pixels wide one font pixel was painted: `1` for a terminal that
 /// draws 1:1, and for [`read`] whatever `screen_console::ScreenConsole::scale_for` says the
-/// console chose. Zero divides by zero and panics, which is the right answer for a caller that
+/// console chose. Zero panics on the divide, which is the right answer for a caller that
 /// cannot say how its picture was drawn.
 ///
 /// # Errors
@@ -195,8 +195,6 @@ pub struct Screendump {
 /// ```
 /// use board_console::screen;
 ///
-/// // The two-cell screen from `read`'s example, painted in a different scheme: the colours are
-/// // data, and the decoder is the same one.
 /// let (ink, paper) = ([0xee, 0xe8, 0xd5], [0x07, 0x36, 0x42]);
 /// let mut ppm = b"P6\n14 8\n255\n".to_vec();
 /// for y in 0..8u32 {
@@ -210,8 +208,7 @@ pub struct Screendump {
 ///     }
 /// }
 ///
-/// let screen = screen::decode(&ppm, ink, paper, b"hi", 1).unwrap();
-/// assert_eq!(screen.rows, ["hi"]);
+/// assert_eq!(screen::decode(&ppm, ink, paper, b"hi", 1).unwrap().rows, ["hi"]);
 /// ```
 ///
 /// Name: provisional, minted 2026-10-16 by lane/377 (one screendump decoder, not two).
@@ -547,7 +544,7 @@ mod tests {
     }
 
     /// **The display terminal's default scheme decodes through the same `decode`** (milestone
-    /// 377). The colours are read from `video_terminal` itself, because the scheme is that
+    /// 377). The colors are read from `video_terminal` itself, because the scheme is that
     /// crate's choice and a copy of two RGB words here is exactly the drift this decoder exists
     /// to refuse; the alphabet and the 1:1 scale are the graphical swish-check leg's, whose live
     /// screen this reads.
@@ -579,7 +576,7 @@ mod tests {
     }
 
     /// **The alphabet constrains the decode**: a cell whose glyph is outside it reads `?` while
-    /// its neighbour still comes back, which is what makes the swish-check leg's failures name
+    /// its neighbor still comes back, which is what makes the swish-check leg's failures name
     /// the character it could not read rather than lie about the row.
     #[test]
     fn a_glyph_outside_the_alphabet_reads_as_a_question_mark() {

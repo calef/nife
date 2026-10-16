@@ -13,12 +13,12 @@ needs_person: no
 Filed as a proposal on 2026-09-04 by the milestone 243 lane, out of its own
 duplication; promoted by milestone 433 (drain the proposal pile to zero, and keep it
 there) on 2026-09-19. Built 2026-10-16 (UTC) on branch
-`milestone/377-one-screendump-decoder-not-two`. The three functions this block was filed against
-had already moved once before the merge, and stood in `xtask/src/scanout.rs`, not at the
-`main.rs` lines named below. The one decoder is `board_console::screen::decode` (name
-provisional), parameterised by the ink and paper colours, an optional alphabet and the scale the
-picture was painted at; `xtask`'s three are gone, and the graphical swish-check leg reads through
-the one decoder with the terminal's own colours and the surface assertion kept at its call site.
+`milestone/377-one-screendump-decoder-not-two`. The three functions had moved once before the
+merge: they stood in `xtask/src/scanout.rs`, not at the `main.rs` lines named below. The one
+decoder is `board_console::screen::decode` (name provisional). It takes the ink and paper
+colors, an optional alphabet, and the scale the picture was painted at. `xtask`'s three are
+gone. The swish-check leg reads through it, with the terminal's own colors and the surface
+assertion kept at its call site.
 
 It is a refactor with a test on each side; what it needs is a lane, not a decision.
 
