@@ -18,7 +18,8 @@ and `components/src/pmap.rs` both exist). `notes/crates-io-on-nife.md` rows 19 a
 `design/decisions/0102-frame-names-a-run.md` line 7 ("this decision is still unbuilt").
 `notes/live-replacement.md` line 261. `notes/register-of-measures.md` line 253.
 `kernel/src/arch/aarch64/timer.rs:185`. `components/src/session_reviver.rs` (eight surviving mentions
-of the deleted durable-session type). And milestone 142's duplicated paragraphs. Closed: the
+of the deleted durable-session type). And milestone 142 (a text display good enough that people use
+it)'s duplicated paragraphs. Closed: the
 `crates/abi` start invocation, whose doc now says `START` spends all three argument registers rather
 than ignoring them. Unconfirmed: the display-name item, because milestone 126's block still
 carries it under "Fork: a process display name" with a recommendation rather than a ruling, so

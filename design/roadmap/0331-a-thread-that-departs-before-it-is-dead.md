@@ -64,7 +64,7 @@ kernel stack. The code that would otherwise free that stack refuses inside the w
 the window not existing. Marking the thread `Departing` in `depart()` and promoting it to `Dead` from
 `finish_switch`, which already holds `SCHED` and already runs at the instant the stack goes free,
 closes it. A remover then never observes a thread whose state says the stack is free while the stack
-is in use. The transient `NotPermitted` milestone 124 records as a race stops existing rather
+is in use. The transient `NotPermitted` milestone 124 (a thread is born where it lives) records as a race stops existing rather
 than being handled. That is rung one of AGENTS.md's ladder replacing rung two. Milestone 124
 wrote the weakness down about itself: the `on_cpu` guard is a condition in one function, and the next
 out-of-band remover can forget it exactly as the last one did. `RunState` is loom-searched, so adding
