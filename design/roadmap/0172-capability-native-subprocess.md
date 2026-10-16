@@ -56,8 +56,9 @@ distinct narrow syscall; that sizing is this milestone's own work, not predeterm
 milestone its start half. Option D is the shape: the caller sends an executable's bytes as frames it
 owns, with the grants it chooses. A child whose digest the owner has not vouched for gets only those
 grants and two read-only pages. Running it needs the D2 capability, which the owner gives a session.
-So `cargo` runs a freshly linked test binary through the same request the shell uses. Waiting, exit
-status and output stay this milestone's fork, and the gate above still names them.
+So `cargo` runs a freshly linked test binary through the same request the shell uses. The wait is
+decided too: [§301 (exit status and output)](../decisions/0301-exit-status-and-output.md) puts the
+status word on the death message.
 
 ## Spawn is the supported path, and `fork` is refused for good
 
@@ -72,21 +73,21 @@ way, and that is calef's call, not this block's.
 
 ## What it needs
 
-- The actual design fork, written up as
-  [§301 (exit status and output)](../decisions/0301-exit-status-and-output.md) per DECISIONS §10
-  (process model: capability-based, microkernel): is this a new syscall method on an existing object, a
-  new object type, or a userspace-only composition of `build_child` plus an existing notification
-  mechanism (DECISIONS
-  §101 (notification objects))? Answer with the six-questions discipline this
-  tree already applies to forks like it (what does the tree already do in the analogous case, what
-  does it cost measured rather than asserted, how reversible is it).
+- The design fork is decided:
+  [§301 (exit status and output)](../decisions/0301-exit-status-and-output.md), 2026-10-15, carries
+  the status word on `SYS_EXIT` into the death message, and keeps output grant-routed. The
+  primitive is a userspace composition of `build_child` plus the receive on the supervision
+  endpoint; what remains here is building the loop: spawn, endow, receive, read the code, return
+  the output the grants carried.
 - Stdin/stdout/stderr as capabilities, not ambient file descriptors: a spawned child's I/O needs
   to be handed explicitly, the same "additive, not ambient" shape §10 already committed to.
-- Exit-status delivery distinct from the death-notification path
-  ([DECISIONS §24](../decisions/0024-interrupting-the-foreground.md)'s supervision shape, and
+- The status rides the death message ([§26 (the fault
+  endpoint)](../decisions/0026-fault-endpoint.md)'s `EVENT_EXIT` words, per
+  [§301 (exit status and output)](../decisions/0301-exit-status-and-output.md)), so no separate
+  status channel exists to build. The synchronous wait a caller like `cargo` uses is a receive on
+  the supervision endpoint it already holds, with
   [DECISIONS §32](../decisions/0032-reap-without-build.md)'s "a supervisor may collect a corpse
-  without being able to build one"), since a caller waiting synchronously for one child's result is
-  a different access pattern than a supervisor watching many.
+  without being able to build one" (`REAP`) behind it.
 
 ## Why it matters
 
@@ -98,14 +99,15 @@ that gap is ever closed, and what `git`'s optional hook/external-tool features
 
 ## What this does not decide
 
-The actual shape of the primitive (new syscall vs. composition of existing ones), whether it is
-scoped to a single synchronous child or a small pool, and whether stdin/stdout are pipes, shared
-memory rings, or something else. All of that is
-[§301 (exit status and output)](../decisions/0301-exit-status-and-output.md)'s question.
+The build shape of the loop: how stdin/stdout present themselves to the child (pipes, rings, or
+endpoints), and whether the first consumer is scoped to one synchronous child or a small pool.
+[§301 (exit status and output)](../decisions/0301-exit-status-and-output.md) fixed only where the
+status travels and that output stays grant-routed.
 
 ## Index row
 
 The real architectural piece the self-hosting question surfaced: `cargo`/`rustc` need to spawn a
 process per compilation unit and to invoke a linker, structurally, with no bypass. DECISIONS §10
-already rejected Unix-shaped fork/exec but explicitly endorsed the additive direction (Fuchsia's `fdio` shape); this is that direction applied to one more convenience. What remains open is the wait:
-[§301 (exit status and output)](../decisions/0301-exit-status-and-output.md).
+already rejected Unix-shaped fork/exec but explicitly endorsed the additive direction (Fuchsia's `fdio` shape); this is that direction applied to one more convenience. The wait is decided:
+[§301 (exit status and output)](../decisions/0301-exit-status-and-output.md) carries the status
+word on `SYS_EXIT` and the death message.
