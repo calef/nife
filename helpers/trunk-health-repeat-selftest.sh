@@ -32,7 +32,6 @@
 #     excluded the same way script/cadence-check excludes them.
 
 set -eu
-here="$(cd "$(dirname "$0")" && pwd)"
 me="trunk-health-repeat-selftest"
 
 # A watcher script may run under an exported GIT_DIR (helpers/scope-merge-base-selftest.sh has the
