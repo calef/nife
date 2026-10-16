@@ -1,4 +1,4 @@
-# toolchain: nightly-2026-10-15
+# toolchain: nightly-2026-10-16
 # qemu: 11.1.2
 # date: 2026-10-10
 # why: 2026-10-10: nightly-2026-10-09 to nightly-2026-10-10, the compiler term alone, on QEMU 11.1.2 and the tree #1899 re-recorded the floors on (calef's option Q1 moved the emulator first, so this save carries no emulator term). The restamp job refused this floor because its one-runner A/B on CI read map_el0 -2.849% (300745 to 292177). This machine does not reproduce that: map_el0 reads 300428 on nightly-2026-10-10 against 300427 on nightly-2026-10-09, and CI already read the same code on 10-09 0.1% off this machine, so the row looks sensitive to the build host (plausibly the image's layout) rather than to codegen in the path; not established. Every aarch64 row is within 0.2% of the floor this replaces (largest ipc_rtt_el0 -0.20%, inside its own run-to-run spread); no row moved over 0.5%.
@@ -7,6 +7,7 @@
 # why: 2026-10-13: restamped from nightly-2026-10-12 to nightly-2026-10-13 by `cargo xtask bench --restamp`, rows unchanged; compiler term on one machine, largest: ipc_rtt_el0 +0.203%, sink_throughput -0.015%, map_new +0.006% (bounds 0.5% per row, 2% cumulative); cumulative since the last --save: ipc_rtt_el0 +0.203%, sink_throughput -0.015%, map_new +0.006%
 # why: 2026-10-14: restamped from nightly-2026-10-13 to nightly-2026-10-14 by `cargo xtask bench --restamp`, rows unchanged; compiler term on one machine, largest: ipc_rtt_el0 -0.239%, ctx_switch +0.020%, sink_throughput +0.015% (bounds 0.5% per row, 2% cumulative); cumulative since the last --save: ipc_rtt_el0 -0.036%, ctx_switch +0.020%, map_new +0.006%
 # why: 2026-10-15: restamped from nightly-2026-10-14 to nightly-2026-10-15 by `cargo xtask bench --restamp`, rows unchanged; compiler term on one machine, largest: none (bounds 0.5% per row, 2% cumulative); cumulative since the last --save: ipc_rtt_el0 -0.036%, ctx_switch +0.020%, map_new +0.006%
+# why: 2026-10-16: restamped from nightly-2026-10-15 to nightly-2026-10-16 by `cargo xtask bench --restamp`, rows unchanged; compiler term on one machine, largest: ipc_rtt_el0 -0.032%, sink_throughput -0.023%, map_new -0.006% (bounds 0.5% per row, 2% cumulative); cumulative since the last --save: ipc_rtt_el0 -0.068%, sink_throughput -0.023%, ctx_switch +0.020%
 # bench/baseline-aarch64.txt: deterministic icount tick counts (cargo xtask bench --save).
 # Recorded against the QEMU pinned in .qemu-version. icount counts guest instructions, so the
 # emulator version is part of what these numbers mean: script/qemu-check warns when the QEMU on
