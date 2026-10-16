@@ -140,7 +140,7 @@ helpers/lint-no-cargo-selftest.sh >/dev/null
 
 echo "==> clippy: host crates + xtask"
 # The derived half of the selection (helpers/host-excluded-crates.sh). `kernel` and `system_tests`
-# are excluded by judgement rather than the derivation: they are bare metal through `kernel`,
+# are excluded by judgment rather than the derivation: they are bare metal through `kernel`,
 # which the dependency-graph walk does not see.
 bare_crates=$(helpers/host-excluded-crates.sh) || exit 1
 bare_excludes=""
@@ -1272,7 +1272,7 @@ echo "==> fatal risks"
 #
 # The gate still runs in one direction only. A consumer may exclude MORE than the derivation names
 # (kernel here, xtask in coverage, the Miri-only set), because those exclusions carry their own
-# recorded reasons and are judgement rather than physics.
+# recorded reasons and are judgment rather than physics.
 echo "==> the host pass excludes exactly the bare-metal crates"
 python3 - <<'PYEOF' || exit 1
 import json, pathlib, subprocess, sys

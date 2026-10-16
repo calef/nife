@@ -464,7 +464,7 @@ fn host_tests() -> bool {
     // already cost this project a day over.
     //
     // The selection is now `--workspace` with the DERIVED exclusions (see
-    // [`host_excluded_args`]). `kernel` and `system_tests` stay here by judgement rather than the
+    // [`host_excluded_args`]). `kernel` and `system_tests` stay here by judgment rather than the
     // derivation: they are bare metal through `kernel`, which the dependency walk does not see.
     let mut args: Vec<String> = ["test", "--workspace"]
         .iter()
@@ -1314,7 +1314,7 @@ pub(crate) fn kernel_test_elf(package: &str, target: &str, who: &str) -> Option<
 /// restated: four bare-metal crates were missing here, invisible on CI's aarch64 runner, where
 /// they compile by accident.
 ///
-/// Four judgement exclusions ride on top, none with `unsafe` Miri could execute:
+/// Four judgment exclusions ride on top, none with `unsafe` Miri could execute:
 ///
 /// - **`xtask`**, the build tool: its tests are safe pixel arithmetic, about seven minutes under
 ///   the interpreter for nothing the type system has not said.
