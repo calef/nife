@@ -10,9 +10,9 @@
 //! file.
 
 use filesystem_fixture as fixture;
-use user_mode_runtime::{exit, send};
+use user_mode_runtime::{exit, require, send};
 
-use crate::channel::{REPORT, check, get_page, open, read, write};
+use crate::channel::{REPORT, get_page, open, read, write};
 
 /// **The crash driver** (milestone 37): write one payload and get an acknowledgement, then write the
 /// next one into a server that has been told to die partway through it.
@@ -36,9 +36,9 @@ pub(crate) fn crash_driver() -> ! {
     write(h, 0, crash::A);
     let mut buf = [0u8; 128];
     let n = read(h, 0, crash::A.len());
-    check(n == crash::A.len());
+    require(n == crash::A.len());
     get_page(n, &mut buf);
-    check(&buf[..n] == crash::A);
+    require(&buf[..n] == crash::A);
     send(REPORT, fixture::SUCCESS, crash::SAW_A, 0);
 
     // And now the one the server dies inside. This call never returns.

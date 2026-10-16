@@ -55,7 +55,7 @@ rests on it.
 Trait objects. `Box<dyn Write>`: you don't know the concrete type, so you can't know its
 size, so it must be behind a pointer.
 
-**Large values you don't want on the stack.** `Box<[Option<Frame>; 1024]>` would have put the
+**Large values you don't want on the stack.** `Box<[Option<PageFrame>; 1024]>` would have put the
 16 KiB array on the heap, and the [milestone 3 incident](stack.md) would never have happened.
 
 ## `Vec<T>`: a growable array

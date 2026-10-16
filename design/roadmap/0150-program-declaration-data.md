@@ -10,10 +10,10 @@ Built 2026-09-19 (PR #968). A program is declared once: its `[[bin]]` block, plu
 those or checked against them. The after count is measured, by adding and removing a scratch
 program (`triple`) and booting it at both prompts; the before count is read off the base tree
 (8bac3637) and the 2026-08-18 walks rather than re-walked. A plain program went from three hand
-edits to one, and a spawnable program that answers in a register from twelve edits across five
+edits to one. A spawnable program that answers in a register went from twelve edits across five
 files (two of them silent) to six across four, of which only the first two are unprompted.
 
-Minted provisionally on 2026-08-22 by milestone 117's handoffs lane; the integrator
+Minted provisionally on 2026-08-22 by the handoffs lane of milestone 117 (the stranger test); the integrator
 should confirm the number at merge. 147, 148 and 149 were already claimed by other lanes' pull
 requests (147/148 open, 149 merged into this lane's own base commit) as this was written.
 
@@ -51,9 +51,9 @@ most authors for a keystroke. Site 6 now applies only to the programs it means s
 
 The gate on count is three relationship checks rather than a number (item 4 below). A pinned
 total was refused because it would be a hand-maintained number failing on every legitimate
-addition. Instead: packing refuses a `programs!` row with no `[[bin]]`; a host test refuses a
+addition. Instead: packing refuses a `programs!` row with no `[[bin]]`. A host test refuses a
 program the kernel or the progenitor still loads by string literal after its block is deleted (the
-removal that used to become a test that `skip!()`s forever); and a host test requires every
+removal that used to become a test that `skip!()`s forever). A host test requires every
 spawnable program to have a `SWISH_CHECK_SCRIPT` line or a stated reason. That last one found
 `memory_grant_depleter` had none, and it gained one. Site 7 is now enforced rather than remembered.
 
@@ -96,8 +96,8 @@ architect's call.
 ## What this is
 
 **Nominated by three successive strangers.** Milestone 117's stranger-test runs 3, 4 and 5 each
-independently walked `notes/adding-a-program.md` by adding and removing a scratch program, and each
-one named the same defect as the highest-value thing a newcomer could fix: adding a program to this
+independently walked `notes/adding-a-program.md` by adding and removing a scratch program. Each
+one named the same defect as the highest-value thing a newcomer could fix. Adding a program to this
 tree means editing the same fact into eight hand-maintained places, by hand, with no gate that
 catches every way to get one of them wrong.
 
@@ -114,9 +114,9 @@ The eight, as `notes/adding-a-program.md` currently enumerates them:
 8. `notes/adding-a-program.md` itself, which describes the other seven and has gone stale twice in
    the four days between runs 2 and 3 alone.
 
-Run 5 added an eighth *edit site within site 5*: a program that both requires an argument and takes
+Run 5 added an eighth *edit site within site 5*. A program that both requires an argument and takes
 an input fails `the_arg_line_follows_the_manifest_for_every_program` in `crates/swish`, a test in a
-crate the person adding the program has no reason to open, because that host test hard-codes
+crate the person adding the program has no reason to open. That host test hard-codes
 `Holdings::default()` and a fixed argument line rather than reading the rest of the manifest it
 claims to check generally.
 
@@ -125,7 +125,7 @@ claims to check generally.
 CLAUDE.md's ladder ranks "make the wrong state unrepresentable" above "a gate that fails loudly"
 above "a written record at the thing itself" above "a note." Right now the eight-list problem is
 answered entirely at rung four (the note you are reading a summary of), and the note itself is the
-evidence that rung four cannot hold this fact: it has been rewritten by four successive strangers,
+evidence that rung four cannot hold this fact. It has been rewritten by four successive strangers,
 correctly, and gone stale again within days each time, because the fact it describes lives in seven
 other files it does not control.
 
@@ -140,7 +140,7 @@ other files it does not control.
 | `PROG_COUNT` | **nothing.** The tree compiles, every host test passes, and the program cannot be spawned from the prompt until somebody notices by hand |
 | the riscv `--bin` list (site 3) without the riscv `entries` table (site 4), or vice versa | either a build failure naming a missing ELF, or a program present in `mkinitrd()` and silently absent from the riscv archive, uncaught by `cargo xtask build` or `script/lint`, first caught (if at all) by `script/swish-check` or `script/test`, both of which cost an emulated boot |
 
-`PROG_COUNT` is the keystone and forgetting it hides the other two: the sweep in
+`PROG_COUNT` is the keystone and forgetting it hides the other two. The sweep in
 `prog_id_round_trips` only walks up to that constant, so a variant added past it is invisible to the
 one test that would have caught the missing `from_id`/`from_name` arms. **And nothing counts
 programs at all**: the kernel test suite reports the identical total, 1312, both before and after a
@@ -150,14 +150,14 @@ somebody remembered to type into `SWISH_CHECK_SCRIPT`.
 ## What this milestone would decide
 
 **The shape run 3 nominated and runs 4 and 5 did not dispute**: a `Prog` variant should carry its
-archive name and its manifest as data, so that both initrd tables (sites 2 and 4), the `--bin` list
+archive name and its manifest as data. So that both initrd tables (sites 2 and 4), the `--bin` list
 (site 3), and as much of the `grant_plan` bookkeeping (site 5) as possible are *generated* from the
-one place a program is declared, rather than hand-copied into four more. Concretely, this milestone
+one place a program is declared. None of it is hand-copied into four more. Concretely, this milestone
 would need to answer:
 
 1. **Where the single declaration lives.** A `const` table in `grant_plan` that both `xtask` (for
    the initrd lists) and the shell (for dispatch) can read is the shape the current seven-edit list
-   already gestures at with `Prog`; whether `xtask` can depend on `grant_plan` without pulling
+   already gestures at with `Prog`. Whether `xtask` can depend on `grant_plan` without pulling
    `no_std` machinery into a host binary is the first thing to check, not assume.
 2. Whether `PROG_COUNT` can be replaced by something the compiler derives, rather than a
    number a human widens. Rust has no built-in way to count an enum's variants without a derive
@@ -192,7 +192,7 @@ would need to answer:
 
 ## Prior art in this tree
 
-- `xtask`'s measurement manifest is already generated rather than hand-maintained: it hashes every
+- `xtask`'s measurement manifest is already generated rather than hand-maintained. It hashes every
   entry of the archive it just packed and writes the manifest from that (`write_measure_manifest`),
   so a program's presence there follows the archive by construction with no eighth place to edit.
   That is the shape sites 2 through 4 (and as much of 5 as practical) should end up in.
@@ -204,7 +204,7 @@ would need to answer:
 ## Where the finding is recorded today
 
 `notes/adding-a-program.md`'s `BUGS` section carries the full history (runs 3, 4 and 5, each citing
-the file and line the previous stranger read) and should link to this milestone once the integrator
+the file and line the previous stranger read). It should link to this milestone once the integrator
 confirms its number, replacing the current circular pointer at "the tracked home for the mechanism is
 milestone 117's handoff."
 
@@ -216,8 +216,8 @@ milestone 117's handoff."
   the proposal recommends the status quo.
 - **Decision.** The mechanism (the `[[bin]]` block as the archive list, `programs!` for `Prog`, and
   three relationship checks in place of a pinned count) is reasoned with what lost in
-  `notes/adding-a-program/why-it-works-this-way.md` (moved there from `notes/adding-a-program.md`'s
-  "Why it works this way" on 2026-10-11), for the integrator to mint a
+  `notes/adding-a-program/why-it-works-this-way.md`. The reasoning moved there from
+  `notes/adding-a-program.md`'s "Why it works this way" on 2026-10-11, for the integrator to mint a
   `design/decisions/` section at merge. No section exists yet; this lane does not mint one.
   Minted by the maintainer on 2026-09-19 as
   [DECISIONS §158](../decisions/0158-a-program-is-declared-once.md).

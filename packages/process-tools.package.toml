@@ -13,7 +13,7 @@
 name = "process-tools"
 kind = "base"
 home = { repo = "process-tools", status = "provisional" }
-crates = ["ps", "pgrep", "pmap", "top", "uptime", "free", "vmstat", "slabtop"]
+crates = ["ps", "pgrep", "pmap", "top", "uptime", "free", "vmstat", "slabtop", "number_writer"]
 programs = ["ps", "pgrep", "pmap", "top", "uptime", "free", "vmstat", "slabtop"]
 paths = [
     "packages/uptime.recipe.toml",

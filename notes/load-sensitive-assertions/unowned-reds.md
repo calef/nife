@@ -60,7 +60,7 @@ The original 2026-08-27 wording of that open question, kept because it is the qu
 retires: this is not explained by load, and it may be a real bug. Every negative-direction case this
 register had actually chased turned out to be a test written against a global counter that something
 else could also move. The reaper count and the address-space frame count were both rescoped to a
-narrow `Tid`-scoped wait in the first round (the old text said the fourth, which only confirmed
+narrow `ThreadId`-scoped wait in the first round (the old text said the fourth, which only confirmed
 them; corrected 2026-09-24). None was a kernel defect undiscovered underneath.
 Whether this one was the same shape, or something a swap-system regression put there, was not
 established, because this lane's brief did not investigate it. It was proposed in this lane's report

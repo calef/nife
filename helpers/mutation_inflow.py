@@ -17,8 +17,9 @@ triage ledgers are prose.
 list that is older than this census, blames each new survivor's line to the commit and merged pull
 request that wrote it, and looks the survivor up in the triage CSV. Exit 0: every inflow survivor has a
 row. Exit 1: some do not, and they are listed with crate, function, mutation and pull request. Exit 2:
-bad input. It never blocks a pull request: it runs in the weekly workflow only, because milestone 479
-(a blocking `--in-diff` mutation gate) stays refused.
+bad input. It never blocks a pull request: it runs in the weekly workflow only. The check that
+blocks a pull request is the diff gate, helpers/mutation_diff_gate.py (milestone 924 (a survivor
+on a pull request's own lines cannot merge untriaged)).
 
 THE KEY. A survivor is `(crate, function, mutation)`, never a line number, because lines move and a
 triage row written on Tuesday must still match on Monday. cargo-mutants names a mutant

@@ -25,12 +25,12 @@ No `design/decisions/` section is minted for it, and that is the judgment rather
 omission. A deferral is an answer, and filing an answered question as `**Status: PROPOSED.**` would
 put a decision calef has already made back on the queue he keeps it in. What reopens it is the soak
 hanging on radon, which is fatal risk 5's most interesting outcome and the one case manual power
-costs an evening on; a fresh choice among the four options below is his again on that day.
+costs an evening on. A fresh choice among the four options below is his again on that day.
 
 In brief. **radon**'s power is on a Kasa KP303 strip. calef wired it on 2026-09-01, and outlet
 2 is the board while another outlet feeds an external drive that must never be switched off.
 `python-kasa` and a `vf2-power` wrapper are installed on patagonia, and the wrapper addresses the
-board's outlet by alias with no way for a caller to name a different one, because an index is right
+board's outlet by alias with no way for a caller to name a different one. An index is right
 until a firmware update reorders the children.
 
 None of it can reach the plug. Measured on 2026-09-01 from both patagonia and cordoba, by

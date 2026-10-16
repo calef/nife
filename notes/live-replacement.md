@@ -64,13 +64,13 @@ the honest client's exact capabilities and tries to receive on the service endpo
   1 BUILT    lay the replacement out, endow it, retype its TCB -- but do not configure or start it.
              A thread that was never started is in nobody's queue, so it cannot take a request the
              incumbent is still there to serve.
-  2 DRAINED  CALL OPERATION_QUIESCE on the service endpoint. FIFO does the waiting. The incumbent replies
+  2 DRAINED  CALL OPERATION_QUIESCE on the service rendezvous. FIFO does the waiting. The incumbent replies
              and stops receiving; requests from here on park on the sender queue.
-  3 REVOKED  Frame::REVOKE the device capability. Gone from every holder but the operator.
+  3 REVOKED  DeviceFrame::REVOKE the device capability. Gone from every holder but the operator.
   4 STARTED  map the registers into the replacement, CONFIGURE, START. It drains the parked
              requests. The down window ends: four syscalls wide.
   5 REAPED   the incumbent is told to read one device register, faults, and its death arrives on the
-             supervision endpoint; Endpoint::REAP collects the corpse and returns its region.
+             supervision endpoint; Rendezvous::REAP collects the corpse and returns its region.
 ```
 
 The roadmap put the revoke second and building the replacement first, and both halves of that are
@@ -86,7 +86,7 @@ the operator was ready.
 
 ## Taking a device back
 
-`Frame::REVOKE` on a `Frame` un-shares a page from everyone including the caller, because §13
+`PageFrame::REVOKE` on a `PageFrame` un-shares a page from everyone including the caller, because §13
 exists to make *reclamation* safe and a page about to be returned to the allocator must not stay
 reachable. On a `DeviceFrame` the same method means take-back: every other holder loses the
 capability and the mapping, the invoker keeps its own.
@@ -260,7 +260,7 @@ which is the control this whole milestone rests on and which the test asserts on
 ## What this does not yet demonstrate
 
 - A hung component a supervisor can *see*. The domain reports the hang as `BLOCKED`, which is what a
-  healthy idle server reports as, and `Endpoint::REAP` answers `StillAlive` for every member. See
+  healthy idle server reports as, and `Rendezvous::REAP` answers `StillAlive` for every member. See
   notes/hung-component.md, including the two decisions this cannot pass without. One is how a
   supervisor *notices*, which needs the timed wait of milestone 106 (a wait that ends on either the
   interrupt or the deadline). The other is what it may do to a component that never cooperates. It

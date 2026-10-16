@@ -1,6 +1,7 @@
 ---
-status: NOT-STARTED
+status: BUILT
 raised: 2026-09-12
+built: 2026-10-16
 milestone_dependencies: none
 decision_dependencies: none
 machine_requirements: none
@@ -66,11 +67,18 @@ milestone 278's argument is that the *boundary* is in the wrong place, not that 
 
 ## BUGS
 
-- **Nobody has priced the `.cargo/mutants.toml` half**, which is the one that decides between the two
-  shapes. Static TOML cannot read a command's output, so either the file is generated (and then a
-  generated file is checked in, which this tree has opinions about) or the exclusions move to the
-  `script/mutation` call site and the file stops being the record. Both are defensible and neither
-  has been measured.
+- **The `.cargo/mutants.toml` half chose the second shape, landed 2026-10-16 (UTC)**: the derived
+  exclusions moved to the `script/mutation` call site, which passes the set to cargo-mutants on the
+  command line, and the file stopped being the record. Generating a checked-in file was refused on
+  the tree's recorded opinion about generated files, and the question this bullet asked with it.
+
+## Follow-on
+
+- **Recorded.** One consequence lives beside the number it moves: the weekly coverage column is
+  taken over the whole lcov, unfiltered (`notes/project-metrics/coverage.csv`, computed by
+  `script/metrics --coverage-from`), and the run now excludes `virtio`, which the derivation names
+  and the hand-written run list never had. The next recompute may step that aggregate for the right
+  reason; the floor's view is unchanged, because `virtio` was already exempt there.
 
 ## Index row
 
@@ -84,9 +92,6 @@ CI had moved to an aarch64 runner the same day, where the EL0 assembly compiles 
 Milestone 244 then found the repair had covered two consumers rather than four, and that the two it
 missed are the two that publish a number, coverage and mutation, with `.cargo/mutants.toml` asking
 the next person in a comment to keep it in step with `script/coverage`, which is rung four in a file
-whose output is quoted in a fatal risk's verdict. Two ways to close the class and choosing is the
-work: emit the derived set and have the other three consume it, or keep the lists and keep the gate
-widened, which is roughly today's state and only tells you after they have stopped agreeing. The
-first is the higher rung; the awkward half is that `.cargo/mutants.toml` is static TOML, so either
-it is generated or the exclusions move to the `script/mutation` call site and the file stops being
-the record.
+whose output is quoted in a fatal risk's verdict. The derivation is what landed, 2026-10-16 (UTC):
+every consumer now emits the set or consumes it, and `.cargo/mutants.toml`, which is static TOML,
+stopped being the record when its exclusions moved to the `script/mutation` call site.

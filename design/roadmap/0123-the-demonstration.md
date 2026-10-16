@@ -108,16 +108,17 @@ dropped, because the fraction that fails is the finding.
 
 ## How the corpus is chosen, so that it cannot be chosen to fit
 
-§85 settles this. An external ranking of what software people actually have installed supplies the
-order, because nobody here chose it and it cannot be quietly reshaped when a program turns out to be
-inconvenient. It is filtered, before it is consulted, to leaf applications: things a person
-invokes, rather than libraries, package management or init, which dominate the head of any such list
-and are not applications at all.
+§85 (what we port is evidence) settles this. An external ranking of what software people actually
+have installed supplies the order, because nobody here chose it and it cannot be quietly reshaped
+when a program turns out to be inconvenient. It is filtered, before it is consulted, to leaf
+applications: things a person invokes, rather than libraries, package management or init, which
+dominate the head of any such list and are not applications at all.
 
-**The corpus stays software this project did not write**, and §85 records why that is not negotiable:
-this milestone exists to answer the objection that we wrote the kernel and then wrote the programs
-that run on it, and a corpus of our own reimplementations leaves that objection exactly where it was.
-A grant width measured from a program we wrote is a measurement of our own intentions.
+**The corpus stays software this project did not write**, and §85 records why that is not
+negotiable: this milestone exists to answer the objection that we wrote the kernel and then wrote
+the programs that run on it. A corpus of our own reimplementations leaves that objection exactly
+where it was. A grant width measured from a program we wrote is a measurement of our own
+intentions.
 
 Reimplementing the same programs is worth doing and belongs elsewhere. That is the distribution's
 userland, where §84's tier three applies and writing the thing from the ideas is correct;
@@ -160,7 +161,7 @@ from `jig`.
 
 The only claim in why-now.md with nothing scheduled against it, and the one the thesis rests on.
 Four elements: byte-identical output against Linux to pin the word useful, the `caps` manifest
-printed beside it so the question has an answer here and none there, a negative control at two
-strengths (the strong one being an attack class with no spelling, since `one_name` refuses `..`),
-and a tripwire, which matters most because ports that reconstruct ambient authority look like
-success while they happen. One program proves possible; the corpus proves typical
+printed beside it so the question has an answer here and none there. A negative control at two
+strengths (the strong one being an attack class with no spelling, since `one_name` refuses `..`).
+A tripwire, which matters most because ports that reconstruct ambient authority look like success
+while they happen. One program proves possible; the corpus proves typical

@@ -18,7 +18,7 @@ is confused by this today, and it was found by pricing milestone 152's future co
 an actual bug. Same shape as `std::thread::spawn` (§105), hard links (§110), and state handoff
 (§116). §119 also records non-binding guidance for whoever eventually has a real customer: new
 cause-specific `Error` variants, matching `crates/timetable`'s own `Unbacked`/`Refusal` precedent
-and POSIX's `EMFILE`/`ENFILE` split, are the better-supported shape over a diagnostic query or
+and POSIX's `EMFILE`/`ENFILE` split. They are the better-supported shape over a diagnostic query or
 leaving it collapsed forever -- not a commitment, re-check it against what that customer's actual
 failures look like.
 
@@ -57,7 +57,8 @@ same way, and nobody has named it here yet.
 ## What surfaced this
 
 Not found by auditing error codes. Found while pricing milestone 49's attribution fork (DECISIONS
-§109) and estimating where the channel model's own cost eventually bites: `MAX_REGIONS` exhaustion
+§109 (attribution)) and estimating where the channel model's own cost eventually bites.
+`MAX_REGIONS` exhaustion
 is the real number that matters for "how many durable sessions can this system support," and tracing
 what a caller actually sees when it happens found the three-way collapse.
 
@@ -102,10 +103,11 @@ the customer exists.
 ## What was decided
 
 **Declined for now (DECISIONS §119, 2026-08-23), for want of a customer.** Three shapes were on the
-table: new cause-specific `Error` variants (the most direct fix, but a permanent ABI-surface
-addition), a separate diagnostic-only query (keeps the hot-path return narrow, costs a second
-syscall a caller must know to make), or leaving it collapsed and documented where a reader meets it
-(the `BUGS` entry in `kernel/src/untyped.rs`, unchanged by this decision). §119 records non-binding
+table. New cause-specific `Error` variants (the most direct fix, but a permanent ABI-surface
+addition). A separate diagnostic-only query (keeps the hot-path return narrow, costs a second
+syscall a caller must know to make). Or leaving it collapsed and documented where a reader meets it
+(the `BUGS` entry in `kernel/src/untyped.rs`, unchanged by this decision). §119 (declined for want
+of a customer) records non-binding
 guidance for whichever of these gets picked up later, favoring the first shape on two precedents
 (`crates/timetable`'s own `Unbacked`/`Refusal` split, and POSIX's `EMFILE`/`ENFILE`), without
 committing to it now.
@@ -114,7 +116,7 @@ committing to it now.
 
 Nothing else is gated on this. It is named because a durable-session-heavy future (milestone 152)
 is exactly the scenario where cause 3 (system-wide exhaustion, not the caller's own fault) would
-start being hit by ordinary use rather than only by a misbehaving process, and a caller that cannot
+start being hit by ordinary use rather than only by a misbehaving process. A caller that cannot
 tell that apart from its own mistake will be debugged as if it were one.
 
 ## Index row

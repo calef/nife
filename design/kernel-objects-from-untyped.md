@@ -90,7 +90,7 @@ requirements later.** What phase B builds instead, per the decisions:
 - B.2: TCBs move from `Box` to a static pool (BSS, MAX_THREADS slots; table slot i is
   pool slot i). Retype-from-untyped was considered and declined while the kernel is the only
   payer: sub-page packing would rebuild the slab in the milestone that deletes it (see
-  notes/tcb.md). The pool upgrades to retype-backed storage behind the table when init lands.
+  notes/thread-control-block.md). The pool upgrades to retype-backed storage behind the table when init lands.
 - B.3: spawn's boxed closures move onto the new thread's own stack, above the trampoline
   frame, at their concrete type (a monomorphized call shim in `x20`, the closure address in
   `x19`, no vtable). Call sites unchanged; one reviewed unsafe region; invisible to userspace.

@@ -250,10 +250,10 @@ Each entry is in full, with its mechanism and history, in
 
 ## `pmap`, and `ENUMERATE` extended to the address-space object
 
-`pmap` works on both ISAs over `abi::aspace::LIST`, the same split one object type over:
+`pmap` works on both ISAs over `abi::address_space::LIST`, the same split one object type over:
 `MAP_INTO` needs `WRITE`, and `LIST` needs `ENUMERATE`. The listing reads the space's own
 revocation log, so it costs nothing new and cannot disagree with what a revoke would find. But
-`Tcb::CONFIGURE` removes a space from the registry the instant it binds to a thread, and nothing
+`ThreadControlBlock::CONFIGURE` removes a space from the registry the instant it binds to a thread, and nothing
 delegates an address-space capability to a second program. So no program but a space's own builder
 can hold a live view of it today, and `pmap` runs only in kernel tests. Fixing that is a
 spawn-protocol question. The delegation audit and the finding are in

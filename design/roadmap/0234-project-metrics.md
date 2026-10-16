@@ -48,10 +48,10 @@ otherwise read the tree's growing honesty as decay.
 
 A reconstruction applies today's definitions to old commits. That is right for a trend and it is
 not what was reported at the time. The page says so on its face, because the day this was built
-produced three separate cases of this tree's instruments being wrong: milestone 214 (a test that
-prints "skipping" and returns is counted as passed) found 80 such sites, milestone 212
-(`script/falsifications` walks `crates/` only) found a denominator excluding the kernel and `user/`,
-and DECISIONS 139 (who may read the cycle counter, and by what authority) corrected a figure that
+produced three separate cases of this tree's instruments being wrong. Milestone 214 (a test that
+prints "skipping" and returns is counted as passed) found 80 such sites. Milestone 212
+(`script/falsifications` walks `crates/` only) found a denominator excluding the kernel and `user/`.
+DECISIONS 139 (who may read the cycle counter, and by what authority) corrected a figure that
 confused a counter's tick resolution with the cost of reading it.
 
 And every historical figure in this tree is agent-derived. calef holds no independent record, so
@@ -98,7 +98,7 @@ file it agreed exactly: **701 outside `arch/`, 253 inside, zero files disagreein
   commit it was taken at, so gating it would fail every pull request.
 - **Milestone 350.** Correct AGENTS.md's
   "kernel/src measures 40% of them" comment ratio. The series put it at 39.3% eight weeks before this
-  was written and 45.3% then, and it reached 46.4% on 2026-09-14, climbing every week, so the figure a reader meets in the project's own front-door file
+  was written and 45.3% then, and it reached 46.4% on 2026-09-14, climbing every week. The figure a reader meets in the project's own front-door file
   is wrong and drifting further from true. AGENTS.md is an architect's file, so the one-line edit is
   an architect's to make; this page flags the staleness and cannot fix it.
 

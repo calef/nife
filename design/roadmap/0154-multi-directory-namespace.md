@@ -77,19 +77,19 @@ Two second-level pieces, host-tested and guest-tested rather than left as design
   `$PATH` survives as a string) are untouched.
 - `kernel::user::fs_service::start_granted_two_dirs`, the endowment mechanism itself: wires a
   second `fs_subtree_caretaker` alongside the first, for one confined program, and delivers both
-  narrowed endpoints into two distinct cspace slots (slot 0 is always the first grant, slot 1 the
+  narrowed endpoints into two distinct cspace slots. Slot 0 is always the first grant, slot 1 the
   second, and that ordering is the spawn-protocol position this milestone decides, deliberately
-  the smallest possible answer rather than a new wire word). Both caretakers share the one FS
+  the smallest possible answer rather than a new wire word. Both caretakers share the one FS
   server a boot has, and both narrowed endpoints map the same shared file-channel frame, safe for
-  the reason `narrow_dir`'s own doc already gives one level narrower: the confined program is one
+  the reason `narrow_dir`'s own doc already gives one level narrower. The confined program is one
   thread of control with at most one `CALL` in flight.
 - The guest proof, `kernel/src/user/multi_dir_namespace_tests.rs` (one module for both ISAs,
   `dir_capability_tests`' reason): a new `fs_test_client` role (`ROLE_TWO_DIR`) holds both grants
   at once, told nothing beyond which cspace slot is which. It proves the deliverable literally:
   `/a/inner` and `/b/secret` (the roadmap block's `/a/x` and `/b/y`) each resolve through
-  `TwoRoots` and then open for real over the caretaker that resolution named; `/a/../b` is refused
-  by `TwoRoots::resolve` before any request is sent; and, independent of `TwoRoots` entirely, grant
-  A's endpoint cannot open the name that exists only in grant B's subtree and the reverse, which is
+  `TwoRoots` and then open for real over the caretaker that resolution named. `/a/../b` is refused
+  by `TwoRoots::resolve` before any request is sent. And, independent of `TwoRoots` entirely, grant
+  A's endpoint cannot open the name that exists only in grant B's subtree and the reverse. That is
   the wire-level witness that the endpoint is the boundary (notes/dir-capability.md's structural
   finding), demonstrated here with two live caretakers instead of inferred from one.
 
@@ -99,14 +99,14 @@ Kept as the 2026-08-25 record. Its labeled presentation (`/a/...`, `/b/...`, two
 rows) was replaced on 2026-09-26 by calef's one-tree ruling; see "The shell across two trees".
 
 [DECISIONS §126](../decisions/0126-two-directory-cwd.md) closed an ambiguity in the first bullet
-below. A two-grant shell gets a real, single, moving `cwd`: state `(which, pos)`
+below. A two-grant shell gets a real, single, moving `cwd`. State `(which, pos)`
 in place of one-grant `Holdings`' bare `Cwd`, a bare relative name resolves against `pos` inside
 whichever tree `which` currently names, an absolute `/a/...`/`/b/...` path both resolves and moves
-between trees, and `..` at either tree's own root refuses exactly the way one-grant `Cwd::apply`
+between trees. `..` at either tree's own root refuses exactly the way one-grant `Cwd::apply`
 already refuses at its own root today. That is a real, single answer, not a per-caller choice, and
 it does not answer 47's four open questions (unions and shadowing across more than two labeled
 sources, enumeration, the compile-time-set-to-runtime-lookup gap, whether `$PATH` survives as a
-string): those stay exactly as open as they were, since this decision only ever concerned two
+string). Those stay exactly as open as they were, since this decision only ever concerned two
 disjoint, individually-labeled trees with one position at a time.
 
 - `caps`'s display and `Holdings` are extended, host-tested, to §126's shape (2026-08-25).
@@ -118,9 +118,9 @@ disjoint, individually-labeled trees with one position at a time.
   `(which, pos)` combinator itself, built on a new `nav::TwoRoots::resolve_from`/`apply_from` pair
   (relative stays in the current tree, absolute crosses by label, `..` refuses at either tree's own
   root; each a host test in `crates/grant_plan/src/nav.rs`). `crates/swish::write_holdings` prints
-  two directory rows and a namespace section with both labels when `second` is `Some`, marking
+  two directory rows and a namespace section with both labels when `second` is `Some`. It marks
   which tree `cwd` currently stands in and printing the other at its own root (there is only one
-  remembered position, per §126's "real, single, moving" cwd): this is milestone 154's own line,
+  remembered position, per §126's "real, single, moving" cwd). This is milestone 154's own line,
   "`caps` gains a namespace section with more than one row", made real and tested
   (`a_second_grant_prints_two_rows_and_a_namespace_section`).
 
@@ -129,37 +129,37 @@ disjoint, individually-labeled trees with one position at a time.
 
 - `crates/system_initializer::boot` can construct and deliver a second, disjoint directory
   capability to the shell at boot, mechanically, for real (2026-08-25). `boot` takes a new
-  `second_dir: Option<SecondDirGrant>` parameter; `Some` builds a second `fs_subtree_caretaker`
+  `second_dir: Option<SecondDirGrant>` parameter. `Some` builds a second `fs_subtree_caretaker`
   (`build_caretaker`, the same function `spawn_service`'s dynamic `rm`-style grants already use)
   narrowed to `SecondDirGrant::name`, and delivers its endpoint into the shell's capability table
-  at the slot after the filesystem pair, pushing the clock (already told to the shell numerically
+  at the slot after the filesystem pair. It pushes the clock (already told to the shell numerically
   rather than assumed, per its own existing convention) one slot further out. This is the real init
   both boards run (`user/src/system_initializer.rs`, `fixtures/src/hello.rs`'s `init_boot` role), not a
   kernel-side test harness.
 
   **Both real entry points pass `None`.** What the second subtree should *be* remains an architect's
   boot-time policy call (DECISIONS §126), unanswered by this increment on purpose. **Two further
-  gaps, recorded rather than hidden.** First, this exact path is unverified against a real boot:
+  gaps, recorded rather than hidden.** First, this exact path is unverified against a real boot.
   `script/swish-check` is the only thing that runs a real init, nothing types a second grant
-  through it, and the capability-table headroom at the point this builds a caretaker is the same
-  spot a past bug already found tight (`boot`'s own `# BUGS` note says so; watch for "reaches
-  userspace and prints nothing" first). Second, and this is the sharper gap: nothing tells the
+  through it. The capability-table headroom at the point this builds a caretaker is the same
+  spot a past bug already found tight (`boot`'s own `# BUGS` note says so). Watch for "reaches
+  userspace and prints nothing" first. Second, and this is the sharper gap: nothing tells the
   shell process it has a second grant at all. `_start`'s three `START` words (role, argument,
   clock slot) are already fully spoken for, so a shell built with a second grant today would hold
   a capability its own `Nav` has no way to learn the label or slot of. `components/src/swish.rs`'s
   `holdings()` therefore still always reports `second: None`. Closing that gap is a real
   shell-to-init wire question of its own (a fourth `START` word, or packing the clock slot and a
-  second-dir slot into the same word) and deserves its own decision rather than a quick encoding
+  second-dir slot into the same word). It deserves its own decision rather than a quick encoding
   chosen under this lane's time pressure.
 
 - The shell-to-init spawn-protocol encoding is built (2026-08-25), following `DIR_BIT`'s own
-  precedent exactly as this block said it should: `grant_plan::spawnproto` gains `DIR2_BIT` and
+  precedent exactly as this block said it should. `grant_plan::spawnproto` gains `DIR2_BIT` and
   `Wiring::dir2`, a second bit rather than a count, round-tripping independent of the other six
   flags (host-tested, `the_wiring_flags_do_not_collide` extended and
   `a_second_directory_grant_is_a_second_bit_not_a_count` added). `crates/system_initializer::spawn_service`'s
   init-side decode is *not yet* extended to build a second caretaker when `dir2` is set: nothing on
   the shell side ever constructs a two-directory `Endowment` to set the bit with (no manifest declares
-  two directory operands), so this is the wire format alone, ahead of an emitter, in exactly the
+  two directory operands). So this is the wire format alone, ahead of an emitter, in exactly the
   shape `DIR_BIT` itself was built in before anything could construct a one-directory grant either.
 ## The shell across two trees, built 2026-09-26
 
@@ -190,7 +190,7 @@ Lane `milestone/154-two-directories`. The detail is [notes/two-trees.md](../../n
 ## Follow-on
 
 - **Milestone 660.** Milestone 660 (a second filesystem mounts in the boot shell). Wiring a second filesystem into the boot shell at a mount point, with the transport
-  calef chose (a named slot and a shared constant holding the mount path), the Gone-and-go-home
+  calef chose (a named slot and a shared constant holding the mount path). The Gone-and-go-home
   behavior for a dead mount, and `rm` under a mount. Its trigger is the first real second
   filesystem: `design/roadmap/0660-a-second-filesystem-mounts-in-the-boot-shell.md`.
 - **Milestone 683.** Milestone 683 (what `..` does at a mount point). What `..` does at a mount point, which the written ruling leaves open: the shell

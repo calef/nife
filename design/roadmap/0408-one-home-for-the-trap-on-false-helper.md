@@ -1,6 +1,7 @@
 ---
-status: NOT-STARTED
+status: BUILT
 raised: 2026-09-14
+built: 2026-10-15
 promoted_from: one-home-for-the-trap-on-false-helper
 milestone_dependencies: none
 decision_dependencies: 188
@@ -29,6 +30,35 @@ identical everywhere, it is not per-binary; only its declaration is."* It was wr
 copied panic handlers; nine copied `check`s is the same shape at a seventh the scale.
 
 **Premise re-checked 2026-09-19, still true, with two corrections.**
+
+## Built 2026-10-15 (UTC), lane `milestone/408-one-home-for-the-trap-on-false-helper`
+
+`require` is now the one home, on `crates/user_mode_runtime`, and the copies call it. The
+premise moved again before the work started: the same grep then found **ten** copies, not nine.
+`notification_binder` had arrived since the 2026-09-19 check, `fs_test_client.rs` had become the
+`fs_test_client/` directory whose `channel.rs` carries the copy that `crash`, `proof` and
+`throughput` share, and `memory_region_depleter` was already out. Two spellings said no: eight
+copies called `trap()` (hello through a local `fail()` wrapper) and folded straight over, and the
+two panic copies (`block_driver`, `channel`) went to `require` like the rest. One path now says no
+for both spellings.
+`block_driver`'s copy had no callers at all: the `virtio` code its comment said it supplied
+`crate::check` for became its own crate in 291 and names no such path, so deletion was the fold.
+`crates/loaded_image_check` keeps its closure. It is not this shape: its failure path is a
+parameter (`verify(fail: fn() -> !)`) that keeps the crate host-buildable, and its own module doc
+records a refusal of depending on `user_mode_runtime`.
+
+Name: provisional. `require`, on §188's recommendation: the kernel's `trust::require` is the same
+shape one privilege level up. `check` refused on design/naming.md's generic-word rule, `insist`
+and `must` for the reasons §188 records. calef ratifies from the unratified worklist; the name
+does not block the merge.
+
+## Follow-on
+
+- **Decision.** `design/decisions/0188-one-home-for-the-trap-on-false-helper.md` names what the
+  lifted helper is called. The lane shipped `require` as a provisional name on that section's
+  recommendation, with what was considered in the item's `Name:` marker at
+  `crates/user_mode_runtime/src/process.rs`; it ratifies from the unratified worklist and the
+  section itself is the maintainer's to flip at merge.
 `grep -rn 'fn check(ok: bool)'` finds nine copies, the same count, and not the same nine:
 `fixtures/src/memory_region_depleter.rs` no longer carries one and `fixtures/src/hello.rs` does.
 `components/src/block_driver.rs` still reaches the trap through `panic!()` rather than
