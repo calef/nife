@@ -27,10 +27,10 @@ was', under `## Follow-on`:
 ## Why it is here rather than only there
 
 The mechanical obstacle does not exist: `cargo kani -p xtask` compiles with no changes, and the
-block measured that. The refusal is on value. A defect in `xtask` cannot reach anything that runs,
-it is host code with tests and a debugger where a prover is least differentiated, its pure logic
+block measured that. The refusal is on value. A defect in `xtask` cannot reach anything that runs.
+It is host code with tests and a debugger where a prover is least differentiated. Its pure logic
 already lives in crates the suite proves, and its hand-written decoders exist to be a second opinion
-on those crates, so proving both halves narrows the independence that justifies having two.
+on those crates. Proving both halves narrows the independence that justifies having two.
 
 ## Revisit
 

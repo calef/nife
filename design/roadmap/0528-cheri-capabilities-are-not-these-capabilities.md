@@ -16,7 +16,7 @@ queue lands it.)*
 
 The work is one note in `notes/` and a cross-reference from `notes/acronyms.md`,
 both of which a lane can start today against a published specification. One sentence inside it is
-calef's, and the milestone should stop at that sentence rather than write it: any claim about how
+calef's, and the milestone should stop at that sentence rather than write it. Any claim about how
 nife stands relative to a hardware capability ISA is a positioning claim, and AGENTS.md puts *facts
 that leave the machine* in the irreversible category. Write the mechanics; leave the comparison for
 ratification.
@@ -49,7 +49,7 @@ DECISIONS §14 (the project's direction: a verified-Rust capability microkernel 
 workloads) uses "capability" to mean an unforgeable kernel-held reference that names an object and
 carries rights, attenuable and revocable. CHERI uses it to mean a hardware-tagged fat pointer
 carrying bounds and permissions over an address space. These are different objects with the same
-name, and an argument that one substitutes for the other would be wrong in both directions: CHERI
+name, and an argument that one substitutes for the other would be wrong in both directions. CHERI
 does not name a thread or a page of untyped memory, and nife's capabilities do not bound a `memcpy`.
 
 Three of this project's own principles say to fix that here rather than in a conversation:
@@ -60,7 +60,7 @@ Three of this project's own principles say to fix that here rather than in a con
 - A name is a claim, and the reader meets it first. This is the naming discipline applied to a
   word the project did not mint and cannot control.
 - The refusals are the valuable half. The honest version of this note includes what CHERI would
-  and would not do for nife if it shipped, including the uncomfortable half: a CHERI machine gives
+  and would not do for nife if it shipped, including the uncomfortable half. A CHERI machine gives
   intra-process memory safety that a Rust microkernel's type system already gives for Rust programs
   and does not give for anything else, and this tree runs foreign binaries (fatal risk 1's
   `ripgrep`).

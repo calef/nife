@@ -23,7 +23,7 @@ Follow-on`:
 
 ## Why it is here rather than only there
 
-`line_editor` is the console server's only client and now speaks for two writers, so once the
+`line_editor` is the console server's only client and now speaks for two writers. So once the
 terminal adapter existed the page-plus-ack channel looked like the right answer rather than a gap.
 Converting the console server to the sink protocol would move a second client's problem one layer
 down without solving it: it would hit the same one-page wall with nothing gained.

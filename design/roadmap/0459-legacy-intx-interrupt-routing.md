@@ -33,10 +33,11 @@ there", under `## Follow-on`:
 ## Why it is here rather than only there
 
 x86_64 PCI interrupts reach userspace over MSI or MSI-X. INTx, the legacy pin-based path, needs to
-know which global interrupt a function's pin lands on, and there are exactly two ways to learn it:
-read ACPI's `_PRT`, which is AML and would mean an interpreter this tree would then have to maintain
-and verify for four numbers, or hardcode `q35`'s swizzle, which passes every gate on patagonia and
-might fail on xenon. Two blocks refused it with the same reasoning: milestone 161 (the x86_64 kernel port) deferred it, and milestone 215 (a PCI function's interrupt reaches nothing on x86_64) refused it outright.
+know which global interrupt a function's pin lands on, and there are exactly two ways to learn it.
+Read ACPI's `_PRT`, which is AML and would mean an interpreter this tree would then have to maintain
+and verify for four numbers. Or hardcode `q35`'s swizzle, which passes every gate on patagonia and
+might fail on xenon. Two blocks refused it with the same reasoning. Milestone 161 (the x86_64 kernel
+port) deferred it. Milestone 215 (a PCI function's interrupt reaches nothing on x86_64) refused it outright.
 
 ## Revisit
 

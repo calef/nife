@@ -117,10 +117,10 @@ Two constraints hold for all three and are recorded rather than decided:
 ## The ESP's contents, and the boot entry (reversible, recommended)
 
 Writing FAT without a FAT writer. A host tool builds an ESP image with the file's clusters
-preallocated and contiguous and its bytes left zero; the archive carries that image (it contains no
-copy of the file, so it does not contain itself); the installer writes the image into the ESP, then
+preallocated and contiguous and its bytes left zero. The archive carries that image (it contains no
+copy of the file, so it does not contain itself). The installer writes the image into the ESP, then
 writes R1's bytes at the one offset the host tool recorded. That is a layout two programs agree on,
-both in this tree, so it is reversible, and it is fragile in the way it looks: it is a stand-in for
+both in this tree, so it is reversible. And it is fragile in the way it looks: it is a stand-in for
 milestone 140's FAT32 write half and should say so at the call site.
 
 The boot entry. Two ways, and the cheap one is unmeasured:
@@ -144,14 +144,14 @@ firmware variable survives a firmware reset and a disk moved to another machine.
 A judgment, not a measurement. An NVMe disk, on anything sold in the last several years; xenon's
 is a `Micron 2450 NVMe 256GB` on M.2 with SATA in AHCI rather than RAID (`notes/xenon-firmware.md`).
 Two cases this proposal does not cover, recorded in `BUGS` below: SATA disks, which need an AHCI
-driver nothing owns, and NVMe hidden behind Intel RST or VMD ("RAID On" in many laptops'
+driver nothing owns. And NVMe hidden behind Intel RST or VMD ("RAID On" in many laptops'
 firmware), which milestone 261 already names as the reason xenon's AHCI setting mattered.
 
 ## Exit criteria a stranger could check
 
-1. Under QEMU: OVMF boots the stick image with an empty NVMe disk attached; the installer runs,
-   asks for confirmation naming the disk, partitions, formats and copies; the machine reboots with
-   the stick detached and reaches the prompt; a file written before the reboot reads back after it.
+1. Under QEMU: OVMF boots the stick image with an empty NVMe disk attached. The installer runs,
+   asks for confirmation naming the disk, partitions, formats and copies. The machine reboots with
+   the stick detached and reaches the prompt. A file written before the reboot reads back after it.
    One `cargo xtask` gate, in the shape of `uefi-boot`.
 2. On xenon, the same with a photograph, after milestone 261's wipe and bench boot.
 3. On one machine that is not xenon, from milestone 243's fleet, which is what makes it a claim
@@ -164,7 +164,7 @@ grant, the ESP template tool, the installer program, the boot mount of a partiti
 gate. The bench half is milestone 261's remaining step plus one boot. It depends on
 milestone 261 (the NVMe driver leaves the kernel)'s bench step, and no longer on `a-block-roster-that-can-name-an-nvme-disk.md`, which
 rung 2a proved unnecessary by handing the endpoint over directly. It does not depend
-on the network, on packages, or on milestone 242: an installer that asks for confirmation over the
+on the network, on packages, or on milestone 242. An installer that asks for confirmation over the
 serial console is rung 2 on xenon, and the same installer at a USB keyboard is rung 2 on a stranger's
 PC once rung 1 has one.
 

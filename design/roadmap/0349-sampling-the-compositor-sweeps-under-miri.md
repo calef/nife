@@ -33,7 +33,7 @@ cost of the check. The work is to stride them the same way, then measure the rea
 The check is currently affordable only because its budget was raised to 240 minutes, not because
 its cost was reduced. Milestone 238 did that deliberately to get the workflow green after three
 weeks red, and said so. The consequence is that the true end-to-end cost of the Miri run has never
-been measured: the budget is a ceiling nobody has pushed against, so nobody knows whether the check
+been measured. The budget is a ceiling nobody has pushed against, so nobody knows whether the check
 finishes in ninety minutes or in two hundred and thirty.
 
 A four-hour budget also decides how the check can ever be used. At that cost it is a scheduled job
@@ -63,8 +63,8 @@ strided and fell from 44+ minutes to 57 seconds; the other five are untouched an
 remaining cost of `script/undefined-behavior-check`. The budget was raised to 240 minutes instead of
 tuned, so the true end-to-end cost has never been measured."*
 
-The same block **refused** excluding `compositor` from the Miri run to make it fit, and the reason
-bounds this work: the crate has no `unsafe` today but is central system logic under active
+The same block **refused** excluding `compositor` from the Miri run to make it fit. The reason
+bounds this work. The crate has no `unsafe` today but is central system logic under active
 development, and an excluded crate is one where a future `unsafe` block is silently uncovered. So
 the answer has to be striding, not exclusion.
 
@@ -74,7 +74,7 @@ the answer has to be striding, not exclusion.
 magnitude slower than native, and `glob`, `network_time_protocol`, `calendar` and `gpt` already
 handle that by sampling their exhaustive loops under `cfg(miri)`. `compositor` has six full-screen
 per-pixel sweeps and one of them has been strided; it fell from over 44 minutes to 57 seconds. The
-other five are untouched and are now the whole remaining cost of the check, which is currently
+other five are untouched and are now the whole remaining cost of the check. That check is currently
 affordable only because its budget was raised to 240 minutes rather than because its cost was
 reduced, so the true end-to-end cost has never been measured. A four-hour budget also decides how the
 check can ever be used, since at that price it is a scheduled job and can be nothing else, and the

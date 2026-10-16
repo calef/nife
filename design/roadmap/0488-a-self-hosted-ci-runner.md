@@ -44,7 +44,7 @@ transcript can never be misread as having had silicon coverage.
 
 - **Condition.** The security posture changing, or a job that only local silicon can run becoming
   load-bearing. The first refusal is explicit that owning a runner for a public repository accepting
-  outside pull requests is a posture rather than a configuration, and the second is explicit that the
+  outside pull requests is a posture rather than a configuration. The second is explicit that the
   alternative it took, a loud skip, is a report rather than coverage.
 
 ## Index row

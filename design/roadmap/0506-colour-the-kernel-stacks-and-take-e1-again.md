@@ -37,7 +37,7 @@ its own page, so hot TCB fields alias the same way and predict the same knee.
 
 **The experiment separates them.** A feature build that starts each thread's stack a per-slot color
 below its top (slot index times about 640 bytes, modulo a page, so ten-line windows stop sharing
-sets), then E1 on a `board,bench,single_hart` card, interleaved against an uncolored build like E3.
+sets). Then E1 on a `board,bench,single_hart` card, interleaved against an uncolored build like E3.
 
 | E1 with coloured stacks | reading | what it does to §96 |
 |---|---|---|

@@ -198,10 +198,11 @@ been read against these questions.
   ceiling is the backstop ([migration drain](load-sensitive-assertions/migration-drain-tick-budget.md)).
 - A user program cannot read delivered ticks, so `destroy_with_retry` is safe by margin, not by
   unit. Giving a process a tick reading is an ABI addition, which is an architect's call.
-- The host-side post-run checks are emulator-dependent. On one tree, apt's QEMU 8.2.2 and the pinned
-  11.0.2 fail disjoint sets of them, and nothing in the output names the emulator. Before reading a
-  red post-run check as this family or as a regression, check which QEMU ran it. Milestone 414 (a
-  red post-run check does not say which emulator produced it) is the fix.
+- The host-side post-run checks are emulator-dependent, and naming the emulator does not make them
+  less so: on one tree, apt's QEMU 8.2.2 and the pinned 11.0.2 fail disjoint sets of them. Since
+  milestone 414 (a red post-run check does not say which emulator produced it) the output carries
+  the version, once in the per-architecture banner and on every red check line. Read that version
+  before reading a red post-run check as this family or as a regression.
 - The host-load line samples only while a leg runs and lands after the leg, not beside the panic
   ([the host-load line](load-sensitive-assertions/host-load-line.md)).
 

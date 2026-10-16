@@ -20,10 +20,10 @@ It is a `git grep` and a reading, not a mechanism.
 **Premise re-checked 2026-09-19 by running the sweep's own grep, and it has candidates.**
 `git grep -in 'one less than\|minus one\|zero means one' -- crates/ kernel/` returns 17 hits.
 Milestone 319's own two sites account for four of them and are settled. The rest have not been read
-against the rule this block states, and at least three are the family: `crates/pci` reads an MSI-X
-table size the specification stores as the count minus one in eleven bits,
+against the rule this block states, and at least three are the family. `crates/pci` reads an MSI-X
+table size the specification stores as the count minus one in eleven bits.
 `kernel/src/arch/x86_64/irq.rs` reads the I/O APIC's LVT entry count minus one out of a version
-register, and `crates/dtb`'s hostile test names a depth-minus-one that underflows at zero. Nothing
+register. `crates/dtb`'s hostile test names a depth-minus-one that underflows at zero. Nothing
 in the tree records that any of them was checked.
 
 ## In brief
@@ -35,7 +35,7 @@ panics.
 
 Milestone 319 found both spellings within one crate:
 
-- **Broken.** `machine_discovery::acpi::parse_dmar` read `body[0] + 1` into a `u8`, so a DMAR whose
+- Broken. `machine_discovery::acpi::parse_dmar` read `body[0] + 1` into a `u8`, so a DMAR whose
   `HostAddressWidth` byte is `0xff` overflowed. `kernel/src/arch/x86_64/machine.rs` calls that
   directly on firmware bytes, so the panic was on the x86 boot path.
 - Correct. `machine_discovery::riscv64::CounterInfo::bits` reads
@@ -59,7 +59,7 @@ containing "one less than", "minus one", "N - 1", or "zero means one".
 `git grep -in 'one less than\|minus one\|zero means one'` over `crates/` and `kernel/`, then for each
 hit check that the type the `+ 1` lands in is wider than the field it came from. Where it is not,
 widen the field rather than guarding the addition: making the wrong state unrepresentable is rung one
-of AGENTS.md's ladder and guarding is rung two, and in both cases found so far the wider type is also
+of AGENTS.md's ladder and guarding is rung two. In both cases found so far the wider type is also
 the honest one.
 
 Add a harness where the value crosses a trust boundary, which is the rule milestone 319 already
@@ -75,7 +75,7 @@ single lane owns.
 ## Index row
 
 Hardware specifications routinely store a count or a width as one less than the number meant, so
-that zero is a legal encoding, and undoing that needs one more value than the field's own type can
+that zero is a legal encoding. Undoing that needs one more value than the field's own type can
 hold: whether the widening happens before or after the `+ 1` decides whether the top of the range
 panics. Milestone 319 found both spellings inside one crate, `parse_dmar` reading `body[0] + 1` into
 a `u8` so that a DMAR with `HostAddressWidth` of `0xff` overflowed on the x86 boot path, and a

@@ -30,8 +30,8 @@ streamed into it?
 **Today the tree allows it and nothing uses it.** The planner composes the two by fixed position
 (`an_argument_and_an_input_stream_compose_by_the_same_fixed_order` in `crates/grant_plan/src/lib.rs`
 plans exactly that line and gets a clean grant). The one thing that used to break was a host test in
-`crates/swish` that typed `<name> 21` for every program and so went red on this manifest shape;
-milestone 150 taught that sweep to supply every operand the manifest asks for, so **adding such a
+`crates/swish` that typed `<name> 21` for every program and so went red on this manifest shape.
+Milestone 150 taught that sweep to supply every operand the manifest asks for, so **adding such a
 program no longer needs an edit anywhere outside its own declaration**.
 
 What is left is whether the combination is wanted, and that is the call this asks for.
@@ -43,7 +43,7 @@ had used, and hit the swish sweep. `notes/adding-a-program.md` then recorded it 
 planner's comment ruled out the neighboring case, a file together with an input, and said
 nothing about this one. The 2026-08-22 correction established by test that the two are not
 analogous: `FileSpec` and `InputSpec` both take a bare name, so a manifest with both would leave the
-parser two indistinguishable positions, while an argument is numeric-shaped and claims position 0
+parser two indistinguishable positions. An argument is numeric-shaped and claims position 0
 before the input's bare-name fallback looks at what remains.
 
 ## Options

@@ -43,8 +43,12 @@ needs neither.
 
 - The chain holds only if children are built from the supervisor's own region. A supervisor that
   builds a child out of a region delegated from elsewhere breaks it: destroying the supervisor does not
-  reclaim the child, and orphans are back. Whether that is *forbidden* or merely discouraged is not yet
-  decided, and it should be before someone writes a supervisor that does it.
+  reclaim the child, and orphans are back. Decided 2026-10-15: forbidden
+  ([§303 (the region)](0303-the-retention-declaration-says-nothing-about-the-region.md)). Children
+  are built from budget you own: a region you created, a `SPLIT` child of your own region, or a
+  root handed to you as your whole budget. The enforcement named there: `build_child` will require
+  the caller to present the owning region, and the kernel will refuse when `build_ut`'s recorded
+  parent is not it. Until that check lands, the rule is stated and not enforced.
 - `disown` cannot mean what Unix means. "Stop supervising but keep running" is incoherent when
   dropping the supervisor kills the subtree. It has to mean transfer supervision upward, to the
   shell's own supervisor, which is an explicit act with an obvious place to put it. That is a better

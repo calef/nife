@@ -76,8 +76,8 @@ later, because this week's numbers exist today and will not exist next week.
    not depend on anybody remembering: the metrics workflow already runs on a schedule, and the
    question a lane has to answer is what it can read without a human present. If the honest answer
    is that some input needs a person once a week, say so and make the gap visible rather than
-   pretending otherwise (`script/cadence-check` is this tree's existing shape for a thing that is
-   due and has not happened).
+   pretending otherwise. (`script/cadence-check` is this tree's existing shape for a thing that is
+   due and has not happened.)
 
 ## What was built, 2026-09-21
 
@@ -105,7 +105,7 @@ asserted.
 The mechanism. A GitHub runner cannot see the session records, so the weekly workflow cannot
 capture them and no workflow ever will. `script/effort --snapshot` writes a machine-local cache
 outside the repository, safe to run unattended from `launchd`, so a week's numbers outlive the
-transcripts; `script/cadence-check` gained its one non-workflow row and reports when the committed
+transcripts. `script/cadence-check` gained its one non-workflow row and reports when the committed
 file does not hold the current week, through the watcher patagonia already runs. `--update` refuses
 to lower a figure a past week already carries, because the way this measurement dies is a pruned
 transcript and a later run writing the smaller number over the larger one.
@@ -168,13 +168,13 @@ dishonest version.
   spent on its milestone, joined from the branch it worked on),
   `design/roadmap/0574-what-a-lane-spent-on-its-milestone.md`. Every session
   record carries a `gitBranch` and a lane's branch is named for its milestone, so the join from
-  machine effort to milestone is on disk and was deliberately not built here: a branch is not a
+  machine effort to milestone is on disk and was deliberately not built here. A branch is not a
   milestone (maintainer branches, `main`, rebases), and a wrong per-component cost is worse than
   none. It is the difference between "this project cost 22 billion tokens" and "a verified component
   costs this much", which is the number the literature comparison actually wants.
 - **Recorded.** The suspect 2026W37 capture, the $200 of subscription outside the series, the
   restatement of old weeks at the newest ledger rate, and `lane_tokens` counting the whole session
-  rather than its lanes all live in `BUGS` sections beside the thing a reader meets: this block's
+  rather than its lanes all live in `BUGS` sections. Beside the thing a reader meets: this block's
   own, `notes/project-metrics.md`'s, `notes/project-metrics/ledger.md`'s, and `script/effort`'s.
 - **Recorded.** `script/cadence-check`'s new row is checked by its output rather than by a run, so a
   capture that ran and wrote nothing because the records were pruned reads as live. That hole is in

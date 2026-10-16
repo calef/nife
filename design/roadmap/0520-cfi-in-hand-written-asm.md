@@ -14,7 +14,7 @@ block, commented "stack-unwinding tables; we never unwind" -- true about this ke
 ELF from outside. That one line had been discarding the *compiler's* call-frame information for
 every ordinary Rust function in the kernel, on every architecture, since the first commit, not only
 whatever this milestone was sent to add. **The debugger could not unwind anything, anywhere, and
-nobody knew**, because nothing had ever tried and printed what it got: `script/gdb`'s own
+nobody knew**, because nothing had ever tried and printed what it got. `script/gdb`'s own
 instructions (`break kernel_main`, `break _boot`) work for source-level stepping regardless, which
 is exactly the kind of thing that hides a dead unwinder. The hand-written assembly's own missing
 directives are what made the defect visible, by giving a reason to go looking at `.eh_frame` at all.
@@ -61,13 +61,13 @@ identical, `cmp` confirmed. aarch64's flat-image steps (`helpers/qemu-runner-aar
 `xtask/src/inspect.rs`'s `image()`) now `--remove-section` the CFI back out before boot, since that
 is the one place a bootloader actually reads these bytes into memory; the full ELF `gdb <elf>`
 reads keeps the content either way. riscv64 and x86_64 have no such strip and none was added (see
-BUGS): neither port has a flat-image step at all, so the CFI rides into QEMU's guest RAM alongside
+BUGS). Neither port has a flat-image step at all, so the CFI rides into QEMU's guest RAM alongside
 everything else, harmlessly, in a VM with the usual hundreds of megabytes.
 
 `script/fastpath-footprint` is byte-identical before and after on every reported number
 (`ipc_send_recv` 6300, `ipc_call_reply` 8234, `ipc_fastpath` 8234, `syscall_entry` 1701): CFI lives
 in `.eh_frame`, a section distinct from `.text`, and the measurement confirms it moved nothing. That
-and the `__image_size`/flat-image evidence above are the proof that annotating every hand-written
+and the `__image_size`/flat-image evidence above are the proof. Annotating every hand-written
 assembly file in the tree, plus un-hiding the compiler's own CFI for every Rust function, changed
 nothing else about what this kernel boots or how fast its IPC path runs.
 
@@ -89,11 +89,11 @@ caller: the backtrace ends here") -- the directive says the same thing to the un
 **A trap is not a call, and two of the three architectures cannot fully describe it.** Vector/trap
 entries mark `.cfi_signal_frame` and recover every general-purpose register correctly everywhere.
 Whether they can *also* recover the interrupted PC -- and so keep an unwind going past the trap
-boundary, into whatever kernel code took the interrupt -- is where the three architectures diverge,
-and this is recorded here rather than only in a note nobody reads twice:
+boundary, into whatever kernel code took the interrupt -- is where the three architectures diverge.
+This is recorded here rather than only in a note nobody reads twice:
 
 - x86_64 can, in full. The hardware trap frame puts the interrupted RIP and RSP at fixed
-  offsets from the software frame's own CFA, and the SysV DWARF register mapping already treats
+  offsets from the software frame's own CFA. The SysV DWARF register mapping already treats
   register 16 (RIP) as the ordinary return-address column and register 7 (RSP) as an ordinary
   describable register. `isr_common` states `.cfi_offset 16, 16` / `.cfi_offset 7, 40` and the
   unwind genuinely continues past the trap.
@@ -105,12 +105,12 @@ and this is recorded here rather than only in a note nobody reads twice:
   column and does not consult `.cfi_return_column`
   ([sourceware.org/pipermail/gdb/2023-January/050488.html](https://sourceware.org/pipermail/gdb/2023-January/050488.html)).
   The honest choice, made here, is `.cfi_undefined x30` at the boundary rather than repurposing a
-  column GDB does consult to smuggle `elr_el1` through it, which would make the unwind work today at
+  column GDB does consult to smuggle `elr_el1` through it. That would make the unwind work today at
   the cost of `p $lr` in that frame silently lying about the real `x30` register.
 - **RISC-V cannot, and has no spec-level answer to reach for.** The interrupted PC lives in `sepc`,
   and unlike AArch64, the base RISC-V DWARF register mapping has no reserved pseudo-register for a
   CSR at all. `trap.s`'s `.cfi_undefined ra` at the trap boundary is not a workaround for a tooling
-  gap the way AArch64's is; it is the only currently-describable answer, and closing it would need a
+  gap the way AArch64's is. It is the only currently-describable answer, and closing it would need a
   convention this project cannot mint unilaterally -- a project-local DWARF register number would
   mean nothing to a debugger built against the standard mapping.
 
@@ -129,11 +129,11 @@ Captured with GDB 17.2 against two builds of the identical source tree -- commit
 `cargo xtask gdb` currently drives. Full transcripts are in `notes/cfi-unwind.md`'s appendix
 "Before and after: the GDB transcripts".
 
-Before, breaking on `switch_to` and asking for a backtrace: GDB's own frame-pointer fallback
+Before, breaking on `switch_to` and asking for a backtrace. GDB's own frame-pointer fallback
 (there was no CFI at all to consult, the compiler's included, because of the discard line above)
 correctly walked four real Rust frames using the AAPCS64 `x29` chain ordinary functions still build
-regardless of CFI, then walked into `exception_vectors`, which builds a raw trap frame rather than a
-conventional `x29` link -- and looped, printing the identical bogus frame past #9976, three
+regardless of CFI. Then it walked into `exception_vectors`, which builds a raw trap frame rather
+than a conventional `x29` link -- and looped, printing the identical bogus frame past #9976, three
 minutes and forty-five seconds before being killed by hand. This is the sharpest evidence in the
 whole milestone that "no CFI" is not merely "less information": GDB's own fallback trusted a
 hand-written function that looked frame-pointer-shaped and was not, and had nothing telling it when
@@ -186,10 +186,10 @@ transcripts above, not the gate.
 ## Index row
 
 Twelve hand-written `.s` files under `kernel/src/arch/` (thirteen counting `x86_64/fp.s`, missing
-from the original list) get real call-frame information -- `.cfi_undefined` where a function
+from the original list) get real call-frame information. It is `.cfi_undefined` where a function
 genuinely has no caller rather than an invented frame, `.cfi_signal_frame` at trap entries, and a
-`switch_to` on every architecture whose CFA formula needs no special handling at the stack swap
-because it is expressed in terms of the live stack-pointer register. The bigger find was underneath
+`switch_to` on every architecture whose CFA formula needs no special handling at the stack swap.
+The formula is expressed in terms of the live stack-pointer register. The bigger find was underneath
 it: all three link scripts were discarding `*(.eh_frame*)` outright, which had been hiding the
 *compiler's* CFI for every ordinary Rust function, on every architecture, since the first commit,
 not only this milestone's additions. Fixed after two rejected placements (`NOLOAD` drops the bytes,
@@ -197,5 +197,5 @@ not only this milestone's additions. Fixed after two rejected placements (`NOLOA
 verified byte-for-byte against a build of the prior commit on both `__image_size` and the flat
 aarch64 boot image. `script/fastpath-footprint` is byte-identical before and after. Proved live: a
 GDB backtrace that used to loop past 9976 frames of `exception_vectors ()` now walks seven real Rust
-frames through a resumed thread and a trap, and stops exactly where AArch64's DWARF gap and RISC-V's
+frames through a resumed thread and a trap. It stops exactly where AArch64's DWARF gap and RISC-V's
 absent one say it honestly must.

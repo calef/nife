@@ -66,7 +66,7 @@ position, plus `pub const ALL: &[(&str, u64)]` naming them. Then one generic tes
 That is rung one for the numbering (a position cannot collide with itself) and rung two for the rest.
 
 The names stay exactly as they are. This is a change to how they are written down, not to what
-they are called; every constant keeps its spelling, its doc comment and its value, and `EXPECTED`
+they are called. Every constant keeps its spelling, its doc comment and its value, and `EXPECTED`
 keeps being written by hand because which bits a correct run reports is a claim rather than a
 derivation.
 

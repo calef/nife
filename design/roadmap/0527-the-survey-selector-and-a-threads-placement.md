@@ -32,9 +32,9 @@ invoke(cap, SURVEY, cursor, record, 0) -> (next_cursor, tid, word)
   capability, and still takes `ENUMERATE` and pointedly not `READ`. What changed is that its second
   argument now means something.
 - x0 and x1 are the frame; only x2 belongs to the record. The cursor walk and the tid do not
-  depend on the selector, so a caller wanting two facts walks the domain twice and joins on the tid,
-  and a caller wanting one is unaffected by every record it does not ask for. That is what makes a
-  new record cost an existing reader nothing, and it is asserted rather than assumed, because the
+  depend on the selector, so a caller wanting two facts walks the domain twice and joins on the tid.
+  A caller wanting one is unaffected by every record it does not ask for. That is what makes a
+  new record cost an existing reader nothing. It is asserted rather than assumed, because the
   cheap way to build a selector is to let each record drive its own walk and that version makes the
   tids unjoinable while passing everything else.
 - `abi::survey::record::STATE` is 0. Every caller written before the selector existed passed a
@@ -46,7 +46,7 @@ invoke(cap, SURVEY, cursor, record, 0) -> (next_cursor, tid, word)
 - An unknown record is `abi::Error::BadMethod`, refused before the walk begins. The selector is
   part of the method's name, so an unrecognized one gets the refusal an unrecognized method word
   gets; no new error code was needed, and none was added. It is checked before the walk rather than
-  at the point the record is extracted because of exactly one case: against an empty domain a
+  at the point the record is extracted because of exactly one case. Against an empty domain a
   check at extraction never runs, the walk falls off the end, and the caller is handed `DONE` and
   prints "no threads" when it actually asked a question this kernel does not understand. A plausible
   wrong answer is worse than an error, which is the ruling this tree already made about a counter it
@@ -57,7 +57,7 @@ invoke(cap, SURVEY, cursor, record, 0) -> (next_cursor, tid, word)
 ## Why a selector rather than a fourth word
 
 §150 ruled that CPU time would arrive as a fourth return register and flagged that sub-choice as the
-irreversible one, to be overturned before milestone 282 (a thread's CPU time, and the `top` it makes
+irreversible one. It was to be overturned before milestone 282 (a thread's CPU time, and the `top` it makes
 possible) ships or not at all. 282 is NOT-STARTED, so 2026-09-21 was that moment, used as designed.
 
 The deciding input was a forecast rather than an argument about elegance. A register row holds a
@@ -82,8 +82,8 @@ missing path is what kept that supervisor in the kernel.
 
 It is placement rather than location, and the reason is measured. Keeping the core a thread is
 on *now* means a store in the context switch, which is the hottest line of the hottest function. The
-kernel has exactly that field, `Thread::last_cpu`, and it is behind a soak-build feature gate
-because shipping it unconditionally cost 5.7% of `ipc_fastpath`'s footprint on aarch64 (5788 ->
+kernel has exactly that field, `Thread::last_cpu`, and it is behind a soak-build feature gate.
+Shipping it unconditionally cost 5.7% of `ipc_fastpath`'s footprint on aarch64 (5788 ->
 6120 bytes), over milestone 132 (the fast path's footprint, and a gate)'s 5% bound, with
 riscv64 and x86_64 growing 4.7% and 4.6% behind it. A placement is one store per thread
 creation, on a path that is cold by definition, so the same information that was too expensive to
@@ -96,8 +96,8 @@ thread stolen onto another core, or woken onto its waker's, goes on reporting wh
 
 ## The online set, which is the one way to misuse this
 
-**The cpu id is a name, not an index.** The online set is not `0..n`: on the VisionFive 2 it is
-`{1, 2, 3}`, because slot 0 is an M-mode monitor core with no MMU, and treating the count as an
+**The cpu id is a name, not an index.** The online set is not `0..n`. On the VisionFive 2 it is
+`{1, 2, 3}`, because slot 0 is an M-mode monitor core with no MMU. Treating the count as an
 index put `init` into a parked core's inbox and took three boots to diagnose on first silicon. That
 is why `crates/cpu_set` exists, and a record handing userspace a core id is a fresh invitation to
 the same bug.
@@ -123,7 +123,7 @@ that can already see a tid and a run state learns which of a handful of cores th
 on, and learns nothing whatever about a thread outside the domain it was handed.
 
 That reasoning is in the dispatcher's own comment on the `SURVEY` arm rather than only in a
-decisions file two hops away, which is rung three of the ladder applied to an argument a reader
+decisions file two hops away. That is rung three of the ladder applied to an argument a reader
 needs at the point they are reading the code.
 
 ## What milestone 282 adds, which is the point of building it this way
@@ -172,7 +172,7 @@ plus the x86_64 UEFI-firmware leg.
   survey one, so it is not a record and does not belong behind this selector.
 - **Recorded.** That `ps` and `pgrep` still ask only for the state record, in this block's `BUGS`.
   Whether a placement column appears, and what it is called, is a naming call as much as a build
-  one, and it belongs with milestone 282 (a thread's CPU time, and the `top` it makes possible)'s
+  one. It belongs with milestone 282 (a thread's CPU time, and the `top` it makes possible)'s
   `top` question rather than ahead of it.
 - **Recorded.** The per-thread page for the self case, in `notes/process-view.md`'s `BUGS`. The same
   2026-09-21 ruling gave a thread observing *itself* an `rseq`-shaped page rather than a selector,
@@ -181,15 +181,15 @@ plus the x86_64 UEFI-firmware leg.
 
 ## Index row
 
- `abi::rendezvous::SURVEY` took a cursor and returned three fixed words; it now
+ `abi::rendezvous::SURVEY` took a cursor and returned three fixed words. It now
 takes a record selector in the argument that was always a zero, and only the third word belongs
-to the record, so the cursor and the tid are the same for every record and a new fact costs an
+to the record. So the cursor and the tid are the same for every record and a new fact costs an
 existing reader nothing. `record::STATE` is 0 precisely so that every pre-selector caller, which
-passed a zero as padding, keeps reading what it read; an unknown record is `BadMethod`, refused
+passed a zero as padding, keeps reading what it read. An unknown record is `BadMethod`, refused
 before the walk so that a bad selector against an empty domain is a refusal rather than a `DONE` a
 reader prints as "nothing here". The one record shipped is `record::PLACEMENT`, the cpu a thread was
-put on at start, a fact `spawn_reporting_placement` has held since milestone 240 with no path out;
-it is placement rather than live location because the live answer needs a store in `schedule()`'s
+put on at start, a fact `spawn_reporting_placement` has held since milestone 240 with no path out.
+It is placement rather than live location because the live answer needs a store in `schedule()`'s
 switch, which cost 5.7% of `ipc_fastpath`'s footprint and is why `Thread::last_cpu` is soak-gated. A
 census keyed by the returned id needs no online mask, which is asserted as a subset relation rather
 than promised, and the id is a name rather than an index because the online set is `{1, 2, 3}` on

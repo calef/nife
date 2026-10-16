@@ -12,8 +12,8 @@ needs_person: no
 Filed 2026-09-03 as an unnumbered proposal by the milestone 247 sweep,
 from milestone 237 (the cycle-counter grant costs 136 bytes of IPC)'s block; numbered 2026-09-19 by milestone 433 (drain the proposal pile to zero, and keep). Premise re-checked 2026-09-19 and
 the build is still owed. DECISIONS §144 (the fastpath footprint gate gets a delta and) answered the question on 2026-09-04 (both shapes, with the
-ceiling at 16 KiB on `max(ipc_send_receive, ipc_call_reply) + syscall_entry`) and nothing has been built
-against it: `script/fastpath-footprint` still compares against `bench/fastpath-aarch64.txt`,
+ceiling at 16 KiB on `max(ipc_send_receive, ipc_call_reply) + syscall_entry`). Nothing has been built
+against it. `script/fastpath-footprint` still compares against `bench/fastpath-aarch64.txt`,
 `bench/fastpath-riscv64.txt` and `bench/fastpath-x86_64.txt` at a 5% tolerance, with no delta against
 `main` and no absolute ceiling anywhere in the script. The reasoning below is kept as the record of
 what §144 was deciding between.
@@ -78,9 +78,9 @@ not decide the question, and it is one case rather than a pattern; it is offered
 kind of case the delta option is supposed to be immune to and is not.
 
 The same lane's measurements on the other side are in the `unattributed-fastpath-residuals`
-proposal, which milestone 433 numbers 361: all
+proposal, which milestone 433 numbers 361. All
 three `ipc_fastpath` baselines are now stale, aarch64 having gone stale again within a week of
-milestone 237 re-recording it, which is this proposal's own failure mode recurring on schedule.
+milestone 237 re-recording it. That is this proposal's own failure mode recurring on schedule.
 
 ## Where it came from
 
@@ -93,12 +93,12 @@ mechanism."*
 ## Index row
 
 `script/fastpath-footprint` measures the IPC fastpath's code size against a stored baseline file,
-which somebody has to remember to re-record when growth is understood and accepted, and it has
-already failed the way that fails: two lanes each measured "within bound" against the same stale
-baseline and neither re-saved it, so aarch64 headroom fell from 3.9 points to 1.5 with nothing
+which somebody has to remember to re-record when growth is understood and accepted. It has
+already failed the way that fails. Two lanes each measured "within bound" against the same stale
+baseline and neither re-saved it. aarch64 headroom fell from 3.9 points to 1.5 with nothing
 firing. Milestone 237 fixed that instance and explicitly not the mechanism. DECISIONS §144 ruled on
 2026-09-04 that the gate gets both shapes, a delta check against `main` that cannot go stale and
 replaces the baseline files, plus an absolute ceiling of 16 KiB per architecture that only calef
-raises, because they catch different failures: a delta alone lets absolute size grow without limit,
+raises. They catch different failures: a delta alone lets absolute size grow without limit,
 and the gate is named for an absolute property. This is the building, which nobody has done; all
 three baselines were stale again within a week of 237 re-recording one.

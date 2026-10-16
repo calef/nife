@@ -56,10 +56,10 @@ went nowhere a transcript reads.
 `serve_one_inbound` (`std_exerciser/src/main.rs`) panics with "round N: nobody connected" when
 `accept` returns an error, and `std-nife`'s `accept` returns `WouldBlock` when `net_stack`'s
 bounded wait expires. `probe_inbound` (`xtask/src/main.rs`) holds each connection it opens until it
-is answered or the run ends. So if the prober opened a connection in the gap between the
+is answered or the run ends. Suppose the prober opened a connection in the gap between the
 hand-written listener's window and the std one, and that connection is never delivered to the std
-listener, the prober waits on it for the rest of the run (the 90-second `stopped-while-waiting`
-above) and the std listener's bounded wait expires with nobody connecting. HVF runs the suite about
+listener. The prober waits on it for the rest of the run (the 90-second `stopped-while-waiting`
+above), and the std listener's bounded wait expires with nobody connecting. HVF runs the suite about
 three times faster than TCG, which reshapes that gap. None of this was confirmed by
 instrumenting it.
 
@@ -106,7 +106,7 @@ Both instruments the block asked for were built first, and the evidence then pic
 
 1. **`net_stack` resets a peer whose handshake landed in a listener being closed**
    (`close_tcp`, in a new child `components/src/tcp_close.rs`, since §282 (when a file is split,
-   the parent becomes an index) lets `net_stack.rs` only shrink): `abort` and one poll instead of
+   the parent becomes an index) lets `net_stack.rs` only shrink). `abort` and one poll instead of
    `close`, which is what Linux does to a closed listener's unaccepted connections.
 2. **A std test fails at once when its writer dies** (defect 2): `drain_sink_from` in
    `system_tests/src/user/std_tests.rs` binds a notification to the test thread, ticks it every
@@ -118,7 +118,7 @@ Both instruments the block asked for were built first, and the evidence then pic
    program's lines as `std listen| ...` so they can be stamped. `std_exerciser`'s accept panic now
    says how long it waited.
 4. The hand-written listener re-arms too (`ACCEPT_TRIES`, five 15 s windows, in
-   `components/src/socket_test_client.rs`). Not the cause, but measured beside it: the prober's
+   `components/src/socket_test_client.rs`). Not the cause, but measured beside it. The prober's
    first connection is opened at boot and slirp backs its SYN off to 16 and then 32 s gaps, and
    every run here answered it about 10 s into a single 15 s window.
 5. `script/ci-build`'s sentence naming this test as a known flake is gone, and notes/hvf-leg.md,
@@ -136,7 +136,7 @@ passing each time, about 90 s a run. One stopped earlier, at
 (`alice was not authenticated`), before any network test ran; that test's BUGS records it.
 
 Read the green count with its caveat. Four more full runs on the way here (one on the base commit,
-three with the instruments but before the `net_stack` fix) were green too, so at this load the
+three with the instruments but before the `net_stack` fix) were green too. So at this load the
 unforced hang was rarer than the two in three of 2026-09-19 or the three in six of 2026-09-24 (load
 14 to 25). Twelve green runs therefore say little alone. The evidence that the fix closes the cause is
 the forced pair: red without it, green with it, same forcing.

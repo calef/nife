@@ -15,8 +15,8 @@ the tool first: on 442's own branch the worklist lists all three, and on `main`
 refusals. The hole had been closed a month earlier and the tree was still describing it.
 
 That is the defect `AGENTS.md` cares about most in documentation, said from the other side. An
-honest `BUGS` section is the mechanism that makes a newcomer trust the docs; a `BUGS` section
-claiming a limitation the code does not have spends that trust just as fast as hiding one, and
+honest `BUGS` section is the mechanism that makes a newcomer trust the docs. A `BUGS` section
+claiming a limitation the code does not have spends that trust as fast as hiding one, and
 costs more, because it sends somebody to build a thing that already exists.
 
 ## What was false, and what is true
@@ -57,8 +57,8 @@ from `script/`'s entry points. It was priced rather than assumed, and refused. T
 - Enumerating costs **about 15 rows on a worklist 76 deep**, a fifth again of the only queue in
   this tree whose sole consumer is an architect's attention.
 - Zero of the 9 paragraphs records a refusal. The claim of milestone 115 (the names that were
-  ratified, and the ones that were refused) is that the refusals are the valuable half, and today
-  that half is empty here, so leaving `helpers/` out loses nothing that mechanism was built to
+  ratified, and the ones that were refused) is that the refusals are the valuable half. Today
+  that half is empty here. Leaving `helpers/` out loses nothing that mechanism was built to
   keep. That is the number to re-measure if this is revisited.
 - The 8 without a paragraph are the machine-invoked ones: `qemu-runner-aarch64.sh`,
   `qemu-runner-riscv64.sh`, `qemu-runner-x86_64.sh`, `qemu-bounded.sh`,
@@ -69,7 +69,7 @@ The deciding argument is the worklist's own ordering. `--unratified` prints its 
 a program is typed at the prompt, a crate is what a newcomer greps, a `script/` entry point is typed
 by whoever works on the tree. `design/naming/programs-scripts-and-directories.md`'s **Scripts**
 section defines `helpers/` as the drawer that is called by other scripts and by `xtask`, **not by
-people**. Enumerating it would add a tier below the bottom tier of a list whose entire ordering is
+people**. Enumerating it would add a tier below the bottom tier of a list whose ordering is
 exposure, which is not a coverage improvement but a dilution of the ranking. If it is ever built, it
 sorts last, after `script/`, for the same reason.
 
@@ -81,8 +81,8 @@ have no reason to open.
 
 A refusal is not the same as an answer that is wrong. `script/names merge-drain` printed *"neither a
 name in the tree nor a recorded refusal"* about a file whose header argues that name for four lines.
-That is the confident-wrong-answer shape the `package` kind was added to fix one level along, and it
-does not need coverage to fix: the tool now recognizes a `helpers/<name>.sh` or `helpers/<name>.py`,
+That is the confident-wrong-answer shape the `package` kind was added to fix one level along. It
+does not need coverage to fix. The tool now recognizes a `helpers/<name>.sh` or `helpers/<name>.py`,
 says the name is out of the worklist's scope on purpose, cites where the reason is written, and
 points at the file that holds the record. Six lines, no new rows, and the query stops lying.
 
@@ -99,8 +99,8 @@ would fire on every honest description of the limitation, which is `git grep -w 
 false-positive rate wearing a different hat, and `script/lint` has dropped checks for exactly that
 signature before.
 
-So the move is rung three, a written record at the thing itself: the scope of the naming
-worklist is now stated in exactly one place, `design/naming.md`'s `BUGS` section, and every other
+So the move is rung three, a written record at the thing itself. The scope of the naming
+worklist is now stated in exactly one place, `design/naming.md`'s `BUGS` section. Every other
 mention of it (`script/names`' comment, the two `helpers/` python modules, `notes/scripts.md`)
 cites that bullet instead of restating the reason. A copy that is a pointer cannot go stale in the
 direction this milestone was written to fix; it can only go dangling, which the relative-link check
@@ -111,11 +111,11 @@ in `script/lint` already catches.
 - **The pointers are prose and nothing follows them.** `script/names`' comment now says "see
   design/naming.md's BUGS" rather than naming four directories, and no check reads that bullet to
   confirm it still describes the code. This is the same limit `script/names --check` records for a
-  `recorded` citation, which is checked for being present and never followed, and it is not
-  closeable by a script for the same reason: a scope claim is prose and prose is checked by reading.
+  `recorded` citation, which is checked for being present and never followed. It is not
+  closeable by a script for the same reason. A scope claim is prose and prose is checked by reading.
 - **Types are still uncovered and were not priced.** `design/naming.md`'s `BUGS` names types
   alongside `helpers/` as the surfaces without blocks. This milestone measured `helpers/` because
-  the request named it; a type census would be a much larger count and a different argument, since
+  the request named it. A type census would be a much larger count and a different argument, since
   a type name is read by everyone writing against it, which is the opposite exposure to a helper
   script. Nobody has run that count.
 - The `helpers/` refusal is keyed on a number that will move. Zero of the nine paragraphs
@@ -137,14 +137,14 @@ in `script/lint` already catches.
 ## Index row
 
 A lane reported that `script/names` could not see root-level workspaces, calef asked for a lane to
-fix it, and the maintainer ran the tool first: the hole had been closed a month earlier by the
+fix it, and the maintainer ran the tool first. The hole had been closed a month earlier by the
 `package` kind, which discovers every `Cargo.toml` outside `crates/` rather than listing
 directories. What was left was a tree still describing the old shape in five places, including an
 `entropy_backend` `BUGS` entry promising that "the naming worklist will never list this crate as
 unratified" about a crate the worklist lists. A `BUGS` section claiming a limitation the code does
 not have spends a newcomer's trust exactly as fast as hiding one, and costs more, because it sends
 somebody to build a thing that exists. The genuinely uncovered surface, `helpers/`, was priced
-rather than assumed: 17 files, 9 already carrying a voluntary `Name:` paragraph, zero refusals
+rather than assumed. The count: 17 files, 9 already carrying a voluntary `Name:` paragraph, zero refusals
 recorded in any of them, and about 15 new rows on a worklist 76 deep whose only consumer is an
 architect's attention. It is refused on the worklist's own ordering rule, since that list is sorted
 by exposure and `design/naming.md` defines `helpers/` as the drawer people do not type. What the

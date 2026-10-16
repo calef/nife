@@ -73,7 +73,7 @@ Three of this project's own principles land on the same answer:
   against the language-isolated systems is currently unavailable in either direction.
 
 And note which way the number might cut, because a proposal that only anticipates a flattering
-result is not one. nife's trusted core is 39,892 code lines against Tock's ~6,000, and the honest
+result is not one. nife's trusted core is 39,892 code lines against Tock's ~6,000. The honest
 framing of that gap is not obvious: Tock's kernel is a uniprocessor embedded kernel with no MMU work,
 and nife's carries three architectures, page tables, a scheduler and an IPC path. The number could
 easily read badly and should be produced anyway.

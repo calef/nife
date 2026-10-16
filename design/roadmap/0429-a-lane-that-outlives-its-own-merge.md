@@ -75,7 +75,7 @@ what it knows and exit. Killing is the fallback for a lane that will not stop.
 
 **A finished lane is parked, not torn down**, which is what makes notifying possible at all: its
 transcript is retained and it can be resumed with its context intact. That is useful (it is how a
-report gets read after the fact) and it is also the second half of this confusion: a completed
+report gets read after the fact). It is also the second half of this confusion: a completed
 lane and a running one look identical in a list, exactly as a stale report and a fresh one look
 identical in prose. Both are resolved the same way, by checking state rather than reading presence:
 the agent list's status for the lane, `git merge-base --is-ancestor` for the merge.
@@ -106,5 +106,5 @@ and it then cost a second person's attention and a four-way verification pass. N
 it because a lane has no visibility outside its own worktree, which is the isolation that lets
 several run at once, and because nothing ends a lane except the lane. The proposal is one line on
 the merge checklist, notify rather than kill where the tooling allows it so a lane mid-thought can
-report what it knows, and it is honest that it cannot be higher than rung three: a long gate and an
-independent merge are both legitimate and their overlap is a race no type can rule out.
+report what it knows, and it is honest that it cannot be higher than rung three. A long gate and an
+independent merge are both legitimate, and their overlap is a race no type can rule out.
