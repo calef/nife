@@ -22,14 +22,14 @@ $ script/mutation-census --compare 2026-09-19 2026-09-21
 ```
 
 A full local run takes hours. The weekly workflow (`.github/workflows/mutation.yml`)
-runs the same command eight-way sharded with `--sharding round-robin`, so each shard is a uniform
+runs the same command eight-way sharded, so each shard is a uniform
 sample of every crate.
 
 The tool version is pinned in `.cargo-mutants-version`, today 27.1.0. The pin matters: cargo-mutants changes which mutants it generates between versions, so an unpinned
 tool moves the numbers with nothing in the tree changed. The host-excluded crates are derived at
-the call site (script/mutation passes them to cargo-mutants from `helpers/host-excluded-crates.sh`);
-`.cargo/mutants.toml` holds the judgment exclusions, each with its reason. That file is config, not
-a code dependency, per §46 (thin primitives or whole subsystems).
+the call site from `helpers/host-excluded-crates.sh`; `.cargo/mutants.toml` holds the judgment
+exclusions, each with its reason. That file is config, not a code dependency, per §46 (thin
+primitives or whole subsystems).
 
 To ask where a crate's mutants sit before restructuring it for testability, run
 `cargo mutants --list -p <crate>`. It attributes every mutant to its enclosing function.
@@ -58,7 +58,7 @@ time; a verdict reached by running is not ([baseline-ledger](mutation-testing/ba
 one is a detected hang. That check was made on the 2026-08-03 baseline. A timeout is almost always
 a loop that never ends, such as `+=` becoming `-=` on a walker's cursor.
 
-It is over viable mutants, so `unviable` is excluded from the denominator: an unviable mutant does
+The rate is over viable mutants: an unviable mutant does
 not compile, which says nothing about the tests. It is still a hole in the measurement. A function
 whose only mutant is unviable was never tested at all, and scores as though it passed
 ([measured-boot](mutation-testing/measured-boot.md)).
@@ -201,11 +201,10 @@ These recur across the appendices.
 
 This is the note's `BUGS` section.
 
-- **Scope is the main workspace's host crates.** The judgment exclusions and their reasons are in
-  `.cargo/mutants.toml`, and the host-excluded set is derived at the call site from
-  `helpers/host-excluded-crates.sh`. The bare-metal crates cannot compile for the host.
-  `supervision_protocol`, `swap_protocol` and `virtio` compile but cannot run a line without a
-  kernel. `xtask` is the build system, whose tests are the gates it runs.
+- **Scope is the main workspace's host crates**, minus the exclusions above. The bare-metal crates
+  cannot compile for the host. `supervision_protocol`, `swap_protocol` and `virtio` compile but
+  cannot run a line without a kernel. `xtask` is the build system, whose tests are the gates it
+  runs.
 - `redoxfs_server` and `tools/redoxfs_host` are not mutated. Each is its own workspace, kept apart
   so upstream RedoxFS never meets our clippy and fmt gates, and cargo-mutants works one workspace
   at a time. `redoxfs_server`'s pure logic is small and host-tested. The heavy half of its suite
