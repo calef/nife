@@ -25,8 +25,8 @@ under `## Follow-on`:
 
 `board_console` reads a board and never writes, to the port or to the outlet. Power is the obvious
 next verb and it is a different and more dangerous object: the outlet next to radon's on that strip
-feeds an external drive that must never be switched off, and a tool that can switch an outlet can
-switch that one.
+feeds an external drive that must never be switched off. A tool that can switch an outlet can switch
+that one.
 
 ## Revisit
 

@@ -23,14 +23,16 @@ cuts come before a hand-written path', under `## Follow-on`:
 ## Why it is here rather than only there
 
 A server's loop today is reply, then receive, then handle. Fusing the first two is the standard
-microkernel move and it takes the round trip from three syscalls to two. It is also a change to the syscall surface, governed by §10 (process model: capability-based, microkernel) and §16 (object revocation: reclaim the objects a process built), which AGENTS.md treats as a boundary rather than a habit and which this tree puts
-in calef's hands rather than a lane's. The block that named it was explicit: it is named so it is
-tracked, not so it is planned, and a lane must not take it.
+microkernel move and it takes the round trip from three syscalls to two. It is also a change to the
+syscall surface, governed by §10 (process model: capability-based, microkernel) and §16 (object
+revocation: reclaim the objects a process built). AGENTS.md treats it as a boundary rather than a
+habit, and this tree puts it in calef's hands rather than a lane's. The block that named it was
+explicit: it is named so it is tracked, not so it is planned, and a lane must not take it.
 
 ## Revisit
 
 - **Unstated.** The refusal names an authority rather than a trigger. It says which decisions govern
-  the change and who makes them, and it does not say what measurement or workload would justify making
+  the change and who makes them. It does not say what measurement or workload would justify making
   it, so there is nothing here for a bell to ring on. Closing that gap is one sentence of the form "a
   fused round trip is worth the surface when the three-syscall path costs N", and whoever takes the
   next fastpath measurement is the person to write it.
