@@ -23,7 +23,8 @@ From '162. Real hardware entropy on x86_64 and aarch64: RDSEED and RNDRRS', unde
 
 The instruction-entropy source wraps `RDSEED` on x86_64 and `RNDR`/`RNDRRS` on aarch64. The refusal
 is that riscv64 has no instruction to wrap, so a riscv64 arm would be a parity claim with nothing
-behind it, and the real hardware source on that architecture is milestone 159 (a real hardware entropy source: the JH7110's TRNG), through its own driver.
+behind it. The real hardware source on that architecture is milestone 159 (a real hardware entropy
+source: the JH7110's TRNG), through its own driver.
 
 ## Revisit
 

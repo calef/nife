@@ -32,8 +32,8 @@ so they are not the cause, and they are the only thing on screen that looks like
 Take a rate before anything else, the way notes/load-sensitive-assertions.md did for the timer
 assertions: twenty runs of `cargo xtask uefi-test`, with the host load average beside each, on an
 idle machine and on a loaded one. Then find out what path exits 1 after the harness has printed its
-summary (a late fault, a triple fault on the way to `isa-debug-exit`, the firmware's own exit), and
-make the failure message say which, since the one a reader gets today invites a QEMU-version theory
+summary (a late fault, a triple fault on the way to `isa-debug-exit`, the firmware's own exit). Make
+the failure message say which, since the one a reader gets today invites a QEMU-version theory
 the evidence does not support. Say at the failure that the VT-d lines are expected.
 
 Reversible, and on the customer path only by way of trust: a gate that goes red for a reason nobody

@@ -2,7 +2,7 @@
 status: NOT-STARTED
 raised: 2026-09-03
 milestone_dependencies: none
-decision_dependencies: unwritten
+decision_dependencies: 303
 machine_requirements: none
 specific_machine: none
 needs_person: no
@@ -19,10 +19,12 @@ retains over a child after `START`) has been DECIDED since 2026-09-03 with nothi
 region. The three spawn paths this file names as
 disagreeing still disagree.
 
-What a spawner keeps of a child's *region* is a convention with the same shape
-as §142's, and §40 (there is no reaper of last resort) already records the open question this would
-answer. It is an architect's call whether the declaration widens, and it should not widen on a
-lane's initiative: the field is read by every spawn path in the tree.
+The question is decided:
+[§303 (the region)](../decisions/0303-the-retention-declaration-says-nothing-about-the-region.md),
+2026-10-15. It keeps the declaration the TCB's, and it forbids building a child from a retained
+delegated region. The enforcement is named as work for this milestone or its own: present the
+owning region beside `build_ut`, and the kernel refuses when `build_ut`'s recorded parent is not
+it.
 
 **In brief.** §142 gave `ChildEndowment` a `retention` field. One struct literal now states both
 what a child is given and what its spawner keeps. What it states is the disposal of one capability,
@@ -48,7 +50,8 @@ what they do. Neither is stated anywhere a reader of the endowment can see.
 
 ## What §40 already says about it
 
-§40's first recorded caveat is this question in different words: the ownership chain that makes a
+[§40 (a supervisor's death is its subtree's death)](../decisions/0040-no-reaper-of-last-resort.md)'s
+first recorded caveat was this question in other words: the ownership chain that makes a
 reap work "holds only if children are built from the supervisor's own region," and whether building
 a child from a *delegated* region is forbidden or merely discouraged "is not yet decided, and it
 should be before someone writes a supervisor that does it." A declared field is the natural place

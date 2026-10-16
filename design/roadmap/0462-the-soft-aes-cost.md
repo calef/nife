@@ -26,7 +26,7 @@ fallback", under `## Follow-on`:
 
 Upstream puts AES-NI roughly an order of magnitude ahead of the portable bitsliced backend. This
 tree declined to produce its own number, which is the right call under its own rule about facts that
-leave the machine: a benchmark with no workload behind it is a number a stranger can quote and
+leave the machine. A benchmark with no workload behind it is a number a stranger can quote and
 nobody can defend.
 
 ## Revisit

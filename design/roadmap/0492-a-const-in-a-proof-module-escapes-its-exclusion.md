@@ -15,7 +15,7 @@ proposal `a-const-in-a-proof-module-escapes-its-exclusion`, filed 2026-09-19, on
 of 2026-09-20 to give every proposal on `main` a number. The text below is the proposal's own,
 unedited except for this paragraph: the argument is its author's and promotion is not the moment to
 improve it. Found by milestone 438 (would a diff-scoped mutation check have caught) while replaying `cargo mutants --in-diff` against milestone 319 (the crate that parses firmware had no)'s
-pull request: two of the four survivors it reported are mutants that `cargo test` can never kill, in
+pull request. Two of the four survivors it reported are mutants that `cargo test` can never kill, in
 a module `cargo test` never compiles.
 
 One entry in `.cargo/mutants.toml` and a paragraph saying why, which is the same
@@ -44,8 +44,9 @@ number is small; it grows the next time a harness needs a computed bound.
 
 Why it is worth an entry rather than a shrug. It is the third appearance of one defect.
 Milestone 244 found `system_initializer` scored 191-mutants-0-caught because `--exclude` does not
-remove a package from the dependency graph; milestone 280 found `uefi_loader`'s `[[bin]]` half
-scored on a file nothing compiles; milestone 326 found 36 of `timetable`'s 48 survivors were its own
+remove a package from the dependency graph. Milestone 280 (unexplained holes in the published score)
+found `uefi_loader`'s `[[bin]]` half scored on a file nothing compiles. Milestone 326 (nobody has
+been assigned to turn a mutation score upward) found 36 of `timetable`'s 48 survivors were its own
 proof harnesses, because the module-path regex cannot see a module that is its own file. Each time
 the number moved for a reason that was arithmetic rather than a finding, and each time it was found
 by somebody triaging by hand. This one is the same defect keyed on the item kind instead of the
@@ -54,7 +55,7 @@ file layout.
 The shape of the fix, for whoever takes it. A regex over the mutant name cannot express "inside
 a `cfg`-gated module", because the name does not carry that. What the tree can express is the file
 and line, which `exclude_globs` cannot reach either. So the honest options are a narrow name regex
-per case (cheap, and it rots), or a `script/lint` check that does the cross-reference above and
+per case (cheap, and it rots). Or a `script/lint` check that does the cross-reference above and
 fails when a mutant's line falls inside a `cfg(kani)` or `cfg(loom)` module span (rung two, and it
 cannot rot). The second is what milestone 244's bare-metal gate already does one level over:
 derive the list rather than remember it.

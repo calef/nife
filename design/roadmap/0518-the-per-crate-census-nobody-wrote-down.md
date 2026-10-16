@@ -15,7 +15,7 @@ needed and none was made, which is the point.
 ## Why
 
 `design/fatal-risks/README.md`'s risk 3 (the tests do not test anything, and the quality is illusory) went
-AMBER on 2026-09-19 on the strength of a rate that fell between two whole-corpus censuses, and had
+AMBER on 2026-09-19 on the strength of a rate that fell between two whole-corpus censuses. It had
 to say in the same breath what it could not say:
 
 > Which crates caused it is unknown, because the 2026-09-14 census's per-crate numbers were
@@ -23,10 +23,10 @@ to say in the same breath what it could not say:
 > the mistake above was available to make at all.
 
 The mistake it refers to is milestone 512 (the census blamed one pull request for 55 survivors it did not write): `script/mutation --report`'s `(baseline missed)`
-column is `.cargo/mutants-baseline.txt`, whose header reads *"Run of 2026-08-03"*, and a delta read
+column is `.cargo/mutants-baseline.txt`, whose header reads *"Run of 2026-08-03"*. And a delta read
 out of it is six weeks of growth wearing two days' clothes. Both failures are the same failure.
 `script/mutation --report` prints a per-crate table from a finished run and then the run output goes
-away, so the tree has kept one per-crate record in its life, and every comparison anybody wanted
+away, so the tree has kept one per-crate record in its life. Every comparison anybody wanted
 to make had to be made against it whether it was the right comparand or not.
 
 ## What was built
@@ -68,8 +68,8 @@ Nothing is unrecoverable, and that was luck rather than design. All eight shard 
 three green runs are still on GitHub and unexpired; the default retention is 90 days, so the same
 backfill attempted in December would have recovered nothing. **Everything absent is absent because
 it never existed**: the scheduled runs from 2026-08-10 to 2026-08-31 produced no result at all
-(`mutation.yml`'s own `BUGS` has why), and 2026-09-03 produced one shard of eight, which is a sample
-and is deliberately not a row, because a sample cannot tell an absent mutant from a killed one and a
+(`mutation.yml`'s own `BUGS` has why). And 2026-09-03 produced one shard of eight, which is a sample
+and is deliberately not a row. A sample cannot tell an absent mutant from a killed one, and a
 per-crate row from one reads as a crate that got worse.
 
 ## The finding: the score did not fall
@@ -102,7 +102,7 @@ to 563 in the same window. There is no reading of these artifacts in which the s
 
 This does not decide whether risk 3 is green, and this lane does not touch
 `design/fatal-risks/README.md`. The entry's own better argument survives the arithmetic intact: milestone 85 (mutation testing over the host crates)'s rule
-is that every survivor is triaged into a test, an exclusion with a reason or a recorded gap, and 563
+is that every survivor is triaged into a test, an exclusion with a reason or a recorded gap. And 563
 of them are not. A verdict on a corrected rate is an architect's.
 
 **And the honest caveat on the definition this block prefers.** The hand-check that justifies
@@ -162,5 +162,5 @@ and not say which crates caused it. `script/mutation-census` is that record: one
 census in `notes/project-metrics/mutation-census.csv`, backfilled to all four censuses that have
 ever completed, with a `--compare` that attributes the corpus-level move to crates exactly. The
 first question it was asked found that **the fall never happened**: risk 3's two rows count a
-timeout two different ways and the second drops `credentialer` to a rename, and read consistently
+timeout two different ways and the second drops `credentialer` to a rename. Read consistently,
 the like-for-like rate went 93.6% to 94.7% while survivors fell 771 to 563.

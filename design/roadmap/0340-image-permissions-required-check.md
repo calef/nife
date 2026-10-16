@@ -2,10 +2,10 @@
 status: NOT-STARTED
 raised: 2026-09-03
 milestone_dependencies: none
-decision_dependencies: unwritten
+decision_dependencies: none
 machine_requirements: none
 specific_machine: none
-needs_person: no
+needs_person: yes
 ---
 # 340. `script/image-permissions` reports and does not gate, because it is not in the ruleset
 
@@ -19,7 +19,8 @@ unflipped.
 The decision is [§97 (six gates run on every pull request and none of them can stop one)](../decisions/0097-advisory-checks.md). It is one checkbox in the repository's merge queue ruleset, and only
 calef can flip it: it is a GitHub setting rather than a file in this tree, so no lane and no pull
 request can carry the change. There is nothing to build and nothing to review; the whole item is an
-ask.
+ask, and the ask is a person at the settings page, which is what the frontmatter's `needs_person`
+carries. No decision waits: §97 ruled, and the checkbox is its unperformed half.
 
 **§97 is `DECIDED` and its ruleset edit is not performed**, which is what makes this a citation
 rather than a new fork. calef ratified it on 2026-08-25 (*"Ratify as written"*), it holds that four
