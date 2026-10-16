@@ -6,7 +6,7 @@
 //! capability: it can open names the server resolves under the bound directory, and it can open
 //! nothing else, because there is no global namespace to reach into. It reads the `motd` the image
 //! ships with, then writes a pattern to `scratch` and reads it back, and reports the `motd` head
-//! plus a success sentinel. Any failed check panics, which faults, which fails the waiting test.
+//! plus a success sentinel. Any failed check traps, which fails the waiting test.
 //!
 //! # Capability contract (notes/fs-server.md, notes/abi.md §4)
 //! - **slot 0**: the file-service endpoint, `WRITE` (this is the directory capability; the client

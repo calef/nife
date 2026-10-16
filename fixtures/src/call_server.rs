@@ -25,7 +25,7 @@
 #![allow(missing_docs)]
 #![no_main]
 
-use user_mode_runtime::{exit, invoke, receive_request, reply, send};
+use user_mode_runtime::{exit, invoke, receive_request, reply, require, send};
 
 const ENDPOINT: u64 = 0;
 const REPORT: u64 = 1;
@@ -37,11 +37,11 @@ pub extern "C" fn _start(_arg0: u64, _arg1: u64, _arg2: u64) -> ! {
     // The kernel tagged this delivery as a CALL's Reply (milestone 706 (a `CALL` server can tell a
     // Reply from a delegation)), or this is no CALL.
     let to = req.delivered.into_reply();
-    check(to.is_some());
+    require(to.is_some());
     let Some(to) = to else { exit() };
     let slot = to.slot();
     // Answer the caller: w0 + w1. This consumes the one-shot reply capability.
-    check(reply(to, w0 + w1, 0) == 0);
+    require(reply(to, w0 + w1, 0) == 0);
     // A second reply on the same slot must fail: the cap was consumed on first use. Raw, because
     // the typed `reply` already consumed its `Reply`, which is the point being tested one level
     // down: the kernel refuses it too.
@@ -49,14 +49,6 @@ pub extern "C" fn _start(_arg0: u64, _arg1: u64, _arg2: u64) -> ! {
     let second = unsafe { invoke(slot, abi::reply::REPLY, 0xBAD, 0, 0) };
     send(REPORT, if second < 0 { 1 } else { 0 }, 0, 0); // 1 = refused (one-shot held), 0 = a hole
     exit()
-}
-
-/// The only way this program can say "no": a trap, which the kernel treats as a fault and kills us
-/// for. A failed check must be indistinguishable from a broken program, because it is one.
-fn check(ok: bool) {
-    if !ok {
-        user_mode_runtime::trap()
-    }
 }
 
 user_mode_runtime::panic_handler!();
