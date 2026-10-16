@@ -14,7 +14,7 @@ Promoted from the proposal `the-census-writes-its-own-row`, filed 2026-09-20, on
 of 2026-09-20 to give every proposal on `main` a number. The text below is the proposal's own,
 unedited except for this paragraph: the argument is its author's and promotion is not the moment to
 improve it. Written by milestone 518 (a census that cannot be attributed is a number nobody can act
-on)'s lane, from the gap its own `BUGS` section names: the record it built is rung three of
+on)'s lane, from the gap its own `BUGS` section names. The record it built is rung three of
 AGENTS.md's ladder, a thing somebody has to remember, and the tenet says to move up a rung when you
 notice that shape.
 
@@ -55,7 +55,7 @@ censuses and nobody noticed for five days; a pull request is the notification as
 nothing gets worse.
 
 Would we still choose 2 if all three cost the same? Yes. Option 1 is cheaper to build than 2 and
-that is not why 2 wins; 2 wins because a bot that can push to `main` is a standing authority and a
+that is not why 2 wins. 2 wins because a bot that can push to `main` is a standing authority and a
 bot that can open a pull request is a request.
 
 ## What is blocked until it is answered
