@@ -241,12 +241,12 @@ could now be flipped) carries it now.
 
 Milestone 164's refused Route 2, reopened by calef. The kernel saved no FP or vector state anywhere,
 which is why every target in `targets/` is soft-float as a correctness requirement rather than a
-preference; it now saves the whole register file across a context switch on all three architectures,
+preference. It now saves the whole register file across a context switch on all three architectures,
 under one rule: the file holds the running thread's data or the initial state, never a stranger's.
 Eager and not lazy, because the trap this uses on x86 is `CR0.TS` and deferring the restore behind
 it is CVE-2018-3665. The expensive half is `#[cold]` and off the IPC fastpath, so a soft-float
-thread pays two loads and a branch, and the register file costs no memory: it lives in the 2,944
-bytes of a thread's TCB page that were already allocated and idle, which is where
+thread pays two loads and a branch. And the register file costs no memory: it lives in the 2,944
+bytes of a thread's TCB page that were already allocated and idle. That is where
 `script/stack-frame-check` sent it after the inline shape put `Thread::spawn` 1,056 bytes over the
 guard page. `script/fastpath-footprint` within bound on every ISA, a context switch 2-3% more
 instructions, `coremark` and `script/icount` unmoved. Proved by two threads

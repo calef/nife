@@ -53,8 +53,8 @@ their own build scripts. That is §46 holding rather than a disappointment.
 1. A re-measurement that is ours. Done: `script/crypto-probes`, eighteen probes times three
    architectures, run twice (as the crates ship, and with the portable paths forced). Provisional
    name. Its header records a trap that cost an hour twice and that `script/crate-probes` may
-   still be in: a probe built under `target/` is inside this repository, so the repository's own
-   `rust-toolchain.toml` beats `RUSTUP_TOOLCHAIN` for the rustc `-Zbuild-std` invokes and `std` is
+   still be in. A probe built under `target/` is inside this repository, so the repository's own
+   `rust-toolchain.toml` beats `RUSTUP_TOOLCHAIN` for the rustc `-Zbuild-std` invokes. So `std` is
    compiled unpatched, which reads exactly like the crate under test failing.
 2. One provider that builds and passes its own test vectors on all three architectures. Done,
    and since calef refused the one crate that could have supplied it, the provider is
@@ -62,10 +62,10 @@ their own build scripts. That is §46 holding rather than a disappointment.
    FIPS 180-4, RFC 4231, RFC 5869, the GCM specification, RFC 8439, RFC 7748 and FIPS 186-4, and
    `kernel/src/user/cryptography_tests.rs` boots it on all three under QEMU. Provisional names.
    The RSA half is proven against the two hosts that made the case for it rather than against a
-   synthetic key: the full chains from `objects.githubusercontent.com` (RSA 2048) and `ghcr.io`
+   synthetic key. The full chains from `objects.githubusercontent.com` (RSA 2048) and `ghcr.io`
    (RSA 4096 over a 3072-bit intermediate) are pinned as fixtures and verified through
-   `rustls-webpki` with this provider's algorithms, anchored on the root the host itself served,
-   which is §196 clause 4's model rather than a system trust store. A flipped signature bit and a
+   `rustls-webpki` with this provider's algorithms, anchored on the root the host itself served.
+   That is §196 clause 4's model rather than a system trust store. A flipped signature bit and a
    certificate offered for the wrong host are both refused, because a verifier that only ever says
    yes is not one.
 3. A client that speaks TLS 1.3 to one peer, holding that peer's root as a capability
@@ -86,19 +86,19 @@ high quality dependency."* The numbers are in that section and in
 `p256` that all had newer majors during 2026.
 
 `rsa` is taken. calef, 2026-09-20: *"Take rsa."* The provider had been built without it, at 53
-crates, and that could not honestly be called right: measured with `openssl s_client`,
+crates, and that could not honestly be called right. Measured with `openssl s_client`,
 `github.com` is ECDSA P-256 throughout but `objects.githubusercontent.com`, where a Release asset
 is actually served, is RSA 2048, and `ghcr.io` is RSA 4096. A client without RSA
 verification reaches GitHub and cannot download from it.
 
-So the provider is 67 crates, which is exactly what this block predicted for the written path
+So the provider is 67 crates, which is what this block predicted for the written path
 at equal coverage, and six fewer than the alpha's 73. The size argument is as weak as it can
 be, and the record says so: the glue was written because it is the piece with the least exposure
 in the chain, not because it is smaller.
 
 The advisory is answered where a gate can check it. `deny.toml` carries the tree's first
 `ignore` entry, for RUSTSEC-2023-0071, with its argument in the `reason` field so `cargo-deny`
-prints it with the finding: the Marvin attack is a timing side channel in PKCS#1 v1.5
+prints it with the finding. The Marvin attack is a timing side channel in PKCS#1 v1.5
 decryption, and this provider verifies signatures and never decrypts, holds no private key and
 offers no oracle. It names what would end the claim, which is any use of `rsa` here to decrypt, to
 sign, or for key transport. And `script/supply-chain` now scans the two manifests that suppression
@@ -106,10 +106,10 @@ is about, which it did not before: an `ignore` for a graph no gate reads is a cl
 check. That brought three licences onto the allow-list with their own reasons (ISC for
 `rustls-webpki` and `untrusted`, Unicode-3.0 for a proc-macro dependency that ships nothing).
 
-§46's line, drawn out loud rather than assumed. The primitives are taken: their correctness
+§46's line, drawn out loud rather than assumed. The primitives are taken. Their correctness
 includes constant-time behavior and resistance to attacks no specification states, which is what
 §46 (thin primitives or whole subsystems; we write everything in between) means by won through
-exposure, and `aes-gcm` and `chacha20poly1305` carry NCC Group's 2020 audit in their own README.
+exposure. `aes-gcm` and `chacha20poly1305` carry NCC Group's 2020 audit in their own README.
 The glue is written, because a `CryptoProvider` is five fields that select, name and plumb and
 compute nothing. RSA PKCS#1 v1.5 verification is still refused as something to write here, even
 now that `rsa` is taken and even though it is only public-key arithmetic: Bleichenbacher's forgery
@@ -164,7 +164,7 @@ makes a recipe's digest decide what may run and a digest is checkable over any t
   left standing as an open fork; the argument it held lives where a reader now meets it, which is
   `notes/cryptography-provider.md` and the `reason` field beside the suppression itself.
 - **Milestone 501.** A client that speaks TLS 1.3 to one peer, holding that peer's root or pinned key as
-  a capability, which was this block's clause 3 and is repriced out of it above:
+  a capability. That was this block's clause 3 and is repriced out of it above:
   milestone 501 (a TLS client that speaks to one), `design/roadmap/0501-a-tls-client-that-speaks-to-one-pinned-peer.md`.
 - **Milestone 496.** That a program which aborts is never heard, so its panic message and every line
   before it are discarded:
@@ -179,11 +179,11 @@ makes a recipe's digest decide what may run and a digest is checkable over any t
 
 ## Index row
 
-§196's stock-target table said no crypto provider built on any nife target; re-measured against
+§196's stock-target table said no crypto provider built on any nife target. Re-measured against
 this tree's own target specifications, the blockers were a `getrandom` major `entropy_backend` did
-not answer and six lines of build configuration, one of them a run-time hazard where a crate asks
+not answer and six lines of build configuration. One of them is a run-time hazard where a crate asks
 the CPU for SIMD that `x86_64-unknown-nife` has no ring-3 state for. calef refused
-`rustls-rustcrypto` as a dependency and ruled "Take rsa", so nife assembles its own 67-crate
+`rustls-rustcrypto` as a dependency and ruled "Take rsa". So nife assembles its own 67-crate
 `CryptoProvider` over audited primitives, proven by published vectors and by verifying the real
 certificate chains of `objects.githubusercontent.com` (RSA 2048) and `ghcr.io` (RSA 4096) under
 QEMU on all three architectures. Clause 3, a TLS client, is repriced into a proposal: no handshake

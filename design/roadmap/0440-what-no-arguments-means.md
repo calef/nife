@@ -11,9 +11,9 @@ needs_person: no
 
 Filed 2026-09-13 as an unnumbered proposal by milestone 286's lane, out of
 the milestone calef minted the same day; numbered 2026-09-19 by milestone 433's drain of the
-proposal pile. **Premise re-read against the tree on 2026-09-19 and still true**: `script/ci-build`
-still carries the `local`/`ci` tier column, still runs the `local` tier on the no-argument path, and
-its own header still says in capitals that the tier tags and the no-argument meaning are
+proposal pile. **Premise re-read against the tree on 2026-09-19 and still true**. `script/ci-build`
+still carries the `local`/`ci` tier column and still runs the `local` tier on the no-argument path.
+Its own header still says in capitals that the tier tags and the no-argument meaning are
 **PROVISIONAL** pending calef. The table has grown since: 17 rows, 9 `local` and 8 `ci`, where
 the proposal priced option A against fifteen. That makes A's cost one word per row on seventeen rows
 rather than fifteen, and changes nothing else. *(Number provisional until the merge queue lands
@@ -25,14 +25,14 @@ milestone 435's slice-c lane because this gate named no section.
 Milestone 286 collapsed two enumerations of "the checks that gate a pull
 request" into one table inside `script/ci-build`. The table needs a way to say which checks a
 developer waits for before pushing and which only a runner waits for, and how that is spelled is
-calef's: it is a name a contributor meets in `CONTRIBUTING.md`, in `--list` output and in every
+calef's. It is a name a contributor meets in `CONTRIBUTING.md`, in `--list` output and in every
 row of the table. The mechanism is built and shipped under the recommendation below; only the
 spelling and the default are open.
 
 It was numbered 400 for four hours and is 440 because another session got there first. That
 session landed its own milestone 400 (the shell on the firmware screen) while this branch waited in
 the queue, so both meanings of "milestone 400" existed in the tree at once and the citations had to
-be sorted by hand: seven of them meant this block and five meant the other. §194 rules that the
+be sorted by hand. Seven of them meant this block and five meant the other. §194 rules that the
 interleaving stays and the renumber is its price, which this is the fifth instance of in one
 evening and the first in milestone numbers rather than section numbers. 
 
@@ -62,12 +62,12 @@ is how the subset is named and defended.
 | **D** | nothing; require a name every time | no subset exists | deletes the one command to remember, which is why `script/gates` was written on 2026-08-03 |
 
 A is what was built. B, C and D are refused for the reasons in the right-hand column, and C is
-worth a sentence more than the others because it is the tempting one: it removes a hand-maintained
+worth a sentence more than the others because it is the tempting one. It removes a hand-maintained
 tag, which is exactly what this milestone is about. It fails on the newcomer principle rather than
 on mechanism. Two contributors would run different sets from the same command, and neither would be
 able to say what the other's green meant. The `hvf` check already shows the shape of that (it skips
 loudly where Hypervisor.framework does not exist, and says in plain words that nothing executed on a
-physical core), and one such check is a recorded gap where fifteen would be a lottery.
+physical core). One such check is a recorded gap where fifteen would be a lottery.
 
 ## What the tags should be called, which is the actual open question
 
@@ -94,8 +94,8 @@ Shipped provisionally as `local` and `ci`. The refusals are the useful half:
 - `fast` / `slow`. Refused. It is false in both directions: `image-permissions` is in the local
   set and builds three kernels, and `supply-chain` is out of it and takes seconds on a warm cache.
   The real criterion is what a person will wait for, which is not a duration.
-- `gate` / `report`. Refused: `DECISIONS §134` already spends that split on the `script/` family
-  itself (a verb does something, a noun reports), and reusing the words one level down would make
+- `gate` / `report`. Refused. `DECISIONS §134` already spends that split on the `script/` family
+  itself (a verb does something, a noun reports). Reusing the words one level down would make
   `coverage` a report in one sense and a gate in another on the same page.
 
 **The noun rule does not reach this.** An earlier draft of this proposal argued that `local` and
@@ -125,8 +125,8 @@ on its part of speech.
 High, and that is why the mechanism shipped under a recommendation. The tags appear in one
 column of one table, in `--list` output, and in three sentences of prose. Renaming them is one
 commit and no wire format, no syscall, and nothing two programs agree on. **What is not cheap is
-the default**: `CONTRIBUTING.md` and `.github/pull_request_template.md` now tell a stranger that
-`script/ci-build` is the one command to remember, and a contributor who learns it and then finds it
+the default**. `CONTRIBUTING.md` and `.github/pull_request_template.md` now tell a stranger that
+`script/ci-build` is the one command to remember. A contributor who learns it and then finds it
 means something else is the expensive half of `AGENTS.md`'s *move fast on what can be undone*.
 
 ## What is blocked until this is answered
@@ -144,10 +144,10 @@ mean everything: `script/verify` is about 47 minutes of Kani, and the retired `s
 the sentence that decides it, which has to survive the milestone that deleted the file, that **a
 gate people skip is not a gate**. So the no-argument path is a subset and the only question is how
 the subset is named and defended. Four options are priced, and the tempting one is refused on the
-newcomer principle rather than on mechanism: deriving the set from what the machine can do now
+newcomer principle rather than on mechanism. Deriving the set from what the machine can do now
 removes the hand-maintained tag and makes two contributors run different sets from the same command,
 neither able to say what the other's green meant. The shipped pair is `local` and `ci`, and the
-strongest argument against it is that `ci` names a deployment rather than a property, so it would be
+strongest argument against it is that `ci` names a deployment rather than a property. So it would be
 wrong the day this repository stopped using GitHub Actions while the check was untouched. `runner`
 is the obvious fix and is not available: this tree already spends it in two senses across 163 files,
 including four entry points named for it, and a third sense costs a reader the recognition. The tags
