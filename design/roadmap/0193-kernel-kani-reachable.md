@@ -79,7 +79,7 @@ development machine. Three errors, all shallow:
 3. The same at `kernel/src/smp.rs:71`, `.secondary_stacks`.
 
 That is the whole list. The kernel very nearly compiles for a host target already, and the
-reason is DECISIONS §4 rule 1 working exactly as designed. `asm!` appears outside
+reason is DECISIONS §4 (kernel shape: monolithic, deferred) rule 1 working exactly as designed. `asm!` appears outside
 `kernel/src/arch/` in only two files and three sites (`cpu.rs` once, `user.rs` twice).
 `kernel/src/arch/` is 14,744 of the 64,818 lines, leaving roughly 50,000 lines of ordinary Rust.
 
@@ -153,7 +153,8 @@ is missing.
   switch, and preemption) drift as the
   sharpest candidate (the property is already proved in `crates/timetable`'s `next_after` and the
   timer does not call it). This lane could not use it, because `rearm` lives in
-  `kernel/src/arch/*/timer.rs` and reads the counter through `asm!`. 197 carries it as a fork rather
+  `kernel/src/arch/*/timer.rs` and reads the counter through `asm!`. Milestone 197 (`user/` and
+  `xtask` are out of reach of the prover) carries it as a fork rather
   than as work: where the seam goes is the design question, too high and the arch layer keeps the
   bug, too low and every ISA restates it.
 - **Recorded.** `notes/kernel-proofs.md`. `kernel/src/arch/` is unreachable and will stay
