@@ -89,7 +89,8 @@ that links `user_mode_runtime`, which is all of them. Nobody outside this tree h
 the cost is entirely what a reader learns, which is the category AGENTS.md says to spend deliberation
 on rather than speed.
 
-## What is blocked until this is answered
+## State
 
-Milestone 408. Nothing in the tree is incorrect meanwhile; nine copies of three lines work, and
-the two spellings of "say no" both reach the same instruction.
+Milestone 408 is BUILT (2026-10-16): the helper shipped as `require` on `crates/user_mode_runtime`,
+provisional per this section's recommendation, and the copies call it. The section stays PROPOSED
+until the name is ratified; calef ratifies from `script/names --unratified`.
