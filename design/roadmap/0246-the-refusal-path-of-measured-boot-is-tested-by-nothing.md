@@ -16,7 +16,7 @@ the boot path changed, and `script/swish-check` still proves that the boot makes
 
 **`Lookup` did not have to move, which is the `BUGS` clause below not firing.** The signature takes
 `Option<&[u8]>` rather than a `nifefs::Fs`, so the crate gained no archive dependency and the caller
-passes `fs.read(name)` straight through; and it returns the parsed image rather than the bytes, so
+passes `fs.read(name)` straight through. It returns the parsed image rather than the bytes, so
 the caller is left with no struct literal of its own to get wrong. The one dependency added is `elf`,
 which has none of its own and is already in every build that links `measured_boot`. The public
 surface gained one struct (`Verdict`, the old private `Lookup` with its two fields) and one function.
@@ -35,8 +35,8 @@ here, an absence where there was a refusal. `cargo mutants -p measured_boot --in
 lane's diff: 1 mutant, 1 caught. Before the derive: 1 unviable, 0 tested.
 
 Three tests, one per answer, because the three are not interchangeable and that distinction is
-the interesting part of this function: substituted bytes (and a name the table never mentions, and
-an empty table) are a refusal; an absent entry is not; and bytes the table vouches for that are not
+the interesting part of this function. Substituted bytes (and a name the table never mentions, and
+an empty table) are a refusal. An absent entry is not. And bytes the table vouches for that are not
 an ELF report `unvouched: false`, because the measurement did its job and the packaging did not.
 Putting a security word on a build defect would be the wrong answer there.
 
@@ -57,7 +57,7 @@ refuse path.
 
 ## Why this is its own milestone rather than part of 244
 
-244 measured the whole crate and correctly declined to lift it: 33 of 196 mutants are in pure
+244 measured the whole crate and correctly declined to lift it. 33 of 196 mutants are in pure
 leaf functions, about sixty lines of 2,632, and moving them would put the boot path behind a feature
 flag for a flattering score. That is the right answer for the aggregate.
 

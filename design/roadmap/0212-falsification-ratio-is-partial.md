@@ -8,7 +8,7 @@ built: 2026-09-01
 Built.
 
 What it found. The walk comes from `cargo metadata` now, and the correction is smaller than the
-block expected and worth reporting as measured rather than as feared: 141 harnesses in 24 crates
+block expected and worth reporting as measured rather than as feared. 141 harnesses in 24 crates
 became 145 in 26 packages, and 25 replayable (18%) became 27 (19%). `crates/` held 97% of the
 harnesses. The number was still a claim about a scope nobody had stated, which is the defect, and
 three things follow from fixing it. A file's module path now comes from the Cargo target it belongs
@@ -86,12 +86,12 @@ quietly excludes them.
   record under `kernel/falsifications/` is now reported by name as a record nothing can replay,
   counted in neither half of the ratio, rather than being invisible. A kernel *Kani* falsification
   does sweep, at 3.1 seconds, and one now does.
-- **Recorded.** `notes/falsification.md` and this block's BUGS carry it: a patch that declares no
+- **Recorded.** `notes/falsification.md` and this block's BUGS carry it. A patch that declares no
   `Falsifies` target and has no harness is reported as rot, which is right for a patch that rotted
   and wrong for a future non-Kani record whose author does not know the convention. The message
   names the convention; nothing teaches it before the failure.
 - **Recorded.** `design/roadmap/0212-falsification-ratio-is-partial.md` names the residual in the
-  module-path derivation: a harness inside a `#[path]` module of a binary would get a wrong patch
+  module-path derivation. A harness inside a `#[path]` module of a binary would get a wrong patch
   path, because the path comes from the Cargo target and a `#[path]` module contributes whatever the
   including file calls it. `components/src` holds two such files and neither carries a harness
   today, and
@@ -99,8 +99,9 @@ quietly excludes them.
 
 ## Index row
 
-Found by milestone 197's lane. §134 calls the `unfalsified` count the claim's honest denominator,
-and it is currently the wrong one: milestone 197's record under `user/` is uncounted, milestone
+Found by milestone 197 (user/ and xtask are out of reach of the prover)'s lane. §134 calls the
+`unfalsified` count the claim's honest denominator,
+and it is currently the wrong one. Milestone 197's record under `user/` is uncounted, milestone
 193's two kernel harnesses carry no record at all, and milestone 202's `kernel/falsifications/` is
 swept by nothing. The number is printed as a fraction of the tree and is a fraction of one
 directory. The walk should come from `cargo metadata`, the way `script/lint`'s verify-table

@@ -13,7 +13,7 @@ How does nife reach hardware that has no serial port?
 
 Built under QEMU on all three architectures 2026-10-04; what is left is the machine. A
 confined EL0 driver holds the whole xHCI controller less its MSI-X page, enumerates a boot
-keyboard on a root port, and feeds the line discipline; `script/swish-check` types `echo hello` on
+keyboard on a root port, and feeds the line discipline. `script/swish-check` types `echo hello` on
 a USB keyboard and gets `hello` back on aarch64, riscv64 and x86_64. The status stops at `PARTIAL`
 for 192's reason (calef's bar is literal): nobody has yet sat at xenon and typed on a real
 keyboard. That is one evening of calef's, written out below. notes/usb.md is the task-oriented
@@ -39,7 +39,7 @@ sentence is this milestone.
 
 AGENTS.md records that the customer path is vacant, and its own guidance is that
 a first customer should be something nife can plausibly be adequate at within a milestone or two.
-"Runs on a machine someone already owns" is the most obvious thing that would fill that path, and
+The most obvious thing that would fill that path is "Runs on a machine someone already owns", and
 a machine someone already owns has USB and no serial header.
 
 It is also the precondition AGENTS.md attaches to the ranking function: no third party sees this
@@ -87,14 +87,14 @@ named. An xHCI names physical addresses in every structure it has, and enumerati
 what a device sent, which is the last thing to do at EL1. So the kernel keeps only what is not a
 driver's: the firmware handshake and the decision of which pages to map. The driver gets every
 register page except the MSI-X table's and pending-bit array's (a Kani harness proves no withheld
-page is ever in the mask), and the kernel refuses to start it on a machine whose IOMMU does not own
+page is ever in the mask). The kernel refuses to start it on a machine whose IOMMU does not own
 the controller's requester id. That refusal is stricter than NVMe's, which runs unconfined on a
 machine with no IOMMU, and the reason is that this process names every ring.
 
 The descriptor parsing is the untrusted-input surface, and it is `crates/usb`: total parsers
 that check every length before reading through it. Kani proves the configuration walk panic-free
 and that anything it accepts is a real interrupt IN endpoint, for every configuration of up to 24
-bytes; the host tests cover QEMU's keyboard byte for byte, composite keyboards, a keyboard behind a
+bytes. The host tests cover QEMU's keyboard byte for byte, composite keyboards, a keyboard behind a
 mouse interface, a storage stick, zero and overlong lengths, and truncated reads.
 
 Two things the first boots found. The driver's one-page stack overflowed in enumeration on its
@@ -179,7 +179,7 @@ Needs xenon, its monitor on the display port, a USB keyboard plugged into a rear
 ## Radon's storage depends on this, 2026-10-07
 
 §260 (radon's block server serves a USB drive) puts radon's USB 3 ports, which sit behind a VL805
-controller on PCIe, on this milestone's critical path: the booted system's storage on radon
+controller on PCIe, on this milestone's critical path. The booted system's storage on radon
 cannot be read until this milestone's xHCI driver runs on radon too, after milestone 163 (the JH7110's PCIe root complex).
 
 ## Index row

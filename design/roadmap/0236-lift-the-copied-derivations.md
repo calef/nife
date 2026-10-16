@@ -40,7 +40,7 @@ it a decision rather than a refactor:
 ## What it needs
 
 One definition per question, or a check that fires when two disagree. The second is weaker and
-much cheaper, and this block does not choose: a test that runs both derivations on the current tree
+much cheaper, and this block does not choose. A test that runs both derivations on the current tree
 and fails on a mismatch would catch every drift that matters without moving any code, at the cost of
 keeping two implementations honest rather than removing one.
 
@@ -86,10 +86,10 @@ there is allowed to build. So that one gets the block's weaker answer, said out 
 answer: `script/lint` runs all three and fails on a disagreement.
 
 **The comparison is not a third copy, which is the trap in that answer.** It calls
-`_harness_hits()` (this gate's own), `script/falsifications --count` (a mode added for exactly this,
+`_harness_hits()` (this gate's own) and `script/falsifications --count` (a mode added for exactly this,
 printing two integers rather than the prose `--check` already prints, because a gate that greps a
-sentence breaks when somebody improves the sentence), and `rust_source.harness_count` (the function
-`script/metrics` itself calls). Nothing in the check knows what a harness looks like. It was proved
+sentence breaks when somebody improves the sentence). It also calls `rust_source.harness_count` (the
+function `script/metrics` itself calls). Nothing in the check knows what a harness looks like. It was proved
 to fire by perturbing the shared regex and its exclusion list: `147, 147, 145`, and `script/lint`
 exited 1.
 
@@ -121,12 +121,13 @@ diff.
   what is checked.
 - **`helpers/rust_source.py` is a provisional name.** Names are an architect's. Refused:
   `source_census`, because this tree already spends "census" on the `unsafe` count specifically and
-  a module named for it would read as holding only that; `measures`, which collides with
+  a module named for it would read as holding only that. `measures`, which collides with
   `notes/register-of-measures.md`, the same collision `script/metrics`' own header refused; `common`
   and `util`, which claim nothing. DECISIONS §39 (a component is named for what it is) says a name
   is a claim.
 - The module is Python in a tree that is otherwise Rust and shell. It adds no dependency
-  (DECISIONS §46 untouched: it imports `re` and nothing else) and no build step, but it is a third
+  (DECISIONS §46 (thin primitives or whole subsystems) untouched: it imports `re` and nothing else)
+  and no build step. It is a third
   language in the tooling, and that was accepted rather than argued for at length because the
   alternative was a `cargo build` in front of three `script/` commands.
 

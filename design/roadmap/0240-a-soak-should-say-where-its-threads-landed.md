@@ -21,11 +21,12 @@ same fixed window, with 82 preemptions both times. Same clock, same four cores o
 same firmware. So the CPU is not throttled and the difference is in the workload, not the machine.
 
 The explanation is almost certainly placement, and milestone 221 (the soak never crosses cores,
-so build the hook that makes it) already predicted its shape: its `BUGS` records that the crossing
+so build the hook that makes it) already predicted its shape. Its `BUGS` records that the crossing
 count varies by more than 2x between identical runs and names the boot-time placement lottery as the
 cause. Twenty-four threads (four groups of a responder, three callers, a grinder and a tick waiter)
-are placed across four cores at spawn, and nothing rebalances, which is milestone 219's (the boot
-tour ends and the kernel halts, so there is nothing to soak) central finding and a deliberate design
+are placed across four cores at spawn, and nothing rebalances. That is the central finding of
+milestone 219 (the boot tour ends and the kernel halts, so there is nothing to soak) and a
+deliberate design
 following DECISIONS 138 (how a saturated workload is made to hand threads across cores). A core that
 draws two grinders starves its IPC threads, because a grinder is pure compute and never yields.
 
@@ -44,7 +45,7 @@ which is the difference between an observation and a measurement.
 ## Why it is worth building before the next bench session rather than after
 
 Tonight's plan is a series of boots rather than one long run, on two independent arguments that
-arrived the same afternoon: this eightfold spread, and the literature that
+arrived the same afternoon. The eightfold spread, and the literature that
 `notes/soak.md` now records, where stress coverage saturates and independent runs multiply while one
 long run does not.
 
@@ -65,7 +66,7 @@ let a series of them make that argument, or refuse it.
 The end-of-run question is settled, and not the way this block framed it. It asked whether a
 census should *also* be reported at the end. The first run answered something stronger: nine to
 eleven of the twenty non-waiter threads are off their spawn core by the first beat, on every run,
-with the steal count in the low single figures. So it is not work stealing; it is the local
+with the steal count in the low single figures. So it is not work stealing. It is the local
 rendezvous wake, and DECISIONS 138 (how a saturated workload is made to hand threads across cores)
 already said in words that a communicating set converges onto one core within a few exchanges and
 stays. A start-only census would have misattributed every boot tonight. The soak now prints one at
