@@ -290,7 +290,7 @@ design/roadmap/0384-a-name-resolver-and-who-holds-it.md	-	-	66	-	-
 design/roadmap/0385-a-note-that-cites-a-milestone-that-moved.md	-	-	73	-	-
 design/roadmap/0386-a-provenance-token-that-agrees-with-its-own-prose.md	-	21	45	-	-
 design/roadmap/0387-a-tls-stack-and-which-one.md	-	-	58	-	-
-design/roadmap/0388-an-acronym-sweep-the-tree-can-do-at-once.md	-	24.5	70	-	-
+design/roadmap/0388-an-acronym-sweep-the-tree-can-do-at-once.md	-	24	67	-	-
 design/roadmap/0389-nife-hosts-on-a-tailnet.md	-	22	50	-	-
 design/roadmap/0390-spawn-can-place-a-capability-at-a-named-slot.md	-	23	55	-	-
 design/roadmap/0391-kernel-introspection-over-an-endpoint.md	-	-	74	-	-
@@ -318,7 +318,6 @@ design/roadmap/0412-the-uefi-boot-gate-asserts-two-cores-that-do-not-always-star
 design/roadmap/0413-what-a-caretaker-is-when-it-translates.md	-	-	50	-	-
 design/roadmap/0414-which-qemu-a-red-post-run-check-was-run-under.md	-	24.5	48	-	-
 design/roadmap/0415-sub-tripwire-drift-accumulates-across-baseline-saves.md	-	-	67	-	-
-design/roadmap/0416-the-two-loader-names-the-tree-still-carries.md	-	-	43	-	-
 design/roadmap/0417-a-usurper-that-reports-instead-of-hanging.md	-	-	50	-	-
 design/roadmap/0418-did-the-mutation-census-already-know-about-row-12.md	-	22	65	-	-
 design/roadmap/0419-more-repeats-where-the-job-mix-contends.md	-	-	64	-	-
@@ -329,7 +328,7 @@ design/roadmap/0423-a-checked-direct-map-reader-for-the-acpi-walk.md	-	22	57	-	-
 design/roadmap/0424-a-ring-0-that-provably-cannot-execute-ring-3-pages.md	-	26.5	84	-	-
 design/roadmap/0425-a-stack-gate-that-fires-only-on-a-filtered-run.md	-	22	71	-	-
 design/roadmap/0426-a-sweep-for-specification-fields-that-are-one-less.md	-	-	62	-	-
-design/roadmap/0427-the-documentation-sweep-the-worklist-already-ranks.md	-	-	68	-	-
+design/roadmap/0427-the-documentation-sweep-the-worklist-already-ranks.md	-	-	66	-	-
 design/roadmap/0428-what-the-weekly-miri-run-should-cost.md	-	-	55	-	-
 design/roadmap/0429-a-lane-that-outlives-its-own-merge.md	-	-	60	-	-
 design/roadmap/0430-refusals-written-where-the-tool-cannot-read-them.md	-	-	51	-	-
@@ -384,7 +383,6 @@ design/roadmap/0504-an-mtime-for-an-open-file.md	-	-	54	-	-
 design/roadmap/0505-an-x86-64-input-driver-that-never-lets-the-core-idle.md	-	-	56	-	-
 design/roadmap/0506-colour-the-kernel-stacks-and-take-e1-again.md	-	20.5	42	-	-
 design/roadmap/0507-installing-a-package-mutates-or-composes.md	-	-	56	-	-
-design/roadmap/0508-lint-does-not-build-the-uefi-binary.md	-	-	55	-	-
 design/roadmap/0510-nothing-regenerates-the-roadmap-index.md	-	-	49	-	-
 design/roadmap/0511-the-boards-screen-under-uefi.md	-	-	65	-	-
 design/roadmap/0512-the-census-blamed-a-pull-request-that-added-four.md	-	-	81	-	-
