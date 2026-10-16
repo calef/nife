@@ -20,7 +20,7 @@ can now say *"it passes under real firmware"* rather than only *"it boots under 
 
 **It was scoped as a two-line change to `uefi_image` and was not**, for a reason only a bigger kernel
 could show. The test build's physical span reaches 10 MiB where the tour's reaches 2.3, and OVMF keeps
-ACPI NVS at 8 MiB and its own boot-services allocations from 9 to 23.5, so
+ACPI NVS at 8 MiB and its own boot-services allocations from 9 to 23.5. So
 `AllocatePages(AllocateAddress)` refused the whole range and the firmware said `Load Error` and
 nothing else.
 
@@ -37,8 +37,8 @@ Two things came of that:
 
 Re-measured rather than inherited, because the runner's default moved to 2 GiB. Boot-services
 code and data, plus `EfiLoaderCode` (the loader's own PE image and its one-shot trampoline, both dead
-by then), are reported as RAM now: 2032128 KiB of usable RAM on a 2 GiB machine becomes 2068244,
-and 206684 becomes 233148 on a 256 MiB one. `EfiLoaderData` stays reserved and must: the
+by then), are reported as RAM now. 2032128 KiB of usable RAM on a 2 GiB machine becomes 2068244.
+And 206684 becomes 233148 on a 256 MiB one. `EfiLoaderData` stays reserved and must: the
 `hvm_start_info`, the memory map, the module list, the archive and the kernel image are all in it.
 
 The asymmetry holds without anyone remembering it, which is why it is worth stating: the only
@@ -76,7 +76,7 @@ the bus and places every BAR before nife exists:
   milestone asks of the bench is its own: whether the OptiPlex leaves 32 MiB free.
 - The kernel is placed at one link-time address. 32 MiB clears every low reservation OVMF makes
   and nothing more. A physically relocatable image is the real answer and is a milestone rather than a
-  constant: `.boot` is linked at its physical address because a 32-bit instruction stream cannot name
+  constant. `.boot` is linked at its physical address because a 32-bit instruction stream cannot name
   a 64-bit one, and its absolute self-references would have to become position-independent.
 - **Two firmware boots per `script/test --arch x86_64`**, the tour and the suite, because they carry
   two different kernels and the tour is the one that goes on the stick. The suite alone would leave
