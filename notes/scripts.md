@@ -263,7 +263,7 @@ How the filter reaches the kernel, and what a filtered run switches off, are in
 ```
 $ script/test --arch aarch64 --test the_asid_width_supports_the_allocator
 --- test filter: the_asid_width_supports_the_allocator (kernel legs only; the host crates have `cargo test`) ---
---- kernel tests, aarch64 (QEMU) ---
+--- kernel tests, aarch64 (QEMU 11.1.2) ---
 
 running 1 of 312 tests (filter: the_asid_width_supports_the_allocator)
 

@@ -1,5 +1,6 @@
 ---
-status: NOT-STARTED
+status: BUILT
+built: 2026-10-16
 raised: 2026-09-14
 promoted_from: which-qemu-a-red-post-run-check-was-run-under
 milestone_dependencies: none
@@ -18,14 +19,47 @@ until the merge queue lands it.)*
 A lane can close this. It is a line of output, and the question underneath it is
 where the version is read rather than whether to print it.
 
-**Premise re-checked 2026-09-19 and still true.** Nothing in `xtask/src/main.rs` prints an emulator
-version beside a post-run check or in the per-architecture banner; the only place the tree ties a
-number to a QEMU is `.qemu-version` and `script/qemu-check`, which the icount baselines cite and the
-post-run checks do not. `notes/load-sensitive-assertions.md` still carries no `BUGS` entry saying
-the post-run set is emulator-dependent, so the smaller version of the fix is also still open. *(Corrected
-2026-09-24: #1211 added that entry to the main page's `BUGS` in
+**Premise re-checked 2026-09-19, true, with one correction.** *(2026-09-24: #1211 added the
+emulator-dependence entry to the main page's `BUGS` in
 [notes/load-sensitive-assertions.md](../../notes/load-sensitive-assertions.md), naming the 8.2.2 and
-11.0.2 split and this milestone as the fix. The smaller version is done; the version line is not.)*
+11.0.2 split; the version line stayed open.)*
+
+## Built 2026-10-16 (UTC), lane `milestone/414-which-qemu-a-red-post-run-check-was-run-under`
+
+The maintainer's ruling took both halves of the open question, and the implementation found no
+reason to argue back. The version is printed once per leg, in the per-architecture banner
+(`--- kernel tests, aarch64 (QEMU 11.1.2) ---`; riscv64 the same; x86_64 keeps its machine word,
+`QEMU q35, 11.1.2`). Every red post-run check also carries the version on its own failure line:
+the three `scanout` verdicts and the inbound prober's three failure arms. Green lines and the
+checks' diagnostics are unchanged, so the cost is one string per red line plus a handful of
+`qemu-system-<arch> --version` reads, milliseconds against runs measured in minutes.
+
+One function reads the version, `host::qemu_version` in `xtask/src/host.rs` (name provisional,
+minted by this lane). It resolves `qemu-system-<arch>` through PATH exactly as the runner's bare
+`exec` does, so the number names the emulator that actually ran rather than one a config elsewhere
+prefers. Nothing new learned how to find a binary: PATH is still the mechanism
+(`helpers/qemu-path.sh`), and `.qemu-version` stays the pin, not the report. The parse anchors on
+the word `version` rather than on field position, because `script/qemu-check`'s `awk '{print $4}'`
+already lands inside the package suffix on distro builds (`qemu-system-aarch64 version 8.2.2
+(Debian ...)`). A binary that cannot be asked prints `version unreadable` rather than guessing.
+
+The banner's one parser, `helpers/booted_rows.py`, matches both the versioned and the bare
+parenthetical now, and its selftest asserts both, so old logs still attribute their legs; x86_64's
+machine word keeps that leg on the file-name fallback, as before. Honest limit: a version line
+identifies the emulator, it does not make the checks less emulator-dependent. The disjoint failure
+sets in the table above are still there to fall into; what changed is that a red line now names
+which set it came from. `notes/load-sensitive-assertions.md`'s `BUGS` says the same where a reader
+of a red check meets it.
+
+## Follow-on
+
+- **Proposed.** The red lines one harness out have the same hole, and this lane did not touch
+  either: 412's lane owns the `swish-check` text and the UEFI lines are 516's. A red `swish-check`
+  failure names `sendkey` and the monitor socket, both of which the table above shows behaving
+  differently across versions. A UEFI failure line classifies the exit status without the version,
+  though [notes/uefi-test-exit-rate.md](../../notes/uefi-test-exit-rate.md) exists because of a
+  QEMU-version theory. The work is written up where the next lane can claim it:
+  `design/roadmap/proposals/a-red-swish-or-uefi-line-does-not-say-which-qemu-ran-it.md`.
 
 ## What was measured
 
