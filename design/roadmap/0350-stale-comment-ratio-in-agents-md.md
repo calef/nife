@@ -55,13 +55,13 @@ cannot fix it."*
 ## Index row
 
 `AGENTS.md` tells a reader that `kernel/src` "measures 40% of them" when discussing comments in the
-line count, and milestone 234's weekly series measures that ratio directly: it was 39.3% eight weeks
+line count. Milestone 234's weekly series measures that ratio directly: it was 39.3% eight weeks
 before the proposal was written, 45.3% when it was written, and 46.4% on 2026-09-14. The figure was
 true when it was written and is not true now. This is the project's front-door file, read before
 anything else, and AGENTS.md's own third principle is that a stranger must be able to succeed on the
 tree alone, which makes a wrong number there the exact defect that principle names. It is drifting
 rather than merely stale, so correcting 40% to the current figure buys a few weeks and then the same
-bullet is wrong again; that is why the second half of this is a question rather than an edit. A
+bullet is wrong again. That is why the second half of this is a question rather than an edit. A
 pointer at `notes/project-metrics/weekly.csv` is rung one, because the series recomputes itself, and
 a hand-copied percentage is rung four and has now demonstrated its failure mode twice. `AGENTS.md` is
 calef's file, so the one-line edit is his.
