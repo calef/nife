@@ -1,7 +1,8 @@
 ---
-status: NOT-STARTED
+status: BUILT
 promoted_from: one-crate-for-the-copied-right-aligned-number-writer
 raised: 2026-10-05
+built: 2026-10-15
 milestone_dependencies: none
 decision_dependencies: none
 machine_requirements: none
@@ -10,7 +11,11 @@ needs_person: yes
 ---
 # 793. One crate for the right-aligned number writer three programs each copy
 
-Found while triaging mutation survivors (at `269c1d48c`). Title and slug are provisional.
+Found while triaging mutation survivors (at `269c1d48c`). Title and slug are provisional. The
+crate's name, `number_writer`, is provisional (this lane, 2026-10-15 UTC). `padnum`, floated here,
+was set aside: it abbreviates `num` and reads as a verb phrase. Also set aside: `decimal_writer`
+(suggests a fixed-point type), `padded_number` (names the output, not the crate), `number_column`
+(reads as a column's ordinal).
 
 ## What is duplicated
 
@@ -44,6 +49,12 @@ three copies and two of the three tests.
 Reuse: write. No crate in the tree or on crates.io is adopted here; the function is twelve lines and
 a dependency for it would be a decision under §46 (thin primitives or whole subsystems) that this
 does not justify. The existing copies are the prior art.
+
+## Follow-on
+
+- **Recorded.** The unpadded decimal writers older than this crate are the same digit loop without
+  the column, and this crate does not yet serve them; the finding lives beside `write_right`'s
+  width-`0` case in `crates/number_writer/src/lib.rs`.
 
 ## Index row
 

@@ -91,6 +91,6 @@ person would recognize.
 
 Minted by calef on 2026-08-19: the terminal's colors were chosen as a test instrument and it
 shows. The finding that makes it cheap is that the palette does not deliver the property it is
-ugly for: no entry has three distinct channel values and eight pairs are channel permutations of
+ugly for. No entry has three distinct channel values and eight pairs are channel permutations of
 each other, so swapping red and green is undetected. Gate the property, then any palette that
 passes is free to be pretty.

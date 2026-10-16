@@ -22,7 +22,7 @@
 #![no_main]
 
 use abi::rendezvous;
-use user_mode_runtime::{exit, receive, receive_cap, send};
+use user_mode_runtime::{exit, receive, receive_cap, require, send};
 
 const CHANNEL: u64 = 0;
 const REPORT: u64 = 1;
@@ -30,19 +30,11 @@ const REPORT: u64 = 1;
 #[unsafe(no_mangle)]
 pub extern "C" fn _start(_arg0: u64, _arg1: u64, _arg2: u64) -> ! {
     let (_w, slot, _) = receive_cap(CHANNEL);
-    check(slot != rendezvous::NO_CAP);
+    require(slot != rendezvous::NO_CAP);
 
     let (w0, _, _) = receive(slot); // listen on the minted rendezvous
     send(REPORT, w0, 0, 0); // report the word that crossed it
     exit()
-}
-
-/// The only way this program can say "no": a trap, which the kernel treats as a fault and kills us
-/// for. A failed check must be indistinguishable from a broken program, because it is one.
-fn check(ok: bool) {
-    if !ok {
-        user_mode_runtime::trap()
-    }
 }
 
 user_mode_runtime::panic_handler!();

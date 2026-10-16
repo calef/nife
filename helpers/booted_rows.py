@@ -42,7 +42,11 @@ FLOOR_LINE = re.compile(r'^ {4}(exempt|carried from pass 7|x86_64 only): (.+)$')
 TAG = re.compile(r'Attacks rows:\s*([0-9][0-9 ,toand]*)')
 ACCEPTED = re.compile(r'^\s*(?:[-*]\s*)?Accepted row (\d+):\s*\S')
 TEST_LINE = re.compile(r'^test (\S+) \.\.\. ?(.*)$')
-LEG_LINE = re.compile(r'^--- kernel tests, (\w+) \(QEMU\) ---')
+# The banner's parenthetical has carried the emulator version since milestone 414 (a red
+# post-run check does not say which emulator produced it). A version starts with a digit, so
+# x86_64's machine word ("QEMU q35, ...") still does not match and read_log keeps the
+# fallback-ISA behavior it has always had for that leg.
+LEG_LINE = re.compile(r'^--- kernel tests, (\w+) \(QEMU(?: \d[\w.]*)?\) ---')
 
 
 def parse_rows(text):
@@ -361,7 +365,7 @@ def selftest_repo(tmp):
 
 
 def selftest_logs():
-    aarch64 = ('--- kernel tests, aarch64 (QEMU) ---\n'
+    aarch64 = ('--- kernel tests, aarch64 (QEMU 11.1.2) ---\n'
                'test kernel::user::cited_tests::two_holds ... ok\n'
                'test kernel::user::pass_tests::attack_four_six_seven ... a line it printed\n'
                '[PANIC] panicked at an assertion\n')
@@ -394,6 +398,10 @@ def selftest(tree):
     assert read_log('test a::b ... \nWATCHDOG: no progress\n') == [(None, ['a', 'b'], 'inconclusive')]
     assert read_log('test a::b ... skipped: no disk\n')[0][2] == 'skipped'
     assert read_log('test a::b ... ')[0][2] == 'inconclusive', 'a log that ends mid-test'
+    # Both banner shapes attribute their leg: the versioned one `script/test` prints now
+    # (milestone 414) and the bare one every log printed before it.
+    assert read_log('--- kernel tests, aarch64 (QEMU 11.1.2) ---\ntest a::b ... ok\n')[0][0] == 'aarch64'
+    assert read_log('--- kernel tests, aarch64 (QEMU) ---\ntest a::b ... ok\n')[0][0] == 'aarch64'
     with tempfile.TemporaryDirectory() as tmp:
         pinned = selftest_repo(tmp)
         tests = pass_tests(tmp, pinned, 'HEAD')

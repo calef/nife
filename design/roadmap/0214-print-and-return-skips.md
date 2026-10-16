@@ -22,7 +22,7 @@ reports "200 passed, 55 skipped" is telling the truth about what it proved.
 Sites all over the tree did not use it. They `crate::println!("    (no RedoxFS disk attached;
 skipping)")` and `return`, and a test that returns without setting a skip reason is
 indistinguishable from one that passed. The line is in the transcript, so a human reading the
-scrollback can see it; the counts cannot, and neither can anything that reads the counts.
+scrollback can see it. The counts cannot, and neither can anything that reads the counts.
 
 ## The real count, and how it was taken
 
@@ -44,8 +44,8 @@ line:
    (8 sites) and `kernel/src/bench.rs` (13). Neither is a `#[test_case]`; the tour was always
    meant to run on a machine of unknown provisioning, and a benchmark reports its own line.
 
-80 sites, 18 files. The three counts are separate because they are three different judgments,
-and the second pass is the one the minting note's grep could not have found.
+80 sites, 18 files. The three counts are separate because they are three different judgments.
+The second pass is the one the minting note's grep could not have found.
 
 ## What each site turned out to be
 
@@ -57,7 +57,7 @@ and the second pass is the one the minting note's grep could not have found.
 | Silent early return, no line | 5 | `skip!` with the reason the comment already gave |
 | Partial: some of the claim was proved | 3 | `skip!`, with a reason naming which half ran |
 
-Seventy-seven were genuine skips and three were partial, and none turned out to be a
+Seventy-seven were genuine skips and three were partial. None turned out to be a
 legitimate early exit on a satisfied condition. The partials are the judgment this milestone
 owed:
 
@@ -72,7 +72,7 @@ owed:
 
 Two reasons were stale rather than absent, and were corrected in passing: `memory.rs`'s
 `initrd_is_reserved_if_present` documented itself as passing "trivially" when there is no initrd,
-which is precisely the thing being swept, and both timers' `ticks_arrive_at_the_configured_rate`
+which is precisely the thing being swept. Both timers' `ticks_arrive_at_the_configured_rate`
 printed a paragraph beginning `UNMEASURED` and then returned as a pass.
 
 ## The numbers, before and after
@@ -86,7 +86,7 @@ printed a paragraph beginning `UNMEASURED` and then returned as a pass.
 | x86_64 | 212 passed, 44 skipped | 187 passed, 69 skipped |
 
 Twenty-five tests moved out of the pass column on x86_64 and nothing ran that had not run
-before, which is the outcome this milestone wanted: a change here that made the numbers look
+before, which is the outcome this milestone wanted. A change here that made the numbers look
 better would have been the tell that something was wrong. The two legs that did not move are the
 control: they attach every fixture, so none of the rewritten branches is taken, and their being
 identical is what says the sweep changed reporting rather than behavior.
@@ -101,7 +101,7 @@ line instead of only in a lane's report.
 Nothing in the tree tracks a test count as a `<!--count:-->` claim, so nothing had to move. The
 counted-claims registry derives Kani harnesses, harness crates, loom harnesses, shell scripts,
 syscalls, rights bits and security audits, and no test total. Were one ever added, it would want
-`<!--count-at-least:-->`: this milestone is the second time in a week the number moved for a
+`<!--count-at-least:-->`. This milestone is the second time in a week the number moved for a
 reason nobody was tracking.
 
 ## The mechanism, and what it will get wrong
@@ -110,11 +110,11 @@ The sweep is a one-time fact. The shape came back once already (milestone 145 sh
 the tree then wrote 80 sites that ignored it), so it needs something that does not depend on
 anyone remembering.
 
-Rung two of AGENTS.md's ladder: a gate that fires without being remembered, and it lives in
+Rung two of AGENTS.md's ladder: a gate that fires without being remembered. It lives in
 the harness rather than in `script/lint`. `console::CountedWrites::write_str` already sees every
 fragment the kernel prints, so in test builds it tells `testing::note_printed` when one contains
 `skip`. `Testable::run` clears that flag *after* printing the test's name, so a test whose own
-name carries the word cannot accuse itself, and checks it once the test returns: a test that said
+name carries the word cannot accuse itself, and checks it once the test returns. A test that said
 "skip" and left no skip reason panics, naming `testing::skip!` and this file.
 
 It fires on what the machine actually printed rather than on what the source looks like, which is
@@ -138,7 +138,7 @@ deleted from that script for exactly the signature of a rule that rejects legiti
 **The honest false-positive shape**: a test that prints "skip" for some reason of its own and then
 passes. There are none in the tree today, measured on all three architectures rather than
 asserted, and a test that genuinely wants the word can assert on the message instead of printing
-it. **The honest blind spot is the other direction**: a test that returns early having proved
+it. **The honest blind spot is the other direction**. A test that returns early having proved
 nothing and printed nothing is invisible to this, which is why pass 2 above went looking for those
 by hand and why nothing here claims to have found the last one.
 
@@ -166,7 +166,7 @@ by hand and why nothing here claims to have found the last one.
   suite's final line instead of only in a lane's report.
 - **Refused.** Rung one, a `#[test_case]` returning `Result<(), Skipped>` so `?` carries an absent
   fixture out of a helper and into the runner. It is the better mechanism on paper and it would have
-  caught the helper cases structurally, and it is a return-type change on every `#[test_case]` in
+  caught the helper cases structurally. It is a return-type change on every `#[test_case]` in
   the tree plus an `Ok(())` on the end of each, for a defect the console check catches at the moment
   it happens. If the helper shape recurs, that is the argument for paying for it.
   This refusal is milestone 471 (design/roadmap/0471-a-skip-that-returns.md), which carries it with

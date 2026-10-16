@@ -13,8 +13,9 @@ needs_person: no
 Milestone 250 (an unviable mutant is a hole in the measurement that reads as a pass) carries the same title and more of the argument. Its block holds every part of this
 one (the `Verdict`
 worked example, the nine unviable mutants in `measured_boot`, the ledger that counts missed,
-equivalent and hang and not unviable, the anti-gaming test) plus two things this file never had: the
-`uefi_loader::image::parse` disposition of 2026-09-04, and the reverse defect of 154 mutants scored
+equivalent and hang and not unviable, the anti-gaming test). It also holds two things this file never
+had. One is the `uefi_loader::image::parse` disposition of 2026-09-04. The other is the reverse defect
+of 154 mutants scored
 MISSED in "0s build + 0s test" behind `required-features`. This file's own last paragraph said so.
 Milestone 326, which triages the 2026-09-14 census's 771 survivors, is a different question and does
 not cover this one: a survivor is a mutant that ran, and the subject here is a mutant that never
@@ -38,7 +39,7 @@ Why it is worse than a missed mutant. A missed mutant is visible: it appears in 
 lowers the score, somebody argues about it. An unviable one leaves no trace in the number, so a
 crate's score is silently computed over a smaller function than the reader believes.
 
-The cheap version is most of it: `cargo mutants --list` per crate counting unviable (one command,
+The cheap version is most of it. It is `cargo mutants --list` per crate counting unviable (one command,
 no run), then reading them to see whether a small honest change to the code makes the mutant both
 buildable and meaningful, then putting the count in the ledger.
 

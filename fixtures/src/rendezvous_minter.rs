@@ -23,7 +23,7 @@
 #![allow(missing_docs)]
 #![no_main]
 
-use user_mode_runtime::{exit, retype_into_kernel_object, send, send_capability};
+use user_mode_runtime::{exit, require, retype_into_kernel_object, send, send_capability};
 
 const MEMORY_REGION: u64 = 0;
 const CHANNEL: u64 = 1;
@@ -33,23 +33,15 @@ pub extern "C" fn _start(_arg0: u64, _arg1: u64, _arg2: u64) -> ! {
     // Retype one page of our budget into a rendezvous; the kernel returns the slot where our
     // full-rights capability to it landed.
     let rendezvous = retype_into_kernel_object(MEMORY_REGION, abi::objtype::RENDEZVOUS);
-    check(rendezvous >= 0);
+    require(rendezvous >= 0);
     let rendezvous = rendezvous as u64;
 
     // Delegate a READ-only view (receive, never send) to whoever is on the channel; we keep WRITE.
-    check(send_capability(CHANNEL, rendezvous, abi::rights::READ, 0) == 0);
+    require(send_capability(CHANNEL, rendezvous, abi::rights::READ, 0) == 0);
 
     // Speak first through our own creation: blocks until the peer receives, which is the proof.
-    check(send(rendezvous, 0x77, 0, 0) == 0);
+    require(send(rendezvous, 0x77, 0, 0) == 0);
     exit()
-}
-
-/// The only way this program can say "no": a trap, which the kernel treats as a fault and kills us
-/// for. A failed check must be indistinguishable from a broken program, because it is one.
-fn check(ok: bool) {
-    if !ok {
-        user_mode_runtime::trap()
-    }
 }
 
 user_mode_runtime::panic_handler!();

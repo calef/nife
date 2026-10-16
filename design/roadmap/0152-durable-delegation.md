@@ -10,7 +10,7 @@ wants nife to support multiple users, and wants the jobs a user schedules to car
 reflect that user's own authority. Working through what that requires surfaced a gap this tree had
 not needed to close before, and #387 (milestone 129's `--mem` grant, held pending this) is where it
 was found. All four design pieces (the durable session, the on-disk schedule store, boot-time
-re-derivation in `login`, and the real registrar) are built and tested. Flipped to `BUILT` on 2026-10-03 after a re-check against the tree: the two residues it
+re-derivation in `login`, and the real registrar) are built and tested. Flipped to `BUILT` on 2026-10-03 after a re-check against the tree. The two residues it
 carried, a real-boot gate that types `SCHEDULE` and a place for a durable job to write, are
 routed in `## Follow-on` (a proposal and milestone 687) rather than held open here.
 
@@ -20,7 +20,7 @@ Option 3 of #387's runtime-registration question already gives "a scheduled job 
 authority than its registrar held" for free: `timetable::Registry::register(doc, held)` already
 takes an arbitrary `Held`, so a registrar handed a narrower bundle than the scheduler's own produces
 narrower jobs, structurally. Making that registrar a user's own session instead of a fixed
-system component is a small idea with one hard consequence: a session's authority exists only as
+system component is a small idea with one hard consequence. A session's authority exists only as
 long as the session does, but a scheduled job needs to keep firing after the user who registered it
 disconnects.
 
@@ -50,19 +50,19 @@ with no client, because none exists yet."* This milestone is that case.
 
 No new kind of object. The durable thing a scheduled job's authority is supervised by is the
 user's own login session, and what keeps it alive past a disconnect is exactly the rule
-`Untyped::DESTROY` already has (§16): *a parent with live children refuses to be destroyed, and
+`Untyped::DESTROY` already has (§16). *A parent with live children refuses to be destroyed, and
 becomes destroyable again once they're gone.* A session that refuses to tear down while it still has
 scheduled-job children is that rule, applied to a session instead of a region. Nothing here needed
 before was a snapshot of the user's authority or a live re-check against an external identity
 source: the job's capability is the *same* live one from the original login, continuing to exist
 because nothing tore it down.
 
-Checked against prior art: systemd's `loginctl enable-linger`
+Checked against prior art. systemd's `loginctl enable-linger`
 solves almost exactly this problem (keep a user's session manager running after logout so pending
-timers keep firing), but it is a static, explicit admin toggle: an account either lingers or it
+timers keep firing). It is a static, explicit admin toggle: an account either lingers or it
 does not, independent of whether anything is actually pending. The design here is the dynamic
 version instead: a session persists *because* it has scheduled work, and becomes destroyable once it
-does not, which is more minimal (nothing outlives its own reason to exist) and maps onto §16's
+does not, which is more minimal (nothing outlives its own reason to exist). It maps onto §16's
 existing mechanism directly rather than needing a new opt-in flag and a new place to store it.
 [loginctl (systemd)](https://www.freedesktop.org/software/systemd/man/latest/loginctl.html).
 
@@ -70,14 +70,14 @@ existing mechanism directly rather than needing a new opt-in flag and a new plac
 
 When a user reconnects and a durable session already exists for them (kept alive by pending jobs),
 the new connection needs to find and attach to *that* session rather than minting a second one
-alongside it, or the design degrades into either session proliferation or an orphaned session with
+alongside it. Otherwise the design degrades into either session proliferation or an orphaned session with
 no way back to it.
 
 This cannot be built as "list all sessions and find the match." This tree already refuses that
 shape on principle (milestone 126: enumeration is itself authority). It has to be a targeted lookup:
 given a *proven* identity, return the one record for it, never a list. The natural home is the
 credential service (milestone 56's credentialer) or a login broker built beside it (milestone 49
-already describes login as "authentication produces capabilities"): a small table, identity to
+already describes login as "authentication produces capabilities"). A small table, identity to
 durable-session capability (or nothing yet), where a successful authentication returns the existing
 entry or creates and records a fresh one. Additive to what 56 already does, not a new kind of ambient
 power: still "prove who you are, get back exactly your own thing," never a directory of everyone's.
@@ -105,7 +105,7 @@ is registered during a live session, read back at boot.
 
 Trust at boot does not come from a fresh secret challenge, because nobody is presenting one. It
 comes from the durable store itself only ever having been written by an already-authenticated
-action: the user proved who they were once, at registration time, and boot only has to trust that
+action: the user proved who they were once, at registration time. Boot only has to trust that
 the store is authentic and untampered, which is what measured boot (§22, already one of milestone
 49's three answered pillars) and the credential store's own existing persistence (milestone 56's
 sealed store) are for. Boot-time re-derivation is a privileged, boot-only operation, in the same
@@ -135,7 +135,7 @@ and was retired on 2026-09-27 (below). Git history has all three.
 `kernel::user::login_tests::a_login_session_with_pending_work_refuses_logout_until_the_work_is_gone`
 proves the §16 property on `login`'s delegated budget, driven by `login_test_client`'s
 `PENDING_WORK` (provisional, as are its three flags): with a one-page child split off, the budget's
-`DESTROY` answers `NotPermitted` and the budget keeps working; once the child is gone the logout
+`DESTROY` answers `NotPermitted` and the budget keeps working. Once the child is gone the logout
 completes with `LOGOUT`'s proofs. It runs with the rest of `login_tests` on all three ISAs, and
 `session_reviver.rs`'s six comments citing the deleted type now cite it. It also found that only the
 budget is held up: the caretaker region is a sibling and the logout ticket still destroys it, so a
@@ -146,7 +146,7 @@ registrar must build a job's directory inside the job's own region.
 To calef's rulings S1 and L2. `login_protocol::SCHEDULE` (provisional) is `LOGIN` plus "open my
 schedule": `login` splits a durable budget, builds `components/src/user_timetable_keeper.rs` (provisional) from
 a region of it, and `OK` announces the timetable's registration page. The session process builds the
-timetable to `timetable::contract` and blocks on the timetable's supervision endpoint. A later login for that identity is handed the same budget and page;
+timetable to `timetable::contract` and blocks on the timetable's supervision endpoint. A later login for that identity is handed the same budget and page.
 `login` tells a live session from a stopped one by the timetable's exit word in the page, because
 `DESTROY` answers `NotPermitted` for a stale name and a busy one alike. An empty replace stops the
 timetable, the session process gives its budget back and exits, and the next login retires what is
@@ -265,7 +265,7 @@ Options and reasoning are in [notes/durable-delegation.md](../../notes/durable-d
   session waits at most `END_WAIT_SECS` for its timetable, before the front door opens.
   `components/src/login.rs`'s BUGS.
 - **Recorded.** `login` keeps one durable session, at start-up and at login alike. The table limit
-  derives from `abi::CAPABILITY_TABLE_SLOTS` and rises to three with PR #1360's 32 slots; the
+  derives from `abi::CAPABILITY_TABLE_SLOTS` and rises to three with PR #1360's 32 slots. The
   memory limit stays one budget until `login`'s `DURABLE_UT_PAGES`, the progenitor's
   `LOGIN_CONSTRUCTION_PAGES` and the harness are raised together and the out-of-order hole in
   `durable_ut` is fixed. `components/src/login.rs`'s BUGS.
@@ -285,10 +285,10 @@ Options and reasoning are in [notes/durable-delegation.md](../../notes/durable-d
 ## Index row
 
 calef wants a scheduled job's capabilities to reflect the scheduling user's own authority
-(milestone 129's #387), so the registrar is a user's session, and its authority must outlive the
+(milestone 129's #387), so the registrar is a user's session. Its authority must outlive the
 connection that registered it, which DECISIONS §92 (a caretaker is supervised by the client it
 serves) does not allow. Built: the on-disk schedule store (§122), boot-time re-derivation (in
 `login` since 2026-09-27, §123 as amended, §125), and the §16 live-children proof on a login
 session's budget (2026-09-26). The session process is ruled (S1) and built, as are forks 6 (C)
-and 8 (D), ruled on #1377: a durable job holds no report endpoint and runs what the live activation
+and 8 (D), ruled on #1377. A durable job holds no report endpoint and runs what the live activation
 generation names, read over a file-service window of its own.

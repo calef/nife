@@ -21,7 +21,7 @@ on 2026-09-18: close this milestone first, then default `NIFE_SMP` to 2. Both ha
 ## The defect was reproduced before it was fixed
 
 The scope had already shrunk while the decision was open: this block once said the test was the
-deliverable and would be the first port test able to observe the revocation window, and milestone
+deliverable and would be the first port test able to observe the revocation window. Milestone
 316 found that the test already existed. `user::x86_port_tests::a_revoked_holder_faults_on_its_next_port_write`
 became that observer the moment 316 gave it a working two-core substrate.
 
@@ -34,8 +34,8 @@ x86_port` at `NIFE_SMP=2`:
 | filtered, uninstrumented | 12 | **3** |
 | filtered, instrumented | 30 | **2** |
 
-Every failure was the same assertion at the same line, `x86_port_tests.rs`'s `left: 2, right: 1`:
-the child's `out` was permitted and it exited cleanly (`EVENT_EXIT`) where the test demands a
+Every failure was the same assertion at the same line, `x86_port_tests.rs`'s `left: 2, right: 1`.
+The child's `out` was permitted and it exited cleanly (`EVENT_EXIT`) where the test demands a
 fault. The filtered leg runs three tests rather than 326, which is why its rate is lower than the
 full suite's; it is the same failure.
 
@@ -46,11 +46,11 @@ full suite's; it is the same failure.
 was **core-local**, which was the whole machine when DECISIONS §152 (the port-range capability)
 recorded it and stopped being so when `smp::seat_cpus_from_acpi` made this port multi-core.
 
-A core's bitmap permits a range only while the thread holding it is the thread running there, so the
-window needs the holder to be *running on another core* at the instant of the revoke. The test's own
-shape produces exactly that: it starts the child, revokes, and sends the wake, and when the send
+A core's bitmap permits a range only while the thread holding it is the thread running there. So
+the window needs the holder to be *running on another core* at the instant of the revoke. The test's own
+shape produces exactly that: it starts the child, revokes, and sends the wake. When the send
 lands before the child reaches its `RECV` the child's `RECV` returns without ever switching away. So
-the grant core 1 installed at switch-in is still installed when the `out` executes, and core 0's
+the grant core 1 installed at switch-in is still installed when the `out` executes. Core 0's
 reset never touched it.
 
 Measured rather than argued. A temporary snapshot of `INSTALLED_PORT_GRANT`, taken at the revoke
@@ -68,10 +68,10 @@ A remote core holding the grant is necessary and not sufficient, which is exactl
 
 ## The fix, and the one thing that makes it sound
 
-The remote half rides `mmu::shoot_down_others`' protocol rather than a new one: `SHOOTDOWN_KIND`
+The remote half rides `mmu::shoot_down_others`' protocol rather than a new one. `SHOOTDOWN_KIND`
 says which step the round is for and `SHOOTDOWN_VA` carries a packed `(base, count)` instead of an
 address. The acknowledgement mask, the single-round lock and the NMI delivery are the parts that are
-hard to get right, and there is now no second copy of them to keep in step. The NMI is forced rather
+hard to get right. There is now no second copy of them to keep in step. The NMI is forced rather
 than preferred for the same reason it was for a page (notes/x86-tlb-shootdown.md): the target core
 is routinely spinning for `IPC_TABLES` with interrupts masked, because the revoker is holding it.
 
@@ -104,22 +104,22 @@ been verified by hand and gated by nothing.
 
 - Three cores and above are still opt-in and still unmeasured on silicon. The flip is to 2, not
   to 4 like the other two runners. `ap_boot`'s `BUGS` #1 was closed on QEMU TCG in 2026-09-19 and
-  xenon has never been asked to bring all four cores online; the line to read there is
+  xenon has never been asked to bring all four cores online. The line to read there is
   `smp: N core(s) online`.
 - **Every number here is QEMU TCG on one host**, and on an aarch64 host QEMU runs an x86_64 guest
-  round-robin unless `NIFE_TCG_THREAD=multi` is set, so two cores take turns rather than executing
+  round-robin unless `NIFE_TCG_THREAD=multi` is set. So two cores take turns rather than executing
   in the same instant. The window this closes was wide enough to fire anyway. A narrower one might
   not be visible here at all.
 - **The broadcast is unbatched and unmeasured**, like the TLB shootdown it rides. A revoke of one
   range costs one full round trip to every online core. Nothing in `script/bench` prices it, and
   nothing should until a workload revokes a port range more than once per boot.
 - **The NMI handler's work is proportional to the range**, where the TLB step is constant. Taking
-  back COM1's eight ports is eight bit writes and nothing to think about, but a grant over the whole
+  back COM1's eight ports is eight bit writes and nothing to think about. But a grant over the whole
   16-bit port space would spend 8 KiB of bitmap writes inside an NMI on every online core. The
   switch path has always paid the same cost for the same range and this inherits it rather than
-  introducing it, and nothing in the tree grants a range wider than a device's.
+  introducing it. Nothing in the tree grants a range wider than a device's.
 - **`SHOOTDOWN_VA` now carries something that is not a virtual address**, and keeps its name. The
-  spelling is what every existing reader calls it and renaming a static that still carries the older
+  spelling is what every existing reader calls it. Renaming a static that still carries the older
   meaning in most of its uses is a naming decision a lane does not get to make.
 
 ## Follow-on
@@ -130,16 +130,16 @@ been verified by hand and gated by nothing.
 - **Recorded.** `loom` does not fit this protocol, and the reason is worth keeping. It was the
   obvious instrument to reach for (notes/interleaving.md has five protocols modeled this way) and
   it cannot see either half of this defect. The bug was a message that was never sent rather than an
-  interleaving of the messages that were, and the enforcement it failed at is a CPU reading a TSS
+  interleaving of the messages that were. The enforcement it failed at is a CPU reading a TSS
   bitmap on an `out` instruction, which is outside any Rust memory model. The shootdown protocol's
   atomics *are* a hand-rolled candidate and now serve two kinds rather than one, but they live under
   `arch/`, so lifting them to a host crate is the bigger question notes/interleaving.md already
   parks for `arch/*/irq.rs`. Milestone 355 (four crates were lifted so loom could search them) is
   where that would go if it goes anywhere.
-- **Recorded.** The reconciliation from milestone 316 (which core booted) still stands: it saw
+- **Recorded.** The reconciliation from milestone 316 (which core booted) still stands. It saw
   26 two-core boots and zero
   `smp: cpu 1 did not start`, against the one-in-three recorded by milestone 412 (`script/test`'s
-  UEFI leg asserts two cores online), and this lane's runs add
+  UEFI leg asserts two cores online). This lane's runs add
   more of the same evidence without being the dedicated measurement 412 asks for.
 
 ## Index row
@@ -151,10 +151,10 @@ core kept COM1 until that core's next context switch. Milestone 313's audit acce
 reasoning, and at two cores it was red in 7 of 12 full runs of the test written to see it. This lane
 reproduced it (3 of 12, then 2 of 30 on a filtered leg), named the cause with a snapshot of
 `INSTALLED_PORT_GRANT` taken at the revoke that read "revoker on cpu 0, cpu 1 holds a grant" on both
-captured failures, and closed it by broadcasting the reset over the TLB shootdown's NMI with a kind
+captured failures. It was closed by broadcasting the reset over the TLB shootdown's NMI with a kind
 tag on the existing protocol. The half the proposal did not have is that broadcasting alone leaves
-the window reopenable: `schedule` read the grant under `IPC_TABLES` and installed it after, so a
-core could install a grant the sweep had already cleared, and the NMI could land inside that
+the window reopenable. `schedule` read the grant under `IPC_TABLES` and installed it after. So a
+core could install a grant the sweep had already cleared. The NMI could land inside that
 install. Moving the install under the lock gives one rule instead, stated at the writer, that every
 TSS bitmap write is made by a holder of `IPC_TABLES` or by an NMI one sent. `NIFE_SMP` defaults to 2
 as the closing step per DECISIONS §153, which makes both this test and milestone 161's

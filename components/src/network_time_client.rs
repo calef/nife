@@ -53,7 +53,7 @@ use network_time_protocol::{Query, Reject, Timestamp};
 // does is that the two cannot drift, and a per-consumer subset would throw that away.
 #[allow(dead_code)]
 use socket_protocol::*;
-use user_mode_runtime::mapped_window::{MappedWindow, PAGE};
+use user_mode_runtime::socket_frame::Frame;
 use user_mode_runtime::{
     call, call_receiving, cntfrq, exit, map_page_frame, now, retype_into_page_frame,
     retype_sleeper, send, send_capability, sleep_until, yield_now,
@@ -113,10 +113,11 @@ const RETRY_GAP_NANOS: u64 = 2 * 1_000_000;
 /// *layout*, which is `socket_protocol`'s.
 const PAGE_FRAME_VA: u64 = address_space_map::pair_page(0x0000_0000_00A0_0000);
 
+/// The shared frame at that address, read and written through
+/// `user_mode_runtime::socket_frame::Frame`.
 // SAFETY: this program's own `PageFrame::MAP` (in `attach_page_frame`, before the frame is touched)
-// mapped one page read/write at PAGE_FRAME_VA before any of `WINDOW`'s accessors are called
-// (milestone 139).
-const WINDOW: MappedWindow = unsafe { MappedWindow::new(PAGE_FRAME_VA, PAGE) };
+// mapped one page read/write at PAGE_FRAME_VA before any access through `SHARED_FRAME` (milestone 139 (drive the unsafe count down)).
+static SHARED_FRAME: Frame = unsafe { Frame::new(PAGE_FRAME_VA) };
 
 /// `a0` is the server's IPv4 packed big-endian, `a1` its UDP port.
 #[unsafe(no_mangle)]
@@ -173,12 +174,14 @@ fn client(server_ip: u64, server_port: u64) -> ! {
         // request carries the nonce, not the send time), so everything that can be done first is,
         // and what remains between this reading and the datagram leaving is one IPC. What is left
         // over lands in the measured delay, which is the same path asymmetry NTP already lives with.
-        write_dst(server_ip, server_port);
+        // The server is the one the *wiring* named in `a0`/`a1`, not one this program chose:
+        // which server to ask is an endowment, the same way which network to use is.
+        SHARED_FRAME.set_dst((server_ip as u32).to_be_bytes(), server_port as u16);
         let Some(t1) = stamp(local.now()) else {
             done(RPT_BAD_LOCAL_TIME, local.now(), 0);
         };
         let query = Query::with_nonce(t1, Timestamp::from_bits(nonce));
-        write_payload(&query.request());
+        SHARED_FRAME.payload_write(&query.request());
         sent += 1;
         if call(
             socket,
@@ -202,7 +205,7 @@ fn client(server_ip: u64, server_port: u64) -> ! {
             done(RPT_BAD_LOCAL_TIME, local.now(), 0);
         };
         let mut wire = [0u8; network_time_protocol::PACKET_LEN];
-        let n = read_payload(n as usize, &mut wire);
+        let n = SHARED_FRAME.payload_read(n as usize, &mut wire);
 
         match query.accept(&wire[..n], t4) {
             Ok(sample) => {
@@ -373,46 +376,6 @@ fn attach_page_frame(socket: u64) {
     {
         done(RPT_NET_ERROR, 1, 0);
     }
-}
-
-// =================================================================================================
-// The shared frame. Absolute-VA volatile access through `WINDOW` (milestone 139), the same
-// abstraction socket_test_client, network_time_test_server, keyboard_driver, entropy and virtio_net_transport share.
-// `va` is always `PAGE_FRAME_VA + <an offset constant>`, so subtracting PAGE_FRAME_VA recovers the offset
-// `WINDOW` bounds-checks against.
-// =================================================================================================
-
-fn r8(va: u64) -> u8 {
-    WINDOW.r8(va - PAGE_FRAME_VA)
-}
-fn w8(va: u64, v: u8) {
-    WINDOW.w8(va - PAGE_FRAME_VA, v);
-}
-fn w16le(va: u64, v: u16) {
-    WINDOW.w16(va - PAGE_FRAME_VA, v);
-}
-
-/// Write the destination header: the address and port the *wiring* named, not one this program
-/// chose. Which server to ask is an endowment, the same way which network to use is.
-fn write_dst(ip: u64, port: u64) {
-    for i in 0..4 {
-        w8(PAGE_FRAME_VA + OFF_DST_IP + i, (ip >> (24 - 8 * i)) as u8);
-    }
-    w16le(PAGE_FRAME_VA + OFF_DST_PORT, port as u16);
-}
-
-fn write_payload(bytes: &[u8]) {
-    for (i, &b) in bytes.iter().enumerate() {
-        w8(PAGE_FRAME_VA + OFF_PAYLOAD + i as u64, b);
-    }
-}
-
-fn read_payload(n: usize, out: &mut [u8]) -> usize {
-    let n = n.min(out.len());
-    for (i, b) in out[..n].iter_mut().enumerate() {
-        *b = r8(PAGE_FRAME_VA + OFF_PAYLOAD + i as u64);
-    }
-    n
 }
 
 user_mode_runtime::panic_handler!();

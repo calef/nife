@@ -20,12 +20,12 @@ is the lane's main finding: `x86_64/machine.rs` cannot be reached from any machi
 has. `arch/mod.rs` selects its subtree with `#[cfg(target_arch)]`, and under Kani the target is the
 **host**, so `cargo kani -p kernel` on the `ubuntu-24.04-arm` runners compiles `arch/aarch64/` and
 nothing of `arch/riscv64/` or `arch/x86_64/`. The two largest asm-free files in the table above are
-out of reach for a `cfg` rather than for an `asm!` block, and nothing in the tree said so. That is
+out of reach for a `cfg` rather than for an `asm!` block. Nothing in the tree said so. That is
 `design/roadmap/proposals/the-prover-only-ever-sees-one-architecture.md`.
 
 So the target was `aarch64/iommu.rs`, which is 347 asm-free lines of confinement and the one file in
 the shortlist that both compiles under the prover and carries risk 7's weight. `attach` built its
-two entries inline, mixed with the volatile writes that make it unreachable; the arithmetic is now
+two entries inline, mixed with the volatile writes that make it unreachable. The arithmetic is now
 three functions in the same file, and `attach` reads better for it (one `table_offset` where the
 same stride had been written out four times).
 
@@ -33,8 +33,8 @@ same stride had been written out four times).
   stream table entry's `S1ContextPtr` are each a 64-bit physical address split across two 32-bit
   words, and each shares its low word with control bits. For every page-frame `ttb` and every
   64-byte-aligned `ctxptr` below 2^52, both fields read back at the bit positions Arm IHI 0070 gives
-  them are exactly the input, and V, CONFIG and S1FMT are what they were written as rather than what
-  an overlapping address bit made them. The second half is the worse failure: an address bit
+  them are exactly the input. V, CONFIG and S1FMT are what they were written as rather than what
+  an overlapping address bit made them. The second half is the worse failure. An address bit
   reaching CONFIG sets the stream to bypass, which is translation switched off.
 - `no_stream_can_reach_another_streams_tables`. `table_offset` is the whole of the addressing for
   both tables and its `assert!` is the only thing between a device-tree-supplied `StreamID` and a raw
@@ -43,12 +43,12 @@ same stride had been written out four times).
 
 Both falsifications leave every test in the tree green, which is the argument. QEMU's `virt`
 board puts RAM at `0x4000_0000`, so bit 31 of a domain root is clear and `ttb >> 31` agrees with
-`ttb >> 32` on this board; and the one PCIe disk's requester id is far below 64, so raising
+`ttb >> 32` on this board. And the one PCIe disk's requester id is far below 64, so raising
 `STRTAB_LOG2` to 7 (the edit this file most invites, and one that writes off the end of a frame)
 is addressed by no test. `script/falsifications --sweep kernel` replays both, so this is `replayable`
 rather than `attested`.
 
-Cost: 0.11 seconds of solver time on `script/verify`'s budget, almost all of the wall clock being
+Cost: 0.11 seconds of solver time on `script/verify`'s budget. Almost all of the wall clock is
 the kernel crate's own compile, which milestone 193 already pays.
 
 One claim this block made was too strong and is corrected rather than quietly dropped.
@@ -94,9 +94,9 @@ quarter of its lines. The largest asm-free files:
 The three IOMMU drivers are 1,029 lines of confinement, and `design/fatal-risks/README.md` risk 7 (the
 confinement claim is false) rests on what they do. They build device tables and page tables, and they
 are the code that decides which physical addresses a device may touch. That is table arithmetic over
-integers, which is exactly what a bounded model checker is good at and what a boot test is bad at:
-a wrong entry that still confines *this* device on *this* machine is invisible to every test in the
-tree.
+integers, which is exactly what a bounded model checker is good at and what a boot test is bad at.
+A wrong entry that still confines *this* device on *this* machine is invisible to every test in the tree.
+
 
 `x86_64/machine.rs` walks somebody else's tables. ACPI's RSDP, XSDT and MCFG arrive from firmware
 and are untrusted input in the sense that matters: a length field, a checksum, a count. notes/x86-uefi-boot.md
@@ -136,7 +136,7 @@ Not a survey of what could be proved, and not a harness over a function moved ou
   some are the hardest reasoning in the tree; the fraction says where to look, not how long it takes.
 - `script/verify` already costs about 42 minutes and anything added lands on that budget. The
   `--affected-since` machinery exists because it is expensive.
-- **The three IOMMU drivers are structural siblings but not identical**, so a property proved of one
+- **The three IOMMU drivers are structural siblings but not identical**. A property proved of one
   is not thereby proved of the other two, and a harness that appears to cover all three by symmetry
   would be the overclaim this milestone is meant to remove rather than add.
 - **Two harnesses over one file is not the architecture layer.** 347 of 16,225 lines, on one of

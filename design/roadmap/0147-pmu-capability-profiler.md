@@ -9,52 +9,53 @@ needs_person: no
 ---
 # 147. A profiler that holds exactly the counters it was granted
 
-Minted 2026-08-21 by calef, from a question about HPC differentiation:
-what would a performance-analysis story look like that CrayPat, Intel VTune and Linaro Forge cannot
+Minted 2026-08-21 by calef, from a question about HPC differentiation. What would a
+performance-analysis story look like that CrayPat, Intel VTune and Linaro Forge cannot
 tell, given that all three are built on their host OS's ambient perf-counter interface
 (`perf_event_open` or a vendor driver reachable by any sufficiently-privileged process).
 
 Milestone 75 (cycle counter authority) asks the prior question (whether the cycle counter
 is ambient or a capability) for one consumer (`sel4bench`), and that question was answered on
-2026-09-02 while this gate went on deferring to it:
+2026-09-02 while this gate went on deferring to it.
 [§139](../decisions/0139-cycle-counter-authority.md) (who may read the cycle counter, and by what
 authority) chose a per-thread grant enforced at the context switch, granted in the spawn manifest.
 §139 also says in its own text that neither shape it offers provides what this milestone needs,
 which is cross-thread authority with a named target. So this milestone's own decision survives its
-prior one being settled, and it is
+prior one being settled. It is
 §167 (what a profiling session's grant
 names), written up 2026-09-19 by milestone 435's lane. The `MILESTONE 75` half stays until that
 block records its own answer.
 
 In brief. Every HPC profiler this note surveyed reads hardware counters through host-OS ambient
-authority: `perf_event_open` targets any pid the caller's privilege reaches, gated only by
-`perf_event_paranoid` (a global sysctl, not a per-target grant) or `CAP_PERFMON` (a capability in
-name that in practice is "root, or nothing"). A profiling tool with that access on a shared HPC node
-can, in principle, sample a neighboring tenant's job. This is not a hypothetical: cache-timing and
-counter-based side channels between co-scheduled tenants are the reason `perf_event_paranoid`
-exists at all, and its own defense is coarse: disable unprivileged profiling everywhere, which is
-why HPC centers frequently run it at `-1` in practice for exactly the tools this milestone answers.
+authority. `perf_event_open` targets any pid the caller's privilege reaches. It is gated only by
+`perf_event_paranoid` (a global sysctl, not a per-target grant). The other gate is `CAP_PERFMON`
+(a capability in name that in practice is "root, or nothing"). A profiling tool with that access
+on a shared HPC node can, in principle, sample a neighboring tenant's job. This is not a
+hypothetical: cache-timing and counter-based side channels between co-scheduled tenants are the
+reason `perf_event_paranoid` exists at all. Its own defense is coarse: disable unprivileged
+profiling everywhere. That is why HPC centers frequently run it at `-1` in practice for exactly the
+tools this milestone answers.
 
-Independent confirmation this is a real, named gap rather than a nife-specific concern: Brown,
+Independent confirmation this is a real, named gap rather than a nife-specific concern. Brown,
 "RISC-V for High Performance Computing" (CUG '25, ACM 3757348.3757367), a survey grounded in
-EPCC's own RISC-V ecosystem lab, names immature performance-profiling tooling as one of a handful
+EPCC's own RISC-V ecosystem lab. It names immature performance-profiling tooling as one of a handful
 of high-priority action items for the whole RISC-V/HPC community: *"the lack of mature RISC-V
 profiling tooling is a significant weakness for HPC... there are no mainstream performance tools
 that support RISC-V, which is due to a mixture of the software side by the tool developers but also
 the hardware events that are made available by RISC-V CPUs."* That second clause matters for scope
 here: the paper's own read is that the gap is not purely a software/OS-integration problem the way
-this milestone frames it (ambient perf interface versus capability), but partly a hardware one:
-some RISC-V silicon may simply not expose the event set (cache misses, branch mispredicts, and so
+this milestone frames it (ambient perf interface versus capability), but partly a hardware one.
+Some RISC-V silicon may simply not expose the event set (cache misses, branch mispredicts, and so
 on) a profiling session would want to name. Milestone 74's own ISA-discovery pattern (`Isa`,
 built at boot, probing what is actually present rather than assuming a fixed event catalog) is
-the right shape to inherit for this: a counter-set capability should be able to name only the
+the right shape to inherit for this. A counter-set capability should be able to name only the
 events the running silicon actually reports, discovered rather than assumed, and a probe that
 asks for an unsupported event should refuse cleanly rather than silently reading zero.
 
 **nife can make a stronger claim than "disabled by default": a profiling session can hold a
-capability that names exactly one confined subtree and no other**, so a job's own profiler can read
-its own counters and provably cannot reach a neighbor's, without a global sysctl standing in for the
-missing per-target authority.
+capability that names exactly one confined subtree and no other**. So a job's own profiler can read
+its own counters and provably cannot reach a neighbor's. No global sysctl stands in for the missing
+per-target authority.
 
 ## What already exists to build on
 
@@ -65,7 +66,7 @@ missing per-target authority.
   (`sel4bench`), and it already names the shape this milestone would reuse: "a capability type, a
   grant in the spawn path, and a trap-and-check on the register read."
 - Both of those explicitly parked the general case: 74's scope note refuses to become a profiling
-  framework "for a second consumer", and this is that second consumer, arriving on schedule rather
+  framework "for a second consumer". This is that second consumer, arriving on schedule rather
   than by scope creep.
 
 ## What this milestone owns, once 75 answers the first question
@@ -80,19 +81,19 @@ counter set":
   processes it may read, the way milestone 126's `ps` prints exactly which subtree it may enumerate.
 - The grant names a counter set, since the PMU can count dozens of event types and a profiling
   session legitimately wants several (cycles, instructions, cache misses, branch mispredicts) rather
-  than the one counter 74 ports. This is where 74's scope note's restraint gets spent: the type
+  than the one counter 74 ports. This is where 74's scope note's restraint gets spent. The type
   should be able to hold a *set* from day one so it is not re-designed the day a second event type is
   asked for, but the set is still a capability's contents, not an ambient enable bit.
 - The read is a syscall against a held capability, not a register the kernel opened to EL0
-  wholesale. This is the fork 75 already frames as "trap-and-check on the register read": the
+  wholesale. This is the fork 75 already frames as "trap-and-check on the register read". The
   profiler never gets ambient `PMUSERENR_EL0`/`scounteren` access; every read is checked against the
   capability it presented.
 
 **If 75 chooses option 1 (ambient) or option 3 (kernel-mediated)**, this milestone still has a
-question to answer: whether a profiling *session* (as opposed to the single ported counter) should
+question to answer. Whether a profiling *session* (as opposed to the single ported counter) should
 reopen the ambient-vs-capability fork on its own evidence, since a general profiler is a much larger
 side-channel surface than one benchmark harness reading one counter. Recorded here so the fork does
-not silently inherit 75's answer for a different-sized risk, which is exactly the mistake 75 itself
+not silently inherit 75's answer for a different-sized risk. That is exactly the mistake 75 itself
 was carved out to avoid making about the generic timer.
 
 ## The demonstration this buys
@@ -101,7 +102,7 @@ was carved out to avoid making about the generic timer.
 Forge structurally cannot make, because none of them run under a kernel where "may this profiler
 observe that target" is a checked capability rather than a privilege level. The demo: two confined
 workloads on one board, a profiler holding a capability over only one of them, and a negative
-control: the profiler attempts to read the other's counters and is refused at the type level, the
+control. The profiler attempts to read the other's counters and is refused at the type level, the
 same shape milestone 123's demonstration already asks every capability claim to carry.
 
 ## What this does not decide
@@ -124,7 +125,7 @@ same shape milestone 123's demonstration already asks every capability claim to 
 - **The side-channel argument is asserted from the literature, not measured on this board.** Whether
   a confined nife process can actually distinguish a neighbor's cache behavior through any channel
   this kernel leaves open (not just the PMU) is a claim milestone 43's audit lens should eventually
-  aim at, and this milestone does not attempt that broader audit.
+  aim at. This milestone does not attempt that broader audit.
 - **No effort estimate.** The capability type, spawn-path grant, and trap-and-check are each small in
   isolation (milestone 75 says as much for the single-counter case); the counter-set generalization
   and the enumeration-style target-naming are the parts with no precedent in this tree to price from.
@@ -134,6 +135,6 @@ same shape milestone 123's demonstration already asks every capability claim to 
 CrayPat, VTune and Linaro Forge all read hardware counters through their host OS's ambient perf
 interface, gated only by a privilege level or a global sysctl. Once milestone 75 answers whether
 the cycle counter is a capability, this is the second consumer that generalizes the grant from one
-counter to a profiling session naming a target subtree and a counter set: a confined tenant's
+counter to a profiling session naming a target subtree and a counter set. A confined tenant's
 profiler that can read its own job's counters and is refused, at the type level, from reading a
 neighbor's. The HPC differentiation case for the whole idea.

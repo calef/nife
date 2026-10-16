@@ -16,7 +16,9 @@ use crate::disk_check::{
     blank_check_after_run, redoxfs_check_after_run, redoxfs_crash_check_after_run,
 };
 use crate::farm::std_exerciser;
-use crate::host::{cargo, cargo_test_counting_selected, flag_value, run, runner_env, selected_by};
+use crate::host::{
+    cargo, cargo_test_counting_selected, flag_value, run, runner_env, selected_by, workspace_root,
+};
 use crate::inbound::InboundProber;
 use crate::scanout::{HostLoad, ScanoutReferee, cargo_test_with_scanout_check};
 use crate::uefi::{uefi_boot, uefi_test};
@@ -150,7 +152,7 @@ impl ArchLegs {
 /// ```text
 /// $ script/test --arch aarch64 --test frames_are_zeroed
 /// --- test filter: frames_are_zeroed (kernel legs only; the host crates have `cargo test`) ---
-/// --- kernel tests, aarch64 (QEMU) ---
+/// --- kernel tests, aarch64 (QEMU 11.1.2) ---
 /// running 1 of 312 tests (filter: frames_are_zeroed)
 /// test kernel::memory::tests::frames_are_zeroed ... ok
 /// test result: ok. 1 passed
@@ -404,6 +406,50 @@ fn host_pass(hvf: bool, filtered: bool) -> bool {
     }
 }
 
+/// The host-excluded crates, derived rather than listed (`helpers/host-excluded-crates.sh`).
+///
+/// Every workspace member that reaches `crates/user_mode_runtime` cannot compile for the host:
+/// `svc` and `ecall` there are EL0 syscalls, a fault with no kernel under them. One derivation
+/// serves the whole tree (script/lint's two clippy passes, script/coverage, script/mutation, and
+/// this file's host and Miri passes), and script/lint's "the host pass excludes exactly the
+/// bare-metal crates" gate fails if this file stops calling it or if the derivation disagrees
+/// with the `cargo metadata` answer it checks against.
+///
+/// The returned arguments are `--exclude <crate>` pairs, ready to append to a `--workspace`
+/// selection. Excluding the whole set is what makes the selection safe, and it has to be the
+/// whole set: `--exclude` removes a package from the test SELECTION, not from the dependency
+/// graph, so excluding `user_mode_runtime` alone stopped working on 2026-08-03, when three crates
+/// took unconditional dependencies on it and cargo still had to build it for them. The host pass
+/// stopped compiling on x86_64 and nobody noticed, because CI moved to `ubuntu-24.04-arm` the
+/// same day and on an aarch64 host it builds by accident. A derivation cannot lag behind a new
+/// dependency the way that hand list did: the next crate to take one lands in the set by asking,
+/// not by being remembered.
+fn host_excluded_args() -> Vec<String> {
+    let output = Command::new("sh")
+        .arg("helpers/host-excluded-crates.sh")
+        .current_dir(workspace_root())
+        .output()
+        .unwrap_or_else(|e| {
+            panic!(
+                "host tests: cannot run helpers/host-excluded-crates.sh to derive the \
+                    host-excluded set: {e}"
+            )
+        });
+    if !output.status.success() {
+        panic!(
+            "host tests: helpers/host-excluded-crates.sh failed, and a wrong or empty set would \
+             send the bare-metal crates into the host pass: {}",
+            String::from_utf8_lossy(&output.stderr)
+        );
+    }
+    let mut args = Vec::new();
+    for name in String::from_utf8_lossy(&output.stdout).split_whitespace() {
+        args.push("--exclude".to_string());
+        args.push(name.to_string());
+    }
+    args
+}
+
 /// The host pass itself ([`host_pass`] says when it runs).
 fn host_tests() -> bool {
     eprintln!("--- host tests (pure logic, no emulator) ---");
@@ -417,42 +463,21 @@ fn host_tests() -> bool {
     // gate that quietly covers less than it claims is the failure mode script/fmt's `--check` bug
     // already cost this project a day over.
     //
-    // The exclusions are every crate that cannot compile for the host, which means `user_mode_runtime` (EL0
-    // syscall `asm!`) and everything that depends on it.
-    //
-    // **`--exclude` removes a package from the test SELECTION, not from the dependency graph.**
-    // Excluding `user_mode_runtime` alone stopped working on 2026-08-03, when `swap_protocol`, `virtio` and
-    // `supervision_protocol` took unconditional `user_mode_runtime` dependencies (`system_initializer`
-    // followed a day later): cargo still had to build it for them, so the host pass stopped
-    // compiling on an x86_64 host and nobody noticed, because CI moved to `ubuntu-24.04-arm` the
-    // same day and on an aarch64 host it builds by accident. A stranger with a clean x86_64
-    // checkout found it on 2026-08-14 (milestone 117's first run).
-    //
-    // `script/lint`'s "host pass excludes exactly the bare-metal crates" gate now DERIVES this
-    // set from `cargo metadata` and fails if this list disagrees with it, so the next crate to
-    // take a `user_mode_runtime` dependency breaks the gate rather than the host build.
-    if !cargo(&[
-        "test",
-        "--workspace",
-        "--exclude",
-        "kernel",
-        "--exclude",
-        "system_tests",
-        "--exclude",
-        "components",
-        "--exclude",
-        "fixtures",
-        "--exclude",
-        "user_mode_runtime",
-        "--exclude",
-        "swap_protocol",
-        "--exclude",
-        "virtio",
-        "--exclude",
-        "supervision_protocol",
-        "--exclude",
-        "system_initializer",
-    ]) {
+    // The selection is now `--workspace` with the DERIVED exclusions (see
+    // [`host_excluded_args`]). `kernel` and `system_tests` stay here by judgment rather than the
+    // derivation: they are bare metal through `kernel`, which the dependency walk does not see.
+    let mut args: Vec<String> = ["test", "--workspace"]
+        .iter()
+        .map(|s| s.to_string())
+        .collect();
+    args.extend(host_excluded_args());
+    args.extend(
+        ["--exclude", "kernel", "--exclude", "system_tests"]
+            .iter()
+            .map(|s| s.to_string()),
+    );
+    let args: Vec<&str> = args.iter().map(String::as_str).collect();
+    if !cargo(&args) {
         return false;
     }
 
@@ -594,7 +619,13 @@ fn attach_test_leg_devices() {
 /// **The aarch64 leg**: its images, then both test images, on the physical core under `--hvf`.
 fn aarch64_suite(hvf: bool, filtered: bool) -> bool {
     eprintln!();
-    eprintln!("--- kernel tests, aarch64 (QEMU) ---");
+    // The version rides in the banner (milestone 414 (a red post-run check does not say which
+    // emulator produced it)): a red line under this heading is interpreted by which emulator
+    // produced it, so the heading carries that fact.
+    eprintln!(
+        "--- kernel tests, aarch64 (QEMU {}) ---",
+        crate::host::qemu_version("aarch64")
+    );
     // The FS server (milestone 32 phase 2), for the aarch64 bare target, before `user()` so
     // initial_ramdisk_aarch64 packs it; then the RedoxFS test images the runner attaches as
     // extra mmio disks.
@@ -639,7 +670,10 @@ fn aarch64_suite(hvf: bool, filtered: bool) -> bool {
 /// **The riscv64 leg**: its own archive and fresh images, then both test images.
 fn riscv64_suite(filtered: bool) -> bool {
     eprintln!();
-    eprintln!("--- kernel tests, riscv64 (QEMU) ---");
+    eprintln!(
+        "--- kernel tests, riscv64 (QEMU {}) ---",
+        crate::host::qemu_version("riscv64")
+    );
     // The riscv userspace tests (parity C) load programs from the initial ramdisk and read the
     // disk, so build the riscv archive and point the runner at IT, not at the aarch64 archive
     // `cargo()` exports: the riscv ELF loader must never be handed aarch64 ELFs. The disk is
@@ -697,7 +731,10 @@ fn riscv64_suite(filtered: bool) -> bool {
 /// other machines: a PCIe root port, AMD-Vi, and real firmware.
 fn x86_64_suite(filtered: bool) -> bool {
     eprintln!();
-    eprintln!("--- kernel tests, x86_64 (QEMU q35) ---");
+    eprintln!(
+        "--- kernel tests, x86_64 (QEMU q35, {}) ---",
+        crate::host::qemu_version("x86_64")
+    );
     // The FS server for this target BEFORE the archive that packs it (milestone 164), the same
     // order the aarch64 and riscv64 legs use. `mkdisk` since milestone 215 (a PCI function's
     // interrupt on x86_64), because this runner attaches the sibling `-pci.img` as a
@@ -1281,11 +1318,15 @@ pub(crate) fn kernel_test_elf(package: &str, target: &str, who: &str) -> Option<
 
 /// **The host tests again, under Miri's interpreter** (milestone 79, notes/undefined-behavior.md).
 ///
-/// Miri checks the rules nothing else in the tree checks: aliasing (tree borrows), pointer
-/// provenance, uninitialized reads, leaks. The crate selection is `test()`'s `--workspace
-/// --exclude`, so a new crate is covered the moment it joins the workspace. The exclusions are the
-/// three bare-metal crates that do not compile for the host, plus four, none with `unsafe` Miri
-/// could execute:
+/// Miri checks the rules nothing else in this tree checks: aliasing (tree borrows), pointer
+/// provenance, uninitialized reads, leaks. The crate selection is `test()`'s: `--workspace` with
+/// the DERIVED host-excluded set ([`host_excluded_args`], `helpers/host-excluded-crates.sh`), so
+/// a crate that cannot compile for the host is out the moment the dependency graph says so. This
+/// list had drifted from `test()`'s and is the reason the selection is derived rather than
+/// restated: four bare-metal crates were missing here, invisible on CI's aarch64 runner, where
+/// they compile by accident.
+///
+/// Four judgment exclusions ride on top, none with `unsafe` Miri could execute:
 ///
 /// - **`xtask`**, the build tool: its tests are safe pixel arithmetic, about seven minutes under
 ///   the interpreter for nothing the type system has not said.
@@ -1307,29 +1348,31 @@ pub(crate) fn kernel_test_elf(package: &str, target: &str, who: &str) -> Option<
 /// check one crate, run `cargo miri test -p <crate>` directly.
 pub(crate) fn undefined_behavior_check() -> bool {
     eprintln!("--- host tests under Miri (aliasing, provenance, uninitialized reads) ---");
-    let mut args = vec![
-        "miri",
-        "test",
-        "--workspace",
-        "--exclude",
-        "kernel",
-        "--exclude",
-        "system_tests",
-        "--exclude",
-        "components",
-        "--exclude",
-        "fixtures",
-        "--exclude",
-        "user_mode_runtime",
-        "--exclude",
-        "xtask",
-        "--exclude",
-        "board_console",
-        "--exclude",
-        "stick_maker",
-        "--exclude",
-        "walk_pricing",
-    ];
+    let mut args: Vec<String> = ["miri", "test", "--workspace"]
+        .iter()
+        .map(|s| s.to_string())
+        .collect();
+    args.extend(host_excluded_args());
+    args.extend(
+        ["--exclude", "kernel", "--exclude", "system_tests"]
+            .iter()
+            .map(|s| s.to_string()),
+    );
+    args.extend(
+        [
+            "--exclude",
+            "xtask",
+            "--exclude",
+            "board_console",
+            "--exclude",
+            "stick_maker",
+            "--exclude",
+            "walk_pricing",
+        ]
+        .iter()
+        .map(|s| s.to_string()),
+    );
+    let mut args: Vec<&str> = args.iter().map(String::as_str).collect();
     let extra: Vec<String> = std::env::args().skip(2).collect();
     args.extend(extra.iter().map(String::as_str));
     run("cargo", &args)

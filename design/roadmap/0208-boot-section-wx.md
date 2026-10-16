@@ -77,7 +77,7 @@ skipped with its UEFI leg green.
 
 The other two architectures are clean, and structurally rather than luckily. `link-aarch64.ld`
 and `link-riscv64.ld` both fold `KEEP(*(.text.boot))` into `.text`, which is `AX`, and neither has a
-`.data.boot` at all: the x86_64 script's low `.boot` section exists only because a multiboot/PVH
+`.data.boot` at all. The x86_64 script's low `.boot` section exists only because a multiboot/PVH
 kernel is entered in 32-bit protected mode and needs a trampoline linked at its physical address,
 which is the one structural divergence its own header already describes. Checked by building both
 kernels and dumping their program headers: six `PT_LOAD`s each, `R-X` / `R--` / four `RW-`, no
@@ -98,7 +98,7 @@ the three fixed images, and red on the pre-fix x86_64 one, naming the segment
 kernel only ever loads binaries for its own architecture. So a host tool built once can accept exactly
 one of the three kernels, and a W^X gate covering one architecture would have failed DECISIONS §19
 (architectural parity is a tenet) on the day it was written. The script reads two fields, `p_type` and
-`p_flags`, at the offsets ELF64 fixes; it is an auditor rather than a reader, it places nothing and
+`p_flags`, at the offsets ELF64 fixes. It is an auditor rather than a reader, it places nothing and
 maps nothing, and it reports every violation rather than the first, which a parser returning one
 error cannot. `Elf::parse` still does this work on both paths where it can: the kernel's user-program
 loader, and now `uefi_loader` at every real-firmware boot.
@@ -107,8 +107,8 @@ Its false-positive risk, stated rather than asserted. AGENTS.md's rung two warns
 only effect is rejecting legitimate work, and `script/lint` has had three checks deleted for exactly
 that. This is not that shape, and the test is falsifiable: it asserts a property the three artifacts
 genuinely have today, measured, so a red run means the property is gone rather than that the rule
-was too strict. There is also no legitimate reason for a nife kernel image to want the combination:
-the kernel installs fine-grained W^X page tables over its own image on all three architectures, so a
+was too strict. There is also no legitimate reason for a nife kernel image to want the combination.
+The kernel installs fine-grained W^X page tables over its own image on all three architectures, so a
 segment asking for both is asking for something the kernel will not honor anyway. If one is ever
 wanted, this script is where the argument has to be made and written down. The failure mode it can
 actually have is the opposite one, a false *negative*: see BUGS.
@@ -119,7 +119,7 @@ It says the kernel image no longer contradicts them, and it says nothing about w
 The claims in `design/fatal-risks/README.md` are about what a confined component can reach at runtime, and
 they are enforced by the page tables and the capability system, neither of which this touches. The
 kernel already installed fine-grained W^X tables over its own image on all three architectures, so
-**the RWX segment was never actually mapped RWX at runtime**; the `PT_LOAD` was a claim in a file that
+**the RWX segment was never actually mapped RWX at runtime**. The `PT_LOAD` was a claim in a file that
 the kernel then declined to honor.
 
 What it was, and this is the part worth keeping, is the tree's own rule catching the tree. The
@@ -148,8 +148,8 @@ pointing existing checks at new inputs, which is what the gate now does permanen
   renaming the input section in `boot.s`, which is a boot-path change for a hardening improvement
   rather than a correctness one, and it was left out of a milestone whose subject is the linker script.
 - The trampoline's addresses are unusual and worth reading before editing: `p_vaddr` `0x8000`
-  against `p_paddr` `0x166000` (it was `0x12b000` when this block was minted; the split moved it),
-  because its bytes ship high (`AT()` places them after `.rodata`) and execute low (a STARTUP IPI can
+  against `p_paddr` `0x166000` (it was `0x12b000` when this block was minted; the split moved it).
+  Its bytes ship high (`AT()` places them after `.rodata`) and execute low (a STARTUP IPI can
   only name a page below 1 MiB). The image has three different vaddr/paddr relationships and this is
   the strangest.
 

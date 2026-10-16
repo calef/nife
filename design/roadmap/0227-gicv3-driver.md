@@ -12,12 +12,13 @@ pushing has a leg that fails instead of skipping).
 under a GICv3: the kernel booted the whole tour, brought four cores online, printed
 `timer: 100 Hz tick, interrupts ON`, and then took **zero interrupts and zero preemptions, with
 nothing faulting**. `memory::gic_regions()` matched the node by the name prefix `intc@` and took its
-first two `reg` blocks as distributor and CPU interface; a GICv3's second block is the redistributor
+first two `reg` blocks as distributor and CPU interface. A GICv3's second block is the redistributor
 array, so `gic::init_this_cpu` wrote `GICC_PMR` and `GICC_CTLR` into registers that were not there.
 
 **Now the kernel drives both, chooses by the device tree's binding, and asks the hardware whether
 the tree is right before driving anything.** Under `gic-version=3` the boot self-test is 5 of 5
-where milestone 317 recorded 3 of 5 with no ticks, the whole aarch64 suite passes under TCG, and the
+where milestone 317 (the interrupt-remapping flags) recorded 3 of 5 with no ticks. The whole
+aarch64 suite passes under TCG, and the
 suite runs on the physical Apple core under HVF for the first time since QEMU 11.1.1 refused the
 GICv2 machine.
 
@@ -118,7 +119,7 @@ The HVF leg's two failures, neither of them the GIC:
   `script/ci-build` names it when the HVF leg goes red. So `script/ci-build`'s HVF leg now runs,
   and is sometimes red on that one test, where before it was always skipped.
 
-The two tests this milestone adds, both in `arch::irq::tests`, pass on GICv2 and GICv3:
+The two tests this milestone adds, both in `arch::irq::tests`, pass on GICv2 and GICv3.
 `every_online_core_takes_its_own_timer_ticks` (a GICv3 redistributor is per core, so one core can go
 silent while the test's own keeps ticking; injecting "secondaries never enable Group 1" fails it
 naming core 1), and `the_driven_gic_is_the_one_the_tree_names`. The host crate adds nine
@@ -164,7 +165,7 @@ one.
   there are no LPIs and no MSI translation. Milestone 317 owns the reason it matters.
 - **Not proven on GICv3 silicon.** QEMU's TCG model and HVF's are the only GICv3s this has met. The
   EL2 step in `boot.s` in particular cannot be proven on QEMU, whose `ICC_SRE_EL2` reads as set
-  whether or not the step runs (measured by skipping it: still 5 of 5); the EL1 `SRE` assertion is
+  whether or not the step runs (measured by skipping it: still 5 of 5). The EL1 `SRE` assertion is
   what would stop a board where it matters.
 - **`ID_AA64PFR0_EL1.GIC` is not part of the boot check**, because the first HVF boot overruled it:
   it reads zero on an Apple core under HVF (`0x1101000010110011`) while QEMU emulates the registers.
@@ -181,8 +182,8 @@ one.
   leg's std listener hang. `user::tests::a_std_program_serves_a_granted_listening_port` hung in two
   of three full `script/test --hvf` runs: the std program aborts (`__rust_abort`, a panic), the kernel test waits
   for a report that never comes, and the watchdog reports a lost-wakeup hang. It passes alone under
-  HVF and under TCG. The likeliest reading, not established: `probe_inbound` holds one connection
-  until the run ends, and if it opened that connection between the hand-written listener's window
+  HVF and under TCG. The likeliest reading, not established. `probe_inbound` holds one connection
+  until the run ends. If it opened that connection between the hand-written listener's window
   and the std one, the std listener's bounded `accept` expires (`std-nife`'s `accept` returns
   `WouldBlock`, and `serve_one_inbound` panics on it) while the prober waits on a connection nobody
   will accept. Two defects may be here: the timing, and a kernel test that hangs rather than fails
@@ -204,5 +205,5 @@ one.
 ## Index row
 
 the kernel drives GICv2 and GICv3, chosen by the device tree's binding and confirmed against the
-hardware at boot; `gic-version=3` goes from zero ticks to the whole suite under TCG, and the suite
+hardware at boot. `gic-version=3` goes from zero ticks to the whole suite under TCG, and the suite
 runs on the physical core under HVF again
