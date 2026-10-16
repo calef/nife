@@ -88,7 +88,7 @@ Not started; nothing built yet to carry its own BUGS section.
 ## Index row
 
 `notes/glyphs.md` already names "no mouse" as an honest limit. `virtio-tablet-pci` shares the same
-PCI device id as milestone 29's keyboard (`crates/pci::VIRTIO_INPUT_MODERN`). Device discovery
+PCI device id as milestone 29 (a display terminal)'s keyboard (`crates/pci::VIRTIO_INPUT_MODERN`). Device discovery
 already half-knows this and simply attaches only a keyboard by choice. The open part is routing a
 pointer event through the compositor, which has never had to answer "which client owns this
 coordinate" before.

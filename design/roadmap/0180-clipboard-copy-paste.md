@@ -21,7 +21,7 @@ OS clipboard is ambient: any process can read whatever the last process wrote, w
 That is precisely the authority model this system exists to not have. So this cannot be scoped
 before that tension is resolved. Resolving it is an architect's, not a lane's. The fork is
 §169 (whether a clipboard exists here, and what it
-is scoped to), written up 2026-09-19 by milestone 435 (decision gates that name no decision)'s lane. Before that this gate named no
+is scoped to), written up 2026-09-19 by milestone 435 (gated on a decision nobody wrote down)'s lane. Before that this gate named no
 decision. For a block whose whole finding was that nothing in the tree mentions a clipboard,
 that left the record one rung lower than it should have been.
 
@@ -29,7 +29,7 @@ that left the record one rung lower than it should have been.
 
 Unix's `xclip`/`pbcopy`, conceptually. Select text somewhere, retrieve it somewhere else. Two acts
 separated in time, with no direct connection between the programs on either end. The terminal
-(milestone 142 (a text display worth living in)) and a pointer (milestone 179, for drag-to-select) are the two obvious sources. A
+(milestone 142 (a text display)) and a pointer (milestone 179, for drag-to-select) are the two obvious sources. A
 paste target is anything a shell or an editor (milestone 169 (the smallest real text editor)'s `kilo`) accepts text into.
 
 ## The tension a conventional clipboard runs into here
