@@ -38,7 +38,7 @@ exists once any member turns it on. `user_mode_runtime` is already excluded ever
 library) shape. The virtio pair was priced and priced out. Its accessors are one-line forwards
 over `MappedWindow` with no arithmetic to share, so lifting them would be the abstraction this
 file refuses. The fact the pair does share, the kernel's ring layout spelled as literals, is
-recorded as a `BUGS` entry in each driver, where the fix it wants is named: a `components` ->
+recorded as a `BUGS` entry in each driver, where the fix it wants is named. It is a `components` ->
 `direct_memory_access_validator` dependency edge, §46 (thin primitives or whole subsystems).
 
 Name: provisional. `Frame`, in the module `socket_frame`, which takes its name from the contract
