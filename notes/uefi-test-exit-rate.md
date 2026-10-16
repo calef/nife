@@ -64,8 +64,8 @@ three, zero in twenty bounds the rate below 1 in 7 at 95% confidence, which is c
 the one sighting on 2026-09-19 and proves nothing tighter. The rate's honest reading is
 therefore: rarer than one gate in seven, cause not reproduced, and the next sighting now meets a
 message that names its exit path rather than one that invites a QEMU-version theory. The load
-spread over the window was 2.71 to 5.63 on the 1-minute average (8 cores), with the 15-minute
-average declining from 8.12 to 5.16; the concurrency source was milestone 412 (`script/test`'s
+spread over the window was 2.71 to 5.63 on the 1-minute average (8 cores), and the 15-minute
+average declined from 8.12 to 5.16. The concurrency source was milestone 412 (`script/test`'s
 UEFI leg asserts two cores online) measuring `uefi-boot` rates beside this lane's own boots. Run
 duration moved only 66 to 81 s across that spread.
 
@@ -74,11 +74,11 @@ duration moved only 66 to 81 s across that spread.
 `isa-debug-exit` is the whole protocol, and its arithmetic decides everything downstream
 (`kernel/src/arch/x86_64/semihosting.rs`): the guest writes `code >> 1` to the device's port and
 QEMU reports `(written << 1) | 1`. Every status the device can produce is odd. The guest's two
-codes are 3 (success, writes 1) and 1 (failure, writes 0), so **a reported 1 is the guest's
-failure write and also QEMU's own error exit**, which is exactly why the number alone cannot say
-which path it was. A reported 0 or any even status is never the device: QEMU was ended from the
-host side (the `NIFE_UEFI_TIMEOUT` bound lands as a 0, because QEMU exits 0 on the SIGTERM that
-ends it, measured on Homebrew QEMU 11.1.2, 2026-10-15).
+codes are 3 (success, writes 1) and 1 (failure, writes 0). **A reported 1 is therefore the
+guest's failure write and also QEMU's own error exit**, and the number alone cannot say which
+path it was. A reported 0 or any even status is never the device: QEMU was ended from the host
+side. The `NIFE_UEFI_TIMEOUT` bound lands as a 0, because QEMU exits 0 on the SIGTERM that ends
+it (measured on Homebrew QEMU 11.1.2, 2026-10-15).
 
 Which guest code wrote a failure, if it was the guest: every in-tree failure writer prints a
 marker line first, so the transcript attributes it.
@@ -95,8 +95,8 @@ The ordering in `test_main` is what makes a green summary evidence: the ledger r
 tables and the timing table all print **before** the summary line, and the summary's next
 statement is the success write. Between `test result: ok.` and `semihosting::exit(EXIT_SUCCESS)`
 nothing in-tree runs but the panic arm. So **a 1 after a green summary is either a panic on the
-way out (the transcript has a `[PANIC]`) or QEMU's own error exit (its reason is on stderr)**;
-it cannot be a test failure or a ledger gate, both of which exit before any summary exists.
+way out (the transcript has a `[PANIC]`) or QEMU's own error exit (its reason is on stderr)**.
+It cannot be a test failure or a ledger gate; both exit before any summary exists.
 
 That ordering is also why the VT-d lines were never the cause. The escape test's masked
 fault-event interrupt and its translation failure are what a passing confinement test looks like
@@ -112,11 +112,11 @@ the status against the protocol above and prints, at every failure:
 - first, that the run's `qemu-system-x86_64` VT-d lines (`Interrupt Mask set, irq is not
   generated`, `vtd_iommu_translate: detected translation failure`) are the escape test's own
   expected faults (milestone 215), not a cause;
-- then the reading: a 1 after a green summary points past the verdict (the panic arm, or QEMU's
-  own error exit on stderr); a 1 with no summary is the failure write before one, or QEMU failing
-  under the guest; a 0 is never the device, and carries the elapsed seconds that separate a
-  180 s bound from an early stop; other odd statuses decode the value the guest wrote; even
-  statuses say QEMU was ended from the host side; a watchdog kill defers to the watchdog's own
+- then the reading. A 1 after a green summary points past the verdict: the panic arm, or QEMU's
+  own error exit on stderr. A 1 with no summary is the failure write before one, or QEMU failing
+  under the guest. A 0 is never the device, and carries the elapsed seconds that separate a
+  180 s bound from an early stop. Other odd statuses decode the value the guest wrote; even
+  statuses say QEMU was ended from the host side. A watchdog kill defers to the watchdog's own
   line, which names the stage that overran.
 
 The host-load line notes/load-sensitive-assertions.md describes prints beside a red leg
@@ -131,7 +131,7 @@ status.
   the window, so no path has yet been exercised against a real red boot. The first real sighting
   is the test.
 - A 1 after a green summary with no `[PANIC]` in the transcript names QEMU's own error exit and
-  points at its stderr, but cannot name the cause when QEMU dies without one; the line says
+  points at its stderr, but cannot name the cause when QEMU dies without one. The line says
   where to look, not always what it was.
 
 ## See also

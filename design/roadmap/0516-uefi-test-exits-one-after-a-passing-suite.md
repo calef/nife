@@ -44,9 +44,9 @@ can name costs every contributor who meets it an hour, which is what it cost run
 The rate, on patagonia (8 cores, Homebrew QEMU 11.1.2): twenty `cargo xtask uefi-test` runs,
 zero red, every run printing both suites' green summaries and exiting 0. The block asked for
 idle and loaded batches; the window delivered a load gradient instead (1-minute average 2.71 to
-5.63), because the lane executing milestone 412 (`script/test`'s UEFI leg asserts two cores
-online) was measuring `uefi-boot` rates on this machine at the same time and lanes cannot see
-each other, and forcing load would have poisoned both rates. The
+5.63). The lane executing milestone 412 (`script/test`'s UEFI leg asserts two cores online) was
+measuring `uefi-boot` rates on this machine at the same time, lanes cannot see each other, and
+forcing load would have poisoned both rates. The
 per-run load columns and the concurrency caveat are in
 [notes/uefi-test-exit-rate.md](../../notes/uefi-test-exit-rate.md). By the rule of three, zero in
 twenty bounds the rate below 1 in 7 at 95% confidence: consistent with the single 2026-09-19
@@ -54,20 +54,20 @@ sighting, and the finding is the bound, not an absolution. The message work belo
 code reading, not on a reproduced failure.
 
 What exits 1 after the summary, now stated where the reader meets it: `isa-debug-exit` can only
-produce odd statuses, so a 1 is either the guest's failure write (whose only in-tree writer past
-the green summary is the panic arm, which prints `[PANIC]` first) or QEMU's own error exit,
-whose reason streams to the harness's stderr; a 0 is never the device, and the
-`NIFE_UEFI_TIMEOUT` bound lands there because QEMU exits 0 on the SIGTERM that ends it
-(measured 2026-10-15). The failure line now names the boot, decodes the status against that
-protocol, carries the elapsed seconds, and opens by saying the run's VT-d lines are the escape
-test's own expected faults, which milestone 215 (a PCI function's interrupt reaches nothing on
-x86_64) established. `exit_verdict_lines` in `xtask/src/uefi.rs` holds
+produce odd statuses. A 1 is either the guest's failure write, whose only in-tree writer past the
+green summary is the panic arm (which prints `[PANIC]` first), or QEMU's own error exit, whose
+reason streams to the harness's stderr. A 0 is never the device: the `NIFE_UEFI_TIMEOUT` bound
+lands there, because QEMU exits 0 on the SIGTERM that ends it (measured 2026-10-15). The failure
+line now names the boot, decodes the status against that protocol, and carries the elapsed
+seconds. It opens by saying the run's VT-d lines are the escape test's own expected faults, which
+milestone 215 (a PCI function's interrupt reaches nothing on x86_64) established.
+`exit_verdict_lines` in `xtask/src/uefi.rs` holds
 the classifier, unit-tested; notes/uefi-test-exit-rate.md holds the transcript-marker table that
 attributes any guest-side failure write.
 
 Measurement by-product, fixed in the lane: a bare `cargo xtask uefi-test` had been
-deterministically red since 857654808 (2026-10-04) because only `test()` set
-`CONFINEMENT_ATTACKERS`, so the system_tests image packed an archive without the DMA-escape role
+deterministically red since 857654808 (2026-10-04). Only `test()` set `CONFINEMENT_ATTACKERS`,
+so the system_tests image packed an archive without the DMA-escape role
 and failed by name on every bare run. Three of the rate attempt's first four runs died there,
 before the block's own defect could be observed. `uefi_test()` now sets the switch itself; it
 never stages a shipped image.
