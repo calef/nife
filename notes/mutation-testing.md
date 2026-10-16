@@ -26,9 +26,10 @@ runs the same command eight-way sharded with `--sharding round-robin`, so each s
 sample of every crate.
 
 The tool version is pinned in `.cargo-mutants-version`, today 27.1.0. The pin matters: cargo-mutants changes which mutants it generates between versions, so an unpinned
-tool moves the numbers with nothing in the tree changed. Exclusions live in `.cargo/mutants.toml`,
-each with its reason. That file is config, not a code dependency, per §46 (thin primitives or whole
-subsystems).
+tool moves the numbers with nothing in the tree changed. The host-excluded crates are derived at
+the call site (script/mutation passes them to cargo-mutants from `helpers/host-excluded-crates.sh`);
+`.cargo/mutants.toml` holds the judgment exclusions, each with its reason. That file is config, not
+a code dependency, per §46 (thin primitives or whole subsystems).
 
 To ask where a crate's mutants sit before restructuring it for testability, run
 `cargo mutants --list -p <crate>`. It attributes every mutant to its enclosing function.
@@ -200,10 +201,11 @@ These recur across the appendices.
 
 This is the note's `BUGS` section.
 
-- **Scope is the main workspace's host crates.** The exclusions and their reasons are in
-  `.cargo/mutants.toml`. The bare-metal crates cannot compile for the host. `supervision_protocol`,
-  `swap_protocol` and `virtio` compile but cannot run a line without a kernel. `xtask` is the build
-  system, whose tests are the gates it runs.
+- **Scope is the main workspace's host crates.** The judgment exclusions and their reasons are in
+  `.cargo/mutants.toml`, and the host-excluded set is derived at the call site from
+  `helpers/host-excluded-crates.sh`. The bare-metal crates cannot compile for the host.
+  `supervision_protocol`, `swap_protocol` and `virtio` compile but cannot run a line without a
+  kernel. `xtask` is the build system, whose tests are the gates it runs.
 - `redoxfs_server` and `tools/redoxfs_host` are not mutated. Each is its own workspace, kept apart
   so upstream RedoxFS never meets our clippy and fmt gates, and cargo-mutants works one workspace
   at a time. `redoxfs_server`'s pure logic is small and host-tested. The heavy half of its suite
