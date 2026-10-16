@@ -465,6 +465,13 @@ pub struct PciVirtioDevice {
     /// the transport answers a driver's `DeviceID` read from this instead of a hardcoded value; a
     /// GPU driver that sanity-checks what it is talking to then gets the truth on either bus.
     pub device_type: u32,
+    /// The **device-specific config region** (virtio spec 4.1.4.4's `DEVICE_CFG` vendor
+    /// capability), resolved to a physical address like the blocks above, when the function
+    /// carries one. A blk function keeps its capacity there (eight bytes at offset 0), which is
+    /// what `blk::SIZE` answers from; net, rng and console have no device-specific config and
+    /// carry `None`. The mmio transport never needed this carried: its config area sits at a
+    /// fixed offset (0x100) inside the one register block everything else already reaches.
+    pub device_config: Option<u64>,
 }
 
 /// Find the first modern virtio-blk function on the bus and bring it up. `None` if there is no
@@ -728,6 +735,7 @@ fn bring_up(bdf: Bdf, device_type: u32) -> Option<PciVirtioDevice> {
             .then(|| bar.base + u64::from(cap.offset))
     };
     let (mut common, mut notify_base, mut notify_mult, mut isr) = (None, None, 0u32, None);
+    let mut device_config = None;
     pci::virtio_caps(
         bdf,
         &mut |b, o| cfg_read32(b, o),
@@ -738,6 +746,12 @@ fn bring_up(bdf: Bdf, device_type: u32) -> Option<PciVirtioDevice> {
                 notify_mult = cap.notify_off_multiplier;
             }
             pci::VIRTIO_CAP_ISR if isr.is_none() => isr = resolve(&bars, &cap),
+            // Optional per the spec: only some device types have a config region to describe
+            // (blk's capacity, the gpu's). Absent stays `None` rather than failing bring-up, so
+            // a function with nothing to say there still comes up.
+            pci::VIRTIO_CAP_DEVICE if device_config.is_none() => {
+                device_config = resolve(&bars, &cap)
+            }
             _ => {}
         },
     );
@@ -765,6 +779,7 @@ fn bring_up(bdf: Bdf, device_type: u32) -> Option<PciVirtioDevice> {
         msix_vector,
         rid: bdf.requester_id(),
         device_type,
+        device_config,
     })
 }
 
