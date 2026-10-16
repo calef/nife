@@ -22,7 +22,8 @@ measurement that says whether the change worked.
 
 **In brief.** `kernel/src/revoke.rs` walks its per-space log-page chain inside six separate
 `unsafe` blocks, and each one restates in a comment what the helper's own safety section already
-says. Milestone 139's round 8 named this as its next target and asked for a milestone; nobody minted
+says. Milestone 139 (drive the unsafe count down, and cinch the ratchet behind it)'s round 8 named
+this as its next target and asked for a milestone. Nobody minted
 one, and the round-8 report was the only place the request lived. Collapse the six into whatever
 shape carries the obligation once, the way rounds 3 through 7 did for the framebuffer, the register
 maps and the mapped windows.
