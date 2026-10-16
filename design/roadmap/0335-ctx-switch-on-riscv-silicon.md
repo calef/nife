@@ -10,7 +10,8 @@ needs_person: yes
 # 335. The ctx_switch number on real RISC-V silicon
 
 Filed 2026-09-03 as an unnumbered proposal by the milestone 247 sweep,
-from milestone 58 (RISC-V TLB shootdown)'s block; numbered 2026-09-19 by milestone 433. Premise re-checked 2026-09-19 and
+from milestone 58 (RISC-V TLB shootdown)'s block; numbered 2026-09-19 by milestone 433 (drain the
+proposal pile to zero). Premise re-checked 2026-09-19 and
 it holds. `bench/baseline-riscv64.txt` still carries `ctx_switch 495050 5000` from QEMU and no
 radon run exists: none of `bench/radon-2026-09-04`, `bench/radon-2026-09-05` or
 `bench/radon-2026-09-16` has a `ctx_switch` row. `notes/riscv-tlb-shootdown.md` line 189 also still
