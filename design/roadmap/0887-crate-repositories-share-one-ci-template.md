@@ -221,10 +221,12 @@ being on the list, and `helpers/ci_job_times.py` reads a crate repository by arg
   consequence while undone, from `nifeos/crate-workflows`' README. It covers the Actions
   allowlist (SHA-pinned only, verified creators, `kani-github-action` named), the `nife-smelter`
   app's installation permission, the `SETTINGS_TOKEN` organization secret the settings-drift reads
-  authenticate with, and the organization-level tag ruleset. That last one cannot live in a
-  repository: the rulesets API refuses `ref_name` on push-target rulesets, measured. None of
-  these can bite while no crate repository exists. The first adoption is the deadline. Checked
-  live on the throwaway repository, which runs its weekly jobs against exactly this gap.
+  authenticate with, the organization-level tag ruleset, and the fork pull request approval
+  policy. The tag ruleset cannot live in a repository: the rulesets API refuses `ref_name` on
+  push-target rulesets, measured. The approval policy cannot be read by a non-admin token either,
+  so it is set once in the org's Actions settings. None of these can bite while no crate
+  repository exists. The first adoption is the deadline. Checked live on the throwaway
+  repository, which runs its weekly jobs against exactly this gap.
 - **Outstanding.** calef's naming pass over the names this milestone shipped provisionally: the
   repository `crate-workflows`, the workflow names, the `crates-io` team slug, and the
   required-check names. GitHub redirects a repository rename, and the required-check names are
