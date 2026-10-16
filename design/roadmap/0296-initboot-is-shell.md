@@ -10,7 +10,7 @@ promoted_from: two-boot-mode-features-for-one-decision
 
 The question arrived sideways. `script/initboot` was the **only one of fifty-five `script/` entry
 points that ran two words together** (fifty-four now that it is gone), against the hyphen rule for
-shell commands that milestone 63 (one spelling per thing) swept the tree for on 2026-08-01. This one survived that sweep
+shell commands. Milestone 63 (one spelling per thing) swept the tree on 2026-08-01. This one survived that sweep
 rather than being exempted by it, and
 `design/roadmap/proposals/what-the-boot-path-is-called.md` had been holding a rename since
 2026-09-08. Asked to rule on `progenitor-boot` or `handoff`, calef asked what the thing does, and the
