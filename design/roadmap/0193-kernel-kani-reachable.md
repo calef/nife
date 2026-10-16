@@ -155,7 +155,7 @@ is missing.
   timer does not call it). This lane could not use it, because `rearm` lives in
   `kernel/src/arch/*/timer.rs` and reads the counter through `asm!`. Milestone 197 (`user/` and
   `xtask` are out of reach of the prover) carries it as a fork rather
-  than as work: where the seam goes is the design question, too high and the arch layer keeps the
+  than as work. Where the seam goes is the design question: too high and the arch layer keeps the
   bug, too low and every ISA restates it.
 - **Recorded.** `notes/kernel-proofs.md`. `kernel/src/arch/` is unreachable and will stay
   unreachable, so nothing here covers the architecture layer, which is where the VisionFive 2's
