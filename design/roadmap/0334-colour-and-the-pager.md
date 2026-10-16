@@ -22,22 +22,22 @@ cannot be un-shipped once a program is written against it.
 
 **In brief.** DECISIONS §106 narrowed the spawn protocol for a tail stage's *primary output*, which
 is what lets `doc <page>` render at the prompt with no `| wc` in front of it. It built the narrowest
-slice that unblocked that one command. Two thirds of the original scope are untaken: a bit telling a
-stage that it ends at a real screen, which is the honest replacement for `isatty` and is what color
-needs, and a way to grant one line of *input* without granting the keyboard, which is what a pager
-needs. Both want the same wiring bit §106 built one third of.
+slice that unblocked that one command. Two thirds of the original scope are untaken. One is a bit
+telling a stage that it ends at a real screen, which is the honest replacement for `isatty` and is
+what color needs. The other is a way to grant one line of *input* without granting the keyboard,
+which is what a pager needs. Both want the same wiring bit §106 built one third of.
 
 ## Why this matters
 
 The first half is what stops this system growing a dishonest `isatty`. Unix programs decide about
-color by asking the kernel what their file descriptor is attached to, which is ambient authority
+color by asking the kernel what their file descriptor is attached to. That is ambient authority
 answering a question about presentation. A capability system can say it properly, as a bit the
 spawner passes, and every program that wants to color output will need that bit. Until it exists,
-the choices are no color anywhere or a program guessing, and a guess here becomes a convention
+the choices are no color anywhere or a program guessing. A guess here becomes a convention
 before anybody decides it is one.
 
 The second half blocks the pager outright. A pager needs one line of input at a time and must not
-hold the keyboard, because holding the keyboard is exactly the authority a confined viewer should
+hold the keyboard. Holding the keyboard is exactly the authority a confined viewer should
 not have. There is no way to express that today, so `mdr` renders and cannot page. Milestone 40's
 own refusal of `ratatui` said the tree needs its terminal contract first; this is a piece of that
 contract.
@@ -62,10 +62,11 @@ three."*
 
 DECISIONS §106 narrowed the spawn protocol for a tail stage's primary output, which is what lets
 `doc <page>` render at the prompt with no `| wc` in front of it, and built the narrowest slice that
-unblocked that one command. Two thirds of the original scope are untaken: a bit telling a stage that
-it ends at a real screen, which is the honest capability-shaped replacement for `isatty` and is what
-color needs, and a way to grant one line of input without granting the keyboard, which is what a
-pager needs. The first is what stops this system growing a dishonest `isatty`, since Unix decides
+unblocked that one command. Two thirds of the original scope are untaken. One is a bit telling a
+stage that it ends at a real screen, which is the honest capability-shaped replacement for `isatty`
+and is what color needs. The other is a way to grant one line of input without granting the
+keyboard, which is what a pager needs. The first is what stops this system growing a dishonest
+`isatty`. Unix decides
 about color by asking the kernel what a file descriptor is attached to and a capability system can
 say it properly as a bit the spawner passes. The second blocks the pager outright: holding the
 keyboard is exactly the authority a confined viewer should not have, there is no way to express the
