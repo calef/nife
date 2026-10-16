@@ -1,6 +1,7 @@
 # The `uefi-test` exit-1-after-green rate, and the exit-path protocol
 
-*(Written by milestone 516's lane, 2026-10-16 (03:23 to 03:47 UTC). Name provisional: the lane
+*(Written by the lane executing milestone 516 (`uefi-test` can exit 1 after its own suite has
+passed, and nobody has taken a rate), 2026-10-16 (03:23 to 03:47 UTC). Name provisional: the lane
 mints it, the name-ratification queue owns it. The block this serves is
 [design/roadmap/0516-uefi-test-exits-one-after-a-passing-suite.md](../design/roadmap/0516-uefi-test-exits-one-after-a-passing-suite.md);
 the measurement recipe it followed is notes/load-sensitive-assertions.md's.)*
@@ -64,8 +65,9 @@ the one sighting on 2026-09-19 and proves nothing tighter. The rate's honest rea
 therefore: rarer than one gate in seven, cause not reproduced, and the next sighting now meets a
 message that names its exit path rather than one that invites a QEMU-version theory. The load
 spread over the window was 2.71 to 5.63 on the 1-minute average (8 cores), with the 15-minute
-average declining from 8.12 to 5.16; the concurrency source was milestone 412's measurement and
-this lane's own boots. Run duration moved only 66 to 81 s across that spread.
+average declining from 8.12 to 5.16; the concurrency source was milestone 412 (`script/test`'s
+UEFI leg asserts two cores online) measuring `uefi-boot` rates beside this lane's own boots. Run
+duration moved only 66 to 81 s across that spread.
 
 ## What exits 1, and what cannot
 
@@ -98,9 +100,9 @@ it cannot be a test failure or a ledger gate, both of which exit before any summ
 
 That ordering is also why the VT-d lines were never the cause. The escape test's masked
 fault-event interrupt and its translation failure are what a passing confinement test looks like
-from outside (milestone 215). They appear in green runs and red runs alike: this window's twenty
-green runs each carried four of them. They were the only fault-looking lines on the stranger's
-screen.
+from outside; milestone 215 (a PCI function's interrupt reaches nothing on x86_64) named the
+family. They appear in green runs and red runs alike: this window's twenty green runs each
+carried four of them. They were the only fault-looking lines on the stranger's screen.
 
 ## What the failure message now says
 

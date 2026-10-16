@@ -1008,9 +1008,9 @@ fn uefi_test_image(package: &str) -> bool {
 /// interfaces).
 fn exit_verdict_lines(code: Option<i32>, exited: Duration, transcript: &str) -> Vec<String> {
     let mut lines = vec![
-        // Milestone 215 named this family of QEMU lines the escape test's own expected faults: the
-        // masked fault-event interrupt (this kernel polls, it does not take the interrupt) and the
-        // escape's translation failure. They are what a passing confinement test looks like from
+        // Milestone 215 (a PCI function's interrupt reaches nothing on x86_64) named this family of
+        // QEMU lines the escape test's own expected faults: the masked fault-event interrupt (this
+        // kernel polls, it does not take the interrupt) and the escape's translation failure. They are what a passing confinement test looks like from
         // outside, and they are the only thing in a red run's output that invites a wrong theory
         // about QEMU versions or firmware.
         "the qemu-system-x86_64 VT-d lines in this run's output (`Interrupt Mask set, irq is not \
@@ -1116,6 +1116,8 @@ mod exit_verdict_tests {
 
     #[test]
     fn a_one_without_a_summary_names_qemus_own_error_exit() {
+        // The transcript opens with the loader's real banner; the boot it names is milestone 87
+        // (the x86_64 bare-metal machine).
         let lines = lines(Some(1), "nife uefi_loader: milestone 87\n");
         assert!(
             lines.iter().any(|l| l.contains("QEMU's own error exit")),

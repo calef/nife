@@ -44,8 +44,9 @@ can name costs every contributor who meets it an hour, which is what it cost run
 The rate, on patagonia (8 cores, Homebrew QEMU 11.1.2): twenty `cargo xtask uefi-test` runs,
 zero red, every run printing both suites' green summaries and exiting 0. The block asked for
 idle and loaded batches; the window delivered a load gradient instead (1-minute average 2.71 to
-5.63), because milestone 412's lane was measuring `uefi-boot` rates on this machine at the same
-time and lanes cannot see each other, and forcing load would have poisoned both rates. The
+5.63), because the lane executing milestone 412 (`script/test`'s UEFI leg asserts two cores
+online) was measuring `uefi-boot` rates on this machine at the same time and lanes cannot see
+each other, and forcing load would have poisoned both rates. The
 per-run load columns and the concurrency caveat are in
 [notes/uefi-test-exit-rate.md](../../notes/uefi-test-exit-rate.md). By the rule of three, zero in
 twenty bounds the rate below 1 in 7 at 95% confidence: consistent with the single 2026-09-19
@@ -59,7 +60,8 @@ whose reason streams to the harness's stderr; a 0 is never the device, and the
 `NIFE_UEFI_TIMEOUT` bound lands there because QEMU exits 0 on the SIGTERM that ends it
 (measured 2026-10-15). The failure line now names the boot, decodes the status against that
 protocol, carries the elapsed seconds, and opens by saying the run's VT-d lines are the escape
-test's own expected faults (milestone 215). `exit_verdict_lines` in `xtask/src/uefi.rs` holds
+test's own expected faults, which milestone 215 (a PCI function's interrupt reaches nothing on
+x86_64) established. `exit_verdict_lines` in `xtask/src/uefi.rs` holds
 the classifier, unit-tested; notes/uefi-test-exit-rate.md holds the transcript-marker table that
 attributes any guest-side failure write.
 
