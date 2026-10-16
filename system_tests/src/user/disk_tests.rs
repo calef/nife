@@ -86,8 +86,8 @@ fn the_disk_surveyor_reads_a_table_gptfdisk_wrote() {
     // The two shapes the same five fixtures take. On the virt boards they are five mmio slots
     // and one PCI function (milestone 215, a PCI function's interrupt reaches nothing on x86_64
     // so no userspace driver can run there; its nifefs disk); on `q35` there is no virtio-mmio bus
-    // at all, so since milestone 420 (the rest of the x86_64 fixture set) all five are PCI
-    // functions, in the same ordinal order.
+    // at all, so since milestone 420 (x86_64 has one fixture of five and no NIC, GPU, keyboard
+    // or RNG) all five are PCI functions, in the same ordinal order.
     // Either way every device is on one bus or the other, and the kernel's own read of the same
     // frame, below, must agree with the program's count.
     if cfg!(target_arch = "x86_64") {
