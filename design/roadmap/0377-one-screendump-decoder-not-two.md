@@ -1,6 +1,7 @@
 ---
-status: NOT-STARTED
+status: BUILT
 raised: 2026-09-04
+built: 2026-10-16
 milestone_dependencies: none
 decision_dependencies: none
 machine_requirements: none
@@ -10,10 +11,13 @@ needs_person: no
 # 377. Two screendump decoders, in two crates, reading the same font
 
 Filed as a proposal on 2026-09-04 by the milestone 243 lane, out of its own
-duplication; promoted by milestone 433 on 2026-09-19. Counted against the tree that day and both
-copies are still there: `xtask/src/main.rs` still defines `parse_ppm`, `decode_cell` and
-`scanout_rows` (lines 1562, 1614 and 1644), and `crates/board_console/src/screen.rs` is still the
-second, more general decoder beside them. Nothing has merged them and nothing has drifted yet.
+duplication; promoted by milestone 433 on 2026-09-19. Built 2026-10-16 (UTC) on branch
+`milestone/377-one-screendump-decoder-not-two`. The three functions this block was filed against
+had already moved once before the merge, and stood in `xtask/src/scanout.rs`, not at the
+`main.rs` lines named below. The one decoder is `board_console::screen::decode` (name
+provisional), parameterised by the ink and paper colours, an optional alphabet and the scale the
+picture was painted at; `xtask`'s three are gone, and the graphical swish-check leg reads through
+the one decoder with the terminal's own colours and the surface assertion kept at its call site.
 
 It is a refactor with a test on each side; what it needs is a lane, not a decision.
 
@@ -56,6 +60,10 @@ colors differ between the two callers. A lane doing this should make the swish-c
 before and after with no change to its assertions, and should keep the two color schemes as data
 rather than unifying them: the terminal's default colors are `video_terminal`'s to choose and the
 kernel console's are `screen_console`'s.
+
+## Follow-on
+
+- **None.**
 
 ## Index row
 
