@@ -51,7 +51,8 @@ The one measurement in the tree points the wrong way. `bench/baseline-riscv64.tx
 own standard is *measure, do not argue*, and an honest tie or loss recorded plainly is worth more
 than a win nobody checked. Right now there is neither.
 
-The second cost is the record. Milestone 58's block sends a future reader to milestone 24 for this
+The second cost is the record. Milestone 58's block sends a future reader to milestone 24 (a second
+aarch64 board) for this
 number. Milestone 24 is an aarch64 board that can never produce it. So the one pointer that
 exists is wrong, and a reader who follows it wastes the trip. That miscitation only gets fixed by
 somebody deciding where the number really lives.
