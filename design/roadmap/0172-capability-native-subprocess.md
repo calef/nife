@@ -10,8 +10,8 @@ needs_person: no
 # 172. A capability-native subprocess primitive: what `cargo`'s "spawn a helper, wait, collect its output" needs, without fork/exec
 
 The second of four self-hosting milestones, for developing nife on a nife host. This is the real
-architectural piece: research into what `rustc`/`cargo` (see [milestone
-173](0173-rustc-cargo-self-host.md)) actually need found that their build model runs one process per
+architectural piece. Research into what `rustc`/`cargo` (see [milestone
+173 (self-hosted rustc/cargo/LLVM)](0173-rustc-cargo-self-host.md)) actually need found that their build model runs one process per
 compilation unit and links via a spawned linker, structurally, with no supported single-process
 bypass in either case, even in "self-contained" builds. nife has no primitive for one program to
 start another, wait for it, and read back what it produced.
@@ -32,7 +32,7 @@ authority added to the kernel.
 **This milestone is the additive direction §10 already endorsed, applied to one more Unix-shaped
 convenience.** The functional need `cargo`/`rustc` (and any future job that shells out, e.g.
 `kilo`/`nano`'s optional external spell-check, or a build tool invoking a linter) actually have is
-narrow: start a program, hand it exactly the capabilities it should have (its stdin/stdout, specific
+narrow. Start a program, hand it exactly the capabilities it should have (its stdin/stdout, specific
 file grants, nothing ambient), wait for it to finish, and read back its exit status and output.
 That is not "add fork/exec." It is the same shape as `fdio`: a userspace-visible convenience that
 composes out of primitives the capability model already has, or a small, explicit extension to them,
@@ -44,7 +44,7 @@ not a back door around them.
 shared half") already constructs a child process with a specific, narrowed capability endowment and
 lets a parent supervise it (see [DECISIONS §24](../decisions/0024-interrupting-the-foreground.md) for
 how a shell already holds a child's interrupt endpoint). What is missing, checked directly against
-that crate and against `kernel/src/user.rs`'s spawn path: a synchronous, ergonomic wait-and-collect
+that crate and against `kernel/src/user.rs`'s spawn path. A synchronous, ergonomic wait-and-collect
 shape a caller like `cargo` would actually use in a loop ("run this, block until it's done, give me
 its output"), as opposed to the death-notification/supervision-endpoint pattern built for long-lived
 service supervision. The two may turn out to be the same mechanism used differently, or may need a
@@ -66,14 +66,14 @@ status and output stay this milestone's fork, and the gate above still names the
 the `posix_spawn`-shaped path for foreign programs. `std::process::Command::spawn` and a
 `posix_spawn` shim for ported C are both thin layers over the request §219 settled, plus the wait
 this milestone owes. Neither gets a milestone of its own. The shim also needs a C library, which
-does not exist: §31 (the foreign-language seam: C holds no capabilities and makes no syscalls) and
+does not exist. §31 (the foreign-language seam: C holds no capabilities and makes no syscalls) and
 the refused milestone 478 (tier three: full POSIX behind the foreign-language seam) stand in the
 way, and that is calef's call, not this block's.
 
 ## What it needs
 
 - The actual design fork, raised per DECISIONS §10 (process model: capability-based, microkernel),
-  before any code: is this a new syscall method on an existing object, a new object type, or a
+  before any code. Is this a new syscall method on an existing object, a new object type, or a
   userspace-only composition of `build_child` plus an existing notification mechanism (DECISIONS
   §101 (notification objects))? Answer with the six-questions discipline this
   tree already applies to forks like it (what does the tree already do in the analogous case, what

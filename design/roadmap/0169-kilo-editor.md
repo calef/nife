@@ -6,9 +6,9 @@ built: 2026-08-27
 # 169. `kilo`: the smallest real text editor, as the forcing function for raw terminal input
 
 Built, 2026-08-27, as `rmle` rather than a literal `kilo.c` port. The raw-keystroke
-primitive (`OP_RAWMODE`/`OP_READRAW`, `crates/line_editor`) is built and proven; the editor itself
-is a Rust reimplementation of `kilo`'s spirit and scope (`components/src/rmle.rs`), not a port, because
-DECISIONS §31's foreign-language seam as actually built is a one-shot call and cannot support
+primitive (`OP_RAWMODE`/`OP_READRAW`, `crates/line_editor`) is built and proven. The editor itself
+is a Rust reimplementation of `kilo`'s spirit and scope (`components/src/rmle.rs`), not a port.
+DECISIONS §31's foreign-language seam as actually built is a one-shot call. It cannot support
 `kilo`'s own blocking event loop without new seam infrastructure (that infrastructure is
 [milestone 181](0181-persistent-foreign-component.md), raised separately). **Named `rmle`, not
 `kilo`**, calef, 2026-08-27, specifically to avoid two things being called `kilo` once a real
@@ -17,9 +17,9 @@ full naming note. This milestone's own primary deliverable, the raw-keystroke pr
 unaffected by the naming question either way.
 
 A dependency review of Emacs, nano and vim, for a lightweight first text editor, found the same wall
-under all three: [DECISIONS §31 (the foreign-language
+under all three. [DECISIONS §31 (the foreign-language
 seam)](../decisions/0031-foreign-language-seam.md) forbids C code from making a syscall or holding a
-capability directly, so any C program's port is really "rewrite its syscall layer against nife's
+capability directly. So any C program's port is really "rewrite its syscall layer against nife's
 Rust-mediated shim," and no editor sidesteps that by being smaller. What *does* scale with size is
 how much of that rewrite there is to do. antirez's `kilo` (<https://github.com/antirez/kilo>) is a
 public-domain, single-file, roughly 1,000-line terminal text editor written explicitly to have
@@ -39,8 +39,8 @@ unbuffered, per-keystroke delivery with echo suppressed, which is what lets `kil
 Ctrl-key chords and Escape sequences as they happen rather than after a line is finished.
 
 This milestone's real deliverable is not "get `kilo`'s C source to compile." It is: **design and
-build the raw-keystroke input primitive nife's terminal layer does not have today**, prove it with
-the smallest program that needs it, and leave that primitive in place for nano (see below) and
+build the raw-keystroke input primitive nife's terminal layer does not have today**. Prove it with
+the smallest program that needs it. Leave that primitive in place for nano (see below) and
 anything else that wants a screen editor's shape of input.
 
 ## What else `kilo` needs, and why each one is already answered
@@ -71,17 +71,17 @@ first real, load-bearing C program beyond the confined `c_seam.c` spike, and the
 primitive this milestone has to build is reusable infrastructure, not a `kilo`-specific hack.
 
 [Milestone 170](0170-nano-editor.md) is the direct follow-on, sequenced to start only
-once this milestone's raw-input primitive exists: nano needs the exact same terminal capability at
-roughly 25x the code size, plus an optional (skippable) subprocess dependency for spell-check and
-external filtering that `kilo` never has to answer. Building `kilo` first is what turns "design a
+once this milestone's raw-input primitive exists. Nano needs the exact same terminal capability at
+roughly 25x the code size. It also needs an optional (skippable) subprocess dependency for
+spell-check and external filtering that `kilo` never has to answer. Building `kilo` first is what turns "design a
 raw-terminal-input primitive and prove it under a full-size editor at the same time" into two
 separable pieces of work.
 
 ## What this does not decide
 
-Whether `SIGWINCH`-equivalent resize notification is worth building now or left as a recorded gap;
-whether the raw-input primitive should be a new syscall, a new `line_editor` opcode, or a capability
-narrowing of the existing terminal object; and whether `kilo`'s optional syntax-highlighting feature
+Whether `SIGWINCH`-equivalent resize notification is worth building now or left as a recorded gap.
+Whether the raw-input primitive should be a new syscall, a new `line_editor` opcode, or a capability
+narrowing of the existing terminal object. And whether `kilo`'s optional syntax-highlighting feature
 (a few hundred lines, off by default without a language database) is in scope for a first cut. Left
 for whoever picks this up, informed by how the raw-input primitive actually gets designed.
 
@@ -100,8 +100,8 @@ for whoever picks this up, informed by how the raw-input primitive actually gets
 ## Index row
 
 A dependency review of Emacs, nano and vim for a possible nife port found the same wall under all
-three (DECISIONS §31's C-syscall seam), and one real, reusable gap behind it: nife's terminal
+three (DECISIONS §31's C-syscall seam), and one real, reusable gap behind it. Nife's terminal
 contract is a line discipline with no raw-keystroke input. Built as `rmle`, a Rust
 reimplementation of `kilo`'s spirit and scope rather than a literal port (the seam as built cannot
-support an interactive event loop; that gap is milestone 181); the raw-keystroke primitive itself
+support an interactive event loop; that gap is milestone 181). The raw-keystroke primitive itself
 (`OP_RAWMODE`/`OP_READRAW`) is the milestone's own real deliverable.

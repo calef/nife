@@ -13,8 +13,8 @@ This is the follow-on to [milestone 169 (`kilo`)](0169-kilo-editor.md), from the
 review, sequenced after it rather than in parallel. calef, 2026-08-25: "mint kilo instead, nano as a
 follow-on."
 
-Sequenced behind milestone 169 in practice, not by a hard gate: nano needs the
-identical raw-keystroke input primitive 169 exists to build, and starting nano before that primitive
+Sequenced behind milestone 169 in practice, not by a hard gate. Nano needs the
+identical raw-keystroke input primitive 169 exists to build. Starting nano before that primitive
 is designed would mean designing it twice, once against a 1,000-line program and once against a
 25,000-line one, with no guarantee the two designs agree.
 
@@ -44,7 +44,7 @@ works at all, at the smallest honest scale. 170 is about whether that primitive,
 carries a real, widely-used program's full feature set, including the parts (subprocess, richer
 persistence) that 169 never has to answer. Keeping them separate means 169 can ship and be useful
 (a working, small editor) without waiting on 170's larger surface, matching this tree's own
-sequencing convention for the milestone-158 renames: finish one thing completely before starting the
+sequencing convention for the milestone-158 renames. Finish one thing completely before starting the
 next, rather than partially touching both.
 
 ## What this does not decide

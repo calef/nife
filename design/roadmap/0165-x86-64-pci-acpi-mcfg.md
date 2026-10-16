@@ -6,7 +6,7 @@ built: 2026-09-02
 # 165. x86_64 PCI enumeration: wire `kernel/src/pci.rs` to ACPI's MCFG
 
 BUILT. Of the three things it owed, two are built elsewhere (PCI interrupt routing by milestone 215
-(a PCI function's interrupt reaches nothing on x86_64), VT-d by milestone 161's item 6) and the
+(a PCI function's interrupt reaches nothing on x86_64), VT-d by milestone 161's item 6). The
 third, a real BAR placement, is closed below, measured under real firmware.
 
 It checks whether x86_64 can reach a real-hardware data point for [DECISIONS §86 (whether an NVMe
@@ -43,11 +43,11 @@ probe here with nobody home", true of x86_64 unconditionally, since it has no de
    the MCFG names, before any kernel code ran): the address **faults** ("Cannot access memory"),
    not the all-ones an absent PCI *device* would read. The chipset's ECAM decode is off until
    something programs the host bridge's `PCIEXBAR` register (offset `0x60` in bus 0, device 0,
-   function 0's configuration space): a real BIOS or UEFI does this before ever handing control to
+   function 0's configuration space). A real BIOS or UEFI does this before ever handing control to
    an OS, and PVH (the protocol this port boots through) is a hypervisor entry point, not firmware,
    so nothing has. `arch::x86_64::machine::enable_pcie_ecam` programs it through the legacy
    `CONFIG_ADDRESS`/`CONFIG_DATA` ports (`0xcf8`/`0xcfc`, already-existing primitives in
-   `arch::x86_64::port`, written for exactly this and unused until now), and the same address was
+   `arch::x86_64::port`, written for exactly this and unused until now). The same address was
    then confirmed, still via the monitor, to read the host bridge's own vendor/device id
    (`8086:29c0`) once the register was enabled. This is very likely a PVH-only step: real firmware
    (what milestone 87's OptiPlex will boot through) does this already, and rewriting the same base to
@@ -55,17 +55,17 @@ probe here with nobody home", true of x86_64 unconditionally, since it has no de
    port does not depend on that being true.
 
 3. **The BAR window is hardcoded, not discovered, and this is a real, permanent limitation rather
-   than a temporary gap.** ACPI's MCFG names only the ECAM window; the 32-bit MMIO window BARs are
-   placed in lives in the PCI host bridge's `_CRS` object on a real ACPI machine, which is AML, and
+   than a temporary gap.** ACPI's MCFG names only the ECAM window. The 32-bit MMIO window BARs live
+   in the PCI host bridge's `_CRS` object on a real ACPI machine, which is AML, and
    this kernel has no AML interpreter (`notes/x86-port/acpi-and-pci.md`'s own "What is deliberately not decoded").
    `arch::x86_64::mmu::PCI_BAR_PHYS` is a hardcoded constant (`0xc000_0000`, q35's conventional PCI
-   hole), confirmed disjoint from RAM, ECAM, the HPET and both APICs by reading QEMU's `info mtree`,
-   but **not exercised by an actual BAR placement**: no PCI function that needs one is on the bus
+   hole), confirmed disjoint from RAM, ECAM, the HPET and both APICs by reading QEMU's `info mtree`.
+   It is **not exercised by an actual BAR placement**: no PCI function that needs one is on the bus
    under the current runner (see below).
 
 4. Proof, under QEMU's `q35`. `kernel::pci::tests::acpi_mcfg_wires_a_real_ecam_window_that_finds_the_host_bridge`
-   (new, x86_64-only) enumerates the bus through the ACPI-sourced, now-enabled ECAM window and
-   asserts it finds q35's own host bridge (bus 0, device 0, function 0, vendor `8086`, device
+   (new, x86_64-only) enumerates the bus through the ACPI-sourced, now-enabled ECAM window.
+   It asserts it finds q35's own host bridge (bus 0, device 0, function 0, vendor `8086`, device
    `29c0`), a chipset function present regardless of what `-device` flags the runner does or does
    not pass. `script/test` on all three architectures: aarch64 295/1, riscv64 298/1, x86_64 99/6 (one
    skip converted to one pass versus the pre-existing baseline; no regressions). `script/lint` green.
@@ -101,7 +101,7 @@ cannot encode leaves the window as found and says so.
 
 And the measurement above is corrected. Re-measured on QEMU 11.1.1 from inside the guest, which
 is the side being served, the register reads `0xb0000001` on the PVH path **before anything writes
-it**, and the whole suite's PCI half (the MCFG witness, NVMe, both userspace PCIe driver tests)
+it**. The whole suite's PCI half (the MCFG witness, NVMe, both userspace PCIe driver tests)
 passes with this function writing nothing. The monitor still answers "Cannot access memory" at that
 address on the same boot, so the monitor and the guest disagree, and this block's original reading
 of the monitor as evidence about the guest's decode does not hold. Nothing needs to decide whether
@@ -113,7 +113,7 @@ boots, and stays for the machine that genuinely arrives with the decode off.
 
 Item 3 above called the hardcoded BAR window "a real, permanent limitation" and noted it was not
 exercised by an actual placement. It is exercised now (milestone 215 drives a `virtio-blk-pci` disk
-whose BARs this kernel places), so the open question changed shape: not whether the placement works,
+whose BARs this kernel places), so the open question changed shape. Not whether the placement works,
 but how much of the machine it moves, and whether the place it moves things to is free there.
 
 `pci::bar_census` (provisional name) answers both in one read-only pass of config space, printed on
@@ -133,7 +133,7 @@ before anything is driven.
   kernel could reach (`enable_pcie_ecam` uses it) and which would enumerate bus 0 with no ACPI at
   all. Those ports see only the first 256 bytes of a function's configuration space, so a machine
   that fell back would enumerate a **different** set of capabilities than one that did not, every
-  extended capability simply absent, and a driver that then failed would fail somewhere else
+  extended capability simply absent. A driver that then failed would fail somewhere else
   entirely. This is milestone 215's own refusal one level up: when a machine wants MSI and meets a
   function without MSI-X, bring-up fails loudly rather than degrading into the original bug.
 - **An MCFG whose first bus is not 0 is refused rather than adjusted.** `kernel/src/pci.rs`
@@ -151,8 +151,8 @@ enabled, so this kernel writes nothing. A count of how much of the bus this kern
 both firmware and no firmware.
 
 Only xenon can confirm: that `PCI_BAR_PHYS` is free on that machine, which is the census's whole
-point; that its firmware presents an MCFG with first bus 0 and a bus count `PCIEXBAR` can encode;
-and that its ACPI tables are below 4 GiB, which every machine's are and none promises.
+point. That its firmware presents an MCFG with first bus 0 and a bus count `PCIEXBAR` can encode.
+And that its ACPI tables are below 4 GiB, which every machine's are and none promises.
 
 One of milestone 215's three xenon-only questions is now half answered. That block owed "that a
 real function's MSI-X table is reachable once *firmware* rather than this kernel has placed its
@@ -172,7 +172,7 @@ only the tour did. Milestone 195 (finish the UEFI boot path) now runs it under O
 - **Run the x86_64 suite under real firmware, not only the tour.** Now milestone 195 (finish the
   UEFI boot path), built 2026-09-02. `cargo xtask uefi-image` staged the boot-tour kernel; the test
   kernel is a different binary and nothing staged it. Doing so would close two of milestone 215 (a PCI function's interrupt reaches nothing on x86_64)'s
-  three xenon-only questions on patagonia rather than at a null modem, because OVMF places BARs and
+  three xenon-only questions on patagonia rather than at a null modem. OVMF places BARs and
   enables interrupt remapping the same way real firmware does.
 - VT-d and PCI interrupt routing, which this block owed and no longer does: milestone 161's item
   6 and milestone 215 respectively.
@@ -188,7 +188,7 @@ only the tour did. Milestone 195 (finish the UEFI boot path) now runs it under O
 - **Refused.** Falling back to the legacy `0xcf8`/`0xcfc` mechanism when a machine presents no MCFG.
   Those ports see only the first 256 bytes of a function's configuration space, so a fallback would
   enumerate a different set of capabilities than the ECAM path does, with every extended capability
-  simply absent, and a driver that then failed would fail somewhere else entirely. No MCFG means no
+  simply absent. A driver that then failed would fail somewhere else entirely. No MCFG means no
   PCI, said out loud.
 - **Refused.** Adjusting for an MCFG whose first bus is not 0. `kernel/src/pci.rs` addresses a
   function with an absolute bus number, and subtracting `lo << 20` names a base below the window
@@ -201,7 +201,7 @@ only the tour did. Milestone 195 (finish the UEFI boot path) now runs it under O
   enabled and OVMF enables it too. It stays for the machine that genuinely arrives with the decode
   off, and nothing has run it.
 - **Recorded.** In `design/roadmap/0165-x86-64-pci-acpi-mcfg.md`: three things only xenon can
-  confirm, which are that `PCI_BAR_PHYS` is free on that machine, that its firmware presents an MCFG
+  confirm. They are that `PCI_BAR_PHYS` is free on that machine, that its firmware presents an MCFG
   with first bus 0 and a bus count `PCIEXBAR` can encode, and that its ACPI tables sit below 4 GiB.
   `pci::bar_census` prints the first of them on the boot line, so it is the number to read first.
 - **Milestone 256.** Take the 32-bit MMIO window that BARs are placed in from the machine rather
@@ -221,7 +221,7 @@ only the tour did. Milestone 195 (finish the UEFI boot path) now runs it under O
 
 Scoped as a parallel check on whether x86_64 reaches a real-hardware data point for DECISIONS §86
 faster than a from-scratch JH7110 PCIe driver would. Wires `memory::pci_regions()` from ACPI's
-MCFG instead of a device-tree node, and finds a real complication along the way: PVH boots run no
+MCFG instead of a device-tree node, and finds a real complication along the way. PVH boots run no
 firmware, so nothing has enabled the chipset's ECAM decode, which this milestone does itself
 (measured on QEMU's monitor: the address faults until the host bridge's PCIEXBAR register is
 programmed). Proven under `q35`: real PCI enumeration finds the machine's own host bridge over the
@@ -232,6 +232,6 @@ thing that kept it open was not the wiring: the ACPI
 walk bounded itself at 1 GiB while `boot.s`'s direct map covers 4, and both runners passed `-m
 256M`, so firmware's tables fit and every gate passed. At 2 GiB under OVMF the same kernel found
 no ACPI at all, so no APIC, no timer, no PCI and no VT-d, which was unconditional on any real
-machine. The UEFI gate now boots where firmware's tables are high, the PCIEXBAR write reads before
-it writes so it cannot widen a window firmware sized, and `pci::bar_census` prints how much of the
+machine. The UEFI gate now boots where firmware's tables are high, and the PCIEXBAR write reads
+before it writes so it cannot widen a window firmware sized. `pci::bar_census` prints how much of the
 bus this kernel relocates into its hardcoded BAR window (5 of 8 under PVH, 3 of 6 under OVMF).

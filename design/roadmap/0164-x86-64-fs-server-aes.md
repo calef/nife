@@ -6,7 +6,7 @@ built: 2026-09-01
 # 164. x86_64 userspace can't build `aes` (and therefore `fs_server`): no SSE, no scalar fallback
 
 x86_64 userspace builds `aes`, `redoxfs_server` and `mkfs`, and the x86_64 archive carries the last
-two; the title names the blocker this milestone removed. It is a toolchain and dependency problem
+two. The title names the blocker this milestone removed. It is a toolchain and dependency problem
 rather than a hardware one, so it needs no board. Neither route this block sized is needed; the
 section below says why, because the sizing was wrong in an instructive direction.
 
@@ -32,7 +32,7 @@ the *same* target the kernel builds under, so a `rustflags` entry there reaches 
 Cargo has no way to ADD a flag (`RUSTFLAGS` and `--config target.*.rustflags` both REPLACE the
 list), so scoping the cfg to `redoxfs_server_build` would have meant restating
 `relocation-model=static` in `xtask/src/main.rs`, away from the paragraph explaining why the kernel
-needs it. One copy in one place, with the cost written down where a reader meets it: every crate on
+needs it. One copy in one place, with the cost written down where a reader meets it. Every crate on
 this target gets the cfg, and it is inert in all of them but `aes`, which is the only thing in this
 tree or its dependency graph that reads the name. `cargo clippy` at the bars `script/lint` already
 sets passes for the kernel, for `bench`, and for `user` + `user_rt` with it on.
@@ -45,12 +45,12 @@ enabling, or a genuine gap in the crate's own portable path") and it took five m
 the portable path is not a gap, it is a cfg nobody had set.
 
 **Route 2 (an SSE-enabled x86 userspace target) is not owed for this blocker**, and its sizing was
-the accurate half of this block: `kernel/src/arch/x86_64/` saves and restores no FPU/SSE state
+the accurate half of this block. `kernel/src/arch/x86_64/` saves and restores no FPU/SSE state
 anywhere, so enabling SSE would mean an `FXSAVE` area per thread and save/restore in the
 context-switch path. None of that was built, because none of it is needed to compile `aes`.
 
 **The honest cost of not taking Route 2 is speed, and this block should not let a reader assume
-parity.** The software backend is a bitsliced constant-time implementation; upstream RustCrypto's
+parity.** The software backend is a bitsliced constant-time implementation. Upstream RustCrypto's
 own figures put AES-NI roughly an order of magnitude ahead of it. Unmeasured here, and
 deliberately so: nothing on x86_64 mounts an encrypted RedoxFS volume yet, so there is no workload
 to measure and a synthetic number would be a fact leaving the machine with nothing behind it. When
@@ -73,7 +73,7 @@ want of an FS server and are now silently green for want of a disk, which is *le
 before. Forty-six sites across sixteen files share that shape; see milestone 214 (a test that
 prints "skipping" and returns is counted as passed).
 
-What did change, and is real: the FS server and `mkfs` are in the x86_64 archive, so **the reason
+What did change, and is real: the FS server and `mkfs` are in the x86_64 archive. **The reason
 those tests do not run is now a machine fact rather than a toolchain one**, which is what the next
 milestone can act on. `kernel::user::disk_tests::the_write_half_...` now skips with "no blank-disk
 fixture attached" instead of blaming `aes`.
@@ -104,7 +104,7 @@ Milestone 87 (the x86_64 bare-metal machine), which is the Dell OptiPlex, is the
 matters, and this moves it by
 removing the toolchain wall and leaving a machine wall in its place. When calef sits down at the
 null modem, the archive that boots carries a real filesystem server rather than nothing above the
-kernel; what it still cannot do is find a disk, and that is one bounded piece of interrupt routing
+kernel. What it still cannot do is find a disk, and that is one bounded piece of interrupt routing
 rather than an open-ended port.
 
 Any future x86_64 work needing `fs_server` is likewise no longer blocked on a dependency that will
@@ -121,7 +121,7 @@ architecture costs a restructure rather than a port") named this as a piece of.
 ## Follow-on
 
 - **Milestone 215.** The disk. With the server packed, `fs_service::wire_servers` still asks for a
-  virtio-mmio device that `q35` does not have, and the `virtio-blk-pci` route built in this lane was
+  virtio-mmio device that `q35` does not have. The `virtio-blk-pci` route built in this lane was
   reverted because `PCI_IRQ_BASE` is 0 and the block server was armed on the PIT's legacy line. 215
   fixed the routing; `mkfs` and milestone 57's two `disk_service` wirings ride it for their
   fixtures.
@@ -139,7 +139,7 @@ architecture costs a restructure rather than a port") named this as a piece of.
   which carries it with the condition that would change it.
 - **Refused.** The soft-AES cost stays unmeasured on purpose. Upstream puts AES-NI roughly an order
   of magnitude ahead of the bitsliced backend, but nothing on x86_64 mounts an encrypted RedoxFS
-  volume yet, so there is no workload and a synthetic number would be a fact leaving the machine
+  volume yet. So there is no workload and a synthetic number would be a fact leaving the machine
   with nothing behind it. The number is owed when an x86_64 workload touches the crypto path, and
   Route 2 is what it would be weighed against.
   This refusal is milestone 462 (design/roadmap/0462-the-soft-aes-cost.md), which carries it with the
