@@ -84,8 +84,10 @@ fn the_disk_surveyor_reads_a_table_gptfdisk_wrote() {
         w.devices,
     );
     // The two shapes the same five fixtures take. On the virt boards they are five mmio slots
-    // and one PCI function (milestone 215's nifefs disk); on `q35` there is no virtio-mmio bus
-    // at all, so since milestone 420 all five are PCI functions, in the same ordinal order.
+    // and one PCI function (milestone 215, a PCI function's interrupt reaches nothing on x86_64
+    // so no userspace driver can run there; its nifefs disk); on `q35` there is no virtio-mmio bus
+    // at all, so since milestone 420 (the rest of the x86_64 fixture set) all five are PCI
+    // functions, in the same ordinal order.
     // Either way every device is on one bus or the other, and the kernel's own read of the same
     // frame, below, must agree with the program's count.
     if cfg!(target_arch = "x86_64") {
@@ -102,7 +104,8 @@ fn the_disk_surveyor_reads_a_table_gptfdisk_wrote() {
         assert!(
             mmio >= 4,
             "at least four mmio disks are attached when this test runs (nifefs, RedoxFS, the \
-             crash image, the GPT image, and since milestone 57's write half the blank one); the \
+             crash image, the GPT image, and since milestone 57 (partitioning and formatting a \
+             real drive and extended attributes)'s write half the blank one); the \
              roster names {mmio}",
         );
         assert_eq!(
@@ -267,8 +270,9 @@ const R_NO_FS: u64 = 0x_4E_4F_46_53_00;
 /// has no virtio-mmio bus at all, so it asks for the PCIe transport there (milestone 420's
 /// `virtio-rng-pci`).
 ///
-/// Returns `None` if the bus asked for has no virtio-rng device (milestone 145: correct on a
-/// bare board boot with no `NIFE_RNG`-equivalent).
+/// Returns `None` if the bus asked for has no virtio-rng device (milestone 145, a test that
+/// needs hardware the boot doesn't have can say so: correct on a bare board boot with no
+/// `NIFE_RNG`-equivalent).
 fn entropy_rendezvous() -> Option<crate::sched::RendezvousId> {
     let image = program("entropy").expect("no entropy program in the initial ramdisk");
     let bus = if cfg!(target_arch = "x86_64") {

@@ -277,7 +277,8 @@ if [ -n "$NIFE_DISK" ]; then
     if [ -f "$REDOXFS_DISK" ]; then
         DISK="$DISK -drive file=$REDOXFS_DISK,if=none,format=raw,id=hd2 -device virtio-blk-pci,drive=hd2,disable-legacy=on,iommu_platform=on"
     fi
-    # The crash disk (milestone 37), the GPT disk and the blank disk (milestone 57), the THIRD
+    # The crash disk (milestone 37, prove RedoxFS's crash consistency), the GPT disk and the blank
+    # disk (milestone 57, partitioning and formatting a real drive and extended attributes), the THIRD
     # through FIFTH functions, when a leg built them. Soft, like the RedoxFS sibling above: `cargo
     # xtask bench` and `boot-check` set NIFE_DISK without building these, and a fixture's absence
     # is the test's own skip line rather than a broken boot. The order extends the contract the
@@ -375,7 +376,8 @@ if [ -n "$NIFE_NET" ]; then
 fi
 
 # A `virtio-rng-pci` when NIFE_RNG is set, the PCIe transport of milestone 56's entropy half
-# (milestone 420 attached it here). NIFE_RNG=1 is a test-leg device exported for every leg's
+# (secrets, credentials, and the entropy to make them safe; milestone 420, the rest of the x86_64
+# fixture set, attached it here). NIFE_RNG=1 is a test-leg device exported for every leg's
 # runner, so this changes no bench or boot-check boot. `iommu_platform=on` is load-bearing for
 # the same reason it is on the disks above, and the entropy tests hold the line: the pcie test
 # ASSERTS the device is confined behind the IOMMU rather than skipping past it, so a line that
