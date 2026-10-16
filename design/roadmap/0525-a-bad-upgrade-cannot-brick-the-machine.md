@@ -17,7 +17,7 @@ built and proven under OVMF and waits on hardware for nothing but the photograph
 
 Milestone 198 rung 2a put nife on a disk. A machine with one copy of its boot image has a property
 nobody would accept from a system they depend on: **the next upgrade is one bad write away from a
-machine that does not start**, and recovering means somebody with a USB stick standing in front of
+machine that does not start**. Recovering means somebody with a USB stick standing in front of
 it. An appliance nobody can reach, which is what a home server is by the second week, has to be able
 to undo its own upgrade.
 
@@ -38,7 +38,7 @@ previous one by itself, with nobody at the console.
 
 Where the state lives. In the GPT attribute bits of the slot partitions. UEFI 2.11 section 5.3.3 gives
 bits 48 to 63 to the owner of the partition's type GUID and tells everybody else to leave them
-alone, so on a partition of a type that is ours they are ours, and no other operating system's
+alone. So on a partition of a type that is ours they are ours, and no other operating system's
 partition tool will touch them. ChromeOS's own positions, verified against the ChromiumOS
 disk-format reference rather than recalled: priority 48-51, tries 52-55, successful 56.
 
@@ -60,13 +60,13 @@ that can mount the volume may rewrite. The state that decides whether a machine 
 
 Who decrements tries, and when. The chooser, before it hands off, and this is the crux
 rather than an ordering detail. A chooser that only read, leaving the booted system to mark itself
-good, would protect against an image that crashes visibly and not against one that hangs: a
+good, would protect against an image that crashes visibly and not against one that hangs. A
 machine wedged before userspace would retry the same bad image forever and show nothing to the
 console nobody is standing at. Writing first costs a disk write on every trial boot. ChromeOS's
 firmware decrements before the launch for the same reason.
 
 What marks a boot successful, and how far in. Today: only the install, on the slot it just
-wrote, and that claim is a record of an observation rather than an assumption, because the bytes
+wrote, and that claim is a record of an observation rather than an assumption. The bytes
 going into slot 0 are the bytes the firmware started that machine with seconds earlier. Nothing
 marks a *trial* boot successful yet, and the consequence is exact: an upgrade that came up perfectly
 still rolls back once its tries are spent. That fails safe and it means upgrades do not stick. The
@@ -77,7 +77,7 @@ What happens when both slots are bad. The machine boots the image in the chooser
 which is a complete nife image the install wrote at the same moment as slot 0. Never-booting is a
 worse outcome than booting something old, and this design gets the fallback for free because the
 chooser and the image are the same binary. ChromeOS instead drops an exhausted slot's priority to
-zero so its firmware's plain highest-priority scan moves on; nife's selection predicate already
+zero so its firmware's plain highest-priority scan moves on. Nife's selection predicate already
 excludes an exhausted slot, so the write is unnecessary and not doing it keeps the record of what
 the priorities were.
 
@@ -99,8 +99,8 @@ rollback-boot: PASS
 ```
 
 Killing the machine at the handoff is the test rather than a shortcut. A kernel that wedges, a
-driver that spins and a power cut are the same event from the disk's point of view, which is that
-the try was spent and nothing came back, and it is the one failure class the chooser cannot observe
+driver that spins and a power cut are the same event from the disk's point of view: the try was
+spent and nothing came back. It is the one failure class the chooser cannot observe
 for itself. The upgrade staged into slot 1 is a byte-for-byte copy of the working image on purpose:
 garbage would be caught by the slot header's checksum inside one boot and would test the cheap half.
 
@@ -136,7 +136,7 @@ on a device-tree machine):
 Each of these is also recorded where a reader meets the feature, which is where it belongs; they are
 collected once here because a roadmap block is what somebody reads before deciding to trust this.
 
-- The on-disk format is ratified (the attribute bit positions, the slot header's bytes and the `NIFE_BOOT` type GUID; the GUID and bits on 2026-09-21, the whole layout by DECISIONS §244 (the installed disk has four partitions, and a boot slot is 64 MiB) on 2026-10-03). It is a format two programs agree on, so changing it now costs an installed disk.
+- The on-disk format is ratified (the attribute bit positions, the slot header's bytes and the `NIFE_BOOT` type GUID). The GUID and bits were ratified on 2026-09-21, the whole layout by DECISIONS §244 (the installed disk has four partitions, and a boot slot is 64 MiB) on 2026-10-03. It is a format two programs agree on, so changing it now costs an installed disk.
 - **Nothing marks a trial boot successful.** Answered by milestone 554 (a good upgrade sticks:
   what marks a trial boot successful); it was the largest missing piece.
 - **Nothing writes the second slot on a running machine.** There is no upgrader, so the rollback
@@ -157,19 +157,19 @@ collected once here because a roadmap block is what somebody reads before decidi
   trial boot good, the program that does it, and the wire the slot number crosses on.
 - **Recorded.** An upgrader: the program that writes the spare slot and puts it on trial. It is
   milestone 198 (a package manager, and the trivial install that makes a second customer possible)'s
-  own territory and should not be built before the row above is answered, or it would ship a machine
+  own territory and should not be built before the row above is answered. Or it would ship a machine
   that reverts every upgrade a few boots after it succeeded.
-- **Milestone 198.** The bench boot, which is rung 2b's other half: the sequence on xenon's own disk,
+- **Milestone 198.** The bench boot, which is rung 2b's other half. It is the sequence on xenon's own disk,
   photographed, gated on milestone 261 (the NVMe driver leaves the kernel, on the machine that can finally confine it)'s
   disk wipe, which is calef's hands rather than a lane's.
 
 ## Index row
 
 An installed machine keeps two copies of its boot image and the state that chooses between them in
-GPT attribute bits the UEFI specification reserves to the owner of the partition type, which is why
+GPT attribute bits the UEFI specification reserves to the owner of the partition type. That is why
 a boot slot is a partition of nife's own type rather than a file. The chooser is
-`\EFI\BOOT\BOOTX64.EFI` itself, because generic firmware does not read those bits and never will,
-and it spends one of the chosen slot's tries and writes that to the disk before handing off, which
+`\EFI\BOOT\BOOTX64.EFI` itself, because generic firmware does not read those bits and never will.
+It spends one of the chosen slot's tries and writes that to the disk before handing off, which
 is the only thing that bounds an image that hangs rather than one that fails where somebody can see
 it. `cargo xtask rollback-boot` watches a doomed upgrade be tried, killed at the handoff, and
 abandoned, with the machine coming back on the previous image by itself.

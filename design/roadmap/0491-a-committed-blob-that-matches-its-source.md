@@ -33,7 +33,7 @@ Seven further committed `.dtb` blobs, QEMU's own dumps, have no source beside th
 
 ## Why this is worth a check rather than a habit
 
-A committed artifact that nothing regenerates is a fact nobody re-reads, which is the shape this
+A committed artifact that nothing regenerates is a fact nobody re-reads. That is the shape this
 tree keeps finding: a `BUGS` entry nobody struck when the work landed, a baseline column six weeks
 stale being read as last week's census, a roadmap status that was wrong in both records. A blob is
 the worst member of that family because no reader can see it. A stale sentence at least shows up

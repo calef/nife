@@ -18,7 +18,7 @@ lane (`milestone/64-std-filesystem-shim`), from milestone 64's block and `notes/
 
 The mechanism a reader needs already exists and already has a decision behind it:
 DECISIONS §43 made reading the wall clock a broadly grantable, read-only authority (a `Frame`
-capability naming the clock page), and every `std` program already holds one at slot 5. What this
+capability naming the clock page). Every `std` program already holds one at slot 5. What this
 needs is a lane, and one judgment a lane can make: which spawn sites give the FS server the page.
 
 In brief. `redoxfs_server` stamps every mutation with its own counter (`Server::clock`, starting at
@@ -48,7 +48,7 @@ counter as a `SystemTime` too, and it is wrong in three ways a program can act o
   the second boot can be stamped earlier than one written in the first.
 
 `std_exerciser` is written around these on purpose: its `write moves mtime ok` line asserts a write
-moving a file *it made* forward, and runs before its `set_times` rather than after, because a write
+moving a file *it made* forward, and runs before its `set_times` rather than after. A write
 after a `set_times` into the future does not move the time. When this lands, that line should
 tighten to "inside the wall-clock window", a write after `set_times` should move the time again,
 and a write to `motd` should move the host's stamp; those three are the test of done.

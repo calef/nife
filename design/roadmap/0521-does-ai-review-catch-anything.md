@@ -14,7 +14,7 @@ calef asked for an experiment rather than an opinion (2026-09-21).
 do not, at a false-positive rate worth paying?**
 
 Both halves are load-bearing. A reviewer that catches real defects and also produces three plausible
-findings per clean pull request costs more attention than it saves, and this tree has refused gates
+findings per clean pull request costs more attention than it saves. This tree has refused gates
 on exactly that ground before: `git grep -w TODO` measured **82% false positives**, and a proposed
 gate on the lane line measured two false positives in four hundred pull requests with zero true
 ones.
@@ -23,8 +23,8 @@ ones.
 
 Turning review on and reading what it says produces plausible findings with no way to separate the
 true ones from the confident wrong ones. That is the failure mode this tree keeps meeting: a lane
-reported a `script/names` blind spot that had been closed for a month; a maintainer measured an hour
-of benchmarks against a tree they had clobbered; a census misattributed 77 survivors to a pull
+reported a `script/names` blind spot that had been closed for a month. A maintainer measured an hour
+of benchmarks against a tree they had clobbered. A census misattributed 77 survivors to a pull
 request that introduced four. Every one of those was plausible. An experiment whose output is
 prose that somebody has to believe is not an experiment.
 
@@ -79,7 +79,7 @@ that added this section precedes every transcript commit.
   are therefore not a control group here; they are the thing that already failed.
 - Arm 1 scores one question per defect: did the reviewer name it? Named, or not. A finding that
   the diff deleted text without saying why the deletion matters is scored partial and counted
-  against the threshold as a miss, because the class of defect here is a true sentence removed and
+  against the threshold as a miss. The class of defect here is a true sentence removed, and
   noticing a deletion is not noticing a loss.
 - Arm 2 counts every finding on a clean diff, adjudicated true, false, or unfalsifiable, with
   false positives per clean diff the denominator.
@@ -125,7 +125,7 @@ postures, three replicates a cell, every transcript kept unedited in an archive 
 465-line documentation diff the ledger had marked clean, `moonshotai/kimi-k3` produced fifty
 findings across six reviews: thirty-eight true, zero false. Among them a justifying paragraph
 that names the mean where its own table reports the median, an estimator described as unbiased in a
-sentence that also says it converges from above, and a correction notice certifying as exact a
+sentence that also says it converges from above. And a correction notice certifying as exact a
 comparison its own methods line shows spans two boots, each with its own
 calibration error. None of that was caught by a gate or by the human who signed the diff off.
 
@@ -167,9 +167,9 @@ passed the defect and invented concerns on the clean one, in the same pair of ru
 
 ## Follow-on
 
-- **Recorded.** `notes/delegated-review.md`'s `BUGS` carries what this run cannot support: an
+- **Recorded.** `notes/delegated-review.md`'s `BUGS` carries what this run cannot support. An
   agent adjudicated its own kind, the corpus is five diffs of which one was mislabelled, every defect
-  in it is of one shape (a true sentence removed or two meanings folded into one), the reviewer saw
+  in it is of one shape (a true sentence removed or two meanings folded into one). The reviewer saw
   one commit rather than the worktree, and the run's cost was never measured.
 - **Refused.** Excluding the transcripts from the citation, counted-claim and em-dash gates. The
   first attempt at this run did exactly that, one exception per gate, and calef refused it on
@@ -190,6 +190,6 @@ passed the defect and invented concerns on the clean one, in the same pair of ru
 
 ## Index row
 
-An experiment rather than an opinion: whether an AI review catches defects the gates and the
+An experiment rather than an opinion. Whether an AI review catches defects the gates and the
 maintainer miss, scored against defects whose introducing commits are known, with the false-positive
 arm that decides it and a threshold registered before the first run.

@@ -32,7 +32,7 @@ answer the second shape too.
 
 Less than it sounds, and the honest ranking is the first thing to say. The path shape is the
 common one: milestone 64's probe list ranked `Metadata::modified` at 19 with 5 crates behind it and
-`File::set_times` at 28 with 2, and every walker (`walkdir`, `ignore`, so `ripgrep`) reaches
+`File::set_times` at 28 with 2. Every walker (`walkdir`, `ignore`, so `ripgrep`) reaches
 metadata through `DirEntry::metadata`, which is by path and works. What still refuses:
 
 - `File::metadata().modified()`, which programs reach for after `File::open` when they want the
@@ -54,7 +54,7 @@ means. That reasoning is recorded at `Mtime` in `patches/std-nife/overlay/std/sr
 (a) Put the mtime in `FSTAT`'s second reply word. The server's `reply` already sends two words
 and fills the second with 0, so this is additive on the wire: an old client ignores it. It closes the
 read half only. Cost: one line in the server, one in the PAL, and every caretaker taught to relay the
-second word: `components/src/fs_file_caretaker.rs`'s `reply` sends a hard-coded 0 there today, so
+second word. `components/src/fs_file_caretaker.rs`'s `reply` sends a hard-coded 0 there today, so
 a program behind a per-file grant would read an mtime of 0 rather than a refusal, which is the
 fabricated-answer shape this proposal exists to avoid. Risk: `FSTAT` is also the PAL's
 reachability probe, and a reply shape change there is the one place a mistake would make every
@@ -64,9 +64,9 @@ reachability probe, and a reply shape change there is the one place a mistake wo
 provisional). Closes both halves, and it is the shape POSIX kept (`stat`/`fstat`, `utimensat`/
 `futimens`). **The setter runs straight into §112**, which is the finding that makes this a real
 fork rather than a binding: a file handle is hard-attenuated to `READ | WRITE` the moment it is
-opened (`Server::open_file_at`), so it can never carry `dir::SETTIME`, and the arbitrary-time
+opened (`Server::open_file_at`). So it can never carry `dir::SETTIME`, and the arbitrary-time
 authority has nothing to be checked against. Either file handles grow a `SETTIME` bit (a rights
-change on every open, and the caretakers' `POLICY` table learns a new row per verb), or
+change on every open, and the caretakers' `POLICY` table learns a new row per verb). Or
 `FSETMTIME_AT` is refused on every handle and only `FSETMTIME` (the server's own "now") is offered,
 which is not what `File::set_modified(t)` asks for.
 
@@ -87,7 +87,7 @@ that a caller cannot get another way except restoring a timestamp through a hand
 4. Is the premise true? Checked: `filesystem_protocol::fs::GETMTIME`'s doc says name-taking on
    purpose, `redoxfs_server`'s dispatch reads the name from the page, and the per-file caretaker
    refuses all three with `ENOTDIR` (`filesystem_protocol::grant::POLICY`).
-5. Cost, measured: (a) is a line each in the server and the PAL plus a relay in every caretaker; (b) is three
+5. Cost, measured: (a) is a line each in the server and the PAL plus a relay in every caretaker. (b) is three
    opcodes, three verb-table rows, three caretaker policy rows, server methods and host tests, plus
    the `SETTIME` question, which is the expensive part and is not code.
 6. **Reversibility**: (c) is fully reversible. (a) and (b) are wire changes and are not.
