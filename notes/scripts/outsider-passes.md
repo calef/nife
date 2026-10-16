@@ -57,8 +57,9 @@ podman volume rm "nife-pass-$(basename "$scratch")"
 - `--from-table` replays a recorded grading; it does not check it. It trusts the note's grade
   column, so it reproduces a hand count and cannot catch a row graded `booted` that never ran.
   Only the log mode does that.
-- A log is attributed to an ISA by the `--- kernel tests, <isa> (QEMU) ---` header `script/test`
-  prints, or failing that by the ISA in the file name. A log with neither counts for no ISA.
+- A log is attributed to an ISA by the `--- kernel tests, <isa> (QEMU <version>) ---` header
+  `script/test` prints, or failing that by the ISA in the file name. A log with neither counts for
+  no ISA.
 - The floor's `of 27` follows the claims table. When the table grows, a replay of an old pass
   reports the old pass's booted rows against the new floor.
 - The runner text is the launch brief's Mac section, written for GLM 5.3, with its commit trailer

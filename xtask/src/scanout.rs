@@ -170,112 +170,6 @@ fn scanout_matches(ppm: &[u8], want_pixel: impl Fn(u32, u32) -> u32) -> Result<(
     Ok(())
 }
 
-/// Parse a `screendump` P6 PPM into `(width, height, rgb bytes)`. [`scanout_matches`]'s own header
-/// walk, lifted out for milestone 177 (wire the graphical terminal stack into the real interactive
-/// boot) and its graphical swish-check leg, which reads a screendump's text
-/// back out instead of comparing it against a picture computed in advance (there is no such picture
-/// for a live, typed shell session; see [`decode_cell`]).
-fn parse_ppm(ppm: &[u8]) -> Result<(u32, u32, &[u8]), String> {
-    let text = String::from_utf8_lossy(&ppm[..ppm.len().min(64)]).to_string();
-    let mut fields = text.split_ascii_whitespace();
-    if fields.next() != Some("P6") {
-        return Err("not a P6 PPM".into());
-    }
-    let w: u32 = fields
-        .next()
-        .and_then(|f| f.parse().ok())
-        .ok_or("no width")?;
-    let h: u32 = fields
-        .next()
-        .and_then(|f| f.parse().ok())
-        .ok_or("no height")?;
-    let maxval = fields.next().ok_or("no maxval")?;
-    if maxval != "255" {
-        return Err(format!("maxval {maxval}, expected 255"));
-    }
-    let mut seen = 0;
-    let mut i = 0;
-    while i < ppm.len() && seen < 4 {
-        if ppm[i].is_ascii_whitespace() {
-            seen += 1;
-            while seen < 4 && i + 1 < ppm.len() && ppm[i + 1].is_ascii_whitespace() {
-                i += 1;
-            }
-        }
-        i += 1;
-    }
-    let pixels = &ppm[i..];
-    let want_len = (w * h * 3) as usize;
-    if pixels.len() < want_len {
-        return Err(format!(
-            "short by {} bytes (QEMU may still be writing)",
-            want_len - pixels.len()
-        ));
-    }
-    Ok((w, h, &pixels[..want_len]))
-}
-
-/// **Read one glyph cell back out of a screendump**, the reverse of the direction every other
-/// scanout check in this file runs: those compare against a picture predicted in advance, and there
-/// is no way to predict a live, typed shell session's screen in advance (milestone 177's graphical
-/// swish-check leg: the boot banner's exact wrapped, scrolled position in an 18x8 grid depends on
-/// wording nobody wants two copies of, so this reads the picture instead of guessing it).
-///
-/// Tries every byte in `alphabet` against [`bitmap_font::cell_pixel`]'s own definition, at the
-/// terminal's own default colours (`video_terminal::Attr::DEFAULT`; nothing this leg looks for is
-/// ever printed with a colour escape). Returns the one that matches every one of the cell's
-/// `GLYPH_W * GLYPH_H` pixels exactly, or `None` if nothing in `alphabet` does (a blank cell, a
-/// byte outside `alphabet`, or the reversed cursor cell, which this deliberately does not decode:
-/// see the module note on why a caller never needs to).
-fn decode_cell(w: u32, pixels: &[u8], col: u32, row: u32, alphabet: &[u8]) -> Option<u8> {
-    let (fg, bg) = video_terminal::Attr::DEFAULT.colours();
-    'byte: for &b in alphabet {
-        for gy in 0..bitmap_font::GLYPH_H {
-            for gx in 0..bitmap_font::GLYPH_W {
-                let (x, y) = (
-                    col * bitmap_font::GLYPH_W + gx,
-                    row * bitmap_font::GLYPH_H + gy,
-                );
-                let o = ((y * w + x) * 3) as usize;
-                let want = bitmap_font::cell_pixel(b as char, gx, gy, fg, bg);
-                let (r, g, bl) = (
-                    ((want >> 16) & 0xff) as u8,
-                    ((want >> 8) & 0xff) as u8,
-                    (want & 0xff) as u8,
-                );
-                if (pixels[o], pixels[o + 1], pixels[o + 2]) != (r, g, bl) {
-                    continue 'byte;
-                }
-            }
-        }
-        return Some(b);
-    }
-    None
-}
-
-/// **Read every row of a screendump back into text**, decoding each of the 18x8 grid's cells
-/// against `alphabet` and leaving `b'?'` where nothing in it matches. One string per row, so a
-/// caller can search for a substring without caring which row it landed on (the boot banner's exact
-/// scroll position is exactly what this leg does not want to have to predict).
-pub(crate) fn scanout_rows(ppm: &[u8], alphabet: &[u8]) -> Result<Vec<String>, String> {
-    let (w, h, pixels) = parse_ppm(ppm)?;
-    if (w, h) != (graphics_protocol::WIDTH, graphics_protocol::HEIGHT) {
-        return Err(format!(
-            "scanout is {w}x{h}, the surface is {}x{}",
-            graphics_protocol::WIDTH,
-            graphics_protocol::HEIGHT
-        ));
-    }
-    let (cols, rows) = (w / bitmap_font::GLYPH_W, h / bitmap_font::GLYPH_H);
-    Ok((0..rows)
-        .map(|row| {
-            (0..cols)
-                .map(|col| decode_cell(w, pixels, col, row, alphabet).unwrap_or(b'?') as char)
-                .collect::<String>()
-        })
-        .collect())
-}
-
 /// **Press a key on the guest's keyboard**, over the same monitor the scanout check uses.
 ///
 /// Nothing inside the guest can press a key, which is the point of testing a real input device, so
@@ -817,6 +711,11 @@ impl ScanoutReferee {
     pub(crate) fn report(self) -> bool {
         let _ = std::fs::remove_file(&self.sock);
         let arch = &self.arch;
+        // Which emulator produced a verdict here is part of reading it (milestone 414 (a red
+        // post-run check does not say which emulator produced it)): these checks drive QEMU's
+        // monitor, and versions fail disjoint sets of them. Computed once and carried by the
+        // FAILED lines, so a red line interprets itself; the green lines stay as they were.
+        let qemu = crate::host::qemu_version(arch);
         let (composed, text, matched) = (&self.composed, &self.text, &self.matched);
         let seen = Seen {
             dumps: self.dumps,
@@ -844,9 +743,9 @@ impl ScanoutReferee {
             None => {
                 eprintln!();
                 eprintln!(
-                    "scanout check ({arch}) FAILED: the compositor test passed, so the guest's witnesses \
-                 agree about the framebuffer, but QEMU's scanout never held the composed screen. Last \
-                 mismatch: {last_composed}"
+                    "scanout check ({arch}) FAILED (QEMU {qemu}): the compositor test passed, so the \
+                 guest's witnesses agree about the framebuffer, but QEMU's scanout never held the \
+                 composed screen. Last mismatch: {last_composed}"
                 );
                 eprintln!(
                     "  A compositor's output is exactly what a guest-side digest cannot confirm; this is \
@@ -863,9 +762,9 @@ impl ScanoutReferee {
             None => {
                 eprintln!();
                 eprintln!(
-                    "scanout check ({arch}) FAILED: the display-terminal test passed, so the guest \
-                 agrees about the framebuffer, but QEMU's scanout never held the terminal's text. \
-                 Last mismatch: {last_text}"
+                    "scanout check ({arch}) FAILED (QEMU {qemu}): the display-terminal test passed, \
+                 so the guest agrees about the framebuffer, but QEMU's scanout never held the \
+                 terminal's text. Last mismatch: {last_text}"
                 );
                 eprintln!(
                     "  A wrong pixel format makes a test pattern look odd and makes text unreadable, \
@@ -884,8 +783,9 @@ impl ScanoutReferee {
             None => {
                 eprintln!();
                 eprintln!(
-                    "scanout check ({arch}) FAILED: the display test passed, so the framebuffer holds \
-                 the pattern, but QEMU's scanout never did. Last mismatch: {last_reason}"
+                    "scanout check ({arch}) FAILED (QEMU {qemu}): the display test passed, so the \
+                 framebuffer holds the pattern, but QEMU's scanout never did. Last mismatch: \
+                 {last_reason}"
                 );
                 eprintln!(
                     "  This is the check that catches a wrong pixel format or scanout rectangle, which \

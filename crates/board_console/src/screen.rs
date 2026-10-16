@@ -14,6 +14,11 @@
 //! - Under QEMU, `cargo xtask uefi-boot` asks the emulator for a screendump and reads the tour off
 //!   it. That gates the whole framebuffer path on every run: the loader's `LocateProtocol`, the
 //!   byte order, the stride, the mapping surviving `mmu::init`, and the glyphs.
+//! - The same decoder, at the same time, is how the graphical `swish-check` leg reads the display
+//!   terminal's live, typed screen back (milestone 377 (two screendump decoders, in two crates,
+//!   reading the same font), which merged the decoder that leg used to carry in `xtask`). There is
+//!   no picture of a live session to predict, so the leg searches the rows this returns for what
+//!   it typed.
 //! - On a machine nobody can attach a cable to, a **photograph of the screen** is not this: it is
 //!   not pixel-aligned and it is not a screendump. Turning one into text is a different problem
 //!   this module does not solve, and `notes/serial-less-output.md` says so where a reader meets it.
@@ -25,25 +30,51 @@
 //! - **A cell that matches no glyph reads as `?`**, not as an error. A screen is a picture and part
 //!   of it may be something else entirely (a logo, half a character at the right edge).
 //! - **Several characters share a glyph in a 7x8 font.** The lookup returns the first match in
-//!   ASCII order, so a font with a duplicate would silently prefer the earlier character. Nothing
+//!   alphabet order, so a font with a duplicate would silently prefer the earlier character. Nothing
 //!   currently checks `bitmap_font` for duplicate glyphs.
-//! - **Only [`INK`] on [`PAPER`] is recognised.** Any other colour scheme decodes to blanks. The
-//!   kernel console has exactly one and this reads it.
+//! - **A scheme whose ink is not the brighter of its two colours reads as `?`.** The decoder splits
+//!   ink from paper at their per-channel midpoint ([`ink_thresholds`]); the console's scheme is
+//!   [`INK`] on [`PAPER`] and the display terminal's is `video_terminal::Attr::DEFAULT`'s. A
+//!   dark-ink-on-light-paper scheme classifies every pixel backwards and decodes to a grid of `?`.
 
-/// What `screen_console` paints ink with, as one 24-bit RGB pixel.
-///
-/// Duplicated from that crate rather than depended on, deliberately: this is a *host* tool reading
-/// a picture, and a dependency edge from the gate to the kernel's console crate would make the two
-/// unable to disagree, which is the one thing a gate is for. The value is asserted against the
-/// crate's own constant in `xtask`, where both are already in scope.
-pub const INK: [u8; 3] = [0xc8, 0xc8, 0xc8];
+/// What `screen_console` paints ink with, as one 24-bit RGB triplet: its own
+/// [`screen_console::ScreenConsole::FOREGROUND`], converted. The value was a hand-copied `0xc8`
+/// with its equality asserted in `xtask` until the dependency that made the question moot
+/// arrived (2026-10-04): the console's reader taking the color from the crate that paints is
+/// the same argument that brought that dependency in.
+pub const INK: [u8; 3] = rgb(screen_console::ScreenConsole::FOREGROUND);
 
-/// What it paints background with.
-pub const PAPER: [u8; 3] = [0x00, 0x00, 0x00];
+/// What it paints background with: [`screen_console::ScreenConsole::BACKGROUND`].
+pub const PAPER: [u8; 3] = rgb(screen_console::ScreenConsole::BACKGROUND);
 
-/// Anything at least this bright in all three channels is ink. A midpoint rather than an exact
-/// match, so that a screendump that went through a colour conversion still reads.
-const INK_THRESHOLD: u8 = 0x60;
+/// The three channels of a `0x00RRGGBB` word, in the order a PPM stores them.
+const fn rgb(word: u32) -> [u8; 3] {
+    [(word >> 16) as u8, (word >> 8) as u8, word as u8]
+}
+
+/// Where each channel stops being `paper` and starts being `ink`: their midpoint. A midpoint
+/// rather than an exact match, so that a screendump that went through a color conversion still
+/// reads. Computed from the scheme rather than fixed at `0x60`, because the scheme is data.
+fn ink_thresholds(ink: [u8; 3], paper: [u8; 3]) -> [u8; 3] {
+    let mid = |ink: u8, paper: u8| ((u16::from(ink) + u16::from(paper)) / 2) as u8;
+    [
+        mid(ink[0], paper[0]),
+        mid(ink[1], paper[1]),
+        mid(ink[2], paper[2]),
+    ]
+}
+
+/// Every printable ASCII byte, in ASCII order: the alphabet [`read`] decodes with, so any
+/// character the console can draw comes back, and `' '` wins any tie with another blank glyph.
+const PRINTABLE: [u8; 0x7f - 0x20] = {
+    let mut alphabet = [0u8; 0x7f - 0x20];
+    let mut byte = 0x20u8;
+    while byte < 0x7f {
+        alphabet[(byte - 0x20) as usize] = byte;
+        byte += 1;
+    }
+    alphabet
+};
 
 /// What went wrong reading a dump. Small on purpose: there are only two ways a PPM can be
 /// unreadable that are worth telling apart.
@@ -105,37 +136,152 @@ pub fn read(ppm: &[u8]) -> Result<String, ReadError> {
     let (width, height, pixels) = parse_pixmap(ppm)?;
     // The console draws a wide screen at an integer scale (`ScreenConsole::scale_for`, 2026-10-04),
     // and asking the painter's own rule is what keeps this reader from disagreeing with it.
-    let k =
+    let scale =
         screen_console::ScreenConsole::scale_for(u32::try_from(width).unwrap_or(u32::MAX)) as usize;
-    let cols = width / (bitmap_font::GLYPH_W as usize * k);
-    let rows = height / (bitmap_font::GLYPH_H as usize * k);
     let mut out = String::new();
-    for row in 0..rows {
-        let mut line = String::new();
-        for col in 0..cols {
-            line.push(cell(pixels, width, k, col, row));
-        }
-        out.push_str(line.trim_end());
+    for row in decode_rows(
+        pixels,
+        width,
+        height,
+        scale,
+        &PRINTABLE,
+        ink_thresholds(INK, PAPER),
+    ) {
+        out.push_str(row.trim_end());
         out.push('\n');
     }
     Ok(out)
 }
 
-/// The character in one cell, or `?` when the cell matches no glyph.
-fn cell(pixels: &[u8], width: usize, k: usize, col: usize, row: usize) -> char {
-    let left = col * bitmap_font::GLYPH_W as usize * k;
-    let top = row * bitmap_font::GLYPH_H as usize * k;
+/// **A screendump read back**: the picture's own geometry, and its rows of text.
+///
+/// The geometry rides along because a caller that asserts it wants it from the same parse that
+/// produced the rows, and this module owns the only parse. The graphical `swish-check` leg is
+/// that caller: a scanout of any size but the surface's is a `SET_SCANOUT` bug, not a near miss.
+///
+/// Name: provisional, minted 2026-10-16 by lane/377 (one screendump decoder, not two).
+#[derive(Debug, PartialEq, Eq)]
+pub struct Screendump {
+    /// Width of the pixmap, in pixels.
+    pub width: u32,
+    /// Height of the pixmap, in pixels.
+    pub height: u32,
+    /// One string per row of character cells, `?` where nothing in the alphabet matched. Trailing
+    /// blanks are left as they were drawn; trimming them is [`read`]'s presentation, not the
+    /// decoder's.
+    pub rows: Vec<String>,
+}
+
+/// **Turn a screendump drawn in `ink` on `paper` back into its rows of text**, decoding each
+/// cell against `alphabet` at `scale`, and reading `?` where nothing in the alphabet matches.
+///
+/// This is the one decoder in the tree (milestone 377): [`read`] is it with this crate's console
+/// scheme, the painter's own scale and every printable character, and the graphical
+/// `swish-check` leg is it with the display terminal's live screen, `video_terminal::Attr::DEFAULT`'s
+/// own colors, an explicit alphabet and a 1:1 scale. The two schemes stay the two crates' own
+/// choices, as data at the call.
+///
+/// `scale` is how many screen pixels wide one font pixel was painted: `1` for a terminal that
+/// draws 1:1, and for [`read`] whatever `screen_console::ScreenConsole::scale_for` says the
+/// console chose. Zero panics on the divide, which is the right answer for a caller that
+/// cannot say how its picture was drawn.
+///
+/// # Errors
+///
+/// [`ReadError`] when the bytes are not a readable binary PPM.
+///
+/// # Examples
+///
+/// ```
+/// use board_console::screen;
+///
+/// let (ink, paper) = ([0xee, 0xe8, 0xd5], [0x07, 0x36, 0x42]);
+/// let mut ppm = b"P6\n14 8\n255\n".to_vec();
+/// for y in 0..8u32 {
+///     for x in 0..14u32 {
+///         let word = if bitmap_font::is_ink(if x < 7 { 'h' } else { 'i' }, x % 7, y) {
+///             0x00ee_e8d5
+///         } else {
+///             0x0007_3642
+///         };
+///         ppm.extend_from_slice(&[(word >> 16) as u8, (word >> 8) as u8, word as u8]);
+///     }
+/// }
+///
+/// assert_eq!(screen::decode(&ppm, ink, paper, b"hi", 1).unwrap().rows, ["hi"]);
+/// ```
+///
+/// Name: provisional, minted 2026-10-16 by lane/377 (one screendump decoder, not two).
+pub fn decode(
+    ppm: &[u8],
+    ink: [u8; 3],
+    paper: [u8; 3],
+    alphabet: &[u8],
+    scale: u32,
+) -> Result<Screendump, ReadError> {
+    let (width, height, pixels) = parse_pixmap(ppm)?;
+    Ok(Screendump {
+        width: u32::try_from(width).unwrap_or(u32::MAX),
+        height: u32::try_from(height).unwrap_or(u32::MAX),
+        rows: decode_rows(
+            pixels,
+            width,
+            height,
+            scale as usize,
+            alphabet,
+            ink_thresholds(ink, paper),
+        ),
+    })
+}
+
+/// The grid's rows, one string of cells each: the whole decode, shared by [`read`] and
+/// [`decode`].
+fn decode_rows(
+    pixels: &[u8],
+    width: usize,
+    height: usize,
+    scale: usize,
+    alphabet: &[u8],
+    thresholds: [u8; 3],
+) -> Vec<String> {
+    let cols = width / (bitmap_font::GLYPH_W as usize * scale);
+    let rows = height / (bitmap_font::GLYPH_H as usize * scale);
+    (0..rows)
+        .map(|row| {
+            (0..cols)
+                .map(|col| cell(pixels, width, scale, col, row, alphabet, thresholds))
+                .collect()
+        })
+        .collect()
+}
+
+/// The character in one cell, or `?` when the cell matches nothing in `alphabet`.
+fn cell(
+    pixels: &[u8],
+    width: usize,
+    scale: usize,
+    col: usize,
+    row: usize,
+    alphabet: &[u8],
+    thresholds: [u8; 3],
+) -> char {
+    let left = col * bitmap_font::GLYPH_W as usize * scale;
+    let top = row * bitmap_font::GLYPH_H as usize * scale;
     let mut seen = [[false; bitmap_font::GLYPH_W as usize]; bitmap_font::GLYPH_H as usize];
     for (y, line) in seen.iter_mut().enumerate() {
         for (x, ink) in line.iter_mut().enumerate() {
-            // One sample per k-by-k block: its top-left screen pixel.
-            let at = ((top + y * k) * width + left + x * k) * 3;
-            *ink = pixels[at..at + 3].iter().all(|c| *c >= INK_THRESHOLD);
+            // One sample per scale-by-scale block: its top-left screen pixel.
+            let at = ((top + y * scale) * width + left + x * scale) * 3;
+            *ink = pixels[at..at + 3]
+                .iter()
+                .zip(thresholds)
+                .all(|(channel, threshold)| *channel >= threshold);
         }
     }
-    // ASCII order, so `' '` wins any tie with another blank glyph.
-    for candidate in 0x20u8..0x7f {
-        let ch = candidate as char;
+    // First match in `alphabet` order wins. `read` passes the alphabet ASCII-sorted, so `' '`
+    // still wins any tie with another blank glyph.
+    for &byte in alphabet {
+        let ch = byte as char;
         let matches = seen.iter().enumerate().all(|(y, line)| {
             line.iter()
                 .enumerate()
@@ -207,7 +353,7 @@ mod tests {
     use machine_discovery::framebuffer::{Framebuffer, PixelOrder};
     use screen_console::{Cells, PixelSink, ScreenConsole};
 
-    use super::{PAPER, ReadError, read};
+    use super::{INK, PAPER, ReadError, decode, read};
 
     /// Paint `text` with the **kernel's own console** and hand back the screendump QEMU would have
     /// produced of it.
@@ -395,5 +541,100 @@ mod tests {
     fn width_or_height_of_zero_is_rejected_even_when_the_other_is_fine() {
         assert_eq!(read(b"P6\n0 5\n255\n").unwrap_err(), ReadError::NotAPixmap);
         assert_eq!(read(b"P6\n5 0\n255\n").unwrap_err(), ReadError::NotAPixmap);
+    }
+
+    /// **The display terminal's default scheme decodes through the same `decode`** (milestone
+    /// 377). The colors are read from `video_terminal` itself, because the scheme is that
+    /// crate's choice and a copy of two RGB words here is exactly the drift this decoder exists
+    /// to refuse; the alphabet and the 1:1 scale are the graphical swish-check leg's, whose live
+    /// screen this reads.
+    #[test]
+    fn the_display_terminals_default_scheme_decodes_like_the_consoles() {
+        let (fg, bg) = video_terminal::Attr::DEFAULT.colours();
+        let ink = [(fg >> 16) as u8, (fg >> 8) as u8, fg as u8];
+        let paper = [(bg >> 16) as u8, (bg >> 8) as u8, bg as u8];
+
+        let mut ppm = b"P6\n14 8\n255\n".to_vec();
+        for y in 0..8u32 {
+            for x in 0..14u32 {
+                let word = if bitmap_font::is_ink(if x < 7 { 'h' } else { 'i' }, x % 7, y) {
+                    fg
+                } else {
+                    bg
+                };
+                ppm.extend_from_slice(&[(word >> 16) as u8, (word >> 8) as u8, word as u8]);
+            }
+        }
+
+        let screen = decode(&ppm, ink, paper, b"hi", 1).expect("a readable dump");
+        assert_eq!(screen.rows, ["hi"]);
+        assert_eq!(
+            (screen.width, screen.height),
+            (14, 8),
+            "the geometry rides along for the caller that asserts it"
+        );
+    }
+
+    /// **INK and PAPER are the console's own colors, split into PPM channel order**, asserted
+    /// against the words the console paints with. [`read`] classifies every pixel
+    /// channel-by-channel against thresholds derived from these two constants and nothing else,
+    /// and no paint-and-read test can see a wrong split: with the console's near-black paper, a
+    /// channel of INK shifted to zero (`>>` become `<<`) moves the matching threshold to zero
+    /// too, and every pixel the console paints classifies exactly as before. The split itself
+    /// is the contract, so that is what is asserted.
+    #[test]
+    fn ink_and_paper_are_the_console_colors_in_ppm_channel_order() {
+        let (fg, bg) = (ScreenConsole::FOREGROUND, ScreenConsole::BACKGROUND);
+        assert_eq!(INK, [(fg >> 16) as u8, (fg >> 8) as u8, fg as u8]);
+        assert_eq!(PAPER, [(bg >> 16) as u8, (bg >> 8) as u8, bg as u8]);
+    }
+
+    /// **Ink and paper split at their midpoint, and both sides of the arithmetic are
+    /// load-bearing.** The console's own scheme cannot show that: any threshold strictly
+    /// between its two colors classifies the same pixels. So [`decode`] runs here on a scheme
+    /// chosen to straddle the arithmetic, `0xc0` ink on `0x40` paper: the true midpoint is
+    /// `0x80`, where `(ink - paper) / 2` would read `0x40` and paper pixels would pass, and
+    /// `(ink + paper) * 2` would wrap past the byte to `0x00`, where every pixel does. Either
+    /// way a painted cell goes all-ink and the character comes back `?`, so the exact text
+    /// below is what fails.
+    #[test]
+    fn the_split_between_ink_and_paper_is_their_midpoint() {
+        let (ink, paper) = ([0xc0, 0xc0, 0xc0], [0x40, 0x40, 0x40]);
+        let mut ppm = b"P6\n14 8\n255\n".to_vec();
+        for y in 0..8u32 {
+            for x in 0..14u32 {
+                let word = if bitmap_font::is_ink(if x < 7 { 'h' } else { 'i' }, x % 7, y) {
+                    0x00c0_c0c0
+                } else {
+                    0x0040_4040
+                };
+                ppm.extend_from_slice(&[(word >> 16) as u8, (word >> 8) as u8, word as u8]);
+            }
+        }
+        assert_eq!(
+            decode(&ppm, ink, paper, b"hi", 1)
+                .expect("a readable dump")
+                .rows,
+            ["hi"]
+        );
+    }
+
+    /// **The alphabet constrains the decode**: a cell whose glyph is outside it reads `?` while
+    /// its neighbor still comes back, which is what makes the swish-check leg's failures name
+    /// the character it could not read rather than lie about the row.
+    #[test]
+    fn a_glyph_outside_the_alphabet_reads_as_a_question_mark() {
+        let screen = decode(&painted(2, 1, "hi"), INK, PAPER, b"i", 1).expect("a readable dump");
+        assert_eq!(screen.rows, ["?i"]);
+    }
+
+    /// **[`decode`]'s rows are the whole grid, trailing blanks included.** The caller that
+    /// asserts geometry also searches the raw rows, and trimming is [`read`]'s presentation
+    /// choice rather than the decoder's. Note the alphabet has to carry the space for a blank
+    /// cell to come back as one.
+    #[test]
+    fn a_decoded_row_keeps_its_trailing_blanks() {
+        let screen = decode(&painted(2, 1, "h "), INK, PAPER, b"h ", 1).expect("a readable dump");
+        assert_eq!(screen.rows, ["h "]);
     }
 }

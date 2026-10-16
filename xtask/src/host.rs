@@ -91,6 +91,37 @@ pub(crate) fn capture(program: &str, args: &[&str]) -> Option<String> {
     String::from_utf8(out.stdout).ok()
 }
 
+/// The version of the emulator a leg will run, as the per-architecture banner and the red
+/// post-run checks print it (milestone 414 (a red post-run check does not say which emulator
+/// produced it)): `"11.1.2"`, or `"version unreadable"` when the binary cannot be asked.
+///
+/// The name resolves through PATH exactly as the runner's bare `exec qemu-system-...` does
+/// (`helpers/qemu-path.sh` puts this project's own QEMU first), so the number names the
+/// emulator that actually ran rather than one a config elsewhere prefers. Nothing new learns
+/// which binary was chosen: PATH is still the mechanism, and `script/qemu-check` reads the
+/// same field of the same output. Name provisional, minted by milestone 414's lane.
+pub(crate) fn qemu_version(arch: &str) -> String {
+    capture(&format!("qemu-system-{arch}"), &["--version"])
+        .and_then(|out| parse_qemu_version(&out).map(str::to_string))
+        .unwrap_or_else(|| "version unreadable".to_string())
+}
+
+/// The version field of a `--version` first line: whatever follows the word `version`.
+///
+/// Anchored on the word rather than counted from the left (`script/qemu-check`'s
+/// `awk '{print $4}'`): upstream prints `QEMU emulator version 11.1.2`, where counting works,
+/// and some distributions print `qemu-system-aarch64 version 8.2.2`, where the fourth field is
+/// already inside the package suffix. The word appears in both shapes.
+fn parse_qemu_version(version_output: &str) -> Option<&str> {
+    let mut fields = version_output.lines().next()?.split_whitespace();
+    while let Some(field) = fields.next() {
+        if field == "version" {
+            return fields.next();
+        }
+    }
+    None
+}
+
 pub(crate) fn kernel_elf() -> String {
     format!("target/{TARGET}/{}/kernel", profile_dir())
 }
@@ -188,5 +219,36 @@ mod selected_by_tests {
             selected_by("  cycles      : PMCCNTR_EL0 running on 4 of 4 cores"),
             None
         );
+    }
+}
+
+#[cfg(test)]
+mod qemu_version_tests {
+    use super::parse_qemu_version;
+
+    #[test]
+    fn upstream_line() {
+        assert_eq!(
+            parse_qemu_version(
+                "QEMU emulator version 11.1.2\nCopyright (c) 2003-2025 Fabrice Bellard\n"
+            ),
+            Some("11.1.2")
+        );
+    }
+
+    #[test]
+    fn distro_line_names_the_binary_first() {
+        // Counting fields from the left reads the package suffix on this shape; the word
+        // anchor does not.
+        assert_eq!(
+            parse_qemu_version("qemu-system-aarch64 version 8.2.2 (Debian 1:8.2.2+ds-0ubuntu1)\n"),
+            Some("8.2.2")
+        );
+    }
+
+    #[test]
+    fn no_version_word_reads_as_unreadable() {
+        assert_eq!(parse_qemu_version("qemu: something else entirely\n"), None);
+        assert_eq!(parse_qemu_version(""), None);
     }
 }

@@ -25,19 +25,19 @@ From '109. `xargs`: batching a grant too large to hand over', under `## Follow-o
 ## Why it is here rather than only there
 
 `MAX_NAMES` is eight because a name set travels by value through the expander, the `Expansion`,
-`designate`'s return and the `Endowment`, and the shell's stack is what pays for each copy. At
-sixteen it ran off the bottom of that stack planning a single grant, twice, which is a measurement
+`designate`'s return and the `Endowment`. The shell's stack is what pays for each copy. At
+sixteen it ran off the bottom of that stack planning a single grant, twice. That is a measurement
 rather than a preference.
 
 ## Revisit
 
-- **Condition.** Either an allocator for the shell or a different carrier for a grant, which the
-  refusal names as its own decision with its own argument. The bell is any change that stops a name
-  set traveling by value: the ceiling moves rather than disappearing, and `xargs` is still wanted
+- **Condition.** Either an allocator for the shell or a different carrier for a grant. The refusal
+  names that as its own decision with its own argument. The bell is any change that stops a name
+  set traveling by value. The ceiling moves rather than disappearing, and `xargs` is still wanted
   afterwards.
 
 ## Index row
 
 The eight-name ceiling is a consequence of a name set being copied by value through four stages on a
 shell stack with no allocator, measured by the shell overflowing at sixteen. Raising it is real work
-that needs a different carrier first, and this records it as a door rather than a wall.
+that needs a different carrier first. This records it as a door rather than a wall.

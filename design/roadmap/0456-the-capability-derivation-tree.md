@@ -45,7 +45,7 @@ From '26. Object revocation: tear a process back down', under `## Follow-on`:
 ## Why it is here rather than only there
 
 Three separate blocks refused the same thing in the same words, which is itself the argument for
-giving it a number: a reader meeting any one of them cannot tell it is the tree's standing position
+giving it a number. A reader meeting any one of them cannot tell it is the tree's standing position
 rather than one lane's scoping call. seL4 tracks every capability's derivation so that a revoke can
 take Bob's copy while leaving Alice's. This tree revokes all derivatives of a frame instead, which
 is the memory-safety-critical half and is exactly what reclamation wants.

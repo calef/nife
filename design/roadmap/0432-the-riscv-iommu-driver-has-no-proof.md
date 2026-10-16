@@ -9,7 +9,7 @@ promoted_from: the-riscv-iommu-driver-has-no-proof
 Two harnesses in `kernel/src/arch/riscv64/iommu.rs`, both
 falsified, proved from an aarch64 host; "What was built" below. Promoted from the proposal
 `the-riscv-iommu-driver-has-no-proof`, filed 2026-09-18 from the confirmation pass of milestone 322
-(one machine matrix for three architectures), which went looking for an unexercised IOMMU
+(one machine matrix for three architectures). That pass went looking for an unexercised IOMMU
 configuration, found that all three architectures already boot behind one, and turned up this
 instead. *(Number provisional until the merge queue lands it.)*
 
@@ -55,8 +55,8 @@ catch and the kind this tree prefers to find by looking rather than by failing.
 ## One limit to carry over rather than discover again
 
 `notes/iommu.md` records that the register offsets and bit constants **are not proved and cannot
-be**: nothing in this tree can check a constant against Arm IHI 0070, or against the RISC-V IOMMU
-specification, so a misreading of the document makes the code and the proof wrong together. Whatever
+be**. Nothing in this tree can check a constant against Arm IHI 0070, or against the RISC-V IOMMU
+specification. So a misreading of the document makes the code and the proof wrong together. Whatever
 is written here inherits that, and should say so where a reader meets it rather than implying a
 completeness it cannot have.
 
@@ -74,8 +74,8 @@ its proposal's option 1 is what this milestone built:
 - `attach`'s arithmetic lifted into four pure functions in the same file (`device_context`,
   `is_in_directory`, `context_offset`, `iodir_inval_ddt`). The words written, their order and the
   barriers are unchanged; `cargo clippy -p kernel --target riscv64imac-unknown-none-elf` is clean.
-- The properties, which this block said were most of the work: the device context names exactly
-  the domain built and its MODE is Sv39 for every root (MODE 0 is Bare, translation off); and the
+- The properties, which this block said were most of the work. The device context names exactly
+  the domain built and its MODE is Sv39 for every root (MODE 0 is Bare, translation off). The
   directory bound agrees with the stride in both context formats, with the invalidation naming the
   same device. notes/kernel-proofs.md has them in full.
 - Falsified, both replayable on an aarch64 host from `kernel/falsifications/arch.riscv64.*`.
@@ -107,10 +107,11 @@ its proposal's option 1 is what this milestone built:
 `arch/aarch64/iommu.rs` carries two Kani harnesses over its entry-building arithmetic, both
 falsified before they were believed, one of them replayable in `kernel/falsifications/`. The RISC-V
 driver writes its device context in 64-bit stores with no split, so the property those prove does
-not apply to it, and **nothing was written in its place**: the boot-time confinement test is the
-whole of the assurance on that side, on exactly one board, and the same note says what that test
-cannot do, which is prove the kernel wrote the right entry, since a wrong entry that still confines
-this device on this board is invisible to it. §19 makes architectural parity a gate rather than an
+not apply to it, and **nothing was written in its place**. The boot-time confinement test is the
+whole of the assurance on that side, on exactly one board. The same note says what that test
+cannot do: prove the kernel wrote the right entry. A wrong entry that still confines this device
+on this board is invisible to it. §19 (architectural parity is a tenet) makes architectural parity a
+gate rather than an
 aspiration and this is a parity gap in the boundary milestone 35 calls the one isolation boundary we
 test instead of prove. The work is not porting the aarch64 harnesses, which would prove a hazard
 RISC-V does not have; finding the right property is most of it, and writing it down is the

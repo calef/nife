@@ -68,8 +68,8 @@ position, plus `pub const ALL: &[(&str, u64)]` naming them. Then one generic tes
 That is rung one for the numbering (a position cannot collide with itself) and rung two for the rest.
 
 The names stay exactly as they are. This is a change to how they are written down, not to what
-they are called; every constant keeps its spelling, its doc comment and its value, and `EXPECTED`
-keeps being written by hand because which bits a correct run reports is a claim rather than a
+they are called. Every constant keeps its spelling, its doc comment and its value. `EXPECTED`
+keeps being written by hand, because which bits a correct run reports is a claim rather than a
 derivation.
 
 ## What this does not do, and the honest limits
@@ -101,9 +101,9 @@ no such block, and the reason is only that they are constants rather than a tabl
 
 ## Index row
 
-The confinement fixtures' witness bit sets are kept honest by six hand-written lists, and milestone
+The confinement fixtures' witness bit sets are kept honest by six hand-written lists. Milestone
 326's mutation triage found the navigation one stale for the second time and `twodir` never having
-had one at all: five witness bits could each be silently zeroed and no test would notice, two of them
-the structural finding `notes/dir-capability.md` records. A `witness_bits!` declaration macro would
+had one at all. Five witness bits could each be silently zeroed and no test would notice. Two of them
+are the structural finding `notes/dir-capability.md` records. A `witness_bits!` declaration macro would
 make the list the place the bits come from, which moves the numbering from rung four to rung one,
 with `verb::TABLE`'s compile-time blocks as the prior art already in this tree.

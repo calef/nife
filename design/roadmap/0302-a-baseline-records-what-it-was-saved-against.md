@@ -16,7 +16,7 @@ executed Decision 1, decompose and re-baseline.
   `# toolchain:` line read from `rust-toolchain.toml`'s pin rather than from whatever compiler
   happens to be running, and `script/lint` fails when that line and the pin disagree. It has fired
   in anger: PR #1112, the 2026-09-23 nightly bump, went red exactly as designed. A `# qemu:` line
-  had arrived earlier by the same argument, and `--check` compares it against the emulator in front
+  had arrived earlier by the same argument. `--check` compares it against the emulator in front
   of it rather than against `.qemu-version`, for the reason [notes/benchmarks.md](../../notes/benchmarks.md) gives: the counter reading a floor
   should be the counter that produced it.
 - 2026-09-23, this lane: the rest of item 1, the `# why:` line and the date, which is the
@@ -24,7 +24,7 @@ executed Decision 1, decompose and re-baseline.
 
 ## What this lane built
 
-`--save` now refuses to run without at least one `--why "<reason>"`, and writes one `# why:` line
+`--save` now refuses to run without at least one `--why "<reason>"`. It writes one `# why:` line
 per reason into the header, above the numbers, alongside a `# date:` line. `--check` prints those
 reasons back when a benchmark has moved, because a person reading a red gate in CI scrollback is not
 reading the file and is holding exactly the question they answer.
@@ -32,8 +32,8 @@ reading the file and is holding exactly the question they answer.
 Three choices, with their reasons:
 
 - A flag, and a refusal rather than a default. An environment variable is invisible in the
-  scrollback of the person debugging the save, and an optional flag is a field that is empty in
-  every save made in a hurry, which is every save that later turns out to matter. The command line
+  scrollback of the person debugging the save. An optional flag is a field that is empty in
+  every save made in a hurry. That is every save that later turns out to matter. The command line
   is strings, so a reason cannot be made unrepresentable the way `InputSpec::Required` made a
   missing `writes_while_reading` unrepresentable; refusing at the boundary is the highest rung this
   one reaches. The cost is real and is the one §190 (must an icount baseline save record why it moved) hesitated over: it changes what a person types
@@ -43,7 +43,7 @@ Three choices, with their reasons:
   2 says "beside the rows that moved" and the format calef ratified here is comment lines in the
   header; this follows the ratified one. It is also the only one that survives a save: the writer
   rebuilds the file from a fixed header plus one `name ticks iters` line per result and preserves
-  nothing else, which is how the hand-written `#` correction above riscv64's `rfence_self` was
+  nothing else. That is how the hand-written `#` correction above riscv64's `rfence_self` was
   destroyed on 2026-09-21. `--why` is repeatable so a save covering several moves records several
   reasons, and a reason about one counter names it in its own prose.
 - The three existing files say `unrecorded`, the posture the `# qemu:` line already takes and
@@ -60,8 +60,8 @@ alone. `--why` and `# date:` are this lane's names and are provisional.
 
 The evidence that made the item worth more than it looked is in
 [notes/benchmarks.md](../../notes/benchmarks.md), and is not restated here: riscv64's `rfence_self` has oscillated between
-5991 and 6476 across seven consecutive saves under two pins, one lane read the low value as a stale
-floor carrying dead margin on 2026-09-22, and another measured it back to the tick four days later.
+5991 and 6476 across seven consecutive saves under two pins. One lane read the low value as a stale
+floor carrying dead margin on 2026-09-22. Another measured it back to the tick four days later.
 Two competent lanes, opposite conclusions, and the file could tell neither of them anything.
 
 ## What was ruled, and why it is one mechanism rather than two
@@ -86,15 +86,15 @@ in one header format, which is the collision this tree pays for repeatedly.
 `rust-toolchain.toml`. It does not re-save `bench/baseline-{aarch64,riscv64,x86_64}.txt`, on the
 theory that a new nightly's codegen may move the deterministic icount counts the baselines gate
 against. When the bump moves the numbers and the floor is not moved with it, the tripwire's headroom
-erodes silently, and the next unrelated PR that adds a few percent trips the +10% gate for a reason
+erodes silently. The next unrelated PR that adds a few percent trips the +10% gate for a reason
 that is not its own.
 
 Milestone 300 measured this window and found the drift was **not** the nightly: `nightly-2026-08-27`
 and `nightly-2026-09-15` emit byte-identical icount on the same code, and the whole ~+6.5% move was
 one code change (milestone 139's cycle-counter grant at the context switch). So the specific alarm
 that motivated the proposal was a false attribution. The proposal survives anyway, because the
-mechanism it names is real and unguarded: a nightly that *does* move codegen would erode the headroom
-exactly as feared, and nothing in the tree would notice until a lane chased an unrelated regression
+mechanism it names is real and unguarded. A nightly that *does* move codegen would erode the headroom
+exactly as feared. Nothing in the tree would notice until a lane chased an unrelated regression
 into it months later. The fix should not depend on which cause happens to bite.
 
 ## What to build
@@ -128,7 +128,7 @@ failure with nobody in the loop at all.
 ## BUGS
 
 - A recorded reason cannot be made true. `44890a8a` attributed a 5 to 8% x86_64 move to the
-  toolchain, and milestone 300 later measured that toolchain term at ~0; with this in the tree it
+  toolchain, and milestone 300 later measured that toolchain term at ~0. With this in the tree it
   would have written the same false reason, into the file instead of into a commit message. What
   changes is that the next reader meets it in a grep rather than a bisect. This is rung three and
   does not claim to be rung one.
@@ -145,12 +145,12 @@ failure with nobody in the loop at all.
 - Option 1 lets automation commit a floor without a human reading the diff, which is exactly the
   care a baseline save has always carried (`bench/baseline-aarch64.txt`'s own header: "a statement
   that a performance change is intended and understood"). A re-save that also launders a real
-  regression into the floor is the failure milestone 300 exists to prevent, one level out; option 1
+  regression into the floor is the failure milestone 300 exists to prevent, one level out. Option 1
   would need the decomposition 300 did by hand to be at least partly automatic, or it re-opens the
   hole.
 - This is measured on one machine, one QEMU. The numbers are TCG icount on the dev Mac. A
   different runner moves them again, which is the argument *for* mechanizing the re-baseline rather
-  than trusting a human to eyeball a percentage, and also the argument that the mechanized floor is
+  than trusting a human to eyeball a percentage. It is also the argument that the mechanized floor is
   only as portable as the runner that saved it.
 
 ## Index row

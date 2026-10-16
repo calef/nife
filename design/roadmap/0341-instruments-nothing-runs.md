@@ -69,7 +69,8 @@ risk stands GREEN on a hand-run instrument, which is a claim about whether this 
 continue resting on somebody having typed a command once; nothing re-runs it and nothing notices when
 it goes red. That is rung two of AGENTS.md's ladder going unclaimed while rung four holds a fatal
 risk. The cheap half is already priced, since `interleaving-check` is twelve seconds and belongs in
-the local tier on cost alone; the other two are the decision, because `crate-probes` builds fifty
-crates and `repeat-under-load` boots QEMU repeatedly, so milestone 232 refused to assume CI was the
+the local tier on cost alone. The other two are the decision, because `crate-probes` builds fifty
+crates and `repeat-under-load` boots QEMU repeatedly. Milestone 232 (audit every check against two
+questions) refused to assume CI was the
 answer and priced them instead. A cadence entry is the third option and fits an expensive check whose
 answer changes slowly.

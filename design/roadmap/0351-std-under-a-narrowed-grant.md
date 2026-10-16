@@ -22,7 +22,7 @@ by another milestone and no decision is waiting.
 
 **In brief.** Spawn a `std` program on an `fs_subtree_caretaker` endpoint rather than on the mount
 root, and run the existing PAL tests against it. That exercises the rights discipline under a
-narrowed grant, which nothing does now: every `std` test today is handed the root, so a path
+narrowed grant, which nothing does now. Every `std` test today is handed the root, so a path
 operation that asks for more rights than it needs is indistinguishable from one that asks for
 exactly what it needs. Both succeed.
 
@@ -37,7 +37,7 @@ property this system claims.
 It also compounds. The PAL is being extended a piece at a time, and each new operation picks its
 rights by whatever the author thought was needed. Under the current fixture nobody finds out. Under
 a narrowed one, over-asking is a failing test at the moment it is written, which is rung two of
-AGENTS.md's ladder rather than rung four, and rung four is where `readdir` was caught by somebody
+AGENTS.md's ladder rather than rung four. Rung four is where `readdir` was caught by somebody
 happening to read the diff.
 
 Milestone 122 already recorded that `OPENDIR` has no way to say "attenuate to whatever you have",
@@ -59,11 +59,11 @@ it needs is indistinguishable from one that asks for exactly what it needs, beca
 test suite that cannot tell a confined program from an unconfined one is not testing the property
 this system claims. Spawning a `std` program on an `fs_subtree_caretaker` endpoint instead and
 running the existing platform abstraction layer tests against it exercises the rights discipline
-under a narrowed grant. It is a test that would have caught a real defect: `readdir` nearly shipped
+under a narrowed grant. It is a test that would have caught a real defect. `readdir` nearly shipped
 asking for `dir::ALL`, which passes every test in the tree under the root grant and fails the first
-time a program is confined, which is the case the whole capability model exists to serve. It also
+time a program is confined. That is the case the whole capability model exists to serve. It also
 compounds, because the PAL is extended a piece at a time and each new operation picks its rights by
 whatever the author thought was needed. Milestone 122 already recorded that `OPENDIR` has no way to
 say "attenuate to whatever you have", so a held directory asks for `dir::ALL` and probes one right at
-a time when a narrowed grant refuses; that probing path is unexercised for the same reason, and this
+a time when a narrowed grant refuses. That probing path is unexercised for the same reason, and this
 fixture is what runs it.

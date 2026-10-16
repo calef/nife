@@ -27,7 +27,7 @@ blocked at once, and none of the blocks was about the code in them:
    renumbers. The tree's own rule (the integrator mints) assumes one integrator, and there were two.
 
 A fourth cause was the maintainer's, not the tree's, and is recorded here so the fix is not
-mistaken for a whole answer: lanes were cut from other lanes' branches (#987 on #985, #993 on #990,
+mistaken for a whole answer. Lanes were cut from other lanes' branches (#987 on #985, #993 on #990,
 #997 on #996), which turns one delay into four. The merge queue already lands groups of five, so
 lanes cut from `main` would have been independent. That is a rule for whoever briefs, not code.
 
@@ -48,7 +48,7 @@ them did. The lag was therefore not harmless; it was an input.
   trigger. On the day it read 213 against a tree with 214, which is the one direction an
   audit signal must not err in. Same fix.
 - `script/lint` gained a check that fails if any other `script/` entry point reads the committed
-  index as data. This is the rung-two mechanism the milestone actually needed: the coupling reads as
+  index as data. This is the rung-two mechanism the milestone needed: the coupling reads as
   ordinary code at the call site, so a note would not have held.
 
 `script/roadmap`, `script/metrics` and `script/catch-up` still read it, and only the first is the
@@ -127,7 +127,7 @@ files claiming one number, each its own failure.
 **What this can no longer catch**, stated rather than discovered: a decision file deleted outright,
 with its index row deleted in the same commit, and cited nowhere in the tree. Every partial shape
 still fails. A file with no row, a row with no file, a row pointing at a file that is gone, and a
-`§N` anywhere in the tree that resolves to nothing are all still problems, and those are the shapes
+`§N` anywhere in the tree that resolves to nothing are all still problems. Those are the shapes
 a half-finished deletion actually takes. What is left is a decision nobody ever referred to, removed
 completely and on purpose, which is not the accident the check was written for.
 
@@ -185,9 +185,9 @@ reported, and that the later lander takes the next free numbers instead of displ
 
 ## Index row
 
-Eleven pull requests in flight, four blocked at once, and none of the blocks about the code in them:
-a committed 441-row generated index that every milestone rewrites, a gate reading that derived file
-rather than the blocks it is derived from, and hand-minted contiguous numbers that two sessions
+Eleven pull requests in flight, four blocked at once, and none of the blocks about the code in them.
+The causes were a committed 441-row generated index that every milestone rewrites, a gate reading that derived file
+rather than the blocks it derives from, and hand-minted contiguous numbers that two sessions
 collide on. `script/fatal-risks` and `script/audits` now read `script/roadmap --index`, a lint check
 stops a third reader appearing, and a gap in `design/decisions/` numbering is reported instead of
 failed, so the later lander takes the next free number instead of renumbering a run. The index stays
