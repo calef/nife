@@ -97,9 +97,9 @@ that states it**. Measured 2026-09-16, the run came back as a 60-second watchdog
 lost-wakeup hang" with nothing in it about impersonation. The cause is structural rather than a flaw
 in the patch. `RECEIVE_CAP` blocks, so an attacker the kernel fails to refuse never returns to report
 the escape, and the assertion is reachable only in the world where the kernel does refuse. The
-attempt returns on surface that exists:
-[milestone 106 (a wait that ends on either the interrupt or the deadline)](0106-deadline-wait.md)
-built the timer and [§101 (notification objects)](../decisions/0101-notification-objects.md)'s
-binding ends a blocked `RECEIVE_CAP` at its deadline, so the falsification is a lane's work. The
+attempt returns on surface that exists.
+[Milestone 106 (a wait that ends on either the interrupt or the deadline)](0106-deadline-wait.md)
+built the timer, and [§101 (notification objects)](../decisions/0101-notification-objects.md)'s
+binding ends a blocked `RECEIVE_CAP` at its deadline. So the falsification is a lane's work. The
 first-class non-blocking receive stays unwritten until a second consumer that cannot arm a timer
 asks for it, and the `try_receive_cap` naming below is still calef's.

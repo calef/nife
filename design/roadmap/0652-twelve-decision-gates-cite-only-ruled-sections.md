@@ -1,7 +1,7 @@
 ---
-status: IN-PROGRESS
+status: BUILT
 raised: 2026-09-24
-branch: milestone/652-twelve-decision-gates
+built: 2026-10-16
 promoted_from: twelve-decision-gates-cite-only-ruled-sections
 milestone_dependencies: none
 decision_dependencies: none
@@ -56,3 +56,16 @@ timer's built mechanism dissolved the fork. Three stay bare on purpose, because 
 wait is real but is not a section. 188's fields were already right once the prose stopped
 describing a token the frontmatter switch retired. And 388's own lane claimed the milestone the
 same day, so this one read the gate and yielded the block.
+
+## Follow-on
+
+- **Milestone 356.** [Milestone 356 (retention declares the thread capability and says nothing
+  about the region)](0356-the-region-half-of-the-retention-declaration.md) carries the enforcement
+  the §303 ruling named. `build_child` will require the caller
+  to present the owning region, and the kernel will refuse when `build_ut`'s recorded parent is
+  not it. Until that block lands the check, the rule is stated and not enforced.
+- **Milestone 376.** [Milestone 376 (nothing turns a device back off)](0376-nothing-turns-a-device-back-off.md)
+  carries the bench run the §304 ruling ordered: radon with the STG domain ungated and
+  gated. The block has the machine and person fields that run needs.
+- **Done.** The `try_receive_cap` naming question in row 417 was reported to calef on this pull
+  request; it names no gate and stops nothing.
