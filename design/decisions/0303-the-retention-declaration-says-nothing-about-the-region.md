@@ -36,7 +36,7 @@ Three things, ruled together:
    own: a region you created, a `SPLIT` child of your own region, or a root handed to you as your
    whole budget. The answer lives in §40's caveat, which this ruling closes.
 
-**The enforcement, named.** The rule is prose until the check lands, and the record says so. The
+The enforcement, named. The rule is prose until the check lands, and the record says so. The
 check, when it is built: `build_child` requires the caller to present the owning region's
 capability beside `build_ut`, and the kernel refuses when `build_ut`'s recorded parent in the
 region table is not the region presented. `split` already writes that parent link
@@ -52,7 +52,8 @@ directly. The check is sized as its own piece of work; it can ride milestone 356
 permissive rule accretes users, so permitting today makes forbidding later a breaking change.
 Forbidding today breaks nobody: nothing in the tree builds a child from a retained delegation. And
 it permits later only when a named consumer argues for it, additively, through the endowment this
-decision declined to widen. The same logic that keeps §26 death-only keeps this forbidden.
+decision declined to widen. The same logic that keeps
+[§26 (the fault endpoint)](0026-fault-endpoint.md) death-only keeps this forbidden.
 
 **C over A and B**, on an acting-moment test. A field earns its place when code can act on it at
 a moment. The TCB field earns it: `start_child` reads `Retention::Nothing` at `START` and deletes
@@ -63,15 +64,15 @@ either: the builder holds the region capability or it does not, visible at the c
 was hidden is the rule about delegation, and that is this decision's job, not a per-spawn
 field's.
 
-- **A** (widen `Retention` over both objects) forces two lifetimes into one value: the TCB is
+- A (widen `Retention` over both objects) forces two lifetimes into one value: the TCB is
   disposed at an instant, the region at reap or never. Every spawn site writes the combined
   value, since the field has no default by §142's design, and the variant set goes combinatorial.
-- **B** (a second field) describes a capability the struct does not carry: the region reaches
+- B (a second field) describes a capability the struct does not carry: the region reaches
   `build_child` as the `build_ut` argument, so the field and the fact can drift with nothing to
   catch it. The tree already ran this experiment: `Retention`'s `reason` string is a declaration
   nothing can check, its own doc says it cannot be, and `Retention::ThreadControlBlock { reason:
   "" }` compiles. A and B are that again, wearing a type.
-- **C** (this ruling) is also the reversible direction: widening later is additive, while
+- C (this ruling) is also the reversible direction: widening later is additive, while
   retracting A or B would churn every spawn site to remove a field nothing could act on.
 
 ## What this tree already does in the analogous case
@@ -91,11 +92,11 @@ that occupies it, and `split` gives each child its own independently reclaimable
 
 ## Prior art
 
-Read and recalled, per family. **seL4** (mechanics recalled) has no process object and no
+Read and recalled, per family. seL4 (mechanics recalled) has no process object and no
 declaration anywhere: what a spawner retains is what it has not dropped, and memory authority runs
-through the untyped lineage, the same shape as this tree's region. **Fuchsia** (recalled) takes no
+through the untyped lineage, the same shape as this tree's region. Fuchsia (recalled) takes no
 retention parameter; what the parent keeps is the handles it does not drop, and the cascade is an
-object, the job, with `zx_task_kill` as the one-act reclamation. **Erlang** (recalled) has the one
+object, the job, with `zx_task_kill` as the one-act reclamation. Erlang (recalled) has the one
 genuine retention declaration, `spawn` / `spawn_link` / `spawn_monitor`, a per-spawn checked
 choice of death coupling, and it covers exactly what §142 covers, the coupling at the spawn
 moment, with nothing to say about memory. The art's dividing line is consistent: declare what the

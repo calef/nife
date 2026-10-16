@@ -12,9 +12,11 @@ needs_person: no
 Phase one is sequenced after 47, because it wants `jobs`
 alongside the other builtins on the same shell surface. Phase two is `ThreadControlBlock::SUSPEND`/`RESUME`.
 [§300 (the paused state)](../decisions/0300-tcb-suspend-resume-the-paused-state.md) decided it on
-2026-10-15: the verbs ride the TCB capability, resume continues at the PC, and §26 carries no
-stopped event. The pair is designed once for all three of §24's triggers: job control, a
-userspace pager, and a debugger.
+2026-10-15: the verbs ride the TCB capability, resume continues at the PC, and
+[§26 (the fault endpoint)](../decisions/0026-fault-endpoint.md) carries no
+stopped event. The pair is designed once for all three of
+[§24 (interrupting the foreground)](../decisions/0024-interrupting-the-foreground.md)'s triggers:
+job control, a userspace pager, and a debugger.
 
 In brief. Shell job control, in two phases split by whether they need a new kernel primitive.
 Phase one needs none; phase two is `ThreadControlBlock::SUSPEND`/`RESUME`, which DECISIONS §24 (interrupting the foreground process) deferred and whose

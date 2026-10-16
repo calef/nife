@@ -20,7 +20,7 @@ Both halves widen a protocol two programs agree on, which is the same shape as
 [DECISIONS §106 (the terminal_sink_caretaker narrowing)](../decisions/0106-tail-output-narrowing.md)
 itself and the same reason §106 was calef's. The fork is decided:
 [§302 (the screen fact, and one line of input)](../decisions/0302-the-screen-fact-and-one-line-of-input.md),
-2026-10-15, rules the screen fact is the presence of a `WRITE`-only terminal capability, and one
+2026-10-15. It rules the screen fact is the presence of a `WRITE`-only terminal capability, and one
 line of input is a one-shot badge served `OPERATION_READLINE` exactly once. Both commitments sit
 on wire two programs agree on, so they cannot be un-shipped once a program is written against
 them.
@@ -28,10 +28,10 @@ them.
 **In brief.** DECISIONS §106 narrowed the spawn protocol for a tail stage's *primary output*, which
 is what lets `doc <page>` render at the prompt with no `| wc` in front of it. It built the narrowest
 slice that unblocked that one command. The two untaken thirds of the original scope are decided by
-[§302 (the screen fact, and one line of input)](../decisions/0302-the-screen-fact-and-one-line-of-input.md):
-the screen fact is the presence of a `WRITE`-only terminal capability, the honest replacement for
-`isatty` and what color needs, and one line of *input* without the keyboard is a one-shot badge,
-what a pager needs. This milestone builds both.
+[§302 (the screen fact, and one line of input)](../decisions/0302-the-screen-fact-and-one-line-of-input.md).
+The screen fact is the presence of a `WRITE`-only terminal capability: the honest replacement for
+`isatty`, and what color needs. One line of *input* without the keyboard is a one-shot badge, what
+a pager needs. This milestone builds both.
 
 ## Why this matters
 
@@ -39,7 +39,7 @@ The first half is what stops this system growing a dishonest `isatty`. Unix prog
 color by asking the kernel what their file descriptor is attached to, which is ambient authority
 answering a question about presentation. A capability system says it properly, as the presence of
 a `WRITE`-only terminal capability ([§302 (the screen fact, and one line of
-input)](../decisions/0302-the-screen-fact-and-one-line-of-input.md)), and every program that wants
+input)](../decisions/0302-the-screen-fact-and-one-line-of-input.md)). Every program that wants
 to color output will need that grant. Until it ships,
 the choices are no color anywhere or a program guessing, and a guess here becomes a convention
 before anybody decides it is one.
@@ -69,15 +69,15 @@ three."*
 ## Index row
 
 DECISIONS §106 narrowed the spawn protocol for a tail stage's primary output, which is what lets
-`doc <page>` render at the prompt with no `| wc` in front of it, and built the narrowest slice that
+`doc <page>` render at the prompt with no `| wc` in front of it. It built the narrowest slice that
 unblocked that one command. The two untaken thirds of the original scope are decided, in
-[§302 (the screen fact, and one line of input)](../decisions/0302-the-screen-fact-and-one-line-of-input.md):
-the screen fact is the presence of a `WRITE`-only terminal capability, the honest
-capability-shaped replacement for `isatty` and what color needs, and one line of input without
+[§302 (the screen fact, and one line of input)](../decisions/0302-the-screen-fact-and-one-line-of-input.md).
+The screen fact is the presence of a `WRITE`-only terminal capability: the honest
+capability-shaped replacement for `isatty`, and what color needs. One line of input without
 granting the keyboard is a one-shot badge served `OPERATION_READLINE` exactly once, which is what
-a pager needs. The first is what stops this system growing a dishonest `isatty`, since Unix decides
-about color by asking the kernel what a file descriptor is attached to and a capability system
-says it properly as a capability the spawner grants. The second unblocks the pager outright:
-holding the keyboard is exactly the authority a confined viewer should not have, the one-shot
+a pager needs. The first is what stops this system growing a dishonest `isatty`. Unix decides
+about color by asking the kernel what a file descriptor is attached to; a capability system
+says it properly as a capability the spawner grants. The second unblocks the pager outright.
+Holding the keyboard is exactly the authority a confined viewer should not have, the one-shot
 badge expresses the narrower thing, and `mdr` can stop rendering and start paging. Both widen a
 protocol two programs agree on, so both are an architect's, and both were ruled by one.

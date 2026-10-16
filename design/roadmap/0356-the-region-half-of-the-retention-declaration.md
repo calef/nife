@@ -49,7 +49,8 @@ what they do. Neither is stated anywhere a reader of the endowment can see.
 
 ## What §40 already says about it
 
-§40's first recorded caveat was this question in other words: the ownership chain that makes a
+[§40 (a supervisor's death is its subtree's death)](../decisions/0040-no-reaper-of-last-resort.md)'s
+first recorded caveat was this question in other words: the ownership chain that makes a
 reap work "holds only if children are built from the supervisor's own region," and whether building
 a child from a *delegated* region is forbidden or merely discouraged "is not yet decided, and it
 should be before someone writes a supervisor that does it."

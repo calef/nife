@@ -10,43 +10,43 @@ needs_person: no
 # 172. A capability-native subprocess primitive: what `cargo`'s "spawn a helper, wait, collect its output" needs, without fork/exec
 
 The second of four self-hosting milestones, for developing nife on a nife host. This is the real
-architectural piece: research into what `rustc`/`cargo` (see [milestone
+architectural piece. Research into what `rustc`/`cargo` (see [milestone
 173](0173-rustc-cargo-self-host.md)) actually need found that their build model runs one process per
-compilation unit and links via a spawned linker, structurally, with no supported single-process
+compilation unit and links via a spawned linker. Structurally there is no supported single-process
 bypass in either case, even in "self-contained" builds. nife has no primitive for one program to
 start another, wait for it, and read back what it produced.
 
 This is a new syscall-surface question, and [DECISIONS
-§10](../decisions/0010-capability-microkernel.md)'s own rule applies: "A method that does not fit the
+§10 (process model: capability-based, microkernel)](../decisions/0010-capability-microkernel.md)'s own rule applies: "A method that does not fit the
 model, or a brand-new syscall number, is a design fork, raise it before building it."
 
 ## This does not reopen §10
 
 [DECISIONS §10](../decisions/0010-capability-microkernel.md) already decided the process model and
-explicitly rejected Unix-shaped fork/exec, on an asymmetry: "capabilities to a Unix-shaped API" is
-additive (a POSIX shim in userspace, built on top of capability handles, "nothing is thrown away"),
-while the reverse, "Unix to capabilities," is "a rewrite, and historically it fails." §10 names
+explicitly rejected Unix-shaped fork/exec, on an asymmetry. "Capabilities to a Unix-shaped API" is
+additive (a POSIX shim in userspace, built on top of capability handles, "nothing is thrown away").
+The reverse, "Unix to capabilities," is "a rewrite, and historically it fails." §10 names
 Fuchsia's `fdio` as exactly this: `open`/`read`/`write` on top of capability handles, not ambient
 authority added to the kernel.
 
 **This milestone is the additive direction §10 already endorsed, applied to one more Unix-shaped
-convenience.** The functional need `cargo`/`rustc` (and any future job that shells out, e.g.
-`kilo`/`nano`'s optional external spell-check, or a build tool invoking a linter) actually have is
-narrow: start a program, hand it exactly the capabilities it should have (its stdin/stdout, specific
-file grants, nothing ambient), wait for it to finish, and read back its exit status and output.
-That is not "add fork/exec." It is the same shape as `fdio`: a userspace-visible convenience that
-composes out of primitives the capability model already has, or a small, explicit extension to them,
-not a back door around them.
+convenience.** The functional need `cargo`/`rustc` actually have is narrow. So do any future jobs
+that shell out, like `kilo`/`nano`'s optional external spell-check or a build tool invoking a
+linter. Start a program; hand it exactly the capabilities it should have (its stdin/stdout,
+specific file grants, nothing ambient). Wait for it to finish; read back its exit status and
+output. That is not "add fork/exec." It is the same shape as `fdio`: a userspace-visible
+convenience that composes out of primitives the capability model already has. Or a small, explicit
+extension to them, not a back door around them.
 
 ## What already exists to build on
 
 `crates/supervision_protocol`'s `build_child` (milestone 22 phase B.2, "the supervision tree: the
-shared half") already constructs a child process with a specific, narrowed capability endowment and
+shared half") already constructs a child process with a specific, narrowed capability endowment. It
 lets a parent supervise it (see [DECISIONS §24](../decisions/0024-interrupting-the-foreground.md) for
 how a shell already holds a child's interrupt endpoint). What is missing, checked directly against
 that crate and against `kernel/src/user.rs`'s spawn path: a synchronous, ergonomic wait-and-collect
-shape a caller like `cargo` would actually use in a loop ("run this, block until it's done, give me
-its output"), as opposed to the death-notification/supervision-endpoint pattern built for long-lived
+shape. A caller like `cargo` would use it in a loop ("run this, block until it's done, give me
+its output"). The death-notification/supervision-endpoint pattern was built for long-lived
 service supervision. The two may turn out to be the same mechanism used differently, or may need a
 distinct narrow syscall; that sizing is this milestone's own work, not predetermined here.
 
@@ -67,9 +67,9 @@ status word on the death message.
 the `posix_spawn`-shaped path for foreign programs. `std::process::Command::spawn` and a
 `posix_spawn` shim for ported C are both thin layers over the request §219 settled, plus the wait
 this milestone owes. Neither gets a milestone of its own. The shim also needs a C library, which
-does not exist: §31 (the foreign-language seam: C holds no capabilities and makes no syscalls) and
+does not exist. §31 (the foreign-language seam: C holds no capabilities and makes no syscalls) and
 the refused milestone 478 (tier three: full POSIX behind the foreign-language seam) stand in the
-way, and that is calef's call, not this block's.
+way. That is calef's call, not this block's.
 
 ## What it needs
 
@@ -77,8 +77,8 @@ way, and that is calef's call, not this block's.
   [§301 (exit status and output)](../decisions/0301-exit-status-and-output.md), 2026-10-15, carries
   the status word on `SYS_EXIT` into the death message, and keeps output grant-routed. The
   primitive is a userspace composition of `build_child` plus the receive on the supervision
-  endpoint; what remains here is building the loop: spawn, endow, receive, read the code, return
-  the output the grants carried.
+  endpoint. What remains here is building the loop: spawn, endow, receive, read the code, and
+  return the output the grants carried.
 - Stdin/stdout/stderr as capabilities, not ambient file descriptors: a spawned child's I/O needs
   to be handed explicitly, the same "additive, not ambient" shape §10 already committed to.
 - The status rides the death message ([§26 (the fault
@@ -94,13 +94,14 @@ way, and that is calef's call, not this block's.
 Directly: unblocks [milestone 173](0173-rustc-cargo-self-host.md) (`cargo` cannot spawn `rustc`, and
 `rustc` cannot spawn a linker, without this). Indirectly: the same primitive is what nano's optional,
 skippable spell-check/`execute command` feature ([milestone 170](0170-nano-editor.md)) would need if
-that gap is ever closed, and what `git`'s optional hook/external-tool features
+that gap is ever closed. It is also what `git`'s optional hook/external-tool features
 ([milestone 171](0171-git-core-userspace.md)) would need if those are ever brought in scope.
 
 ## What this does not decide
 
-The build shape of the loop: how stdin/stdout present themselves to the child (pipes, rings, or
-endpoints), and whether the first consumer is scoped to one synchronous child or a small pool.
+The build shape of the loop is this milestone's own work. How do stdin/stdout present themselves to
+the child (pipes, rings, or endpoints)? Is the first consumer scoped to one synchronous child or a
+small pool?
 [§301 (exit status and output)](../decisions/0301-exit-status-and-output.md) fixed only where the
 status travels and that output stays grant-routed.
 

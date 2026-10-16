@@ -28,8 +28,9 @@ The pieces, each already in the tree:
   (`crates/user_mode_runtime/src/process.rs` calls it as `trap6(abi::SYS_EXIT, [0; 6])`). Word
   one becomes the exit status.
 - The exit departure stamps zeros where a fault stamps `pc` and `addr`
-  (`kernel/src/sched/departure.rs`). The exit status travels in one of those words, so §26's
-  message shape is unchanged: `(event code, tid, status, 0, reserved)` for an exit,
+  (`kernel/src/sched/departure.rs`). The exit status travels in one of those words, so
+  [§26 (the fault endpoint)](0026-fault-endpoint.md)'s message shape is unchanged:
+  `(event code, tid, status, 0, reserved)` for an exit,
   `(event code, tid, pc, addr, reserved)` for a fault. Event code and status never compete: a
   child that dies without stating a code is a fault, and `EVENT_FAULT` is the whole report, the
   same encoding `WIFSIGNALED` makes on Unix.
@@ -101,8 +102,7 @@ composition and the kernel-carried shape turn out to share everything but where 
 The commitment is the meaning of words that exist on both sides of an existing call. Renaming or
 re-sloting them before a consumer ships is cheap; after `cargo` reads them, they are ABI. The
 status vocabulary (what zero means, what nonzero classes mean) lives in one crate and is
-replaceable until a second consumer relies on it, which is the same reversibility window §160
-names for conventions.
+replaceable until a second consumer relies on it.
 
 ## What is blocked until consumers arrive
 

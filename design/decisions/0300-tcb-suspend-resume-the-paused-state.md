@@ -27,7 +27,7 @@ The kernel gains two verbs on the `ThreadControlBlock`, `SUSPEND` and `RESUME`, 
 - **Suspend is silent.** No message to the supervision endpoint, no event code, no new wire. §26
   stays the channel for *unbidden* news, and suspension is always *bidden*: the kernel never
   self-suspends a thread, some capability holder orders it, and the orderer observes it by acting.
-- **Resume continues at the PC.** Registers are preserved; the thread runs on from where it
+- Resume continues at the PC. Registers are preserved; the thread runs on from where it
   stopped, seL4's `restart()` behavior, not a re-run.
 
 Two rules ride with the decision, so the door stays open without paying for it now:
