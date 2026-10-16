@@ -22,7 +22,7 @@ and **no nife kernel involved**, on QEMU 11.1.1. The runner asks for GICv2; HVF 
 
 Why it is worth a block rather than a shrug. `script/gates` calls this *the one command a person
 runs before pushing*, and the `--hvf` leg is where it reaches a real core rather than an emulated
-one. Today that leg is skipped by failing, which is worse than either alternative: a leg that
+one. Today that leg is skipped by failing, which is worse than either alternative. A leg that
 runs tells you something, a leg that skips loudly tells you it did not, and a leg that fails tells
 you something is broken without saying whether it is yours. A contributor meeting this has no way to
 know the failure is the accelerator's constraint rather than their change.
@@ -47,10 +47,10 @@ every interrupt", which is the more dangerous of the two, and it makes the runne
 `gic-version=2` pin load-bearing rather than tidy.
 
 The GICv3 route therefore lost, and it lost on size rather than on taste. Priced from that
-failure in `notes/interrupts.md`: a version decision at init that nothing does today, a
-redistributor frame per core, a system-register CPU interface (`ICC_*`, which is `msr`/`mrs` and so
-belongs under `arch/aarch64/` by rule 1 rather than beside the MMIO driver), affinity routing
-replacing the eight-bit `GICD_ITARGETSR` mask, and both drivers coexisting because GICv2 is what the
+failure in `notes/interrupts.md`. A version decision at init that nothing does today, a
+redistributor frame per core, and a system-register CPU interface (`ICC_*`, which is `msr`/`mrs` and so
+belongs under `arch/aarch64/` by rule 1 rather than beside the MMIO driver). Affinity routing
+replaces the eight-bit `GICD_ITARGETSR` mask. And both drivers coexist, because GICv2 is what the
 runner, the CI matrix, every recorded measurement and argon's own silicon use. Roughly ten call
 sites reach `drivers::gic::` directly. That is a driver with its own tests and its own dispatch, not
 a runner flag, and building it here is the failure mode this milestone was warned about: a small
@@ -66,7 +66,7 @@ How it asks. `helpers/qemu-runner-aarch64.sh` grows a probe: `NIFE_PROBE=1` star
 own `$MACHINE` paused (`-S`, so nothing executes), quits it from the monitor, and reports QEMU's own
 refusal. It lives beside the machine string on purpose. A probe in a script of its own would have to
 restate `virt,accel=hvf,gic-version=2,iommu=smmuv3`, and the day the runner's string changed the
-probe would answer about a machine nobody runs, which is a false skip: the exact shape
+probe would answer about a machine nobody runs, which is a false skip. The exact shape
 `script/lint` has deleted three checks for. Nothing here tests a QEMU version number, so the answer
 follows QEMU and this kernel without anyone remembering to update it. It costs about fifty
 milliseconds, and it exits on its own, which matters because a nife kernel that reaches `halt()`
@@ -95,8 +95,8 @@ only visible by running the thing.
   substitute for it, and the closing line of `script/gates` says so on every run.
 - Milestone 227 (a GICv3 driver, because GICv2 boots and silently loses every interrupt) is the
   GICv3 driver for aarch64. What it is and what it costs are priced in `notes/interrupts.md`'s "What
-  a GICv3 driver would actually be". It is worth its own block for two reasons that do not overlap:
-  it is what puts the HVF leg back, and `notes/aarch64-board-survey.md` already records GICv3 as the
+  a GICv3 driver would actually be". It is worth its own block for two reasons that do not overlap.
+  It is what puts the HVF leg back, and `notes/aarch64-board-survey.md` already records GICv3 as the
   largest single item barring most modern aarch64 boards, which is a customer-path constraint rather
   than a test-harness one. Milestone 127 (the sel4 machine) says the same thing from its own side.
 - **This is not a fatal risk and does not pretend to be.** It is a gate telling a contributor

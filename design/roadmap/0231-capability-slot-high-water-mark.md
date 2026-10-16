@@ -9,7 +9,7 @@ Minted the same day by calef, from milestone 230's
 (`script/shell-check` is red on `main`, on both architectures, and nothing says so) own `BUGS`.
 *(Number provisional until the merge queue lands it.)*
 
-It was minted with no gate and needed none. What it produces is itself a check: every boot now prints
+It was minted with no gate and needed none. What it produces is itself a check. Every boot now prints
 `capability slots: 21 of 24 at peak`, `script/swish-check` echoes the last such line on both
 architectures, and that check fails if the kernel flagged the boot as having gone past the peak
 recorded beside the constant.
@@ -40,8 +40,8 @@ milestone 230's four instrumented boots and one ordinary one.
 Three things this block did not decide, and how they were decided.
 
 Where the count lives: in the table, unconditionally. `capability::CapabilityTable` carries a
-`used` and a `peak`, and every path that can occupy an empty slot goes through one private `grew()`,
-which is rung one of AGENTS.md's ladder rather than a hook somebody has to remember at each of the
+`used` and a `peak`, and every path that can occupy an empty slot goes through one private `grew()`.
+That is rung one of AGENTS.md's ladder rather than a hook somebody has to remember at each of the
 kernel's seven insert sites. The lookups (`get`, `get_with`) are untouched, which is what keeps the
 counting off the read path.
 
@@ -52,7 +52,7 @@ x86_64. Milestone 221's soak counters needed a gate at 5.7%; this does not need 
 
 What it does as it approaches: nothing, and that is deliberate. The gauge is passive. What is
 checked is not the boot's distance from the ceiling but whether a recorded measurement has gone
-stale: `kernel::cap::CAPABILITY_TABLE_PEAK_MEASURED` is 21, the number milestone 230 found by
+stale. `kernel::cap::CAPABILITY_TABLE_PEAK_MEASURED` is 21, the number milestone 230 found by
 instrumenting four boots, and a boot that goes past it prints `ABOVE` and fails the gate. That is the
 same shape as this file's `size_of::<Cap>() == 32` assertion, which its own comment calls "the fact,
 not a target". A margin picked from one boot would have been the fourth deleted check; a fact that
@@ -68,7 +68,7 @@ rather than only in a failure.
 
 The kernel prints from the scheduler's idle loop (`kernel::cap::report_peak`), which is the one place
 reached after every phase of a boot with nothing else to do. The mark climbs once per grant, so the
-naive version printed six lines on an aarch64 boot (4, 5, 12, 14, 16, 21 of 24): init blocks on IPC
+naive version printed six lines on an aarch64 boot (4, 5, 12, 14, 16, 21 of 24). Init blocks on IPC
 several times while building the login stack, and each pause looked like an ending. Waiting sixteen
 consecutive idle passes for the number to hold still reduces it to two, ending in the one that
 matters. That window is a coalescing constant rather than a threshold on the measurement, and getting
@@ -99,13 +99,13 @@ milestone is what would replace it.
 - **This does not make the wall impossible, only visible.** A boot that needs a twenty-fifth slot
   still fails; it just fails saying so.
 - **The line does not say which thread.** `capability::highest_seen` is one atomic for every table in
-  the binary, because a `static` cannot be keyed by a const generic, and finding the owner means
+  the binary, because a `static` cannot be keyed by a const generic. Finding the owner means
   walking every thread under the scheduler lock, which is the scan the atomic exists to avoid. A
   reader who needs the owner is back to instrumenting, which is what this milestone was written
   against; closing it is a scan at print time and nothing else, and it was left out rather than
   designed away.
 - The gauge is only read by `script/swish-check`. `script/test` never boots the real init, so the
-  suite's own peak is never checked against anything, and the recorded-measurement arm is compiled
+  suite's own peak is never checked against anything. The recorded-measurement arm is compiled
   out of the test kernel on purpose (the guest suite runs a much larger workload through the same
   kernel, so a test going past 21 would be true and misleading). Every other boot mode prints the
   gauge and nothing reads it.
@@ -126,12 +126,12 @@ milestone is what would replace it.
   saying so.
 - **Recorded.** `design/roadmap/0231-capability-slot-high-water-mark.md`. The line does not say which
   thread. `capability::highest_seen` is one atomic for every table in the binary, because a `static`
-  cannot be keyed by a const generic, and naming the owner means walking every thread under the
+  cannot be keyed by a const generic. Naming the owner means walking every thread under the
   scheduler lock, which is the scan the atomic exists to avoid. Closing it is a scan at print time
   and nothing else; it was left out rather than designed away.
 - **Recorded.** `design/roadmap/0231-capability-slot-high-water-mark.md`. Only `script/swish-check`
   reads the gauge. `script/test` never boots the real init, so the suite's own peak is checked
-  against nothing, and the recorded-measurement arm is compiled out of the test kernel on purpose:
+  against nothing. The recorded-measurement arm is compiled out of the test kernel on purpose:
   the guest suite runs a much larger workload through the same kernel, so a test going past 21 would
   be true and misleading.
 - **Recorded.** `design/roadmap/0231-capability-slot-high-water-mark.md`. A normal boot prints two

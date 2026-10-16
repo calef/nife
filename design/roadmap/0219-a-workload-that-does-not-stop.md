@@ -66,7 +66,7 @@ thing with different deadlines.
   put a boot that never ends.
 - A user program, with the detection in the kernel. The defect is causable from userspace
   through the real syscall path, so a kernel-mode stress loop would be testing an artifact of the
-  test; and a user program cannot assert about kernel internals, so the assertions stay where the
+  test. A user program cannot assert about kernel internals, so the assertions stay where the
   trace counters are. The two meet over one shared page with one writer per word
   (`crates/soak_page`).
 - What "it passed" means: a round-trip total, and three comparisons it supports. Between
@@ -221,5 +221,5 @@ completed tour suppresses, so a hang and a slow run are told apart by one rule b
 implement. First numbers: aarch64 ~58,000 round trips/s on four cores, riscv64 ~24,000, x86_64
 ~3,900 on one. **And a finding the block did not think to ask for: a saturated workload does not
 migrate between cores under this scheduler**, measured across three topologies and both multicore
-architectures, so the soak sustains contention on shared kernel state and cannot sustain
+architectures. The soak sustains contention on shared kernel state and cannot sustain
 cross-core handoff, which is where the observed defect lived. No board has been run yet.

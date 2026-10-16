@@ -26,8 +26,8 @@ wrong answer costs:
 4. Three instruments run nowhere, and the two cheap ones were measured rather than assumed:
    `script/interleaving-check` at 12.4 seconds (loom, 26 harnesses, all green) and
    `script/crate-probes` at about 3 minutes (43 of 50, which is exactly the split
-   `notes/crates-io-on-nife.md` records, so fatal risk 1's instrument is the one place the audit
-   found the record already true). `script/rule-violations --check` is the third.
+   `notes/crates-io-on-nife.md` records). Fatal risk 1's instrument is the one place the audit
+   found the record already true. `script/rule-violations --check` is the third.
 5. `image permissions` and `architect hold` are already-recorded open asks, both waiting on the
    same repository setting, both saying so in their own files.
 
@@ -76,7 +76,7 @@ Two questions asked of every check in this repository, and the answers written d
 1. Does anything run it? On 2026-09-02 `script/repeat-under-load` and `script/crate-probes` were
    referenced by neither CI nor `script/gates`. `crate-probes` builds fifty crates.io crates
    against the nife `std`, which is the instrument behind fatal risk 1 (only software written for
-   nife runs on nife), and that risk is recorded **GREEN**. Its last result is whatever somebody saw
+   nife runs on nife), and that risk is recorded GREEN. Its last result is whatever somebody saw
    when they last ran it by hand.
 2. **Does it block?** The `main` ruleset requires eleven checks. CI runs more. On 2026-09-02
    `image permissions` (milestone 208's W^X gate, added that day), `re-falsify the harnesses this
@@ -113,9 +113,9 @@ the inventory to answer it with.
 
 ## Follow-on
 
-- **Milestone 238.** The two scheduled workflows that have never once produced a result: the
-  mutation sweep, four red runs and zero reports while `design/fatal-risks/README.md` risk 3 stands green
-  on a number it says the workflow is refreshing, and the Miri check, three weeks red on a missing
+- **Milestone 238.** The two scheduled workflows that have never once produced a result. The
+  mutation sweep: four red runs and zero reports while `design/fatal-risks/README.md` risk 3 stands green
+  on a number it says the workflow is refreshing. The Miri check: three weeks red on a missing
   `CARGO_MANIFEST_DIR` rather than on undefined behavior. 238 was minted the same day from these
   two findings.
 - **Recorded.** `notes/check-inventory.md` carries the required-list recommendation and the two

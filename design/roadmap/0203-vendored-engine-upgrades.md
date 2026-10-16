@@ -56,13 +56,13 @@ That is the one where not knowing is not merely untidy.
    already reported: **two releases in a week must not produce two pull requests.**
 4. **Run on a schedule that does not depend on anyone's laptop.** A GitHub Actions cron rather than
    the `launchd` watchers on patagonia, which is the one place this differs usefully from
-   `notes/merge-queue.md`'s pair: calef accepted that a sleeping patagonia means nobody is watching,
+   `notes/merge-queue.md`'s pair. calef accepted that a sleeping patagonia means nobody is watching,
    and that gap is fine for a merge queue measured in hours and wrong for a check measured in months.
 5. Produce something a person acts on, not a log line nobody reads.
 6. Carry the update procedure, so the person acting is not reconstructing it: bump the pin,
    re-apply the divergences, regenerate with `script/vendor-verify --write-patch`, extend
-   `vendor/README.md`'s exhaustive list, and run the suite plus milestone 37's crash injector, since
-   the store's safety claim is the thing a bump risks.
+   `vendor/README.md`'s exhaustive list, and run the suite plus milestone 37's crash injector. The
+   store's safety claim is the thing a bump risks.
 
 ## Copy `toolchain-bump.yml`, which already does this for the other pin
 
@@ -119,7 +119,7 @@ that holds.
   and is really about one directory. Writing it as a general mechanism would be abstraction ahead of
   requirement.
 - Watching git is noisier than watching releases, which is the cost of promoting it into scope:
-  upstream commits land continuously and most of them will not matter, so the "report what changed"
+  upstream commits land continuously and most of them will not matter. The "report what changed"
   half is what keeps the git side from becoming the log line nobody reads.
 - A bump is where the divergences get re-litigated, and divergence 3 in particular is one
   `vendor/README.md` says is kept rather than reverted only because reverting it is an architect's
@@ -140,8 +140,8 @@ that holds.
   `design/roadmap/0203-vendored-engine-upgrades.md`.
 - **Recorded.** A bump is where the five divergences get re-litigated, and divergence 3 is kept
   rather than reverted only because reverting it is an architect's call. Three of the five are
-  re-applied forever and can conflict, and if upstream restructures the code they touch they may not
-  be re-applicable at all, at which point the honest outcome is a decision (rewrite the divergences,
+  re-applied forever and can conflict. If upstream restructures the code they touch they may not
+  be re-applicable at all. The honest outcome then is a decision (rewrite the divergences,
   stay on the pin and record why, or fork permanently) rather than a forced patch.
   `vendor/README.md`.
 - **Refused.** The expensive half of the workflow, which would re-apply the divergence patch and

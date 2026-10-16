@@ -121,7 +121,7 @@ instruction of ours ran, and the kernel's page table was never consulted.
 
 That kills the **gigapage route** outright, and cheaply. Widening the kernel's boot map cannot
 affect a failure that happens before the kernel exists, and the widening this block pointed at had
-in any case already landed on 2026-08-14: gigapage 1 covers 0x4000_0000..0x8000_0000, which is
+in any case already landed on 2026-08-14. Gigapage 1 covers 0x4000_0000..0x8000_0000, which is
 where `fdt_addr_r` would have put a tree. The route is not merely unnecessary here, it was
 addressing a problem the board did not have.
 
@@ -142,9 +142,9 @@ already cost this project a bench cycle to discover.
 **What shipped instead is `boot.scr.uimg`, and its argument is that it is not new.** U-Boot's
 distro boot scans for extlinux first and boot scripts second, so the card now carries a script and
 no `extlinux.conf`. The script issues the sequence from the *successful* capture of the same day,
-line for line, with two edits that each remove a dependency: the load device comes from the
+line for line, with two edits that each remove a dependency. The load device comes from the
 variables distro boot has already set for the script it is sourcing, and the archive's length is
-stashed under a name of ours the moment `load` reports it, so nothing later that touches
+stashed under a name of ours the moment `load` reports it. Nothing later that touches
 `filesize` can change what `booti` is handed. `cargo xtask board-script` writes it and
 `target/board/boot.cmd` is the same text in readable form.
 
@@ -217,7 +217,7 @@ Everything above is reasoning. This is what settles it. Steps 1 and 2 need no bo
      source of those files.
 
 5. Once it boots hands-free, prove it repeats, because that is the property fatal risk 5 wants
-   and a single boot does not show it: power-cycle three times without touching the keyboard, and
+   and a single boot does not show it. Power-cycle three times without touching the keyboard, and
    then run a soak card (`script/board-image --soak --card ...`) long enough to leave the room.
 
 ## BUGS
@@ -252,8 +252,8 @@ Everything above is reasoning. This is what settles it. Steps 1 and 2 need no bo
 - **Milestone 306.** The measurement this boot also carried, the hw-entropy rate, closing fatal risk
   6's third half.
 - **Recorded.** A hands-free boot is necessary for the sustained overnight runs
-  `design/fatal-risks/README.md` risk 5 names as its decisive experiment, and is nowhere near sufficient:
-  power cycling is still manual by calef's own 2026-09-04 ruling in milestone 224, so a wedged board
+  `design/fatal-risks/README.md` risk 5 names as its decisive experiment, and is nowhere near sufficient.
+  Power cycling is still manual by calef's own 2026-09-04 ruling in milestone 224, so a wedged board
   still ends a run. That limitation lives beside the decision, in milestone 224's block.
 
 ## Index row

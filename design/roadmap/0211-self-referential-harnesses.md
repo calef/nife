@@ -35,8 +35,8 @@ kinds, and the third is the one nothing predicted:
   checks a field against the function that filled it.
 - An encoder round-tripped through its own decoder. `the_leaf_keeps_address_and_permissions_apart`,
   once per ISA. `leaf_entry` and `entry_pa` never call each other, so no call-graph test finds
-  this one, and it is the most dangerous of the three because the artifact is a hardware format:
-  a shift wrong in both directions leaves the round trip perfect and the MMU reading the wrong
+  this one, and it is the most dangerous of the three because the artifact is a hardware format.
+  A shift wrong in both directions leaves the round trip perfect and the MMU reading the wrong
   page. The rewrite states the bit positions the architecture assigns, as literals rather than
   through the crate's own `ADDR_MASK` or `PPN_SHIFT`, since a harness citing those constants moves
   with a defect in them.
@@ -49,7 +49,7 @@ anyway, and their comments say so. Writing "fixed a blind spot" over a hole nobo
 same one-step-from-evidence failure §134 exists to end.
 
 The mechanical narrowing was weaker than its hit rate. 23 candidates out of 146 and all eleven
-findings among them, but three of those eleven were flagged by a bug in the extractor rather than
+findings among them. Three of those eleven were flagged by a bug in the extractor rather than
 by a real call-graph edge, and a correct implementation of the test would have missed the whole
 encoder/decoder family. Every harness was read.
 

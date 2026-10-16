@@ -17,9 +17,9 @@ Correction, 2026-10-06: argon is not in hand. The board delivered as argon is a 
 (32-bit Armv7), shipped against a TX1 order; it is going back and calef is getting the TX1 from the
 seller (`notes/bench-runbook.md`, "argon is not in hand"). The argon leg below is awaiting the
 board, with no date. Its plan, the tegra210 facts and `script/board-console --exposure` all stand. `PARTIAL` rather than `BUILT` because the block names three machines and one is done. Minted
-2026-09-02 by the maintainer, carrying forward the follow-on that
+2026-09-02 by the maintainer. It carries forward the follow-on that
 milestones 219 (the boot tour ends and the kernel halts, so there is nothing to soak) and 221 (the
-soak never crosses cores, so build the hook that makes it) both proposed. *(Number provisional until
+soak never crosses cores, so build the hook that makes it) proposed. *(Number provisional until
 the merge queue lands it.)*
 
 In milestone 53's sense: the boards are on the desk and this needs hands on
@@ -104,7 +104,7 @@ it. What remains on radon is more boots, not longer ones.
 
 Lane `milestone/225-radon-boots` (`bef2b40dc`, tree-identical to main `237cef6bc`), one power cycle
 from calef for the whole evening. It opened with the decisive bench test of milestone 592 (radon's
-cold reboot dies in OpenSBI's PMIC write), green: the rebooting build soaked its 120 seconds,
+cold reboot dies in OpenSBI's PMIC write), green. The rebooting build soaked its 120 seconds,
 called SBI SRST, and the board came back through `U-Boot SPL` to a netboot and a soak. So every
 boot after the first started itself, the board re-fetching over TFTP on each self-reboot; the lane
 swapped the served image during one reset's dark period. Three draws, zero defects:
