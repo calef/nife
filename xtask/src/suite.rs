@@ -1360,7 +1360,7 @@ pub(crate) fn undefined_behavior_check() -> bool {
         .iter()
         .map(|s| s.to_string()),
     );
-    let args: Vec<&str> = args.iter().map(String::as_str).collect();
+    let mut args: Vec<&str> = args.iter().map(String::as_str).collect();
     let extra: Vec<String> = std::env::args().skip(2).collect();
     args.extend(extra.iter().map(String::as_str));
     run("cargo", &args)
