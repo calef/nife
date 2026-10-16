@@ -76,9 +76,9 @@ name states the claim it makes.
 
 ## Index row
 
-A process composed from two capabilities now runs in the space it built, on every pull request.
+A process composed from two capabilities runs in the space it built, on every pull request.
 `process_composition_witness` (calef's name, ruled in §185) holds a
 memory region and a report line, reads a child out of the archive by name, builds its space through
-the shared loader, keeps milestone 19b's break-before-make probe in that space, starts the thread
+the shared loader. It keeps milestone 19b's break-before-make probe in that space, starts the thread
 and receives its answer. The test asserts the whole verdict on all three architectures, waits with a
 deadline, and carries a falsification that breaks userspace `START`.

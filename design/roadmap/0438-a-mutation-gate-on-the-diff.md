@@ -201,11 +201,11 @@ which is the irreversible half.
   pull requests that grew `machine_discovery` from the baseline's 212 mutants to 686 are not in its
   history and `--in-diff` cannot be replayed against them. The experiment in the recommendation's
   last paragraph needs a deeper fetch first.
-- **A replay is not a live run.** `--in-diff` against a merged diff sees the code as it landed, where
-  a real gate would see it as proposed, and a pull request that was amended during review differs
-  from its merge. #927 was amended during review (the falsification patches were refreshed twice),
+- **A replay is not a live run.** `--in-diff` against a merged diff sees the code as it landed. A
+  real gate would see it as proposed. And a pull request that was amended during review differs
+  from its merge. PR #927 was amended during review (the falsification patches were refreshed twice),
   so its 22 mutants are the merged shape rather than the shape a gate would first have seen.
-- The sample is five pull requests, because each run costs real time and the point was to decide.
+- The sample is five pull requests, because each run costs real time and the point was deciding.
   A ratio computed from six survivors is an order of magnitude, not a statistic.
 - Measurement 1 ran against the exclusions of the day, `.cargo/mutants.toml` as it stood at
   `aa6a50b`, which is the honest replay and is **not** today's file: milestone 326 added
@@ -222,13 +222,13 @@ which is the irreversible half.
 ## Index row
 
 Measured and refused. Replaying `cargo mutants --in-diff` against milestone 319's pull request
-reports four survivors where the census of 2026-09-19 attributed 55 to it, and a full sweep of the
-tree immediately before that merge found 73 already present, so the premise that they arrived in one
+reports four survivors where the census of 2026-09-19 attributed 55 to it. A full sweep of the
+tree immediately before that merge found 73 already present. So the premise that they arrived in one
 pull request is false and the decisive measurement is negative. The cost is not the objection, since
 the check scopes its own baseline to the packages a diff touches and runs in under four seconds on a
 documentation change and a minute on a parser change. The friction is: across five replayed pull
-requests it reports six survivors, of which two are real missing tests, two want a unit test
-restating a Kani proof, and two are mutants inside a `#[cfg(kani)]` module that no test can compile,
-and it would have failed the one pull request in the sample that added machine-checked proofs. It is
+requests it reports six survivors, of which two are real missing tests and two want a unit test
+restating a Kani proof. Two are mutants inside a `#[cfg(kani)]` module that no test can compile.
+It would have failed the one pull request in the sample that added machine-checked proofs. It is
 also silent on `kernel/**` and `components/**`, which are outside the mutation corpus, so it cannot
 be the instrument for a claim about the whole tree's derivative.

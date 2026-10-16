@@ -16,37 +16,37 @@ calef, 2026-09-19, on reading what had been done: *"There will be future proposa
 support for them would be short sighted. We just don't want anything to change for future proposals.
 The mechanism was working fine. We just needed to see them into milestones."*
 
-So every cut this block made is reverted: `**Proposed.**` is back in the vocabulary,
+So every cut this block made is reverted. `**Proposed.**` is back in the vocabulary,
 `design/roadmap/proposals/` is back, and so are `--proposed`, `--unclaimed`, `PROPOSED_DIR`,
 `script/fatal-risks`' check 6b and the `script/metrics` column. The block is kept rather than deleted
-because the reverted work was careful and its reasoning is worth reading, and because a `REMOVED`
+because the reverted work was careful and its reasoning is worth reading. A `REMOVED`
 block is the record a deleted file would not be, which is calef's own argument for promote-then-close.
 
 Two costs the maintainer failed to price, and they are why he was wrong, recorded here so the
-next person weighing this fork starts from them. **A number is permanent and never reused**: of the
-106 promoted that evening, 12 landed `BUILT` or `SUPERSEDED`, so twelve numbers are spent forever on
+next person weighing this fork starts from them. **A number is permanent and never reused**. Of the
+106 promoted that evening, 12 landed `BUILT` or `SUPERSEDED`. So twelve numbers are spent forever on
 work that was already done or subsumed, where a deleted proposal costs nothing. And **the
-low-ceremony door matters most to the person who cannot mint**: the 2026-09-03 ruling's headline is
+low-ceremony door matters most to the person who cannot mint**. The 2026-09-03 ruling's headline is
 *"anybody may add to this roadmap"*, and asking an outside contributor for a global permanent number
 is more than asking for a file with a slug.
 
 *(Number provisional until the merge queue lands it.)*
 
-It carried `Gate: NONE` while it was open, because the decision was already made and written
-down in two places and what was left was the code that had not caught up. The line is gone because a
+It carried `Gate: NONE` while it was open. The decision was already made and written
+down in two places, and what was left was the code that had not caught up. The line is gone because a
 finished block's gate can only be stale.
 
 ## The contradiction this closes
 
 calef ruled on 2026-09-19 that `design/roadmap/proposals/` should not exist, milestone 433 drained
-all 106 files out of it, and two records were rewritten to say so:
+all 106 files out of it, and two records were rewritten to say so.
 `design/decisions/0140-follow-on-disposition-vocabulary.md` retired `Proposed.` and left six words,
 and the roadmap's own prose, now `notes/roadmap.md`, says a lane writes the numbered block itself.
 
 The scripts said otherwise. `script/roadmap` still accepted `Proposed.` in a follow-on bullet,
-still required that bullet to name a file under a directory that no longer exists, still carried a
+still required that bullet to name a file under a directory that no longer exists. It still carried a
 `--proposed` mode that listed an empty pile and a `--unclaimed` mode whose only input was the
-`Proposed.` branch, and still spent about sixty lines of header and section prose explaining a
+`Proposed.` branch. It still spent about sixty lines of header and section prose explaining a
 queue nobody is in. `script/fatal-risks` still carried a check keyed on the same directory.
 `script/metrics` still counted it.
 
@@ -58,8 +58,8 @@ build. This block is the other half of the same afternoon's work.
 The reasoning was kept and the remedy was replaced, which is the distinction that decided every
 paragraph here. `Proposed.` was not a mistake: it named a real hole in the vocabulary, and the
 account of that hole is still true. Three lanes on milestone 247's sweep found work a block had
-named honestly and nobody had taken, found that `Recorded.` lies about intent and `Refused.` lies
-about the decision, and left the item out, which is the burial arriving through the gate that
+named honestly and nobody had taken. They found that `Recorded.` lies about intent and `Refused.` lies
+about the decision, and left the item out. That is the burial arriving through the gate that
 exists to stop it. What changed is only where the work is written down: the word needed a file to
 point at, the file needed a number, and the number is what a lane could not mint. The 2026-09-19
 ruling removed that constraint instead of routing around it.
@@ -87,13 +87,13 @@ plainly that the argument went with the directory.
 
 Added 2026-09-18, it failed a numbered block claiming promotion from a proposal that was still
 sitting in the pile. **It is deleted**, for this script's own recorded reason rather than for
-tidiness: its whole input was `os.listdir` of a directory that cannot exist, so it could not come
+tidiness. Its whole input was `os.listdir` of a directory that cannot exist. It could not come
 back red on any tree. `script/roadmap`'s header already says what that costs, about its own
 merged-branch check, which *"spent a day passing in CI while being unable to fail"*: a check that
 cannot fail is worse than one that is absent, because its green is read as an answer.
 
 Keeping it as a guard against the directory returning would have been the softer call and the worse
-one, because the file loop above now guards that outright, and two checks answering one question is
+one, because the file loop above now guards that outright. And two checks answering one question is
 the shape where the second stops being updated.
 
 ### `helpers/roadmap_proposals.py` survives, cut to its parse half
@@ -111,7 +111,7 @@ check above. What stays is `DIRECTORY`, `filename_problem` and `classify`, with 
 the form they parse is historical and says why one caller is enough to keep it.
 
 Milestone 236's rule (a derivation two scripts copy will drift while both look authoritative) no
-longer applies, since there is one caller now. The module stays a module anyway: it is the place a
+longer applies, since there is one caller now. The module stays a module anyway. It is the place a
 reader meets the explanation of why a column on a live dashboard is permanently zero going forward,
 and folding fifty lines of a dead record form into the middle of the dashboard would bury that.
 
@@ -123,11 +123,11 @@ The disposition table still introduced itself as "one of eight dispositions" aft
 
 ### `script/fatal-risks`
 
-Check 6b asked whether a proposal cited by a risk entry had changed after the entry was last dated,
-using git rather than a recorded date because a proposal had no completion to record. `design/fatal-risks/README.md`
-cites no proposal today and can never cite one again, so 6b and its two fixtures
+Check 6b asked whether a proposal cited by a risk entry had changed after the entry was last dated.
+It used git rather than a recorded date, because a proposal had no completion to record. `design/fatal-risks/README.md`
+cites no proposal today and can never cite one again. So 6b and its two fixtures
 (`proposal-moved`, and the `no-history` refusal that existed to keep 6b from passing vacuously in a
-shallow clone) are gone, along with the `last_touched` argument that fed only them. The
+shallow clone) are gone. So is the `last_touched` argument that fed only them. The
 `missing-path` fixture kept its check and lost its proposal-shaped path.
 
 **The question 6b asked is still good and is deliberately not generalized here.** "A cited artifact
@@ -162,15 +162,15 @@ when it next runs, and nothing here touches the generated file.
   Number provisional.
 - **Recorded.** *The question check 6b asked is still open and this block did not answer it.* A risk
   entry in `design/fatal-risks/README.md` that cites a `NOT-STARTED` or `PARTIAL` milestone which changed
-  under it is invisible, because check 6a reads only the roadmap's recorded Built date and 6b, which
+  under it is invisible. Check 6a reads only the roadmap's recorded Built date, and 6b, which
   read git, went with the directory it was scoped to. Recorded in `script/fatal-risks`' own header
   beside check 6, where the next person to touch that gate is already reading, with the reason it is
-  not taken here: widening the git half to every cited path trades a one-path noise surface for a
+  not taken here. Widening the git half to every cited path trades a one-path noise surface for a
   tree-wide one, which is a judgment about what the gate should accept.
 - **Recorded.** *Nothing re-reads a script header.* The prose cut here had been wrong since the hour
   milestone 433's last lane merged, and no gate in this tree can tell a stale paragraph from a
   current one. Recorded in this block's `BUGS` above. It is the same blind spot `script/roadmap`
-  records for well-formed-but-wrong citations, one layer out, and a gate that tried to read prose
+  records for well-formed-but-wrong citations, one layer out. A gate that tried to read prose
   for intent is what AGENTS.md priced at `git grep -w TODO`'s 82% false-positive rate.
 - **Done.** *`script/metrics --check` is red and stays red until the scheduled run.* Nothing here
   touches `notes/project-metrics/weekly.csv`, which `.github/workflows/metrics.yml` regenerates with
@@ -178,7 +178,7 @@ when it next runs, and nothing here touches the generated file.
   branch that carries this block leaves the generated file alone on purpose, because two maintainer
   branches were open against that CSV when this landed.
 - **Refused.** *Deleting `helpers/roadmap_proposals.py`.* It was the expected answer and it is
-  wrong: `script/metrics --backfill` restates every week from git history, so removing the parse
+  wrong. `script/metrics --backfill` restates every week from git history. Removing the parse
   would rewrite two true weeks (74 at 2026W36, 93 at 2026W38) to zero, which is the dashboard lying
   about a fortnight that happened. The module keeps its parse half and lost `promoted_from`.
 
@@ -186,12 +186,12 @@ when it next runs, and nothing here touches the generated file.
 
 The tree contradicted itself for an afternoon. calef retired the `Proposed.` disposition and the
 `design/roadmap/proposals/` directory on 2026-09-19, milestone 433 drained all 106 files out of it,
-and the records were rewritten to say so, while `script/roadmap` still accepted the token, still
+and the records were rewritten to say so. `script/roadmap` still accepted the token, still
 required it to name a file under a directory that no longer existed, still carried `--proposed` and
-a `--unclaimed` mode that could only print nothing, and still spent sixty lines of header prose on
+a `--unclaimed` mode that could only print nothing. And it still spent sixty lines of header prose on
 a queue nobody is in. `script/fatal-risks` and `script/metrics` each kept a piece of the same
-machinery. This block cuts the token, the two modes and the two checks that can no longer fail,
-keeps the argument for why the word existed beside what replaced it, and turns the file loop's
+machinery. This block cuts the token, the two modes and the two checks that can no longer fail.
+It keeps the argument for why the word existed beside what replaced it, and turns the file loop's
 existing "nothing else lives here" check into the guard that the directory cannot come back in
 silence. `helpers/roadmap_proposals.py` survives on one caller, because `script/metrics --backfill`
 restates every week from git history and deleting the parse would rewrite two true weeks to zero.

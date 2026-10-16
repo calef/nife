@@ -16,8 +16,8 @@ this block is the account of building it, not a second copy of it.
 Nine findings, all fixed in the lane; nothing minted, nothing accepted.
 
 Four documents said today what a base held. The comment-cost note's density figures, re-measured
-with its own script: 54.6% of Rust bytes are comment, not 57%; the kernel runs 0.86 comment lines
-per code line, not 0.92; and its 481 KB `sched.rs` exhibit, the file no agent could read whole, is
+with its own script: 54.6% of Rust bytes are comment, not 57%, and the kernel runs 0.86 comment lines
+per code line, not 0.92. Its 481 KB `sched.rs` exhibit, the file no agent could read whole, is
 an index now, split into `kernel/src/sched/`. The shared-page audit's bold sentence claimed a live
 privilege-escalation absence "on `main` today"; it holds its own day, with the four security
 audits since named as the current word, and its absent inbound socket half has since landed. The
@@ -32,7 +32,7 @@ appendix lost four of its own rows' subjects to basalt three days after its snap
 with a dated note.
 
 Two mechanisms came out of it. Five of the core-harnesses appendix's nine harness counts were
-wrong (8 to 14, 2 to 4, 8 to 37, 6 to 15, 3 to 4); all nine counts are corrected and are now
+wrong (8 to 14, 2 to 4, 8 to 37, 6 to 15, 3 to 4). All nine counts are corrected and are now
 counted claims, with one derivation per crate in `script/lint`'s registry, so the next harness
 lands with its number or not at all. And the ABI-constants trigger had gone blind to most of the
 ABI: the derivation read only `crates/abi/src/lib.rs`, where 6 of the crate's 95 constants now
@@ -71,7 +71,7 @@ derivations in `script/lint`'s registry, so the class cannot rot again. The ABI-
 trigger's derivation, which read only `crates/abi/src/lib.rs` while the crate grew per-object
 modules and held 95 constants where the counter saw 6, was made to walk the crate; this audit's
 baseline row is the first taken under it. What it left: milestone 622 (the fence inventory is
-re-adjudicated) owes more than when it was minted, 23 fences against the 13 adjudicated;
-milestone 383 (a gate for a backticked in-tree path that does not resolve) is the exact
-population the nine dead proposal-path citations keep feeding; and milestone 407 (one definition
+re-adjudicated) owes more than when it was minted, 23 fences against the 13 adjudicated.
+Milestone 383 (a gate for a backticked in-tree path that does not resolve) is the exact
+population the nine dead proposal-path citations keep feeding. Milestone 407 (one definition
 of the numbers a kernel test and its program agree on) is still unstarted.

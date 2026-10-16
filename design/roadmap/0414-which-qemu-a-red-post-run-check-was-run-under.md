@@ -44,10 +44,10 @@ already lands inside the package suffix on distro builds (`qemu-system-aarch64 v
 (Debian ...)`). A binary that cannot be asked prints `version unreadable` rather than guessing.
 
 The banner's one parser, `helpers/booted_rows.py`, matches both the versioned and the bare
-parenthetical now, and its selftest asserts both, so old logs still attribute their legs; x86_64's
+parenthetical now, and its selftest asserts both, so old logs still attribute their legs. X86_64's
 machine word keeps that leg on the file-name fallback, as before. Honest limit: a version line
 identifies the emulator, it does not make the checks less emulator-dependent. The disjoint failure
-sets in the table above are still there to fall into; what changed is that a red line now names
+sets in the table above are still there to fall into. What changed is that a red line now names
 which set it came from. `notes/load-sensitive-assertions.md`'s `BUGS` says the same where a reader
 of a red check meets it.
 
@@ -83,10 +83,10 @@ make a red one readable (the `inbound` check prints the attempt histogram and te
 read the timestamps first). The emulator version is the one input to those checks that changes the
 answer and is not in the report.
 
-The concrete cost, paid twice in two days: a lane sees a red post-run check, cannot tell an
+The concrete cost, paid twice in two days. A lane sees a red post-run check, cannot tell an
 environment failure from its own regression, and spends a control run finding out. The block for the
 `script/bootstrap` milestone landing with [#847](https://github.com/nifeos/nife/pull/847)
-records three `scanout` failures on this box; milestone 288 saw them pass there and a different
+records three `scanout` failures on this box. Milestone 288 (host tests) saw them pass there and a different
 check fail. Both accounts are correct and they read as contradicting each other.
 
 ## What would close it
@@ -94,18 +94,18 @@ check fail. Both accounts are correct and they read as contradicting each other.
 `script/test` already resolves the emulator it runs. Print its version beside each post-run check
 result, or once in the per-architecture banner, so a red line carries the one fact needed to
 interpret it. `script/qemu-check` knows how to read a version and `helpers/qemu-path.sh` knows which
-binary was chosen, so nothing new has to learn how; the question is which of the two is the right
+binary was chosen, so nothing new has to learn how. The question is which of the two is the right
 place, and whether the banner is enough or each failing check should carry it.
 
-**A smaller version of the same fix, if the banner is judged enough**: say in the `BUGS` of
+**A smaller version of the same fix, if the banner is judged enough.** Say in the `BUGS` of
 notes/load-sensitive-assertions.md that the post-run set is emulator-dependent, so at least a reader
 who goes looking finds the table above rather than deducing it a third time.
 
 ## Index row
 
-The post-run checks are this project's only evidence for what a guest cannot witness about itself,
+The post-run checks are this project's only evidence for what a guest cannot witness about itself:
 that pixels reached the device, that a keystroke crossed the monitor socket, that a host process
-could connect into the guest, and a red one does not say which emulator produced it. Measured on one
+could connect into the guest. A red one does not say which emulator produced it. Measured on one
 tree and one kernel binary with two QEMUs on PATH in turn, the versions fail disjoint sets of those
 checks and neither set is empty, so "the referees fail here because the box is headless" is true and
 identifies nothing. The cost was paid twice in two days: two correct accounts of the same box read
