@@ -182,8 +182,12 @@ impl InboundProber {
     pub(crate) fn report(mut self) -> bool {
         self.stop.store(true, std::sync::atomic::Ordering::Relaxed);
         let arch = &self.arch;
+        // Which emulator produced a red line here is part of reading it (milestone 414): the
+        // port forward this probe drives is QEMU's, and versions fail disjoint sets of the
+        // host-side checks. Computed once and carried by the FAILED lines.
+        let qemu = crate::host::qemu_version(arch);
         let Some(thread) = self.thread.take() else {
-            eprintln!("inbound check ({arch}) FAILED: the prober never started");
+            eprintln!("inbound check ({arch}) FAILED (QEMU {qemu}): the prober never started");
             return false;
         };
         let port = self.port.unwrap_or(0);
@@ -210,7 +214,7 @@ impl InboundProber {
             }
             Ok(Err(reason)) => {
                 eprintln!();
-                eprintln!("inbound check ({arch}) FAILED: {reason}");
+                eprintln!("inbound check ({arch}) FAILED (QEMU {qemu}): {reason}");
                 eprintln!(
                     "  A host process connecting to the guest is the one thing no in-guest test can \
                      stage. See notes/net/the-inbound-half.md."
@@ -218,7 +222,9 @@ impl InboundProber {
                 false
             }
             Err(_) => {
-                eprintln!("inbound check ({arch}) FAILED: the prober thread panicked");
+                eprintln!(
+                    "inbound check ({arch}) FAILED (QEMU {qemu}): the prober thread panicked"
+                );
                 false
             }
         }

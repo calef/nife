@@ -817,6 +817,11 @@ impl ScanoutReferee {
     pub(crate) fn report(self) -> bool {
         let _ = std::fs::remove_file(&self.sock);
         let arch = &self.arch;
+        // Which emulator produced a verdict here is part of reading it (milestone 414): these
+        // checks drive QEMU's monitor, and versions fail disjoint sets of them. Computed once
+        // and carried by the FAILED lines, so a red line interprets itself; the green lines
+        // stay as they were.
+        let qemu = crate::host::qemu_version(arch);
         let (composed, text, matched) = (&self.composed, &self.text, &self.matched);
         let seen = Seen {
             dumps: self.dumps,
@@ -844,9 +849,9 @@ impl ScanoutReferee {
             None => {
                 eprintln!();
                 eprintln!(
-                    "scanout check ({arch}) FAILED: the compositor test passed, so the guest's witnesses \
-                 agree about the framebuffer, but QEMU's scanout never held the composed screen. Last \
-                 mismatch: {last_composed}"
+                    "scanout check ({arch}) FAILED (QEMU {qemu}): the compositor test passed, so the \
+                 guest's witnesses agree about the framebuffer, but QEMU's scanout never held the \
+                 composed screen. Last mismatch: {last_composed}"
                 );
                 eprintln!(
                     "  A compositor's output is exactly what a guest-side digest cannot confirm; this is \
@@ -863,9 +868,9 @@ impl ScanoutReferee {
             None => {
                 eprintln!();
                 eprintln!(
-                    "scanout check ({arch}) FAILED: the display-terminal test passed, so the guest \
-                 agrees about the framebuffer, but QEMU's scanout never held the terminal's text. \
-                 Last mismatch: {last_text}"
+                    "scanout check ({arch}) FAILED (QEMU {qemu}): the display-terminal test passed, \
+                 so the guest agrees about the framebuffer, but QEMU's scanout never held the \
+                 terminal's text. Last mismatch: {last_text}"
                 );
                 eprintln!(
                     "  A wrong pixel format makes a test pattern look odd and makes text unreadable, \
@@ -884,8 +889,9 @@ impl ScanoutReferee {
             None => {
                 eprintln!();
                 eprintln!(
-                    "scanout check ({arch}) FAILED: the display test passed, so the framebuffer holds \
-                 the pattern, but QEMU's scanout never did. Last mismatch: {last_reason}"
+                    "scanout check ({arch}) FAILED (QEMU {qemu}): the display test passed, so the \
+                 framebuffer holds the pattern, but QEMU's scanout never did. Last mismatch: \
+                 {last_reason}"
                 );
                 eprintln!(
                     "  This is the check that catches a wrong pixel format or scanout rectangle, which \

@@ -152,7 +152,7 @@ impl ArchLegs {
 /// ```text
 /// $ script/test --arch aarch64 --test frames_are_zeroed
 /// --- test filter: frames_are_zeroed (kernel legs only; the host crates have `cargo test`) ---
-/// --- kernel tests, aarch64 (QEMU) ---
+/// --- kernel tests, aarch64 (QEMU 11.1.2) ---
 /// running 1 of 312 tests (filter: frames_are_zeroed)
 /// test kernel::memory::tests::frames_are_zeroed ... ok
 /// test result: ok. 1 passed
@@ -619,7 +619,12 @@ fn attach_test_leg_devices() {
 /// **The aarch64 leg**: its images, then both test images, on the physical core under `--hvf`.
 fn aarch64_suite(hvf: bool, filtered: bool) -> bool {
     eprintln!();
-    eprintln!("--- kernel tests, aarch64 (QEMU) ---");
+    // The version rides in the banner (milestone 414): a red line under this heading is
+    // interpreted by which emulator produced it, so the heading carries that fact.
+    eprintln!(
+        "--- kernel tests, aarch64 (QEMU {}) ---",
+        crate::host::qemu_version("aarch64")
+    );
     // The FS server (milestone 32 phase 2), for the aarch64 bare target, before `user()` so
     // initial_ramdisk_aarch64 packs it; then the RedoxFS test images the runner attaches as
     // extra mmio disks.
@@ -664,7 +669,10 @@ fn aarch64_suite(hvf: bool, filtered: bool) -> bool {
 /// **The riscv64 leg**: its own archive and fresh images, then both test images.
 fn riscv64_suite(filtered: bool) -> bool {
     eprintln!();
-    eprintln!("--- kernel tests, riscv64 (QEMU) ---");
+    eprintln!(
+        "--- kernel tests, riscv64 (QEMU {}) ---",
+        crate::host::qemu_version("riscv64")
+    );
     // The riscv userspace tests (parity C) load programs from the initial ramdisk and read the
     // disk, so build the riscv archive and point the runner at IT, not at the aarch64 archive
     // `cargo()` exports: the riscv ELF loader must never be handed aarch64 ELFs. The disk is
@@ -722,7 +730,10 @@ fn riscv64_suite(filtered: bool) -> bool {
 /// other machines: a PCIe root port, AMD-Vi, and real firmware.
 fn x86_64_suite(filtered: bool) -> bool {
     eprintln!();
-    eprintln!("--- kernel tests, x86_64 (QEMU q35) ---");
+    eprintln!(
+        "--- kernel tests, x86_64 (QEMU q35, {}) ---",
+        crate::host::qemu_version("x86_64")
+    );
     // The FS server for this target BEFORE the archive that packs it (milestone 164), the same
     // order the aarch64 and riscv64 legs use. `mkdisk` since milestone 215 (a PCI function's
     // interrupt on x86_64), because this runner attaches the sibling `-pci.img` as a
