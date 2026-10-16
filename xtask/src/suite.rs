@@ -430,8 +430,10 @@ fn host_excluded_args() -> Vec<String> {
         .current_dir(workspace_root())
         .output()
         .unwrap_or_else(|e| {
-            panic!("host tests: cannot run helpers/host-excluded-crates.sh to derive the \
-                    host-excluded set: {e}")
+            panic!(
+                "host tests: cannot run helpers/host-excluded-crates.sh to derive the \
+                    host-excluded set: {e}"
+            )
         });
     if !output.status.success() {
         panic!(
@@ -464,9 +466,16 @@ fn host_tests() -> bool {
     // The selection is now `--workspace` with the DERIVED exclusions (see
     // [`host_excluded_args`]). `kernel` and `system_tests` stay here by judgement rather than the
     // derivation: they are bare metal through `kernel`, which the dependency walk does not see.
-    let mut args: Vec<String> = ["test", "--workspace"].iter().map(|s| s.to_string()).collect();
+    let mut args: Vec<String> = ["test", "--workspace"]
+        .iter()
+        .map(|s| s.to_string())
+        .collect();
     args.extend(host_excluded_args());
-    args.extend(["--exclude", "kernel", "--exclude", "system_tests"].iter().map(|s| s.to_string()));
+    args.extend(
+        ["--exclude", "kernel", "--exclude", "system_tests"]
+            .iter()
+            .map(|s| s.to_string()),
+    );
     let args: Vec<&str> = args.iter().map(String::as_str).collect();
     if !cargo(&args) {
         return false;
@@ -1327,10 +1336,16 @@ pub(crate) fn kernel_test_elf(package: &str, target: &str, who: &str) -> Option<
 /// check one crate, run `cargo miri test -p <crate>` directly.
 pub(crate) fn undefined_behavior_check() -> bool {
     eprintln!("--- host tests under Miri (aliasing, provenance, uninitialized reads) ---");
-    let mut args: Vec<String> =
-        ["miri", "test", "--workspace"].iter().map(|s| s.to_string()).collect();
+    let mut args: Vec<String> = ["miri", "test", "--workspace"]
+        .iter()
+        .map(|s| s.to_string())
+        .collect();
     args.extend(host_excluded_args());
-    args.extend(["--exclude", "kernel", "--exclude", "system_tests"].iter().map(|s| s.to_string()));
+    args.extend(
+        ["--exclude", "kernel", "--exclude", "system_tests"]
+            .iter()
+            .map(|s| s.to_string()),
+    );
     args.extend(
         [
             "--exclude",
