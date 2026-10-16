@@ -138,7 +138,8 @@ milestone could not ask in advance:
 Three had their decision and gained a citation rather than a file: 241 (calef's own
 dated deferral, quoted in the gate). 340 gained [§97 (gates)](../decisions/0097-advisory-checks.md), whose
 ruleset edit is `DECIDED` and unperformed and whose `BUGS` predicted this block. 388
-gained [§154](../decisions/0154-the-acronym-test-is-whether-the-phrase-is-spoken.md), which rules four of
+gained [§154 (the acronym test is whether the phrase is
+spoken)](../decisions/0154-the-acronym-test-is-whether-the-phrase-is-spoken.md), which rules four of
 that block's five names by name.
 
 Seven were genuinely owed and are written up `PROPOSED`: §172 (327), §173 (328), §174 (341),
@@ -174,7 +175,7 @@ makes this slice the cleanest available measurement of whether that drain carrie
 merge, which is the renumber slice B's last paragraph predicted). **Zero tokens were wrong.** One, milestone 391, was the
 third outcome: a decision existed and the gate did not cite it. The decision is §149 (endpoint),
 which refused this exact question on the ground that the general case must not be settled on the
-narrow one's momentum. It said to answer it when milestone 269 gives it a consumer. So 391 gets a
+narrow one's momentum. It said to answer it when milestone 269 (`machine` at the prompt) gives it a consumer. So 391 gets a
 citation and deliberately gets no new section.
 
 **Two blocks arrived with a problem recorded, and both readings held.** Milestone 406 (tour)'s

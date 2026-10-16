@@ -10,7 +10,8 @@ needs_person: no
 # 406. Nothing on a pull request boots the riscv64 tour, so its userspace step is unasserted
 
 Not started, and **the title's claim is no longer true as written**, which is the first
-thing a reader needs. Filed 2026-09-14 as an unnumbered proposal by milestone 289's lane. Numbered
+thing a reader needs. Filed 2026-09-14 as an unnumbered proposal by milestone 289 (RISC-V tour)'s
+lane. Numbered
 2026-09-19 by milestone 433's drain of the proposal pile, with the premise re-read the same day.
 What closed, and it closed within hours of this being written: `script/boot-check` was added by
 milestone 268 on **2026-09-14**, sits in `script/ci-build`'s `local` tier (line 114) and runs on
@@ -26,7 +27,8 @@ userspace-builder step, the preemption claim, the UART driver's device IRQ, the 
 probes and the hardware-entropy line are still asserted by a person remembering to type a command.
 The table below is accurate for every row it lists and is missing a row for `script/boot-check`.
 Two names in its text have moved and are corrected in place. `script/gates` was retired by
-milestone 286, its work now being `script/ci-build`'s table, which is where `boot-check` went.
+milestone 286 (one enumeration of the checks), its work now being `script/ci-build`'s table, which
+is where `boot-check` went.
 `script/soak` is `script/soak-test` since milestone 297.
 *(Number provisional until the merge queue lands it.)*
 
@@ -36,8 +38,9 @@ The decision is
 the gate and not the title**. The title's claim is false as written, the status paragraph above says
 so, and retitling a block is an architect's rather than a sweep's.
 Where the check goes is an architect's: a CI job, a row in `script/ci-build`'s table,
-or a `script/cadence-check` entry. It boots a kernel and it is not free. Milestone 232's own refusal
-to assume CI is the answer for an expensive instrument applies here unchanged. The wiring and the
+or a `script/cadence-check` entry. It boots a kernel and it is not free. Milestone 232 (audit
+every check) refused to assume CI is the answer for an expensive instrument, and that refusal
+applies here unchanged. The wiring and the
 measurement are a lane's; the placement is not.
 
 ## The claim in one line

@@ -110,7 +110,8 @@ driver writes its device context in 64-bit stores with no split, so the property
 not apply to it, and **nothing was written in its place**. The boot-time confinement test is the
 whole of the assurance on that side, on exactly one board. The same note says what that test
 cannot do: prove the kernel wrote the right entry. A wrong entry that still confines this device
-on this board is invisible to it. §19 makes architectural parity a gate rather than an
+on this board is invisible to it. §19 (architectural parity is a tenet) makes architectural parity a
+gate rather than an
 aspiration and this is a parity gap in the boundary milestone 35 calls the one isolation boundary we
 test instead of prove. The work is not porting the aarch64 harnesses, which would prove a hazard
 RISC-V does not have; finding the right property is most of it, and writing it down is the

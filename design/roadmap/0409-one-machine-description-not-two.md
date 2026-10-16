@@ -11,7 +11,7 @@ needs_person: no
 # 409. One machine description, not a description and a narrative saying the same thing
 
 Promoted from the proposal `one-machine-description-not-two`, filed
-2026-09-14 by milestone 268's lane, which caused it. The machine description now prints on all three
+2026-09-14 by milestone 268 (every architecture boots the same way)'s lane, which caused it. The machine description now prints on all three
 architectures, and on two of them the arm above it had already said most of the same things in its
 own words. *(Number provisional until the merge queue lands it.)*
 

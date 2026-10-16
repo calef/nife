@@ -11,14 +11,15 @@ needs_person: no
 # 413. What a `caretaker` is, when the thing it holds is not the thing it hands out
 
 Promoted from the proposal `what-a-caretaker-is-when-it-translates`, filed
-2026-09-14 by the milestone 292 lane while naming the program that puts a file behind a byte sink.
+2026-09-14 by the milestone 292 (three programs wearing one name) lane while naming the program that puts a file behind a byte sink.
 That program had been `ROLE_FILE` inside a three-role binary and so had never needed a name of its own.
 *(Number provisional until the merge queue lands it.)*
 
 The decision is
 §189 (which of two definitions `caretaker` carries, and what the translating shape is called), written
 up 2026-09-19 by milestone 435's slice-c lane because this gate named no section. That section also
-records why the three sections a reader might stop at do not answer this one. §92 decides a
+records why the three sections a reader might stop at do not answer this one. §92 (a caretaker is
+supervised by the client it serves) decides a
 caretaker's *lifetime*, §56 assumes definition A rather than choosing it, and §106 takes the
 `terminal_sink_caretaker` narrowing as a behavior rather than as a name.
 `caretaker` is a word five programs already carry and every future narrowing

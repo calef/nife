@@ -11,7 +11,7 @@ needs_person: no
 
 Filed 2026-09-14 as an unnumbered proposal by milestone 290, which hit one
 instance, fixed that instance, and proposed the general remedy rather than pretending one caller was
-the problem. Numbered 2026-09-19 by milestone 433's drain of the proposal pile. Premise re-read
+the problem. Numbered 2026-09-19 by milestone 433 (drain the proposal pile). Premise re-read
 against the tree on 2026-09-19 and still true. `kernel/src/user/entropy_service.rs`'s `ensure`
 still returns a `Wiring` whose `ready` is `Some` for the first caller on a bus and `None` for every
 later one, the announcement is still a blocking send, and dropping the `Wiring` still compiles.

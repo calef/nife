@@ -92,7 +92,8 @@ not ruled on, so it ships provisional and says so.
 
 Six programs each carried their own copy of the same accessors over
 `user_mode_runtime::mapped_window::MappedWindow`, turning an absolute virtual address back into the
-offset the window bounds-checks. The retirement of `multicast_dns_responder` at milestone 298 left
+offset the window bounds-checks. The retirement of `multicast_dns_responder` at milestone 298 (retire
+the multicast DNS responder) left
 five. The three that speak the socket contract belong beside the offsets they already use in
 `crates/socket_protocol`. The two virtio DMA users read descriptor rings instead, and this block's
 own instruction is to price them separately rather than force one abstraction over both. The part

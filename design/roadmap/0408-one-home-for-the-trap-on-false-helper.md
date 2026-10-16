@@ -12,7 +12,8 @@ needs_person: no
 # 408. One home for `fn check(ok: bool)`, which nine programs now write out by hand
 
 Promoted from the proposal `one-home-for-the-trap-on-false-helper`, filed
-2026-09-14 by milestone 291's lane. That lane added seven of the nine copies and said so rather than
+2026-09-14 by milestone 291 (thirty-one programs wearing one name)'s lane. That lane added seven of
+the nine copies and said so rather than
 leaving it to be re-derived. *(Number provisional until the merge queue lands it.)*
 
 The decision is
@@ -23,7 +24,8 @@ crates, the programs, and the shared modules", extended to public function and m
 2026-08-23).
 
 **Only the name is open, and that is a narrowing this block did not have.**
-[§94](../decisions/0094-what-may-live-in-a-library.md) already decided the lift. It asks what
+[§94](../decisions/0094-what-may-live-in-a-library.md) (what may live in a userspace library)
+already decided the lift. It asks what
 the language forces to be per-binary and lifts everything else. Its own tell is this case
 exactly, *"a per-binary item whose body is copied verbatim into every binary. If the body is
 identical everywhere, it is not per-binary; only its declaration is."* It was written about 58
@@ -63,7 +65,8 @@ does not block the merge.
 `fixtures/src/memory_region_depleter.rs` no longer carries one and `fixtures/src/hello.rs` does.
 `components/src/block_driver.rs` still reaches the trap through `panic!()` rather than
 `user_mode_runtime::trap()`, so the two spellings of "say no" this file names have not converged.
-And the crate called `crates/user_rt` below is `crates/user_mode_runtime` since milestone 285. That
+And the crate called `crates/user_rt` below is `crates/user_mode_runtime` since milestone 285
+(`user_` meant a person in three hundred places). That
 changes where the function would go and nothing about the decision the gate names.
 
 ## The duplicate

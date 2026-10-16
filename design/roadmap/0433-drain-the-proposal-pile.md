@@ -104,10 +104,11 @@ It is not a `git mv`, and this block exists partly to say so before four lanes d
   were repointed: `design/decisions/0144-fastpath-footprint-ceiling.md`, `notes/follow-on-work.md`
   and `kernel/src/bench.rs`.
 - 354 to 380, `milestone/433-slice-2`, 2026-09-19. All 27 promoted, every premise read against
-  the tree before its status was written. Twenty are `NOT-STARTED` and verified, four `SUPERSEDED`
-  (354 by milestone 250 on the day it was filed, 361 by milestone 188's re-measurement, 362 and 364
-  by milestone 303 and the newer x86_64 fixture block). Two are `BUILT` (375 by the radon bench session
-  the same evening it was proposed, 380 by the §144 amendment the same day). One is `PARTIAL` (378,
+  the tree before its status was written. Twenty are `NOT-STARTED` and verified, four `SUPERSEDED`:
+  354 by milestone 250 on the day it was filed, and 361 by milestone 188's re-measurement.
+  Milestone 303 (a server and no disk it can find) superseded 362 and 364, with the newer x86_64
+  fixture block. Two are `BUILT` (375 by the radon bench session
+  the same evening it was proposed, 380 by the §144 (the fastpath footprint gate) amendment the same day). One is `PARTIAL` (378,
   whose parser and reporting arrived as milestones 161 and 317 and whose xenon reading has not been
   taken). Seven of 27 had decayed, six of them answered by work that landed within a day of the
   filing. Three more had premises that were narrowed rather than closed and say so in their status
@@ -120,7 +121,8 @@ It is not a `git mv`, and this block exists partly to say so before four lanes d
   more needed a factual correction in prose. The sharpest is 406, whose title is now false as
   written: `script/boot-check` landed the same day it was filed and does boot the default riscv64
   kernel on every pull request, leaving only the tour past the self-test verdict unasserted. Two
-  defects found that predate the pass. Milestone 290 carried two adjacent `**Proposed.**` bullets
+  defects found that predate the pass. Milestone 290 (three programs wearing one name) carried two
+  adjacent `**Proposed.**` bullets
   with the prose on the wrong one, and milestone 265's `**Proposed.**` bullet for the unswept
   truncations named a proposal that holds a different subject. The gate accepted that because the
   check is path-shaped.
@@ -225,7 +227,8 @@ done here.
   further: the answer usually arrives before the next merge, so the habit that would work is the
   lane closing the proposal it just answered. Recorded in `notes/roadmap.md`.
 - **Milestone 326.** The two mutation-testing proposals in the pile (354 and 418) were both checked
-  against milestone 326's live triage rather than assumed either way. Neither is covered by it:
+  against milestone 326's (nobody assigned to turn a mutation score upward) live triage rather than
+  assumed either way. Neither is covered by it:
   354 is about a mutant that never built, and 418 is about a constant `cargo mutants` cannot mutate.
 
 ## Index row

@@ -39,7 +39,7 @@ sweep:
 
 What survives the check, and it is the deliverable this block was really asking for, is the
 cross-instrument comparison. Run the census over the four crates carrying rows 1 to 18 and compare
-its survivor list against milestone 307's per-row verdicts. A census asks whether a change
+its survivor list against milestone 307 (which assertion actually fires)'s per-row verdicts. A census asks whether a change
 to the code is caught by something and 307 asked whether a named assertion can catch anything. That
 work is real and unstarted. What should not be carried into it is the expectation that row 12 is its
 exhibit.

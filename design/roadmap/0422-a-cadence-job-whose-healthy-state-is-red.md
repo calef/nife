@@ -52,7 +52,8 @@ to ask. The tripwire fired four times and auditing still depended on somebody re
 
 ## Why `script/cadence-check` does not cover it
 
-Milestone 238's check asks when a workflow last succeeded. It reports one whose last success is
+Milestone 238 (two scheduled checks have never once succeeded)'s check asks when a workflow last
+succeeded. It reports one whose last success is
 more than fifteen days old. That is the right question for a job whose healthy state is green, and it
 is why the mutation and undefined-behavior workflows were caught.
 
@@ -104,7 +105,8 @@ first one.
 and correct, and the consequence nobody priced is that red is ambiguous. A firing tripwire and a
 `FileNotFoundError` are the same row in the Actions tab, and so are four consecutive weeks of the
 same true report. An audit was overdue every week for a month, the mechanism said so on schedule
-every time, and no audit ran. That is milestone 92's tripwire firing four times into a process that
+every time, and no audit ran. That is milestone 92 (security audits as a mechanism)'s tripwire
+firing four times into a process that
 still depended on somebody remembering. `script/cadence-check` cannot cover it, because a job whose
 healthy state is red has no green to be stale against and a job that never succeeded is reported for
 ever. The proposal is to report a repeat rather than a color, from `helpers/trunk-health.sh` rather

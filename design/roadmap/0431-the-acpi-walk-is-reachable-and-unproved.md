@@ -23,7 +23,8 @@ reversible, and no wire format, name or syscall is on the other side of it.
 Premise re-checked 2026-09-19, and half of it had stopped being true the day before it was
 filed. This block says the walk's parsing half "already lives in `crates/machine_discovery`, which
 carries no harnesses and appears in no `script/verify` row, so it is pure logic that nothing
-proves". Milestone 319 proved it on 2026-09-17. That crate now carries 21 Kani harnesses across
+proves". Milestone 319 (the crate that parses firmware had no proofs) proved it on 2026-09-17. That
+crate now carries 21 Kani harnesses across
 `acpi.rs`, `framebuffer.rs`, `riscv64.rs` and `x86_64.rs` and has its own row in `script/verify`.
 Three of its first fifteen harnesses were false, one of them a panic on the x86 boot path.
 

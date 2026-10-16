@@ -52,7 +52,8 @@ answer and is not in the report.
 The concrete cost, paid twice in two days. A lane sees a red post-run check, cannot tell an
 environment failure from its own regression, and spends a control run finding out. The block for the
 `script/bootstrap` milestone landing with [#847](https://github.com/nifeos/nife/pull/847)
-records three `scanout` failures on this box. Milestone 288 saw them pass there and a different
+records three `scanout` failures on this box. Milestone 288 (host tests that assume the host is
+aarch64) saw them pass there and a different
 check fail. Both accounts are correct and they read as contradicting each other.
 
 ## What would close it

@@ -30,7 +30,8 @@ under `design/audit-reports/`, `design/naming.md`, `design/decisions/0152-port-r
 four notes, `kernel/src/pci.rs` and `helpers/qemu-runner-x86_64.sh`.
 
 A handful of finished blocks also describe the directory in the present tense, which is a
-smaller defect of the same family. Milestone 276's block says `script/roadmap --proposed` "already
+smaller defect of the same family. Milestone 276 (the dashboard counts milestones and decisions by
+status)'s block says `script/roadmap --proposed` "already
 computes" a number. Milestone 301 (one grant order for the progenitor)'s says `helpers/roadmap_proposals.py` "matches PROPOSED and
 nothing else, so a proposal cannot be retired" in place. Both were true when written. A BUILT block
 is a record of its moment and the tree's convention lets older records describe the past, so these

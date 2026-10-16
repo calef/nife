@@ -32,7 +32,8 @@ spelling and the default are open.
 It was numbered 400 for four hours and is 440 because another session got there first. That
 session landed its own milestone 400 (the shell on the firmware screen) while this branch waited in
 the queue, so both meanings of "milestone 400" existed in the tree at once and the citations had to
-be sorted by hand. Seven of them meant this block and five meant the other. §194 rules that the
+be sorted by hand. Seven of them meant this block and five meant the other. §194 (sessions
+interleave rather than serialize) rules that the
 interleaving stays and the renumber is its price, which this is the fifth instance of in one
 evening and the first in milestone numbers rather than section numbers. 
 
@@ -94,7 +95,8 @@ Shipped provisionally as `local` and `ci`. The refusals are the useful half:
 - `fast` / `slow`. Refused. It is false in both directions: `image-permissions` is in the local
   set and builds three kernels, and `supply-chain` is out of it and takes seconds on a warm cache.
   The real criterion is what a person will wait for, which is not a duration.
-- `gate` / `report`. Refused. `DECISIONS §134` already spends that split on the `script/` family
+- `gate` / `report`. Refused. `DECISIONS §134` (a harness carries a machine-replayable
+  falsification record) already spends that split on the `script/` family
   itself (a verb does something, a noun reports). Reusing the words one level down would make
   `coverage` a report in one sense and a gate in another on the same page.
 
