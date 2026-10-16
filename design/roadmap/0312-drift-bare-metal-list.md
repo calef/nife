@@ -52,7 +52,7 @@ Both lists are gone. Not corrected: **gone**, replaced by the fact they were cop
 
 The host-only crates come from the crates. A crate root without a `no_std` attribute gets
 `extern crate std` injected by the prelude, and a target with no operating system under it has no
-`std`, so such a crate cannot be in a bare-metal build no matter what its code does. A crate root
+`std`. So such a crate cannot be in a bare-metal build no matter what its code does. A crate root
 with one compiles for these targets by construction. `script/drift` reads `cargo metadata` for the
 workspace members' `lib`/`bin`/`proc-macro` roots and greps each for the attribute:
 
@@ -71,8 +71,8 @@ construction and an empty answer means the detection stopped working rather than
 changed.
 
 The targets come from `rust-toolchain.toml`. Its `targets` array already names all four, and
-rustup already honors it for the pinned toolchain, which is why the missing
-`x86_64-unknown-none` went unnoticed: the pin covered for it everywhere except the one path this
+rustup already honors it for the pinned toolchain. That is why the missing
+`x86_64-unknown-none` went unnoticed. The pin covered for it everywhere except the one path this
 script exists for, a `--toolchain` install that rustup will not apply the array to. `script/drift`
 now installs every target the array declares, and builds the workspace for every one whose OS
 field is `none`. That is the physical property rather than a second list:
@@ -139,8 +139,8 @@ the first in eighteen days able to say anything at all.
   `script/drift` blow away a developer's farm and take the account-wide `nife-dev` link, which is
   why this lane did not do it on its own initiative.
 - The host-test exclusions are still written out (`--exclude kernel --exclude components
-  --exclude fixtures`). Left alone deliberately: a new crate that belongs on that list breaks the
-  host test with a compile error the moment it lands, which is rung two and loud, where the
+  --exclude fixtures`). Left alone deliberately. A new crate that belongs on that list breaks the
+  host test with a compile error the moment it lands. That is rung two and loud, where the
   bare-metal list failed silently inside a job designed to tolerate red. Different rung, different
   risk.
 - `script/lint`'s rustdoc pass names `--exclude board_console` by hand, a third consumer of the
@@ -186,28 +186,28 @@ No new names. No crate, program, module or public function was added. The two sh
   whether a developer-facing `script/drift` may destroy the farm and take the `nife-dev` link.
 - **Recorded.** The two remaining hand-written consumers of the host/bare-metal split
   (`script/drift`'s host-test line, `script/lint`'s rustdoc line) are in this block's `BUGS`, with
-  the reason each is a lower risk than the one that failed: both break loudly, in a gate nobody
+  the reason each is a lower risk than the one that failed. Both break loudly, in a gate nobody
   tolerates red from.
 - **Recorded.** `notes/architecture-list-sweep.md`'s option A, a single derived architecture list
   every script reads, remains unbuilt and is now one consumer smaller. It is already written up
-  there with its cost measured, which is why this is a pointer rather than a new proposal: this
-  milestone applied its technique (parse `rust-toolchain.toml`) in one file, and that note counts
+  there with its cost measured, which is why this is a pointer rather than a new proposal. This
+  milestone applied its technique (parse `rust-toolchain.toml`) in one file. That note counts
   seven more places the same list is spelled out by hand.
 
 ## Index row
 
 `.github/workflows/toolchain-drift.yml` had failed every daily run since 2026-09-01 and could report
-nothing about upstream, which is the second occurrence of the defect `script/drift`'s own header
+nothing about upstream. That is the second occurrence of the defect `script/drift`'s own header
 describes: a hand-kept `--exclude` list, `crates/board_console` (milestone 216) arriving as a host
-crate that needs `std`, and a job designed to tolerate red making the permanent failure look like the
+crate that needs `std`. And a job designed to tolerate red made the permanent failure look like the
 mechanism working. The first fix moved the list out of the YAML and into the script; one copy is
 better than two and is still a copy, which is rung four of AGENTS.md's ladder and drifted the way
 rung four drifts. So both lists are now **derived**. Host-only crates come from the crates
 themselves, since a crate root without a `no_std` attribute gets `extern crate std` injected and a
-target with no OS has no `std`; the answer is `board_console` and `xtask`, named by the tree rather
-than by the file. The target list comes from `rust-toolchain.toml`'s `targets` array, and the
+target with no OS has no `std`. The answer is `board_console` and `xtask`, named by the tree rather
+than by the file. The target list comes from `rust-toolchain.toml`'s `targets` array. The
 workspace is built for every one whose OS field is `none`, which closes the admitted `BUGS` note two
-lines above the defect: the check built one architecture where three are supported. Measured:
+lines above the defect. The check built one architecture where three are supported. Measured:
 `script/drift nightly` clean on all three in 94s, with the honest caveat that the pin was raised
-the same day, so the latest nightly and the pin are one toolchain today and the first run that can
+the same day. So the latest nightly and the pin are one toolchain today, and the first run that can
 really catch drift is tomorrow's.

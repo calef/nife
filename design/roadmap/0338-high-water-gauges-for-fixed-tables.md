@@ -51,9 +51,9 @@ know both. One more hand-rolled gauge makes three.
 ## The fork inside it, which is small
 
 Whether to generalize or to repeat is worth deciding rather than defaulting into. A shared mechanism
-means one place to read, one output format, and one check in `script/swish-check`; it costs an
+means one place to read, one output format, and one check in `script/swish-check`. It costs an
 abstraction over constants that differ in kind, since `nifefs::NAME_LEN` is a length bound on a name
-and not a count of live objects, and forcing those into one gauge may be the wrong shape. Repeating
+and not a count of live objects. Forcing those into one gauge may be the wrong shape. Repeating
 costs a reader a new name per table. A lane can settle this by looking at what the three remaining
 constants actually bound, and should say which it chose and why.
 
@@ -69,13 +69,13 @@ constant is still raised only after it has failed silently."*
 
 `CAPABILITY_TABLE_SLOTS` reports `capability slots: 21 of 24 at peak` on every boot and
 `script/swish-check` fails if the kernel flagged a boot as having gone past the peak recorded beside
-the constant. No other fixed-size table has that. The argument for the first gauge applies unchanged:
+the constant. No other fixed-size table has that. The argument for the first gauge applies unchanged.
 `CAPABILITY_TABLE_SLOTS` was raised three times and every raise was reactive, after a silent failure
-that named something else, milestone 230 being the worked example that cost a bisect over a
+that named something else. Milestone 230 (`script/shell-check` is red on `main`, on both architectures) is the worked example that cost a bisect over a
 virtio-rng attaching and init trapping with no message. Every ungauged constant still has that
 property, because a table that fills produces a failure downstream in whatever code first cannot get
 a slot, and the distance between cause and symptom is the whole cost. The second reason makes this
-one piece of work rather than three copies of a patch: solving the shape by hand per table is how
+one piece of work rather than three copies of a patch. Solving the shape by hand per table is how
 `sched::MAX_THREADS` ended up with a mechanism doing the same job under a different name, printed
-somewhere else, and one more makes three. The fork inside it is small and a lane can settle it by
+somewhere else. One more makes three. The fork inside it is small and a lane can settle it by
 looking at what the remaining constants actually bound.

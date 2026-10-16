@@ -208,9 +208,9 @@ no profile at all.
 firmware chain, and cannot tell a finished job-mix sweep from a wedged one. Four lanes filed those
 separately between 2026-09-03 and 2026-09-04; read together they say the bench console is a reader.
 That is load-bearing rather than cosmetic, because the remaining fatal-risk experiments (milestones
-16, 168, 201) are gated on a person sitting at a board rather than on hardware existing, and a
+16, 168, 201) are gated on a person sitting at a board rather than on hardware existing. A
 console that can drive one is what turns those from a bench session into a job. calef decided both
-gated parts on 2026-09-19: it writes, under a named mode whose bytes are logged, and the three boards
+gated parts on 2026-09-19. It writes, under a named mode whose bytes are logged, and the three boards
 share one tool whose board profile is the firmware prologue alone, with argon deferred behind
 milestone 127 rather than guessed from vendor documentation. All four parts landed the same day.
 `--stop` and `--stop-after <n>` end milestone 249's rebooting soak from a script, the byte goes out
@@ -219,6 +219,6 @@ the log in hex. `--until sweep-done` tells a finished job-mix sweep from a wedge
 exit status and with `cargo xtask job-mix` judging through the same recognizer rather than a second
 copy that had no timeout at all. And the firmware prologue is data: `--board radon|xenon`, with
 radon's four rungs and two refusals declared in `crates/board_console/src/board.rs` and everything
-from the kernel banner up shared, proved by reading one radon capture through both profiles and
+from the kernel banner up shared. It is proved by reading one radon capture through both profiles and
 getting the same tour with and without a prologue. What none of it proves is hardware: no
 `--stop` has reached a board and no sweep has been watched on one.

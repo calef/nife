@@ -10,7 +10,8 @@ needs_person: yes
 # 335. The ctx_switch number on real RISC-V silicon
 
 Filed 2026-09-03 as an unnumbered proposal by the milestone 247 sweep,
-from milestone 58's block; numbered 2026-09-19 by milestone 433. Premise re-checked 2026-09-19 and
+from milestone 58 (RISC-V TLB shootdown)'s block; numbered 2026-09-19 by milestone 433 (drain the
+proposal pile to zero). Premise re-checked 2026-09-19 and
 it holds. `bench/baseline-riscv64.txt` still carries `ctx_switch 495050 5000` from QEMU and no
 radon run exists: none of `bench/radon-2026-09-04`, `bench/radon-2026-09-05` or
 `bench/radon-2026-09-16` has a `ctx_switch` row. `notes/riscv-tlb-shootdown.md` line 189 also still
@@ -45,14 +46,15 @@ with and without the flush, and record what an ASID-tagged TLB actually saves.
 
 ## Why this matters
 
-A milestone exists whose entire justification is a performance claim that has never been measured,
-and the one measurement in the tree points the wrong way. `bench/baseline-riscv64.txt` carries
+A milestone exists whose entire justification is a performance claim that has never been measured.
+The one measurement in the tree points the wrong way. `bench/baseline-riscv64.txt` carries
 `ctx_switch 492350 5000` from QEMU, which is not evidence for or against the change. This project's
 own standard is *measure, do not argue*, and an honest tie or loss recorded plainly is worth more
 than a win nobody checked. Right now there is neither.
 
-The second cost is the record. Milestone 58's block sends a future reader to milestone 24 for this
-number, and milestone 24 is an aarch64 board that can never produce it. So the one pointer that
+The second cost is the record. Milestone 58's block sends a future reader to milestone 24 (a second
+aarch64 board) for this
+number. Milestone 24 is an aarch64 board that can never produce it. So the one pointer that
 exists is wrong, and a reader who follows it wastes the trip. That miscitation only gets fixed by
 somebody deciding where the number really lives.
 

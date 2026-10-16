@@ -24,8 +24,8 @@ let leaf1 = isa::cpuid(1);
 
 That is a correct answer to "which core am I". Every caller in this tree wants "which core
 booted", and those are the same number only while there is one core. Milestone 161 (kernel) changed this
-function from a hardcoded `0` to the `CPUID` read for a real reason (the roster seats the boot core
-at the slot its own local APIC id names, so the two have to agree) and got the mechanism wrong while
+function from a hardcoded `0` to the `CPUID` read for a real reason. The roster seats the boot core
+at the slot its own local APIC id names, so the two have to agree. It got the mechanism wrong while
 getting the requirement right.
 
 The other two architectures never had the option of being wrong this way, and the asymmetry is
@@ -81,7 +81,7 @@ of a value the architecture fixes would be machinery with nothing to hold.
 
 The ordering that makes this safe is worth stating, because the function is called from the kernel's
 very first Rust statement (`cpu::init_this_cpu(arch::boot_cpu_id())`, before the console, the GDT or
-ACPI): the stamp precedes `call kernel_main`, so there is no window in which the accessor can read
+ACPI). The stamp precedes `call kernel_main`, so there is no window in which the accessor can read
 the `AtomicUsize`'s zero default. The secondary entry path (`ap_long_mode_entry`) never writes it.
 
 `BOOT_CPU_ID` is a provisional name. It mirrors `BOOT_HARTID` on the architecture that already
@@ -107,8 +107,8 @@ the same line, `user/x86_port_tests.rs:255`, and none of them is #3 or #1:
 
 Before the fix, `every_secondary_runs_scheduled_work` failed about half of runs at two cores
 (`ap_boot.rs`'s own measurement) and the high-water report printed `65536/65536`. Nineteen clean
-runs of the one and twelve of the other is not a proof, and a flake that fires one run in six needs
-more than twelve to be called gone; it is enough to say the half-the-time failure is not
+runs of the one and twelve of the other is not a proof. A flake that fires one run in six needs
+more than twelve to be called gone. It is enough to say the half-the-time failure is not
 half-the-time any more.
 
 Neither `BUGS` #1 nor the UEFI two-core start flake fired once. Milestone 412
@@ -116,8 +116,8 @@ Neither `BUGS` #1 nor the UEFI two-core start flake fired once. Milestone 412
 records `smp: cpu 1 did not start (firmware returned -1)` at one run in three from a three-run
 sample; this campaign saw 26 two-core boots and zero such lines, 8 of them under OVMF. That is
 incidental evidence rather than the dedicated `cargo xtask uefi-boot` measurement the proposal asks
-for, and it is a different tree than the one that proposal was written against, but one-in-three and
-zero-in-twenty-six do not sit together comfortably and somebody should reconcile them.
+for. It is a different tree than the one that proposal was written against. One-in-three and
+zero-in-twenty-six do not sit together comfortably, and somebody should reconcile them.
 
 ## Why the default stays at 1, and what changed about the reason
 
@@ -183,11 +183,11 @@ architect's, and the above is evidence for it rather than an answer to it.
   wants re-reading with the section above beside it. Not this lane's to resolve.
 - **Recorded.** A bench boot on xenon would settle `BUGS` #1, and it is cheap now that the stick and the
   procedure exist (notes/x86-uefi-boot.md). #1 was *"measured extensively on QEMU TCG"* and has
-  never been tried on silicon, where the INIT-SIPI-SIPI timing, the `STARTUP` delays and the
+  never been tried on silicon. There the INIT-SIPI-SIPI timing, the `STARTUP` delays and the
   self-modifying-code behavior that two of its refuted hypotheses turned on are all real rather
   than emulated. xenon has four cores and printed `nife machine: x86_64, 4 processor(s)` on
   2026-09-17. **The exact line to look for is `smp: N core(s) online`** in the boot transcript at
-  `-smp 4`: `smp: 4 core(s) online` says #1 is a TCG artifact, and anything less, with a
+  `-smp 4`. `smp: 4 core(s) online` says #1 is a TCG artifact, and anything less, with a
   `smp: cpu N did not start` line above it naming a core that varies between boots, says it is real.
   Boot it several times; one boot decides nothing, since the defect is intermittent under TCG too.
 
@@ -195,19 +195,20 @@ architect's, and the above is evidence for it rather than an answer to it.
 
 `arch::x86_64::boot_cpu_id` recomputed `CPUID` leaf 1's initial local APIC id on every call, which
 answers "which core am I" where every caller wants "which core booted"; the two agree only while
-there is one core. So a test body DECISIONS §28's placement had migrated onto a secondary took that
-secondary for the boot core, and two symptoms in two subsystems turned out to be one line:
+there is one core. So a test body DECISIONS §28 (SMP placement: two random choices at spawn)'s
+placement had migrated onto a secondary took that
+secondary for the boot core. Two symptoms in two subsystems turned out to be one line.
 `every_secondary_runs_scheduled_work` inverted its own "is a secondary" predicate and waited out its
-bound for a mark the real boot core never sets, and `stack::report_high_water` scanned an unpainted
+bound for a mark the real boot core never sets. `stack::report_high_water` scanned an unpainted
 slot and reported a secondary stack at 65536/65536. `boot.s` now stamps the id into `BOOT_CPU_ID`
 (provisional) before calling `kernel_main` and the accessor reads the record: riscv64's
 `BOOT_HARTID` shape, because code that runs once on exactly the boot processor cannot misinform a
-later caller. Twelve two-core runs came back 5 green, and the useful numbers are the others: 19 of
+later caller. Twelve two-core runs came back 5 green, and the useful numbers are the others. 19 of
 19 on the migrated-boot-core test, 12 of 12 correct high-water lines, 26 of 26 boots with both cores
 online, and **all seven failures one assertion at one line**. **The `NIFE_SMP` default stays at 1,
 for a new reason**: what keeps the two-core suite from being clean is
 `a_revoked_holder_faults_on_its_next_port_write`, red because `PortRange::REVOKE` resets the TSS I/O
 bitmap on the revoker's core only. That is milestone 313's accepted window and milestone 315's
-target, and a red for exactly the reason the test exists rather than substrate flakiness, which is
-evidence DECISIONS §153 was written without: the two-core observer 315 planned to write already
+target. It is a red for exactly the reason the test exists rather than substrate flakiness, which is
+evidence DECISIONS §153 was written without. The two-core observer 315 planned to write already
 exists in the suite. `BUGS` #1 remains open and did not fire at two cores.

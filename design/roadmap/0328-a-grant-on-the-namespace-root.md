@@ -35,8 +35,8 @@ image root.
 Milestone 31's whole claim is that typing a name is the grant. At the top prompt that claim is
 false, for a reason a user cannot see and cannot work around: the same command on the same file
 succeeds or is refused depending on how deep the file sits. `script/swish-check` gates the working
-case on both ISAs, so the gap is not a regression risk; it is a permanent hole in the headline
-demonstration, and it is the first thing a newcomer typing at the prompt will hit, because the top
+case on both ISAs, so the gap is not a regression risk. It is a permanent hole in the headline
+demonstration. It is the first thing a newcomer typing at the prompt will hit, because the top
 of a namespace is where anyone starts.
 
 The two answers are not equal and the choice is not close to free. The narrowing verb is the smaller
@@ -63,8 +63,8 @@ false: `rm rmtree/rm-solo` works and `rm gate.txt` is a refusal, and the only di
 of path. A subtree caretaker attenuates by performing one `OPENDIR` into the directory it was
 granted, the root of the shell's namespace has no name to descend into, and `filesystem_protocol` has
 no verb meaning "the directory I already hold, with fewer rights". The two answers are not equal and
-neither is free: a narrowing verb (`Rights::attenuate` on the wire, no name resolution, small in the
-server) is an addition to something two programs agree on and cannot be un-shipped, and an
+neither is free. A narrowing verb (`Rights::attenuate` on the wire, no name resolution, small in the
+server) is an addition to something two programs agree on and cannot be un-shipped. An
 interactive boot rooted one component below the image root puts nothing on the wire and changes what
 every other command at that prompt means. It is the first hole a newcomer typing at the prompt will
 hit, because the top of a namespace is where anyone starts.
