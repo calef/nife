@@ -30,11 +30,11 @@ under `design/audit-reports/`, `design/naming.md`, `design/decisions/0152-port-r
 four notes, `kernel/src/pci.rs` and `helpers/qemu-runner-x86_64.sh`.
 
 A handful of finished blocks also describe the directory in the present tense, which is a
-smaller defect of the same family: milestone 276's block says `script/roadmap --proposed` "already
-computes" a number, and milestone 301 (one grant order for the progenitor)'s says `helpers/roadmap_proposals.py` "matches PROPOSED and
+smaller defect of the same family. Milestone 276's block says `script/roadmap --proposed` "already
+computes" a number. Milestone 301 (one grant order for the progenitor)'s says `helpers/roadmap_proposals.py` "matches PROPOSED and
 nothing else, so a proposal cannot be retired" in place. Both were true when written. A BUILT block
 is a record of its moment and the tree's convention lets older records describe the past, so these
-want a dated amendment rather than a rewrite, and deciding which of the two they get is part of
+want a dated amendment rather than a rewrite. Deciding which of the two they get is part of
 this work.
 
 A citation that resolves to nothing is a broken footnote, which is the defect `script/roadmap`'s
@@ -58,7 +58,7 @@ its own block.
 **The ones whose slug has no numbered file are the work.** Milestone 433 recorded about thirty
 proposals that earlier promotions deleted without a one-to-one successor, because the work was
 folded into a cluster block. Mapping one of those wants a reading of the cluster block to find where
-its content went, and a citation rewritten to the wrong block is worse than one that dangles, since
+its content went. A citation rewritten to the wrong block is worse than one that dangles, since
 a dangling path announces itself and a wrong one does not.
 
 ## What would make it stick
@@ -74,8 +74,8 @@ worth pricing before writing.
 Milestone 433 drained `design/roadmap/proposals/` and kept each proposal's slug on the numbered
 block that replaced it, so a reader can still resolve one by hand. About forty backticked citations
 of the old paths survive across twenty-seven files, in milestone blocks, two audit reports,
-`design/naming.md`, four notes, one kernel source file and one shell script, and nothing in this
+`design/naming.md`, four notes, one kernel source file and one shell script. Nothing in this
 tree checks a backticked path outside a follow-on bullet. Roughly ten are mechanical, because the
-slug still names a numbered block; the rest are the ones earlier promotions folded into cluster
-blocks without a one-to-one successor, and each of those wants a reading of the cluster block,
-since a citation rewritten to the wrong block is worse than one that dangles.
+slug still names a numbered block. The rest are the ones earlier promotions folded into cluster
+blocks without a one-to-one successor. Each of those wants a reading of the cluster block.
+A citation rewritten to the wrong block is worse than one that dangles.

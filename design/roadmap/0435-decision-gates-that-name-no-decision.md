@@ -6,16 +6,16 @@ built: 2026-09-19
 # 435. Forty-five milestones are gated on a decision nobody wrote down
 
 Built 2026-09-19, in one evening by three lanes. All forty-five blocks were read, and
-every one of them resolved to one of the three outcomes: 33 decisions written up as
+every one of them resolved to one of the three outcomes. 33 are decisions written up as
 [§160 (what)](../decisions/0160-what-a-subshell-copies.md) to
-[§192 (bound)](../decisions/0192-a-checked-direct-map-reader-for-the-acpi-walk.md), 6 blocks that had a
+[§192 (bound)](../decisions/0192-a-checked-direct-map-reader-for-the-acpi-walk.md), 6 had a
 decision and
-gained a citation, and 6 gate tokens that were simply wrong. Minted the same day by calef, from a
+gained a citation, and 6 gate tokens were simply wrong. Minted the same day by calef, from a
 question he asked about one block that turned out to be true of forty-five.
 *(Number provisional until the merge queue lands it.)*
 
-It carried `Gate: NONE` while it was open, on the argument that reading a block and deciding
-whether its token is wrong or its decision is owed needs nobody's permission, and that writing a
+It carried `Gate: NONE` while it was open. The argument: reading a block and deciding
+whether its token is wrong or its decision is owed needs nobody's permission, and writing a
 fork up is not the same as answering it. The line is gone because a finished block's gate can only
 be stale. What the work produced is a queue for calef, not an answer: all 33 sections are
 `PROPOSED`.
@@ -105,12 +105,12 @@ fifth were blocks whose gate deferred to a decision that had since been taken:
 - Milestone 142 (text)'s gate names a decision half of which §104 (rich) took on 2026-08-20.
 - Milestone 147 (profiler)'s gate defers to milestone 75 (read), whose question §139 (read) answered on 2026-09-02.
   Milestone 75's own block still says `NOT-STARTED` and does not mention §139, which is the
-  same defect one file over and is outside this milestone's list because 75's gate paragraph happens
+  same defect one file over. It is outside this milestone's list because 75's gate paragraph happens
   to contain a `§` (to §10) and so was counted as citing.
 
-So the failure this milestone names has a second direction, and it is the worse one: a gate that
+So the failure this milestone names has a second direction, and it is the worse one. A gate that
 says `DECISION` for a reason that was answered months ago spends an architect's attention on a
-decision made, and there is nothing in the tree that would notice.
+decision made. There is nothing in the tree that would notice.
 
 And the three-way judgment was not the hard part; the stale half was. Every block in this slice
 was legible about what it wanted. What no reading of the block alone could tell was whether somebody
@@ -136,10 +136,10 @@ milestone could not ask in advance:
   live in `bench/<board>-<date>/`.
 
 Three had their decision and gained a citation rather than a file: 241 (calef's own
-dated deferral, quoted in the gate), 340 ([§97 (gates)](../decisions/0097-advisory-checks.md), whose
-ruleset edit is `DECIDED` and unperformed and whose `BUGS` predicted this block), and 388
-([§154](../decisions/0154-the-acronym-test-is-whether-the-phrase-is-spoken.md), which rules four of
-that block's five names by name).
+dated deferral, quoted in the gate). 340 gained [§97 (gates)](../decisions/0097-advisory-checks.md), whose
+ruleset edit is `DECIDED` and unperformed and whose `BUGS` predicted this block. 388
+gained [§154](../decisions/0154-the-acronym-test-is-whether-the-phrase-is-spoken.md), which rules four of
+that block's five names by name.
 
 Seven were genuinely owed and are written up `PROPOSED`: §172 (327), §173 (328), §174 (341),
 §175 (342), §176 (347), §177 (350), §178 (360).
@@ -148,7 +148,7 @@ The rate differs sharply between the aged blocks and the promoted ones, which is
 about milestone 433's drain rather than about these blocks. Of the four numbered under 327, three
 carried a wrong token and one cited its decision, and none owed a new file. Of the eleven
 numbered 327 or above, **seven owed a decision**, two had one and two were wrong. The
-promotion carried tokens across unchanged and that was right: the proposals it drained were mostly
+promotion carried tokens across unchanged and that was right. The proposals it drained were mostly
 written by lanes that had met a real fork, while the older blocks had drifted away from gates that
 were true when they were set.
 
@@ -172,24 +172,24 @@ makes this slice the cleanest available measurement of whether that drain carrie
 **It did not.** Fourteen of the fifteen owed a decision that nobody had written down, and became
 §§179-192 (`PROPOSED`; the lane reserved a range of twenty and the integrator compacted it at
 merge, which is the renumber slice B's last paragraph predicted). **Zero tokens were wrong.** One, milestone 391, was the
-third outcome: a decision existed and the gate did not cite it, and the decision is §149 (endpoint),
+third outcome: a decision existed and the gate did not cite it. The decision is §149 (endpoint),
 which refused this exact question on the ground that the general case must not be settled on the
-narrow one's momentum and said to answer it when milestone 269 gives it a consumer. So 391 gets a
+narrow one's momentum. It said to answer it when milestone 269 gives it a consumer. So 391 gets a
 citation and deliberately gets no new section.
 
 **Two blocks arrived with a problem recorded, and both readings held.** Milestone 406 (tour)'s
 title is false as written and its narrower half is the work; that lane judged the gate and left the
 retitling to calef. Milestone 415 was suspected of carrying a token that had gone too strong, and
-the suspicion turns out to be backwards: the item that needed nobody's permission is the one that
-landed, so what remains is more purely `DECISION` than when the gate was written. A **different**
+the suspicion turns out to be backwards. The item that needed nobody's permission is the one that
+landed. So what remains is more purely `DECISION` than when the gate was written. A **different**
 argument that the token is too strong does exist, on the block's own reversibility paragraph, and
 §190 puts it to calef as its first question rather than a lane deciding it.
 
 **What that rate means for the other two slices, which hold aged blocks rather than fresh ones.**
-Fourteen of fifteen is a high owed-decision rate, and the reason is visible in the blocks: a
-promoted proposal was written by a lane that hit the fork, so its `DECISION` token was minted by
+Fourteen of fifteen is a high owed-decision rate, and the reason is visible in the blocks. A
+promoted proposal was written by a lane that hit the fork. So its `DECISION` token was minted by
 somebody who had just met the question. An aged block's token is more likely to have been inherited,
-which is the condition under which it goes stale, so slice c's rate should be read as a floor for
+which is the condition under which it goes stale. So slice c's rate should be read as a floor for
 the promoted quarter rather than as a prediction for the other 21.
 
 ## BUGS
@@ -202,15 +202,15 @@ the promoted quarter rather than as a prediction for the other 21.
   and every number in them is provisional until the merge queue lands it, which is the standing rule
   for anything global to the tree.
 - The reserved ranges make every slice branch fail `script/decisions --check` on its own, and
-  this was measured rather than predicted: slice c holds the range beginning at 197, so with the two
+  this was measured rather than predicted. Slice c holds the range beginning at 197. With the two
   ranges below it living on branches it cannot see, its own gate reports a gap in the numbering
   across the whole of 157 to 196 and exits 1. (The numbers are written without their sigil here on
   purpose: a range written with it is read as a citation, and `script/decisions` then reports the
   range's endpoints as citations to sections that do not exist.)
   The check has no escape hatch and is right not to have one, since a hole is almost always a
   renumber on merge that nobody meant. **It resolves at merge and only at merge**, which puts two
-  duties on the integrator: land the three slices in one merge-queue group so the group build sees a
-  contiguous tree, and compact the numbering if a lane did not fill its range, because three ranges
+  duties on the integrator. One: land the three slices in one merge-queue group so the group build sees a
+  contiguous tree. Two: compact the numbering if a lane did not fill its range, because three ranges
   sized 20 against slices that minted 14, 20 and 20 would leave the same hole in the merged tree.
   A lane that renumbered into another lane's range to make its own branch green would be claiming a
   global name, which is the rule this scheme exists to keep.
