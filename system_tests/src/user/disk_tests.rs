@@ -331,7 +331,9 @@ fn the_write_half_needs_a_disk_and_an_entropy_rendezvous_and_holds_nothing_else(
         assert_eq!(word, filesystem_protocol::READY);
     }
     let Some(entropy) = entropy_rendezvous() else {
-        crate::testing::skip!("no virtio-rng device on the bus this fixture asks for (NIFE_RNG not set?)");
+        crate::testing::skip!(
+            "no virtio-rng device on the bus this fixture asks for (NIFE_RNG not set?)"
+        );
     };
     let maker = program("mkfs").expect("no mkfs program in the initial ramdisk");
     use filesystem_fixture::blank;

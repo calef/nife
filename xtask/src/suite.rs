@@ -855,7 +855,13 @@ fn x86_64_on_amd_vi() -> bool {
     // Every fixture the runner attaches, for the freshness rule the leg above states: this
     // machine's suite writes the blank disk (the write-half test runs here too), so starting
     // from the VT-d leg's damage would be order-coupled.
-    if !mkdisk() || !mkredoxfs() || !mkredoxfs_crash() || !mkgptdisk() || !mkblankdisk() || !mknvmedisk() {
+    if !mkdisk()
+        || !mkredoxfs()
+        || !mkredoxfs_crash()
+        || !mkgptdisk()
+        || !mkblankdisk()
+        || !mknvmedisk()
+    {
         return false;
     }
     // SAFETY: `set_var` became unsafe in edition 2024 because it races other threads. xtask
