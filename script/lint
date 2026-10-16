@@ -2904,6 +2904,18 @@ echo "==> workflow steps that swallow a failure"
 python3 "$(dirname "$0")/../helpers/workflow_swallows.py" --selftest
 python3 "$(dirname "$0")/../helpers/workflow_swallows.py"
 
+# 12c. **Every file under .github/workflows/ parses** (milestone 861 (every workflow file parses);
+#     helpers/workflow_parses.py, name provisional). A comment line that loses its `#` to a
+#     line-wrap slip passes every text gate here: the pin and swallow checks match their regexes
+#     and wave the rest through. GitHub does not wave it through; the file never starts a run, and
+#     for ci.yml and verify.yml that is every pull request waiting on a required check nothing can
+#     post. The parser is `ruby -ryaml`, which the runner image and this macOS both carry; the
+#     helper's header says what it cannot see. Fixtures first, because a green run looks the same
+#     as a parser that cannot fire.
+echo "==> every workflow file parses"
+python3 "$(dirname "$0")/../helpers/workflow_parses.py" --selftest
+python3 "$(dirname "$0")/../helpers/workflow_parses.py"
+
 # 13. **The kernel links no crate only its tests use, and no fixture unless a feature asks**
 #     (milestone 609 (the system tests leave the kernel crate)). The kernel crate used to link
 #     `ps`, `pgrep`, `pmap` and `network_time_protocol` as ordinary dependencies, for nothing but
