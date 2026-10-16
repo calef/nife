@@ -2,7 +2,7 @@
 name = "address_space_map"
 version = "0.1.0"
 edition = "2024"
-publish = false     # the default; the allowlist lint (milestone 887) holds the exception
+publish = false     # the default; the allowlist lint holds the exception (crates/publish-allowlist.txt)
 license.workspace = true
 
 # The user address-space map (milestone 206 (a program image has under 896 KiB), DECISIONS §171 (where a program image starts) option D): which band of a process's

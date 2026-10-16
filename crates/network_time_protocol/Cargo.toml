@@ -2,7 +2,7 @@
 name = "network_time_protocol"
 version = "0.1.0"
 edition = "2024"
-publish = false     # the default; the allowlist lint (milestone 887) holds the exception
+publish = false     # the default; the allowlist lint holds the exception (crates/publish-allowlist.txt)
 license.workspace = true
 
 # The NTPv4 wire format (RFC 5905): the 48-byte packet, the 1900-epoch fixed-point timestamp, the

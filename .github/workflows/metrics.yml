@@ -199,6 +199,28 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: python3 helpers/ci_job_times.py update
 
+      # Each crate repository's own job times, one per-repository CSV beside the others (milestone
+      # 887), so a slow template job shows up in this tree's metrics rather than in nine places
+      # nobody watches. The list is the publish allowlist: a crate is a repository when it is on
+      # `crates/publish-allowlist.txt`. EXCEPTION, marked: a repository the allowlist names that
+      # does not exist yet (the split has not landed it) prints a warning and the step stays green.
+      # A red daily-metrics run for an empty list teaches nobody anything; when a live repository's
+      # read fails twice running, this step is where it shows.
+      - name: Fetch the crate repositories' daily times
+        continue-on-error: false
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          # One crate per word is the point: crate names carry no spaces (script/names refuses them).
+          # shellcheck disable=SC2013
+          for crate in $(grep -v '^#' crates/publish-allowlist.txt | grep -v '^[[:space:]]*$'); do
+            if python3 helpers/ci_job_times.py update --repo "nifeos/$crate"; then
+              echo "crate repository nifeos/$crate: recorded"
+            else
+              echo "crate repository nifeos/$crate: no record yet (does the repository exist?)"
+            fi
+          done
+
       # A job whose newest merge-group run passed 85% of its budget gets one tracking issue,
       # rewritten each day and closed after three runs under the line (§254, Fork 2). Opened as the
       # App so the issue's author is nife-smelter[bot]; the label is created with the workflow's

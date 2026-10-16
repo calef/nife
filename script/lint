@@ -1138,7 +1138,8 @@ if [ -f "$dependabot" ] && grep -qE '^[[:space:]]*ignore:' "$dependabot" &&
     exit 1
 fi
 
-# The publish allowlist (milestone 887, from 857's Fork 3). `crates/publish-allowlist.txt` names the
+# The publish allowlist, milestone 887 (crate repositories share one CI template, adapted from
+# nife's gates), from 857's Fork 3. `crates/publish-allowlist.txt` names the
 # crates calef has ruled onto crates.io; every other crate in `crates/` carries `publish = false`,
 # and the two states are the whole rule. A manifest that drops the line without an entry fails
 # here, so "publishable" is never implicit: a crate becomes releasable by a diff that touches the

@@ -2,7 +2,7 @@
 name = "machine_statistics_protocol"
 version = "0.1.0"
 edition = "2024"
-publish = false     # the default; the allowlist lint (milestone 887) holds the exception
+publish = false     # the default; the allowlist lint holds the exception (crates/publish-allowlist.txt)
 license.workspace = true
 
 # The machine statistics page (milestone 126 (the `procps` package), DECISIONS §225 (`free` sees the machine and your share) part 2): one definition of the

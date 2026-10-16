@@ -2,7 +2,7 @@
 name = "file_allocation_table"
 version = "0.1.0"
 edition = "2024"
-publish = false     # the default; the allowlist lint (milestone 887) holds the exception
+publish = false     # the default; the allowlist lint holds the exception (crates/publish-allowlist.txt)
 license.workspace = true
 
 # Enough of FAT32 (Microsoft's "FAT: General Overview of On-Disk Format", version 1.03) to CREATE

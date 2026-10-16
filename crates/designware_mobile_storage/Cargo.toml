@@ -2,7 +2,7 @@
 name = "designware_mobile_storage"
 version = "0.1.0"
 edition = "2024"
-publish = false     # the default; the allowlist lint (milestone 887) holds the exception
+publish = false     # the default; the allowlist lint holds the exception (crates/publish-allowlist.txt)
 license.workspace = true
 
 # no_std for the kernel, std for host tests, the §7 (the testing harness) pure-logic split every

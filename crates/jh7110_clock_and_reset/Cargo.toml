@@ -2,7 +2,7 @@
 name = "jh7110_clock_and_reset"
 version = "0.1.0"
 edition = "2024"
-publish = false     # the default; the allowlist lint (milestone 887) holds the exception
+publish = false     # the default; the allowlist lint holds the exception (crates/publish-allowlist.txt)
 license.workspace = true
 
 # Name: PROVISIONAL (milestone 220's lane, 2026-09-04). `crg` is the JH7110's own word for the
