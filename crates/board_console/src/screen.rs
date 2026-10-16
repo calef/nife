@@ -575,6 +575,50 @@ mod tests {
         );
     }
 
+    /// **INK and PAPER are the console's own colors, split into PPM channel order**, asserted
+    /// against the words the console paints with. [`read`] classifies every pixel
+    /// channel-by-channel against thresholds derived from these two constants and nothing else,
+    /// and no paint-and-read test can see a wrong split: with the console's near-black paper, a
+    /// channel of INK shifted to zero (`>>` become `<<`) moves the matching threshold to zero
+    /// too, and every pixel the console paints classifies exactly as before. The split itself
+    /// is the contract, so that is what is asserted.
+    #[test]
+    fn ink_and_paper_are_the_console_colors_in_ppm_channel_order() {
+        let (fg, bg) = (ScreenConsole::FOREGROUND, ScreenConsole::BACKGROUND);
+        assert_eq!(INK, [(fg >> 16) as u8, (fg >> 8) as u8, fg as u8]);
+        assert_eq!(PAPER, [(bg >> 16) as u8, (bg >> 8) as u8, bg as u8]);
+    }
+
+    /// **Ink and paper split at their midpoint, and both sides of the arithmetic are
+    /// load-bearing.** The console's own scheme cannot show that: any threshold strictly
+    /// between its two colors classifies the same pixels. So [`decode`] runs here on a scheme
+    /// chosen to straddle the arithmetic, `0xc0` ink on `0x40` paper: the true midpoint is
+    /// `0x80`, where `(ink - paper) / 2` would read `0x40` and paper pixels would pass, and
+    /// `(ink + paper) * 2` would wrap past the byte to `0x00`, where every pixel does. Either
+    /// way a painted cell goes all-ink and the character comes back `?`, so the exact text
+    /// below is what fails.
+    #[test]
+    fn the_split_between_ink_and_paper_is_their_midpoint() {
+        let (ink, paper) = ([0xc0, 0xc0, 0xc0], [0x40, 0x40, 0x40]);
+        let mut ppm = b"P6\n14 8\n255\n".to_vec();
+        for y in 0..8u32 {
+            for x in 0..14u32 {
+                let word = if bitmap_font::is_ink(if x < 7 { 'h' } else { 'i' }, x % 7, y) {
+                    0x00c0_c0c0
+                } else {
+                    0x0040_4040
+                };
+                ppm.extend_from_slice(&[(word >> 16) as u8, (word >> 8) as u8, word as u8]);
+            }
+        }
+        assert_eq!(
+            decode(&ppm, ink, paper, b"hi", 1)
+                .expect("a readable dump")
+                .rows,
+            ["hi"]
+        );
+    }
+
     /// **The alphabet constrains the decode**: a cell whose glyph is outside it reads `?` while
     /// its neighbor still comes back, which is what makes the swish-check leg's failures name
     /// the character it could not read rather than lie about the row.
