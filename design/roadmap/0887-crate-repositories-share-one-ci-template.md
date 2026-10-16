@@ -190,14 +190,11 @@ being on the list, and `helpers/ci_job_times.py` reads a crate repository by arg
   provisional. The `crates-io` team slug and the required-check names (`ci / fmt`, ...) are
   provisional with them; the check names are measured against what GitHub shows for
   cross-repository reusable workflow calls and match.
-- `needs_person` is `yes`, and the list is now specific. The crates.io trusted publisher: one
-  binding per crate and repository, on calef's crates.io account. The org-level Actions allowlist:
-  SHA-pinned only, verified creators, `kani-github-action` named. The `nife-smelter` app's
-  installation permission. An organization-level push ruleset for tag protection, scoped by
-  repository and ref: the repository rulesets API refuses `ref_name` on push-target rulesets,
-  measured. And the `SETTINGS_TOKEN` organization secret the settings-drift reads authenticate
-  with. The `crates-io` team and the approval environment turned out to be creatable with
-  calef's existing token, contrary to what this block first assumed.
+- `needs_person` is `yes`. The crates.io trusted publisher needs calef's crates.io account, and
+  the org-level setup (the Actions allowlist, the app's installation permission, the tag ruleset,
+  the `SETTINGS_TOKEN` secret) needs org administration, which the lane's token does not carry.
+  The `crates-io` team and the approval environment turned out to be creatable with calef's
+  existing token, contrary to what this block first assumed.
 - A push-triggered cross-repository reusable workflow call start-fails on GitHub with an empty
   error (crate-workflows-test runs 38914536439 and 38914537601, same file green on
   pull_request), so the gating callers trigger on pull_request only. A release dispatches at a
@@ -220,6 +217,19 @@ being on the list, and `helpers/ci_job_times.py` reads a crate repository by arg
   is unpublished, so only the no-baseline path has run; the false positive it produced is fixed in
   v2. Checked by the throwaway repository's pull requests, which never saw a baseline to compare
   against. The first published crate (milestones 813 to 821) is the test.
+- **Outstanding.** The organization setup the template cannot do to itself, each with its
+  consequence while undone, from `nifeos/crate-workflows`' README. It covers the Actions
+  allowlist (SHA-pinned only, verified creators, `kani-github-action` named), the `nife-smelter`
+  app's installation permission, the `SETTINGS_TOKEN` organization secret the settings-drift reads
+  authenticate with, and the organization-level tag ruleset. That last one cannot live in a
+  repository: the rulesets API refuses `ref_name` on push-target rulesets, measured. None of
+  these can bite while no crate repository exists. The first adoption is the deadline. Checked
+  live on the throwaway repository, which runs its weekly jobs against exactly this gap.
+- **Outstanding.** calef's naming pass over the names this milestone shipped provisionally: the
+  repository `crate-workflows`, the workflow names, the `crates-io` team slug, and the
+  required-check names. GitHub redirects a repository rename, and the required-check names are
+  fixed per ruleset at adoption, so renaming after the first crate repositories exist costs one
+  ruleset update each.
 
 ## Index row
 
