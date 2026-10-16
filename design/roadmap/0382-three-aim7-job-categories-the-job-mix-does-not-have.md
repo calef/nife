@@ -77,12 +77,12 @@ stake is how much weight a flat curve can carry.
 `crates/job_mix` keeps AIM7's four methodological properties and stands in for its categories with
 five jobs: a compute grind, a working-set walk, a null syscall, a yield burst and an IPC round trip.
 Three AIM7 categories have no representative, each refused for a stated reason rather than
-overlooked: a disk-file job would make the instrument's availability depend on the runner's storage,
-a process-creation job would measure the memory-region allocator rather than the scheduler at 32
-concurrent tasks, and a page-mapping job needs a per-task address-space capability the spawn path
-does not hand out. Two of the three are exactly where DECISIONS §96's effect should be largest,
-because a filesystem call and a spawn both block deep in a kernel path where a null syscall and a
-yield do not, so a flat curve from the present mix is weaker evidence than a flat curve from a mix
-that had them. The map job is the cheapest and goes first; the spawn job wants `spawn_el0`'s reclaim
+overlooked. A disk-file job would make the instrument's availability depend on the runner's storage.
+A process-creation job would measure the memory-region allocator rather than the scheduler at 32
+concurrent tasks. A page-mapping job needs a per-task address-space capability the spawn path
+does not hand out. Two of the three are exactly where DECISIONS §96 (process kernel or event
+kernel, and how to decide it)'s effect should be largest. A filesystem call and a spawn both block
+deep in a kernel path where a null syscall and a yield do not. So a flat curve from the present mix
+is weaker evidence than a flat curve from a mix that had them. The map job is the cheapest and goes first; the spawn job wants `spawn_el0`'s reclaim
 done per task; the file job wants a second mix rather than an addition, so a run without a disk stays
 comparable.
