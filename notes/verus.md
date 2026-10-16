@@ -100,7 +100,7 @@ items, nothing in the exit status.
 That is the mirror image of Kani's behavior. Kani refuses loudly and proves nothing; Verus proves
 whatever you assert and says nothing. Neither reaches the hardware. One tells you so.
 
-The project is honest about the mechanism. Its `tcb.md` enumerates how assumptions enter: an `assume`
+The project is honest about the mechanism. Its `thread-control-block.md` enumerates how assumptions enter: an `assume`
 statement, *"any proof function introduced with `#[verifier::external_body]`"*, *"any exec function
 introduced with `#[verifier::external_body]` or `#[verifier::external_fn_specification]`"*, and
 `#[verifier::external]`. `assume_specification`, which attaches a contract to an

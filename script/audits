@@ -237,8 +237,17 @@ def current():
         with open(path, errors="replace") as f:
             programs += f.read().count("[[bin]]")
 
-    with open(os.path.join(root, "crates", "abi", "src", "lib.rs"), errors="replace") as f:
-        abi = len(re.findall(r"^\s*pub const [A-Z_0-9]+: u64 = ", f.read(), re.M))
+    # The crate's whole surface, not lib.rs's. The ABI crate grew per-object modules
+    # (rendezvous.rs, usage.rs, rights.rs, survey.rs, ...), and a count scoped to lib.rs read 6
+    # where the crate holds 95; the event trigger that fires on any ABI change was quietly going
+    # blind whenever a constant landed outside lib.rs. Found by milestone 427 (the documentation
+    # sweep the worklist already ranks) from its own baseline row's 76 -> 6 drop.
+    abi = 0
+    for dirpath, _, names in os.walk(os.path.join(root, "crates", "abi", "src")):
+        for name in names:
+            if name.endswith(".rs"):
+                with open(os.path.join(dirpath, name), errors="replace") as f:
+                    abi += len(re.findall(r"^\s*pub const [A-Z_0-9]+: u64 = ", f.read(), re.M))
 
     # Discovered, not listed. A hard-coded set of lockfile paths is a copy of a fact about the
     # workspace layout, and script/drift's header records what that costs when it drifts. vendor/ is

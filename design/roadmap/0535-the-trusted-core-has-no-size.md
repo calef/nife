@@ -48,7 +48,7 @@ rather than an observation about somebody else. Measured on 2026-09-20:
   them. The tree has never defined which packages are inside the trusted base, so even a correct
   line count would have no membership filter to apply. The lane computed the split by hand; nothing
   keeps it computed.
-- `notes/tcb.md` is about the Thread Control Block. Its own acronym-collision section says the
+- `notes/thread-control-block.md` is about the Thread Control Block. Its own acronym-collision section says the
   Trusted Computing Base sense *"is unrelated."* **There is no note for the other meaning**, which is
   the meaning DECISIONS §14 (a verified-Rust capability microkernel that runs real workloads) spends
   the project's thesis on.
@@ -89,8 +89,8 @@ easily read badly and should be produced anyway.
   honesty about why it is a density and not a count.
 - Fold the series back into `notes/trusted-base.md`, which already carries the definitions, the
   comparison table and the honest caveats; it needs the number to become a tracked one rather than a
-  hand-computed one. A second note is not wanted, and `notes/tcb.md` stays spelled for the Thread
-  Control Block. What that note additionally needs is a cross-reference from `notes/tcb.md`'s
+  hand-computed one. A second note is not wanted, and `notes/thread-control-block.md` stays spelled for the Thread
+  Control Block. What that note additionally needs is a cross-reference from `notes/thread-control-block.md`'s
   acronym-collision section, which currently says the other sense is "unrelated" and points nowhere.
 - **A `BUGS` section** stating that a line count is a proxy for a proof obligation and a poor one, and
   that a tree can shrink this number by moving code rather than by removing it.

@@ -17,7 +17,7 @@ minting and the build: 119 harnesses across 21 crates, and 40 shell scripts. `AG
 still unmarked, because a lane may not edit that file.
 
 And the gate found something on its first run. `harness-crates` is derived from the tree while
-`script/verify` proves a hand-kept list, and they disagreed by one: `mdns_proto` landed with
+`script/verify` proves a hand-kept list, and they disagreed by one. `mdns_proto` landed with
 milestone 55 carrying three harnesses and was never added to that list, so nothing proved them and
 the suite went green *faster* for it. That is precisely the invisible failure
 [notes/verification.md](../../notes/verification.md) warns about under sharding, arriving through the
@@ -69,7 +69,7 @@ command or a short expression over the tree.
 Start with the counts that already exist and are already wrong: `kani-harnesses`,
 `harness-crates`, `sh-scripts`. `CLAUDE.md`'s block of figures (crates, user programs, lines of Rust,
 commits) is the obvious next tranche and is deliberately not first, because that paragraph is prose
-about a method rather than a reference table, and marking it up needs a judgment about how much
+about a method rather than a reference table. Marking it up needs a judgment about how much
 machinery a piece of rhetoric should carry.
 
 **It is a ratchet, not a sweep.** An unmarked number stays unchecked, so the population grows as
@@ -94,9 +94,9 @@ converting claims into checks, rather than reading claims and correcting them.
 
 ## What "done" means
 
-Every count named in the registry marked at its sites and passing; the three wrong numbers above
-corrected; `notes/` documenting the marker convention so the next person adds one without asking; and
-a recorded note that the gate covers marked counts only, which is the honest boundary of what it
+Every count named in the registry marked at its sites and passing. The three wrong numbers above
+corrected. `notes/` documenting the marker convention so the next person adds one without asking.
+A recorded note that the gate covers marked counts only, which is the honest boundary of what it
 buys.
 
 ## Prior art

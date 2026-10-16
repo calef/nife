@@ -15,8 +15,8 @@ From '220. This kernel drives no clock or reset controller, and the first real d
 one', under `## Follow-on`:
 
 > A general JH7110 clock driver covering all five domains and every clock. The milestone's own
-> `BUGS` named unbounded scope as its main risk and the two ends differ by an order of magnitude;
-> the arithmetic here is general enough that a second domain is a table entry rather than a
+> `BUGS` named unbounded scope as its main risk and the two ends differ by an order of magnitude.
+> The arithmetic here is general enough that a second domain is a table entry rather than a
 > rewrite, so building the other four before anything needs them would be work with no reader.
 >
 > -- design/roadmap/0220-jh7110-clock-and-reset.md

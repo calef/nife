@@ -17,7 +17,7 @@ live replacement) records that task. notes/blocked-thread-teardown.md has the de
 
 Every failure this system handles is a death. A component faults or exits, and the kernel is the
 witness. It stamps a five-word message onto the supervision endpoint its spawner designated
-(DECISIONS §26). The supervisor reads it, calls `Endpoint::REAP` with the tid the kernel put in the
+(DECISIONS §26). The supervisor reads it, calls `Rendezvous::REAP` with the tid the kernel put in the
 message (§32), and the region comes home to the builder. That chain is complete, proven on both
 architectures, and it is the whole of what a supervisor can do.
 
@@ -46,12 +46,12 @@ what makes "add a watchdog" sound like a single task.
 
 | shape | what `SURVEY` sees | can the kernel tear it down today? |
 |---|---|---|
-| (a) livelocked, spinning in userspace | `READY` / `RUNNING`, always | yes. `Untyped::DESTROY` arms §16's kill and the scheduler converts the thread to a corpse at its next preemption |
+| (a) livelocked, spinning in userspace | `READY` / `RUNNING`, always | yes. `MemoryRegion::DESTROY` arms §16's kill and the scheduler converts the thread to a corpse at its next preemption |
 | (b) blocked on an endpoint whose region the supervisor can destroy | `BLOCKED` | yes, with collateral. Destroying that region drains the endpoint's wait queues, aborts the blocked IPC with `abi::Error::Gone`, and the armed kill then lands |
 | (c) blocked on an endpoint the supervisor cannot reach | `BLOCKED` | no, when written. Yes since 2026-09-04: the region holder's `DESTROY` finishes it in place (milestone 133) |
 
 Case (c) is in `reap_region_objects`'s comment of 2026-08-16, and its mechanism is the
-load-bearing fact for question 4: `Untyped::DESTROY` arms a kill that is spent
+load-bearing fact for question 4: `MemoryRegion::DESTROY` arms a kill that is spent
 only in `schedule()`, for a `Running` thread, so a thread `Blocked` forever never spends it. That is
 why the "stronger right" §32 points at was, when written, insufficient for case (c). The comment and
 the mechanism step by step are in [`hung-component/the-armed-kill.md`](hung-component/the-armed-kill.md).
@@ -149,17 +149,17 @@ test is the argument. Milestone 23's four steps against a hung incumbent:
              one thing it does not do. But quiescing exists to make the incumbent stop receiving,
              and a hung component has already stopped receiving. **The step that needs its
              cooperation is the step the hang makes redundant.**
-  3 REVOKED  unchanged. Frame::REVOKE take-back (§41) is GRANT-gated on the operator's own device
+  3 REVOKED  unchanged. DeviceFrame::REVOKE take-back (§41) is GRANT-gated on the operator's own device
              capability and asks the holder for nothing. It works on a live, wedged, wholly
              uncooperative holder exactly as on a quiesced one.
-  4 STARTED  unchanged. The replacement parks in RECEIVE_CAP on the stable endpoint and picks up
-             whatever queued behind the silence, because the stable name is the endpoint object and
+  4 STARTED  unchanged. The replacement parks in RECEIVE_CAP on the stable rendezvous and picks up
+             whatever queued behind the silence, because the stable name is the rendezvous object and
              the kernel's sender queue is the buffer (§41).
-  5 REAPED   UNAVAILABLE. There is no corpse. Endpoint::REAP answers StillAlive.
+  5 REAPED   UNAVAILABLE. There is no corpse. Rendezvous::REAP answers StillAlive.
 ```
 
 So a supervisor recovers the service with no authority it did not already hold, and §32's
-`Endpoint::REAP` was never in the path. What §32 is right about is step 5: reclaiming a hung
+`Rendezvous::REAP` was never in the path. What §32 is right about is step 5: reclaiming a hung
 component's memory needs more than a supervisor holds. The sentence conflates restarting a
 service with reclaiming a region.
 
@@ -182,7 +182,7 @@ about program order and none about elapsed time:
 
 1. The domain does not report a hang. `SURVEY` reads every member `BLOCKED`, which is what a healthy
    idle system reads.
-2. `Endpoint::REAP` answers `StillAlive` for every member of the domain.
+2. `Rendezvous::REAP` answers `StillAlive` for every member of the domain.
 3. The service is restored with no new authority, and the drain step is asserted absent.
 4. The stranded caller is freed only by the component that stranded it, after the service is back.
 
@@ -240,8 +240,8 @@ The cost of not having it: every liveness verdict in this system is a heuristic 
 ~~A hang can cost two unreclaimable regions.~~ Closed 2026-09-04 by milestones 133 and 254 (see
 the correction at the top), and struck here 2026-10-08.
 
-**The shared witness page cannot be taken back from a hung holder.** `Frame::REVOKE` on a
-`DeviceFrame` is take-back and spares the invoker; on an ordinary `Frame` it is symmetric and takes
+**The shared witness page cannot be taken back from a hung holder.** `DeviceFrame::REVOKE` on a
+`DeviceFrame` is take-back and spares the invoker; on an ordinary `PageFrame` it is symmetric and takes
 the page from the invoker too (§13, §41, and the asymmetry is deliberate). So an operator cannot
 un-share a writable page from a component it no longer trusts without losing its own view of it. A
 hung component that later wakes can therefore still scribble on the supervisor's witness page. The

@@ -10,9 +10,9 @@
 
 use filesystem_fixture as fixture;
 use filesystem_protocol::fs;
-use user_mode_runtime::{call, exit, now, send};
+use user_mode_runtime::{call, exit, now, require, send};
 
-use crate::channel::{FILE, REPORT, STAGE_WRITE, WINDOW, check, fail, open, put_page, read};
+use crate::channel::{FILE, REPORT, STAGE_WRITE, WINDOW, fail, open, put_page, read};
 
 /// **The filesystem throughput benchmark** (milestone 38, DECISIONS §34 condition 2). Six phases
 /// over one file, each self-timed and reported home as `[ticks, transfers, phase]`: sequential
@@ -90,12 +90,12 @@ pub(crate) fn throughput() -> ! {
     // The file is exactly as long as the phase claims to have written it. Without this a server
     // that answered every write with a short count would still produce a throughput number.
     let (size, _) = call(FILE, fs::req(fs::FSTAT, handle, 0), 0);
-    check(size == tp::BLOCKS * tp::UNIT as u64);
+    require(size == tp::BLOCKS * tp::UNIT as u64);
     send(REPORT, ticks, tp::BLOCKS, tp::SEQ_WRITE);
 
     // --- Phase 2: sequential read of what phase 1 left behind. ---
     for _ in 0..tp::WARMUP {
-        check(read(handle, 0, tp::UNIT) == tp::UNIT);
+        require(read(handle, 0, tp::UNIT) == tp::UNIT);
     }
     let start = now();
     let mut got = 0u64;
@@ -103,13 +103,13 @@ pub(crate) fn throughput() -> ! {
         got += read(handle, k * tp::UNIT as u64, tp::UNIT) as u64;
     }
     let ticks = now().wrapping_sub(start);
-    check(got == tp::BLOCKS * tp::UNIT as u64);
+    require(got == tp::BLOCKS * tp::UNIT as u64);
     send(REPORT, ticks, tp::BLOCKS, tp::SEQ_READ);
 
     // --- Phase 3: random read, page-aligned, inside the file. ---
     let mut rng = 0x38F5_7042_1DEA_u64;
     for _ in 0..tp::WARMUP {
-        check(read(handle, next_offset(&mut rng), tp::UNIT) == tp::UNIT);
+        require(read(handle, next_offset(&mut rng), tp::UNIT) == tp::UNIT);
     }
     let start = now();
     let mut got = 0u64;
@@ -117,7 +117,7 @@ pub(crate) fn throughput() -> ! {
         got += read(handle, next_offset(&mut rng), tp::UNIT) as u64;
     }
     let ticks = now().wrapping_sub(start);
-    check(got == tp::BLOCKS * tp::UNIT as u64);
+    require(got == tp::BLOCKS * tp::UNIT as u64);
     send(REPORT, ticks, tp::BLOCKS, tp::RAND_READ);
 
     // --- Phase 5, out of order on purpose: the cheapest 4 KiB read there is. ---
@@ -127,7 +127,7 @@ pub(crate) fn throughput() -> ! {
     // everything else held identical. See `fixture::throughput::RECORD_READ`.
     let records = (tp::BLOCKS * tp::UNIT as u64) / tp::RECORD;
     for k in 0..tp::WARMUP {
-        check(read(handle, (k % records) * tp::RECORD, tp::UNIT) == tp::UNIT);
+        require(read(handle, (k % records) * tp::RECORD, tp::UNIT) == tp::UNIT);
     }
     let start = now();
     let mut got = 0u64;
@@ -135,7 +135,7 @@ pub(crate) fn throughput() -> ! {
         got += read(handle, (k % records) * tp::RECORD, tp::UNIT) as u64;
     }
     let ticks = now().wrapping_sub(start);
-    check(got == tp::BLOCKS * tp::UNIT as u64);
+    require(got == tp::BLOCKS * tp::UNIT as u64);
     send(REPORT, ticks, tp::BLOCKS, tp::RECORD_READ);
 
     // --- Phase 4: random write, in place, over blocks that already exist. The offset stream runs
@@ -153,7 +153,7 @@ pub(crate) fn throughput() -> ! {
     let ticks = now().wrapping_sub(start);
     // The file did not grow: a random write that appended would be measuring allocation.
     let (size, _) = call(FILE, fs::req(fs::FSTAT, handle, 0), 0);
-    check(size == tp::BLOCKS * tp::UNIT as u64);
+    require(size == tp::BLOCKS * tp::UNIT as u64);
     send(REPORT, ticks, tp::BLOCKS, tp::RAND_WRITE);
 
     exit();
@@ -171,7 +171,7 @@ fn throughput_file() -> u64 {
     }
     let h = open(name);
     let (t, _) = call(FILE, fs::req(fs::TRUNCATE, h, 0), 0);
-    check((t as i64) >= 0);
+    require((t as i64) >= 0);
     h
 }
 
@@ -183,7 +183,7 @@ fn write_unit(handle: u64, offset: u64) {
     if (r0 as i64) < 0 {
         fail(STAGE_WRITE, r0);
     }
-    check(r0 as usize == unit);
+    require(r0 as usize == unit);
 }
 
 /// **Fill the whole shared page with fresh, incompressible bytes**, advancing `state`. Eight bytes

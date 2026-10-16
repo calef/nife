@@ -177,7 +177,7 @@ that it arrives ahead of every build step and every instance that started. That 
 manifest a request the supervisor may refuse rather than an instruction it carries out half way.
 
 A greppable claim. `components/src/swapper.rs` contains no `abi::rights::*` and no
-`abi::aspace::MAP_R*`. There is nothing left in the operator to type wrong.
+`abi::address_space::MAP_R*`. There is nothing left in the operator to type wrong.
 
 Plus thirteen host tests and three Kani harnesses on the pure logic, which is where `component_plan`
 lives for exactly that reason. The three proofs are the ones a case-by-case test cannot close. No
@@ -236,8 +236,8 @@ else. That is the whole of what the queued channel does to `chatty`: `to_produce
 
 Hand a device over on the far side of a revoke. `component_plan` sorts device mappings last, so
 both halves are slices of one plan: build the child from `plan.maps_without_devices()` with
-`Retention::Nothing` (§142 (what a spawner retains over a child)), and after `Frame::REVOKE` map
-each of `plan.devices()` with `abi::aspace::MAP_INTO`. `components/src/swapper.rs`
+`Retention::Nothing` (§142 (what a spawner retains over a child)), and after `DeviceFrame::REVOKE` map
+each of `plan.devices()` with `abi::address_space::MAP_INTO`. `components/src/swapper.rs`
 `build_without_devices` is the build half.
 
 ## BUGS

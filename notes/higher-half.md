@@ -106,7 +106,7 @@ them:
 
 | | Speaks | Example |
 |---|---|---|
-| `frames::Frame` | **physical** | what the allocator hands out |
+| `page_frames::PageFrame` | **physical** | what the allocator hands out |
 | linker symbols | **virtual** | `__text_start`, `__stack_top` |
 | the device tree pointer from `x0` | **physical** | QEMU speaks physical |
 | anything you dereference | **virtual** | necessarily |

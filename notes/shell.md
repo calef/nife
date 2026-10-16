@@ -99,7 +99,7 @@ not papered over.
 
 **The process service is a kernel thread.** The shell's `run` sends a spawn request to a service
 that starts the worker. That service lives in the kernel today, because true userspace process
-creation needs the kernel to hand out address-space and thread capabilities built from Untyped
+creation needs the kernel to hand out address-space and thread capabilities built from a memory region
 memory: §10's deferred third axis, milestone 11. The shell does not care where the service lives,
 only that it can name it, which is the point: the interface is a capability either way, and moving
 the service to userspace later changes nothing the shell can observe.

@@ -21,7 +21,7 @@
 //! region per process and the address space's root, tables, and image pages are all retyped
 //! from it, so teardown is [`destroy`] and the whole budget returns in one call. The kernel's
 //! own objects went fixed instead of untyped-backed (TCBs in a static pool, endpoints in a
-//! fixed table; notes/tcb.md records why retype earns nothing while the kernel is the only
+//! fixed table; notes/thread-control-block.md records why retype earns nothing while the kernel is the only
 //! payer). What remains heap-backed is the revocation database, phase C's work.
 //!
 

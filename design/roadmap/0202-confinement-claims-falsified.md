@@ -53,7 +53,7 @@ escape route we never thought of, and that is where real escapes live.
 
 So this is a floor. It converts existing confinement tests from rituals into evidence, and it
 says nothing about the attacks nobody imagined. A genuine adversarial pass by someone who did not
-build this system is a different and better thing; it wants outside eyes, and calef's position that
+build this system is a different and better thing; it wants outside eyes. calef's position that
 no third party sees nife until there is a package manager and a trivial install gates it behind
 milestone 198 (a package manager, and the trivial install that makes a second customer possible).
 
@@ -103,7 +103,7 @@ prediction down is what made it checkable.
   provisional path nothing sweeps. The blocker underneath is smaller and sharper than it looks:
   there is no way to run one kernel test by name. `kernel/src/testing.rs`'s runner takes no
   filter, `cargo xtask test` parses only `--arch`, `--cpu` and `--hvf`, and anything after `--`
-  reaches QEMU rather than the kernel, so one falsification costs a whole suite run (about four
+  reaches QEMU rather than the kernel. One falsification costs a whole suite run (about four
   minutes, and 234 seconds of that was one hung test). A filter would make the kernel half of this
   table affordable and is worth a milestone of its own; it is also useful to every lane that has
   ever waited out the full suite to see one test.
@@ -124,7 +124,7 @@ prediction down is what made it checkable.
   documented example does not work teaches the wrong thing to whoever meets it first.
 - The enumeration in step 1 is the hard part and is not a lane's to finish alone. What this
   system claims about confinement is spread across DECISIONS §31, §14, the DMA validator and
-  `notes/untrusted-input-audit.md`, and assembling it did surface claims nobody had stated plainly:
+  `notes/untrusted-input-audit.md`. Assembling it did surface claims nobody had stated plainly:
   that a confined device's *values* are not confined but only its reach, that a `SURVEY` cursor
   counts threads the viewer cannot name, and that init's bytes are unsigned. The first two are in
   the table as claims this system deliberately does not make, so that nobody reads the DMA rows
@@ -174,6 +174,6 @@ them today. Applies §134's falsification discipline to security claims: enumera
 component cannot do, record the change that breaks each, show the test goes red. A floor,
 explicitly: it cannot find the claim nobody made, and no result may be quoted as "the confinement
 holds". Landed as notes/confinement-claims.md (26 claims enumerated) plus 25 replayable
-falsifications, up from 6; found that §31's headline witness assertion is not what catches a
+falsifications, up from 6. Found that §31's headline witness assertion is not what catches a
 broken confinement, and that six kernel confinement tests cannot be falsified by machine because
 no kernel test can be run by name.

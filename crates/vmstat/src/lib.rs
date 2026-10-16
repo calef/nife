@@ -42,6 +42,7 @@
 #![cfg_attr(not(test), no_std)]
 
 use machine_statistics_protocol::Snapshot;
+use number_writer::write_right;
 
 /// The two header lines and the one report line, or nothing if `machine` is `None`, since a
 /// `vmstat` that cannot see the machine has nothing to tabulate. The caller says why on its
@@ -80,22 +81,6 @@ pub fn write_diagnostics(granted: bool, machine: Option<&Snapshot>, out: &mut dy
     } else {
         out(b"vmstat: the machine's owner has not granted the machine statistics page\n");
     }
-}
-
-fn write_right(v: u64, width: usize, out: &mut dyn FnMut(&[u8])) {
-    let mut buf = [b' '; 24];
-    let mut i = buf.len();
-    let mut v = v;
-    loop {
-        i -= 1;
-        buf[i] = b'0' + (v % 10) as u8;
-        v /= 10;
-        if v == 0 {
-            break;
-        }
-    }
-    let start = buf.len().saturating_sub(width.max(buf.len() - i));
-    out(&buf[start..]);
 }
 
 #[cfg(test)]
@@ -155,21 +140,5 @@ mod tests {
                 .unwrap()
                 .contains("owner has not granted")
         );
-    }
-
-    fn right(v: u64, width: usize) -> String {
-        let mut out = Vec::new();
-        write_right(v, width, &mut |b| out.extend_from_slice(b));
-        String::from_utf8(out).unwrap()
-    }
-
-    /// A column pads short numbers and never cuts a long one: the digits decide the width when
-    /// they outrun it.
-    #[test]
-    fn a_number_wider_than_its_column_is_printed_whole() {
-        assert_eq!(right(5, 3), "  5");
-        assert_eq!(right(0, 2), " 0");
-        assert_eq!(right(12345, 3), "12345");
-        assert_eq!(right(u64::MAX, 4), "18446744073709551615");
     }
 }

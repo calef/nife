@@ -13,10 +13,10 @@ A terminal sits between two driver endpoints and an application:
        application ◄─lines──└──────────┘◄─OPERATION_WRITE / OPERATION_READLINE── application
 ```
 
-Nobody in that picture can name anyone else. The input driver holds "an endpoint I send wire
-bytes to." The application holds "an endpoint that prints text and reads lines." The console
-server holds "an endpoint requests arrive on." Endpoint-only naming
-([ipc-naming.md](ipc-naming.md)) is the whole point: rewire the endpoints and no client can tell
+Nobody in that picture can name anyone else. The input driver holds "a rendezvous I send wire
+bytes to." The application holds "a rendezvous that prints text and reads lines." The console
+server holds "a rendezvous requests arrive on." Rendezvous-only naming
+([ipc-naming.md](ipc-naming.md)) is the whole point: rewire the rendezvouses and no client can tell
 the terminal changed, which is milestone 23 (a capability-routed component OS with live replacement)'s hot-swap claim in component form. See
 [line-discipline.md](line-discipline.md) for the component that implements this today and why it
 was built rather than ported.

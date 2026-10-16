@@ -16,14 +16,14 @@ that 16b's block always recorded as "a hardware fact nobody can schedule."
 **The hardware fact changed on 2026-09-17, and the gate did not.** The survey below, re-run that
 day, found a buyable board that ships the ratified spec: the SpacemiT K3, about $299. What now
 blocks the milestone is two pieces of our own engineering rather than the silicon, a platform
-discovery path beside 16b's PCI one and an APLIC/IMSIC driver, and the gate stays HARDWARE only
+discovery path beside 16b's PCI one and an APLIC/IMSIC driver. The gate stays HARDWARE only
 because nobody has bought the board (milestone 241, `Gate: DECISION`, holds that call). The original
 claim, that no such board exists at any price, is withdrawn and kept below as written.
 
 Split out of milestone 16 on 2026-08-20, because 16a (first silicon on the VisionFive 2) is PARTIAL
 with lane-sized engineering remaining, while this is an indefinite hardware wait. The two were
 bundled under one number since the original milestone was written, and the split makes the hardware
-fact honest: 16's remaining work is engineering that can be done now; this is a purchase that has
+fact honest. 16's remaining work is engineering that can be done now. This is a purchase that has
 not been made and cannot be scheduled.
 
 ## What this is
@@ -85,7 +85,7 @@ rendering carries a 2026-02-22 stamp on the same v1.0.1 version number, so the b
    RISC-V IOMMU driver binds to, so the K3's IOMMU answers at the spec's own register interface and
    the vendor part is an extension rather than a substitute. The extension is a distributed
    architecture: one main IOMMU with up to 64 IOATCs caching IOTLBs beside the DMA masters, each
-   with its own performance counters and interrupt vector, which is why the binding raises the
+   with its own performance counters and interrupt vector. That is why the binding raises the
    interrupt count from 4 to 68. Author Lv Zheng, 2026-02-28, v5 of the series.
    ([patch](https://lkml.iu.edu/2602.3/08975.html))
 
@@ -192,6 +192,6 @@ Split out of milestone 16 on 2026-08-20. 16b built IOMMU-backed DMA isolation in
 both ISAs; this is the carry-over to silicon, which waits on a RISC-V board that ships the
 ratified IOMMU spec (v1.0.1). The driver is built; the work was "boot it and fix what the silicon
 got wrong." Survey re-run 2026-09-17: such a board now exists and is buyable (SpacemiT K3, ~$299,
-ratified per its `riscv,iommu` dt-binding fallback), so the remaining gaps are ours, a platform
+ratified per its `riscv,iommu` dt-binding fallback). So the remaining gaps are ours, a platform
 discovery path beside 16b's PCI one and an APLIC/IMSIC driver for an RVA23 part that does not speak
 PLIC.

@@ -26,7 +26,7 @@ wrong with either file; they are from different builds.
 ## Why the pair drifted, which is the part worth fixing
 
 `script/board-image` builds a matched pair correctly, and its own comment records the scar that
-taught it to: on 2026-08-15 it built kernel-first, produced a kernel vouching for the *previous*
+taught it to. On 2026-08-15 it built kernel-first, produced a kernel vouching for the *previous*
 archive, and the board refused the pair at the bench (`MEASURED BOOT REFUSED`, boot 12). The build
 order was fixed then.
 
@@ -49,14 +49,14 @@ started instructing one.
 
 - The printed card-prep steps copy all three files, with the archive no longer described as
   optional.
-- A word about why, at the place the reader meets it: the kernel measures the archive and
+- A word about why, at the place the reader meets it. The kernel measures the archive and
   refuses a mismatch, so the two files travel together or the board halts.
 - Consider making the mismatch impossible to express rather than documented. The strongest form
   available here is that the script copies the files itself when given a target volume, so a human
   cannot copy one without the other. That is rung one of AGENTS.md's ladder against this block's
   rung three. It is in tension with the script's deliberate refusal to run anything destructive
   ("`dd` to a device is a decision the person at the bench makes"), and that tension is the design
-  question this milestone should answer rather than assume: copying files onto a mounted
+  question this milestone should answer rather than assume. Copying files onto a mounted
   filesystem is not `dd` to a raw device, and the two may not deserve the same caution.
 
 ## What it got, 2026-09-02
@@ -76,14 +76,14 @@ AGENTS.md's ladder and asked which wins. **Copying wins, and the boundary is not
 a disk".**
 
 Formatting names a *whole device*. `diskutil eraseDisk /dev/diskN` and `dd` destroy everything on
-whatever that name resolves to, the name is easy to get wrong, and the person at the bench is the
+whatever that name resolves to, the name is easy to get wrong. The person at the bench is the
 one looking at it. Copying names a *mounted filesystem the operator already chose and mounted*, and
 its worst outcome is three unexpected files somewhere. Those are different acts, and the original
-refusal was written about the first one; the header comment now says so explicitly instead of
+refusal was written about the first one. The header comment now says so explicitly instead of
 leaving the distinction to be re-derived.
 
 The argument that decides it is that only the script can make the set indivisible. A printed step
-is rung four whatever it says, and this milestone exists because rung four failed: the steps were
+is rung four whatever it says, and this milestone exists because rung four failed. The steps were
 correct about the kernel and silent about the archive, and a card came apart. Prose warning a
 reader to copy three files is the same rung as the prose that told them to copy two.
 
@@ -144,7 +144,7 @@ the build rather than after it. What no host check covers is a real card's files
 
 `script/board-image --card <dir>` copies the kernel, the archive and the boot script onto a
 mounted card as one act, so the pair cannot be separated by following the printed steps, which is
-how it came apart. The block's design question was answered rather than assumed: formatting names
+how it came apart. The block's design question was answered rather than assumed. Formatting names
 a whole device and stays the operator's, copying names a filesystem they already mounted, and only
 the script can make a set indivisible, because a printed instruction is the same rung as the
 printed instruction that failed. It also removes a stale nife `extlinux.conf`, matched by content

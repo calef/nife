@@ -15,7 +15,7 @@ Case (c) is not speculation and it is not a gap somebody should close casually.
 > than by a hang.
 
 The mechanism is worth spelling out because it is the load-bearing fact for question 4 in the
-parent. `Untyped::DESTROY` on a region holding a live thread does not fail passively: it marks the
+parent. `MemoryRegion::DESTROY` on a region holding a live thread does not fail passively: it marks the
 thread `killed` and refuses, so the owner's retry reclaims a runaway. That is the amendment to §16
 (object revocation), and the forcible `^C` of §24 (interrupting the foreground process). The kill is
 spent in `schedule()`, at the top of the decision, and only for a thread whose state is `Running`. A
