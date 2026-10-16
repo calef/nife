@@ -71,7 +71,7 @@ constant is still raised only after it has failed silently."*
 `script/swish-check` fails if the kernel flagged a boot as having gone past the peak recorded beside
 the constant. No other fixed-size table has that. The argument for the first gauge applies unchanged.
 `CAPABILITY_TABLE_SLOTS` was raised three times and every raise was reactive, after a silent failure
-that named something else. Milestone 230 is the worked example that cost a bisect over a
+that named something else. Milestone 230 (`script/shell-check` is red on `main`, on both architectures) is the worked example that cost a bisect over a
 virtio-rng attaching and init trapping with no message. Every ungauged constant still has that
 property, because a table that fills produces a failure downstream in whatever code first cannot get
 a slot, and the distance between cause and symptom is the whole cost. The second reason makes this

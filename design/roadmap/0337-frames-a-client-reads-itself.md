@@ -43,7 +43,7 @@ capability that says exactly which bytes, with exactly which rights, revocable. 
 is a result about capability systems and not only about this file server. If it does not work, the
 reason is worth writing down, because it is a claim about the model.
 
-The questions the design has to answer are the ones milestone 138 refused a data cache over. They
+The questions the design has to answer are the ones milestone 138 (close the read gap) refused a data cache over. They
 are coherency between a client reading frames and a server writing them, what a client observes when
 the file changes underneath it, and what revocation means mid-read. The metadata cache had none of
 those because it lives inside one server's address space. This has all of them, which is why it is
