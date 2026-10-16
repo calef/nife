@@ -20,8 +20,9 @@ becomes a `design/decisions/` section when 269 is taken, not before.
 
 This is a design fork about the kernel's shape, not work to schedule.
 The decision it waits on is [§149](../decisions/0149-kernel-served-console-endpoint.md), cited
-here on 2026-09-19 by milestone 435's slice-c lane, which found this gate naming no section. §149
-(may the kernel answer on an endpoint, where §121 leaves no userspace holder?) is
+here on 2026-09-19 by milestone 435 (forty-five milestones are gated on a decision nobody wrote
+down)'s slice-c lane, which found this gate naming no section. §149
+(may the kernel answer on an endpoint) is
 `DECIDED` and what it decided about *this* question is to refuse it. It separated the console case
 from kernel introspection in a six-row table, on the ground that the console is **forced** by
 hardware and introspection is **chosen**. And it says in its own words that *"a reader citing this
