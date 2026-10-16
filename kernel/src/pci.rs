@@ -750,7 +750,7 @@ fn bring_up(bdf: Bdf, device_type: u32) -> Option<PciVirtioDevice> {
             // (blk's capacity, the gpu's). Absent stays `None` rather than failing bring-up, so
             // a function with nothing to say there still comes up.
             pci::VIRTIO_CAP_DEVICE if device_config.is_none() => {
-                device_config = resolve(&bars, &capability)
+                device_config = resolve(&bars, &capability);
             }
             _ => {}
         },
