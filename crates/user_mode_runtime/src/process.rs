@@ -127,9 +127,10 @@ pub fn trap() -> ! {
 /// require(frame >= 0);
 /// ```
 ///
-/// Name: provisional (milestone 408's lane, 2026-10-15 UTC). The kernel spends `require` on a
-/// mismatch that must not be recovered from (`trust::require`, which halts), so the same idea one
-/// privilege level down wears the same word. Refused `check`, what every copy was called, because
+/// Name: provisional, minted by milestone 408 (one home for `fn check(ok: bool)`) on
+/// 2026-10-15 (UTC). The kernel spends `require` on a mismatch that must not be recovered from
+/// (`trust::require`, which halts), so the same idea one privilege level down wears the same
+/// word. Refused `check`, what every copy was called, because
 /// it is one of the generic words design/naming.md names a failure mode: half the tree checks
 /// something, and the crate every program links is the worst place to spend a vague word. Refused
 /// `insist` (unusual enough to need explaining) and `must` (reads as a modal verb at the call
