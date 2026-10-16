@@ -12,7 +12,7 @@ needs_person: no
 Filed 2026-09-03 as an unnumbered proposal by the milestone 247 sweep,
 from milestone 138's block; numbered 2026-09-19 by milestone 433. **Premise re-checked 2026-09-19 and
 it holds.** `bench/record-level-sweep.sh` is still in the tree, `filesystem_protocol::fs::TRANSFER_PAGES`
-is still 16 (64 KiB), and milestone 138's block still publishes 5.13x as its headline read ratio
+is still 16 (64 KiB). Milestone 138's block still publishes 5.13x as its headline read ratio
 in its opening paragraph and at four more sites, every one of them taken at 4 KiB. Nothing has re-run
 the sweep at the shipped size.
 
@@ -60,8 +60,8 @@ one entry in `git blame`.
 ## Index row
 
 Milestone 138's step 1 chose record level 1 on 4 KiB evidence and its step 3 then made 64 KiB the
-default request, so the 5.13x figure step 1 published is a ratio about a contract the system stopped
-using two steps later, and the record level it selected was selected under the same stale conditions.
+default request. So the 5.13x figure step 1 published is a ratio about a contract the system stopped
+using two steps later. The record level it selected was selected under the same stale conditions.
 The number is the smaller problem, though a headline benchmark figure describing a configuration
 nothing ships is exactly what this tree's benchmark posture exists to prevent and a quoted 5.13x is a
 fact that has left the machine. The choice is the larger one: a larger request amortizes per-record
