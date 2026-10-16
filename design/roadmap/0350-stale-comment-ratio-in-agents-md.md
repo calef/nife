@@ -55,7 +55,7 @@ cannot fix it."*
 ## Index row
 
 `AGENTS.md` tells a reader that `kernel/src` "measures 40% of them" when discussing comments in the
-line count. Milestone 234's weekly series measures that ratio directly: it was 39.3% eight weeks
+line count. Milestone 234 (the project's own numbers)'s weekly series measures that ratio directly: it was 39.3% eight weeks
 before the proposal was written, 45.3% when it was written, and 46.4% on 2026-09-14. The figure was
 true when it was written and is not true now. This is the project's front-door file, read before
 anything else, and AGENTS.md's own third principle is that a stranger must be able to succeed on the
