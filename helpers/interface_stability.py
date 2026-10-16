@@ -74,6 +74,7 @@ CONTRACTS = (
 # true. All are contracts but one (`user_mode_heap`, the runtime division), which is why the
 # interface is the union of the two and not the contracts alone.
 STD_ABI_SOURCE = 'xtask/src/farm.rs'
+STD_ABI_GLOBS = ('xtask/src/farm.rs', 'xtask/src/farm/*.rs')
 STD_ABI_RE = re.compile(r'"crates/(\w+)/src/lib\.rs"')
 
 # A format identity: a public constant a reader checks before trusting the bytes after it. A value
@@ -99,6 +100,7 @@ MASS_SUBJECT = re.compile(r'\b(renam|migrat|lint sweep|sweep|reformat|format(ted
 FIELDS = [
     'interface_breaking', 'interface_additions',
     'interface_std_abi_breaking', 'interface_std_abi_additions',
+    'interface_contract_api_breaking', 'interface_contract_api_additions',
     'interface_syscall_added', 'interface_syscall_changed', 'interface_syscall_renamed',
     'interface_format_bumps', 'interface_format_amendments',
     'interface_contract_commits', 'interface_contract_commits_crossing',
@@ -188,19 +190,33 @@ def std_abi_crates(text):
     return sorted(set(STD_ABI_RE.findall(text)))
 
 
+def std_abi_source_texts():
+    # The copy list lives in the farm module. farm.rs became an index of its children (2026-10-12)
+    # and the list moved with the copies, so read the index and every child and a future split
+    # moves the strings without silencing this. The W42 std columns silently read an empty set
+    # for exactly that reason; the weekly read found no `"crates/<name>/src/lib.rs"` left in the
+    # index file.
+    paths = [p for one_glob in STD_ABI_GLOBS for p in sorted(pathlib.Path('.').glob(one_glob))]
+    return [p.read_text() for p in paths] or [pathlib.Path(STD_ABI_SOURCE).read_text()]
+
+
 # ---------------------------------------------------------------------------------------------
 # A public API, from rustdoc JSON, as {item path: fingerprint}.
 #
 # The path is the crate-relative path a consumer writes (`rendezvous::SEND`, `Header::len`,
-# `Slot: impl Clone`). The fingerprint is the item's rustdoc description with everything that is
-# not interface removed: ids (which rustdoc renumbers per build), spans, docs, links. Children
-# (fields, variants, methods, trait items) are items of their own, so a struct's fingerprint is
-# its shape, its field order and its repr, and a field's is its type. A constant's fingerprint
-# carries its VALUE, and a variant's its discriminant, because on this tree those are wire numbers.
+# `Slot: impl Clone`). A `pub use` is the item it names: the consumer writes the re-export's
+# path, so the target's fingerprint is recorded under the re-export's local name (the
+# "re-export rule" in notes/interface-stability.md), and moving a definition behind `pub use`,
+# as a §282 index split does, moves no surface. The fingerprint is the item's rustdoc
+# description with everything that is not interface removed: ids (which rustdoc renumbers per
+# build), spans, docs, links. Children (fields, variants, methods, trait items) are items of
+# their own, so a struct's fingerprint is its shape, its field order and its repr, and a
+# field's is its type. A constant's fingerprint carries its VALUE, and a variant's its
+# discriminant, because on this tree those are wire numbers.
 
 # Bump when `surface` changes what it records, so a cached surface from the old reader is not
 # compared with a fresh one from the new.
-SURFACE_VERSION = 'v3'
+SURFACE_VERSION = 'v4'
 # The interface as a nife program sees it: every contract crate is `no_std` and builds for the
 # kernel's own first target, and two (`supervision_protocol`, `swap_protocol`) link
 # `user_mode_runtime`, which does not build for the host at all. BUGS: items behind a
@@ -305,14 +321,39 @@ def surface(doc, read_span=None):
             return
         kind, body = next(iter(it['inner'].items()))
         name = it.get('name')
+        if kind == 'use':
+            if body.get('is_glob'):
+                out[(prefix or '') + '*' + body.get('source', '')] = _fp(
+                    {'use': body.get('source')})
+                return
+            # Format 61 carries a re-export's local name and its target's id inside
+            # `inner.use`; the item-level `name` is None there. Follow chains of re-exports to
+            # the item a consumer actually names.
+            name = body.get('name') or name
+            if not name:
+                return
+            target = it
+            seen = set()
+            while next(iter(target['inner'].items()))[0] == 'use':
+                inner_use = target['inner']['use']
+                tid = inner_use.get('id')
+                if inner_use.get('is_glob') or tid is None or tid in seen:
+                    target = None
+                    break
+                seen.add(tid)
+                target = item(tid)
+                if target is None:
+                    break
+            if target is None:
+                # A foreign or dangling re-export: the name is surface, the shape is not ours.
+                out[(prefix or '') + name] = _fp({'use': body.get('source')})
+                return
+            it = target
+            kind, body = next(iter(it['inner'].items()))
         path = prefix + name if prefix is not None and name else ''
         if kind == 'module':
             for child in body.get('items') or []:
                 walk(child, (path + '::') if path else '', depth + 1)
-            return
-        if kind == 'use':
-            key = path if not body.get('is_glob') else (prefix or '') + '*' + body.get('source', '')
-            out[key] = _fp({'use': body.get('source')})
             return
         if kind in ('struct', 'union'):
             skind = body.get('kind', {}) if kind == 'struct' else {'plain': body}
@@ -459,6 +500,7 @@ def compare(old, new, std_abi):
     and a per-crate breakdown.
     """
     counts = {'breaking': 0, 'additions': 0, 'std_breaking': 0, 'std_additions': 0,
+              'contract_breaking': 0, 'contract_additions': 0,
               'syscall_added': 0, 'syscall_changed': 0, 'syscall_renamed': 0, 'format_bumps': 0,
               'renamed': 0}
     per_crate = {}
@@ -469,41 +511,57 @@ def compare(old, new, std_abi):
         mine = per_crate.setdefault(crate, {'breaking': 0, 'additions': 0})
         std = crate in std_abi
         if crate in old and crate in new and old[crate]['dir'] != new[crate]['dir']:
-            # A crate rename breaks every `use` of it, and is one decision, not one per item.
-            counts['breaking'] += 1
+            # A crate rename breaks every `use` of it, and is one decision, not one per item. It
+            # is reported where the crate's own items land, std copy set or contract API, not on
+            # the boundary.
             counts['renamed'] += 1
             mine['breaking'] += 1
-            counts['std_breaking'] += std
+            if std:
+                counts['std_breaking'] += 1
+            else:
+                counts['contract_breaking'] += 1
             events.append((crate, 'crate renamed', '%s -> %s' % (old[crate]['dir'],
-                                                                   new[crate]['dir'])))
+                                                                 new[crate]['dir'])))
         removed = [p for p in a if p not in b]
         changed = [p for p in a if p in b and a[p] != b[p]]
         added = [p for p in b if p not in a]
-        broke = len(removed) + len(changed)
-        counts['breaking'] += broke
-        counts['additions'] += len(added)
-        mine['breaking'] += broke
+        mine['breaking'] += len(removed) + len(changed)
         mine['additions'] += len(added)
-        if std:
-            counts['std_breaking'] += broke
-            counts['std_additions'] += len(added)
+        renamed_to = syscall_renames(crate, removed, added, a, b)
         for p in added:
             if is_syscall_item(crate, p, b[p]):
                 counts['syscall_added'] += 1
-        renamed_to = syscall_renames(crate, removed, added, a, b)
+            elif std:
+                counts['std_additions'] += 1
+            else:
+                counts['contract_additions'] += 1
+        # Every event lands in exactly one bucket, widest first: the syscall surface, then a
+        # format identity, then the std copy set, then the contract crates' remaining API. The
+        # headline (`interface_breaking`, `interface_additions`) is the boundary a program
+        # outside the tree is written against, the syscall surface and the wire formats (calef,
+        # 2026-10-16 UTC). The std copy set and the contract API are reported beside it, like
+        # co-change: a program built from packages is written against stable `std` and the
+        # kernel boundary, not against a contract crate's internals.
         for p in sorted(removed + changed):
             what = 'removed' if p in removed else 'changed'
             if p in renamed_to:
                 counts['syscall_renamed'] += 1
                 what = 'syscall renamed, number kept (%s), now `%s`' % (syscall_class(p),
                                                                        renamed_to[p])
+            elif p in changed and is_format_const(p, a[p]):
+                counts['format_bumps'] += 1
+                what = 'format bump'
             elif is_syscall_item(crate, p, a[p]):
                 counts['syscall_changed'] += 1
                 what = 'syscall %s, %s' % (what, syscall_class(p))
-            if p in changed and is_format_const(p, a[p]):
-                counts['format_bumps'] += 1
-                what = 'format bump'
+            elif std:
+                counts['std_breaking'] += 1
+            else:
+                counts['contract_breaking'] += 1
             events.append((crate, what, p))
+    counts['breaking'] = (counts['syscall_changed'] + counts['syscall_renamed']
+                          + counts['format_bumps'])
+    counts['additions'] = counts['syscall_added']
     return counts, per_crate, events
 
 
@@ -610,12 +668,17 @@ def _package_and_lib(cargo_toml):
 def measure(rev, lineage_map, wanted):
     """{identity: {'dir', 'items', 'ledger'}} for the interface crates in `rev`, and the unmeasured.
 
-    `wanted` is the set of identities (HEAD names) that make up the interface.
+    `wanted` is the set of identities (HEAD names) that make up the interface. A cached surface is
+    trusted only when it covers every wanted identity, present or unmeasured: a cache from a run
+    with a narrower `wanted` is missing crates silence, not absence, and reading one turns every
+    crate it left out into a mass removal on one side.
     """
     cache = SCRATCH / 'surfaces' / ('%s-%s.json' % (SURFACE_VERSION, rev))
     if cache.exists():
         saved = json.loads(cache.read_text())
-        return saved['crates'], saved['unmeasured']
+        covered = set(saved['crates']) | set(saved['unmeasured'])
+        if covered >= set(wanted):
+            return saved['crates'], saved['unmeasured']
     tree = SCRATCH / 'tree'
     if tree.exists():
         shutil.rmtree(tree)
@@ -782,6 +845,8 @@ def cells_for(week, prev_measure, this_measure, std_abi, cochange):
         'interface_additions': counts['additions'],
         'interface_std_abi_breaking': counts['std_breaking'],
         'interface_std_abi_additions': counts['std_additions'],
+        'interface_contract_api_breaking': counts['contract_breaking'],
+        'interface_contract_api_additions': counts['contract_additions'],
         'interface_syscall_added': counts['syscall_added'],
         'interface_syscall_changed': counts['syscall_changed'],
         'interface_syscall_renamed': counts['syscall_renamed'],
@@ -799,7 +864,9 @@ def cells_for(week, prev_measure, this_measure, std_abi, cochange):
 def run(mode):
     lineage_map = lineage()
     LINEAGE_CACHE.update(lineage_map)
-    std_abi = set(std_abi_crates(pathlib.Path(STD_ABI_SOURCE).read_text()))
+    std_abi = set()
+    for text in std_abi_source_texts():
+        std_abi.update(std_abi_crates(text))
     wanted = set(CONTRACTS) | std_abi
     weeks = week_commits()
     head = git('rev-parse', 'HEAD').strip()
@@ -912,6 +979,36 @@ def selftest():
                               {'fs': {'dir': 'fs_protocol', 'items': {'a': '1'}}}, set())
     born, _p, _e = compare({}, {'n': {'dir': 'n', 'items': {'a': '1', 'b': '2'}}}, set())
     gone, _p, _e = compare({'n': {'dir': 'n', 'items': {'a': '1', 'b': '2'}}}, {}, set())
+    def use_item(name, source, id_, glob=False):
+        return {'name': None, 'visibility': 'public',
+                'inner': {'use': {'source': source, 'name': name, 'id': id_, 'is_glob': glob}}}
+
+    # §282: the parent becomes an index. The definition moves to a private child module and the
+    # root re-exports it; the consumer's paths do not move, so neither may the surface.
+    whole = {5: strukt('Header', [6], [10]), 6: field('len', 'u32'), 10: trait_impl('Clone')}
+    before_split = surface(doc(whole, [5]))
+    items_after_split = dict(whole)
+    items_after_split[20] = use_item('Header', 'header::Header', 5)
+    after_split = surface(doc(items_after_split, [20]))
+    churn, churn_pc, _e = compare(
+        {'grant_plan': {'dir': 'grant_plan',
+                        'items': {'trim': _fp(_clean(const('trim', '0')['inner']))}}},
+        {'grant_plan': {'dir': 'grant_plan',
+                        'items': {'trim': _fp(_clean(const('trim', '9')['inner']))}}},
+        set())
+    renamed_syscall, _pc, _e = compare(
+        {'abi': {'dir': 'abi', 'items': {'irq::ACK': _fp(_clean(const('ACK', '3')['inner']))}}},
+        {'abi': {'dir': 'abi',
+                 'items': {'interrupt::ACK': _fp(_clean(const('ACK', '3')['inner']))}}},
+        {'abi'})
+    bumped, _pc, _e = compare(
+        {'nifefs': {'dir': 'nifefs',
+                    'items': {'DISK_VERSION': _fp(_clean(const('DISK_VERSION', '1')['inner']))}}},
+        {'nifefs': {'dir': 'nifefs',
+                    'items': {'DISK_VERSION': _fp(_clean(const('DISK_VERSION', '2')['inner']))}}},
+        set())
+    std_add, _pc, _e = compare({'n': {'dir': 'user_mode_heap', 'items': {}}},
+                               {'n': {'dir': 'user_mode_heap', 'items': {'a': '1'}}}, {'n'})
     ledger = ledger_dates('//! Intro\n//!\n//! # Amendments\n//!\n//! - 2026-09-27: field order\n'
                           '//!   continued, not an item\n//! - 2026-10-02 (UTC): again\n'
                           '//! # BUGS\n//! - 2026-01-01: not an amendment\n')
@@ -951,20 +1048,47 @@ def selftest():
         ('a blanket impl is not surface', any('From' in k for k in old), False),
         ('a derived trait impl is surface', 'Header: impl Clone' in old, True),
         ('a struct field is its own item', 'Header::len' in old, True),
-        ('breaking: renumber, field reorder, version bump', counts['breaking'], 3),
+        ('a definition moved behind a root re-export moves no surface',
+         after_split == before_split, True),
+        ('the re-export path carries the members',
+         'Header::len' in after_split and 'Header: impl Clone' in after_split, True),
+        ('a re-export chain resolves to the item it names',
+         sorted(surface(doc({40: use_item('A', 'c::A', 41), 41: use_item('A', 'd::A', 42),
+                            42: const('A', '2')}, [40]))), ['A']),
+        ('a use of a module re-exports its items at the alias',
+         sorted(surface(doc({30: module('inner', [31]), 31: const('LIMIT', '4'),
+                            32: use_item('types', 'inner', 30)}, [32]))), ['types::LIMIT']),
+        ('a glob re-export stays keyed by its source',
+         sorted(surface(doc({32: use_item(None, 'inner::x', None, glob=True)}, [32]))),
+         ['*inner::x']),
+        ('a foreign re-export is a name; its shape is not ours',
+         surface(doc({32: use_item('X', 'other::X', 404)}, [32])),
+         {'X': _fp({'use': 'other::X'})}),
+        ('contract api churn is reported, not boundary',
+         (churn['breaking'], churn['contract_breaking']), (0, 1)),
+        ('per-crate breaking keeps the item truth the weekly view demotes',
+         churn_pc['grant_plan']['breaking'], 1),
+        ('a number-kept syscall rename is boundary', renamed_syscall['breaking'], 1),
+        ('a format bump in a contract crate is boundary',
+         (bumped['breaking'], bumped['format_bumps'], bumped['contract_breaking']), (1, 1, 0)),
+        ('a std crate addition is reported, not headline',
+         (std_add['additions'], std_add['std_additions']), (0, 1)),
+        ('breaking: renumber and version bump; the field reorder is std churn',
+         counts['breaking'], 2),
         ('additions: the new object type', counts['additions'], 1),
         ('an id rustdoc renumbered is not a change', 'helper' not in
          [e[2].split(' ')[0] for e in events], True),
-        ('the renumbered syscall is a syscall change', counts['syscall_changed'], 2),
+        ('the renumbered syscall is a syscall change', counts['syscall_changed'], 1),
         ('the new object type is a syscall addition', counts['syscall_added'], 1),
         ('the version constant is a format bump', counts['format_bumps'], 1),
         ('the renumber is classed as a syscall', syscall_class('SYS_EXIT'), 'syscall'),
         ('an object type is classed as one', syscall_class('objtype::NOTIFICATION'), 'object type'),
-        ('std abi counts only its crates', counts['std_breaking'], 3),
-        ('a crate rename is one break, not one per item', (renamed['breaking'], renamed['renamed'],
-                                                          renamed['additions']), (1, 1, 0)),
-        ('a new crate is all additions', (born['breaking'], born['additions']), (0, 2)),
-        ('a deleted crate is every item removed', gone['breaking'], 2),
+        ('std abi reports the items that are not the boundary', counts['std_breaking'], 1),
+        ('a crate rename is one decision; off the boundary it is contract churn',
+         (renamed['breaking'], renamed['renamed'], renamed['contract_breaking']), (0, 1, 1)),
+        ('a new crate is contract additions',
+         (born['breaking'], born['contract_additions']), (0, 2)),
+        ('a deleted crate is every item removed', gone['contract_breaking'], 2),
         ('BOTH_VERSIONS is a flag, not a format', is_format_const(
             'BOTH_VERSIONS', '{"constant":1}'), False),
         ('a magic in a submodule is a format identity',
