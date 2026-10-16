@@ -5,7 +5,7 @@ decided: 2026-10-15
 ratified_by: calef
 ---
 
-# 300. `Tcb::SUSPEND` and `Tcb::RESUME`: the paused state, a TCB verb, silent
+# 300. `ThreadControlBlock::SUSPEND` and `ThreadControlBlock::RESUME`: the paused state, a TCB verb, silent
 
 Raised 2026-10-15 by the lane for milestone 652 (twelve `DECISION` gates cite only sections that
 are already ruled), which wrote the open fork into the place an open decision lives. The fork is
@@ -71,7 +71,7 @@ pid, which is the model this kernel does not have.
 
 | | shape | what it costs |
 |---|---|---|
-| **A** | `Tcb::SUSPEND`/`Tcb::RESUME`, authority the TCB capability, no message. Chosen. | The smallest surface, and seL4's exact shape. A supervisor holding only the supervision endpoint (the §26 shape, and [§32 (a supervisor may collect a corpse)](0032-reap-without-build.md)'s reaper) cannot see or cause the pause. |
+| **A** | `ThreadControlBlock::SUSPEND`/`ThreadControlBlock::RESUME`, authority the TCB capability, no message. Chosen. | The smallest surface, and seL4's exact shape. A supervisor holding only the supervision endpoint (the §26 shape, and [§32 (a supervisor may collect a corpse)](0032-reap-without-build.md)'s reaper) cannot see or cause the pause. |
 | **B** | The same verbs, and suspend delivers a stopped event on the supervision endpoint, the fault endpoint's own channel, so one vocabulary covers "the kernel turned a thread's state into a message". | A third event code on a wire two programs agree on, a policy rule for what a supervisor may do on receiving it (nothing, which is a smell: a notification nobody can act on), and a migration tail across every consumer that dispatches on known codes. The observer it serves, a supervisor that is not the suspender, names no consumer in the tree. |
 | **C** | Endpoint-only: suspend as a message on the supervision endpoint that the kernel acts on, no TCB method. | New endpoint semantics on the wire two programs already agree on, and it inverts §26's direction, where the kernel is the sender. A supervisor that holds no endpoint, as `build_child`'s callers sometimes do not, cannot pause at all. |
 | **D** | Refuse until a debugger exists; build job control's phase one, which needs no kernel surface. | Leaves trigger 2 fired and unanswered, and the shell simulates `Ctrl-Z` by killing, which is the old behavior wearing a new key. |

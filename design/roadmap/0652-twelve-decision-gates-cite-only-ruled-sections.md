@@ -33,7 +33,7 @@ seven needed no new section, for the reasons in their rows.
 | Block | Outcome |
 |---|---|
 | 39 | Unchanged. [§151 (the goal of the repository split is independent release)](../decisions/0151-repository-goal-is-independent-release.md) ruled the goal and kept the order open, and the paragraph already says the block waits on that order. |
-| 48 | `decision_dependencies: 300`, resolved. The fork [§24 (interrupting the foreground)](../decisions/0024-interrupting-the-foreground.md) deferred is decided as [§300 (the paused state)](../decisions/0300-tcb-suspend-resume-the-paused-state.md): `Tcb::SUSPEND`/`RESUME`, silent, on the TCB capability, resume at the PC. |
+| 48 | `decision_dependencies: 300`, resolved. The fork [§24 (interrupting the foreground)](../decisions/0024-interrupting-the-foreground.md) deferred is decided as [§300 (the paused state)](../decisions/0300-tcb-suspend-resume-the-paused-state.md): `ThreadControlBlock::SUSPEND`/`RESUME`, silent, on the TCB capability, resume at the PC. |
 | 137 | Stays `unwritten`. The only open choice is priced where §99 (where Apple's metadata lands) left it and has nowhere to land until an SMB server exists again; the real wait is the retirement ruling, which no field carries. |
 | 172 | `decision_dependencies: 301`, resolved. The wait-and-collect fork is decided as [§301 (exit status and output)](../decisions/0301-exit-status-and-output.md): the status word rides `SYS_EXIT` into the death message. |
 | 188 | Already carried `decision_dependencies: 95`, which the graph resolves; the prose still said the token stays `DECISION`, a sentence the frontmatter switch retired. It now says the E3 run on radon is the wait, carried by the machine and person fields. |
