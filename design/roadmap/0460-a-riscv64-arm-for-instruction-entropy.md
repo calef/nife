@@ -14,7 +14,7 @@ work a number, a status and a condition that would change it.
 From '162. Real hardware entropy on x86_64 and aarch64: RDSEED and RNDRRS', under `## Follow-on`:
 
 > A riscv64 arm. Neither `RDSEED` nor `RNDR`/`RNDRRS` exists on that ISA, so there is no
-> instruction to wrap; milestone 159's JH7110 TRNG is the real hardware source there, through its
+> instruction to wrap. Milestone 159's JH7110 TRNG is the real hardware source there, through its
 > own driver, and pretending otherwise would be a parity claim with nothing behind it.
 >
 > -- design/roadmap/0162-cpu-instruction-entropy.md

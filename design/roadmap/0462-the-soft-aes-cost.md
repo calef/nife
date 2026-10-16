@@ -16,7 +16,7 @@ fallback", under `## Follow-on`:
 
 > The soft-AES cost stays unmeasured on purpose. Upstream puts AES-NI roughly an order of
 > magnitude ahead of the bitsliced backend, but nothing on x86_64 mounts an encrypted RedoxFS
-> volume yet, so there is no workload and a synthetic number would be a fact leaving the machine
+> volume yet. So there is no workload and a synthetic number would be a fact leaving the machine
 > with nothing behind it. The number is owed when an x86_64 workload touches the crypto path, and
 > Route 2 is what it would be weighed against.
 >

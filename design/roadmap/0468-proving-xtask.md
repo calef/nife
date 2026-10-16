@@ -15,10 +15,10 @@ From '197. `user/` and `xtask` are out of reach of the prover, for exactly the r
 was', under `## Follow-on`:
 
 > Proving `xtask`. Its front door is already open, measured: `cargo kani -p xtask` compiles with
-> no changes. The refusal is on value. A defect there cannot reach anything that runs, it is host
-> code with tests and a debugger where Kani is least differentiated, its pure logic already lives
+> no changes. The refusal is on value. A defect there cannot reach anything that runs. It is host
+> code with tests and a debugger, where Kani is least differentiated. Its pure logic already lives
 > in crates the suite proves, and its hand-written decoders exist to be a second opinion on those
-> crates, so aiming one prover at both halves narrows the independence that justifies them. What
+> crates. Aiming one prover at both halves narrows the independence that justifies them. What
 > would reverse it is `xtask` growing logic the target then trusts, and the shape to watch is the
 > measured-boot digest.
 >
