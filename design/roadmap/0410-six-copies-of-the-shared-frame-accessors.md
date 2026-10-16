@@ -1,6 +1,7 @@
 ---
-status: NOT-STARTED
+status: BUILT
 raised: 2026-09-14
+built: 2026-10-16
 promoted_from: six-copies-of-the-shared-frame-accessors
 milestone_dependencies: none
 decision_dependencies: none
@@ -24,6 +25,35 @@ and `fixtures/src/network_time_test_server.rs`, which carry the absolute-VA acce
 about. The remaining two, `components/src/entropy.rs` and `components/src/virtio_net_transport.rs`,
 take an offset rather than a VA and are the virtio pair this file says to price separately. The title
 keeps the count it was filed under.
+
+Closed 2026-10-16 (UTC). The three socket-contract programs construct
+`user_mode_runtime::socket_frame::Frame`, and their absolute-VA accessors are gone. The type had
+this block's first home, `crates/socket_protocol` beside the offsets it reads, and moved. It is
+built on `user_mode_runtime::mapped_window`, which cannot compile for the host, and a dependency
+from `socket_protocol` to `user_mode_runtime` lands `socket_protocol` in the host pass's derived
+exclusion set. That costs the crate its own host tests. The gate's alternative, an optional
+feature, does not help: the resolve graph unifies features across the workspace, so the edge
+exists once any member turns it on. `user_mode_runtime` is already excluded everywhere, takes
+`socket_protocol` for the offsets, and its opt-in modules are the §94 (what may live in a
+library) shape. The virtio pair was priced and priced out. Its accessors are one-line forwards
+over `MappedWindow` with no arithmetic to share, so lifting them would be the abstraction this
+file refuses. The fact the pair does share, the kernel's ring layout spelled as literals, is
+recorded as a `BUGS` entry in each driver, where the fix it wants is named: a `components` ->
+`direct_memory_access_validator` dependency edge, §46 (thin primitives or whole subsystems).
+
+Name: provisional. `Frame`, in the module `socket_frame`, which takes its name from the contract
+it reads so `socket_protocol::` stays the one place a reader looks for the wire. Considered
+`SharedFrame`, which doubles a word the contract's docs already put on "frame". Considered
+`PageFrame`, which names the kernel object a frame is minted from, not the layout read through
+it. Considered a second `base` field beside the window (the wording above), which would
+duplicate the base `MappedWindow` already carries.
+
+## Follow-on
+
+- **Recorded.** The virtio pair's shared fact, the kernel's ring layout spelled as literals in
+  `components/src/entropy.rs` and `components/src/virtio_net_transport.rs` (and in `crates/virtio`'s
+  own net driver), is recorded as a `BUGS` entry on `components/src/virtio_net_transport.rs`,
+  beside its own copy of the layout.
 
 ## What is duplicated
 

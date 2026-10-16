@@ -53,9 +53,10 @@ not at all. That is stated in its proposal and is the reason it is last here.
 ## Index row
 
 The PCI and interrupt discovery path reads more than it programs, and four lanes each found a
-different instance while doing something else: an unclaimed function behind the IOMMU refused per
-request rather than confined once, a bridge window nothing programs, a BAR window sized by a constant
-instead of by the bus, and only the first IO APIC of a multi-socket machine kept. Every one is
+different instance while doing something else. They are an unclaimed function behind the IOMMU
+refused per request rather than confined once, a bridge window nothing programs, and a BAR window
+sized by a constant instead of by the bus. Only the first IO APIC of a multi-socket machine is kept.
+Every one is
 reachable from QEMU configurations this tree already runs, so none waits on hardware; they wait on
 somebody looking. This is `design/fatal-risks/README.md` risk 9's family, found before the machine that
 would punish them rather than after.

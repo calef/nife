@@ -10,7 +10,7 @@ needs_person: yes
 ---
 # 347. Offer the two RedoxFS patches upstream
 
-**Refused (calef, 2026-10-07 UTC).** §46 (Thin primitives or whole subsystems; we write everything in between) decides it: *"Redox is a source we consume and never contribute to ... A patch we need is carried here (§34 (RedoxFS is the primary filesystem), `script/vendor-verify`), never offered upstream."* Redox's own policy refuses AI-generated contributions, and calef ruled on pull request #1806 (2026-10-07) that where a project bans AI work nife sends bug reports only, no code. The two patches stay in `patches/` as carried divergences. Calef ruled on #1815 (2026-10-07) that bug reports to Redox are allowed (disclosed, each approved by calef, security findings privately first) and that no code or patches go; a report about the broken `no_std` build is therefore allowed and is not this milestone. The premise check and text below are as filed.
+**Refused (calef, 2026-10-07 UTC).** §46 (Thin primitives or whole subsystems; we write everything in between) decides it: *"Redox is a source we consume and never contribute to ... A patch we need is carried here (§34 (RedoxFS is the primary filesystem), `script/vendor-verify`), never offered upstream."* Redox's own policy refuses AI-generated contributions, and calef ruled on pull request #1806 (2026-10-07) that where a project bans AI work nife sends bug reports only, no code. The two patches stay in `patches/` as carried divergences. Calef ruled on #1815 (2026-10-07) that bug reports to Redox are allowed (disclosed, each approved by calef, security findings privately first) and that no code or patches go. A report about the broken `no_std` build is therefore allowed and is not this milestone. The premise check and text below are as filed.
 
 **Premise checked 2026-09-19, and it held.** `patches/` still holds exactly `redoxfs-no-std-vec-import.patch` and
 `redoxfs-no-std-create-uuid.patch` beside its README, which still opens by saying each exists to be
@@ -70,13 +70,13 @@ stopped existing, and every future bump re-applies them by hand."*
 
 Two patches against RedoxFS are written, applied and documented, and neither has been offered
 upstream. `redoxfs-no-std-vec-import.patch` fixes the `no_std` build across four `E0425` sites and
-adds a `--no-default-features` CI job so the configuration cannot rot again;
+adds a `--no-default-features` CI job so the configuration cannot rot again.
 `redoxfs-no-std-create-uuid.patch` lets a `no_std` caller create a filesystem by supplying the disk
 id, the same way `create` already takes `ctime`. `patches/README.md` says what the directory is for,
 that an entry leaves it when the pin advances past a release containing the fix, and neither entry
 can ever leave because nobody has asked. The concrete cost is per-bump and recurring, since milestone
 203 built the machinery that reports when upstream moves and each report then re-applies both
-divergences by hand; `create-uuid` is written against 0.9.1 so it applies with zero fuzz to the pin,
+divergences by hand. `create-uuid` is written against 0.9.1 so it applies with zero fuzz to the pin,
 and rebasing it onto master gets more expensive the longer nobody does it. There is a second cost
 that is not ours: the `no_std` build of RedoxFS is broken upstream for everyone and this tree has the
 fix sitting in a file. The mechanical part is small and the rest is waiting.

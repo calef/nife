@@ -15,14 +15,14 @@ pcie ecam 0xf0000000, buses 0..=127 (mmu::PCI_ECAM_PHYS says 0xb0000000)
 ```
 
 A maintainer read that as a defect and carried it to calef as an open thread. It is not one.
-Nothing was wrong on xenon, nothing was mapped at the wrong address, and the two numbers were never
+Nothing was wrong on xenon, nothing was mapped at the wrong address. The two numbers were never
 supposed to agree on a machine QEMU did not build. The defect is in the sentence.
 
 ## What the line actually says
 
-`PCI_ECAM_PHYS` is a second witness, never a source of truth, and its own doc has said so since
+`PCI_ECAM_PHYS` is a second witness, never a source of truth. Its own doc has said so since
 the window became ACPI-sourced. `pci.rs` reads `ECAM_BASE` from `memory::pci_regions()`, which
-`main.rs` fills from the MCFG; the constant is `#[allow(dead_code)]` outside tests and
+`main.rs` fills from the MCFG. The constant is `#[allow(dead_code)]` outside tests and
 `map_everything` has not mapped it for some time. Printing it beside the discovered base is a
 cross-check, and on xenon the cross-check ran and reported exactly what it should have.
 
@@ -51,8 +51,8 @@ and under QEMU with SeaBIOS, where the comparison does bind:
 ```
 
 A reader on xenon now sees a fact about q35 next to a fact about their machine, rather than a
-disagreement. The comment beside the `println!` says the rest, and the constant's doc gained a short
-paragraph on the asymmetry, because the boot log is not where a reader can discover that two of
+disagreement. The comment beside the `println!` says the rest. The constant's doc gained a short
+paragraph on the asymmetry. The boot log is not where a reader can discover that two of
 three architectures hold this as an invariant and the third cannot.
 
 ### The line was already lying, in our own gate, and nobody had noticed
@@ -123,12 +123,13 @@ deliberate second witness, the real window comes from the MCFG through `memory::
 the cross-check was working. The defect was in the sentence, which named our own constant as though
 it were the expectation. On aarch64 and riscv64, which only ever boot QEMU `virt`, the second witness
 is an equality invariant and a difference would be a finding; on x86_64 it can only bind under
-SeaBIOS on q35. The wording fix turned out to be worth more than a tidy: **two of the three x86_64
+SeaBIOS on q35. The wording fix turned out to be worth more than a tidy. **Two of the three x86_64
 boots in the merge gate already print a different base**, because OVMF relocates the window to
-`0xe0000000`, so the misleading line has been firing on every real-firmware run since milestone 205
-added them and nobody read the log closely enough to notice. The line now reads
+`0xe0000000`. The misleading line has been firing on every real-firmware run since milestone 205
+(how a foreign program is told what to do)
+added them, and nobody read the log closely enough to notice. The line now reads
 `(q35's default is 0xb0000000)`, naming the machine the number belongs to rather than implying a
 disagreement, and the asymmetry is recorded in the constant's own doc. The equality test the doc
-claims for the other two architectures was checked and does exist; what those architectures kept is
-the value as a test literal, not a live `const`, which is part of why the x86_64 printout read with
+claims for the other two architectures was checked and does exist. What those architectures kept is
+the value as a test literal, not a live `const`. That is part of why the x86_64 printout read with
 more authority than it had.

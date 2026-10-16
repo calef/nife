@@ -43,8 +43,8 @@ capability that says exactly which bytes, with exactly which rights, revocable. 
 is a result about capability systems and not only about this file server. If it does not work, the
 reason is worth writing down, because it is a claim about the model.
 
-The questions the design has to answer are the ones milestone 138 refused a data cache over:
-coherency between a client reading frames and a server writing them, what a client observes when
+The questions the design has to answer are the ones milestone 138 (close the read gap) refused a data cache over. They
+are coherency between a client reading frames and a server writing them, what a client observes when
 the file changes underneath it, and what revocation means mid-read. The metadata cache had none of
 those because it lives inside one server's address space. This has all of them, which is why it is
 a design and not an optimization.
@@ -61,7 +61,7 @@ The same block's refusals are the constraints this design inherits. Replacing Re
 on measurement: 94% of the old fixed term was the absence of a cache, not a property of the store,
 and any replacement arrives needing the identical cache. A `READV`-shaped scatter list and a
 negotiated channel size were both declined because every existing agreement between a client and
-this wiring is a compile-time constant both sides carry, and a new concept on the wire has to earn
+this wiring is a compile-time constant both sides carry. A new concept on the wire has to earn
 its way past that.
 
 ## Index row
@@ -69,9 +69,9 @@ its way past that.
 After milestone 138's three steps, a file request costs about 13 microseconds of residual that no
 cache removes, because the shape of the contract is one IPC round trip per request. It is the last
 term: 138 removed the 208 microsecond fixed cost with a metadata cache and raised the transfer size
-to 64 KiB, and what remains is not a slow implementation of the current contract, it is the current
+to 64 KiB. What remains is not a slow implementation of the current contract, it is the current
 contract. The capability-shaped answer is to grant the client frames it can read directly, which is
-what `mmap` over a page cache buys Linux, and the primitive exists here already, since frames are
+what `mmap` over a page cache buys Linux. The primitive exists here already, since frames are
 capabilities, they are shared rather than moved, and rights narrow at send. Nobody has drawn the
 design. It is also the interesting half for a demonstrator: Linux buys that performance with ambient
 authority over a global page cache, and the same performance here would come from a capability

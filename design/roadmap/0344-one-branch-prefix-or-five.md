@@ -33,15 +33,15 @@ already out of date when it was written.
 **In brief.** `script/lint` checks a branch name against a taxonomy of prefixes. Exactly one of
 them, `milestone/N-`, is read by anything: §90's roadmap-block check parses the number out of it. A
 grep found no other consumer. So the question is whether to retire the taxonomy down to that one
-prefix and let every other branch be named freely, or to keep the list as a convention people are
-expected to follow with a gate as its only enforcement.
+prefix and let every other branch be named freely. The alternative is to keep the list as a
+convention people are expected to follow with a gate as its only enforcement.
 
 ## Why this matters
 
 A gate that enforces a convention nothing consumes teaches contributors that the gates are
-arbitrary, and this tree already has a scar from that exact check: AGENTS.md cites the
+arbitrary. This tree already has a scar from that exact check. AGENTS.md cites the
 branch-prefix check as its worked example of a rung-two mechanism being *wrong about the tree*,
-because it rejected the repository's second-commonest prefix, and it failed every group build in
+because it rejected the repository's second-commonest prefix. It failed every group build in
 the merge queue's first day by rejecting GitHub's own synthetic branch names. A check with one
 consumer and a history of false rejections is a poor trade.
 
@@ -83,14 +83,14 @@ short piece of writing rather than an investigation.
 
 ## Index row
 
-A gate enforcing a convention nothing consumes teaches contributors that the gates are arbitrary,
-and this one had a scar: AGENTS.md cites the branch-prefix check as its worked example of a rung-two
-mechanism being wrong about the tree, because it rejected the repository's second-commonest prefix
+A gate enforcing a convention nothing consumes teaches contributors that the gates are arbitrary.
+This one had a scar. AGENTS.md cites the branch-prefix check as its worked example of a rung-two
+mechanism being wrong about the tree. It rejected the repository's second-commonest prefix
 and then failed every group build in the merge queue's first day by rejecting GitHub's own synthetic
 branch names. Milestone 130's block asked whether to retire the taxonomy down to `milestone/N-`, the
 one prefix a mechanism reads. calef asked the same question on 2026-08-17 and answered it on
-2026-08-18, before the proposal was written: the taxonomy is a convention in `design/naming.md` and
+2026-08-18, before the proposal was written. The taxonomy is a convention in `design/naming.md` and
 `script/lint` refuses only a milestone-lookalike, which is the one real hole the allowlist was
-plugging, since `milestone-126-pgrep` with a hyphen would sail past check 4b. The residue is that
+plugging. `milestone-126-pgrep` with a hyphen would sail past check 4b. The residue is that
 `design/decisions/0077-branch-prefixes.md` still describes the allowlist as current, which is the
 premise the proposal said nobody had rechecked.

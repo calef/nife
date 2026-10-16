@@ -31,7 +31,7 @@ unforgeable. This is DECISIONS §27's argument, which the tree already accepted 
 
 The wire is wider than the design. A holder of a verify endpoint can ask about any resource in the
 store, so the confinement claim for a program that verifies credentials is "it only asks about its
-own" rather than "it cannot ask about anything else", and the difference between those two sentences
+own" rather than "it cannot ask about anything else". The difference between those two sentences
 is the whole point of a capability system. The second is checkable from outside; the first is a
 promise about a branch the program is trusted to take.
 
@@ -68,6 +68,6 @@ confinement claim for a program that verifies credentials is "it only asks about
 DECISIONS §27's argument to `credential_protocol`: the endpoint should be the credential for one
 resource, with the name implied by which endpoint you hold and therefore unforgeable. The consumer
 that motivated it is gone, since milestone 54's SMB adapter was deleted on 2026-08-30, so nothing
-today is visibly harmed by the extra authority; what makes it worth doing is the direction of the
-cost, because the next thing that authenticates anything gets written against the current shape and
+today is visibly harmed by the extra authority. What makes it worth doing is the direction of the
+cost. The next thing that authenticates anything gets written against the current shape, and
 fixing a wire with four callers is a morning.
