@@ -619,8 +619,9 @@ fn attach_test_leg_devices() {
 /// **The aarch64 leg**: its images, then both test images, on the physical core under `--hvf`.
 fn aarch64_suite(hvf: bool, filtered: bool) -> bool {
     eprintln!();
-    // The version rides in the banner (milestone 414): a red line under this heading is
-    // interpreted by which emulator produced it, so the heading carries that fact.
+    // The version rides in the banner (milestone 414 (a red post-run check does not say which
+    // emulator produced it)): a red line under this heading is interpreted by which emulator
+    // produced it, so the heading carries that fact.
     eprintln!(
         "--- kernel tests, aarch64 (QEMU {}) ---",
         crate::host::qemu_version("aarch64")

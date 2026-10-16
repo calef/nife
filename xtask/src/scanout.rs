@@ -817,10 +817,10 @@ impl ScanoutReferee {
     pub(crate) fn report(self) -> bool {
         let _ = std::fs::remove_file(&self.sock);
         let arch = &self.arch;
-        // Which emulator produced a verdict here is part of reading it (milestone 414): these
-        // checks drive QEMU's monitor, and versions fail disjoint sets of them. Computed once
-        // and carried by the FAILED lines, so a red line interprets itself; the green lines
-        // stay as they were.
+        // Which emulator produced a verdict here is part of reading it (milestone 414 (a red
+        // post-run check does not say which emulator produced it)): these checks drive QEMU's
+        // monitor, and versions fail disjoint sets of them. Computed once and carried by the
+        // FAILED lines, so a red line interprets itself; the green lines stay as they were.
         let qemu = crate::host::qemu_version(arch);
         let (composed, text, matched) = (&self.composed, &self.text, &self.matched);
         let seen = Seen {

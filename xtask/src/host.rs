@@ -92,8 +92,8 @@ pub(crate) fn capture(program: &str, args: &[&str]) -> Option<String> {
 }
 
 /// The version of the emulator a leg will run, as the per-architecture banner and the red
-/// post-run checks print it (milestone 414): `"11.1.2"`, or `"version unreadable"` when the
-/// binary cannot be asked.
+/// post-run checks print it (milestone 414 (a red post-run check does not say which emulator
+/// produced it)): `"11.1.2"`, or `"version unreadable"` when the binary cannot be asked.
 ///
 /// The name resolves through PATH exactly as the runner's bare `exec qemu-system-...` does
 /// (`helpers/qemu-path.sh` puts this project's own QEMU first), so the number names the

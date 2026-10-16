@@ -182,9 +182,10 @@ impl InboundProber {
     pub(crate) fn report(mut self) -> bool {
         self.stop.store(true, std::sync::atomic::Ordering::Relaxed);
         let arch = &self.arch;
-        // Which emulator produced a red line here is part of reading it (milestone 414): the
-        // port forward this probe drives is QEMU's, and versions fail disjoint sets of the
-        // host-side checks. Computed once and carried by the FAILED lines.
+        // Which emulator produced a red line here is part of reading it (milestone 414 (a red
+        // post-run check does not say which emulator produced it)): the port forward this probe
+        // drives is QEMU's, and versions fail disjoint sets of the host-side checks. Computed
+        // once and carried by the FAILED lines.
         let qemu = crate::host::qemu_version(arch);
         let Some(thread) = self.thread.take() else {
             eprintln!("inbound check ({arch}) FAILED (QEMU {qemu}): the prober never started");
