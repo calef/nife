@@ -1,5 +1,5 @@
-use crate::sched;
 use super::test_programs::spawn_progenitor_shaped;
+use crate::sched;
 
 /// The report protocol, matching `crates/c_seam`. Userspace owns the definition; the test
 /// mirrors it, the same convention `authority_tests` and the net client's selectors follow.

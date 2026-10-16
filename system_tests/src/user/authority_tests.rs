@@ -1,5 +1,5 @@
-use crate::sched;
 use super::test_programs::spawn_progenitor_shaped;
+use crate::sched;
 
 /// The report protocol, matching user/src/suptree.rs (the same convention the net client's
 /// selectors follow: userspace owns the definition, the test mirrors it).

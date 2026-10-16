@@ -1,7 +1,7 @@
+use super::test_programs::spawn_progenitor_shaped;
 use crate::cap::Rights;
 use crate::sched::RendezvousId;
 use crate::thread::ThreadId;
-use super::test_programs::spawn_progenitor_shaped;
 
 /// The witness's budget, in pages. Counted rather than measured, from what it retypes: a
 /// rendezvous, the child's address space and its tables, the child's two image pages and four of

@@ -1,6 +1,6 @@
+use super::test_programs::spawn_progenitor_shaped;
 use super::*;
 use crate::sched;
-use super::test_programs::spawn_progenitor_shaped;
 
 /// The report protocol, matching user/src/swap.rs. Userspace owns the definition; the test
 /// mirrors it, the same convention `authority_tests` and `c_seam_tests` follow.
@@ -164,7 +164,12 @@ fn spawn_swapper(role: u64) -> (sched::RendezvousId, u64, u64, u64) {
         Some(wake),
         role,
     );
-    (report, started.budget, started.thread_control_block_region, report_region)
+    (
+        report,
+        started.budget,
+        started.thread_control_block_region,
+        report_region,
+    )
 }
 
 /// **Run one swap system to its own verdict**, returning every report it made.

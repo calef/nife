@@ -236,11 +236,11 @@ pub(super) fn spawn_progenitor_shaped(
             )
             .unwrap_or_else(|e| panic!("could not map the initial ramdisk into {name}: {e:?}"));
     }
-    let aspace =
-        readopt_user_address_space(space).unwrap_or_else(|| panic!("could not register {name}'s space"));
+    let aspace = readopt_user_address_space(space)
+        .unwrap_or_else(|| panic!("could not register {name}'s space"));
 
-    let budget =
-        crate::memory_region::create(budget_pages).unwrap_or_else(|| panic!("no budget for {name}"));
+    let budget = crate::memory_region::create(budget_pages)
+        .unwrap_or_else(|| panic!("no budget for {name}"));
     let thread_control_block_region =
         crate::memory_region::create(2).expect("no region for a thread control block");
     let tid = sched::create_thread_control_block(thread_control_block_region)
@@ -262,7 +262,12 @@ pub(super) fn spawn_progenitor_shaped(
     for (i, (capability, what)) in further_caps.iter().enumerate() {
         let slot = sched::thread_control_block_insert_cap(tid, *capability, None)
             .unwrap_or_else(|e| panic!("could not insert {name}'s {what}: {e:?}"));
-        assert_eq!(slot, (i + 2) as u64, "{name}'s {what} must land in slot {}", i + 2);
+        assert_eq!(
+            slot,
+            (i + 2) as u64,
+            "{name}'s {what} must land in slot {}",
+            i + 2
+        );
     }
     sched::configure_thread_control_block(tid, elf.entry(), USER_STACK_TOP, aspace)
         .unwrap_or_else(|e| panic!("could not configure {name}: {e:?}"));
