@@ -253,10 +253,6 @@ speak, the experiment, and the boards' reason in full.
 - **Only ASCII appears.** A byte outside `0x20..0x7f` is drawn as a space, so `§121` in the tour's
   last line reads as two blanks and a number on the screen. The serial console shows it correctly and
   the two transcripts therefore differ by exactly the non-ASCII characters in them.
-- **`board_console::screen` duplicates a decoder `xtask` already has.** Milestone 177's graphical
-  `swish-check` leg carries `parse_ppm`, `decode_cell` and `scanout_rows` in `xtask/src/scanout.rs`,
-  hardcoded to the compositor's geometry and the terminal's default colors. The two should be one
-  crate; unifying them touches another milestone's gate and is a proposal rather than a drive-by.
 - **The other two architectures have a screen under the emulator and none on silicon.** The
   arch-neutral halves (`machine_discovery::framebuffer`, `screen_console`) were written for exactly
   this and needed no change: what was missing was the discovery, and on QEMU's `virt` boards there is

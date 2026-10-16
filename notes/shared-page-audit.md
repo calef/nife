@@ -92,7 +92,8 @@ in flight; each is named so the clearance above is not read as covering work it 
 - The inbound socket half (`LISTEN`/`ACCEPT` with a spawn-time port grant) is not on `main`.
   `crates/socket_protocol` there stops at `OPERATION_CLOSE` and `net_stack.rs` has no listener. What is
   audited here is the outbound contract only. The `net_transport.rs` finding below applies to both,
-  the file being identical across them.
+  the file being identical across them. (It has since landed: `crates/socket_protocol` now carries
+  `LISTEN`, `ACCEPT` and `LISTEN_DENIED`; noted 2026-10-15 UTC.)
 - `crates/credential_protocol` and `components/src/credentialer.rs` are being substantially rewritten with an
   NTLM path. The clearance recorded below is of the version on `main` and does not transfer.
 - The clock page's seqlock has a live finding of its own from another lane (see finding 7's last
@@ -167,7 +168,8 @@ tidy-up. Why each is safe is in
 | 6 | `net_transport` and `keyboard_driver` index a DMA buffer with a `u32` the device wrote, unchecked; the DMA validator covers the other direction | **Fixed**, fail-closed, with the hostile-device harness proposed |
 | 7 | Three release-side fences in the compositor's subsystem whose acquire side did not exist | **Fixed**, two acquire fences |
 
-**Nothing found is a live privilege escalation reachable from a confined program on `main` today**.
+**Nothing found was a live privilege escalation reachable from a confined program on `main` on the
+day this audit ran (2026-08-04)**; the security audits after it carry the current word.
 That sentence has to be read with all three of its qualifiers, because two findings fall outside
 them. Finding 6 needs only a device that lies, and finding 7 needs only hardware that reorders. Both
 are the parts of the threat model this system has declared and not yet met.
@@ -220,7 +222,9 @@ in the exact terms SECURITY.md puts in scope. It moved from latent to live when 
 ask the progenitor to build a caretaker, which happened on 2026-09-27 (finding 1(d) in
 [filesystem-findings.md](shared-page-audit/filesystem-findings.md); corrected 2026-10-11 UTC, since
 this case had said that day was still ahead). Milestone 599 (a frame per filesystem client channel)
-is this case's lane.
+is this case's lane, and it built on 2026-09-27. Calef ruled badged endpoints. The witness proves
+isolation on all three architectures. What remains is the production progenitor's pool, 599's own
+"What is left" (noted 2026-10-15 UTC).
 
 **B. A harness that can make a virtio device misbehave.** The case is finding 6 and the honesty gap
 under it. This tree tests DMA confinement by making the *driver* attack (`crates/virtio`'s

@@ -15,8 +15,8 @@ from milestone 230's block; numbered 2026-09-19 by milestone 433. **Premise re-c
 it holds.** §149 (may the kernel answer on an endpoint) decided how a program *reaches* a console
 server and was itself dissolved by §121 (what a device capability is when the device has no page)'s
 reopening, which is a different question. `script/swish-check`'s
-own `BUGS` still describes the interleaving as a live defect in the system rather than in the script,
-and milestone 243 (a machine with no serial port has no way to say anything)'s `BUGS` still records
+own `BUGS` still describes the interleaving as a live defect in the system rather than in the script.
+Milestone 243 (a machine with no serial port has no way to say anything)'s `BUGS` still records
 that it "has its own home", which is this block.
 
 The question's home is §175 (where the kernel's own output goes once userspace owns the console),
@@ -32,8 +32,8 @@ confirms the interleaving with a captured, byte-exact CI transcript already in-t
 
 Highlights: a second port is free under QEMU on all three architectures, and confirmed absent,
 unconfirmed, or flatly impossible on the three real boards respectively, worst on xenon where there
-is no second serial connector at all. The kernel's collision surface is larger than §175 measured:
-two routine gauges, not just fault reports, and one of the two (`capability slots:`) has no
+is no second serial connector at all. The kernel's collision surface is larger than §175 measured.
+They are two routine gauges, not just fault reports. One of the two (`capability slots:`) has no
 equivalent filter to the one already built for the other gauge after it caused this exact failure
 once. The release-only option does not touch CI at all, since CI never builds release.
 
@@ -107,7 +107,7 @@ with a counted UART fallback when there is no drainer or it lags. Built on lane
 - `script/swish-check --flood` makes the kernel print a line every 100 ms through the whole
   session. With the service attached, every flood line arrived whole and the gate stayed green:
   254 on aarch64, 263 on riscv64 and 180 on x86_64, 0 spliced. x86_64
-  floods once a second rather than ten times: its TCG leg runs about thirty times slower, and at
+  floods once a second rather than ten times. Its TCG leg runs about thirty times slower. At
   ten a second the service fell behind and the counted fallback spliced 29 of 6,990, which is the
   fallback working as ruled.
 - The detached control (`--flood-detached`, the kernel printing for itself as before) spliced 83
@@ -164,16 +164,16 @@ and 243's BUGS points at a home that does not exist."*
 ## Index row
 
 Once the `console` server owns the console, two address spaces write to the same UART with no
-arbitration between them: the kernel writes directly, because a kernel that cannot print during a
-fault is a kernel nobody can debug, and the server writes on behalf of userspace, and the streams
+arbitration between them. The kernel writes directly, because a kernel that cannot print during a
+fault is a kernel nobody can debug. The server writes on behalf of userspace. The streams
 interleave at byte granularity. It corrupts every bench session on argon, radon and xenon, where a
 serial log is the only thing those machines can say and milestone 216 built a tool whose whole
-contract is recognizing a boot sequence in that stream; interleaved bytes break that contract in the
+contract is recognizing a boot sequence in that stream. Interleaved bytes break that contract in the
 least visible way available, because the log is present, it looks like output, and the line being
 matched has a kernel message spliced through the middle of it. Deciding it means saying where kernel
 output goes: a second port, a buffer the server drains, a claim the server takes and the kernel
 respects except in a panic, or something else. Those are genuinely different systems, and the choice
 binds every architecture and every future console consumer. A lane can price the options before the
-ruling: what the kernel writes after userspace takes the console is a measurable list, whether each
-board has a second usable port is a hardware fact, and what a buffered path costs during a panic is
+ruling. What the kernel writes after userspace takes the console is a measurable list. Whether each
+board has a second usable port is a hardware fact. What a buffered path costs during a panic is
 the constraint that probably decides it.

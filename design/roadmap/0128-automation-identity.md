@@ -45,7 +45,7 @@ person.
 calef, reading a repository whose every pull request, comment and review carries his name:
 "it looks like I'm talking to myself a lot and the record would be nice to clarify who is
 talking." That is a documentation defect as much as a vanity one. This project's whole claim is
-that a system of this size can be built by one architect and many agents; a timeline in which the
+that a system of this size can be built by one architect and many agents. A timeline in which the
 architect appears to write, review and merge his own work in a single voice is evidence *against*
 the claim it should be evidence for. The provenance tenet applies to authorship the same way it
 applies to names: the record should say who did a thing where a reader meets it.
@@ -80,9 +80,9 @@ around it is visibly the agent's.
    (`AUTOMATION_APP_ID`, `AUTOMATION_APP_KEY`).
 3. Done 2026-09-23. In `toolchain-bump.yml`, mint the installation token per run (the maintained
    `actions/create-github-app-token` action does exactly this, and taking it is a workflow-only
-   dependency, not one in the shipping graph; note it in the §46 spirit anyway) and use it where
-   `TOOLCHAIN_BUMP_PAT` is used today. Keep the `|| github.token` fallback: a fork without the
-   App still opens PRs.
+   dependency, not one in the shipping graph). Use it where `TOOLCHAIN_BUMP_PAT` is used today.
+   Note it in the §46 (thin primitives or whole subsystems) spirit anyway. Keep the
+   `|| github.token` fallback: a fork without the App still opens PRs.
 4. Delete the `TOOLCHAIN_BUMP_PAT` secret and revoke the PAT, in that order, and update the
    workflow's own explanatory comment, which is where this mechanism is documented for the next
    reader. **Not done, and deliberately sequenced after a run has been observed taking the App
@@ -104,8 +104,8 @@ around it is visibly the agent's.
 ## Why not now, and what the 2026-09-23 audit of that found
 
 The original deferral, written 2026-08-15 and kept here because it is the reasoning the audit
-below tests: with one architect, the PAT and the App fail in the same circumstances and the PAT
-already exists, so the App earns its setup cost at the first of **a second architect joining**,
+below tests. With one architect, the PAT and the App fail in the same circumstances and the PAT
+already exists. The App earns its setup cost at the first of **a second architect joining**,
 the PAT's first silent expiry, or a second workflow needing the same authority.
 
 Audited 2026-09-23, each trigger against the tree rather than against a recollection. None has
@@ -148,8 +148,9 @@ fired outright; the third is half-fired, and the audit's own difficulty is the f
 
 Verdict: still parked as a forced move, and no longer parked as a cheap one. No trigger
 compels the work today. The preparation that does not need owner rights was done anyway, because
-it costs nothing to carry (the App rung is inert without its secrets) and because it converts the
+it costs nothing to carry (the App rung is inert without its secrets). It also converts the
 expiry from an outage into a fifteen-minute procedure someone can run without reading this block.
+
 ## BUGS
 
 - The private key is still a stored secret. An App swaps a stored *token* for a stored
@@ -218,8 +219,8 @@ expiry from an outage into a fifteen-minute procedure someone can run without re
   and Pull requests write so widening the App reaches none of them. Wiring Claude Code and opencode
   to opt in automatically is a later change, after a trial. `notes/session-identity.md` has calef's
   steps and the kill switch. calef ruled the four forks on #1828 on 2026-10-07 (UTC): opted-in
-  sessions author as `nife-smelter[bot]`; one App with `lane` and `maintainer` scopes; installed
-  on All repositories in `nifeos`; his classic token left as it is, with confinement recorded as
+  sessions author as `nife-smelter[bot]`. One App with `lane` and `maintainer` scopes. Installed
+  on All repositories in `nifeos`. His classic token left as it is, with confinement recorded as
   the fix in that note's BUGS.
 
 - **Done.** The second deliverable (attribution) needs nothing further from a lane. The interim

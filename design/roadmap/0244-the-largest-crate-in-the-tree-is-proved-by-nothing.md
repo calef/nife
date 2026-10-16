@@ -36,7 +36,7 @@ attribution:
 | top-level `const` arithmetic | 6 | 3% | not movable; they are what the rest is written against |
 
 A sixth of the mutants and about a fiftieth of the lines. The six pure functions total roughly
-sixty lines of a 2,632-line file, and every one is a leaf helper of the sequence beside it:
+sixty lines of a 2,632-line file, and every one is a leaf helper of the sequence beside it.
 `measured` fills a `Lookup` that only `boot` destructures, `opt_cap` reads one word out of one
 `recv_cap`, `archive_name` is `Some(p.name())`. Lifting them buys 33 reachable mutants and costs
 exactly what this block predicted: a crate of fragments, a wider public surface, and a reader holding
@@ -82,7 +82,7 @@ of `boot`'s 97 delete a field from a `ChildEndowment` struct expression: a child
 `caps`, or no `stack_pages`, or no `maps`. Twenty-four more are slot-counter arithmetic and twelve
 flip a rights mask's `|` to `&` or `^`. Those are not logic with a wrong answer. They are a
 declaration of what each component of the system may do, expressed as inline struct literals in
-the middle of a syscall sequence, and the only two things that can check a declaration are the boot
+the middle of a syscall sequence. The only two things that can check a declaration are the boot
 itself and a test comparing it against a separately written expectation. That is the lane worth
 having, and it is proposed below rather than attempted here.
 
@@ -107,15 +107,15 @@ having, and it is proposed below rather than attempted here.
 *(Provisional; the integrator mints the number.)* Thirty-four of `boot`'s mutants delete a field from
 a `ChildEndowment` literal, and nothing in the tree would notice. The proposal is not a host unit
 test, which cannot see them, but making the wiring a table this crate walks rather than a
-sequence of literals, so that a host test can assert the table (what each boot component is endowed,
+sequence of literals. A host test can then assert the table (what each boot component is endowed,
 with which rights) without a kernel underneath, and `boot` becomes the walk over it. What that buys
-beyond the mutants is the thing this crate's own `BUGS` section already spends four paragraphs on:
-the capability-table budget is a property *of the table*, and today it is discovered by a boot that
+beyond the mutants is the thing this crate's own `BUGS` section already spends four paragraphs on.
+The capability-table budget is a property *of the table*, and today it is discovered by a boot that
 prints nothing at all.
 
-The honest cost, so it is priced rather than assumed: the sequence's order is load-bearing (this
-crate's head comment says so, over three evenings' worth of evidence), so the table must be ordered
-and the walk must be the same order, and a table that is really a sequence with extra ceremony is
+The honest cost, so it is priced rather than assumed. The sequence's order is load-bearing (this
+crate's head comment says so, over three evenings' worth of evidence). The table must be ordered
+and the walk must be the same order. A table that is really a sequence with extra ceremony is
 worse than what is there now. Whether it can be genuinely declarative is the fork that lane opens
 with, and it is an architect's.
 
@@ -142,8 +142,9 @@ The crate's own head comment already names what proves it instead, honestly:
 name they were written under; the comment in `.cargo/mutants.toml` reads `swish-check` today.)
 
 **That gate is real and it is not nothing**, which is the fact that makes this milestone a judgment
-rather than an alarm. `script/shell-check` is the only thing in the tree that runs a real init, and
-milestone 96 exists because a fix landing in one init and not the other produced *a boot that reaches
+rather than an alarm. `script/shell-check` is the only thing in the tree that runs a real init.
+Milestone 96 (one init: the spawn service written twice) exists because a fix landing in one init
+and not the other produced *a boot that reaches
 userspace and prints nothing at all*, with no fault and no message, three times. What it cannot do is
 tell which of 191 mutations it would have caught, and a gate whose coverage nobody can state is a
 gate nobody can improve.
@@ -177,7 +178,7 @@ proving that the mock behaves the way the code expects, which is the thing alrea
 ### The proof that this milestone worked
 
 A mutation run over the new host-reachable crate catches most of what it generates, reported the
-way milestone 238's does, plus the number that shows the split was worth making: how many of
+way milestone 238's does, plus the number that shows the split was worth making. How many of
 `system_initializer`'s 191 mutants now live in code a host test can reach.
 
 Not a line count moved, and not a test count. Either of those is satisfiable by moving the easy half.

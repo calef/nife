@@ -6,7 +6,8 @@ Milestone 85 (mutation testing over the host crates). `script/mutation` runs
 and records whether anything noticed. Coverage asks whether a line ran under a test; a mutation run asks whether any test would notice
 if the line were wrong.
 
-It is a report, not a gate, until the weekly numbers deserve one.
+The weekly census is a report. The gate is per pull request and diff-scoped
+([the per-pull-request gate](#the-per-pull-request-gate)).
 
 This page is enough to run the tool, read its numbers and triage a survivor. The per-crate history
 lives in the [appendices](#appendices).
@@ -22,13 +23,14 @@ $ script/mutation-census --compare 2026-09-19 2026-09-21
 ```
 
 A full local run takes hours. The weekly workflow (`.github/workflows/mutation.yml`)
-runs the same command eight-way sharded with `--sharding round-robin`, so each shard is a uniform
+runs the same command eight-way sharded, so each shard is a uniform
 sample of every crate.
 
 The tool version is pinned in `.cargo-mutants-version`, today 27.1.0. The pin matters: cargo-mutants changes which mutants it generates between versions, so an unpinned
-tool moves the numbers with nothing in the tree changed. Exclusions live in `.cargo/mutants.toml`,
-each with its reason. That file is config, not a code dependency, per §46 (thin primitives or whole
-subsystems).
+tool moves the numbers with nothing in the tree changed. The host-excluded crates are derived at
+the call site from `helpers/host-excluded-crates.sh`; `.cargo/mutants.toml` holds the judgment
+exclusions, each with its reason. That file is config, not a code dependency, per §46 (thin
+primitives or whole subsystems).
 
 To ask where a crate's mutants sit before restructuring it for testability, run
 `cargo mutants --list -p <crate>`. It attributes every mutant to its enclosing function.
@@ -57,7 +59,7 @@ time; a verdict reached by running is not ([baseline-ledger](mutation-testing/ba
 one is a detected hang. That check was made on the 2026-08-03 baseline. A timeout is almost always
 a loop that never ends, such as `+=` becoming `-=` on a walker's cursor.
 
-It is over viable mutants, so `unviable` is excluded from the denominator: an unviable mutant does
+The rate is over viable mutants: an unviable mutant does
 not compile, which says nothing about the tests. It is still a hole in the measurement. A function
 whose only mutant is unviable was never tested at all, and scores as though it passed
 ([measured-boot](mutation-testing/measured-boot.md)).
@@ -69,53 +71,38 @@ A census is a whole-corpus run. The weekly run's eight shards together make one;
 a sample. A sample cannot tell an absent mutant from a killed one, so a per-crate rate from one
 reads as a crate that got worse.
 
+## The per-pull-request gate
+
+`.github/workflows/mutation-gate.yml` runs on every pull request and on the merge queue's entries
+(milestone 924 (a survivor on a pull request's own lines cannot merge untriaged), provisional). It
+runs `cargo mutants --in-diff` over the pull request's own diff through `script/mutation`, and
+`helpers/mutation_diff_gate.py` fails the check while any survivor of that diff has no
+`equivalent` or `gap` row in the ledger. Its rules, each with a selftest case in `script/lint`:
+a `killed` row never clears a survivor, because the gate has just watched that mutant live. A
+timeout is untriaged, the same as a survivor. A diff whose mutants do not finish inside 20 minutes
+fails, "split this pull request or triage by hand", and a run that never completed fails too. A
+pull request whose every changed file is under `kernel/` or `components/` passes with the summary
+"no mutants: outside the corpus", which is not a mutation result. A repository split out of this
+one carries the gate with one `uses:` line and its own ledger.
+
 ## The current numbers
 
-The latest census is the scheduled run of 2026-09-21,
-[35589550926](https://github.com/nifeos/nife/actions/runs/35589550926), recorded in the tree
-on 2026-09-24:
+The living census record is `notes/project-metrics/mutation-census.csv`, one row per recorded run,
+explained in [`notes/mutation-census.md`](mutation-census.md); the dated facts read from it, and
+the verdict, are [fatal risk 3](../design/fatal-risks/3-the-tests-do-not-test.md)'s to carry. The
+table below is the baseline and the first full census, kept for the like-for-like reading beside
+them:
 
 | census | crates | mutants | viable | survivors | killed |
 |---|---|---|---|---|---|
 | 2026-08-03, the baseline | 38 | 5,551 | 5,141 | 391 | 92.4% |
-| 2026-09-14 | 64 | 10,012 | 9,277 | 771 | 91.7% |
-| 2026-09-16 | 62 | 9,626 | 8,903 | 687 | 92.3% |
-| 2026-09-19 | 62 | 9,656 | 8,925 | 563 | 93.7% |
 | **2026-09-21** | **66** | **10,988** | **10,178** | **771** | **92.4%** |
 
-Here "survivors" is the missed count; 2026-09-21 also has 206 timeouts. The per-crate rows are in
-`notes/project-metrics/mutation-census.csv`, and [`notes/mutation-census.md`](mutation-census.md)
-explains them.
-
-Like-for-like, the score has risen since the baseline. Read consistently, the 38 baseline crates
-were 94.7% on 2026-09-19 against 92.4% in August. Over the 62 crates shared with 2026-09-19, the
-2026-09-21 rate rose again, 93.7% to 93.8%.
-
-The corpus number fell on 2026-09-21 because of what arrived: four crates were measured for the
-first time and one grew eightfold:
-
-| crate | viable | killed | missed | since 2026-09-19 |
-|---|---|---|---|---|
-| `uefi_loader` | 356 | 48.9% | 182 | 34 viable at 100%; 132 missed were unbuilt files |
-| `stick_maker` | 288 | 64.9% | 101 | new |
-| `portable_executable` | 277 | 72.6% | 76 | new |
-| `firmware_configuration` | 32 | 84.4% | 5 | new |
-| `sealed_pair` | 63 | 95.2% | 3 | new |
-
-That worklist is done (2026-09-24, [census-2026-09-21-triage](mutation-testing/census-2026-09-21-triage.md)).
-The same appendix sorts all 771 by kind. 193 were files no host build compiles or can run, 286 are
-equivalents or recorded gaps, and 292 were missing tests, of which 203 are now written and **89 are
-untriaged**. `stick_maker` read 64.9% chiefly because its host half was mutated at all; it is now
-excluded, as `script/coverage` already excluded it. Projected onto the census's counts, the corpus
-reads **95.9%** with 414 missed and like-for-like **96.3%**; the next census is the measurement.
-
-Read `uefi_loader`'s row with care: most of its drop was the
-[2026-09-04 trap](mutation-testing/uefi-loader.md) again, confirmed on 2026-09-24. The exclusion
-covered `uefi_loader/src/main.rs` but not the modules it declares, `src/arch/` and `src/chooser.rs`,
-which no host build compiles either. The census artifacts put 132 of the crate's 182 missed in
-`src/arch/`. Without them the crate reads 77.7% (174 of 224 viable), with 50 real survivors in
-`device_tree_patch.rs`, `handoff.rs` and `image.rs`, and the corpus reads 93.6%. Both files are now
-excluded, and `script/lint` walks a gated target's whole module tree, so the next one fails the gate.
+Here "survivors" is the missed count. Like-for-like, the 38 baseline crates were 94.7% on
+2026-09-19 against 92.4% in August. The corpus number sat at the baseline's level while crates
+were measured for the first time, and the worklist that reading opened is closed
+([census-2026-09-21-triage](mutation-testing/census-2026-09-21-triage.md), which also holds the
+`uefi_loader` unbuilt-files reading and the projection onto its counts).
 
 ## The baseline and its triage
 
@@ -200,10 +187,10 @@ These recur across the appendices.
 
 This is the note's `BUGS` section.
 
-- **Scope is the main workspace's host crates.** The exclusions and their reasons are in
-  `.cargo/mutants.toml`. The bare-metal crates cannot compile for the host. `supervision_protocol`,
-  `swap_protocol` and `virtio` compile but cannot run a line without a kernel. `xtask` is the build
-  system, whose tests are the gates it runs.
+- **Scope is the main workspace's host crates**, minus the exclusions above. The bare-metal crates
+  cannot compile for the host. `supervision_protocol`, `swap_protocol` and `virtio` compile but
+  cannot run a line without a kernel. `xtask` is the build system, whose tests are the gates it
+  runs.
 - `redoxfs_server` and `tools/redoxfs_host` are not mutated. Each is its own workspace, kept apart
   so upstream RedoxFS never meets our clippy and fmt gates, and cargo-mutants works one workspace
   at a time. `redoxfs_server`'s pure logic is small and host-tested. The heavy half of its suite

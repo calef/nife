@@ -12,7 +12,7 @@ needs_person: no
 
 Filed 2026-09-03 as an unnumbered proposal by the
 `milestone/74-cycle-counters-riscv` lane, numbered 2026-09-19 by milestone 433 (drain), and the work it
-described was built the same day by the `milestone/74-cycle-counters-aarch64` lane: `PMCR_EL0.E`
+described was built the same day by the `milestone/74-cycle-counters-aarch64` lane. `PMCR_EL0.E`
 and `PMCNTENSET_EL0.C` are written, so `PMCCNTR_EL0` is no longer a stopped counter. What was left
 was two rulings. calef made both on 2026-10-07 (UTC), and the `milestone/353-cycle-read` lane built
 what they require the same day. The options they chose between follow the rulings,
@@ -144,7 +144,7 @@ aarch64 the odd one out. That is precedent, not a ruling: neither of those was p
 ### Question 4: Is the premise true?
 
 Mostly, with one correction worth making before calef rules. The brief framed this as
-"seL4-comparable versus userspace-only". **seL4-comparable is itself not a single value**: it is A4
+"seL4-comparable versus userspace-only". **seL4-comparable is itself not a single value**. It is A4
 on the published board, which is whatever that board's firmware left (argon's boot line is the best
 guess at it, and QEMU's `0x0` would make it A1), and A2 in seL4's own hypervisor builds. So the decision is between "count the kernel" (A1 or A2) and "count userspace" (A3),
 with A1 against A2 a second, smaller question about a configuration nothing runs today.

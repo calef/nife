@@ -85,7 +85,7 @@ calef, 2026-08-18, on reading the section above: *"Which also means fs_server is
 something like redoxfs_server."*
 
 He is right, and the name was accurate until this decision. A single server for all filesystems is
-`fs_server`; one program per filesystem makes that name a claim the program cannot meet, and the
+`fs_server`. One program per filesystem makes that name a claim the program cannot meet, and the
 next reader would infer that a second filesystem goes inside it, which is exactly the architecture
 just refused. §39's rule applies: a name is a claim, and the reader meets it first.
 
@@ -98,10 +98,10 @@ reference), so it wants its own lane rather than riding on prose.
 
 **It belongs to this milestone as increment zero, and not to one of its own** (calef asked which
 milestone owns it, 2026-08-19). It has no independent design content: it is a consequence of the
-decision above, and it is prerequisite to the first stratum rather than parallel to it, because once
+decision above. It is prerequisite to the first stratum rather than parallel to it, because once
 FAT32 exists two servers carry names that disagree about what kind of thing they are. Milestones 46
 and 63 were the naming milestones and both are `BUILT`, but each was a *sweep* of many names with
-rules to write down; this is one name following from a decision already made, and minting a number
+rules to write down. This is one name following from a decision already made, and minting a number
 for it would be inflation.
 
 It must wait for milestone 138's steps to settle, and that is the constraint that actually decides
@@ -113,8 +113,8 @@ and before FAT32 starts is the window, and it is a real window rather than a pre
 into a quiet tree is an afternoon, renaming into four open branches is a week of conflicts.
 
 Increment zero is built (2026-08-25, milestone 138 having settled). `fs_server` is
-`redoxfs_server` everywhere: the crate directory, the package and lib name, the `redoxfs_server`
-binary (`second_mount` and `mkfs` keep their own names; they were never the misnamed one), and every
+`redoxfs_server` everywhere. The crate directory, the package and lib name, the `redoxfs_server`
+binary (`second_mount` and `mkfs` keep their own names; they were never the misnamed one). And every
 functional reference across the tree (`xtask`'s build and initrd packaging, the kernel's `program()`
 lookups and test suites, `script/fmt`, `script/lint`, `script/supply-chain`, the crates and notes
 that cross-reference it). `fs_proto` and `kernel/src/user/fs_service.rs` were left untouched as
@@ -128,7 +128,7 @@ calef, 2026-08-18. Each mounted volume gets its own server process holding exact
 block-device capability.
 
 Both shapes have one *program* per format, so the installation benefit is the same either way and is
-worth stating because it is the strongest of them: **a machine that never mounts FAT32 never installs
+worth stating because it is the strongest of them. **A machine that never mounts FAT32 never installs
 `fat32_server`, and the parser is absent rather than confined.** What was decided is how many
 *instances* run.
 
@@ -160,8 +160,8 @@ nife-on-ext2 and against nife-on-RedoxFS, when ext2 exists.
 
 Every filesystem comparison this project has published is uncontrolled. `notes/benchmarks.md`
 measures nife-on-RedoxFS against Linux-on-ext4, and two things differ at once: the operating
-system's architecture and the filesystem. A gap can be attributed to either, which is why milestone
-138's answer to *"does this architecture have a disk-read liability that cannot be overcome"* has to
+system's architecture and the filesystem. A gap can be attributed to either. That is why milestone
+138's (close the read gap) answer to *"does this architecture have a disk-read liability that cannot be overcome"* has to
 be assembled from decomposition (the block server is at parity, the residual is 13 us, the rest is
 implementation) rather than read off a single number.
 
@@ -216,7 +216,7 @@ Recorded here so a later lane does not rediscover them per filesystem:
 ## BUGS
 
 - This block names five filesystems and prices none of them. The ordering is an architect's
-  judgment about need, not an estimate of effort, and the effort is not known: a read-only FAT32 is
+  judgment about need, not an estimate of effort, and the effort is not known. A read-only FAT32 is
   small, a writable ext4 is not, and ZFS is a different category of undertaking that may never be
   right to own rather than vendor.
 - Nothing here says whether a foreign filesystem is vendored or written. §46 governs it and the

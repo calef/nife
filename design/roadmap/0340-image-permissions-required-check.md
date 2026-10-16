@@ -44,7 +44,7 @@ of checks the merge queue requires, so a red run merges anyway.
 A check that reports and does not gate is the shape this project keeps writing down as a failure.
 It sits at rung two of AGENTS.md's ladder only if it fails loudly enough to stop something; as
 configured it is rung four, a note in a run log that somebody has to read. The defect it exists to
-catch is exactly the kind nobody reads a log for: `kernel/link-x86_64.ld` shipped a single `RWX`
+catch is exactly the kind nobody reads a log for. `kernel/link-x86_64.ld` shipped a single `RWX`
 segment for however long it did, and the tree found out because a lane deleting a duplicate ELF
 parser tripped over `Error::WritableAndExecutable`. That is the same discovery path the check was
 built to replace.
@@ -71,10 +71,10 @@ a red run is visible and merges anyway, so the gate reports rather than gates."*
 Milestone 208 built `script/image-permissions`, which refuses a kernel image carrying a
 writable-and-executable `PT_LOAD`. It runs in CI and its result is visible, and it is not on the
 merge queue's list of required checks, so a red run merges anyway. A check that reports and does not
-gate is rung two of AGENTS.md's ladder only if it fails loudly enough to stop something; as
-configured it is rung four, a note in a run log somebody has to read, and the defect it exists to
-catch is exactly the kind nobody reads a log for, since `kernel/link-x86_64.ld` shipped a single
-`RWX` segment through every other gate in the tree until a lane deleting a duplicate ELF parser
+gate is rung two of AGENTS.md's ladder only if it fails loudly enough to stop something. As
+configured it is rung four, a note in a run log somebody has to read. The defect it exists to
+catch is exactly the kind nobody reads a log for. `kernel/link-x86_64.ld` shipped a single
+`RWX` segment through every other gate in the tree, and a lane deleting a duplicate ELF parser
 tripped over `Error::WritableAndExecutable`. There is a second cost, which is what the green check
 now means to a reader who reasonably concludes W^X is enforced on the image. The whole item is an
 ask: it is a repository setting rather than a file, so no lane and no pull request can carry it. If

@@ -99,8 +99,8 @@ solved this problem once:
 
 `kernel/src/bench.rs`'s `cycles_per_tick` grew an `x86_64` arm (it was `#[cfg(target_arch =
 "riscv64")]`), keeping the riscv64 arm's numeric format and its `unavailable` behaviour byte for
-byte: `bench/baseline-*.txt` readers meet both, and milestone 74's block records a riscv64 reading
-against the existing window of 100,000 ticks, so that window stayed a constant rather than becoming
+byte. `bench/baseline-*.txt` readers meet both, and milestone 74 (cycle counters)'s block records a riscv64 reading
+against the existing window of 100,000 ticks. So that window stayed a constant rather than becoming
 `frequency()/100` like x86's.
 
 ## Plausibility, not just presence, and what each case prints
@@ -199,7 +199,7 @@ match the other two architectures'; counting in ring 3 is not reading from ring 
   programs a performance counter, so the preserved bits are firmware's. A second consumer would have
   to raise the arbitration; this module does not assume one.
 - No `--check` tolerance and no baseline row, by the same reasoning riscv64's probe carries: it
-  is a rate rather than a duration, and a 10% gate would fail on any machine that scales frequency,
+  is a rate rather than a duration. A 10% gate would fail on any machine that scales frequency,
   which is every machine this is interesting on.
 
 ## What xenon's first bench boot has to do, and what it will answer
@@ -261,7 +261,7 @@ last one is the one to look at hardest, because it is the only one that leaves t
   that x86_64 could be built on the `rdtsc` read already in `arch/x86_64/timer.rs`. All three
   clauses are falsified by this milestone: the file is gone, the count is two, and that read is the
   one that cannot work. A dangling path and a stale §19 scope note are the §76 failure this tree
-  has already recorded once, so the paragraph is corrected rather than left, minimally and in
+  has already recorded once. So the paragraph is corrected rather than left, minimally and in
   place, keeping the wrong reasoning visible as the thing a reader would otherwise re-derive. The
   integrator should look at it as a separate change from the code.
 - **Done.** `xenon`'s first reading needs no further code from a lane: the probe is already in the
@@ -273,7 +273,7 @@ last one is the one to look at hardest, because it is the only one that leaves t
 `kernel/src/bench.rs`'s `cycles_per_tick`, the one number that converts a whole tick-denominated
 board bench into cycles, existed on one of three architectures. The proposal that raised this said to
 build the `x86_64` half with the TSC, and that recommendation is wrong in a way worth keeping on
-the record: `arch::x86_64::timer::now()` *is* `rdtsc`, so such a probe would divide one counter by
+the record. `arch::x86_64::timer::now()` *is* `rdtsc`. So such a probe would divide one counter by
 itself and print an exact `1.00` on every part ever made, which is milestone 16a's "implausibly exact
 100.00" made structural rather than emulated. Built instead on `IA32_PERF_FIXED_CTR1`, unhalted core
 cycles, the same quantity riscv64's SBI PMU `CPU_CYCLES` and aarch64's `PMCCNTR_EL0` give, so two

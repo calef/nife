@@ -16,7 +16,7 @@ write rather than a decision to take.
 
 GitHub's checklist (`repos/nifeos/nife/community/profile`) asks for `README`, `CONTRIBUTING`,
 `LICENSE`, `CODE_OF_CONDUCT`, an issue template and a pull request template, and offers a fourth
-item, *Repository admins accept content reports*, which is a setting rather than a file and cannot
+item, *Repository admins accept content reports*. That is a setting rather than a file and cannot
 be delivered by a pull request.
 
 This matters for AGENTS.md's third principle rather than for tidiness. A newcomer must be able to
@@ -25,7 +25,7 @@ succeed without asking anyone, and these are among the first things a stranger m
 ## The pull request template is the one with a mechanism behind it
 
 AGENTS.md requires that every pull request an agent writes opens by saying so, one line, first
-thing in the body. Today that is prose in a brief, remembered by whoever is writing, and lanes have
+thing in the body. Today that is prose in a brief, remembered by whoever is writing. Lanes have
 already failed the neighboring instruction twice this week (milestone 204 (pushed): two lanes pushed
 branches and opened no draft pull request, though both briefs named it as the first act).
 
@@ -35,14 +35,14 @@ rung four, and it is the cheapest item here.
 ## What shipped, and what the premise turned out to be
 
 `.github/pull_request_template.md`. The lane line as default text, then what changed and why
-(the diff shows what), the five gates named individually so "not run" is a visible answer rather
+(the diff shows what). The five gates named individually so "not run" is a visible answer rather
 than a silence, where identified work went, and a `## Needs an architect` section deleted unless it
 applies. The gates are listed by name rather than as one "did you run the gates" line because a
 checklist somebody ticks without reading is the thing this was replacing.
 
 `.github/ISSUE_TEMPLATE/`, three forms and a `config.yml`. The section below was written when
 issues were disabled and its premise expired within hours of being written, which is the useful part
-of the record rather than an embarrassment: calef enabled issues on 2026-08-31, and that picked
+of the record rather than an embarrassment. calef enabled issues on 2026-08-31, and that picked
 the second of the two answers it lays out. So the forms route, which is what that option asked
 for:
 
@@ -90,8 +90,8 @@ install that makes a second customer possible) exists, because that is when a th
 ## The code of conduct is a commitment, not a file
 
 Adopting the Contributor Covenant takes a minute. **What it costs is the promise to enforce it**, and
-a project that ships one without meaning it has published a claim it will not honor, which is worse
-than silence and is exactly the failure this tree's `BUGS` convention exists to avoid elsewhere.
+a project that ships one without meaning it has published a claim it will not honor. That is worse
+than silence and exactly the failure this tree's `BUGS` convention exists to avoid elsewhere.
 
 What has to be decided: **who the enforcement contact is.** Today that is one person, and naming him
 is honest; a role address is what a project with contributors would use. §109's (attribution is a
@@ -108,7 +108,7 @@ project has no third-party contributors.
 ## BUGS
 
 - The three routing forms are more work to fill in than an issue elsewhere would be, on purpose,
-  and that is a cost rather than a free win: a stranger with a small good idea may not write four
+  and that is a cost rather than a free win. A stranger with a small good idea may not write four
   paragraphs about reversibility, and this project will never hear it. The alternative was hearing
   it and having nowhere to put it, which is worse, but the trade is real and unmeasured.
 - Nothing verifies the forms render. GitHub validates issue-form YAML when it lands on the

@@ -20,7 +20,7 @@ because we don't have enough to know what we need from a fourth board to drive a
 The decision this gate names is calef's own, it is dated, and it is quoted above, which is
 why milestone 435's sweep leaves the token where it is and mints no `design/decisions/` section for
 it. This block is one of the 45 that sweep counted as naming no section and no `§`, and it is a
-false positive of that count rather than a gap: what a numbered section would hold (what is being
+false positive of that count rather than a gap. What a numbered section would hold (what is being
 decided, the options, the recommendation, what is blocked) is already here, and the status of it is
 *answered with "not yet"* rather than *pending*. Filing a deferral as `**Status: PROPOSED.**` would
 put a question calef has closed back on the queue that exists to show him what is open.
@@ -79,7 +79,7 @@ is precisely what would make the answer *no* today. Either result is evidence.
 
 2. Asymmetric cores. Every machine here is homogeneous: four A57s, four U74s, and the OptiPlex's
 identical cores. **Fatal risk 5 (it cannot be made reliable on multicore, and the bugs appear only on
-silicon) has never met cores that are not interchangeable**, and this kernel deliberately does not
+silicon) has never met cores that are not interchangeable**. This kernel deliberately does not
 rebalance (DECISIONS 138, how a saturated workload is made to hand threads across cores). On
 2026-09-03 two soak runs on four *identical* cores differed eightfold by placement alone (milestone
 240, the soak reports what happened and not where). Asymmetry is the harder version of the same
@@ -107,7 +107,7 @@ byte would be buying evidence we have not collected.
 
 2026-09-03 is the argument for that discipline. radon has booted for weeks, and only that afternoon
 did anyone learn its device tree omits the TRNG (milestone 239, radon's device tree does not describe
-the TRNG, so a working driver never runs), a fact which then explained a second number nobody had
+the TRNG, so a working driver never runs). That fact then explained a second number nobody had
 questioned. Boards teach you things only once you run them.
 
 So: buy the fourth board when argon and xenon have both booted, and one of these is true:
@@ -142,7 +142,7 @@ say nothing about GICv3, nothing about SMMUv3, and nothing about asymmetric core
 still want an aarch64 board this project does not own. Claim 1 no longer does.
 
 And the blocker on using them is not a driver, it is milestone 243 (a machine with no serial port
-has no way to say anything, and no gate can read it): those machines have no serial port, so nife
+has no way to say anything, and no gate can read it). Those machines have no serial port, so nife
 would boot and say nothing after the loader.
 
 ## BUGS

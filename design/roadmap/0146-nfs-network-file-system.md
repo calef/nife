@@ -36,7 +36,7 @@ In brief. Two halves sharing one protocol library:
 
 Both halves share **one `crates/nfs_proto`** carrying the ONC RPC / XDR layer, the portmapper
 (`PMAP`) or rpcbind protocol, and the `MOUNT` and `NFS` procedure numbers and structures. The
-SMB adapter proved that the protocol crate is the place for the host-testable wire logic; `nfs_proto`
+SMB adapter proved that the protocol crate is the place for the host-testable wire logic. `nfs_proto`
 is the same shape, and the rule that the seam never holds key material (§54) is even simpler here
 because NFSv3 has no session key.
 
@@ -130,7 +130,7 @@ rule already priced. Each new adapter adds the wire format only.
   a local mapping layer.
 - `crates/nfs_proto` would be the third network file or discovery protocol crate this tree has
   carried (`smb_proto` and `multicast_dns_protocol` came first, and were retired on 2026-08-30 and
-  2026-09-15), and the milestone-54 and 55 lane experience says the protocol crate is the
+  2026-09-15). The milestone-54 and 55 lane experience says the protocol crate is the
   place the bugs concentrate. Budget for it.
 - No estimate of effort, because the adapter pattern is proven but the XDR encoder-decoder is
   an entire C-callable standard that this tree would own rather than vendor. The SMB adapter

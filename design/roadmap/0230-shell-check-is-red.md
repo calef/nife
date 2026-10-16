@@ -74,7 +74,7 @@ system that could not boot.
 - `script/shell-check` now runs in `script/gates` and in CI, and the reasoning for each is in
   the file that carries it. It is 30 seconds for both architectures against a warm target directory,
   measured, which is why it belongs in the command a person runs before pushing. In CI it is
-  appended to `script/ci-build` rather than given a job of its own: a separate job would repeat that
+  appended to `script/ci-build` rather than given a job of its own. A separate job would repeat that
   job's ten-minute build and claim another runner to do thirty seconds of work, and runner
   concurrency is a real ceiling here.
 - **The `BUGS` sections that described this as a mystery now describe it as a fact**, in
@@ -160,7 +160,7 @@ shredded all six would give a false red.
 And what it costs, said where a reader meets it (`script/shell-check`'s `BUGS`): the error moves
 from false red to false green. If init's report were deleted *and* a thread faulted in the same
 boot, this passes. The trade is deliberate. A false red taxes every lane whose change had nothing to
-do with it, which is the signature this tree has deleted three lint checks for; a false green is
+do with it, which is the signature this tree has deleted three lint checks for. A false green is
 undone by repetition, because an init that stops dropping its budget prints the failing sentence on
 every boot of both legs on every push.
 
@@ -188,7 +188,7 @@ What depends on that stream being readable, beyond this gate:
 - Milestone 218's boot script, which parses the same stream.
 
 The design question is where the kernel's own output should go once userspace owns the console, and
-it is not obviously a patch: a fault report has to reach a person, and on a real board there is no
+it is not obviously a patch. A fault report has to reach a person, and on a real board there is no
 second port to send it to.
 
 ## `login` does not run, and this gate is why anyone knows
@@ -236,7 +236,7 @@ accounting move together and want a lane of their own.
   concurrent kernel write as an explanation for an unreadable line, and cannot tell that from init
   having gone silent in the same boot where something died. Both halves have to happen together.
   Recorded in `script/shell-check`'s own `BUGS`, which is where a reader meets the check. Milestone
-  233 narrows it a long way without closing it: the only kernel output during the console phase is
+  233 narrows it a long way without closing it. The only kernel output during the console phase is
   a fault report, and a killed thread is now a failure in its own right, so a run that reaches case 3
   is already failing for the true reason. What this design buys there is that the *reported* reason
   is the dead thread rather than a fabricated claim about init's capabilities.
@@ -266,7 +266,7 @@ accounting move together and want a lane of their own.
   or on the stack at the moment the kernel takes the fault and is not printed. The workaround that
   worked here is to fault on a *data* address derived from it, since `far` is printed.
 - **Recorded.** `script/swish-check`'s own BUGS (the script this block calls `shell-check`
-  throughout) says where the error moved: a boot that both stopped
+  throughout) says where the error moved. A boot that both stopped
   reporting and faulted passes, because `boot_claim`'s third case reads a concurrent kernel write as
   the explanation for an unreadable line and cannot tell that from init having gone silent in the
   same boot. Why that trade is deliberate is told above, under "Two matchers lost".

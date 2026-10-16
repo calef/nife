@@ -13,10 +13,10 @@ host.
 
 In brief. On 2026-09-01 radon halted with `MEASURED BOOT REFUSED` because its card held a
 kernel from one build and a userspace archive from another, six days apart. The measured-boot gate
-caught it, which is the gate working, and it caught it after a power cycle, a serial capture and
+caught it, which is the gate working. It caught it after a power cycle, a serial capture and
 a person watching.
 
-Milestone 217 narrowed who can hit this: `script/board-image --card` now copies the three files as an
+Milestone 217 narrowed who can hit this. `script/board-image --card` now copies the three files as an
 indivisible set, so a card written by the script is consistent by construction. **It did not remove
 the need**, and 217's own `BUGS` says so. A card can be written by hand, written by an older script,
 half-copied, or carried between machines.
@@ -34,11 +34,11 @@ init)).
 
 `crates/sealed_pair` (provisional) asks exactly that on the host: it parses the archive with the
 tree's one archive reader, hashes each entry with the tree's one SHA-256, and looks for the digest's
-32 raw bytes in the kernel image. That is what the trust root compiles to, a chance 256-bit match
-elsewhere is not a case worth a sentence, and needing no knowledge of where the array landed is what
+32 raw bytes in the kernel image. That is what the trust root compiles to, and a chance 256-bit match
+elsewhere is not a case worth a sentence. Needing no knowledge of where the array landed is what
 lets one function read a flat `booti` image, an ELF, and a UEFI boot file with the pair inside it.
 
-It checks milestone 104's half too, and reports it separately: an archive whose own measurement table
+It checks milestone 104's half too, and reports it separately. An archive whose own measurement table
 disagrees with its contents boots past the kernel and then loses its console, because the progenitor
 treats what it cannot vouch for as what is not there. That is a different program's refusal, so it
 gets a different sentence.
@@ -71,7 +71,7 @@ builds, and this pair halts at MEASURED BOOT REFUSED after the power cycle.
 ## Where a person meets it, and whether it is a gate
 
 The command before a radon evening is `script/card-check /Volumes/NIFE`. Exit 0 means it boots,
-1 means the board would refuse it and the output says which half to copy, 2 means there is no payload
+1 means the board would refuse it and the output says which half to copy. 2 means there is no payload
 at that path. It reads; it never writes, and it is pointed at a mounted filesystem rather than a
 device node.
 
@@ -86,7 +86,7 @@ the pair is *made* rather than copied:
   space is caught there and nowhere else).
 - **In CI, no.** No CI job builds a board payload, so a gate there would have nothing to read. The
   place a mismatch can be built rather than copied in an ordinary run is `uefi_loader`'s build, and
-  that is already rung one: milestone 441 (the program that makes the stick) made it a build failure,
+  that is already rung one. Milestone 441 (the program that makes the stick) made it a build failure,
   and this milestone did not add a check there, it deleted the second copy of one.
 
 ## Follow-on
@@ -107,8 +107,8 @@ the pair is *made* rather than copied:
 
 ## BUGS
 
-- It duplicates a check the kernel already does, and that is deliberate rather than an oversight:
-  the kernel's is the authority and this one is an early warning. If they ever disagree, the kernel
+- It duplicates a check the kernel already does, and that is deliberate rather than an oversight.
+  The kernel's is the authority and this one is an early warning. If they ever disagree, the kernel
   is right and this milestone is wrong. Every refusal prints that sentence.
 - **It cannot say what the kernel expected.** A digest the kernel does not carry is not a digest
   anything can find in the image, and locating the trust root without one as the needle would mean
@@ -117,7 +117,7 @@ the pair is *made* rather than copied:
   the honest answer on a machine that has not built a payload.
 - It says nothing about the boot script or the extlinux config, which are the other two ways a
   card can be wrong, and milestone 218 has just changed which of those a card should carry.
-- Nothing forces anyone to run it. It is rung two at best, and a card written by hand by somebody
+- Nothing forces anyone to run it. It is rung two at best. A card written by hand by somebody
   who did not read this block is exactly the case it cannot reach. `script/board-image` running it on
   every payload and every card it writes is as far as a mechanism reaches here.
 - **No board has booted a card this passed.** Every proof was on the host, which is the whole point
@@ -127,9 +127,9 @@ the pair is *made* rather than copied:
 
 ## Index row
 
-`script/card-check <mounted card>` answers the board's own question on the host: it hashes every
+`script/card-check <mounted card>` answers the board's own question on the host. It hashes every
 archive entry the kernel may enter and looks for that digest in the kernel image's compiled-in trust
-root, so a kernel and an archive from different builds are caught before the walk to the board rather
+root. A kernel and an archive from different builds are caught before the walk to the board rather
 than by `MEASURED BOOT REFUSED` after it. It reads a microSD card, a UEFI stick, a single boot file
 or the payload the build just produced; a refusal names the entry, the digest it has, and which of
 the two files to copy. The comparison is one crate (`sealed_pair`) that the UEFI loader's build now

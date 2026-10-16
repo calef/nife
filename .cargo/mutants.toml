@@ -3,59 +3,27 @@
 # .cargo-deny-version and .cargo-fuzz-version. Config, not a code dependency (DECISIONS §46): nothing
 # in the tree links against cargo-mutants, it only reads our source and runs our tests.
 #
-# Every exclusion below is a crate whose lines cannot execute on the host, so no host test could ever
-# catch a mutant in it; a "missed" there would measure the wrong thing. The list deliberately mirrors
-# script/coverage's exclusions, because both tools answer questions only a host-executed line can
-# answer. Keep the two lists in step, and keep this list to things that physically cannot run here,
-# never to things that are merely untested.
+# The host-excluded set is NOT recorded here. Every workspace crate that reaches
+# crates/user_mode_runtime cannot build for the host, and script/mutation derives that set from
+# helpers/host-excluded-crates.sh and passes it to cargo-mutants on the command line, the same
+# derivation script/coverage and script/lint's clippy passes consume. What is listed below is
+# judgment, each entry with its reason, and it stays limited to things that physically cannot be
+# mutated here, never to things that are merely untested.
 
 exclude_globs = [
-    # QEMU-only, no_std, bare-metal. The same three every host gate excludes (script/drift,
-    # script/lint, xtask's host-test pass): they do not compile for the host at all.
+    # `kernel` itself: no_std, QEMU-only, bare metal, and it takes no dependency on
+    # `crates/user_mode_runtime`, so the derivation's dependency-graph walk cannot name it. It does
+    # not compile for the host at all.
     "kernel/**",
-    "components/**",
-    "fixtures/**",
-    "crates/user_mode_runtime/**",     # user-mode syscall runtime, aarch64/riscv64 inline asm
-
-    # Reach `user_mode_runtime` through the dependency graph, so they do not build for the host at all: thin
-    # wrappers over its syscalls (build a child, quiesce a component), plus the system builder those
-    # wrappers exist for. Excluded from the coverage run for the same reason and only that reason
-    # (see script/coverage).
-    #
-    # **This heading used to say "compile for the host but cannot execute there" and that was
-    # wrong**, found by milestone 244: `--exclude` removes a package from the test SELECTION, not
-    # from the dependency graph, and script/lint's own bare-metal gate carries the whole story of
-    # how that distinction stayed invisible for eleven days.
-    "crates/supervision_protocol/**",
-    "crates/swap_protocol/**",
-
-    # The system builder (milestone 96), and it was MISSING here until milestone 244 measured why
-    # its score looked the way it did. It reaches `user_mode_runtime` like the two above, so the host suite
-    # cannot execute a line of it; the first published mutation report (milestone 238) therefore
-    # scored it 191 mutants, 0 caught, which is arithmetic rather than a finding and is the largest
-    # single number in that report. script/lint's "host pass excludes exactly the bare-metal crates"
-    # gate now derives this list rather than trusting the paragraph above to be remembered.
-    #
-    # `script/swish-check` is what proves this crate: it boots both ISAs and types at the prompt.
-    # Excluding it here does not make it proved, and milestone 244's block carries the measured
-    # split of what a host test could and could not have reached.
-    "crates/system_initializer/**",
 
     # **The system-test image** (milestone 609 (the system tests leave the kernel crate), 2026-09-27
     # UTC). A bare-metal `[[bin]]` that links the kernel as a library, so it is `kernel/**` by
     # another path: its one mutant (`system_tests_main`) put a host `cargo test -p system_tests` in
     # one shard's baseline, which failed with "unwinding panics are not supported without std" and
     # turned the whole weekly run red from 2026-09-28 (milestone 636 (the scheduled workflows are
-    # failing)). The bare-metal gate in script/lint did not catch it because it derives its list
-    # from crates that reach `user_mode_runtime`, and this one reaches `kernel` instead. What proves
-    # it is `cargo xtask test`, which boots it on three ISAs.
+    # failing)). Like `kernel`, it reaches `kernel` rather than `user_mode_runtime`, so the
+    # derivation cannot name it. What proves it is `cargo xtask test`, which boots it on three ISAs.
     "system_tests/**",
-
-    # Driver whose entry points each orchestrate a live virtio device; two volatile ops per thousand
-    # lines of orchestration. Its security-critical logic lives in
-    # crates/direct_memory_access_validator (milestone 35 (prove the DMA-confinement boundary)),
-    # which IS mutated. Same exemption, same wording, as the coverage floor.
-    "crates/virtio/**",
 
     # **The UEFI application itself, and it is here for a THIRD reason** neither of the two above:
     # not a crate that fails to compile for the host, and not a judgement call, but a `[[bin]]`

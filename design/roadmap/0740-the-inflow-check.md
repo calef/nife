@@ -28,8 +28,9 @@ Built with no mutation sweep: from the artifacts of runs 37108924347 (2026-10-03
   survivor list per census, key and count only, because the Actions artifacts expire in about 90
   days. Two are committed (2026-09-21, 2026-10-03), 4.7 KB and 6.7 KB gzipped.
 - Two jobs in `.github/workflows/mutation.yml`. `inflow` runs the check and goes red on an
-  untriaged inflow survivor; it runs on the weekly schedule and never on a merge, so milestone 479
-  (a blocking `--in-diff` mutation gate) stays refused. `record` opens a pull request through the App
+  untriaged inflow survivor; it runs on the weekly schedule and never on a merge. The check that
+  does sit on a merge is milestone 924 (a survivor on a pull request's own lines cannot merge
+  untriaged)'s diff gate. `record` opens a pull request through the App
   token and the `automation` environment (as `metrics.yml` does) adding the census's rows to
   `mutation-census.csv` and its survivor list. It records only a complete census, all eight shards.
 - The 2026-10-03 census row in `mutation-census.csv`, which capture had left out.

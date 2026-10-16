@@ -91,7 +91,7 @@ nothing scrolls. Held still and photographed, the OVMF console's first row is
 
 the middle of the firmware memory map, with 95 rows below it and no banner anywhere. So what the old
 sampler was catching was the banner early in the boot, before the scroll, which is a window at
-the other end of the tour from the one its own comment described, and which is why a loaded machine
+the other end of the tour from the one its own comment described. That is why a loaded machine
 read zero: the first dump landed after the scroll rather than after the clear. The marker is the
 self-test verdict again, the tour's tail, which the handshake makes deterministic.
 `boot_ladder::BANNER` is now the *deep* marker, reported when a screen is tall enough to still hold
@@ -126,7 +126,7 @@ rather than of the host's spare capacity.
 gate, so the answer is stated rather than implied.
 
 The mechanism is arch-neutral. `yield_screen` consults the flag on all three architectures, the
-wait is one piece of code, and both console UART drivers grew the receive half it needs: the NS16550
+wait is one piece of code, and both console UART drivers grew the receive half it needs. The NS16550
 pair came out from behind `reboot_soak_test`, and the PL011 gained `rx_waiting` and `discard_rx` of
 its own.
 
@@ -138,7 +138,7 @@ a window onto kernel statics. So `yield_screen` is never reached there, nothing 
 `cargo xtask screen-boot` photographs a screen that will show the same thing an hour later.
 
 **`script/boot-check` does not have this race either**, which §199 left to this lane and which was
-worth checking rather than assuming: it asserts its rungs on the serial transcript, which is a stream and not a state, and it
+worth checking rather than assuming. It asserts its rungs on the serial transcript, which is a stream and not a state. It
 takes no screendump at all.
 
 That changes when milestone 157 (real display output on the board) gives those two a firmware
@@ -183,8 +183,8 @@ next person meets it.
 
 `cargo xtask uefi-boot` asserted milestone 243's claim by sampling a window that closes in guest
 time, so a loaded machine read zero rows and blamed the framebuffer. The kernel is asked to hold the
-screen instead: `screen-hold` on the boot command line makes `yield_screen` announce itself on the
-serial line and wait up to ten seconds for a byte before it clears, bounded twice so no knob can
+screen instead. `screen-hold` on the boot command line makes `yield_screen` announce itself on the
+serial line and wait up to ten seconds for a byte before it clears, with two bounds so no knob can
 wedge a machine. Three runs at load 17, 32 and 38 each read exactly 95 rows. A spinning guest
 starves QEMU's own monitor, so the wait parks the core, and the tour is taller than the screen and
 scrolls, so the marker sits at its tail.

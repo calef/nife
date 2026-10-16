@@ -25,7 +25,7 @@ From '104. The measurement continues past init', under `## Follow-on`:
 
 The measured-boot chain in this tree compares what it loaded against a digest compiled into the
 verifier. A signature would instead check that somebody with a key vouched for the image, which is a
-different property: it lets the thing being verified change without the verifier changing, and it
+different property. It lets the thing being verified change without the verifier changing. It
 pays for that with keys, a certificate chain and verification code inside the trusted computing
 base.
 
@@ -38,7 +38,7 @@ not find it, so it is flagged here rather than corrected.
 
 - **Unstated.** The refusal names no trigger. It names a reason (a signature enlarges the trusted
   computing base with exactly what the digest approach avoids), an authority (calef reaffirmed it on
-  2026-08-03) and a sequence (signatures in addition to measurement, never instead of it), and none of
+  2026-08-03) and a sequence (signatures in addition to measurement, never instead of it). None of
   those is a thing that could become true. That is a gap somebody could close in one sentence, and the
   sentence is probably about who needs to verify an image without recompiling the verifier.
 

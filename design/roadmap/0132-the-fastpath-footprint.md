@@ -11,14 +11,14 @@ Mach-scale performance issues on our benchmark hardware."* Both halves are the d
 second half is the one that lasts.
 
 The number the gate exists to hold still is over target, and this block says so in the same
-breath as claiming BUILT, because a gate that keeps a bad number bad is still the right gate: it
+breath as claiming BUILT, because a gate that keeps a bad number bad is still the right gate. It
 converts a gap you can measure into a gap that cannot widen while nobody is looking.
 
 ## Why a footprint is a benchmark at all
 
 Liedtke, *On µ-Kernel Construction* (SOSP 1995), is the source and the finding is not the one the
 paper is usually cited for. Mach's IPC was slow **not because its code was slow** but because the
-hot path's cache footprint evicted the application's working set, so the user paid the miss after
+hot path's cache footprint evicted the application's working set. So the user paid the miss after
 the syscall returned, where no microbenchmark of the syscall could see it. seL4's answer is a
 hand-written fastpath small enough to leave L1 mostly intact.
 
@@ -64,8 +64,8 @@ silent by construction.
 ## Where we stand against the target, and what closing it would be
 
 The target in `notes/benchmarks/kernel-footprint-and-caches.md` is under 4 KiB for the fastpath,
-an eighth of the smallest L1i among machines this project actually runs on (32 KB, the SiFive U74),
-expressed as a fraction so it tracks the board list rather than a number somebody liked.
+an eighth of the smallest L1i among machines this project actually runs on (32 KB, the SiFive U74).
+It is expressed as a fraction so it tracks the board list rather than a number somebody liked.
 `ipc_fastpath` alone is 5.6 KiB.
 
 The largest single item is `syscall::dispatch` at 2,024 bytes, and it is precisely what seL4's
@@ -74,9 +74,9 @@ operation it is performing.
 
 That work is not this milestone's, and it should not be folded in. A hand-written IPC fastpath is
 a kernel design decision with a verification cost (the proofs currently cover one path through
-`ipc_send`, not two), and it is the sort of change whose entire justification is a measurement, so it
+`ipc_send`, not two). It is the sort of change whose entire justification is a measurement, so it
 wants the instrument to exist first. It does now. Recording the trigger rather than scheduling the
-work, in this file's habit: the day the gate's number moves the wrong way under a change nobody
+work, in this file's habit. The day the gate's number moves the wrong way under a change nobody
 wanted, or the day milestone 127's TX1 puts a real PMU behind the estimate, the fastpath stops being
 a note.
 
@@ -113,7 +113,7 @@ Tooling and a note. It moves no syscall, adds no dependency, changes no wire for
 settling rather than applying. Nothing depends on it and it is an architect's call.
 
 **One claim in the prose it replaced did not survive being checked**, and it is recorded in
-notes/benchmarks.md rather than here because that is where a reader meets it: L1i has **not** grown
+notes/benchmarks.md rather than here because that is where a reader meets it. L1i has **not** grown
 four to six times and is not still growing. It has been static at 32 to 64 KB for a decade, Zen 5
 included. L2 is what ballooned, which is a different and weaker safety net: overflowing L1 now costs
 tens of cycles instead of a trip to DRAM, rather than not costing anything.
@@ -127,7 +127,7 @@ tens of cycles instead of a trip to DRAM, rather than not costing anything.
   touched per IPC" can be estimated from the structures the path touches without waiting for a PMU.
 - **Recorded.** `design/roadmap/0132-the-fastpath-footprint.md`. The gate reports an upper bound
   rather than a footprint: whole symbol sizes, so a cold tail parked in a hot function counts
-  against us, indirect calls are invisible the way `script/stack-depth-check` records for itself,
+  against us. Indirect calls are invisible the way `script/stack-depth-check` records for itself,
   and riscv64's tail instruction is assumed 4 bytes on an ISA that mixes 2 and 4.
 - **Recorded.** `design/roadmap/0132-the-fastpath-footprint.md`. The cold list is the load-bearing
   judgment in the script and a wrong entry there is silent by construction: a family wrongly marked
@@ -135,7 +135,7 @@ tens of cycles instead of a trip to DRAM, rather than not costing anything.
   about itself, which is why each family carries a reason instead of a bare regex.
 - **Recorded.** `notes/benchmarks.md`. The under-4-KiB target is derived from cache sizes taken from
   general knowledge rather than from the boards. The U74's 32 KB wants confirming against the
-  VisionFive 2 and the TX1's 48 KB against the silicon when it arrives, and nothing here models a
+  VisionFive 2 and the TX1's 48 KB against the silicon when it arrives. Nothing here models a
   cache, an associativity or a line: this is a proxy, and milestone 74's counters on milestone 127's
   hardware are what would turn it into a measurement.
 - **Recorded.** `script/fastpath-footprint`. The script's name is provisional and unratified, and
@@ -147,10 +147,10 @@ tens of cycles instead of a trip to DRAM, rather than not costing anything.
 ## Index row
 
 Liedtke's actual finding is that Mach's IPC was slow because the hot path evicted the
-application's working set, so the user paid the miss after the syscall returned where no latency
+application's working set. So the user paid the miss after the syscall returned where no latency
 benchmark could see it. Nothing here measured that: an icount tripwire counts instructions
 retired, not instruction cache occupied, so a change doubling the footprint would land green. `script/fastpath-footprint` walks the call graph out of the release disassembly, `stack-depth-check`'s technique, and gates two numbers per ISA at 5%. Closing naively from `finish_switch` returned 11.2 KiB because the reap branch drags in teardown that never runs during
 an IPC; excluding it gave 5.6. We are over the 4 KiB target and the gate holds it still rather
-than closing it: `syscall::dispatch` at 2,024 bytes is the largest item and is exactly what
+than closing it. `syscall::dispatch` at 2,024 bytes is the largest item and is exactly what
 seL4's hand-written fastpath skips, which is separate work that wanted this instrument to exist
 first

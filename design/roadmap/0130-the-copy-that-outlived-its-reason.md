@@ -35,12 +35,12 @@ into seven variants of the same intent.
 
 The reason it is like this is written down, which is what makes it worth fixing rather than worth
 arguing about. `crates/user_rt/src/lib.rs:14` records a deliberate decision not to put the handler
-in the runtime crate: a panic handler is per-final-binary, putting one in a library forces it on
+in the runtime crate. A panic handler is per-final-binary, putting one in a library forces it on
 every program that links the crate and collides with any program wanting its own, and "each binary
 keeps its own one-line handler; it is trivial."
 
 The first clause is still right and the last one stopped being true. The handler is fifteen
-lines with two `unsafe` blocks and two `// SAFETY:` comments, so the tree now asserts a
+lines with two `unsafe` blocks and two `// SAFETY:` comments. The tree now asserts a
 load-bearing safety invariant eighty-eight times by copy-paste, against a `DECISIONS` §61 note
 saying a SAFETY comment is an assertion and not a formality. And the same file's header claims
 `user_rt` is "the one place in userspace that names" the two ABIs, which forty-eight files
@@ -60,7 +60,7 @@ one-line change.
 `swap_proto::fail()` are byte-identical copies of the asm, lifted into shared crates, and thirteen
 programs already delegate their handler to one of them. So the work is not inventing an
 abstraction whose requirements are unknown, which is the thing `user_rt`'s own header is careful
-about; it is finishing a lift that stopped at thirteen of fifty-eight and landed in two protocol
+about. It is finishing a lift that stopped at thirteen of fifty-eight and landed in two protocol
 crates rather than in the runtime crate that documents itself as owning the two-ABI surface.
 
 The shape: a `trap()` in `user_rt`, a `user_rt::panic_handler!()` macro that expands to the
@@ -73,9 +73,9 @@ calef's ruling). The naming tenet scopes itself precisely, to "a crate, a progra
 module", and a function and a macro inside an existing crate are none of those. `script/names`
 implements exactly that scope in its three categories, so neither name could ever have reached the
 ratification worklist: `script/names trap` answers "neither a name in the tree nor a recorded
-refusal", and it says the same of `send`, `recv`, `exit`, `invoke` and `reap`, which have sat in
+refusal". It says the same of `send`, `recv`, `exit`, `invoke` and `reap`, which have sat in
 this crate unratified since 19f.6 without anyone thinking them owed. Marking these two provisional
-promised a ruling that nothing would ever ask for, which is worse than not marking them: an
+promised a ruling that nothing would ever ask for, which is worse than not marking them. An
 unratified name a reader can see in a worklist is a worklist item, and one nobody can see is a
 false note in the record.
 
@@ -85,7 +85,7 @@ forty-eight authors each remembered.
 ### Second: `mkinitrd` does one job three ways
 
 `xtask/src/main.rs:3249` builds the aarch64 archive with nineteen hand-rolled `let` bindings of
-seven identical lines each, then a loop over a thirty-three-name array doing exactly the same
+seven identical lines each. Then a loop over a thirty-three-name array doing exactly the same
 thing, then a hand-written `files` vector re-listing the first nineteen by the same string
 literals. Its riscv sibling `initrd_riscv` already does it correctly: one `(archive_name,
 bin_name)` table, one loop.
@@ -139,7 +139,7 @@ they implied was not. Recorded in full rather than quietly dropped, because a wr
 gets checked is worth as much as a right one and this file is the only place that record can live.
 
 The claim was: forty-eight functions returning bare `bool` and a hundred and thirteen `return
-false` sites each preceded by an `eprintln!`, so every failure is printed and flattened where it
+false` sites each preceded by an `eprintln!`. Every failure is printed and flattened where it
 happens, nothing composes, and no caller can branch on why a step failed. What reading the sites
 showed:
 
@@ -195,7 +195,7 @@ became #284 with the same branch and the same commits. Recorded because the next
 branch under an open pull request should expect it.
 
 The wider question the rename raised is not this milestone's: calef asked what the prefix taxonomy is
-for, a grep found that **nothing consumes it except the check that enforces it**, and the proposal to
+for, a grep found that **nothing consumes it except the check that enforces it**. The proposal to
 retire all of it except `milestone/N-` (the one prefix §90's roadmap-block check actually reads) is
 separate work.
 
@@ -222,10 +222,10 @@ separate work.
   #284 with the same branch and the same commits. The next person to rename a branch under an open
   pull request should expect it.
 - **Milestone 365.** `design/roadmap/0365-xtask-in-modules.md`, split `xtask/src/main.rs`, 6,785
-  lines with no module structure when this was written and 10,680 on 2026-09-19, into modules. The compiler verifies the split completely so the
-  edit is mechanical; what it needs is a scheduled slot, because that file is one of the three merge
-  hotspots every lane wires its test into and a wholesale restructure conflicts with every branch in
-  flight.
+  lines with no module structure when this was written and 10,680 on 2026-09-19, into modules. The
+  compiler verifies the split completely so the edit is mechanical. What it needs is a scheduled
+  slot, because that file is one of the three merge hotspots every lane wires its test into and a
+  wholesale restructure conflicts with every branch in flight.
 - **Milestone 344.** Whether to retire the branch-prefix taxonomy down to `milestone/N-`, the one
   prefix §90's roadmap-block check actually reads. Already answered when this bullet was written:
   calef retired it on 2026-08-18 on exactly that argument, so 344 is `BUILT` and what survives is

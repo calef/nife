@@ -29,13 +29,14 @@ identity provisioning rather than login's survival. So the line is true about wh
 false about what a reader takes it to mean.
 
 That makes this the sharpest member of a family this tree found four of in one day (milestone 232,
-audit every check against two questions): not a check that failed to run, but a check that passed
+audit every check against two questions). Not a check that failed to run, but a check that passed
 while the thing it named was dead.
 
 ## Why it is coupled to milestone 231
 
 Handing `login` a mapping of the archive costs init capability slots, at exactly the peak
-milestone 230 measured and sized the table against: 21 of 24, with three slots of deliberate
+milestone 230 (shell-check is red on main) measured and sized the table against: 21 of 24. With
+three slots of deliberate
 headroom that its own block calls a guess standing in for a mechanism.
 
 So the fix and the accounting move together, and milestone 231 (nothing counts how many capability
@@ -49,10 +50,10 @@ blobs instead: `fs_subtree_caretaker`'s ELF bytes and the measurement table, at 
 `login_proto` now names, with their lengths in `x0` and `x1`.
 
 Giving it the archive was the option refused, and the refusal has two reasons rather than one. It
-could not be done with what init holds: `supervision_proto::build_child` maps only pages the spawner
+could not be done with what init holds. `supervision_proto::build_child` maps only pages the spawner
 has a `PageFrame` capability for, and the archive is reserved RAM the frame allocator does not own
-and nothing names, so this would have needed a new kernel object naming reserved RAM, which is a
-syscall-surface decision and calef's. And it is the wrong shape anyway: this program needs one
+and nothing names. It would have needed a new kernel object naming reserved RAM, which is a
+syscall-surface decision and calef's. And it is the wrong shape anyway. This program needs one
 program's bytes and a table to check them against, and a service that can read every file in the boot
 image to answer a password holds authority it never exercises.
 
@@ -101,7 +102,7 @@ is not this case.
   itself not running.
 - The measurement check `login` performs is weaker than it was, and its own docs say so. It used
   to read the same physical archive the kernel maps for init, so it was independent of whoever
-  spawned it; both blobs now come from init, which has already run the identical check over them, so
+  spawned it. Both blobs now come from init, which has already run the identical check over them, so
   what remains is a consistency check on the hand-over. Kept because it costs one hash and catches a
   spawner that pairs the wrong two blobs.
 - Nothing else that init starts has been checked program by program. The no-thread-killed
@@ -118,8 +119,8 @@ is not this case.
 
 - **Refused.** Handing `login` a mapping of the boot archive, for two reasons rather than one. It
   could not be done with what init holds, since `supervision_proto::build_child` maps only pages
-  the spawner has a `PageFrame` capability for and the archive is reserved RAM nothing names, so it
-  would need a new kernel object naming reserved RAM and that is a syscall-surface decision. And it
+  the spawner has a `PageFrame` capability for and the archive is reserved RAM nothing names. It
+  would need a new kernel object naming reserved RAM, and that is a syscall-surface decision. And it
   is the wrong shape anyway: a program that answers a password should not be able to read every
   file in the boot image.
 - **Milestone 235.** A spawned command that traps hangs the prompt, found by this milestone's own
