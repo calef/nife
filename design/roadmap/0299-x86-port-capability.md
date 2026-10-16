@@ -10,10 +10,10 @@ the kernel answer on an endpoint)'s kernel thread (2026-09-15).
 
 What was built. `Object::PortRange(base, count)` on the capability surface (semantics recorded in
 DECISIONS §152, provisional), enforced by the **lazy** TSS I/O-bitmap write on the context switch
-(`arch::segments::set_port_grant`, installed from `sched::schedule`): a switch that crosses no port
+(`arch::segments::set_port_grant`, installed from `sched::schedule`). A switch that crosses no port
 holder costs one comparison and writes nothing (`tss_iomap_lazy_nop`, +216 ticks/iter over a bare
-switch), and a holder crossing writes only the bits that move, not the 8 KiB the naive always-write
-§121 priced at ~2,682 ns cost every switch (`notes/benchmarks.md`, 2026-09-15). Revocation
+switch). And a holder crossing writes only the bits that move, not the 8 KiB the naive always-write
+§121 (what a device capability is when the device has no page) priced at ~2,682 ns cost every switch (`notes/benchmarks.md`, 2026-09-15). Revocation
 (`PortRange::REVOKE`, and the kernel's own whole-machine sweep) deletes the capability, clears the
 cached grant, and resets the core's TSS, so a revoked holder faults on its next `in`/`out`. The x86
 console and input drivers are userspace processes holding COM1's `(0x3F8, 8)` ports, delegated by the
@@ -25,7 +25,7 @@ load-bearing tests pass under QEMU (`kernel/src/user/x86_port_tests.rs`): a non-
 
 One scope note, recorded rather than hidden. The x86 input driver polls COM1 (reading the
 port it holds and yielding between reads) rather than blocking on the receive interrupt, because x86
-does not yet route a device line (COM1's legacy IRQ 4) to a userspace waiter: the kernel delivers only
+does not yet route a device line (COM1's legacy IRQ 4) to a userspace waiter. The kernel delivers only
 self-directed vectors to a driver today (`kernel/src/arch/x86_64/exceptions.rs`). Output (the prompt,
 and everything the shell prints) is unaffected and interrupt-independent. Interrupt-driven x86 input,
 which routes IRQ 4 through the IO APIC to the input driver's `Irq` capability and lets it block, wants
@@ -45,7 +45,7 @@ Genode and L4Re.
 
 1. A port-range capability, a new `Object` kind naming a `(base, count)` range of I/O ports.
    This is syscall surface (DECISIONS §10, §16), the irreversible category, so it is designed against
-   the one real consumer it has (the console driver) rather than in the abstract: granularity is a
+   the one real consumer it has (the console driver) rather than in the abstract. Granularity is a
    port range because a 16550 is eight consecutive ports, and the semantics are the honest analogue
    of the mapping-based device capability the other two architectures already use.
 2. TSS I/O-bitmap enforcement on the context-switch path, the LAZY form. DECISIONS §121's own
@@ -67,8 +67,8 @@ Genode and L4Re.
 
 ## The first measurement, because §121 named it
 
-Before the capability is wired to real drivers, take the number §121's refinement asked for: the
-lazy write's real cost, a per-thread "holds any port capability" bit checked on switch-in with
+Before the capability is wired to real drivers, take the number §121's refinement asked for.
+The lazy write's real cost, a per-thread "holds any port capability" bit checked on switch-in with
 the bitmap written only when set, timed against a bare switch, the way `ipc_rtt` and `null_syscall`
 are measured. This is not a second run of `tss_iomap_switch` (which prices the naive always-write);
 it prices what this milestone actually ships. `script/bench --x86` is TCG-only on this host, so the

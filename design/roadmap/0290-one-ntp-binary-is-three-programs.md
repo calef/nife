@@ -148,7 +148,7 @@ Rule 7 says anything two binaries must agree on is a crate. **After the split th
 that is not already one.** The wire format is `ntp_proto`, the socket contract and the shared frame's
 offsets are `socket_proto`, and the frame's virtual address is each process's own choice in its own
 address space rather than an agreement. The report words are one numbering space but the three
-programs use disjoint subsets of it, and the party each of them agrees with is the kernel, which
+programs use disjoint subsets of it. The party each of them agrees with is the kernel, which
 mirrors the vocabulary in `ntp_service::rpt` the way it does for thirty other programs.
 
 What is duplicated is about forty lines of `r8`/`w8`/`write_payload`/`read_payload` glue over
@@ -174,7 +174,7 @@ and not about these three; it is proposed below.
 Exit 0. The same command at the base commit `3c156f82` gave aarch64 321/3, so the split adds two
 archive entries and moves no test.
 
-The six NTP tests run alone now, which they did not before (see the defect above):
+The six NTP tests run alone now, which they did not before (see the defect above).
 `script/test --test ntp_tests` is 6 passed on aarch64, 6 on riscv64, and on x86_64 2 passed with 4
 skipped for want of a virtio-rng device, which is the documented state of that board.
 `an_ntp_client_holds_no_writable_clock_page` is one of the two that runs there, so the confinement
@@ -227,7 +227,7 @@ three new names ratified and carrying eight refusals between them.
   work.
 - **Milestone 410.** Six programs each carry their own copy of the accessors that turn an absolute
   virtual address back into a `MappedWindow` offset, and this lane's split of the `ntp` binary added
-  the sixth; `multicast_dns_responder`'s retirement at milestone 298 has since left five.
+  the sixth. `multicast_dns_responder`'s retirement at milestone 298 (retire the multicast DNS responder) has since left five.
 - **Milestone 402.** `entropy_service::ensure` hands its first caller a `Wiring` whose `ready`
   endpoint must be drained, because the service announces itself with a blocking send, and nothing
   in the type says so. This lane hit it in `ntp_tests` and fixed that one caller; the general

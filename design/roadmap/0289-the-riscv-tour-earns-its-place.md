@@ -21,19 +21,19 @@ run, and the only riscv64 build that exists outside a QEMU gate.
 Yes, four things, none of them a note.
 
 `script/board-image` builds the tour. Its default is `FEATURES="board"`, and it takes no flag that
-would build the shell kernel: the four modes are the plain tour, `--soak`, `--jobmix` and `--bench`,
+would build the shell kernel. The four modes are the plain tour, `--soak`, `--jobmix` and `--bench`,
 and the last three *replace the end of* the tour rather than skipping it, which the script says in
 its own argument check ("all replace the end of the boot tour; pick one"). So every VisionFive 2
 (radon) boot this tree can produce runs the tour. `riscv_shell_boot` is `#[cfg(feature = "shell")]`,
 `script/swish-check` is the only thing in the tree that builds that kernel, and it builds it for
-QEMU, so nothing here produces a board payload that would run `progenitor` and no bench record in
+QEMU. So nothing here produces a board payload that would run `progenitor`, and no bench record in
 `notes/visionfive2.md` shows one having run.
 
 `crates/board_console` reads the builder's output line. `Progress::userspace_ran` is set by
 `line.contains("init/build")` (`crates/board_console/src/progress.rs`), which is the line
 `kernel/src/main.rs` prints when the builder's child reports 81. It is asserted by four host tests
 and appears in three captured transcripts, one of them off the board itself:
-`tests/fixtures/captured/vf2-2026-09-01-userspace.log`, whose filename is the word `userspace`
+`tests/fixtures/captured/vf2-2026-09-01-userspace.log`. Its filename is the word `userspace`,
 precisely because this program running is what distinguishes that capture from the others taken the
 same day. `script/board-console` prints it as its own summary line, and `notes/board-console.md` states flatly that it is "the only
 difference between the two successful captures": with an archive on the card, and without.
@@ -46,9 +46,9 @@ AGENTS.md names while the customer path is vacant.
 The VisionFive 2 bring-up used the tour, with an initrd, and the builder step is what boot stages
 4 and 5 bracket. This settles the claim the maintainer told calef and then withdrew as unchecked.
 It was right. `notes/visionfive2.md`'s fifth stop resolves boots 7 through 9 with five independent
-identifications, and three of them are facts about `builder` specifically: its exact syscall count
-(14 of the boot's 20 ecalls, itemized), the retype kinds it issues (`ASPACE`, `FRAME`, `TCB`, **never
-`ENDPOINT`**, which is what pinned the endpoint-naming order), and that it issues no receive of any
+identifications. Three are facts about `builder` specifically. Its exact syscall count
+(14 of the boot's 20 ecalls, itemized). The retype kinds it issues (`ASPACE`, `FRAME`, `TCB`, **never
+`ENDPOINT`**), which is what pinned the endpoint-naming order. And it issues no receive of any
 kind, which is what made the parked receivers in the dump impossible to attribute to it. The
 breadcrumbs were added for boot 11 to bracket a failure that was *initrd-path-coupled*, which is to
 say coupled to this step.
@@ -77,10 +77,10 @@ trimming is the reason it can.
 shell, terminal sink, job undertaker, one program on three architectures since milestone 266, gated
 by `script/swish-check`'s riscv64 leg in CI. If the board could boot it, this milestone would have
 retired the tour. The board cannot. `riscv_shell_boot` needs the PLIC initialized, the NS16550's
-registers delegated as a `DeviceFrame`, and the UART interrupt routed, and **the UART's PLIC source
-number is not the same on the board as in QEMU** (10 on QEMU `virt`, 32 on the JH7110; it was a
+registers delegated as a `DeviceFrame`, and the UART interrupt routed. And **the UART's PLIC source
+number is not the same on the board as in QEMU** (10 on QEMU `virt`, 32 on the JH7110). It was a
 hardcoded QEMU constant until `user::uart_irq_and_source()` learned to read the machine's own tree,
-and `notes/visionfive2.md` carries it in BUGS). `builder` takes an untyped budget and a report
+and `notes/visionfive2.md` carries it in BUGS. `builder` takes an untyped budget and a report
 endpoint and nothing else: no interrupt controller, no device capability, no IRQ delegation. So on
 silicon it separates "the capability core composes a process" from "this board's interrupt wiring is
 right", and the tour's own history is that the second one is the half that breaks.
@@ -137,11 +137,11 @@ Proposed provisionally, with the refusals: see the block in `components/src/buil
 - **Milestone 406.** No pull-request check boots the default riscv64 kernel with its archive,
   so the tour's builder step, its device-IRQ step and its banner are asserted by nothing that runs
   automatically. That is what made a live step look dead. Numbered on 2026-09-19 by milestone 433's
-  drain of the pile, with the headline narrowed: `script/boot-check` (milestone 268, the same day
+  drain of the pile, with the headline narrowed. `script/boot-check` (milestone 268 (every architecture boots the same way), the same day
   this bullet was written) does boot the default kernel on every pull request, with no initrd, so
   what is left unasserted is the tour past the self-test verdict.
 - **Recorded.** The unmeasured child load stays in `notes/trusted-init.md`'s "Still not covered",
-  where it already lived, with one caveat added there rather than given a second home: that note
+  where it already lived, with one caveat added there rather than given a second home. That note
   groups the three uncovered loaders as "test or demo programs rather than the shipped system", and
   on riscv64 the first of them is the program the kernel loads and measures on the build that goes to
   a card. It had a second home in the `builder` program's own `BUGS`, and that home is gone: calef
@@ -149,7 +149,7 @@ Proposed provisionally, with the refusals: see the block in `components/src/buil
   copy, which is where this bullet said it already lived.
 - **Done.** Milestone 295 carried this, by answering it out of existence rather than by choosing.
   The bullet asked for two calls from calef, the category (`components/` versus `fixtures/`) and a
-  replacement for the generic name `builder`; on 2026-09-14 he retired the program in one sentence,
+  replacement for the generic name `builder`. On 2026-09-14 he retired the program in one sentence,
   so neither question has a subject any more and `script/names --unratified` no longer lists it. The
   write-up lived in the program's own provenance and `BUGS` blocks and went with the file; commit
   `0fa40ee8` is where a reader can still read it.

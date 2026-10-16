@@ -15,7 +15,7 @@ provisional until the merge queue lands it; 278 is in flight ahead of it.)*
 
 The block below is kept as it was written. This section is what the measurement found.
 
-`documentation`'s 52% was measuring a crate with a third of its test suite compiled away, which
+`documentation`'s 52% was measuring a crate with a third of its test suite compiled away. That
 is the `system_initializer` result (milestone 244) and the `uefi_loader` result (2026-09-04) a third
 time, at a Cargo feature rather than at a crate or a target. `cargo-mutants` tests one package at
 a time (`--test-workspace` is off by default, and turning it on would run the whole workspace suite
@@ -42,8 +42,8 @@ number in that same configuration is 54.6%, so the sample was honest about a cra
 wrongly.
 
 The fix is a dev-dependency on itself, which Cargo allows and which resolver 2 unifies across
-the test build: `cargo test -p documentation` now compiles the builder and runs all twelve index
-tests, `cargo build -p documentation` still does not, and no consumer changed, because a dev
+the test build. `cargo test -p documentation` now compiles the builder and runs all twelve index
+tests, and `cargo build -p documentation` still does not. No consumer changed, because a dev
 dependency is not transitive. `script/lint` gained the third gate in this family beside the two the
 earlier two findings left, deriving from `cargo metadata` that every feature of every mutated crate
 is on when that crate's own tests run; it was verified in both directions.
@@ -90,7 +90,7 @@ had lifted out to be host-testable was at 94.1% the whole time. The result of mi
 largest crate in the tree is proved by nothing) one level down, at a target rather than a crate.
 
 So what is left of this milestone is `documentation` at 52%, and one residue that is already
-tracked elsewhere: excluding `src/main.rs` made the number honest, not the file proved, and whether
+tracked elsewhere. Excluding `src/main.rs` made the number honest, not the file proved. And whether
 its 790 firmware lines get lifted the way `handoff` and `image` were is milestone 381,
 `design/roadmap/0381-the-uefi-loaders-firmware-half-is-proved-by-one-boot.md`.
 
@@ -185,9 +185,9 @@ it."*
 
 Written by the milestone 247 sweep 2026-09-03, promoted 2026-09-13 by calef while working out what
 progresses fatal risk 3. `uefi_loader` was answered on 2026-09-04 and the promotion did not
-notice, so what was left was `documentation`. Its 52% was the third instance of one failure:
-cargo-mutants tests one package at a time, so a non-default feature is mutated and never compiled,
-and `builder` gates the index writer AND six of the twelve index tests, so the reader was scored
+notice, so what was left was `documentation`. Its 52% was the third instance of one failure.
+cargo-mutants tests one package at a time, so a non-default feature is mutated and never compiled.
+And `builder` gates the index writer AND six of the twelve index tests, so the reader was scored
 against half a suite. 54.6% whole-crate before, 78.9% with the feature on, 95.4% after. Fixed by a
 dev-dependency on itself plus a third script/lint gate; the sweep also found table alignment and
 tab indentation computed correctly and read by nobody.

@@ -145,7 +145,7 @@ A `cfg` over data, not over code, in one file, beside the other board's table. G
 
 It is packed under its own name now, on riscv64 and x86_64, and the RISC-V boot tour enters it
 directly. Its claim is *"userspace, not the kernel, composes the system"*, proven on a second ISA in
-the smallest form that can prove it, and one progenitor does not retire that claim: the progenitor
+the smallest form that can prove it, and one progenitor does not retire that claim. The progenitor
 proves the same thing while also being the interactive system, so it proves it less cleanly. A
 reader who wants to see the composition model with nothing else in the frame reads `builder`.
 
@@ -193,7 +193,7 @@ applied, stated so it can be disagreed with:
   inits"* is the correction it records; `notes/trusted-init.md` carries captured boot transcripts
   whose bytes are evidence.
 - A file a developer may not edit does not change, and that is a larger share of the 748 than any
-  judgment call: 371 of the remaining occurrences are in other milestones' roadmap blocks and 100
+  judgment call. 371 of the remaining occurrences are in other milestones' roadmap blocks and 100
   are in `design/decisions/`, both of which AGENTS.md puts outside a lane's reach.
 
 ## Follow-on
@@ -219,7 +219,7 @@ applied, stated so it can be disagreed with:
   The recommendation is not the mechanical answer. The boot path is named after the role it hands
   to, and once the role has a nine-letter name that reads as a mouthful three times over. What the
   flag actually selects is *skip the milestone tour and hand off immediately*, which is a property of
-  the boot rather than of who receives it: its sibling `shell` is named that way already, for the
+  the boot rather than of who receives it. Its sibling `shell` is named that way already, for the
   thing you get rather than for the program that builds it. So `handoff` / `handoff` / `handoff` is
   worth calef's consideration beside `progenitor-boot`. Either way it is his call, and `jobmix` has
   the same unratified-squish defect beside it.
@@ -259,7 +259,7 @@ applied, stated so it can be disagreed with:
   them. Anyone with a saved transcript, or a script grepping one, sees a different word.
 - Dangling references remain in `design/`, and they are not oversights. 471 occurrences of the
   word sit in other milestones' roadmap blocks and in `design/decisions/`, which a developer lane may
-  not edit; among them are live citations of `spawn_init`, `boot_via_init`, `INIT_ROLES_ENTRY` and
+  not edit. Among them are live citations of `spawn_init`, `boot_via_init`, `INIT_ROLES_ENTRY` and
   `INIT_BOOT_ROLE` (milestones 166, 177, 182, 161, 49 and 105, and decisions 21 and 120). They will
   not resolve against the tree until a maintainer sweeps them.
 - `notes/pipes.md` carries a dead path in a fixed-width diagram, `user/src/system_initializer`,

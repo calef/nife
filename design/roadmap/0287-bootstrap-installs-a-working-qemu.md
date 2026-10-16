@@ -7,8 +7,8 @@ built: 2026-09-13
 
 This is AGENTS.md's third principle failing, and the tell is that the fix for it had already been
 written once. *A newcomer must be able to succeed without asking anyone.* Milestone 117's second
-stranger run found that `script/setup` could not complete on a stock Linux box; the remedy applied
-was a better error message; the message never printed, would have been the ladder's floor if it had,
+stranger run found that `script/setup` could not complete on a stock Linux box. The remedy applied
+was a better error message. The message never printed, would have been the ladder's floor if it had,
 and named two commands that could not work. `notes/stranger-test.md` recorded it as fixed and stayed
 wrong for twenty-eight days, which that note now says out loud.
 
@@ -52,7 +52,7 @@ and `qemu-check`'s `command -v qemu-system-aarch64` found `/usr/bin`'s 8.2.2 aga
 same message, same remedy, forever.
 
 Why nobody met it. Every contributor's machine was warm, and CI sets the PATH itself, so the only
-configuration that exercises this path is a cold Linux clone: exactly what the stranger test exists
+configuration that exercises this path is a cold Linux clone. Exactly what the stranger test exists
 to be, and exactly what the fix it prompted was never run against.
 
 ## Who owns the PATH, which was the real question
@@ -60,7 +60,7 @@ to be, and exactly what the fix it prompted was never run against.
 The emulator is invoked by bare name from 38 sites across 16 files, in three languages:
 `exec qemu-system-aarch64` at the bottom of `helpers/qemu-runner-aarch64.sh`, the riscv64 and x86_64
 runners beside it, `helpers/qemu-uefi-x86_64.sh`, a `subprocess` argument list in
-`script/netboot-rehearsal`, probe lines in `script/gates` and `script/cpu-matrix`, and
+`script/netboot-rehearsal`. Probe lines in `script/gates` and `script/cpu-matrix`, and
 `script/qemu-check` itself. **So the mechanism is PATH inherited by children, not one spawn site to
 patch.** Four options were priced.
 
@@ -134,9 +134,9 @@ out without either needing an exemption. `script/lint` still trips the rule thro
 check's own source, because a checker necessarily carries every pattern it looks for; it takes the
 line rather than an exemption.
 
-Verified in both directions. Four faults were injected one at a time and the gate watched to fire
-on each: the source line dropped from `script/test`, the fragment deleted, a new entry point that
-runs `cargo xtask` and forgets, and a backticked mention that must stay quiet (it did).
+Verified in both directions. Four faults were injected one at a time, and the gate watched to fire
+on each. The source line dropped from `script/test`; the fragment deleted; a new entry point that
+runs `cargo xtask` and forgets; and a backticked mention that must stay quiet (it did).
 
 ## Proof, because the point of this milestone is that reasoning was not enough last time
 
@@ -147,7 +147,7 @@ Reproduced first, on this Ubuntu box with apt's 8.2.2 on `/usr/bin`: `script/qem
   is the only emulator reachable by the old rules) runs `script/qemu-check` and gets
   `QEMU 11.0.2 matches the pin, with every required device present`.
 - A genuinely cold prefix. `QEMU_PREFIX` pointed at an empty directory and `script/bootstrap` run
-  against it: the Linux branch fires, the twelve-minute warning prints, `script/ci-qemu` builds
+  against it. The Linux branch fires, the twelve-minute warning prints, `script/ci-qemu` builds
   11.0.2 into that prefix, the fragment picks it up, and the re-check passes, all in one command with
   nothing typed in between.
 - A fresh shell afterwards finds `/root/.cache/nife-qemu/bin/qemu-system-aarch64`, which is the

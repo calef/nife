@@ -10,7 +10,7 @@ promoted_from: two-boot-mode-features-for-one-decision
 
 The question arrived sideways. `script/initboot` was the **only one of fifty-five `script/` entry
 points that ran two words together** (fifty-four now that it is gone), against the hyphen rule for
-shell commands that milestone 63 swept the tree for on 2026-08-01; this one survived that sweep
+shell commands. Milestone 63 (one spelling per thing) swept the tree on 2026-08-01. This one survived that sweep
 rather than being exempted by it, and
 `design/roadmap/proposals/what-the-boot-path-is-called.md` had been holding a rename since
 2026-09-08. Asked to rule on `progenitor-boot` or `handoff`, calef asked what the thing does, and the
@@ -48,7 +48,7 @@ are equal to the byte.
 missed.** `shell` selects three things `initboot` never did: `riscv_hand_over()` in
 `kernel/src/main.rs`, and two `cfg_attr` arms in `kernel/src/cap.rs`. So `initboot` was a strict
 **subset** of `shell` on riscv64 and equal to it on aarch64. That is an argument for deleting
-`initboot` rather than against it: the feature that selected less was the one nothing ran, since
+`initboot` rather than against it. The feature that selected less was the one nothing ran, since
 `cargo xtask initboot` only ever built for `TARGET` (aarch64), and the only riscv64 `initboot` build
 in the tree was `script/lint`'s own per-feature loop.
 
@@ -60,7 +60,7 @@ The two `xtask` arms were not identical, and what the difference was decided thi
 stopgap*, on the ground that a person booting interactively should have one), builds the RedoxFS
 server, and rebuilds the RedoxFS fixture the prompt's `>` and `<` read. `initboot` did none of that.
 Its difference from `shell` was entirely a matter of having less, so an alias would have
-*added* capability to anyone who typed the old name, and keeping the arm as it stood would have kept
+*added* capability to anyone who typed the old name. Keeping the arm as it stood would have kept
 the copy this milestone exists to remove.
 
 **And the omission was staleness, not design.** `helpers/qemu-runner-aarch64.sh` attaches the
@@ -74,7 +74,7 @@ names for one boot was the defect.
 
 This is the part worth a paragraph, because nothing about it was a mistake at the time.
 
-`initboot` was minted on 2026-07-25 for milestone 19d.2c, and it named a real difference: the
+`initboot` was minted on 2026-07-25 for 2c of milestone 19d (a real workload), and it named a real difference. The
 kernel stops wiring services and hands the machine to the userspace progenitor, which then builds
 the console server, the input driver, the line discipline and the shell out of its own budget. The
 `shell` feature at that date meant something else, the kernel-wired `shell_service`. Two boots, two
@@ -85,7 +85,7 @@ and milestone 41 deleted it, so `--features shell` started handing off to the pr
 `initboot`'s distinguishing behavior became `shell`'s behavior. What was left for the pair to
 select was only the milestone tour's absence, and both selected exactly that. Milestones 267 and
 268 then moved the machine description and the tour apart and lifted the narrative out of the
-kernel, and calef ruled the narrator deleted on 2026-09-13; each of those steps took another thing
+kernel, and calef ruled the narrator deleted on 2026-09-13. Each of those steps took another thing
 out of the space the two features were dividing. By 2026-09-09 milestone 267's lane measured the
 pair and wrote the proposal this block was promoted from, and `kernel/src/main.rs` carried the
 sentence *"Both features mean exactly this one thing"* into `main` under every gate.
@@ -113,10 +113,10 @@ Two of those three are not what they look like. x86_64's boot arm is self-contai
 removes nothing on that architecture and never has. riscv64's arm halts too, and its `shell` swaps
 its own arch tour for `user::riscv_shell_boot`, so 5,828 bytes is the difference between two RISC-V
 boot paths rather than the cost of the aarch64 tour. The thing the surviving feature removes is one
-architecture's 14 KB, and symbol attribution says almost none of it was ever the narrative:
-`console_service` ~3.0 KB, the two never-yielding spinner closures ~3.3 KB, `virtio_service` ~1.7 KB,
-`memory_region_service` ~1.3 KB, `kernel_main` itself +1,460. Each of those is a demonstration
-needing a kernel privilege, which is why milestone 267 left them where they are.
+architecture's 14 KB, and symbol attribution says almost none of it was ever the narrative.
+`console_service` ~3.0 KB; the two never-yielding spinner closures ~3.3 KB; `virtio_service` ~1.7 KB;
+`memory_region_service` ~1.3 KB; `kernel_main` itself +1,460. Each of those is a demonstration
+needing a kernel privilege, which is why milestone 267 (the tour is three things wearing one name) left them where they are.
 
 So the proposal's first question is answered and its second and third are dissolved. Is 7.3% on
 one architecture worth a compile-time switch? It is kept, on that number. Should it be one feature
@@ -129,9 +129,9 @@ The per-feature clippy loop is `for feat in shell bench icount board fastpath_pa
 cycle_counter_grant`, on two targets, and `initboot` came out of it.
 
 Milestone 401, `design/roadmap/0401-a-gate-that-selects-the-set-it-judges.md`, is the class of
-failure this could have been, and milestone 265 is the worked example: a check that computed the set it judged
+failure this could have been. Milestone 265 (`_proto` is a truncation) is the worked example: a check that computed the set it judged
 passed by checking zero crates on the one change that was its subject, going blind instead of
-red. This loop cannot do that, and the comment above it now says so: the list is **written out, not
+red. This loop cannot do that, and the comment above it now says so. The list is **written out, not
 globbed**, so an entry leaving is visible in the diff, and every iteration echoes its own `==>` line,
 so an empty list would be visible in the output. Seven features times two targets is fourteen lines,
 and counting them is the check a reader can run.
@@ -165,12 +165,12 @@ the one member nobody had counted.
 
 So this is not the hyphen rule reaching a stray file. `job_mix` is the ratified name of this thing
 and `jobmix` was a misspelling of it, so the module became `kernel/src/job_mix.rs`, the Cargo feature
-became `job_mix` (which is also what every other multiword feature in this kernel already looks like:
-`fastpath_pad`, `cycle_counter_grant`, `reboot_soak`), and `script/board-image`'s flag became
+became `job_mix`. That is also what every other multiword feature in this kernel already looks like:
+`fastpath_pad`, `cycle_counter_grant`, `reboot_soak`. And `script/board-image`'s flag became
 `--job-mix`.
 
 **The console markers moved to `job-mix:` and `job-mix-census:`, and that half is provisional.** They
-were checked for readers first, because a marker with readers is a contract: `crates/board_console`'s
+were checked for readers first, because a marker with readers is a contract. `crates/board_console`'s
 recognizer knows `soak:` and does **not** know this workload at all, which is what
 `design/roadmap/proposals/a-board-console-recogniser-for-the-job-mix-sweep.md` exists to fix, so the
 only reader in the tree is `xtask`'s own sweep and it moved in the same commit. The spelling is the
@@ -245,7 +245,7 @@ they were written.
   sites, two `xtask` subcommands, a `script/` entry point and a per-feature lint loop, and was found
   by a person following a naming rule to the one script that broke it. No gate in this tree compares
   what two features select, and none is proposed here, because the check is a compiler question (are
-  these two `cfg` sets equivalent) rather than a text one, and the cheap text version would fire on
+  these two `cfg` sets equivalent) rather than a text one. The cheap text version would fire on
   every legitimate `any(a, b)`.
 - `--features job_mix` is still built by nobody but `script/job-mix`. Fixed once, here, and
   unprotected. `script/job-mix`'s own `BUGS` is where a reader meets this and carries the detail.
@@ -260,4 +260,4 @@ they were written.
 
 ## Index row
 
-Promoted from the 2026-09-09 proposal milestone 267's lane wrote and was told not to act on. `script/initboot` was the only `script/` entry point running two words together; asked to rule on `progenitor-boot` or `handoff`, calef asked what the thing does and ruled it deleted, so a naming question was answered by deletion. The premise was measured rather than grepped: an aarch64 kernel built `--features initboot` and one built `--features shell` carry the same 3,109 symbols at the same 1,273,614 total bytes, differing only in the crate disambiguator hash the feature name itself feeds. On riscv64 `initboot` was a strict subset, selecting three things less. `script/initboot` was deleted rather than aliased, because its `xtask` arm differed from `shell`'s only by omitting the virtio-rng device and the RedoxFS fixture. **`jobmix` moved in the same breath and it was a repair, not a tidy-up**: calef's 2026-09-13 ratification of `crates/job_mix` rests on the family staying greppable as one string and counts three members, and the fourth, `kernel/src/jobmix.rs`, is exactly what that grep misses (31 files against 25). Console markers to `job-mix:`. Found and fixed one line nobody was looking at: `--features job_mix` failed `-D warnings` on both ISAs. Merged with milestone 297's `soak` to `soak_test` rename on 2026-09-15, carrying both renames through every conflicted site.
+Promoted from the 2026-09-09 proposal milestone 267's lane wrote and was told not to act on. `script/initboot` was the only `script/` entry point running two words together; asked to rule on `progenitor-boot` or `handoff`, calef asked what the thing does and ruled it deleted, so a naming question was answered by deletion. The premise was measured rather than grepped: an aarch64 kernel built `--features initboot` and one built `--features shell` carry the same 3,109 symbols at the same 1,273,614 total bytes, differing only in the crate disambiguator hash the feature name itself feeds. On riscv64 `initboot` was a strict subset, selecting three things less. `script/initboot` was deleted rather than aliased, because its `xtask` arm differed from `shell`'s only by omitting the virtio-rng device and the RedoxFS fixture. **`jobmix` moved in the same breath and it was a repair, not a tidy-up**: calef's 2026-09-13 ratification of `crates/job_mix` rests on the family staying greppable as one string and counts three members. The fourth, `kernel/src/jobmix.rs`, is exactly what that grep misses (31 files against 25). Console markers to `job-mix:`. Found and fixed one line nobody was looking at: `--features job_mix` failed `-D warnings` on both ISAs. Merged with milestone 297 (`soak` becomes `soak-test`) and its `soak` to `soak_test` rename on 2026-09-15, carrying both renames through every conflicted site.
