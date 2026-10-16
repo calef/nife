@@ -1253,7 +1253,8 @@ echo "==> fatal risks"
 # selection, not from the dependency graph, so excluding `user_mode_runtime` while four workspace crates
 # depended on it unconditionally left it in the build. The host pass stopped compiling on x86_64 on
 # 2026-08-03 and stayed broken until 2026-08-14, invisible throughout because CI moved to an aarch64
-# runner the same day, where the EL0 assembly compiles by accident. Milestone 244 then found the
+# runner the same day, where the EL0 assembly compiles by accident. Milestone 244 (the largest
+# crate in the tree is proved by nothing a mutation can reach) then found the
 # repair covered two consumers, not four, and the two it missed are the two that publish a NUMBER:
 # coverage and mutation. The drift it caught in `.cargo/mutants.toml` scored `system_initializer`
 # 191 mutants and 0 caught. Nobody was wrong; a number was, and it was the kind of number a
@@ -1336,7 +1337,8 @@ if emitter not in coverage:
 if emitter not in open("script/mutation").read():
     missing.append("script/mutation: it must pass the derived set to cargo mutants on the command\n"
                    f"  line ({emitter}), and the file no longer names it")
-# Every xtask source, not one file: milestone 365 split xtask into a module per command, and the
+# Every xtask source, not one file: milestone 365 (`xtask/src/main.rs` is 6,785 lines with no
+# module structure) split xtask into a module per command, and the
 # host pass lives in the module that runs it. What this check means is "the derivation is called
 # somewhere in xtask", so read the directory rather than one file.
 xtask_src = sorted(pathlib.Path("xtask/src").glob("*.rs"))
