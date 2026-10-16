@@ -90,4 +90,29 @@ mod tests {
         assert_eq!(right(12345, 3), "12345");
         assert_eq!(right(u64::MAX, 4), "18446744073709551615");
     }
+
+    fn signed(v: i64) -> String {
+        let mut out = Vec::new();
+        write_signed(v, &mut |b| out.extend_from_slice(b));
+        String::from_utf8(out).unwrap()
+    }
+
+    /// The sign goes first, once, and the magnitude follows digit for digit: a negative prints
+    /// `-` then its digits, a positive prints no sign, and both `i64` extremes print their full
+    /// nineteen-digit magnitude. `i64::MIN` is why the writer takes its absolute value unsigned:
+    /// its magnitude does not fit back in an `i64`, so negating first would panic.
+    #[test]
+    fn a_signed_number_prints_its_sign_then_its_digits() {
+        assert_eq!(signed(-9301), "-9301");
+        assert_eq!(signed(9301), "9301");
+        assert_eq!(signed(-3), "-3");
+        assert_eq!(signed(i64::MIN), "-9223372036854775808");
+        assert_eq!(signed(i64::MAX), "9223372036854775807");
+    }
+
+    /// Zero is not negative, so it prints one digit and no sign.
+    #[test]
+    fn zero_prints_one_digit_and_no_sign() {
+        assert_eq!(signed(0), "0");
+    }
 }
