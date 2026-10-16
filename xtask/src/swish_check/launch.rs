@@ -251,8 +251,9 @@ impl RebootPhase<'_> {
 
 /// **The screendump decoded back into rows of text, in the terminal's own scheme.**
 ///
-/// The decoder is the one in `board_console::screen` (milestone 377, which deleted this leg's
-/// own `parse_ppm`, `decode_cell` and `scanout_rows`); what this call site contributes is the
+/// The decoder is the one in `board_console::screen` (milestone 377 (two screendump decoders,
+/// in two crates, reading the same font), which deleted this leg's own `parse_ppm`,
+/// `decode_cell` and `scanout_rows`); what this call site contributes is the
 /// two things that belong to the leg and not to a decoder:
 ///
 /// - **The geometry assertion `scanout_rows` used to carry**, kept here where it belongs: this

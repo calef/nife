@@ -11,7 +11,8 @@ needs_person: no
 # 377. Two screendump decoders, in two crates, reading the same font
 
 Filed as a proposal on 2026-09-04 by the milestone 243 lane, out of its own
-duplication; promoted by milestone 433 on 2026-09-19. Built 2026-10-16 (UTC) on branch
+duplication; promoted by milestone 433 (drain the proposal pile to zero, and keep it
+there) on 2026-09-19. Built 2026-10-16 (UTC) on branch
 `milestone/377-one-screendump-decoder-not-two`. The three functions this block was filed against
 had already moved once before the merge, and stood in `xtask/src/scanout.rs`, not at the
 `main.rs` lines named below. The one decoder is `board_console::screen::decode` (name
