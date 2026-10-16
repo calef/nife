@@ -1,6 +1,6 @@
 ---
-status: IN-PROGRESS
-branch: milestone/422-a-cadence-job-whose-healthy-state-is-red
+status: BUILT
+built: 2026-10-16
 raised: 2026-09-17
 promoted_from: a-cadence-job-whose-healthy-state-is-red
 milestone_dependencies: none
@@ -81,6 +81,12 @@ its own BUGS gives a dead cadence. Reading the line is best effort, because `gh 
 `helpers/trunk-health-repeat-selftest.sh` proves the thresholds, the strip and the watcher
 exclusions offline.
 
+A REPEAT row also opens its issue, on every five-minute pass, through `helpers/repeat_issue.py`:
+one open issue per workflow, deduped by workflow name, titled `scheduled failure repeats:
+<workflow>`, its body naming the failing line and the span of dates and updating when either
+drifts. A CHURN row opens nothing. The state is GitHub's own, never a file, so the re-announce the
+relay already owns costs one list call per pass and nothing more.
+
 Against the live specimen, on 2026-10-16 (UTC), the row read:
 
 ```
@@ -91,19 +97,14 @@ Five of the six runs ended in `script/audits`' own epilogue, identical for six w
 sixth, on 2026-09-14, ended in a `FileNotFoundError` that fell out of the group on its own: the
 two rows the Actions tab renders identically, separated by the only witness that saw both.
 
-## The open question
+## Where the report lives, and what closes it
 
-Who is the report for, and what closes it? A repeat report on `audit-cadence` says "run the
-audit", and running an audit is a lane and a day, not a fix somebody applies between tasks. Reported
-to a maintainer session it becomes rung four again, a message somebody has to read; reported into a
-pull request there is no pull request to hang it on. AGENTS.md's answer for work waiting on a person
-is the `needs-architect` label and a `## What I need from you` comment, and neither has a home when
-the finding belongs to no branch.
-
-That is an architect's call, not a lane's, and it is the same question the steward's own "it
-reported and never acted" failure of 2026-08-04 raised without settling. It stands on the
-milestone's pull request as a `## What I need from you` comment carrying `needs-architect`, and the
-pull request does not merge until it is answered; the mechanism above reports either way.
+The report is an issue, one per workflow, and the audit closes it. The issue's body names the
+workflow, the failing line and the span of dates, and states its own close condition: the audit
+lane's report pull request lands with `Closes #N` naming the issue. That routing lives in
+`audit-cadence.yml`'s step summary, which is what hands the audit lane out. Nothing closes an
+issue but that landing, deliberately: a row stopping is not the work being done, and a broken run
+can hide among correct reds. A CHURN row has no issue and no close; it is a look, not a work item.
 
 ## What this does not propose
 
@@ -112,6 +113,17 @@ decoration, and the workflow's own header and `design/audit-reports/README.md`'s
 say that closing this by editing the index is the one thing that makes the mechanism a lie. The
 ambiguity is the cost of a correct design, and the fix is a second signal rather than a quieter
 first one.
+
+## Follow-on
+
+- **Recorded.** The repeat half's per-pass API cost, and the best-effort reading of `gh`'s logs,
+  are limitations beside the feature in `helpers/trunk-health.sh`'s BUGS. A cost ceiling wants a
+  lane only if the tree's scheduled dailies multiply.
+- **Recorded.** The per-workflow runs endpoint is this block's answer to the 100-run listing cap.
+  `script/cadence-check`'s own BUGS still owes that fix for its 15-day threshold (#1511).
+- **Refused.** Making the row a gate, closing the issue by editing the index, and reading the row
+  from an audit lane's gates. The reasons stand in `script/cadence-check`'s header, the audit
+  workflow's own, and the ruling recorded on this milestone's pull request.
 
 ## Index row
 
@@ -125,6 +137,6 @@ healthy state is red has no green to be stale against and a job that never succe
 ever. `helpers/trunk-health.sh` now reports a repeat rather than a color: each scheduled workflow's
 last six runs grouped by the failing step's final line. A REPEAT row fires when one line took three
 or more, a CHURN row when the failures disagree; an offline selftest proves both against the real
-audit-cadence history. What still makes this a block rather than a finished brief is who the report
-is for and what closes it. Running an audit is a lane and a day, and there is no pull request to
-hang the finding on.
+audit-cadence history. The repeat's home is an issue per workflow, deduped by workflow name, whose
+body updates as the line drifts and whose close is the audit lane's report pull request saying
+`Closes #N`, routed by the audit-cadence step summary that hands the lane out.
