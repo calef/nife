@@ -207,7 +207,8 @@ def std_abi_source_texts():
 # `Slot: impl Clone`). A `pub use` is the item it names: the consumer writes the re-export's
 # path, so the target's fingerprint is recorded under the re-export's local name (the
 # "re-export rule" in notes/interface-stability.md), and moving a definition behind `pub use`,
-# as a §282 index split does, moves no surface. The fingerprint is the item's rustdoc
+# as a §282 (when a file is split, the parent becomes an index) split does, moves no surface.
+# The fingerprint is the item's rustdoc
 # description with everything that is not interface removed: ids (which rustdoc renumbers per
 # build), spans, docs, links. Children (fields, variants, methods, trait items) are items of
 # their own, so a struct's fingerprint is its shape, its field order and its repr, and a
