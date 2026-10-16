@@ -20,6 +20,18 @@
 //! says which), `vnet` (an abbreviation, milestone 63) and `virtio_net` (milestone 63: `crates/virtio`
 //! also drives net, so the device-class name alone would collide). This file is a single-consumer
 //! `#[path]` module rather than a `[[bin]]`, which is why rule 7's check leaves it alone.
+//!
+//! # BUGS
+//!
+//! - The DMA-page layout below (`RX_DESC`..`TX_USED`, stride 0x200) restates
+//!   `direct_memory_access_validator`'s `DESC_OFF`/`AVAIL_OFF`/`USED_OFF`/`RING_BLOCK`, which the
+//!   kernel aliases, as literals; `entropy.rs` and `crates/virtio`'s own net driver spell the
+//!   same numbers again, and nothing checks the copies against the crate. Consuming the constants
+//!   takes a `components` -> `direct_memory_access_validator` dependency edge, a §46 (thin
+//!   primitives or whole subsystems) decision (milestone 410 (six copies of the shared-frame
+//!   accessors) priced it, 2026-10-16 UTC, and did not take it; the same pricing priced out
+//!   lifting this file's `r8`/`w8`/... aliases, which are one-line forwards over `MappedWindow`
+//!   and hold no arithmetic of their own).
 
 use alloc::vec;
 use alloc::vec::Vec;

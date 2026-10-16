@@ -22,9 +22,9 @@ milestone 195 found it, and nothing here waits on the OptiPlex.
 **In brief.** `PHYS_START` for the x86_64 kernel is 32 MiB rather than 1 MiB so the image clears
 the low memory OVMF reserves for itself. That buys a larger gap between us and the firmware; it does
 not make the image safe at any other address. Making it physically relocatable means the loader can
-place it wherever the memory map actually has room, and the blocker is `.boot`: the 32-bit
+place it wherever the memory map actually has room. The blocker is `.boot`: the 32-bit
 trampoline's self-references are absolute, and a 32-bit instruction stream cannot name a 64-bit
-address, so those references have to become position-independent before the link address can stop
+address. So those references have to become position-independent before the link address can stop
 mattering.
 
 ## Why this matters
@@ -52,15 +52,15 @@ a 64-bit one."*
 ## Index row
 
 `PHYS_START` for the x86_64 kernel is 32 MiB rather than 1 MiB so the image clears the low memory
-OVMF reserves for itself, which buys a larger gap between us and the firmware and does not
+OVMF reserves for itself. That buys a larger gap between us and the firmware and does not
 make the image safe at any other address. The claim the current arrangement rests on is that 32 MiB
-is free on every machine that boots this kernel, and nothing verifies it; milestone 195's own `BUGS`
+is free on every machine that boots this kernel, and nothing verifies it. Milestone 195's own `BUGS`
 says none of the UEFI path is proved on a Dell, OVMF is not a vendor firmware, and whether the
 OptiPlex leaves 32 MiB free is a question for the bench. So the failure mode is a machine-specific
 boot failure discovered by a person standing at xenon, at the point in the loop where debugging costs
 the most. Making the image physically relocatable turns "does this firmware happen to leave our
 address free" into "the loader read the memory map", which is a question the code can answer on any
-machine, and it removes a number that will otherwise be tuned again: a third firmware with different
+machine. It also removes a number that will otherwise be tuned again. A third firmware with different
 reservations produces a third constant, each one known to be wrong only after a boot fails. The
 blocker is `.boot`, whose 32-bit trampoline cannot name a 64-bit address. OVMF under QEMU reproduces
 the whole problem, so nothing waits on the OptiPlex.

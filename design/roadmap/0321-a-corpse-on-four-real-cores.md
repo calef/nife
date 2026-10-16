@@ -118,7 +118,7 @@ this tree has never meant four cores running in the same instant. Measured rathe
 
 So the first sixteen runs above were not the experiment they looked like. `NIFE_TCG_THREAD`
 (provisional name) was added to `helpers/qemu-runner-x86_64.sh` to fix that, is empty by default
-so nothing else changes, and its `BUGS` section carries the caveat that matters: x86's TSO is
+so nothing else changes. Its `BUGS` section carries the caveat that matters: x86's TSO is
 stronger than an aarch64 host provides, QEMU accepts the pair without a warning, and nobody here has
 audited its barrier placement. A red run under that knob would need confirming on a bench before
 it was believed. Twelve green ones need no such care, and twelve is what it produced.
@@ -129,7 +129,7 @@ The other path to parallel cores, the aarch64 HVF leg, does not run here: QEMU r
 was not worked around.
 
 So the honest statement is the one `design/fatal-risks/README.md` risk 2 predicts: this is reachable only
-on real silicon, or it is rarer than 28 runs, and the instrument for reading it when it next
+on real silicon, or it is rarer than 28 runs. The instrument for reading it when it next
 happens is now in the tree rather than on a bench.
 
 ## What reading the code ruled out, and what it did not
@@ -163,7 +163,7 @@ twenty-eight times somewhere else" is the same refusal wearing a bigger number.
 ## Why it is worth a lane rather than a retry
 
 This is the supervision mechanism. A corpse a supervisor cannot see is the failure §26 (the fault endpoint) exists to
-prevent, and the test's own doc comment says why both halves live in one case: the domain the
+prevent, and the test's own doc comment says why both halves live in one case. The domain the
 viewer reports and the domain the supervisor may collect from are one set. If that set differs on a
 multi-core machine, a property this tree proves and tests holds under emulation and is unverified
 where it matters.
@@ -178,6 +178,7 @@ positioned to see it.
 
 Either a defect is found and fixed with a test that fails without the fix, or the investigation
 establishes that the kernel is correct and the test was wrong, with the reason written down.
+
 "It passed on a retry" is not an outcome this block accepts.
 
 **Neither has happened yet, which is why this is `PARTIAL` and not `BUILT`.** What has happened is
@@ -194,13 +195,13 @@ bench evening that was not an assertion written against QEMU.
 
 - **Outstanding.** The failure itself is unresolved and is gated on xenon: run the x86_64 suite at
   `NIFE_SMP=4` on that machine. If the assertion fires, its message now names which of the three
-  readings is true; if it does not fire, the frequency of the original is itself worth recording,
+  readings is true. If it does not fire, the frequency of the original is itself worth recording,
   because a one-in-many failure in supervision is not a lesser finding than a deterministic one.
 - **Milestone 315.** `kernel::user::x86_port_tests::a_revoked_holder_faults_on_its_next_port_write`
   also fails at `NIFE_SMP=4`, and this lane spent a while treating that as its own find before
   reading the runner it had been editing. `helpers/qemu-runner-x86_64.sh`'s own header already names
-  it, root-causes it (`PortRange::REVOKE` resets the TSS I/O bitmap on the revoker's core only, so a
-  holder on another core keeps the ports for up to a tick), and points at
+  it and root-causes it (`PortRange::REVOKE` resets the TSS I/O bitmap on the revoker's core only, so a
+  holder on another core keeps the ports for up to a tick). It points at
   [milestone 315](0315-port-revoke-every-core.md), which closes it and is `NOT-STARTED` with no gate.
   Nothing is owed here, and the near-miss is worth the sentence: a proposal file had been written
   for it before the existing record turned up.
