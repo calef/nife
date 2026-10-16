@@ -17,9 +17,9 @@ harness reconstructs the pre-fix protocol and passes only when loom finds its do
 ## In brief
 
 `untyped::destroy` decides whether a region may be reclaimed and then reclaims it. Before #316 those
-were two separate hold of the `REGIONS` lock with a gap between them, and two callers holding a name
+were two separate hold of the `REGIONS` lock with a gap between them. Two callers holding a name
 for one region could each pass the refusal check inside that gap and each run the free loop over the
-same pages. #316 closed it by removing the slot under the same hold that decided to destroy it, so
+same pages. PR #316 closed it by removing the slot under the same hold that decided to destroy it, so
 the generation bump precedes every free and the loser's name no longer resolves.
 
 That fix is argued from lock discipline and nothing gates it. The literal double free needs two
@@ -45,10 +45,10 @@ The work, in three pieces, all of them built:
 ## Why it matters
 
 A double free in the reclamation path is the worst failure this kernel has. It hands one physical
-page to two owners, arbitrarily far from the code that made the mistake, and the symptom is memory
-corruption in whichever subsystem touches it next. #316's instance surfaced once in 45 loaded runs on
-riscv64 and needed two cores to reproduce, which is the honest shape of the whole class: rare enough
-to look like a flake and severe enough that a flake is the wrong word for it.
+page to two owners, arbitrarily far from the code that made the mistake. The symptom is memory
+corruption in whichever subsystem touches it next. PR #316's instance surfaced once in 45 loaded runs
+on riscv64 and needed two cores to reproduce. That is the honest shape of the whole class: rare
+enough to look like a flake and severe enough that a flake is the wrong word for it.
 
 The single-winner claim is the property the whole reclamation path rests on, and it is exactly the
 kind of property a test cannot reach. `destroy_outcome` is proved by Kani, which is a statement about
@@ -69,7 +69,7 @@ the wrong distribution.
 
 seL4's answer to the same question is a capability derivation tree and a revoke that walks it,
 verified in Isabelle/HOL against an abstract specification that includes the concurrent case only by
-excluding it: seL4 is a single-kernel-lock design, so its proof never has to answer what two
+excluding it. seL4 is a single-kernel-lock design, so its proof never has to answer what two
 concurrent `Untyped_Delete` calls do. That is a legitimate choice and it is not ours; nife runs the
 kernel on every core (DECISIONS §28) and pays for it here. The design to copy is the *shape* of the
 claim (a name that stops resolving the instant the decision is taken), not the mechanism.
@@ -100,7 +100,7 @@ already exists, and adds harnesses to a script that already exists.
   notes/locking.md are the separate arguments for those.
 - Nothing gates the crate against the kernel drifting back. *Closed by milestone 136, on the
   same day, and the mechanism named here was the wrong one.* Milestone 113's shim shape does not
-  transfer, because this milestone already got its whole benefit for one flag: loom is an ordinary
+  transfer, because this milestone already got its whole benefit for one flag. Loom is an ordinary
   `cfg(loom)` dependency where `kani` is not resolvable at all, so `script/interleaving-check`'s
   `RUSTFLAGS="--cfg loom -D warnings"` is the shim's equivalent and needs no shim. The property
   actually at risk was a different one that no lint over harness code could reach, and 136 found
@@ -133,9 +133,10 @@ already exists, and adds harnesses to a script that already exists.
 `untyped::destroy` was not a single-winner claim, and pull request #316 fixed it by removing the
 slot under the same lock hold that decided to destroy it. That fix is argued from lock discipline
 and **nothing gates it**: the literal double free needs two `destroy` calls to overlap inside a
-few instructions, and no test in this tree can schedule that. Lift the region table out of `kernel/src/untyped.rs` into `crates/regions`, beside the `destroy_outcome` arithmetic Kani
-already proves, so the claim is one `&mut self` method a caller cannot take twice, then let loom
-search every interleaving of two destroyers, a destroyer against a retype, and a destroyer against
+few instructions, and no test in this tree can schedule that. Lift the region table out of
+`kernel/src/untyped.rs` into `crates/regions`, beside the `destroy_outcome` arithmetic Kani already
+proves, so the claim is one `&mut self` method a caller cannot take twice. Then let loom search
+every interleaving of two destroyers, a destroyer against a retype, and a destroyer against
 a split. Wired into `script/interleaving-check`, which covers four crates today and **none of the
 memory-reclamation path**, the one subsystem where a concurrency bug is already known to have
 lived
