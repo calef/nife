@@ -41,7 +41,7 @@ error[E0133]: call to unsafe function `core::arch::x86_64::__cpuid` is unsafe an
 ```
 
 Four of those, in `isa.rs` and `mod.rs`. `__cpuid` is a **safe** function on the toolchain this tree
-pins, which is why every call site read it bare and said so in a comment; it was an `unsafe fn`
+pins, which is why every call site read it bare and said so in a comment. It was an `unsafe fn`
 until upstream changed it, and Kani bundles its own rustc, ten months behind ours (`kani-0.67.0`
 pins `nightly-2025-11-21`, rustc 1.93.0). The repo's own nightly compiles the same crate for
 `x86_64-unknown-linux-gnu` with no errors at all, which is how the skew was attributed rather than
@@ -66,7 +66,7 @@ Six distinct harnesses in `kernel`, up from four. No harness went red on a newly
 architecture, which is the question this lane was sent to answer: the two portable `syscall.rs`
 properties pass on x86_64 exactly as they do on aarch64, so nothing there was quietly
 architecture-specific. That is a clean result and a small one, because the portable harnesses were
-the only pre-existing candidates: the two `arch/aarch64/iommu.rs` harnesses cannot run on an x86_64
+the only pre-existing candidates. The two `arch/aarch64/iommu.rs` harnesses cannot run on an x86_64
 host for the same `cfg` reason this milestone is about, and are not expected to.
 
 riscv64 is out of this milestone's reach: GitHub offers no riscv64 image, stock Kani has no
@@ -86,10 +86,10 @@ inside the local APIC's own vector band. `enable` passes that vector straight to
 
 The plausible-hardware version of the same case is worse and needs nothing exotic: a second IO APIC
 owning global interrupts from 200, with the 24 redirection entries every real part has, admits GSI
-210, and `gsi_vector(210)` wraps to vector 2, the NMI.
+210. `gsi_vector(210)` wraps to vector 2, the NMI.
 
 `MAX_REDIRECTION_ENTRIES`'s own doc claims this cannot happen. It is wrong about which quantity it
-bounds: it caps the *entry count*, not the GSI, and the thing actually standing between a
+bounds: it caps the *entry count*, not the GSI. The thing actually standing between a
 firmware-supplied GSI and a bad vector is `route_gsi`'s panic, which is a dead kernel rather than a
 guarantee. Nothing has hit it because this kernel records one IO APIC and QEMU's q35 gives it base
 zero, where the flat map is exact.
@@ -107,7 +107,7 @@ fork rather than this lane's. It leaves here in the two shapes AGENTS.md allows:
 
 Both are in `kernel/src/arch/x86_64/irq.rs`, beside the code, under the stub list
 notes/kernel-proofs.md already enumerates. Both are about numbers firmware chose, which is the
-strongest case in this tree for a bounded model checker: a vector is an index into the IDT, so
+strongest case in this tree for a bounded model checker. A vector is an index into the IDT, so
 getting one wrong does not misroute an interrupt, it runs the page-fault handler.
 
 - `no_vector_belongs_to_two_bands`. `MSI_VECTOR_BASE`'s doc claims the three vector bands are
@@ -168,7 +168,7 @@ aarch64. It is now in `script/falsifications`' `BUGS`.
 - `arch/x86_64/` is four harnesses in one file. The proposal's strongest candidate was
   `x86_64/machine.rs`, the ACPI walk, which is 836 lines of untrusted firmware parsing and is now
   *reachable* for the first time. It is not proved. Its parsing half already lives in
-  `crates/machine_discovery`, which carries no harnesses and is in no verify row; the volatile half
+  `crates/machine_discovery`, which carries no harnesses and is in no verify row. The volatile half
   in `machine.rs` reads raw pointers into the direct map, which notes/kernel-proofs.md's stub list
   item 5 says to stub rather than pretend. Finding the seam is its own lane.
 - **The `--only` flag's name is provisional**, like everything a lane mints.
@@ -182,7 +182,7 @@ aarch64. It is now in `script/falsifications`' `BUGS`.
   `design/roadmap/proposals/the-gsi-vector-map-wraps-on-a-second-io-apic.md` on 2026-09-16, the day
   it was written, when calef chose option 1 (route by index). The
   defect this milestone's own proof found: `gsi_vector` was a flat `GSI_VECTOR_BASE + gsi` and
-  `MAX_REDIRECTION_ENTRIES` bounds the entry count rather than the GSI, so an IO APIC whose global
+  `MAX_REDIRECTION_ENTRIES` bounds the entry count rather than the GSI. An IO APIC whose global
   interrupt base is not zero can route an owned line onto the NMI. The fix costs `gsi_vector` its
   `const fn` and its total signature, which makes it calef's fork rather than a patch.
 - **Recorded.** `kernel/src/arch/x86_64/irq.rs`, module `BUGS`. The same defect, stated where a
@@ -203,15 +203,16 @@ aarch64. It is now in `script/falsifications`' `BUGS`.
   `x86_64/machine.rs`'s ACPI walk, is reachable for the first time and still unproved: 836 lines
   over firmware-supplied lengths, checksums and counts. This item was first written up as milestone
   431, on the reading that the walk's parsing half in `crates/machine_discovery` carried no
-  harnesses and no `script/verify` row; milestone 319 proved that crate on 2026-09-17, so 431 is
-  `SUPERSEDED` and keeps the account, and what is left is the volatile half's bounded read against
+  harnesses and no `script/verify` row. Milestone 319 (the crate that parses firmware had no
+  proofs) proved that crate on 2026-09-17, so 431 is
+  `SUPERSEDED` and keeps the account. What is left is the volatile half's bounded read against
   the direct map, which is milestone 423. Finding that seam wants a lane; it is
   not folded into this block because it is a design question rather than a mechanical one.
 
 ## Index row
 
 the prover compiled one architecture's `arch/` and it was whichever the runner happened to be, so
-two thirds of the architecture layer was unreachable for a `cfg` rather than for an `asm!` block;
+two thirds of the architecture layer was unreachable for a `cfg` rather than for an `asm!` block.
 the `kernel` row is now proved on an x86_64 host as well, which took four `unsafe` blocks Kani's
-ten-month-old bundled rustc still wants, and the first proof ever pointed at `arch/x86_64/` found a
+ten-month-old bundled rustc still wants. The first proof ever pointed at `arch/x86_64/` found a
 GSI that routes onto the NMI

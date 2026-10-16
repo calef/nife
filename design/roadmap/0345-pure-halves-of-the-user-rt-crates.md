@@ -13,7 +13,7 @@ Filed 2026-09-03 as an unnumbered proposal by the milestone 247 sweep,
 from milestone 68's block; numbered 2026-09-19 by milestone 433. **Premise re-checked 2026-09-19 and
 it holds.** `xtask/src/main.rs`'s host test invocation still excludes `user_mode_runtime`,
 `swap_protocol`, `virtio`, `supervision_protocol` and `system_initializer` by name (alongside
-`kernel`, `components` and `fixtures`), and the comment above it still carries the whole account: the
+`kernel`, `components` and `fixtures`). The comment above it still carries the whole account. The
 exclusions are `user_mode_runtime` and everything that depends on it, because `--exclude` removes a
 package from the test selection and not from the dependency graph. No crate has been split.
 
@@ -77,9 +77,9 @@ Splitting each so the pure logic lives where the host can build it and the sysca
 depends on `user_mode_runtime` lets the host pass run their tests and their doctests instead of
 skipping them. Milestone 68 exists to be the gate that keeps documented examples honest, and inside
 that gate sit five crates whose examples nothing ever compiles, which is the milestone's own failure
-living in its own blind spot. The tree has paid for this class once already: when five crates went
+living in its own blind spot. The tree has paid for this class once already. When five crates went
 missing from the host selection by milestone 51 they carried 82 host tests the gate never ran, and
-all 82 passed when finally run, which is the point, because nothing failed and nobody noticed. The
+all 82 passed when finally run. That is the point: nothing failed and nobody noticed. The
 same unconditional dependencies broke the x86_64 host build on 2026-08-03 and a stranger found it
 eleven days later. Success is mechanical: a crate leaves the `--exclude` list, `script/lint`'s
 derived-set check agrees, and the host pass runs its doctests.

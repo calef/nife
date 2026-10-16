@@ -21,7 +21,7 @@ and a lane could start it today.
 
 **In brief.** Milestone 235 fixed a shell that hangs forever when a spawned command traps. Nobody
 knows how many programs could trigger it. The tree ships 68 programs, and every one that can
-fault reached that path. The work is to go through them and produce a number: which programs have a
+fault reached that path. The work is to go through them and produce a number. Which programs have a
 reachable fault (an unwrapped index, a `panic!` on bad input, a syscall that returns an error the
 program does not handle), and which cannot fault by construction.
 
@@ -32,7 +32,7 @@ programs could hit or a repair to one that forty could, and those are different 
 the prompt's behavior was. The block that fixed it cannot say which, and neither can anybody else.
 
 The survey also produces something the fix did not: a list. A program that can fault under a shell
-is a program whose failure mode a user will eventually meet, and knowing which ones those are is the
+is a program whose failure mode a user will eventually meet. Knowing which ones those are is the
 input to deciding whether any of them should not be able to fault at all.
 
 The honest caveat is that this is a measurement rather than a repair. It changes no behavior, and
@@ -49,12 +49,12 @@ or to forty."*
 ## Index row
 
 Milestone 235 fixed a shell that hangs forever when a spawned command traps, and nobody knows how
-many programs could trigger it, so the value of that fix is unmeasured: it is either a repair to a
+many programs could trigger it, so the value of that fix is unmeasured. It is either a repair to a
 defect two programs could hit or one that forty could, and those are different claims about how bad
-the prompt's behavior was. The work is to go through the tree's programs and produce a number, which
+the prompt's behavior was. The work is to go through the tree's programs and produce a number. Which
 ones have a reachable fault (an unwrapped index, a `panic!` on bad input, a syscall returning an
-error the program does not handle) and which cannot fault by construction. The survey also produces
-something the fix did not: a list, because a program that can fault under a shell is one whose
+error the program does not handle), and which cannot fault by construction. The survey also produces
+something the fix did not: a list. A program that can fault under a shell is one whose
 failure mode a user will eventually meet, and knowing which those are is the input to deciding
 whether any of them should not be able to fault at all. The honest cost is that this changes no
 behavior and its whole output is a number and a table in a note.

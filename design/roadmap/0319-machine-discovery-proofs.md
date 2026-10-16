@@ -29,7 +29,7 @@ proved. Its sibling `dtb` has four harnesses and one of them caught a real defec
 unchecked `at + 4`, reachable from a corrupt device tree on the boot path.
 
 **And the bytes stopped being hypothetical the day before this lane ran.** xenon, a Dell OptiPlex
-7050, booted nife on 2026-09-17 and this code parsed a real MADT, MCFG and DMAR written by firmware
+7050, booted nife on 2026-09-17. This code parsed a real MADT, MCFG and DMAR written by firmware
 that had never heard of it (`bench/xenon-2026-09-17/first-light-095500.log`, including an ECAM
 window at `0xf0000000` that disagreed with a hardcoded constant). Every table this parser had seen
 before that was one QEMU wrote for it.
@@ -118,7 +118,7 @@ string never changes what it says about privilege modes. A scan that reaches pas
 QEMU's own `_sstc` as a supervisor claim and turns that `Some(false)` into a `Some(true)`.
 
 The screen token is a wire format, which is what earns it a prover rather than a test. The
-loader writes it and the kernel reads it, so they are separate binaries, and a description one can
+loader writes it and the kernel reads it, so they are separate binaries. A description one can
 write that the other cannot read is a black screen with nothing to say why (`parse` is documented to
 read a malformed token as no screen at all). `MAX_LEN`'s own doc records the near miss: the token was
 `fb=` when 64 was chosen, `screen=` is four characters longer, and the worst case went to 63 of 64
@@ -214,7 +214,7 @@ about fifty-five, and the two slowest of those are 17.6 and 14.5.
 
 `script/lint`'s "every crate with proof harnesses is in the verify table" gate (milestone 193's,
 written after `jh7110_entropy` and `multicast_dns_protocol` each carried harnesses that ran nowhere)
-fails until the row exists, which is exactly what it is for and is how this lane knew the row was the
+fails until the row exists. That is exactly what it is for, and it is how this lane knew the row was the
 second half of the work rather than an afterthought.
 
 ## Names
@@ -232,12 +232,12 @@ in a tracked form:
    walk is 836 lines, but with this crate proved, what is left on the kernel side of the seam is
    *reading N bytes at a physical address through the direct map* and handing them here. Every
    decision about what those bytes mean is now in a proved crate. That suggests the design decision
-   milestone 304's lane wanted is a smaller one than "how do we prove a volatile walk": it is whether
+   milestone 304 (only ever compiled one architecture)'s lane wanted is a smaller one than "how do we prove a volatile walk". It is whether
    the direct-map read itself gets a checked accessor with a bound, which is the same question
    `dtb::Dtb::from_ptr` already answered on the other two architectures. Wants a lane, and wants
    calef on the accessor's name.
 - **Milestone 426.** The DMAR defect's family should be swept for. `field + 1` where the field is a byte and the
-   value is a byte is a shape, not an incident: this lane found it twice in two crates (broken in
+   value is a byte is a shape, not an incident. This lane found it twice in two crates (broken in
    `acpi::parse_dmar`, correct in `riscv64::CounterInfo::bits`) with nothing at either site saying
    which it was. `cargo mutants --list` will not find it, because the mutation is in the type rather
    than in the expression. A `git grep` for specification fields documented as "one less than" is
@@ -249,7 +249,7 @@ in a tracked form:
 ## Index row
 
 4,072 lines that parse firmware the system did not write had no proofs at all and no row in
-`script/verify`'s table, the day after xenon made those bytes a real Dell's rather than QEMU's;
-three of the first fifteen harnesses were false, one of them a panic on the x86 boot path from a
-single `0xff` byte in a DMAR, and one of them a guard whose `saturating_mul` made the comparison
+`script/verify`'s table, the day after xenon made those bytes a real Dell's rather than QEMU's.
+Three of the first fifteen harnesses were false, one of them a panic on the x86 boot path from a
+single `0xff` byte in a DMAR. One of them is a guard whose `saturating_mul` made the comparison
 vacuous in a way the crate's own test had written down as the expected answer

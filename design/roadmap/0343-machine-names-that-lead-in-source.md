@@ -56,8 +56,8 @@ already on AGENTS.md's record.
 
 - **Done.** The last two comments are in §143's shape. `kernel/src/arch/riscv64/iommu.rs:52`
   now reads "the JH7110 (radon, the `VisionFive` 2) has no IOMMU at all", hardware first. The
-  `xtask/src/main.rs:2658` comment no longer exists: it went when `xtask` was split into modules
-  and the cargo-feature pack (`5d210e035`), and grepping `kernel/`, `crates/`, `components/`,
+  `xtask/src/main.rs:2658` comment no longer exists. It went when `xtask` was split into modules
+  and the cargo-feature pack (`5d210e035`). Grepping `kernel/`, `crates/`, `components/`,
   `fixtures/`, `xtask/`, `script/` and `helpers/` for a machine name followed by a parenthesized
   gloss finds no comment that leads with the name and omits the hardware.
 - **Done.** The other ten uses and the `notes/README.md` index line were brought into line
@@ -70,14 +70,14 @@ already on AGENTS.md's record.
 ## Index row
 
 DECISIONS §143 decided that a source comment states the hardware and may name a machine only as a
-trailing gloss where the instance is genuinely the point, because a machine's name is not a hardware
-fact and a reader who meets `radon` in a comment about a SoC erratum learns nothing. Twelve uses in
+trailing gloss where the instance is genuinely the point. The reason is that a machine's name is not
+a hardware fact and a reader who meets `radon` in a comment about a SoC erratum learns nothing. Twelve uses in
 source needed bringing into line when this was filed, plus one index line in `notes/README.md` that
 did not advertise where the machine names are defined. Ten of the twelve and the index line have
 since been fixed incrementally by lanes touching the files for other reasons, and the last two
 (`kernel/src/arch/riscv64/iommu.rs:52`, and an `xtask` comment that has since been deleted) were
 closed 2026-10-03. `notes/` and `design/` keep their machine
 names, about a hundred uses, because a measurement series has to assert that the same physical
-machine was held constant, and a sweep that treated this as a rename would destroy what makes
+machine was held constant. A sweep that treated this as a rename would destroy what makes
 notes/soak.md's nine-boot spread evidence at all. §143's own `BUGS` records that the boundary is a
 judgment, so this wants a reader rather than a `sed`.

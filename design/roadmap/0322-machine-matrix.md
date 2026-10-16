@@ -15,7 +15,7 @@ the general case for narrowing an emulator rather than forking one.
 
 In brief. Milestone 59 built a matrix over `-cpu` and left `-machine` at `virt` on every
 architecture. Every RISC-V, aarch64 and x86_64 result this project has is from one board per
-architecture, which is the same blind spot 59 found in `-cpu rv64` one axis over: a single machine
+architecture. That is the same blind spot 59 found in `-cpu rv64` one axis over: a single machine
 that has never told the kernel anything it did not want to hear.
 
 ## The evidence that this is not hypothetical
@@ -105,20 +105,20 @@ x86_64
 
 Only where a model negotiates differently, and the criterion is the deliverable. Milestone 59's
 five models earn their keep by saying no to distinct things: `svadu` (hardware A/D bits, absent on
-`sifive-u54` and `thead-c906`, inverted on the RVA profiles), Sv39 against `rv64`'s Sv57, and `sstc`
-(timer compare in a CSR against an SBI call). A sixth model that refuses nothing the five already
+`sifive-u54` and `thead-c906`, inverted on the RVA profiles), Sv39 against `rv64`'s Sv57. And
+`sstc` (timer compare in a CSR against an SBI call). A sixth model that refuses nothing the five already
 refuse buys runtime and no coverage.
 
-So this milestone should write that criterion down and apply it once per architecture, which is
+So this milestone should write that criterion down and apply it once per architecture. That is
 work neither 59 nor this block has done: aarch64 and x86_64 have no CPU matrix at all, and whether
 they want one is the same question answered with their own feature lists rather than by analogy.
 The pin offers 37 aarch64, 27 riscv64 and 243 x86_64 CPU models, so the criterion is doing the whole
 of the work; a count is no help at all.
 
 The riscv64 list is larger on the pin than 59's five suggest, and applying the criterion to it is
-part of this milestone rather than assumed settled: `rv64i` is the base integer ISA with none of
-`imac`, which refuses more than any model 59 tests and may simply refuse to run the kernel at all,
-and that outcome is itself worth knowing once rather than guessing.
+part of this milestone rather than assumed settled. `rv64i` is the base integer ISA with none of
+`imac`, which refuses more than any model 59 tests and may simply refuse to run the kernel at all.
+That outcome is itself worth knowing once rather than guessing.
 
 ## Index row
 

@@ -77,7 +77,7 @@ priced is that the Actions tab shows the same color whether the tripwire is firi
 is broken. A reader who has learned that this job is "the red one" has stopped distinguishing the
 two, and the path defect then hid inside the alarm it replaced. Milestone 238's `script/cadence-check`
 found it by asking when each workflow last *succeeded*, which is the right question for a dead job
-and the wrong one for a live one: a job whose healthy state is red has no green to be stale against.
+and the wrong one for a live one. A job whose healthy state is red has no green to be stale against.
 It happened to catch this one because this one's healthy state is red *and* it had never succeeded,
 which is luck rather than coverage.
 
@@ -134,9 +134,9 @@ can resolve into.
 
 **It found two real broken footnotes on its first run**, both in milestone 289's block, both citing
 `components/src/builder.rs`, which calef retired on 2026-09-14 (milestone 295). One limitation still
-stands and its surviving home is `notes/trusted-init.md`, where that bullet already said it lived;
-the other bullet asked calef for a category and a name, and retiring the program answered both out of
-existence, so it is now `**Done.**` citing commit `0fa40ee8`. That block is not this lane's, the
+stands and its surviving home is `notes/trusted-init.md`, where that bullet already said it lived.
+The other bullet asked calef for a category and a name, and retiring the program answered both out of
+existence. It is now `**Done.**` citing commit `0fa40ee8`. That block is not this lane's, the
 edits are marked as such in it, and they are named in the Follow-on below.
 
 ## BUGS
@@ -156,8 +156,8 @@ edits are marked as such in it, and they are named in the Follow-on below.
 - Counting `fixtures/` as a component is a continuity choice, and it overcounts what §74 meant.
   §74's event trigger is "a new component holding device or network authority", and a fixture holds
   neither by construction. The count now fires on a new test client too. That is the tolerable
-  direction and it is the same tolerance the ABI count already takes, but it means the components
-  number is a proxy for tree churn rather than for attack surface, and a future audit that wants the
+  direction and it is the same tolerance the ABI count already takes. It means the components
+  number is a proxy for tree churn rather than for attack surface. A future audit that wants the
   narrower question has to ask it by hand. Re-baselining both tables against `components/` alone
   would fix it and would also discard every historical row's comparability; that trade was not
   worth making inside a repair.
@@ -194,16 +194,16 @@ edits are marked as such in it, and they are named in the Follow-on below.
 `.github/workflows/audit-cadence.yml` is milestone 92's tripwire and sits on `design/fatal-risks/README.md`
 risk 7's path; it had never once succeeded, and `script/cadence-check` reported it. The stale path
 was real and four days old (milestone 175 split `user/` on 2026-09-13 and the next scheduled run
-died on `user/Cargo.toml`), but reading the logs rather than the colors inverted the premise this
-milestone was minted on: four of the five red runs were the tripwire working, and an audit has been
+died on `user/Cargo.toml`). Reading the logs rather than the colors inverted the premise this
+milestone was minted on: four of the five red runs were the tripwire working. An audit has been
 overdue every week since 2026-08-17 with nobody acting on it. Red is this job's signal by design,
 so a firing tripwire and a broken one are the same color in the Actions tab, and the defect hid
 inside the alarm it replaced. The count now spans `components/` **and** `fixtures/`, because every
 baseline row was taken when `user/` held both and reading only the first would under-report the
 trigger by forty, which is the one direction an audit signal must not err. The sweep for other
-casualties of the split found one that was not crashing and mattered more: `script/roadmap`'s list of
-real root directories still said `user` and knew neither new name, so a `**Recorded.**` bullet citing
-`components/src/...` was not recognized as a path claim at all and the broken footnote the check
+casualties of the split found one that was not crashing and mattered more. `script/roadmap`'s list of
+real root directories still said `user` and knew neither new name. So a `**Recorded.**` bullet citing
+`components/src/...` was not recognized as a path claim at all. The broken footnote the check
 exists to catch passed it in silence. That list is now derived from `git ls-tree` rather than typed,
 and found two dead citations to milestone 295's retired `builder` on its first run. Both audits are
 now due, hard: 112 milestones against a security threshold of 15, with the calendar backstop the only
