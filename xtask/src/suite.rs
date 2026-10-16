@@ -920,8 +920,10 @@ fn images_after_the_run(legs: ArchLegs, filtered: bool) -> bool {
         return redoxfs_check_after_run() && blank_check_after_run();
     }
     // Both images: the shared fixture (the write persisted, the filesystem still parses), the
-    // crash test's own disk (milestone 37: after a kill mid-transaction, `cut` is one payload whole), and milestone 57's blank disk, where the guest wrote
-    // both the partition table and the filesystem inside it.
+    // crash test's own disk (milestone 37 (prove RedoxFS's crash consistency, DECISIONS §34
+    // condition 1): after a kill mid-transaction, `cut` is one payload whole), and milestone 57
+    // (partitioning and formatting a real drive, and extended attributes)'s blank disk, where the
+    // guest wrote both the partition table and the filesystem inside it.
     redoxfs_check_after_run() && redoxfs_crash_check_after_run() && blank_check_after_run()
 }
 
