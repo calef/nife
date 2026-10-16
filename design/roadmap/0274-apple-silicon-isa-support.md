@@ -47,7 +47,7 @@ milestone 227 (a GICv3 driver, because GICv2 boots and silently loses every inte
 
 ## BUGS
 
-- A skip that stands in for a pass is caught by no gate: `script/lint` and CI's own
+- A skip that stands in for a pass is caught by no gate. `script/lint` and CI's own
   required-check machinery both consider `321 passed, 3 skipped` a clean run, and nothing compares
   the skip count against a baseline the way other counted-claims checks in this tree do. Same shape
   as milestone 268's finding 4 (the tour's checks report failure by printing a word and continuing):
