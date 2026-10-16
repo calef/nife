@@ -1565,7 +1565,6 @@ name = "xtask"
 version = "0.1.0"
 dependencies = [
  "address_space_map",
- "bitmap_font",
  "board_console",
  "boot_ladder",
  "boot_slot",
