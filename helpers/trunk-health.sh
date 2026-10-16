@@ -112,10 +112,11 @@
 #   - **The repeat half spends real API quota, on purpose and bounded.** One listing call per
 #     scheduled workflow plus two calls per failing run examined, on every pass that reads it.
 #     That cost is why the watching loop below does not call it; the Actions relay is the reader.
-#   - **A repeat row reports and closes nothing**, and what one asks for ("run the audit") is a
-#     lane and a day, with no home in the tree owning the request. Who the report is for and what
-#     closes it is milestone 422's open question, decided on its pull request; until it is, the
-#     row's readers are this script's and the Actions annotation `trunk-health.yml` puts beside it.
+#   - **A repeat row reports, and the issue the relay opens is its home and its close condition.**
+#     What the row asks for ("run the audit") is a lane and a day. `helpers/repeat_issue.py` opens
+#     one issue per workflow on the `trunk-health.yml` pass, and the issue body names the close:
+#     the audit lane's report pull request says `Closes #N`. This script's own output still closes
+#     nothing, and the watching loop below opens nothing either.
 #
 # Name: unrecorded. Provisional, minted 2026-08-04 and not yet put to calef. `trunk` rather than
 # `main` because the branch could be renamed and the concept could not, and because "trunk health"
@@ -333,9 +334,13 @@ $row"
 # a person running `--once` by hand gets the same rows. Like DEAD and DUE in that relay, a standing
 # repeat re-announces on every pass, which that workflow's own BUGS owns.
 #
-# **It reports and closes nothing**, deliberately, like everything else here. What a repeat row
-# asks for is not a commit but a lane and a day, and no home in the tree owns that request today;
-# that gap is exactly milestone 422's open question, and it is an architect's, not this script's.
+# **A repeat row reports, and its home is the issue the relay opens**, not this script. What a
+# repeat row asks for ("run the audit") is a lane and a day, and the home ruled for it is one open
+# issue per workflow: `trunk-health.yml` hands this section's REPEAT rows to
+# `helpers/repeat_issue.py`, which dedupes by workflow name, updates the body when the line drifts,
+# and leaves the close to the audit lane's report pull request (`Closes #N`, routed by the
+# audit-cadence step summary). This script opens nothing itself, and the watching loop below opens
+# nothing either.
 #
 # Names here are provisional (milestone 422): `repeat`, `repeat_line`, and the REPEAT and CHURN
 # row labels.

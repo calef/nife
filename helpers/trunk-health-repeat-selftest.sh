@@ -259,4 +259,89 @@ for silent in vendor-watch toolchain-bump trunk-health merge-drain; do
 	fi
 done
 
-echo "$me: repeat rows, thresholds, exclusions and silences all as expected"
+# --- the ruled home: one issue per distinct repeat, proved offline -------------------------------
+# calef ruled the repeat report's home on 2026-10-16 (UTC): an issue per workflow on the
+# helpers/watcher_watch.py pattern, deduped by workflow name, body updated when the failing line
+# or span drifts, CHURN opening nothing, and the close being the audit lane's `Closes #N`. The
+# stub gh here is a tiny GitHub: it records every call and keeps the issue store in a fixture, so
+# the dedupe and the drift update are proved against state, not against mocks of one call.
+iss="$tmp/issue"
+mkdir -p "$iss/bin" "$iss/fix"
+cat >"$iss/bin/gh" <<PYEOF
+#!/usr/bin/env python3
+import json, os, sys
+fix = os.environ["REPEAT_ISSUE_FIXTURES"]
+with open(os.path.join(fix, "calls.log"), "a") as log:
+    # One JSON array per call: a multiline body stays on its own line, greppable as text.
+    log.write(json.dumps(sys.argv[1:]) + "\n")
+args = sys.argv[1:]
+path = os.path.join(fix, "issues.json")
+issues = json.load(open(path)) if os.path.exists(path) else []
+if args[:2] == ["issue", "list"]:
+    print(json.dumps(issues))
+elif args[:2] == ["issue", "create"]:
+    issue = {"number": 4200 + len(issues) + 1,
+             "title": args[args.index("--title") + 1],
+             "body": args[args.index("--body") + 1]}
+    issues.append(issue)
+    json.dump(issues, open(path, "w"))
+    print("https://github.com/nifeos/nife/issues/%d" % issue["number"])
+elif args[:2] == ["issue", "edit"]:
+    number, body = int(args[2]), args[args.index("--body") + 1]
+    for issue in issues:
+        if issue["number"] == number:
+            issue["body"] = body
+    json.dump(issues, open(path, "w"))
+PYEOF
+chmod +x "$iss/bin/gh"
+
+sync_rows() {
+	REPEAT_ISSUE_FIXTURES="$iss/fix" PATH="$iss/bin:$PATH" python3 helpers/repeat_issue.py sync
+}
+
+audit_row="audit-cadence                    5 of last 6 failed       REPEAT: design/audit-reports/README.md says how, and which lens the last one lacked. (2026-09-07..2026-10-12 UTC)"
+churn_row="falsifications                   2 of last 6 failed       CHURN: 2 of the last 6 failed, all 2 different"
+
+expect_calls() {
+	n=$(grep -F -c "$1" "$iss/fix/calls.log" 2>/dev/null || true)
+	if [ "$n" -ne "$2" ]; then
+		echo "$me: expected $2 of <$1>, saw $n" >&2
+		cat "$iss/fix/calls.log" >&2
+		exit 1
+	fi
+}
+
+# A CHURN row opens nothing, updates nothing, asks nothing.
+: >"$iss/fix/calls.log"
+printf '%s\n' "$churn_row" | sync_rows >/dev/null
+[ -s "$iss/fix/calls.log" ] && { echo "$me: a CHURN row must reach no gh call" >&2; exit 1; }
+
+# The first pass opens exactly one issue, titled for the workflow, whose body states its close.
+: >"$iss/fix/calls.log"
+printf '%s\n' "$audit_row" | sync_rows >/dev/null
+expect_calls '"issue", "create"' 1
+grep -q 'scheduled failure repeats: audit-cadence' "$iss/fix/calls.log" ||
+	{ echo "$me: the issue title must name the workflow and the repeat" >&2; exit 1; }
+grep -q 'Closes #N' "$iss/fix/calls.log" ||
+	{ echo "$me: the issue body must state its own close condition" >&2; exit 1; }
+
+# The same row again: the open issue suppresses a second.
+printf '%s\n' "$audit_row" | sync_rows >/dev/null
+expect_calls '"issue", "create"' 1
+expect_calls '"issue", "edit"' 0
+
+# The failing line drifts: the body updates, still no second issue.
+drift_row="audit-cadence                    5 of last 6 failed       REPEAT: a different line entirely (2026-09-14..2026-10-19 UTC)"
+printf '%s\n' "$drift_row" | sync_rows >/dev/null
+expect_calls '"issue", "create"' 1
+expect_calls '"issue", "edit"' 1
+grep -F -q '"issue", "edit", "4201"' "$iss/fix/calls.log" ||
+	{ echo "$me: the edit must target the open issue" >&2; exit 1; }
+
+# An issue that is closed no longer dedupes: the finding repeats, a new issue opens.
+rm -f "$iss/fix/issues.json"
+: >"$iss/fix/calls.log"
+printf '%s\n' "$audit_row" | sync_rows >/dev/null
+expect_calls '"issue", "create"' 1
+
+echo "$me: repeat rows, thresholds, exclusions, silences and the ruled issue home all as expected"
