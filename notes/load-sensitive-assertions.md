@@ -150,6 +150,7 @@ remains) or fixed. A fixed site can still carry a residual in BUGS below.
 | `the_page_is_returned_when_the_space_is_dropped` | `user/current_cpu_tests.rs` | fixed | asks the frame's own allocator bit (09-23) | [unowned reds](load-sensitive-assertions/unowned-reds.md) |
 | 35 assertions bracketing `free_page_frames()` | `sched.rs`, `user/force_kill_tests.rs`, `user/tests.rs`, `user/cpu_time_tests.rs` | fixed | `testing::RegionRun` asks the region's own frames (09-23) | [free-page-frames sweep](load-sensitive-assertions/free-page-frames-sweep.md) |
 | frame hygiene | `user/live_swap_tests.rs` | fixed | removed on 2026-08-03 (#46); the property was already asserted twelve lines above | [first verdicts](load-sensitive-assertions/global-baselines-and-the-drift-law.md) |
+| `uefi-boot`'s two-core gate | `xtask/src/uefi.rs` | fixed | fixed 2026-09-19; 0 of 42 | [rate](uefi-boot-two-core-rate.md) |
 
 Milestone 62's acceptance evidence is two repeat counts on one laptop under eight spinners. On
 2026-08-17, 36 of 45 loaded runs were green, and the reds were the two timer assertions plus the
