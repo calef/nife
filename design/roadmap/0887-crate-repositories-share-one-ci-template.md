@@ -162,9 +162,9 @@ copied. The workflows themselves are written, since none publishes a falsificati
 ## Exit
 
 A throwaway crate repository, `nifeos/crate-workflows-test`, calls every reusable workflow from
-release v1 and v2. Built 2026-10-16 (UTC). It was made for the test. Deleting it wants a `delete_repo` scope the lane's
-token lacks, so it stands until calef removes it. The template's own selftest is green on every
-job: check, proofs, and weekly against `sample/`, plus the release gate's refusal. The throwaway
+releases v1 to v3. Built 2026-10-16 (UTC). It was made for the test. Deleting it wants a
+`delete_repo` scope the lane's token lacks, so it stands until calef removes it. The template's
+own selftest is green on every job: check, proofs, and weekly against `sample/`, plus the release gate's refusal. The throwaway
 repository's pull requests show the rows red on a commit made to break them and green on the
 commit after: fmt, tests, coverage, standalone and the falsification replay on one pair. Another
 pair shows the lag check naming a pin behind the newest release, and the supply-chain refusal of a
