@@ -1,6 +1,8 @@
 ---
-status: PROPOSED
+status: DECIDED
 raised: 2026-10-15
+decided: 2026-10-15
+ratified_by: calef
 ---
 
 # 303. The retention declaration says nothing about the region
@@ -13,19 +15,64 @@ child)](0142-spawn-retention.md) gave `ChildEndowment` a
 `retention` field, so one struct literal states what a child is given and what its spawner keeps.
 What it states is the disposal of the child's `ThreadControlBlock`, which the tree's own audit
 showed is inert after `START`. The capability that actually decides whether a child can be ended is
-the region it was built from. The endowment says nothing about it. *(Section number provisional
-until the merge queue lands it.)*
+the region it was built from. The endowment says nothing about it. Ruled the day it was proposed,
+the fourth of five asked one at a time, with the enforcement shape confirmed at the ruling.
+*(Section number provisional until the merge queue lands it.)*
 
-## What is being decided
+## The decision
 
-Two questions, one about a struct and one that §40 has been owed for months:
+Three things, ruled together:
 
-1. Does the retention declaration widen to say what the spawner keeps of the child's region, or
-   does it stay the TCB's disposal and say so?
-2. The caveat [§40 (a supervisor's death is its subtree's death)](0040-no-reaper-of-last-resort.md) has been owed for months, in its own
-   words: whether building a child from a *delegated* region is
-   "forbidden or merely discouraged", which "is not yet decided, and it should be before someone
-   writes a supervisor that does it".
+1. **The declaration stays the TCB's.** `Retention` keeps exactly two variants. It does not widen
+   into an enum over both objects, and no second field is added beside it. What the endowment
+   covers is what the spawn moment acts on, and that is the TCB at `START`.
+2. **The region's rule is stated where the builder meets it**, in `Retention`'s and
+   `build_child`'s docs. The endowment does not declare the region: the region's disposal is the
+   builder's bookkeeping across the child's whole life. No moment exists at which a field's claim
+   about it could be acted on.
+3. **Building a child from a retained, delegated region is forbidden.** [§40 (a supervisor's death
+   is its subtree's death)](0040-no-reaper-of-last-resort.md)'s first caveat asked whether that is
+   forbidden or merely discouraged; the answer is forbidden. Children are built from budget you
+   own: a region you created, a `SPLIT` child of your own region, or a root handed to you as your
+   whole budget. The answer lives in §40's caveat, which this ruling closes.
+
+**The enforcement, named.** The rule is prose until the check lands, and the record says so. The
+check, when it is built: `build_child` requires the caller to present the owning region's
+capability beside `build_ut`, and the kernel refuses when `build_ut`'s recorded parent in the
+region table is not the region presented. `split` already writes that parent link
+(`kernel/src/memory_region.rs`), so the check is one comparison on data that exists. It fires
+before a single page is retyped, which converts the failure from a silent orphan at
+supervisor-death time to a loud refusal at build time. Nothing current breaks: every call site
+builds from its own budget and can present it, and a genuinely transferred root is presented
+directly. The check is sized as its own piece of work; it can ride milestone 356 or stand alone.
+
+## Why forbidden, and why the declaration does not widen
+
+**Forbidden over discouraged**, on a reversibility asymmetry calef named at the ruling. A
+permissive rule accretes users, so permitting today makes forbidding later a breaking change.
+Forbidding today breaks nobody: nothing in the tree builds a child from a retained delegation. And
+it permits later only when a named consumer argues for it, additively, through the endowment this
+decision declined to widen. The same logic that keeps §26 death-only keeps this forbidden.
+
+**C over A and B**, on an acting-moment test. A field earns its place when code can act on it at
+a moment. The TCB field earns it: `start_child` reads `Retention::Nothing` at `START` and deletes
+the capability. Region disposal has no such moment; `spawner` drops the region after `START`,
+`system_initializer` keeps it until reap, and the only thing that ever acts is the builder
+itself, holding its own capability, at a time of its own choosing. The authority is not hidden
+either: the builder holds the region capability or it does not, visible at the call site. What
+was hidden is the rule about delegation, and that is this decision's job, not a per-spawn
+field's.
+
+- **A** (widen `Retention` over both objects) forces two lifetimes into one value: the TCB is
+  disposed at an instant, the region at reap or never. Every spawn site writes the combined
+  value, since the field has no default by §142's design, and the variant set goes combinatorial.
+- **B** (a second field) describes a capability the struct does not carry: the region reaches
+  `build_child` as the `build_ut` argument, so the field and the fact can drift with nothing to
+  catch it. The tree already ran this experiment: `Retention`'s `reason` string is a declaration
+  nothing can check, its own doc says it cannot be, and `Retention::ThreadControlBlock { reason:
+  "" }` compiles. A and B are that again, wearing a type.
+- **C** (this ruling) is also the reversible direction: widening later is additive, while
+  retracting A or B would churn every spawn site to remove a field nothing could act on.
 
 ## What this tree already does in the analogous case
 
@@ -36,53 +83,59 @@ comment. `crates/system_initializer` keeps its boot regions for the boot's life 
 them. All are correct for what they do, and none of it is stated where a reader of the endowment
 can see it.
 
-The declaration's one acting half is `start_child`'s: `Retention::Nothing` deletes the TCB
-capability at `START`, and `Retention::ThreadControlBlock` keeps it. The field's own doc records
-the trap in shipping declarations nothing enforces: the `reason` string "is not checked and cannot
-be", and `Retention::ThreadControlBlock { reason: "" }` compiles. The one site that keeps a TCB
-(`components/src/swapper.rs`) still deletes the region beside it.
-
 `MemoryRegion::DESTROY` on the region a child was built from is the only thing in the system that
-can end a live thread: §16's amendment arms the kill, and the scheduler converts the thread to a
-corpse at its next preemption. That is the authority the declaration is silent about, and
-[§16 (object revocation)](0016-object-revocation.md)'s amendment is what arms it.
+can end a live thread. [§16 (object revocation)](0016-object-revocation.md)'s amendment arms the
+kill, and the scheduler converts the thread to a corpse at its next preemption. §16 also records
+the ownership shape the enforcement stands on: a region belongs to its owner, not to the thread
+that occupies it, and `split` gives each child its own independently reclaimable region.
+
+## Prior art
+
+Read and recalled, per family. **seL4** (mechanics recalled) has no process object and no
+declaration anywhere: what a spawner retains is what it has not dropped, and memory authority runs
+through the untyped lineage, the same shape as this tree's region. **Fuchsia** (recalled) takes no
+retention parameter; what the parent keeps is the handles it does not drop, and the cascade is an
+object, the job, with `zx_task_kill` as the one-act reclamation. **Erlang** (recalled) has the one
+genuine retention declaration, `spawn` / `spawn_link` / `spawn_monitor`, a per-spawn checked
+choice of death coupling, and it covers exactly what §142 covers, the coupling at the spawn
+moment, with nothing to say about memory. The art's dividing line is consistent: declare what the
+spawn moment acts on.
+
+On delegation itself, the art is permissive because its cascades are structural, not
+ownership-based: seL4 hands untyped memory through CNodes freely, and Fuchsia hands VMOs
+everywhere, because neither loses a guarantee when it does. This tree's cascade is
+ownership-based, which is why the delegation question arises here and not there, and why
+[§40 (a supervisor's death is its subtree's death)](0040-no-reaper-of-last-resort.md) flagged it.
+SysV shared memory (recalled) is the cautionary tale: segments that outlive their creator until an
+external reaper collects them.
 
 ## The options
 
 | | shape | what it costs |
 |---|---|---|
-| **A** | Widen `Retention` into an enum over both objects, so one noun states what is kept of the TCB and of the region. | One thing to learn, and two lifetimes forced into one value: the TCB is disposed at `START`, the region at reap, which may be much later. Every spawn site writes the value, since the field has no default. |
-| **B** | A second field beside it for the region. | Honest about the lifetimes, but it declares a fact about a capability the struct does not carry: the region reaches `build_child` as the `build_ut` argument, so the field and the thing it describes can disagree with nothing to catch it. |
-| **C** | Leave the declaration the TCB's, and state the region's rule where the builder meets it: in `Retention`'s and `build_child`'s own docs, with §40's caveat answered in §40 itself. | The endowment still reads as a fuller account than it is, unless the docs say the omission out loud, which is the work. Nothing structural changes. |
-
-Recommendation: C, with §40's caveat answered as *discouraged, and said so at the builder*. The
-reason is enforcement, not effort, and the tree has already run the experiment: `Retention`'s
-reason string is a declaration nothing can check, and its own doc records that it cannot be. The
-region's disposal is the builder's bookkeeping across the child's whole life; no single moment
-exists at which a field's claim about it could be acted on, so the field would be one more
-unchecked declaration. The doc sentence, and the answer in §40, are checkable by the reader they
-protect, which is rung three of the ladder rather than a field pretending to be rung one.
-
-The effort test, stated because the skill asks: A's single noun would be worth more than C's two
-sentences if the field could be enforced at a moment. It cannot, so the honest account is the doc.
+| **A** | Widen `Retention` into an enum over both objects, so one noun states what is kept of the TCB and of the region. | Declined: two lifetimes in one value, every spawn site taxed, nothing to act on the region half. |
+| **B** | A second field beside it for the region. | Declined: a declaration about a capability the struct does not carry, the `reason` string again. |
+| **C** | Leave the declaration the TCB's, state the region's rule where the builder meets it, and answer §40's caveat in §40 itself. Chosen, with the caveat answered *forbidden* and the presentation check named as enforcement. | The endowment still reads as a fuller account than it is, unless the docs say the omission out loud, which is the work. Nothing structural changes. |
 
 ## Whether the premise is true
 
 Checked 2026-10-15. `crates/supervision_protocol/src/lib.rs` still declares `Retention` with
 exactly two variants, the region is named only in the `Nothing` variant's doc, and the three drop
 sites still drop while the boot keeps. §142 has been `DECIDED` since 2026-09-03 with nothing added
-about the region, and §40's caveat is still open. Every load-bearing fact in milestone 356's block
-still holds.
+about the region, and §40's caveat was still open at the ruling. Every load-bearing fact in
+milestone 356's block held.
 
 ## How reversible it is
 
-C is two documents. If a second consumer ever needs the declaration to carry the region, widening
-then is additive: a new variant or field, and the call sites that already say what they do write
-it. Starting from A and retracting would churn every spawn site for a declaration nothing reads,
-which is the direction to avoid.
+The declaration can widen later, additively, if a consumer arrives that needs the endowment to
+carry region rights; the forbidden rule can relax the same way, through the same field. The
+reverse directions are migrations: retracting A or B churns every spawn site, and forbidding after
+permitting breaks whatever was built on the permission. Starting minimal is the reversible side of
+both forks.
 
-## What is blocked until this is answered
+## What this leaves open
 
-Milestone 356 itself, and the caveat §40 has carried since it was written: a supervisor that builds
-a child from a delegated region breaks the subtree-death guarantee today, and the tree's rule
-against it is nowhere.
+The enforcement check itself: present the owning region beside `build_ut`, compare the recorded
+parent, refuse before retype. Named here, sized as its own work, marked as the thing that makes
+"forbidden" true rather than stated. Until it lands, the docs carry the rule and say that nothing
+enforces it yet.
