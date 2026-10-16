@@ -26,7 +26,7 @@ sweep:
   so there is no function body to replace and no operator to flip. `cargo mutants` rewrites one
   function at a time, which `notes/mutation-testing.md` states in its own opening lines. So this
   block's central sentence, that a mutation of `VTD_ADDR_MASK` is precisely what `script/mutation`
-  exists to try, **is false**, and neither branch of the dichotomy below is the answer: the two
+  exists to try, **is false**. Neither branch of the dichotomy below is the answer: the two
   instruments do not overlap on this constant at all.
 - **The 2026-08-03 baseline could not have known either way.**
   `crates/paging/src/x86_64.rs` was added on 2026-09-14 (merge of pull request #855), six weeks
@@ -38,8 +38,8 @@ sweep:
   nobody acted, is a general condition of that census rather than a finding about row 12.
 
 What survives the check, and it is the deliverable this block was really asking for, is the
-cross-instrument comparison: run the census over the four crates carrying rows 1 to 18 and compare
-its survivor list against milestone 307's per-row verdicts, because a census asks whether a change
+cross-instrument comparison. Run the census over the four crates carrying rows 1 to 18 and compare
+its survivor list against milestone 307 (which assertion actually fires)'s per-row verdicts. A census asks whether a change
 to the code is caught by something and 307 asked whether a named assertion can catch anything. That
 work is real and unstarted. What should not be carried into it is the expectation that row 12 is its
 exhibit.
@@ -47,7 +47,7 @@ exhibit.
 ## In brief
 
 Milestone 307 found that row 12's proof stated all three of its assertions, and its `kani::assume`,
-through `VTD_ADDR_MASK`, so widening that constant left the harness SUCCESSFUL, 0 of 45 failed
+through `VTD_ADDR_MASK`. So widening that constant left the harness SUCCESSFUL, 0 of 45 failed
 while every VT-d leaf carried a hardware-reserved bit.
 
 A mutation of `VTD_ADDR_MASK` is precisely what `script/mutation` exists to try, and
@@ -55,7 +55,7 @@ A mutation of `VTD_ADDR_MASK` is precisely what `script/mutation` exists to try,
 and they call for different work:
 
 - The census already surfaced this as a survivor and nobody acted on it. Then the finding is not
-  about the harness at all; it is that a report nothing forces anyone to read is rung four, which is
+  about the harness at all. It is that a report nothing forces anyone to read is rung four, which is
   the failure `AGENTS.md` names more often than any other, and the fix is about the census's output
   rather than about `paging`.
 - **The census did not surface it.** Then there is a gap in what the census mutates or in how it
@@ -85,7 +85,7 @@ having checked.
 ## Index row
 
 Milestone 307 found that `paging::x86_64::no_vtd_entry_ever_sets_a_reserved_bit` stated all three of
-its assertions and its `kani::assume` through `VTD_ADDR_MASK`, so widening that constant left the
+its assertions and its `kani::assume` through `VTD_ADDR_MASK`. So widening that constant left the
 harness successful with 0 of 45 failed while every VT-d leaf carried a hardware-reserved bit. This
 block asked whether the mutation census had already surfaced it, which would make the finding about
 a report nobody is obliged to read rather than about the harness. Re-checked 2026-09-19, the

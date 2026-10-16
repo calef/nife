@@ -69,7 +69,7 @@ Options, costed as far as this lane could without building them:
    lines, with the authority question the whole problem. That work is adjacent.
 3. **Leave the syscall alone and give the attacker a watchdog thread**, so the *test* bounds the wait
    rather than the kernel. No surface change and no benefit to anything but this test, which is the
-   argument against it: the same gap will be hit by the next component that wants to ask a rendezvous
+   argument against it. The same gap will be hit by the next component that wants to ask a rendezvous
    a question it might not be allowed to ask.
 
 **Recommendation: none**, deliberately. AGENTS.md draws the line at the syscall surface, and a
@@ -84,10 +84,10 @@ keeps one claim whose test has never been shown able to fail. Nothing else waits
 
 Row 26 of `notes/confinement-claims.md` is that a client of a rendezvous cannot become its server,
 and **deleting the three lines of `kernel/src/syscall.rs` that enforce it does not fail the test
-that states it**: measured 2026-09-16, the run came back as a 60-second watchdog reading "a
+that states it**. Measured 2026-09-16, the run came back as a 60-second watchdog reading "a
 lost-wakeup hang" with nothing in it about impersonation. The cause is structural rather than a flaw
 in the patch. `RECEIVE_CAP` blocks, so an attacker the kernel fails to refuse never returns to report
 the escape, and the assertion is reachable only in the world where the kernel does refuse. Making
 the attempt return needs a non-blocking or timed receive, which is the syscall surface and therefore
-calef's; the block deliberately recommends nothing, and names a watchdog thread inside the test as
+calef's. The block deliberately recommends nothing, and names a watchdog thread inside the test as
 the option that buys nothing for the next component with the same question.

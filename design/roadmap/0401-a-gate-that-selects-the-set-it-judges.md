@@ -6,7 +6,7 @@ built: 2026-09-23
 # 401. A gate that selects the set it judges can pass by checking nothing
 
 Built 2026-09-23. Filed 2026-09-14 as an unnumbered proposal by milestone 265 (`_proto` is a truncation), which
-broke one and caught it by hand rather than by anything red; numbered 2026-09-19 by milestone 433 (drain the proposal pile), whose
+broke one and caught it by hand rather than by anything red. Numbered 2026-09-19 by milestone 433 (drain the proposal pile), whose
 drain of the proposal pile. *(Number provisional until the merge queue lands it.)*
 
 In brief. Several gates pick the things they judge with a pattern, then judge them. When the
@@ -57,7 +57,7 @@ Guarded, with the full table in the note:
   and the loop iterates nothing, every check is skipped, and the script prints `ci-build: all pass`.
   It is the command a developer runs before pushing and the enumeration CI fans out from.
 - `script/lint`, seven sites: the CFI scan over `kernel/src/arch/*/*.s`, the README
-  script-reference resolve, the module-wide dead-code ratchet over `git ls-files '*.rs'`, the rule 7
+  script-reference resolve, the module-wide dead-code ratchet over `git ls-files '*.rs'`. The rule 7
   `#[path]` scan (whose greps are all `2>/dev/null`, so a moved source tree reads as clean), the
   icount toolchain stamp over `bench/baseline-*.txt`, the notes-index check over `notes/*.md`, and
   the host-exclusion cross-check that reads `xtask/src/*.rs`.
@@ -66,14 +66,14 @@ Guarded, with the full table in the note:
   prints now says what actually went wrong.
 
 Already guarded, and left alone: `script/vendor-verify` and `script/vendor-watch` both exit on an
-empty `vendor/*.pin`; `script/mutation-census` exits on a run with no outcome artifacts; and
+empty `vendor/*.pin`; `script/mutation-census` exits on a run with no outcome artifacts.
 `script/fatal-risks`' `no-history` check fires when a shallow clone makes its own check unable to
 fail, on the stated ground that a check which cannot fail is worse than one that is absent. That
 comment is this block's argument, written by a gate about itself.
 
 **Judged not to need one:** `script/lint`'s `git grep` finders (the TODO-milestone scan, the
-`daemon` scan, the conflict-marker scan) look for bad things rather than selecting a set to judge, so
-empty genuinely means clean and an assertion there would be a false alarm by construction. That
+`daemon` scan, the conflict-marker scan) look for bad things rather than selecting a set to judge.
+Empty genuinely means clean, and an assertion there would be a false alarm by construction. That
 distinction, finder against selector, is the thing a lint for this could not make.
 
 ## BUGS
@@ -96,7 +96,7 @@ distinction, finder against selector, is the thing a lint for this could not mak
 ## Follow-on
 
 - **Recorded.** The three limitations this leaves are in the `BUGS` section of
-  `notes/empty-selectors.md`, beside the enumeration a reader meets them in: a non-empty assertion
+  `notes/empty-selectors.md`, beside the enumeration a reader meets them in. A non-empty assertion
   is not a correct selector, nothing gates the convention for a selector added tomorrow, and the
   `--exclude` family needs a different mechanism because a stale exclusion still covers everything
   else.
@@ -106,16 +106,16 @@ distinction, finder against selector, is the thing a lint for this could not mak
 Several gates pick the things they judge with a pattern and then judge them, so when the pattern
 stops matching the loop body never runs and the gate reports clean. **The instance this block was
 filed about turned out not to be one**: replayed against the tree at `51fee8248^`, `script/lint`'s
-`crates/*proto` glob did not pass silently after milestone 265's rename, because POSIX `sh` leaves
-an unmatched glob in place as a literal word and `*proto` falls through the `case` to the failure
+`crates/*proto` glob did not pass silently after milestone 265's rename. POSIX `sh` leaves an
+unmatched glob in place as a literal word, and `*proto` falls through the `case` to the failure
 arm, so the check went red with a confusing message about a crate that does not exist. The class is
-real anyway and the sweep found a worse case than the filed one: `script/ci-build` selects its
+real anyway and the sweep found a worse case than the filed one. `script/ci-build` selects its
 checks by matching a literal tier string in its own table with `awk`, so renaming that column left
 the command a developer runs before pushing running zero checks and printing "all pass". Eight
 selectors now assert that they selected something, seven of them in `script/lint` and one in
-`script/ci-build`, and the rule that keeps this from being thirty-five assertions is that a selector
+`script/ci-build`. The rule that keeps this from being thirty-five assertions: a selector
 whose empty result is silent (a shell glob, `git ls-files`, Python `glob` and `rglob`) needs the
-assertion while one whose empty result raises (`os.listdir`, `iterdir`) does not. Finders are
+assertion, while one whose empty result raises (`os.listdir`, `iterdir`) does not. Finders are
 excluded on purpose, since a `git grep` for bad things means clean when it is empty, and that
 distinction is why this is one assertion per site rather than a lint. notes/empty-selectors.md has
 the per-site table, what each guarded gate now guarantees, and the `--exclude` family it does not
