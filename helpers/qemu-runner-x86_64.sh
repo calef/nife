@@ -277,9 +277,9 @@ if [ -n "$NIFE_DISK" ]; then
     if [ -f "$REDOXFS_DISK" ]; then
         DISK="$DISK -drive file=$REDOXFS_DISK,if=none,format=raw,id=hd2 -device virtio-blk-pci,drive=hd2,disable-legacy=on,iommu_platform=on"
     fi
-    # The crash disk (milestone 37, prove RedoxFS's crash consistency), the GPT disk and the blank
-    # disk (milestone 57, partitioning and formatting a real drive and extended attributes), the THIRD
-    # through FIFTH functions, when a leg built them. Soft, like the RedoxFS sibling above: `cargo
+    # The crash disk (milestone 37 (prove RedoxFS's crash consistency)), the GPT disk and the
+    # blank disk (milestone 57 (partitioning and formatting a real drive and extended attributes)),
+    # the THIRD through FIFTH functions, when a leg built them. Soft, like the RedoxFS sibling above: `cargo
     # xtask bench` and `boot-check` set NIFE_DISK without building these, and a fixture's absence
     # is the test's own skip line rather than a broken boot. The order extends the contract the
     # two functions above ride on: one function per fixture, in command-line order, so the
@@ -375,10 +375,10 @@ if [ -n "$NIFE_NET" ]; then
     NET="-netdev user,id=net0,$GUESTFWD,tftp=$TFTPDIR -device e1000e,netdev=net0,mac=52:54:00:e1:00:0e,romfile="
 fi
 
-# A `virtio-rng-pci` when NIFE_RNG is set, the PCIe transport of milestone 56's entropy half
-# (secrets, credentials, and the entropy to make them safe; milestone 420, x86_64 has one fixture
-# of five and no NIC, GPU, keyboard or RNG, attached it here). NIFE_RNG=1 is a test-leg device
-# exported for every leg's
+# A `virtio-rng-pci` when NIFE_RNG is set, the PCIe transport of milestone 56 (secrets,
+# credentials, and the entropy to make them safe)'s entropy half (milestone 420 (x86_64 has one
+# fixture of five and no NIC, GPU, keyboard or RNG) attached it here). NIFE_RNG=1 is a test-leg
+# device exported for every leg's
 # runner, so this changes no bench or boot-check boot. `iommu_platform=on` is load-bearing for
 # the same reason it is on the disks above, and the entropy tests hold the line: the pcie test
 # ASSERTS the device is confined behind the IOMMU rather than skipping past it, so a line that
