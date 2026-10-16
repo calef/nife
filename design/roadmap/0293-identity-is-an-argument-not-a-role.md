@@ -164,7 +164,7 @@ limitations, and the fact that a spawn argument is visible wherever a spawn is r
   for a gate and not a convention.
 - **Recorded.** `fixtures/src/login_test_client.rs`'s `BUGS` section, on the two things this
   milestone does not claim. An index into a compiled-in roster is not a way to pass a secret to
-  a program (a real one needs a capability to something that holds it, DECISIONS §41). And a
+  a program (a real one needs a capability to something that holds it, DECISIONS §41 (the endpoint is the broker)). And a
   spawn argument is visible wherever a spawn is recorded, so nothing here is a design for carrying
   real secrets.
 - **Refused.** Splitting the six behaviors into six programs, which is what 290, 291 and 292 did

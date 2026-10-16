@@ -69,7 +69,7 @@ Done 2026-09-17, per `design/fatal-risks/README.md` risk 6. Corrected 2026-09-24
 
 An EL0 NVMe server under §86's option 2a, against QEMU's NVMe, which the runner already attaches.
 `crates/non_volatile_memory_express` exists (716 lines, host-tested, 25 Kani sites) and `kernel/src/non_volatile_memory_express.rs` is the
-in-kernel driver milestone 53 built. The work is moving the queue mechanics out to a confined process
+in-kernel driver milestone 53 (the board's own peripherals) built. The work is moving the queue mechanics out to a confined process
 that is handed a doorbell page and a DMA window and nothing else.
 
 The name is an architect's and a lane should ship a provisional one and say so; `nvme_server` is
@@ -126,7 +126,7 @@ patterns, reads each one back byte for byte. It is refused a block outside the n
 count that moves, and is refused an opcode the server has no verb for. **The second pattern is what
 proves a write landed where it said and not everywhere**: an earlier draft read the neighbor and
 expected zeros. That is a claim about the disk's prior contents, and true only of a freshly made
-image. Milestone 318 replaced it with a claim the test itself establishes. Every assertion is
+image. Milestone 318 (the NVMe boot test on real geometry) replaced it with a claim the test itself establishes. Every assertion is
 written against the geometry the boot was handed rather than against a constant, so the same case
 proves the same things on QEMU's 8 MiB image and on xenon's 256 GB namespace. It asserts the IOMMU
 was active,

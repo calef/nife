@@ -137,7 +137,7 @@ Proposed provisionally, with the refusals: see the block in `components/src/buil
 - **Milestone 406.** No pull-request check boots the default riscv64 kernel with its archive,
   so the tour's builder step, its device-IRQ step and its banner are asserted by nothing that runs
   automatically. That is what made a live step look dead. Numbered on 2026-09-19 by milestone 433's
-  drain of the pile, with the headline narrowed. `script/boot-check` (milestone 268, the same day
+  drain of the pile, with the headline narrowed. `script/boot-check` (milestone 268 (every architecture boots the same way), the same day
   this bullet was written) does boot the default kernel on every pull request, with no initrd, so
   what is left unasserted is the tour past the self-test verdict.
 - **Recorded.** The unmeasured child load stays in `notes/trusted-init.md`'s "Still not covered",

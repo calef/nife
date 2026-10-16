@@ -26,7 +26,7 @@ The token was `DECISION` from 2026-09-10 to 2026-09-19. It is corrected here rat
 quietly, because it confused this milestone's output with its gate. Whether to turn `CR4.PCIDE`
 on is genuinely calef's, and it is what step 3 below exists to bring him. A gate says what stops a
 lane from starting, and nothing calef could say today would let this start any sooner. That is
-milestone 421's correction read in the other direction. 421 carried `NONE` while owing a decision,
+milestone 421's correction read in the other direction. Milestone 421 (the block roster cannot name an NVMe disk) carried `NONE` while owing a decision,
 and this carried `DECISION` while owing a measurement. No `design/decisions/` section is minted,
 because the section is the deliverable and writing it before the number exists would be the
 asserting this block was filed to stop (per the seven-questions rule, *"what does each option cost,
@@ -41,7 +41,7 @@ would pass, but for the wrong reason (nothing was cached, not because tagging wo
 rather than gives a false positive. `kernel/src/arch/x86_64/mmu.rs`'s own `BUGS` records the same
 gap: both `PCIDE` and `CR4.PGE` are off with nothing measured against them.
 
-This is a real architectural divergence under §19, not a scope note. Aarch64 and riscv64 both tag
+This is a real architectural divergence under §19 (architectural parity is a tenet), not a scope note. Aarch64 and riscv64 both tag
 address spaces on every context switch today, and x86_64 does not.
 
 ## What this needs

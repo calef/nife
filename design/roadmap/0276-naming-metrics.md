@@ -126,7 +126,7 @@ so the three pre-115 weeks show a tree with 119 named things and no provenance r
 empty bars, which this page's own rule would otherwise read as "no data".
 
 The band found something the block did not predict. It survives two weeks past milestone 115 and
-is exactly seven names, all of them Cargo packages. Milestone 115 covered three surfaces and a
+is exactly seven names, all of them Cargo packages. Milestone 115 (the names ratified and refused) covered three surfaces and a
 package was not one; the `package` kind closed the hole on 2026-08-18, and this series reproduces the
 hole and its closing without being told about either.
 

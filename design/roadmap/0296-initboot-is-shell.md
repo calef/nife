@@ -10,7 +10,7 @@ promoted_from: two-boot-mode-features-for-one-decision
 
 The question arrived sideways. `script/initboot` was the **only one of fifty-five `script/` entry
 points that ran two words together** (fifty-four now that it is gone), against the hyphen rule for
-shell commands that milestone 63 swept the tree for on 2026-08-01. This one survived that sweep
+shell commands that milestone 63 (one spelling per thing) swept the tree for on 2026-08-01. This one survived that sweep
 rather than being exempted by it, and
 `design/roadmap/proposals/what-the-boot-path-is-called.md` had been holding a rename since
 2026-09-08. Asked to rule on `progenitor-boot` or `handoff`, calef asked what the thing does, and the
@@ -74,7 +74,7 @@ names for one boot was the defect.
 
 This is the part worth a paragraph, because nothing about it was a mistake at the time.
 
-`initboot` was minted on 2026-07-25 for milestone 19d.2c, and it named a real difference. The
+`initboot` was minted on 2026-07-25 for 2c of milestone 19d (a real workload), and it named a real difference. The
 kernel stops wiring services and hands the machine to the userspace progenitor, which then builds
 the console server, the input driver, the line discipline and the shell out of its own budget. The
 `shell` feature at that date meant something else, the kernel-wired `shell_service`. Two boots, two
@@ -116,7 +116,7 @@ boot paths rather than the cost of the aarch64 tour. The thing the surviving fea
 architecture's 14 KB, and symbol attribution says almost none of it was ever the narrative.
 `console_service` ~3.0 KB; the two never-yielding spinner closures ~3.3 KB; `virtio_service` ~1.7 KB;
 `memory_region_service` ~1.3 KB; `kernel_main` itself +1,460. Each of those is a demonstration
-needing a kernel privilege, which is why milestone 267 left them where they are.
+needing a kernel privilege, which is why milestone 267 (the tour is three things wearing one name) left them where they are.
 
 So the proposal's first question is answered and its second and third are dissolved. Is 7.3% on
 one architecture worth a compile-time switch? It is kept, on that number. Should it be one feature
@@ -129,7 +129,7 @@ The per-feature clippy loop is `for feat in shell bench icount board fastpath_pa
 cycle_counter_grant`, on two targets, and `initboot` came out of it.
 
 Milestone 401, `design/roadmap/0401-a-gate-that-selects-the-set-it-judges.md`, is the class of
-failure this could have been. Milestone 265 is the worked example: a check that computed the set it judged
+failure this could have been. Milestone 265 (`_proto` is a truncation) is the worked example: a check that computed the set it judged
 passed by checking zero crates on the one change that was its subject, going blind instead of
 red. This loop cannot do that, and the comment above it now says so. The list is **written out, not
 globbed**, so an entry leaving is visible in the diff, and every iteration echoes its own `==>` line,
@@ -260,4 +260,4 @@ they were written.
 
 ## Index row
 
-Promoted from the 2026-09-09 proposal milestone 267's lane wrote and was told not to act on. `script/initboot` was the only `script/` entry point running two words together; asked to rule on `progenitor-boot` or `handoff`, calef asked what the thing does and ruled it deleted, so a naming question was answered by deletion. The premise was measured rather than grepped: an aarch64 kernel built `--features initboot` and one built `--features shell` carry the same 3,109 symbols at the same 1,273,614 total bytes, differing only in the crate disambiguator hash the feature name itself feeds. On riscv64 `initboot` was a strict subset, selecting three things less. `script/initboot` was deleted rather than aliased, because its `xtask` arm differed from `shell`'s only by omitting the virtio-rng device and the RedoxFS fixture. **`jobmix` moved in the same breath and it was a repair, not a tidy-up**: calef's 2026-09-13 ratification of `crates/job_mix` rests on the family staying greppable as one string and counts three members. The fourth, `kernel/src/jobmix.rs`, is exactly what that grep misses (31 files against 25). Console markers to `job-mix:`. Found and fixed one line nobody was looking at: `--features job_mix` failed `-D warnings` on both ISAs. Merged with milestone 297's `soak` to `soak_test` rename on 2026-09-15, carrying both renames through every conflicted site.
+Promoted from the 2026-09-09 proposal milestone 267's lane wrote and was told not to act on. `script/initboot` was the only `script/` entry point running two words together; asked to rule on `progenitor-boot` or `handoff`, calef asked what the thing does and ruled it deleted, so a naming question was answered by deletion. The premise was measured rather than grepped: an aarch64 kernel built `--features initboot` and one built `--features shell` carry the same 3,109 symbols at the same 1,273,614 total bytes, differing only in the crate disambiguator hash the feature name itself feeds. On riscv64 `initboot` was a strict subset, selecting three things less. `script/initboot` was deleted rather than aliased, because its `xtask` arm differed from `shell`'s only by omitting the virtio-rng device and the RedoxFS fixture. **`jobmix` moved in the same breath and it was a repair, not a tidy-up**: calef's 2026-09-13 ratification of `crates/job_mix` rests on the family staying greppable as one string and counts three members. The fourth, `kernel/src/jobmix.rs`, is exactly what that grep misses (31 files against 25). Console markers to `job-mix:`. Found and fixed one line nobody was looking at: `--features job_mix` failed `-D warnings` on both ISAs. Merged with milestone 297 (`soak` becomes `soak-test`) and its `soak` to `soak_test` rename on 2026-09-15, carrying both renames through every conflicted site.

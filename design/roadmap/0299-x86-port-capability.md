@@ -13,7 +13,7 @@ DECISIONS §152, provisional), enforced by the **lazy** TSS I/O-bitmap write on 
 (`arch::segments::set_port_grant`, installed from `sched::schedule`). A switch that crosses no port
 holder costs one comparison and writes nothing (`tss_iomap_lazy_nop`, +216 ticks/iter over a bare
 switch). And a holder crossing writes only the bits that move, not the 8 KiB the naive always-write
-§121 priced at ~2,682 ns cost every switch (`notes/benchmarks.md`, 2026-09-15). Revocation
+§121 (what a device capability is when the device has no page) priced at ~2,682 ns cost every switch (`notes/benchmarks.md`, 2026-09-15). Revocation
 (`PortRange::REVOKE`, and the kernel's own whole-machine sweep) deletes the capability, clears the
 cached grant, and resets the core's TSS, so a revoked holder faults on its next `in`/`out`. The x86
 console and input drivers are userspace processes holding COM1's `(0x3F8, 8)` ports, delegated by the

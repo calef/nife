@@ -17,7 +17,7 @@ is either extending the `cfg` to x86_64 or recording a reason the extension does
 
 `ipc_thread_scaling` (milestone 134's E1, IPC latency versus thread count) and `app_displacement`
 (E4, working-set eviction under concurrent IPC load) do not run on x86_64 at compile time, not
-as a runtime skip. Milestone 134 built both on 2026-08-22, when x86_64 was earlier in its port. No
+as a runtime skip. Milestone 134 (the register of measures) built both on 2026-08-22, when x86_64 was earlier in its port. No
 comment near either `#[cfg]` states a reason, which was checked directly (2026-09-10) rather than
 assumed.
 

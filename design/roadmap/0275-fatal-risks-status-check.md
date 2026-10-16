@@ -67,7 +67,7 @@ reading a status claim out of free prose and that is a false-positive generator.
 `**Status: RUN**`/`MEASURED` names an experiment milestone that is `NOT-STARTED`. A risk whose
 experiment is explicitly *not* run naming one that is `BUILT` (the rule `script/roadmap` already
 keeps for a `Gate: MILESTONE N`). A struck row in the running order owned to a milestone that never
-started. A status word the file spells out (`milestone 161 is PARTIAL`) that the record contradicts.
+started. A status word the file spells out about milestone 161 (the x86_64 kernel port) (`milestone 161 is PARTIAL`) that the record contradicts.
 A cited path that does not exist; a cited proposal changed after the entry that cites it was last
 dated. And a risk entry whose own latest date precedes the `Built` date of a milestone it cites.
 
@@ -110,7 +110,7 @@ touching a tracked file, so the proposal check would pass vacuously in one and r
 is `script/roadmap`'s own lesson from the day its merged-branch check "spent a day passing in CI
 while being unable to fail". The negatives are the more interesting half, since this gate's stated bias is that a false
 positive costs more than a false negative. A `RUN` verdict over a `PARTIAL` milestone. A *pending*
-running-order row over a `BUILT` owner: row 5 owns risk 3 to milestone 85, which is built, while its
+running-order row over a `BUILT` owner: row 5 owns risk 3 to milestone 85 (mutation testing over the host crates), which is built, while its
 experiment is a re-run that has not happened. And a milestone built before the citing entry's own
 date.
 
