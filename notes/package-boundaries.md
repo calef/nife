@@ -89,7 +89,7 @@ timetable" (the package was named `coreutils` then), and a planted untracked-the
 | `login` | base | crates: `credentialer`; programs: `credentialer`, `identity_provisioner`, `login`, `login_audit_receiver`, `user_timetable_keeper` | `timetable` | `login` (provisional) |
 | `mdr` | base | programs: `mdr` | interfaces only | `mdr` (provisional) |
 | `network` | base | crates: `domain_name_system`, `http_response`, `name_resolution_protocol*`; programs: `name_resolver`, `net_stack`; paths: `components/src/virtio_net_transport.rs`, `components/src/socket_test_client.rs` | interfaces only | `network` (provisional) |
-| `process-tools` | base | crates: `free`, `pgrep`, `pmap`, `ps`, `slabtop`, `top`, `uptime`, `vmstat`; programs: `free`, `pgrep`, `pmap`, `ps`, `slabtop`, `top`, `uptime`, `vmstat`; paths: `packages/uptime.recipe.toml`, `packages/uptime-riscv64.recipe.toml`, `packages/uptime-x86_64.recipe.toml` | interfaces only | `process-tools` (provisional) |
+| `process-tools` | base | crates: `free`, `number_writer`, `pgrep`, `pmap`, `ps`, `slabtop`, `top`, `uptime`, `vmstat`; programs: `free`, `pgrep`, `pmap`, `ps`, `slabtop`, `top`, `uptime`, `vmstat`; paths: `packages/uptime.recipe.toml`, `packages/uptime-riscv64.recipe.toml`, `packages/uptime-x86_64.recipe.toml` | interfaces only | `process-tools` (provisional) |
 | `swish` | base | crates: `swish`; programs: `swish` | interfaces only | `swish` (provisional) |
 | `terminal` | base | crates: `line_editor*`; programs: `console`, `input`, `line_editor`, `terminal_sink_caretaker`, `terminal_supervisor` | interfaces only | `terminal` (provisional) |
 | `time` | base | crates: `network_time_protocol`; programs: `clock`, `network_time_client` | interfaces only | `time` (provisional) |
