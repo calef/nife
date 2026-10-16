@@ -13,7 +13,7 @@ Filed 2026-09-03 as an unnumbered proposal while fixing milestone 133's
 block for the same reason; numbered 2026-09-19 by milestone 433. Premise re-checked and re-measured
 2026-09-19 and it holds. `notes/tcb.md` is still named for a retired word and is still indexed in
 `notes/README.md` as "The TCB". Counting only the seven retired spellings that cannot collide with
-ordinary prose (`Aspace`, `Tcb`, `TcbPtr`, `EpId`, `TidSet`, `EpFail`, `FreeVas`), and excluding
+ordinary prose (`Aspace`, `Tcb`, `TcbPtr`, `EpId`, `TidSet`, `EpFail`, `FreeVas`). It excludes
 milestone 158 (build the eleven kernel object and identifier renames)'s own block, which is the
 account of the rename and keeps them. The count is 60
 occurrences across 26 files under `notes/` and `design/roadmap/`. The proposal's 115-across-36 figure also counted
