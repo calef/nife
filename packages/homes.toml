@@ -73,3 +73,8 @@ paths = [
 status = "undecided"
 reason = "every repository carries its own copy; this one follows the root"
 paths = ["LICENSE-MIT", "LICENSE-APACHE"]
+
+[[home]]
+status = "undecided"
+reason = "the publish allowlist, milestone 887 (crate repositories share one CI template, adapted from nife's gates); it leaves with the last crate that moves, because its purpose is what stops a crate leaving unallowlisted"
+paths = ["crates/publish-allowlist.txt"]
