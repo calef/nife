@@ -119,6 +119,18 @@ jobs:
             echo "::warning::a scheduled workflow has stopped producing results (script/cadence-check)"
             ;;
           esac
+          # A repeating failure is the other standing condition this script reports, and it warns
+          # here rather than failing for the same reason a dead cadence does: failing every five
+          # minutes would drown the red-trunk signal this job exists to carry. The row names the
+          # workflow, the repeated line and the span of dates; helpers/trunk-health.sh's repeat
+          # section carries the thresholds and what is deliberately not settled yet (who the
+          # report is for and what closes it, the open question of milestone 422 (a cadence job
+          # whose healthy state is red)).
+          case "$out" in
+          *REPEAT:*|*CHURN:*)
+            echo "::warning::a scheduled workflow keeps failing the same way (repeat check, helpers/trunk-health.sh)"
+            ;;
+          esac
 
       # **Reports a stopped merge watcher** (milestone 723 (a stopped merge watcher is reported within
       # three of its own intervals), provisional). Each of the two watchers runs this, so a stopped
