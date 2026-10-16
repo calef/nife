@@ -38,8 +38,10 @@ name: mutation testing
 # this census against the previous committed survivor list
 # (notes/project-metrics/mutation-survivors/), blames each new survivor to the pull request that
 # wrote the line, and **fails this run listing any with no row in
-# notes/project-metrics/mutation-triage.csv**. It is red on the scheduled run and nowhere else: it
-# never sits on a merge, because milestone 479 (a blocking `--in-diff` mutation gate) stays refused.
+# notes/project-metrics/mutation-triage.csv**. It is red on the scheduled run and nowhere else:
+# the weekly inflow never sits on a merge; the check that does is the per-pull-request diff gate,
+# .github/workflows/mutation-gate.yml (milestone 924 (a survivor on a pull request's own lines
+# cannot merge untriaged)).
 # `record` then opens a pull request (the App token and the `automation` environment, the way
 # metrics.yml does, and for the same reason: a PR opened by GITHUB_TOKEN never starts CI) that adds
 # this census's per-crate row to mutation-census.csv and its survivor list, so capture stops

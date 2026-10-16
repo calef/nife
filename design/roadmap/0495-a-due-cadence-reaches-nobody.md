@@ -1,6 +1,7 @@
 ---
-status: NOT-STARTED
+status: BUILT
 raised: 2026-09-19
+built: 2026-10-15
 promoted_from: a-due-cadence-reaches-nobody
 milestone_dependencies: none
 decision_dependencies: none
@@ -10,58 +11,103 @@ needs_person: no
 ---
 # 495. A cadence that says "due" reaches nobody, and the watcher cannot tell due from dead
 
-Promoted from the proposal `a-due-cadence-reaches-nobody`, filed 2026-09-19, on calef's instruction
-of 2026-09-20 to give every proposal on `main` a number. The text below is the proposal's own,
-unedited except for this paragraph: the argument is its author's and promotion is not the moment to
-improve it. Written by milestone 117 (the stranger test)'s run 6 lane, from what the run showed
-about the cadence that was supposed to have started it.
+Two scheduled cadences exist to say "a person must now do something": the stranger cadence
+(`script/stranger-test --due`) and the audit cadence (`script/audits --due`). Both say it by going
+red in the Actions tab. That red is their correct output, not a failure. The one watcher a person
+reads, `helpers/trunk-health.sh`, asked `script/cadence-check`. That script reports a workflow only
+as DEAD, once it has gone fifteen days without a success. A job correctly reporting due and a job
+that is broken therefore arrived as the same verdict, a fortnight late. The audits sat that way for
+five Mondays (2026-08-17 to 2026-09-19) before anyone acted.
 
-A lane can start today. Every input is already on disk or one `gh` call away.
+## What was built
 
-In brief. Two scheduled workflows exist to say "a person must now do something": the stranger
-cadence (`script/stranger-test --due`) and the audit cadence (`script/audits`). Both say it by going
-red in the Actions tab. Nothing carries that red to a person. `script/cadence-check`, which
-`helpers/trunk-health.sh` runs so that scheduled failures stop being invisible, reports a workflow
-only once it has gone fifteen days without a *success*, so a job that is correctly reporting "due"
-and a job that is broken arrive as the same verdict, DEAD, a fortnight after the fact.
+`helpers/trunk-health.sh` gained a `due()` section beside its `DEAD:` lines. It asks the scripts
+themselves, not the workflows that relay them. The function name is provisional, like the script's
+own. Both `--due` modes read records already on disk: the stranger note's run headings, and the
+audit index. They need no network, no toolchain and no credential. They answer in seconds on the
+checkout the watcher already holds. No new scheduled workflow, no `issues: write`, no second
+channel. The two shapes this declines stay declined for their recorded reasons. Teaching
+`script/cadence-check` a third verdict would parse step summaries and still inherit the weekly
+lag. An issue from the workflow needs `issues: write` and is a second channel to the watcher. This
+is deliberately not a gate and not in `script/lint`. The reason is the one
+`script/cadence-check`'s header records: a due cadence is not a defect in the commit that happens
+to trip it.
 
-## The evidence
+Rows keep the watcher's existing three-column shape, beside the DEAD lines:
 
-- **The stranger cadence was never tested.** Run 5 was 2026-08-18, so a run came due on
-  2026-09-17. The workflow asks on Mondays: green on 2026-09-14 (27 days), and it could not go red
-  before 2026-09-21. Run 6 happened on 2026-09-19 because a maintainer briefed a lane, which is the
-  "somebody thought of it" this mechanism was built to replace.
-- The audit cadence shows what happens when one does go red. On 2026-09-19 it had failed on
-  every Monday since 2026-08-17, five in a row, and `script/cadence-check` lists it as
-  `DEAD: never succeeded`, which is true and says the wrong thing: the job works, and what it has
-  been saying for five weeks is "audits are due".
+```
+audits                           2 overdue                DUE: documentation, security
+stranger-test                    last run 2026-08-19      DUE: Run 6 was 57 days ago and the cadence is 30.
+```
 
-## What it would take, and the options
+A `--due` mode that exits nonzero without a DUE sentence is a record that would not read. That is
+a malformed or missing one, and it prints nothing on stdout. It gets its own row instead, state
+`cannot ask`, verdict `DUE: unknown`, naming the `--check` that explains it. Silence there would
+recreate the gap this closes, in miniature. `--once` prints the rows whenever they stand, being a
+snapshot rather than a watcher.
 
-The question is what `due` should look like to the one watcher a person reads. Three shapes, each
-priced by what it adds:
+### What a transition means
 
-1. **Ask the scripts directly, not the workflows.** `trunk-health.sh` already runs on patagonia
-   every ninety seconds with a checkout in hand; `script/stranger-test --due` and the audits'
-   equivalent need no network, no `claude` and no toolchain. A `DUE:` line on transition, beside
-   the existing `DEAD:` ones, closes the gap without touching GitHub. Recommended, because it
-   reuses the watcher a maintainer session is already told to confirm is alive.
-2. Teach `cadence-check` a third verdict, reading a job's own summary to tell "failed because
-   something is due" from "failed". Keeps one source, but it parses step summaries, which is
-   fragile, and still inherits the weekly lag.
-3. Open an issue from the workflow when it goes red. Durable and visible, but it needs the
-   workflow to hold `issues: write`, which every workflow here has declined on least-privilege
-   grounds, and it is a second channel to the one the watcher already is.
+The verdict speaks on transition, like the watcher's RED/GREEN and DEAD lines. It speaks when
+something becomes due, when it clears, and not on the ninety-second polls between. A cadence
+standing due for weeks is one fact, not a standing alarm. Clearing prints `nothing is due any
+more` once. It means the work was done, or that the record moved underneath. A stranger run was
+written up, or the audits ran and their rows were added. Both scripts' own BUGS sections name the
+edit-to-silence hole. This inherits it rather than policing it.
 
-Reversible: all three are tooling on one machine or one workflow, and nobody else has acted on
-the current behavior except by not acting.
+The watcher keeps no state between runs. `prev_due` lives in the watching shell and dies with it.
+So a transition means newly observed, not newly due. A restart announces whatever stands due on
+its first pass. A due that clears while nothing is watching is never reported. That is the honest
+direction to be wrong in. It has been true of the RED/GREEN and cadence halves all along. It is
+now stated once, in the script's BUGS list.
 
-## Scope note
+## How it was proven
 
-This is not a stranger-test fix. The stranger cadence is one of two consumers, and fixing it only
-there would leave the audit cadence red for a sixth week.
+Against real state in the lane's worktree, 2026-10-15 (UTC): `--once` printed the audits row.
+Documentation and security were overdue. No stranger row printed, run 6 being 26 days old with the
+cadence at 30, due 2026-10-19. The transition half ran in a throwaway clone, against moved
+records, with the watch loop's `sleep` shimmed to two seconds. The first pass announced the
+standing due state once, and the next passes stayed silent. Restoring run 6's real date cleared
+the stranger due. The next pass announced only the audits row, with no recovery line. Answering
+both audit kinds the way a person answers them emptied the list: dated rows and baselines from
+`script/audits --baseline`. The next pass printed `nothing is due any more` exactly once, and
+further passes stayed silent. The two cannot-ask shapes, a missing run record and a malformed
+index row, each produced their `DUE: unknown` row.
+
+## BUGS
+
+- The audits row inherits `script/audits`' own defects. It says which kinds are due because the
+  script says so. A drifted count (see Follow-on) or a report that found nothing reads the same as
+  a real one. The judgment triggers, the `?` lines, are not consulted: a kind due on judgment
+  alone produces no row.
+- `DUE: unknown` sits in a column a reader skims for `DUE:`. The state column carries
+  `cannot ask`, but a prefix-based skim reads the row as due. This is deliberate: an unreadable
+  record must reach the same stream as a due one, and the row names the `--check` that says which
+  it is.
+- A machine asleep is a watcher not watching, inherited from the watcher's own delivery. The
+  ninety-second notice is a line in the watcher's output, which a maintainer session reads. It is
+  not a page and not an issue.
+
+## Follow-on
+
+- **Recorded.** `script/audits` counts the ABI surface from `crates/abi/src/lib.rs` alone, and the
+  crate split into per-object modules. Measured 2026-10-15: the trigger reads 6 constants against
+  baselines of 68 to 76 and prints `+-62`. The split moved the constants verbatim into
+  `memory_region.rs`, `interrupt.rs` and some twenty siblings, and told no script. That is the
+  failure mode the script's own header records for the `user/` split. Until the count is told, its
+  delta is wrong in both directions, and a real change of a constant or two reads as noise. The
+  reader meets the count in `script/audits`' `current()`.
+- **Recorded.** The cadence stream's recovery line fires on cannot-ask. `script/cadence-check
+  --quiet 2>/dev/null || true` empties the stream on an API failure. The `prev_cadence` compare
+  then prints "every scheduled workflow is producing results again" about a watcher that could not
+  ask. The DUE section avoids the trap by giving its cannot-ask states rows. The cadence half
+  predates this milestone and wants a lane of its own.
+- **Done.** The restart caveat is a BUGS bullet in `helpers/trunk-health.sh`, stated once for all
+  three transition memories.
 
 ## Index row
 
-Two scheduled workflows exist to say "a person must now do something": the stranger cadence
-(`script/stranger-test --due`) and the audit cadence (`script/audits`).
+The trunk watcher now asks `script/stranger-test --due` and `script/audits --due` directly on every
+pass, and says `DUE:` on transition beside its `DEAD:` lines. A cadence saying "a person must now
+do something" reaches the watcher's output within one poll. It no longer arrives as DEAD, a
+fortnight after the workflow went red.

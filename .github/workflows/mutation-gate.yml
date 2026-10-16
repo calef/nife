@@ -1,0 +1,286 @@
+name: mutation gate
+
+# Observed failing: 2026-10-15, run 38803917791: red at "Decide against the triage ledger" on
+#   #2220, a throwaway pull request staging one untested function in `crates/glob`
+#   (`staged_gate_observation`): five survivor keys, all the staged function's, each listed with
+#   what clears it. That is the red this gate exists to raise, on the trigger it will live on.
+#   Also observed the same day, run 38804878586: this repository's own pull request, a diff with
+#   no Rust, went red because no mutants were generated and outcomes.json was absent, which the
+#   helper rightly read as a broken run; the no-mutants pass below is that run's repair.
+
+# **A surviving mutant on a line this pull request changed cannot merge untriaged** (roadmap
+# 924, provisional: calef's ruling "Reopen, build it", 2026-10-15 UTC, on milestone 479 (a
+# blocking `--in-diff` mutation gate)). `cargo mutants --in-diff` generates mutants only for
+# functions containing changed lines, so the run scales with the pull request rather than the
+# tree (milestone 517 (what fraction of survivor growth arrives on lines a pull request touched) measured it at four seconds on a documentation change and under two
+# minutes on the largest crate landing in six weeks). The verdict is
+# helpers/mutation_diff_gate.py's, against the same triage ledger the weekly inflow check reads:
+# `equivalent` or `gap` clears a survivor, `killed` never does, a timeout is untriaged the same
+# as a survivor, a broken run and a capped run both fail.
+#
+# **The cap is 20 minutes, and firing it is a failure, never a pass.** A diff whose mutants do
+# not finish in 20 minutes fails with "split this pull request or triage by hand".
+#
+# **Why `merge_group` is a trigger when roadmap 924 says "not in the merge queue".** What the
+# block refuses is the queue's *range*: `merge_group.base_sha` is the base branch's tip when the
+# group was built, so a batched entry's `base_sha..head_sha` covers every entry before it, and
+# the diff changes as other pull requests land. What a required check cannot refuse is the event
+# itself: a check that never reports on `merge_group` sits "Expected" for ever and stalls the
+# queue (empty-diff.yml carries the same analysis). So this runs there and takes the diff the
+# block means, the entry's own: on a queue entry HEAD is the queue's merge commit and its first
+# parent is the previous entry, so `HEAD^1..HEAD` is this pull request alone. The same first
+# parent on a `pull_request` event is the platform's own merge base, which is the diff a pull
+# request is read by. A head with one parent (a dispatch, a call without `base`) fails rather
+# than guesses.
+#
+# **No draft runs.** §90 (the claim is a draft pull request) opens every lane as a draft and pushes land while it is still one; the
+# `draft-gate` job reads the pull request's *live* state from the API (the payload's copy has
+# been wrong) and the gate below skips on a draft, the same pattern ci.yml argues for at length.
+# `ready_for_review` is in the `types:` list, so marking ready raises the run that actually
+# executes. Like every skip in this repository it fails toward running: an empty or failed
+# answer runs the gate.
+#
+# **Reusable, because the split inherits it.** A repository cut out of this one carries the gate
+# with one `uses:` line and its own ledger: `uses: nifeos/nife/.github/workflows/mutation-gate.yml@main`
+# with `triage` (and, when its tree names them differently, `renames`, `base`, `tip`). The
+# caller's checkout, ledger and `.cargo-mutants-version` are what run; nothing here reads this
+# repository's paths except as defaults.
+#
+# **Required-check status.** The job name below is the required context. Adding it to the `main`
+# ruleset is a settings change only calef can make (roadmap 924's "Done means"); until then this
+# reports and does not gate.
+#
+# **Jobs run on arm** (the milestone 587 (most CI jobs do not need an arm64 host) split): the weekly mutation shards run there, and
+# `Swatinem/rust-cache` keys on the host, so the gate's baseline build shares their cache pool.
+
+on:
+  pull_request:
+    types: [opened, reopened, synchronize, ready_for_review]
+  merge_group:
+  workflow_dispatch:
+    inputs:
+      triage:
+        description: the triage ledger, relative to the checkout
+        type: string
+        required: false
+        default: notes/project-metrics/mutation-triage.csv
+      renames:
+        description: the crate-rename chain applied to both sides of every key match
+        type: string
+        required: false
+        default: notes/project-metrics/mutation-census-renames.csv
+      base:
+        description: the commit to diff against; the checkout's first parent by default
+        type: string
+        required: false
+      tip:
+        description: the commit whose changed lines are gated; the checkout by default
+        type: string
+        required: false
+  workflow_call:
+    inputs:
+      triage:
+        description: the triage ledger, relative to the calling checkout
+        type: string
+        required: false
+        default: notes/project-metrics/mutation-triage.csv
+      renames:
+        description: the crate-rename chain applied to both sides of every key match
+        type: string
+        required: false
+        default: notes/project-metrics/mutation-census-renames.csv
+      base:
+        description: the commit to diff against; the checkout's first parent by default
+        type: string
+        required: false
+      tip:
+        description: the commit whose changed lines are gated; the checkout by default
+        type: string
+        required: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: mutation-gate-${{ github.ref }}-${{ github.ref == 'refs/heads/main' && github.sha || 'tip' }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' && !startsWith(github.ref, 'refs/heads/gh-readonly-queue/') }}
+
+jobs:
+  gate:
+    name: draft gate
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      pull-requests: read
+    outputs:
+      run: ${{ steps.state.outputs.run }}
+    timeout-minutes: 5
+    steps:
+      - id: state
+        env:
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if [ "${{ github.event_name }}" != "pull_request" ]; then
+            echo "run=true" >> "$GITHUB_OUTPUT"
+            echo "==> ${{ github.event_name }} is not a pull request; running the gate"
+            exit 0
+          fi
+          draft="$(gh pr view "$PR_NUMBER" \
+                     --repo "$GITHUB_REPOSITORY" --json isDraft -q .isDraft 2>/dev/null || true)"
+          if [ "$draft" = "true" ]; then
+            echo "run=false" >> "$GITHUB_OUTPUT"
+            echo "==> pull request is a draft right now; the gate runs when it is marked ready"
+          else
+            echo "run=true" >> "$GITHUB_OUTPUT"
+            echo "==> pull request is not a draft; running the gate"
+          fi
+
+  mutation-gate:
+    name: mutation gate (a survivor on a changed line cannot merge untriaged)
+    needs: gate
+    # Fail toward running: an empty output from a cancelled gate admits the gate, the same
+    # reading ci.yml's jobs put on their draft gate, and `!cancelled()` keeps a superseded run
+    # from executing its own replacement's work.
+    if: ${{ needs.gate.outputs.run != 'false' && !cancelled() }}
+    runs-on: ubuntu-24.04-arm
+    # The cap below is on the mutant run, not the job: checkout, the toolchain, the baseline
+    # build and the verdict all sit outside it, so the job's own bound is the cap plus room.
+    timeout-minutes: 45
+    env:
+      TRIAGE: ${{ inputs.triage || 'notes/project-metrics/mutation-triage.csv' }}
+      RENAMES: ${{ inputs.renames || 'notes/project-metrics/mutation-census-renames.csv' }}
+      CAP_MINUTES: "20"
+      IN_BASE: ${{ inputs.base }}
+      IN_TIP: ${{ inputs.tip }}
+    steps:
+      # Full history: the first-parent read below wants the parents, and `git diff` wants blobs.
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          fetch-depth: 0
+
+      - name: Resolve the diff's two ends
+        id: ends
+        run: |
+          tip="${IN_TIP:-HEAD}"
+          if [ -n "$IN_BASE" ]; then
+            base="$IN_BASE"
+          else
+            parents="$(git rev-list --parents -n 1 HEAD | wc -w)"
+            parents=$((parents - 1))
+            if [ "$parents" -eq 2 ]; then
+              base="$(git rev-parse HEAD^1)"
+            else
+              echo "==> this checkout has $parents parent(s) and no 'base' input was given;" >&2
+              echo "    the gate cannot guess the diff, so it fails (never passes)" >&2
+              exit 1
+            fi
+          fi
+          echo "base=$base" >> "$GITHUB_OUTPUT"
+          echo "tip=$tip" >> "$GITHUB_OUTPUT"
+          echo "==> diffing $base..$tip"
+
+      # The corpus is what `.cargo/mutants.toml` leaves in, and `kernel/` and `components/` are
+      # the whole of it that no host test reaches. A pull request touching only those passes,
+      # but the summary has to say what green means here, or a green check reads as
+      # mutation-tested when nothing ran. The other excluded globs (uefi_loader's entry file,
+      # system_tests, the host arms) are not listed: the run itself is the honest answer for
+      # them, and a diff of nothing generates none in seconds.
+      - name: Pass pull requests outside the corpus, saying so
+        run: |
+          base="${{ steps.ends.outputs.base }}"
+          tip="${{ steps.ends.outputs.tip }}"
+          changed="$(git diff --name-only "$base..$tip")"
+          if [ -z "$changed" ]; then
+            echo "==> the diff names no file; the run below generates nothing and says so"
+            exit 0
+          fi
+          if [ -z "$(printf '%s\n' "$changed" | grep -v -E '^(kernel|components)/')" ]; then
+            {
+              echo "### Mutation gate: no mutants: outside the corpus"
+              echo
+              echo 'Every changed file is under `kernel/` or `components/`, which `.cargo/mutants.toml`'
+              echo 'excludes: no host test executes a line there, so there is nothing to mutate here.'
+              echo 'This pass is not a mutation result. Changed files include:'
+              echo '```'
+              printf '%s\n' "$changed" | head -5
+              echo '```'
+            } >> "$GITHUB_STEP_SUMMARY"
+            echo "==> outside the corpus; passing with the summary that says so"
+            exit 0
+          fi
+          echo "==> the diff reaches $(printf '%s\n' "$changed" | grep -c -v -E '^(kernel|components)/') file(s) outside kernel/ and components/; running"
+
+      - name: Install the pinned toolchain
+        run: rustup show active-toolchain || rustup toolchain install
+
+      # `save-if` keeps the merge group from saving an entry on a ref no later run restores
+      # (helpers/cache_save_scope.py's measurement).
+      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2
+        with:
+          save-if: ${{ github.event_name != 'merge_group' }}
+
+      - name: Read the pinned cargo-mutants version
+        id: mutants
+        run: echo "version=$(cat .cargo-mutants-version)" >> "$GITHUB_OUTPUT"
+      - uses: taiki-e/install-action@ab6895351a88b908e96a4697860d4ffea5e57dbe # v2.87.27
+        with:
+          tool: cargo-mutants@${{ steps.mutants.outputs.version }}
+
+      - name: Write the diff
+        run: |
+          git diff "${{ steps.ends.outputs.base }}..${{ steps.ends.outputs.tip }}" > pr.diff
+          wc -l pr.diff
+
+      # `script/mutation` brings the pinned-version check, `-j 2` and the per-mutant memory
+      # ceiling (milestone 277 (bound what one mutant may allocate, so a runaway kills the
+      # mutant and not the machine)): one runaway mutant took a runner down in twenty seconds
+      # once, well inside any clock. Its exit is 0 on survivors (that is the report), nonzero
+      # only on a broken run, which fails here because a required check that fails open examined
+      # nothing. The cap wraps the whole invocation and fires as a failure with its own
+      # summary: "split this pull request or triage by hand", never a pass.
+      - name: Mutate the changed lines
+        id: mutate
+        run: |
+          rc=0
+          timeout --kill-after=30s "${CAP_MINUTES}m" script/mutation --in-diff pr.diff || rc=$?
+          if [ "$rc" = 124 ]; then
+            python3 helpers/mutation_diff_gate.py cap --summary "$GITHUB_STEP_SUMMARY"
+            exit 1
+          fi
+          if [ "$rc" != 0 ]; then
+            {
+              echo "### Mutation gate: the run broke"
+              echo
+              echo "\`script/mutation\` exited $rc: a broken run, not a survivor count, and never a pass."
+            } >> "$GITHUB_STEP_SUMMARY"
+            exit "$rc"
+          fi
+          # Exit 0 with no outcomes.json is the one shape that is not a verdict the tool wrote
+          # down: cargo-mutants writes outcomes.json whenever it had mutants to test, so a clean
+          # exit without one means the diff generated none (no Rust on the changed lines the
+          # corpus leaves in). Found on this repository's own pull request, run 38804878586,
+          # which the helper failed closed on; the pass says what it is, as the corpus summary
+          # above does. Run 38805337619 caught the repair half-done: `exit 0` ends this step,
+          # not the job, so the deciding step reads the output below and skips itself.
+          if [ ! -f mutants.out/outcomes.json ]; then
+            {
+              echo "### Mutation gate: clean"
+              echo
+              echo "The diff generated no mutants: no Rust on the changed lines that"
+              echo "`.cargo/mutants.toml` leaves in. This pass is not a mutation result."
+            } >> "$GITHUB_STEP_SUMMARY"
+            echo "==> no mutants generated; passing with the summary that says so"
+            echo "mutants=none" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+      # Skipped, never failed, when the diff generated no mutants: the step above has said what
+      # the pass is. `!= 'none'` fails toward deciding, the same reading every gate here puts on
+      # an empty output.
+      - name: Decide against the triage ledger
+        if: steps.mutate.outputs.mutants != 'none'
+        run: |
+          python3 helpers/mutation_diff_gate.py gate \
+            --run-dir mutants.out --triage "$TRIAGE" --renames "$RENAMES" \
+            --summary "$GITHUB_STEP_SUMMARY"

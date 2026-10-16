@@ -50,7 +50,7 @@ This matched `Endpoint`'s own scope call.
   `ThreadControlBlock` would have made the sentence describe the winning name as the one that lost.
   So it was reverted to the old name it is actually citing.
 
-`notes/tcb.md` (the object's own note) got a provenance line the same way `notes/ipc-naming.md` did.
+`notes/thread-control-block.md` (the object's own note) got a provenance line the same way `notes/ipc-naming.md` did.
 Its "acronym collision" section (TCB as Thread Control Block vs. Trusted Computing Base) is
 unaffected either way, since both senses are already informal usage.
 

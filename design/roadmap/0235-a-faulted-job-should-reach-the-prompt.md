@@ -31,16 +31,16 @@ locally by whoever meets it next unless it is written down.
 `job_undertaker` gained one capability (`WRITE`, no `GRANT`, on init's result endpoint) and sends
 that word once, after collecting the corpse and only for `abi::fault::EVENT_FAULT`. `swish`
 recognizes it in the four places it reads that endpoint (an answer, a byte stream being printed, a
-byte stream going into a file, a pipeline stage's ack), prints `swish::FAULTED_SENTENCE`, and sets
-`Status::Failed`, so `$?` reads 1 and `&&` stops.
+byte stream going into a file, a pipeline stage's ack). It prints `swish::FAULTED_SENTENCE` and sets
+`Status::Failed`; `$?` reads 1 and `&&` stops.
 
 **The design question this block left open was which of three couplings**, and the answer is the
 middle one: the supervisor tells. The other two lose on properties this tree already recorded, and
 the argument is at `JOB_FAULTED` itself, in notes/supervision.md, and in one line each here. The
 shell asking needs a poll interval, because the ABI has no non-blocking receive, and a poll
 interval cannot tell a slow job from a dead one. **The endpoint carrying the death** works for the
-fault and breaks the ordinary path: DECISIONS §26 (the fault endpoint: thread death becomes a message
-a supervisor holds) flows clean exits down the same endpoint, so every ordinary job would leave a
+fault and breaks the ordinary path. DECISIONS §26 (the fault endpoint: thread death becomes a message
+a supervisor holds) flows clean exits down the same endpoint. Every ordinary job would leave a
 second message behind its answer, and every job would leave init's supervision domain, which is what
 `ps` and `pgrep` read.
 
@@ -90,12 +90,12 @@ legs.
   the report, so a parked report can never cost the reclamation the prompt's memory depends on.
 - **Refused.** The two couplings that lost. The shell asking needs a poll interval, because the ABI
   has no non-blocking receive, and a poll interval cannot tell a slow job from a dead one. Flowing
-  the death down the fault endpoint works for the fault and breaks the ordinary path, since every
-  clean exit would leave a second message behind its answer and every job would leave init's
+  the death down the fault endpoint works for the fault and breaks the ordinary path. Every
+  clean exit would leave a second message behind its answer, and every job would leave init's
   supervision domain, which is what `ps` and `pgrep` read.
 - **Milestone 330.** A regression gate
   for the fault path. It needs a program that faults on purpose, which is a new name and therefore
-  calef's, and milestone 233 (`login` dies on every boot, and the boot says it is
+  calef's. Milestone 233 (`login` dies on every boot, and the boot says it is
   ready) and its no-thread-killed assertion in `script/swish-check` has to learn to
   except it. The scaffold that proved this milestone was a patch to `components/src/least_authority_demo.rs` and was
   removed afterwards, so nothing stops the lost prompt returning.

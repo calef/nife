@@ -13,7 +13,7 @@ And here it is, written down:
 
 ```rust
 pub struct Thread {
-    pub id: Tid,
+    pub id: ThreadId,
     pub state: State,
     pub context: *mut Context,     // <- 8 bytes. The ENTIRE saved CPU state.
     pub stack: Option<KernelStack>,

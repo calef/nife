@@ -25,23 +25,24 @@ fi
 
 # Run the host tests once under instrumentation (--no-report keeps the raw data), then render the
 # summary, an lcov file, and a browsable HTML report from that same data.
-# `user_mode_runtime` is excluded like kernel/user: it is aarch64-only inline asm (the user-mode
-# syscall runtime), so it does not build for the host at all, let alone run under host
-# instrumentation. There is no host logic to measure in it.
-# `supervision_protocol` and `swap_protocol` join that exclusion for the same reason, and only that
-# reason: both are thin wrappers over `user_mode_runtime`'s syscalls (build a child, quiesce a
-# component),
-# so every line needs a kernel underneath and none can execute on the host. They were invisible
-# to this gate until 2026-08-01, when rule 7 made them crates; the exclusion is deliberate and
+#
+# The host-excluded half of the selection is DERIVED, not carried: helpers/host-excluded-crates.sh
+# asks cargo's dependency graph for every workspace crate that reaches `crates/user_mode_runtime`,
+# and those are exactly the crates with no host logic to measure. `user_mode_runtime` is aarch64-only
+# inline asm (the user-mode syscall runtime); `supervision_protocol` and `swap_protocol` are thin
+# wrappers over its syscalls (build a child, quiesce a component); `system_initializer` spends a
+# capability through one on every line (retype an object, build a child, delegate, delete);
+# `virtio`'s seven entry points each orchestrate a live device. The exclusions are deliberate and
 # narrow, not a way to keep the number green.
 #
-# `system_initializer` joins them on the same test and became visible the same way. Milestone 96
-# lifted the boot sequence out of two duplicated inits into one crate, and every line of it spends
-# a capability through a syscall: retype an object, build a child, delegate, delete. There is no
-# host to execute that on. The narrower question the exclusion raises is worth stating rather than
-# burying: whether that crate should grow a seam that IS host-testable, the way `regions` holds the
-# untyped arithmetic the kernel calls into. Nothing here decides that; the exclusion says only that
-# the crate as written cannot run on the host, which is the same claim made about the other three.
+# `system_initializer`'s exclusion raises a narrower question worth stating rather than burying:
+# whether that crate should grow a seam that IS host-testable, the way `regions` holds the untyped
+# arithmetic the kernel calls into. Nothing here decides that; the exclusion says only that the
+# crate as written cannot run on the host.
+#
+# `kernel` and `system_tests` are excluded by judgment rather than the derivation: bare metal
+# through `kernel`, which the dependency-graph walk does not see. `xtask` sits with them: host
+# tooling whose product is the gates themselves.
 #
 # `c_seam` is NOT excluded, because it is pure: constants, offsets, and small functions. It now
 # carries the test the seam never had, asserting that `fixtures/c/c_seam.c` states the same values
@@ -66,9 +67,16 @@ fi
 # So: add a package-qualified feature here when a crate grows one whose tests this floor should see.
 # That is a line of maintenance per featured crate, and it buys back the limitation `--all-features`
 # had anyway, which is that a union-of-all-features run can carry an undertested default build.
+#
+# The derived half of the selection (helpers/host-excluded-crates.sh), beside the three judgment
+# excludes named above.
+bare_crates=$(helpers/host-excluded-crates.sh) || exit 1
+bare_excludes=""
+for c in $bare_crates; do
+    bare_excludes="$bare_excludes --exclude $c"
+done
 cargo llvm-cov --workspace --features documentation/builder \
-    --exclude kernel --exclude system_tests --exclude components --exclude fixtures --exclude xtask --exclude user_mode_runtime \
-    --exclude supervision_protocol --exclude swap_protocol --exclude system_initializer --no-report
+    --exclude kernel --exclude system_tests --exclude xtask $bare_excludes --no-report
 cargo llvm-cov report --summary-only
 mkdir -p target/llvm-cov # the lcov --output-path parent must exist; --html creates its own
 cargo llvm-cov report --lcov --output-path target/llvm-cov/lcov.info
@@ -92,7 +100,17 @@ floor=85
 # to plot the comforting number while the gate read a different one. This file is what closes that.
 # Provisional name (this lane), like the metrics column it feeds.
 summary=target/llvm-cov/floor.txt
-awk -F: -v floor="$floor" -v summary="$summary" '
+# The host-excluded paths, derived (helpers/host-excluded-crates.sh paths), become the first skip
+# entries in the awk below. `cargo llvm-cov report` has no --exclude, so the flags on the run above
+# keep those crates out of the RUN but not out of this report; the exemption has to be restated
+# here to have any effect. A path this report never names (the bare-metal members are never
+# instrumented at all) matches nothing and costs nothing.
+bare_paths=$(helpers/host-excluded-crates.sh paths) || exit 1
+floor_skips=""
+for p in $bare_paths; do
+    floor_skips="$floor_skips /$p/src/"
+done
+awk -F: -v floor="$floor" -v summary="$summary" -v skips="$floor_skips" '
     /^SF:/ { file = $2 }
     /^LF:/ { found = $2 }
     /^LH:/ {
@@ -102,25 +120,20 @@ awk -F: -v floor="$floor" -v summary="$summary" '
         # hits it a confused half hour because the path looks real). CI starts clean and never
         # sees it; a working tree does. system() returns the exit status, so 0 means present.
         if (system("test -f " file) != 0) { next }
-        # Crates that cannot execute a line on the host. `cargo llvm-cov report` has no --exclude,
-        # so the flags on the run above keep them out of the RUN but not out of this report; the
-        # exemption has to be stated here to have any effect.
-        #
-        # All three need a kernel underneath. Two are thin wrappers over the user_mode_runtime
-        # syscalls (build a child, quiesce a component); virtio is a driver whose seven entry points
-        # each orchestrate a live device. Its security-critical part is already elsewhere and
-        # already tested: the descriptor-ring validation is crates/direct_memory_access_validator
-        # (milestone 35 (prove the DMA-confinement boundary)), which is why this file is thin on
-        # pure logic, with two volatile ops in a thousand lines. So every line needs a kernel
-        # underneath. They became visible to this gate on 2026-08-01 when rule 7 turned them into
-        # crates, having been #[path] modules nothing could measure.
-        #
+        # Crates that cannot execute a line on the host: the derived set again (see skips above),
+        # because lcov records their files even with the run excluding them. They need a kernel or
+        # a live device underneath, and one of them carries a measured reason worth keeping: the
+        # security-critical part of virtio is already elsewhere and already tested, the
+        # descriptor-ring validation in crates/direct_memory_access_validator (milestone 35 (prove
+        # the DMA-confinement boundary)), which is why that thousand-line driver is thin on pure
+        # logic, with two volatile ops.
+        n = split(skips, skip_path, " ")
+        for (i = 1; i <= n; i++) {
+            if (index(file, skip_path[i])) { next }
+        }
         # **c_seam is deliberately NOT here.** It is pure, and it now carries the test asserting
-        # that fixtures/c/c_seam.c states the same constants it does. Keep this list to things that
-        # physically cannot run, never to things that are merely untested.
-        if (index(file, "/supervision_protocol/src/") || index(file, "/swap_protocol/src/") ||
-            index(file, "/system_initializer/src/") ||
-            index(file, "/virtio/src/")) { next }
+        # that fixtures/c/c_seam.c states the same constants it does. Keep the derivation to
+        # things that physically cannot run, never to things that are merely untested.
         # **Build scripts, and this is a structural exemption rather than a membership one.** The
         # uncovered lines in a build script are its failure paths, and those do not execute in a
         # build that succeeded, which is every build this gate ever measures. So it can never reach
@@ -186,9 +199,10 @@ awk -F: -v floor="$floor" -v summary="$summary" '
         printf "==> a floor of 85 newly fails %d of them; a floor of 90, %d\n",
             newly_85 + 0, newly_90 + 0
         # Written for script/metrics, which plots the minimum beside the aggregate on the
-        # dashboard. It cannot recompute the minimum from the lcov alone: the exemptions above
-        # belong to this script and exist nowhere else, so a minimum derived without them would be
-        # some exempt file and not the number that can fail a build.
+        # dashboard. It cannot recompute the minimum from the lcov alone: the exemptions above are
+        # the judgment of this script plus the derivation it calls (helpers/host-excluded-crates.sh),
+        # and a minimum derived without them would be some exempt file and not the number that can
+        # fail a build.
         printf "min_file_pct %.1f\n", min > summary
         printf "min_file %s\n", min_file > summary
         printf "files_gated %d\n", gated > summary

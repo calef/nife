@@ -33,7 +33,7 @@ Three more slots exist, and a program holds each only if it was *given* the thin
 - slot 3: an untyped budget the net PAL mints each socket's shared frame from.
 - slot 4: an FS-service endpoint with WRITE, which *is* a directory capability, plus the page it
   shares with the FS server mapped at `0x1100_0000`. `std::fs` speaks the §27 file contract over it.
-- slot 5: a `Frame` capability naming the clock page, with `READ`, plus a read-only mapping of it
+- slot 5: a `PageFrame` capability naming the clock page, with `READ`, plus a read-only mapping of it
   at `0x1200_0000`. `SystemTime::now()` is the offset it finds there plus the ambient counter
   (milestone 51, §43).
 - **slot 6: the entropy service's request endpoint**, with WRITE (milestone 56, §44). It means "you

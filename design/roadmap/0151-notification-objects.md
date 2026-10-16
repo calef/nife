@@ -22,8 +22,8 @@ second, independent `CALL` with no ordering primitive against the shell printing
 interleave under contention. A display glitch, not a confinement or correctness failure, and it is
 being carried as a documented `BUGS` entry on milestone 40 until this milestone lands.
 
-Three other consumers are already named and waiting on the same primitive (§101's own table):
-the shell multiplexing child-output-or-exit into one wait, the compositor's per-client wakeup, the
+Three other consumers are already named and waiting on the same primitive (§101's own table).
+The shell multiplexing child-output-or-exit into one wait, the compositor's per-client wakeup, the
 FS server's async-event notification, and the network stack retiring its yield-and-re-poll spin
 (milestone 106's current interim).
 
@@ -116,7 +116,7 @@ the recorded baselines in `bench/baseline-*.txt`:
 
 All inside the tripwire's 10%, and all under about one percent. These are against the recorded
 baselines rather than the base commit, so they include whatever main had drifted since the
-baselines were saved; the footprint figures above say that drift is real, so the notification
+baselines were saved. The footprint figures above say that drift is real, so the notification
 share is at most these numbers.
 
 Size against §101's estimate ("the same scale as 19a"): 19a (66553029e) was 377 lines added

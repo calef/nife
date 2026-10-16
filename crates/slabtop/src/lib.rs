@@ -39,6 +39,8 @@
 
 #![cfg_attr(not(test), no_std)]
 
+use number_writer::write_right;
+
 /// What `MemoryRegion::USAGE` answered for each record, in pages.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub struct Spending {
@@ -88,23 +90,6 @@ pub fn write_report(s: &Spending, out: &mut dyn FnMut(&[u8])) {
     }
 }
 
-/// A `u64` right-aligned in `width` columns; `0` means no padding.
-fn write_right(v: u64, width: usize, out: &mut dyn FnMut(&[u8])) {
-    let mut buf = [b' '; 24];
-    let mut i = buf.len();
-    let mut v = v;
-    loop {
-        i -= 1;
-        buf[i] = b'0' + (v % 10) as u8;
-        v /= 10;
-        if v == 0 {
-            break;
-        }
-    }
-    let start = buf.len().saturating_sub(width.max(buf.len() - i));
-    out(&buf[start..]);
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -140,20 +125,6 @@ mod tests {
     fn a_kind_with_nothing_spent_on_it_is_still_a_row() {
         let out = shown(&Spending::default());
         assert!(out.contains("       0        0  rendezvous"), "{out}");
-    }
-
-    fn right(v: u64, width: usize) -> String {
-        let mut out = Vec::new();
-        write_right(v, width, &mut |b| out.extend_from_slice(b));
-        String::from_utf8(out).unwrap()
-    }
-
-    /// Width `0` is "no padding", and a number wider than its column is printed whole.
-    #[test]
-    fn a_number_wider_than_its_column_is_printed_whole() {
-        assert_eq!(right(5, 3), "  5");
-        assert_eq!(right(12345, 3), "12345");
-        assert_eq!(right(u64::MAX, 0), "18446744073709551615");
     }
 
     /// The ranking has to move rows, not only keep a table that arrived sorted: every one of the 24

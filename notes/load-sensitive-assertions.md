@@ -82,7 +82,7 @@ with the core count and the oversubscription factor
 
 1. Wait on the property, not on a proxy for it. Bound the wait with `smp.rs`'s `wait_for` (a
    clock) or with `testing::TickBudget` (delivered ticks). Assert that the wait succeeded.
-2. Ask about the object, not the machine. A thread is asked about by its generational `Tid`
+2. Ask about the object, not the machine. A thread is asked about by its generational `ThreadId`
    (`is_thread_present`). A region is asked about by `memory_region::usage`, or by its own frames
    through `testing::RegionRun`. A single frame is asked about through `memory::is_page_frame_used`.
    A held tick is asked about through `timer::is_tick_pending`
@@ -127,8 +127,8 @@ remains) or fixed. A fixed site can still carry a residual in BUGS below.
 | `a_process_spends_memory_region_and_the_kernel_never_allocates` | `user/tests.rs` | open | a global `used()` equality across a process run. Never seen red; found by reading on 2026-09-24 | this page, BUGS |
 | `a_user_program_that_never_yields_is_preempted_anyway` | `user/tests.rs` | open | a wall-clock window with no wait; needs all four cores descheduled; never seen red | [known residuals](load-sensitive-assertions/known-residuals.md) |
 | `every_secondary_runs_scheduled_work` | `smp.rs` | open | indexes by the core a probe ran on. If it fails, take the placement probe's fix | [known residuals](load-sensitive-assertions/known-residuals.md) |
-| `a_finished_thread_is_reaped_and_its_memory_returned` | `sched.rs` | narrowed | per-`Tid` reap waits, a waited `used() <= before` (08-03); a one-thread stack-reuse probe (08-17) | [first verdicts](load-sensitive-assertions/global-baselines-and-the-drift-law.md), [stack reuse](load-sensitive-assertions/stack-reuse-and-proxy-detectors.md) |
-| `a_dead_user_thread_frees_its_whole_address_space` | `user/tests.rs` | narrowed | per-`Tid` reap waits and a waited `used() <= before` (08-03) | [first verdicts](load-sensitive-assertions/global-baselines-and-the-drift-law.md) |
+| `a_finished_thread_is_reaped_and_its_memory_returned` | `sched.rs` | narrowed | per-`ThreadId` reap waits, a waited `used() <= before` (08-03); a one-thread stack-reuse probe (08-17) | [first verdicts](load-sensitive-assertions/global-baselines-and-the-drift-law.md), [stack reuse](load-sensitive-assertions/stack-reuse-and-proxy-detectors.md) |
+| `a_dead_user_thread_frees_its_whole_address_space` | `user/tests.rs` | narrowed | per-`ThreadId` reap waits and a waited `used() <= before` (08-03) | [first verdicts](load-sensitive-assertions/global-baselines-and-the-drift-law.md) |
 | `kernel_stacks_do_not_touch_the_frame_allocator_in_steady_state` | `sched.rs` | narrowed | each spawn followed to its own reap; a waited `free() >= free_before` (08-16) | [miss taxonomy](load-sensitive-assertions/miss-taxonomy-and-clockless-loops.md) |
 | `caretaker_teardown_reclaims_a_full_session_worth_of_memory` | `user/login_tests.rs`, `fixtures/src/login_test_client.rs` | narrowed | `destroy_with_retry` waits on the region under a 5 s clock ceiling, 40x the worst wait (08-28) | [caretaker teardown](load-sensitive-assertions/caretaker-teardown-wait.md) |
 | `ticks_arrive_at_the_configured_rate` | both `timer.rs` | fixed | asserts the re-arm grid law (08-03); an exhausted retry budget prints `UNMEASURED` (08-18) | [first verdicts](load-sensitive-assertions/global-baselines-and-the-drift-law.md), [timer disposition](load-sensitive-assertions/timer-assertion-disposition.md) |

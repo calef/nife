@@ -9,9 +9,9 @@
 //! file.
 
 use filesystem_fixture as fixture;
-use user_mode_runtime::{exit, send};
+use user_mode_runtime::{exit, require, send};
 
-use crate::channel::{REPORT, check, get_page, open, read, write};
+use crate::channel::{REPORT, get_page, open, read, write};
 use crate::extended_attributes::attr_witness;
 
 /// How long each repeat-write payload is: exactly the fixture pattern's length, so every write in
@@ -43,10 +43,10 @@ pub(crate) fn proof() -> ! {
     //
     let motd = open(fixture::MOTD_NAME);
     let n = read(motd, 0, fixture::MOTD.len());
-    check(n == fixture::MOTD.len());
+    require(n == fixture::MOTD.len());
     let mut buf = [0u8; 128];
     get_page(n, &mut buf);
-    check(&buf[..n] == fixture::MOTD);
+    require(&buf[..n] == fixture::MOTD);
     let mut head = [0u8; 8];
     head.copy_from_slice(&buf[..8]);
 
@@ -61,9 +61,9 @@ pub(crate) fn proof() -> ! {
         let payload = repeat_payload(pass);
         write(scratch, 0, &payload);
         let m = read(scratch, 0, payload.len());
-        check(m == payload.len());
+        require(m == payload.len());
         get_page(m, &mut buf);
-        check(buf[..m] == payload[..]);
+        require(buf[..m] == payload[..]);
         pass += 1;
     }
 
@@ -73,9 +73,9 @@ pub(crate) fn proof() -> ! {
     // same length as this one, so this replaces them completely.
     write(scratch, 0, fixture::WRITE_PATTERN);
     let f = read(scratch, 0, fixture::WRITE_PATTERN.len());
-    check(f == fixture::WRITE_PATTERN.len());
+    require(f == fixture::WRITE_PATTERN.len());
     get_page(f, &mut buf);
-    check(&buf[..f] == fixture::WRITE_PATTERN);
+    require(&buf[..f] == fixture::WRITE_PATTERN);
 
     // **Extended attributes** (milestone 57), on the same server over the same endpoint, so the
     // whole three-process stack does not have to be booted a second time to prove a fourth verb

@@ -95,7 +95,7 @@ point needs a denominator: hours, crossings or boots of measured stress on a boa
 found by `script/test` under QEMU TCG, and D6 by a boot tour, not a soak. So they belong to the
 curve's history, beside ten other rows the sweep for this section found (six QEMU finds, one loom
 find, one audit later reproduced under QEMU, one with no recorded instrument, and one HVF hang still
-unclassified), and the curve starts empty of defects.
+unclassified). The curve starts empty of defects.
 
 Its first real points already exist, and nobody had entered them. radon ran `soak-test` three
 times on 2026-09-03 and 2026-09-04 (UTC), one of them for 2 h 59 m and 5,507 crossings, all with
@@ -106,7 +106,7 @@ thin records (no build, no committed log), and it is still more than the three s
 What this does to risk 5. Of thirteen history rows, every real defect whose instrument is
 recorded was shown by QEMU, loom or an audit. The one silicon reading is retracted. The only row seen
 on physical cores and not under TCG is the HVF listener hang, and its evidence points at the test
-harness; it stays `unclassified` because an unexplained row is a candidate for exactly the class
+harness. It stays `unclassified` because an unexplained row is a candidate for exactly the class
 this risk names.
 
 ## What the run needs
@@ -143,8 +143,8 @@ this risk names.
   xenon.
 - **Done.** The stated duration `design/fatal-risks/multicore-reliability.md` asks for: calef ruled
   on 2026-10-07 (UTC), recorded in §259 (a multicore soak counts toward risk 5 at ten million
-  crossings over three boots), at least 10 million crossings per architecture across at least 3
-  boots, stated before the run. Its sibling question was answered earlier: calef ruled on 2026-09-25 (UTC) that the curve is judged on crossings, with hours and
+  crossings over three boots). At least 10 million crossings per architecture across at least
+  3 boots, stated before the run. Its sibling question was answered earlier: calef ruled on 2026-09-25 (UTC) that the curve is judged on crossings, with hours and
   boots still recorded, carried by pull request #1282 into the run section above and
   `notes/multicore-defect-curve.md`'s *Which denominator*.
 - **Recorded.** The history table is one lane's sweep rather than a census, D5's instrument is
@@ -159,7 +159,7 @@ a flattening curve is evidence, a linear one is the red result. Its original thr
 wrong (found 2026-09-23): the VisionFive 2 reading was retracted 2026-08-15, before this milestone
 was even minted, and it never happened; the two "unresolved" x86_64 `ap_boot` bugs are now both fixed
 (milestones 316 and 161). Re-derived 2026-09-24: none of the seeds can be a point on the curve,
-since none has a stress denominator; they are history rows in `notes/multicore-defect-curve.md`,
+since none has a stress denominator. They are history rows in `notes/multicore-defect-curve.md`,
 which also holds the curve's data format and its first real points (radon, about three and a half
 hours of soak, zero defects). Risk 5's own defining claim, a defect QEMU cannot show, has no
 confirmed instance.

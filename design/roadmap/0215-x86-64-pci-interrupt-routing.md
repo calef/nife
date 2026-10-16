@@ -118,7 +118,7 @@ no-op on this architecture.
 
 Correction, 2026-09-04 (the `maintainer/msix-completion-flake` lane): that sentence about the
 read test was not true on this architecture when it was written. `arch::x86_64::exceptions::
-ROUTED_IRQS` also counted the local APIC timer, which aarch64's and riscv64's never did, so a timer
+ROUTED_IRQS` also counted the local APIC timer, which aarch64's and riscv64's never did. A timer
 tick landing in the test's window satisfied the assertion whatever the device had done, and a
 polling driver would have passed it most of the time. The counter now counts what its two siblings
 count and the sentence is true as written. That divergence is also half of why the test flaked here;
@@ -131,7 +131,7 @@ The rest of the fixtures. One `virtio-blk-pci` disk is attached. The RedoxFS ima
 blank disks, the NIC, the GPU, the keyboard and the RNG are each a line in
 `helpers/qemu-runner-x86_64.sh` plus a wiring, and every one of them now has a working interrupt
 underneath it. That is a proposed milestone and this lane deliberately does not number it
-(numbers are the integrator's, and 216 is already the board console): its measure is the 36 tests
+(numbers are the integrator's, and 216 is already the board console). Its measure is the 36 tests
 taking a "no RedoxFS disk attached" arm, and its first item is making the FS server's disk lookup
 transport-blind, which is the half of milestone 164's revert that outlived the interrupt bug.
 
@@ -142,7 +142,7 @@ same proposed milestone, not a separate defect.
 Interrupt remapping. A VT-d unit with `intremap=on` reinterprets a write to
 `0xfee0_0000..0xfef0_0000` as an index into a remapping table and rejects the compatibility-format
 message this builds. The runner does not enable it and firmware leaves it off by default, so this
-holds today; it is recorded in `arch::x86_64::irq`'s BUGS as the first thing to check if MSI stops
+holds today. It is recorded in `arch::x86_64::irq`'s BUGS as the first thing to check if MSI stops
 arriving on a machine whose firmware turns it on.
 
 ## BUGS
@@ -155,9 +155,9 @@ arriving on a machine whose firmware turns it on.
 - One MSI-X vector per function, entry 0. Every driver here waits on a single queue's
   completion; a multi-queue driver would want more, and would want a per-queue table index rather
   than the one `PciVirtioDevice::msix_vector` carries.
-- **Proved on QEMU, not on silicon.** What only xenon can confirm is in `notes/x86-port/acpi-and-pci.md`: that
-  the OptiPlex's firmware leaves interrupt remapping off, that a real function's MSI-X table is
-  reachable once *firmware* rather than this kernel has placed its BARs, and that a machine with
+- **Proved on QEMU, not on silicon.** What only xenon can confirm is in `notes/x86-port/acpi-and-pci.md`: the
+  OptiPlex's firmware leaves interrupt remapping off. A real function's MSI-X table is
+  reachable once *firmware* rather than this kernel has placed its BARs. A machine with
   more than one local APIC still delivers to the boot core's id.
 
 ## Follow-on
@@ -179,9 +179,9 @@ arriving on a machine whose firmware turns it on.
 - **Recorded.** `design/roadmap/0215-x86-64-pci-interrupt-routing.md`'s own `BUGS`: one MSI-X vector
   per function, entry 0. A multi-queue driver would want more, and a per-queue table index rather
   than the single one `PciVirtioDevice::msix_vector` carries.
-- **Recorded.** `notes/x86-port/acpi-and-pci.md` holds what only xenon can confirm: that the OptiPlex's firmware
-  leaves interrupt remapping off, that a real function's MSI-X table is reachable once firmware
-  rather than this kernel has placed its BARs, and that a machine with more than one local APIC
+- **Recorded.** `notes/x86-port/acpi-and-pci.md` holds what only xenon can confirm: the OptiPlex's firmware
+  leaves interrupt remapping off. A real function's MSI-X table is reachable once firmware
+  rather than this kernel has placed its BARs. A machine with more than one local APIC
   still delivers to the boot core's id.
 - **Recorded.** `kernel/src/arch/x86_64/irq.rs`'s `BUGS`: a VT-d unit with `intremap=on` rejects
   the compatibility-format message this builds, so it is the first thing to check if MSI stops
@@ -191,7 +191,7 @@ arriving on a machine whose firmware turns it on.
   console UART, which is the last candidate.
 - **Milestone 303.** The x86_64 test fixtures now that a function's interrupt works: milestone 303
   (x86_64's FS service has a server and no disk it can find) builds the FS server's transport-blind
-  disk lookup and attaches the RedoxFS image, and the remaining devices are a newer numbered block.
+  disk lookup and attaches the RedoxFS image. The remaining devices are a newer numbered block.
 
 ## Index row
 
@@ -202,8 +202,8 @@ which milestone 87 would discover at a null modem. MSI-X has no board-specific t
 about. The design fell out rather than being built: an MSI intid is its vector, so `irq::enable` and `Irq::ACK` are correctly no-ops and the vector-to-intid inversion an IO APIC
 line would need never arises. A machine that wants MSI and meets a function without it now refuses loudly instead of falling back to `intx_irq(0, ..)`, which was the original bug. **The
 VT-d fault milestone 164 saw is not a confinement gap**: both QEMU lines come from the VT-d unit
-itself (`Interrupt Mask set` is its own fault-event interrupt, masked because this kernel polls),
-and the escape test now runs on x86_64 for the first time and passes. Legs: aarch64 310/3, riscv64
+itself (`Interrupt Mask set` is its own fault-event interrupt, masked because this kernel polls).
+The escape test now runs on x86_64 for the first time and passes. Legs: aarch64 310/3, riscv64
 314/2, x86_64 214/44 (from 212/44). The remaining fixtures (RedoxFS, GPT, blank, NIC, GPU,
 keyboard, RNG) and a transport-blind FS-server disk lookup are a proposed milestone this lane left
 unnumbered.

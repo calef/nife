@@ -13,7 +13,7 @@ built a workload that lasts and then found something nobody expected: **a satura
 migrates between cores.** Measured on both multicore architectures, the crossing count freezes
 within the first second while the machine does tens of thousands of IPC round trips a second.
 
-DECISIONS 138 established why, and it is three structural facts rather than a bug: rendezvous wakes
+DECISIONS 138 established why, and it is three structural facts rather than a bug. Rendezvous wakes
 are local by design (DECISIONS §28.2), `wake_load_aware` is reachable only from a device interrupt,
 and a work steal needs an idle core and a queued thread elsewhere, which a saturated machine
 does not have. It also found that nife has counterparts for three of Linux v6.12's four balancing
@@ -21,7 +21,7 @@ moments, all event-driven, and that a saturated rendezvous workload starves all 
 triggers. That is the whole explanation.
 
 **So the second half of fatal risk 5's decisive experiment has never been runnable**, and it was
-believed to be the half that mattered: at the time this milestone was minted, the one defect this
+believed to be the half that mattered. At the time this milestone was minted, the one defect this
 risk had produced, on radon, was read as a receiver made Ready with nothing delivered, on the
 `irq_notify` to `wake_load_aware` path. That reading is retracted (`notes/visionfive2.md`'s fifth
 bench stop, 2026-08-15, before this milestone was minted): the dumps were a completed tour's terminal
@@ -71,9 +71,9 @@ another soak number.
 ## What was built
 
 `sched::on_tick` gained one `#[cfg(feature = "soak")]` call. `kernel/src/soak.rs` gained the tick
-route (a rendezvous, a soak-only intid, and the signal the tick sends it), `fixtures/src/soaker.rs`
-gained a waiter role that loops on `user_rt::irq_wait`, `crates/soak_page` gained a third counter
-array so a wake is never mistaken for a round trip, and `crates/board_console` and the `script/soak`
+route (a rendezvous, a soak-only intid, and the signal the tick sends it). `fixtures/src/soaker.rs`
+gained a waiter role that loops on `user_rt::irq_wait`. `crates/soak_page` gained a third counter
+array so a wake is never mistaken for a round trip. `crates/board_console` and the `script/soak`
 summary carry the new field and the sentence that says what the crossings are.
 
 No syscall, no architecture-specific code, and no new feature: it is all behind the `soak` feature
@@ -106,7 +106,7 @@ commit with ten comment lines at the same place gives a byte-identical image on 
 Two bugs, both found by running it, both about ordering, both recorded in `notes/soak.md`. A
 single shared tick rendezvous starves all but one waiter on a loaded host, because `Rendezvous::recv`
 takes a pending signal before it looks at the receiver queue (right for a driver, wrong for four
-peers); each group has its own route now. And binding the routes *after* spawning the waiters races:
+peers). Each group has its own route now. And binding the routes *after* spawning the waiters races:
 a waiter reaching `Irq::WAIT` before its route exists is refused and has nowhere to report it. Routes
 are bound before the first waiter; only the signaling is switched on last.
 
@@ -143,12 +143,12 @@ are bound before the first waiter; only the signaling is switched on last.
 ## Index row
 
 `sched::on_tick` signals a routed rendezvous under `--features soak` and one worker per group
-blocks on it through the `Irq::WAIT` a device driver already uses, so a tick runs the whole real
+blocks on it through the `Irq::WAIT` a device driver already uses. A tick runs the whole real
 wake path down through `wake_load_aware`, `pick_wake_target`, `place_on` and the reschedule IPI.
 That is DECISIONS 138's option D, which calef approved: no syscall, no architecture-specific code,
-and nothing in a production build (checked, not asserted: every symbol and every loaded section
+and nothing in a production build. Checked, not asserted: every symbol and every loaded section
 the same size on all three architectures, and a base commit padded with ten comment lines builds a
-byte-identical image). aarch64 went from 15 crossings, frozen from the first beat, to 1,452 and
+byte-identical image. aarch64 went from 15 crossings, frozen from the first beat, to 1,452 and
 3,779 across two runs; riscv64 from 10 and 14 to 2,573 and 4,358. The round-trip cost is nothing
 measurable on aarch64 and about 7% on riscv64, far below the spike's 30% and 55%, and that
 difference is recorded rather than explained away. Running it found two ordering bugs in the

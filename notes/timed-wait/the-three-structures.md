@@ -51,7 +51,7 @@ Scanning wins until about 64 threads hold deadlines simultaneously, and the whee
 The crossover is where it is because a scan is O(live threads) *per expiry event*, while a wheel
 is O(1) per insert and per expiry. At a handful of deadline holders the scan's constant factor is
 smaller than the wheel's bookkeeping. The five known consumers (net_stack's retransmit window,
-`thread::sleep`, `Endpoint::RECEIVE`'s no-timeout limitation, milestone 103 (`^C` stops spinning)'s `^C` watch, milestone
+`thread::sleep`, `Rendezvous::RECEIVE`'s no-timeout limitation, milestone 103 (`^C` stops spinning)'s `^C` watch, milestone
 106's `Irq::WAIT`) are on the order of one deadline each.
 
 The honest error bars. These are *modeled* operation counts, not machine instructions: the host

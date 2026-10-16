@@ -250,7 +250,7 @@ grant was `Unbacked::Memory` even though the process held a budget; `timetable::
 is now 4 and `timetable.conf`'s `at-boot memory_grant_depleter --mem 4` is planned, backed, and fires.
 
 Milestone 129's block said to split the grant out of the *instance's own region*, "so that a
-single `Untyped::DESTROY` still reclaims both and a restart loop is not a leak". The kernel
+single `MemoryRegion::DESTROY` still reclaims both and a restart loop is not a leak". The kernel
 refuses precisely that: a region with a live child cannot be destroyed, so the grant has to be
 destroyed first, by its own separate capability.
 
@@ -294,7 +294,7 @@ that pins the refusal, why a supervisor cannot tell whose death it is, and the c
 - [program-manifest.md](program-manifest.md) and [grant-expression.md](grant-expression.md): what
   the check at registration actually is, one and two levels down.
 - [supervision.md](supervision.md): why a scheduled child that dies becomes a message, and what
-  `Endpoint::REAP` needs.
+  `Rendezvous::REAP` needs.
 - [clock.md](clock.md): why a scheduled `date` is refused, and why reading a *duration* needs no
   capability while reading the *time* does.
 - [process-view.md](process-view.md): why a scheduled `ps` is refused.

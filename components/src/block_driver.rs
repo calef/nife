@@ -32,8 +32,8 @@
 #![allow(missing_docs)]
 #![no_main]
 
-// The virtio module names `crate::{check, invoke, send}`; here they are `user_mode_runtime`'s (same
-// signatures) plus the local `check`.
+// The runtime re-exports the calls this skeleton's own code once spelled `crate::`'s; since 291
+// the driver logic is the `virtio` crate and takes `user_mode_runtime` itself.
 pub use user_mode_runtime::{invoke, send};
 
 /// Role numbers, matching `kernel/src/user/virtio_service.rs`. This binary is the only thing that
@@ -46,13 +46,6 @@ const VIRTIO_BLK_WRITE_ABANDON: u64 = 31;
 const VIRTIO_NET: u64 = 40;
 /// The block server (milestone 32 phase 2): serves blocks over blk IPC to the FS server.
 const VIRTIO_BLK_SERVER: u64 = 32;
-
-/// A failed sanity check is a fault, not a wrong answer: panic, and the handler traps.
-pub fn check(ok: bool) {
-    if !ok {
-        panic!();
-    }
-}
 
 #[unsafe(no_mangle)]
 pub extern "C" fn _start(role: u64, direct_memory_access_phys: u64, _arg2: u64) -> ! {

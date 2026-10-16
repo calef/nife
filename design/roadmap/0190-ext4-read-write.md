@@ -95,7 +95,7 @@ not foreclose.
 LKL, refused for now on the syscall surface. `lkl_host_operations` requires `thread_create`,
 `thread_join`, `thread_exit`, `thread_self`, `thread_stack`, four TLS operations, semaphores and
 recursive mutexes, because LKL is a kernel linked into your address space with kthreads, workqueues
-and softirq contexts. nife cannot do that: `Tcb::CONFIGURE` consumes the address-space
+and softirq contexts. nife cannot do that: `ThreadControlBlock::CONFIGURE` consumes the address-space
 capability it binds, so no two TCBs share an address space, which is exactly what DECISIONS §105
 (`std::thread::spawn` stays declined) recorded and declined. Building Option A because a filesystem
 wants it is a syscall-surface change entered sideways, and AGENTS.md's *move fast on what can be
