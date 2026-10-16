@@ -249,6 +249,41 @@ impl RebootPhase<'_> {
     }
 }
 
+/// **The screendump decoded back into rows of text, in the terminal's own scheme.**
+///
+/// The decoder is the one in `board_console::screen` (milestone 377 (two screendump decoders,
+/// in two crates, reading the same font), which deleted this leg's own `parse_ppm`,
+/// `decode_cell` and `scanout_rows`); what this call site contributes is the
+/// two things that belong to the leg and not to a decoder:
+///
+/// - **The geometry assertion `scanout_rows` used to carry**, kept here where it belongs: this
+///   leg grades the graphical terminal's own surface, and a scanout of any other size is a
+///   `SET_SCANOUT` bug, not a near miss. `Err` rather than a full grid of `?`s, so a wrong-sized
+///   dump is skipped and the next poll tries again, exactly as before the merge.
+/// - **The colors**: `video_terminal::Attr::DEFAULT`'s, read from that crate so the scheme
+///   stays the terminal's own choice rather than a constant copied here. The scale is 1 because
+///   the terminal paints its grid 1:1 onto the surface, the same 1:1 `Vt::pixel` is graded at
+///   by [`super::super::scanout`]'s exact text check.
+///
+/// The alphabet is the caller's: this leg only ever searches for what it itself types.
+fn screen_rows(bytes: &[u8], alphabet: &[u8]) -> Result<board_console::screen::Screendump, String> {
+    let (fg, bg) = video_terminal::Attr::DEFAULT.colours();
+    let ink = [(fg >> 16) as u8, (fg >> 8) as u8, fg as u8];
+    let paper = [(bg >> 16) as u8, (bg >> 8) as u8, bg as u8];
+    let screen =
+        board_console::screen::decode(bytes, ink, paper, alphabet, 1).map_err(|e| e.to_string())?;
+    if (screen.width, screen.height) != (graphics_protocol::WIDTH, graphics_protocol::HEIGHT) {
+        return Err(format!(
+            "scanout is {}x{}, the surface is {}x{}",
+            screen.width,
+            screen.height,
+            graphics_protocol::WIDTH,
+            graphics_protocol::HEIGHT
+        ));
+    }
+    Ok(screen)
+}
+
 /// **Launch `graphical_terminal` from the prompt a boot is sitting at, and read the screen**
 /// (the second and third steps of [`Keystrokes`]'s doc). Called by [`swish_check_boot`] once its
 /// script has finished and the prompt is back, on a boot that has a virtio-gpu attached; `sock` is
@@ -289,9 +324,9 @@ pub(super) fn launch_graphical_terminal(
     while Instant::now() < deadline && prompt_row.is_none() {
         if screendump(sock, &shot)
             && let Ok(bytes) = std::fs::read(&shot)
-            && let Ok(rows) = scanout_rows(&bytes, &alphabet)
+            && let Ok(screen) = screen_rows(&bytes, &alphabet)
         {
-            prompt_row = rows.into_iter().find(|r| r.contains("$ "));
+            prompt_row = screen.rows.into_iter().find(|r| r.contains("$ "));
         }
         std::thread::sleep(Duration::from_millis(200));
     }
@@ -326,9 +361,9 @@ pub(super) fn launch_graphical_terminal(
     while Instant::now() < deadline && typed_row.is_none() {
         if screendump(sock, &shot)
             && let Ok(bytes) = std::fs::read(&shot)
-            && let Ok(rows) = scanout_rows(&bytes, &alphabet)
+            && let Ok(screen) = screen_rows(&bytes, &alphabet)
         {
-            typed_row = rows.into_iter().find(|r| r.contains(&want));
+            typed_row = screen.rows.into_iter().find(|r| r.contains(&want));
         }
         std::thread::sleep(Duration::from_millis(200));
     }
