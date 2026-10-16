@@ -215,18 +215,20 @@ pub(crate) fn test() -> bool {
     // this target and packs the same table RISC-V's archive uses, so the thirty
     // `cfg(initial_ramdisk)` test modules are in this binary; since milestone 164 (x86_64 userspace
     // can't build `aes`) it packs the FS server and `mkfs` too. What it still does not build is a
-    // `std` farm, and the runner still attaches no virtio-blk, so the tests wanting a filesystem
-    // `skip!()` for want of a DISK rather than of a server. The one exception
-    // is the NVMe image (decisions §86's x86_64/VT-d data point, milestone 161's VT-d having
-    // landed): `mknvmedisk` writes it here the same way the aarch64 and riscv64 legs do, since
-    // NIFE_NVME names this leg's image too (set unconditionally above) and the runner now attaches
-    // a controller behind it.
+    // `std` farm. The disk fixtures are the other two legs' five (the leg below builds them all
+    // since milestone 420 (x86_64 has one fixture of five and no NIC, GPU, keyboard or RNG), and
+    // the runner attaches each as one `virtio-blk-pci` function), plus the NVMe image, the
+    // x86_64/VT-d data point DECISIONS §86 (whether an NVMe driver can leave the kernel) asked
+    // for once milestone 161 (the x86_64 kernel port) had landed VT-d: `mknvmedisk` writes it
+    // here the same way the aarch64 and riscv64 legs do, since NIFE_NVME names this leg's image
+    // too (set unconditionally above) and the runner attaches a controller behind it.
     //
     // **`NIFE_INITIAL_RAMDISK` is set here rather than left to `cargo()`**, and it has to be: this
     // leg runs last, so whatever the aarch64 or riscv64 leg left in that variable is still there,
     // and an x86 kernel handed an aarch64 archive refuses every program in it with a `machine`
-    // error that names neither the archive nor the leg. `run` rather than `cargo` because that
-    // wrapper also exports `NIFE_DISK` and `NIFE_NET`, and this runner attaches neither.
+    // error that names neither the archive nor the leg. That wrapper's `NIFE_DISK` names the same
+    // path, and the boards' legs leave `NIFE_NET` behind in a full run; this leg sets both itself,
+    // below, so a single-architecture run describes its own machine.
     if legs.x86_64() && !x86_64_suite(filter.is_some()) {
         return false;
     }
