@@ -15,9 +15,10 @@
 //!   it. That gates the whole framebuffer path on every run: the loader's `LocateProtocol`, the
 //!   byte order, the stride, the mapping surviving `mmu::init`, and the glyphs.
 //! - The same decoder, at the same time, is how the graphical `swish-check` leg reads the display
-//!   terminal's live, typed screen back (milestone 377, which merged the decoder that leg used to
-//!   carry in `xtask`). There is no picture of a live session to predict, so the leg searches the
-//!   rows this returns for what it typed.
+//!   terminal's live, typed screen back (milestone 377 (two screendump decoders, in two crates,
+//!   reading the same font), which merged the decoder that leg used to carry in `xtask`). There is
+//!   no picture of a live session to predict, so the leg searches the rows this returns for what
+//!   it typed.
 //! - On a machine nobody can attach a cable to, a **photograph of the screen** is not this: it is
 //!   not pixel-aligned and it is not a screendump. Turning one into text is a different problem
 //!   this module does not solve, and `notes/serial-less-output.md` says so where a reader meets it.
