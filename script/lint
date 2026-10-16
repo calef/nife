@@ -1448,12 +1448,20 @@ def glob_re(g):
 block = re.search(r"exclude_globs\s*=\s*\[(.*?)\n\]", mutants, re.S).group(1)
 excluded = [glob_re(g) for g in re.findall(r'^\s*"([^"]+)"', block, re.M)]
 
+# The derived host-excluded set is not in that file: script/mutation derives it from
+# helpers/host-excluded-crates.sh and passes it to cargo-mutants on the command line (roadmap 393),
+# so a whole crate named there is out of the population no matter what exclude_globs says.
+derived_dirs = subprocess.run(["helpers/host-excluded-crates.sh", "paths"],
+                              capture_output=True, text=True, check=True).stdout.split()
+
 def rel(path):
     return path[len(root) + 1:] if path.startswith(root + "/") else path
 
 missing = []
 gated = []
 for pkg in meta["packages"]:
+    pkg_dir = rel(pkg["manifest_path"])[:-len("/Cargo.toml")]
+    derived_excluded = pkg_dir in derived_dirs
     built = set()
     for target in pkg["targets"]:
         if not target.get("required-features"):
@@ -1466,7 +1474,7 @@ for pkg in meta["packages"]:
         for f in sorted(module_tree(target["src_path"]) - built):
             r = rel(f)
             gated.append(r)
-            if not any(g.match(r) for g in excluded):
+            if not derived_excluded and not any(g.match(r) for g in excluded):
                 missing.append((pkg["name"], target["name"], r,
                                 target["required-features"]))
 
@@ -1546,12 +1554,24 @@ root = subprocess.run(["git", "rev-parse", "--show-toplevel"],
 mutants = open(".cargo/mutants.toml").read()
 
 
+# The derived host-excluded set is not in that file: script/mutation derives it from
+# helpers/host-excluded-crates.sh and passes it to cargo-mutants on the command line (roadmap 393),
+# so a whole crate named there is out of the population no matter what exclude_globs says.
+derived_dirs = subprocess.run(["helpers/host-excluded-crates.sh", "paths"],
+                              capture_output=True, text=True, check=True).stdout.split()
+
+
 def excluded(pkg):
-    """True if no line of this package is scored: its directory is in exclude_globs."""
+    """True if no line of this package is scored: its directory is in exclude_globs, or the
+    package is one of the derived host-excluded crates script/mutation passes to cargo-mutants
+    on the command line (roadmap 393; the config is not the record for that set)."""
     path = pkg["manifest_path"]
     if path.startswith(root + "/"):
         path = path[len(root) + 1:]
-    return f'"{path[: -len("/Cargo.toml")]}/**"' in mutants
+    directory = path[: -len("/Cargo.toml")]
+    if f'"{directory}/**"' in mutants:
+        return True
+    return directory in derived_dirs
 
 
 missing = []
