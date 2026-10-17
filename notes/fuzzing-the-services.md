@@ -85,8 +85,8 @@ parser targets took, almost all of it the RedoxFS engine.
 Measured on 2026-10-17 (UTC) from the 29 most recent merge-group runs of `ci.yml` in which the job ran
 (runs where it was skipped are left out). The figure is the job's own time, from runner start to
 completion, so it excludes queueing: **median 712 s (11.9 minutes), range 678 s to 744 s**. Against the
-20-minute budget (`timeout-minutes: 25`) that is 8.1 minutes of headroom, and the spread is 66 s, so
-the job is dominated by the ten fixed minutes of fuzzing plus about two of setup and build, not by
+20-minute budget (`timeout-minutes: 25`) that is 8.1 minutes of headroom. The spread is 66 s. The
+job is dominated by the ten fixed minutes of fuzzing plus about two of setup and build, not by
 anything that varies from run to run. Run ids: 39044362921, 39044296578, 39042260802, 39041012695,
 39031958289, 39026018093, 39024963403, 39022703071, 39008645871, 39004167669, 39003594045,
 39002671195, 39002638565, 39000567580, 38999427449, 38997281221, 38997118765, 38994400601,
