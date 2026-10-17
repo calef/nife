@@ -15,7 +15,7 @@ The area pages sit one directory down, so the link is `../your-note.md`. Keep th
 `script/lint` fails if a `notes/*.md` file has no line on this page or on an area page. A new area
 gets its own page under `notes/README/` and a line in the list below.
 A new *collection* of notes (several notes that belong together, as `notes/coes/` does) gets a directory
-with its own `README.md` beside it instead, and one line here pointing at that README (milestone 702, ruled B). Appendices under
+with its own `README.md` beside it instead, and one line here pointing at that README (milestone 702 (the notes index pages become area directories), ruled B). Appendices under
 `notes/<stem>/` need no line, because the note they belong to links them.
 
 ## Start here
