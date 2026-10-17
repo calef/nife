@@ -1,6 +1,7 @@
 ---
-status: NOT-STARTED
+status: BUILT
 raised: 2026-09-30
+built: 2026-10-17
 promoted_from: the-notes-index-pages-become-area-directories
 milestone_dependencies: none
 decision_dependencies: none
@@ -11,49 +12,34 @@ needs_person: no
 # 702. The notes index pages become area directories
 
 *Title and slug are drafts.*
-## What is being decided
+## What is in force
 
-The shape of `notes/` going forward. Today it is flat, 233 top-level files, indexed by
-`notes/README.md` plus 14 area pages under `notes/README/`. That directory exists because the index
-outgrew the 3,000-word prose cap, so its lines sit one level down rather than the notes moving. calef's diagnosis on 2026-09-30: a directory named `README/` is an index split
-masquerading as structure, and the collection, not the pointer, should have the home.
+Ruled B. calef, 2026-10-17 (UTC), relayed by the maintainer session: *"Yes, B."*
 
-## The options
+A new collection in `notes/` gets a directory with its `README.md` beside it; `notes/coes/` is the
+first, and `notes/net/` and `design/fatal-risks/` are the prior art. The flat notes and the
+`notes/README/` area pages are the legacy shape. An area migrates into its own directory only when
+that area is next swept anyway; nothing is moved for its own sake. The rule is written where a
+person adding a note reads it, the "To add a note" paragraph of [notes/README.md](../../notes/README.md).
 
-- A. Full migration. Every note moves into an area directory (`notes/kernel/`,
-  `notes/memory/`, ...) with a `README.md` beside it, the shape `design/fatal-risks/` and
-  `notes/net/` already ratified. `notes/README/` is deleted and `script/lint`'s index check reads
-  area READMEs instead.
-- B. New collections get directories; legacy stays flat. Adopt "a collection gets a directory
-  with its README beside it" as the rule for anything new (`notes/coes/` is the first). The flat
-  notes and the `notes/README/` pages remain as the legacy shape, migrated area by area only when
-  an area is next swept anyway.
-- C. Keep the `README/` convention. Extend it with new area pages as notes accumulate.
+Two shapes live side by side until the last area moves. This block is the marker for that: the flat
+shape is the legacy and the directory with its README is the direction.
 
-## The recommendation
+## Why B
 
-Option B, on these grounds:
+- Migrating everything at once (A) is 233 file moves, a rewrite of links in 69 files outside
+  `notes/` and of the lint index check and the citation ratchet's path pairs, in one sweep. Reaching
+  the same endpoint gradually costs the same and lands in pieces.
+- A directory forces a single home for each note. The flat shape lets a note sit in one place while
+  two area pages mention it, and that is worth keeping for the notes not yet swept.
+- Extending the `README/` pages (C) keeps growing the shape calef named as wrong on 2026-09-30: a
+  directory named `README/` is an index split masquerading as structure.
 
-- The measured cost of A is 233 file moves and 69 files outside `notes/` (in `kernel/`, `crates/`,
-  `design/`, `briefs/`) whose links rewrite, plus the lint check's rewrite, plus the citation
-  ratchet's path pairs, in one sweep. All mechanical, none of it buys anything B does not get from
-  the same endpoint reached gradually.
-- A also forces single homes. The flat shape lets a note sit in one place while two area pages
-  mention it; subdirectories make that a lie one level down. `notes/net/prior-art-and-the-contract.md`
-  is linked from build guidance and from the net page, and it is the better for it.
-- C is refused because it keeps growing the shape calef named as wrong, and every new area page
-  deepens the eventual migration.
+## Follow-on
 
-## What it costs either way
-
-B leaves two shapes living side by side, which reads as inconsistency until the migration
-finishes. That is marked here rather than hidden: the flat shape is the legacy, the directory
-with its README is the direction, and the marker is this block until the last area moves.
-
-## What is blocked
-
-Nothing hard. `notes/coes/` is created under B's rule regardless of the answer, on calef's
-2026-09-30 commission. If A is ruled instead, `notes/coes/` is already in its final shape.
+- **Recorded.** Nothing enforces "migrate an area when it is next swept". `script/lint` accepts a new flat note that
+belongs to an area already moved into a directory. No area has moved yet, so no such check has
+anything to guard; add one with the first area migration.
 
 ## Prior art
 
@@ -62,4 +48,4 @@ Nothing hard. `notes/coes/` is created under B's rule regardless of the answer, 
 
 ## Index row
 
-`notes/` is flat, 233 top-level files, behind an index split into a `README/` directory. Proposed: choose between a full migration into area directories and directories for new collections only.
+`notes/` keeps its flat notes and `README/` area pages as legacy; a new collection gets a directory with its README beside it (ruled B, 2026-10-17).
