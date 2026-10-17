@@ -25,19 +25,8 @@ undoes exactly those enables at subtree death, refcounted per shared line, with 
 surface. If the cost of an ungated domain is real, that is the shape to build. The ruling says
 "then consider", and consider is what happens.
 
-Two things the ruling does settle:
-
-- **No capability variant appears.** The driver-asks shape spends irrevocable surface on a
-  consumer that does not exist. No driver in this tree power-manages a device the kernel's
-  controller did not enable. That is surface in the category
-  [§10 (process model: capability-based, microkernel)](0010-capability-microkernel.md) and
-  [§16 (object revocation)](0016-object-revocation.md) exist to keep narrow. It waits for its consumer.
-- **The unit question stays open, with its lean recorded.** Per-device with a refcount, or per-job
-  off [§40 (a supervisor's death is its subtree's death)](0040-no-reaper-of-last-resort.md)'s
-  subtree death. Decided when something is built. The lean is per-job. The reason is the one
-  [§92 (a caretaker is supervised by the client it serves)](0092-caretaker-lifetime.md) landed the
-  same way. §40's subtree death is the one reclamation hook that already fires. Both units need
-  the shared-line refcount anyway.
+One thing the ruling settles: measure first, on radon, and nothing in this tree turns a device off
+until the number exists.
 
 ## What this tree already does in the analogous case
 
@@ -96,6 +85,19 @@ reversibility order. The surface stays out of reach until a measured number and 
 ask for it.
 
 ## What this leaves open
+
+- **Whether a capability variant appears.** The driver-asks shape (option A) is not decided. The
+  measurement, and then calef's call, decide it. What counts against it today is a cost, not a
+  refusal. It spends irrevocable surface on a consumer that does not exist, since no driver in this
+  tree power-manages a device the kernel's controller did not enable. That surface is in the
+  category [§10 (process model: capability-based, microkernel)](0010-capability-microkernel.md) and
+  [§16 (object revocation)](0016-object-revocation.md) exist to keep narrow.
+- **The unit question stays open, with its lean recorded.** Per-device with a refcount, or per-job
+  off [§40 (a supervisor's death is its subtree's death)](0040-no-reaper-of-last-resort.md)'s
+  subtree death. Decided when something is built. The lean is per-job. The reason is the one
+  [§92 (a caretaker is supervised by the client it serves)](0092-caretaker-lifetime.md) landed the
+  same way. §40's subtree death is the one reclamation hook that already fires. Both units need
+  the shared-line refcount anyway.
 
 The build decision stays open, explicitly. Kernel reclaim at job death, versus nothing: considered
 against the measured number. The per-job unit is the recorded lean. The shared-line refcount is
