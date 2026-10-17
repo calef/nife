@@ -25,6 +25,12 @@ left alone. The state is GitHub's own, never a file, because the watcher that ca
 none either (trunk-health.yml's BUGS owns the re-announce every five minutes; the issue is what
 makes that re-announce cheap to ignore).
 
+A closed issue is read too, because the row outlives the close: it keeps firing until three of the
+last six scheduled runs stop failing identically, about three weeks after the audit lands. No new
+issue opens for a workflow whose newest issue closed on or after the row's last failure date (UTC
+dates, so a close on the same day as the last failure counts as after). A failure on a later day
+than the close opens a fresh issue.
+
 The close is deliberate and human, and never this script's: the audit lane's report pull request
 says `Closes #N` naming this issue. That routing lives in audit-cadence.yml's step summary, which
 is what hands the audit lane out.
@@ -37,6 +43,12 @@ is what hands the audit lane out.
 - A workflow whose repeat issue stays open while its row disappears keeps its issue open. Only a
   close condition closes an issue; the row stopping is not the work being done, and the 2026-09-14
   FileNotFoundError run is the reason a missing row must not read as "fixed".
+- The close-versus-failure comparison is by UTC date, not by time. A run that fails again later on
+  the day of the close is read as the failure the close answered, and opens nothing until the next
+  day's failure. Conservative on purpose: the alternative is the reopen every five minutes.
+- Only the newest 200 closed issues matching the title search are read. A repository that closes
+  more than that with this prefix would reopen an old one's workflow; that is far past today's
+  count of one per workflow per audit.
 """
 
 import json
@@ -83,18 +95,24 @@ def issue_body(name, qualifier, line, first, last):
         "is named rather than only the count.\n\n"
         "**What closes this issue:** the audit lane's report pull request lands with `Closes #N`\n"
         "naming this issue in its body. The audit-cadence workflow's step summary routes that.\n"
-        "Closing it any other way leaves the row this issue exists for still firing.\n\n"
+        "Closing it any other way leaves the row this issue exists for still firing. The row keeps\n"
+        "firing for weeks after the audit lands; no new issue opens for failures dated before the close.\n\n"
         "Opened by `helpers/repeat_issue.py`, milestone 422 (a cadence job whose healthy state is red),\n"
         "provisional. The thresholds behind the row are in `helpers/trunk-health.sh`'s repeat section."
         % (name, qualifier, line, first, last, name)
     )
 
 
-def plan(rows, open_issues):
-    """Issue actions for `rows` given `{title: (number, body)}` of open issues. Pure.
+def plan(rows, open_issues, closed=None):
+    """Issue actions for `rows` given `{title: (number, body)}` of open issues and
+    `{title: closedAt}` of the newest closed issue per title (ISO 8601, UTC). Pure.
 
     One action per workflow at most: `open` when none exists, `edit` when the body drifted from
-    the row's facts, nothing when they agree."""
+    the row's facts, nothing when they agree. `open` is withheld when the newest closed issue of
+    that title closed on or after the row's last failure date (compared as UTC dates, so a close
+    on the same day counts as after): the row is still draining from the failures that close
+    answered."""
+    closed = closed or {}
     acts = []
     seen = set()
     for name, qualifier, line, first, last in rows:
@@ -104,7 +122,7 @@ def plan(rows, open_issues):
             number, current = open_issues[title]
             if current != body:
                 acts.append(("edit", number, title, body))
-        elif title not in seen:
+        elif title not in seen and not (title in closed and closed[title][:10] >= last):
             acts.append(("open", None, title, body))
         seen.add(title)
     return acts
@@ -128,10 +146,21 @@ def sync(text):
         return 2
     open_issues = {i["title"]: (i["number"], i["body"] or "")
                    for i in (json.loads(listed.stdout) if listed.stdout.strip() else [])}
+    closed_list = gh(["issue", "list", "--repo", REPO, "--state", "closed", "--limit", "200",
+                      "--search", '"%s" in:title' % TITLE_PREFIX.strip(),
+                      "--json", "number,title,closedAt"])
+    if closed_list.returncode:
+        print("repeat_issue: could not list closed issues: %s" % closed_list.stderr.strip(),
+              file=sys.stderr)
+        return 2
+    closed = {}
+    for i in (json.loads(closed_list.stdout) if closed_list.stdout.strip() else []):
+        if i["title"].startswith(TITLE_PREFIX) and i.get("closedAt"):
+            closed[i["title"]] = max(closed.get(i["title"], ""), i["closedAt"])
     status = 0
     write = os.environ.get("GH_TOKEN") or None
     fallback = os.environ.get("WATCHER_FALLBACK_TOKEN") or None
-    for action, number, title, body in plan(rows, open_issues):
+    for action, number, title, body in plan(rows, open_issues, closed):
         if action == "open":
             args = ["issue", "create", "--repo", REPO, "--title", title, "--body", body]
         else:
@@ -193,6 +222,22 @@ def selftest():
     expect("drifted body edits", plan(rows, {title: (7, drifted)}), [("edit", 7, title, body)])
     both = rows + [("mutation", "3 of last 6 failed", "other", "2026-09-21", "2026-10-12")]
     expect("two workflows, two actions", len(plan(both, {})), 2)
+
+    # A close answers the failures up to its date. The row keeps firing after it, so a close on or
+    # after the row's last failure date opens nothing; a later failure opens a fresh issue.
+    expect("closed after last: no action", plan(rows, {}, {title: "2026-10-14T09:00:00Z"}), [])
+    expect("closed same day as last: no action", plan(rows, {}, {title: "2026-10-12T00:00:01Z"}), [])
+    expect("closed before last: opens", plan(rows, {}, {title: "2026-10-11T23:59:59Z"}),
+           [("open", None, title, body)])
+    expect("no closed issue: opens", plan(rows, {}, {}), [("open", None, title, body)])
+    expect("other workflow's close is irrelevant",
+           plan(rows, {}, {TITLE_PREFIX + "mutation": "2026-10-14T09:00:00Z"}),
+           [("open", None, title, body)])
+    expect("open issue and later close: matching body still a no-op",
+           plan(rows, {title: (7, body)}, {title: "2026-10-14T09:00:00Z"}), [])
+    expect("open issue and later close: drift still edits",
+           plan(rows, {title: (7, drifted)}, {title: "2026-10-14T09:00:00Z"}),
+           [("edit", 7, title, body)])
 
     print("repeat_issue selftest: %s" % ("ok" if ok else "FAILED"))
     return 0 if ok else 1
