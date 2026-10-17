@@ -515,7 +515,7 @@ NM_QUERY='query($owner: String!, $name: String!, $labelled: String!, $budget: St
       added: timelineItems(last: 1, itemTypes: [ADDED_TO_MERGE_QUEUE_EVENT]) { nodes { ... on AddedToMergeQueueEvent { createdAt } } }
       unarmed: timelineItems(last: 1, itemTypes: [READY_FOR_REVIEW_EVENT, AUTO_MERGE_DISABLED_EVENT, REMOVED_FROM_MERGE_QUEUE_EVENT]) { nodes { __typename ... on ReadyForReviewEvent { createdAt } ... on AutoMergeDisabledEvent { createdAt } ... on RemovedFromMergeQueueEvent { createdAt } } }
       labelEvents: timelineItems(last: 20, itemTypes: [LABELED_EVENT]) { nodes { ... on LabeledEvent { createdAt label { name } } } }
-      commits(last: 1) { nodes { commit { committedDate } } }
+      commits(last: 1) { nodes { commit { committedDate statusCheckRollup { contexts(first: 100) { nodes { __typename ... on CheckRun { status completedAt checkSuite { workflowRun { workflow { name } } } } } } } } } }
     } }
     issues(states: OPEN, first: 50, orderBy: {field: CREATED_AT, direction: DESC}) { nodes {
       number createdAt url body

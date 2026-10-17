@@ -21,9 +21,10 @@
 #             2026-10-03: enqueued in the same second it merged, and removed by hand 15 minutes
 #             later. A closed pull request is never in `gh pr list`'s default listing, which is why
 #             the session's command says `--state all`.
-#   unarmed   ready, not armed, not in the queue, for `$minutes` (30, calef's figure) since the
+#   unarmed   ready, not armed, not in the queue, with no `CI` or `verify` run queued or in progress
+#             on its head, for `$minutes` (30, calef's figure) since the
 #             latest of: it was opened, it was marked ready, auto-merge was disabled, it left the
-#             queue. A lane arms in the same command as `gh pr ready`, so this is the one that
+#             queue, its last `CI` or `verify` run finished. A lane arms in the same command as `gh pr ready`, so this is the one that
 #             forgot. Not raised beside `ejected` or `conflict`, which already say what is wrong,
 #             nor while a `Blocked-by:` pull request is still open, which is an unarmed pull
 #             request waiting on purpose.
@@ -240,13 +241,29 @@ def nm_conflict:
   | select(.mergeable == "CONFLICTING")
   | { cause: "conflict", key: .headRefOid, head: .headRefOid };
 
+# The workflows whose runs a ready pull request waits on before it can be armed (briefs/gate-in-ci.md:
+# push, mark ready, CI runs, arm once green). That wait is 25 to 47 minutes, longer than the grace, so
+# the grace counts only once none of them is queued or running on the head, and restarts when the
+# last one finishes. The head's check runs
+# come from the query's `commits(last: 1)`; a fixture or response without them reads as idle.
+def nm_gating_workflows: ["CI", "verify"];
+def nm_gating_runs:
+  [ (.commits.nodes[-1].commit.statusCheckRollup.contexts.nodes // [])[]
+    | select(.__typename == "CheckRun"
+             and (.checkSuite.workflowRun.workflow.name as $w | nm_gating_workflows | index($w) != null)) ];
+def nm_ci_in_flight: nm_gating_runs | any(.status != "COMPLETED");
+# When the last gating run finished, or null. The grace restarts there, so a pull request whose CI
+# ended at minute 40 gets its 30 minutes to be armed, not none.
+def nm_ci_idle_since: [ nm_gating_runs[] | .completedAt | select(. != null) ] | max;
+
 def nm_unarmed($queued; $now; $minutes; $blockers):
   . as $pr
-  | ([.createdAt, (.unarmed.nodes[-1].createdAt // null)] | map(select(. != null)) | max) as $since
+  | ([.createdAt, (.unarmed.nodes[-1].createdAt // null), nm_ci_idle_since] | map(select(. != null)) | max) as $since
   | ($blockers[$pr.number | tostring] // []) as $bs
   | nm_ready_unheld
   | select(.autoMergeRequest == null and ($queued | index($pr.number) | not))
   | select(($bs | index("OPEN")) == null)
+  | select(nm_ci_in_flight | not)
   | select(($since | nm_ts) <= $now - $minutes * 60)
   | { cause: "unarmed", key: $since, since: $since, blockers: $bs };
 
