@@ -124,6 +124,8 @@ Dated 2026-10-15 (§216 (fatal-risk facts are correctable, and verdicts are the 
 
 Dated 2026-10-17 (§216 (fatal-risk facts are correctable, and verdicts are the architect's), milestone 719 (compositor confinement claim 25 is attacked part by part)): milestone 719 is BUILT. Each of row 25's four parts has a test that fails when only that part's enforcement is removed, with a replayable falsification, recorded on aarch64 only. Row 11 is proved on aarch64, riscv64 and x86_64. This does not support green, and row 26 is still unattacked.
 
+Dated 2026-10-17 (§216 (fatal-risk facts are correctable, and verdicts are the architect's), milestone 768 (a read-only port range grants nothing)): milestone 768 is BUILT. calef's ruling of 2026-10-05, that a port range grants nothing without `WRITE`, is recorded in §121 (what a device capability is when the device has no page: x86 port I/O). Claim 33 is unchanged. This does not support green.
+
 The caveat that keeps the gate closed: it was us attacking our own system. A hole we closed ourselves
 is the same category of evidence as the audit that found it. The outsider trying to escape is gated
 behind milestone 198 (a package manager, and the trivial install that makes a second customer
