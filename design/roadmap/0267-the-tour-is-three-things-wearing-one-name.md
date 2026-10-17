@@ -211,9 +211,9 @@ entry needs:
   retired. It asked for one of three ways to let `swish` start `narrator`, all of which presupposed
   a narrator. With the program deleted, the missing half of "a program you can run on purpose" is
   not unfinished work but a question about a thing that no longer exists. The proposal's one
-  durable finding is not lost: that this tree has two ways for a program to
+  durable finding is not lost. This tree has two ways for a program to
   receive an output channel (the console server's raw shared-page-plus-two-endpoints protocol, and
-  `crates/byte_sink_proto`'s sink), and that a program written against one cannot be started by the
+  `crates/byte_sink_proto`'s sink), and a program written against one cannot be started by the
   other. That is recorded here rather than left in a deleted file, because it is true of every
   program and was only ever illustrated by this one.
 - **Milestone 296.** Whether `initboot` and `shell` should collapse to one feature, or stop being a

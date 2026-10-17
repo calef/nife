@@ -9,9 +9,9 @@ Built 2026-09-14. *(Number provisional until the merge queue lands it.)*
 
 calef was shown `script/soak` for ratification and ruled `soak-test`. The maintainer had
 recommended keeping `soak`, and this block records that argument because it was a real one and the
-next person will want it: `soak` is the field's term **as a noun**, so it already names the activity
-where `stranger` alone names a person, which is why `stranger-test` needs its suffix; it composes
-into a sibling cargo feature (`reboot_soak = ["soak", "board"]`) that a suffix makes longer; and the
+next person will want it. `soak` is the field's term **as a noun**, so it already names the activity
+where `stranger` alone names a person, which is why `stranger-test` needs its suffix. It composes
+into a sibling cargo feature (`reboot_soak = ["soak", "board"]`) that a suffix makes longer. And the
 rename reaches 36 `cfg` sites, three console markers and everything that reads them. calef ruled the
 other way and the ruling accepts that cost. This milestone performs it; it does not re-argue it.
 
@@ -57,7 +57,7 @@ to write a card that makes their board reset itself on a timer) survives: `reboo
 first word read.
 
 The markers moved because calef ratified a rule hours earlier, with `job-mix:` /
-`job-mix-census:`: a console marker takes the spelling of the command a reader typed to produce
+`job-mix-census:`. A console marker takes the spelling of the command a reader typed to produce
 it, not of the module that implements it, because the reader's path to the string runs through the
 command. `soak` was that rule's cited precedent, by accident rather than by argument, since one word
 has no seam to show. `soak-reboot:` was not in the brief and follows for the same reason.
@@ -141,22 +141,23 @@ Those magnitudes are a Linux container under TCG and are not comparable with any
   features, and one lists them as a build command that will now fail:
   `board-only-features-nothing-compiles.md` (`board,soak,reboot_soak`),
   `select-the-padding-at-boot-not-at-compile-time.md`, `nothing-in-ci-boots-the-riscv-tour.md`
-  (the first two are `design/roadmap/0373-board-only-features-nothing-compiles.md` and
-  `design/roadmap/0379-select-the-padding-at-boot-not-at-compile-time.md` since milestone 433
-  numbered them, and both still carry the old spellings in their bodies)
   (`script/soak --arch riscv64`, `--features soak`) and
-  `board-console-cannot-speak-to-the-board.md` (`soak-reboot: DISARMED`). All four are `PROPOSED`,
+  `board-console-cannot-speak-to-the-board.md` (`soak-reboot: DISARMED`). The first two are
+  `design/roadmap/0373-board-only-features-nothing-compiles.md` and
+  `design/roadmap/0379-select-the-padding-at-boot-not-at-compile-time.md` since milestone 433
+  numbered them, and both still carry the old spellings in their bodies.
+  All four are `PROPOSED`,
   so by `design/naming.md`'s status table they should have moved. They did not because a
   developer lane edits its own milestone's roadmap block and nothing else under `design/`, which is
   the same exception `design/naming.md`'s own `BUGS` records for milestone 63. The integrator or a
   later lane owns them.
 - Nothing in CI compiles a `soak_test` or `reboot_soak_test` card, which is not new
-  (`notes/footprint-perturbation.md` records it) but is newly load-bearing: the feature names in
+  (`notes/footprint-perturbation.md` records it) but is newly load-bearing. The feature names in
   `script/board-image` are shell strings, so a typo there fails at a bench rather than in a gate.
   `script/lint`'s per-feature clippy loop covers `soak_test` and does not cover `reboot_soak_test`,
   which is riscv64-only and has 16 `cfg` sites. This lane built it by hand
   (`cargo check -p kernel --features reboot_soak_test --target riscv64imac-unknown-none-elf`,
-  clean) and that is rung zero. The finding has a home already:
+  clean) and that is rung zero. The finding has a home already.
   `design/roadmap/0373-board-only-features-nothing-compiles.md` proposes exactly this gate, and
   its example command is one of the four this rename made stale, so whoever picks it up must read
   the new spellings out of `kernel/Cargo.toml` rather than out of that file.
@@ -189,4 +190,4 @@ Those magnitudes are a Linux container under TCG and are not comparable with any
 
 ## Index row
 
-calef was shown `script/soak` and ruled `soak-test`, against a maintainer recommendation to keep it; the losing argument is recorded on the script because it was a real one (`soak` is the field's term as a noun, it composed into `reboot_soak`, and the rename costs 52 feature-gate sites). Four domains moved together, each by its own rule: `script/soak-test`, `cargo xtask soak-test`, the features `soak_test` and `reboot_soak_test`, and the three console markers `soak-test:` / `soak-test-census:` / `soak-test-reboot:`, the last following calef's same-day ruling that a marker takes the spelling of the command a reader typed. `reboot_soak_test` because the head noun is `soak`. The brief's premise about the captures was false and the correction is the useful half: both pre-rename QEMU captures are unrepeatable in time rather than in hardware (one is pre-221 and carries the `crossings=21, wakes=0` tripwire; the other is one draw of the placement lottery), so they are left byte-identical and respelled at read time by one documented function, the parser keeps a single spelling unlike milestone 295's, and a third capture was taken under the new command so the live vocabulary is proved against a machine. Six names that spell the *workload* rather than the command were deliberately left (`soak_page`, `soaker`, `kernel/src/soak.rs`, `notes/soak.md`, `Stage::Soak`, `--soak`) and the seam is in `BUGS`.
+calef was shown `script/soak` and ruled `soak-test`, against a maintainer recommendation to keep it. The losing argument is recorded on the script because it was a real one (`soak` is the field's term as a noun, it composed into `reboot_soak`, and the rename costs 52 feature-gate sites). Four domains moved together, each by its own rule: `script/soak-test`, `cargo xtask soak-test`, the features `soak_test` and `reboot_soak_test`, and the three console markers `soak-test:` / `soak-test-census:` / `soak-test-reboot:`. The last follows calef's same-day ruling that a marker takes the spelling of the command a reader typed. `reboot_soak_test` because the head noun is `soak`. The brief's premise about the captures was false and the correction is the useful half. Both pre-rename QEMU captures are unrepeatable in time rather than in hardware (one is pre-221 and carries the `crossings=21, wakes=0` tripwire; the other is one draw of the placement lottery). So they are left byte-identical and respelled at read time by one documented function. The parser keeps a single spelling, unlike milestone 295 (retire `components/src/builder.rs`), and a third capture was taken under the new command so the live vocabulary is proved against a machine. Six names that spell the *workload* rather than the command were deliberately left (`soak_page`, `soaker`, `kernel/src/soak.rs`, `notes/soak.md`, `Stage::Soak`, `--soak`) and the seam is in `BUGS`.

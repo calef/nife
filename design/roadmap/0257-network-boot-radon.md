@@ -82,22 +82,22 @@ The card underneath the network, exercised rather than asserted. The script trie
 DHCP and two transfers and falls back to `load` when any of them fails, so a card written once can
 be left in radon and still boots with the cable out. Its shape is deliberately the dullest thing
 that can express a fallback: one state variable, `if cmd; then` and `fi`, nesting never deeper than
-two, no `else` anywhere, and `netretry no` first so an absent network fails in seconds instead of
+two, no `else` anywhere, and `netretry no` first. So an absent network fails in seconds instead of
 retrying at an empty bench.
 
 `if cmd; then ... fi`, `test x${v} = xy` and `${v}` expansion are common to U-Boot's hush and POSIX
 `sh`, so the generated script is run under `/bin/sh` in a test with the six U-Boot verbs stubbed as
 shell functions whose exit status the test picks. Four cases: everything works and the card is
-never touched; no lease, so the card supplies both halves; the kernel transfer succeeds and the
+never touched. No lease, so the card supplies both halves. The kernel transfer succeeds and the
 archive's fails, which must still take both halves from the card because a mixed pair halts at
-`MEASURED BOOT REFUSED`; and neither path having a payload, where nothing is booted and the board
+`MEASURED BOOT REFUSED`. And neither path having a payload, where nothing is booted and the board
 says so rather than jumping into whatever a previous boot left at `0x4020_0000`. That last case is a
 guard the manual sequence lacks.
 
 `script/board-netboot`, a read-only TFTP server with `blksize` and `tsize`, in python3. The
 decision against dnsmasq is recorded in the script's header, and the deciding argument is not the
-dependency one: dnsmasq is a DHCP server that also does TFTP,
-this bench LAN is a family's house network with a router already handing out leases, and a second
+dependency one. dnsmasq is a DHCP server that also does TFTP, and
+this bench LAN is a family's house network with a router already handing out leases. A second
 DHCP server on it is an outage for everyone in the building. A tool that cannot speak DHCP cannot
 get that wrong. python3 is already what ten `script/` entry points are written in, so it asks
 nothing new of anybody's machine.
@@ -240,8 +240,8 @@ Transcripts: `bench/radon-2026-09-05/`.
   by hand; what is unproved is that U-Boot's hush accepts this *file*. `sh` is not hush, so the
   fallback test above proves the control flow and says nothing about the parser. The specific
   untested claims: that hush takes `if cmd; then` on one line, `test x${v} = xy`, `!=`, and `if`
-  nested one deep inside another; that `dhcp` and `tftpboot` return a failing status rather than
-  halting the script; and that `netretry no` makes a dead network fail in seconds. Each is
+  nested one deep inside another. Second, `dhcp` and `tftpboot` return a failing status rather
+  than halting the script. Third, `netretry no` makes a dead network fail in seconds. Each is
   documented U-Boot behavior and none of it has been watched here.
 - A misjudged `netretry` is the one that would hurt. If a network that is not there hangs `dhcp`
   instead of failing it, a card left in the board waits at an empty bench rather than falling back,
@@ -273,7 +273,7 @@ Transcripts: `bench/radon-2026-09-05/`.
   corrections are the same one applied at two levels. `board-netboot` beat `board-tftp` because the
   `board-*` family names the thing rather than the mechanism (`board-image` names the image,
   `board-console` names the console, and `script/server`'s header says outright that "an OS is what
-  you start"), so naming the wire would have made this the one member describing its transport.
+  you start"). So naming the wire would have made this the one member describing its transport.
   `nife_boot_server` beat both `nife_server` and `nife_tftp_server` for the same reason one level
   down: the protocol is not what the address is for.
 
