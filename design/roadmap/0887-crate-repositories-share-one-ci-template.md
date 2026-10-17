@@ -9,9 +9,6 @@ needs_person: yes
 ---
 # 887. Crate repositories share one CI template, adapted from nife's gates
 
-*(The title, the slug and the template repository's name are provisional, for calef's naming
-pass.)*
-
 calef, 2026-10-11 (UTC): *"As a gate for each of these milestones, I want to ensure that we're
 exposing clean crates without nife assumptions. I also want to ensure that the gates that we have
 for nife will be adapted for these crate repos as well."* Approving this block's plan:
@@ -28,7 +25,7 @@ built any of it, and every per-crate block from 813 to 821 said so in its `BUGS`
 
 ## What this builds
 
-1. A template repository, provisionally `nifeos/crate-workflows`, holding reusable workflows
+1. A template repository, `nifeos/crate-workflows`, holding reusable workflows
    (`on: workflow_call`), one per row group below: `check`, `proofs`, `weekly` and `release`. A
    crate repository's own workflow files are a few lines each that call them, pinned by commit SHA,
    as nife pins every action today.
@@ -87,18 +84,34 @@ difference. A setting changed by hand in the web interface is then a red run, no
   and the drift check reads it back. Read from the API on 2026-10-17 (UTC): the policy is
   `all_external_contributors` on `crate-workflows`, `crate-workflows-test`, `nife` and `basalt`.
   calef set it for the whole organization.
-- Files: a README, and `LICENSE-MIT` and `LICENSE-APACHE` with `license = "MIT OR Apache-2.0"`
-  as in nife's workspace manifest. Then `SECURITY.md`, `CHANGELOG.md`, and `CONTRIBUTING.md`, which
-  says our work is disclosed as agent-written (Fork 8) and outside contributions are welcome. Then
-  `CODEOWNERS` naming the `nifeos` team, the issue forms, a pull request template, and a small label
-  set synced from the template, `needs-architect` among it.
-- Access: a `nifeos` crates team with Maintain, calef as admin, and the `nife-smelter` app with
-  Write.
+- Files: a README, `LICENSE-MIT` and `LICENSE-APACHE` with `license = "MIT OR Apache-2.0"`,
+  `SECURITY.md`, `CHANGELOG.md`, and `CONTRIBUTING.md`, which says our work is disclosed as
+  agent-written (Fork 8) and outside contributions are welcome. Also `CODEOWNERS` naming the
+  `nifeos` team, the issue forms, a pull request template, and a label set synced from the
+  template, `needs-architect` among it.
+- Access: the crates team with Maintain, calef as admin, the `nife-smelter` app with Write.
 - Metadata: a one-line description, docs.rs as the homepage, and the topics `rust`, `no-std`,
-  `formal-verification` and `kani`, plus the crate's domain.
+  `formal-verification`, `kani` and the crate's domain.
 
 Both license files, because GitHub's license detection reads nife itself as Apache-2.0 although the
 tree carries both. `script/crate-standalone` checks the pair and the field.
+
+## The names: ruled
+
+calef ruled the names on 2026-10-17 (UTC):
+
+| Name | His reply |
+|---|---|
+| The repository `nifeos/crate-workflows` | *"Keep"* |
+| The canary repository `nifeos/crate-workflows-test`, over `crate-workflows-canary` | *"Keep test"* |
+| The seven callable workflow filenames: check, proofs, weekly, release, hold, label and ruled | *"Keep"* |
+| The team `crates-io` becomes `crate-maintainers`; its crates.io owner string is `github:nifeos:crate-maintainers` | *"crate-maintainers"* |
+| The required checks: `check / fmt`, `check / clippy`, `check / tests`, `check / coverage`, `check / standalone`, `check / supply-chain`, `proofs / kani`, `proofs / falsify` and `hold / architect hold` | *"Per your suggestion"* |
+
+The `crates-io` environment keeps its name. The template carries the check names since
+nifeos/crate-workflows #9 (`d5ad709`, after the newest release `v5`). The live repositories still
+use the old ones; the switch is in the Follow-on. No `Name:` block in nife carries these names, so
+`script/names` has nothing to ratify.
 
 ## The first publish: ruled
 
@@ -111,7 +124,7 @@ answered *"B"* to this option for how the first publish happens:
 > yet. So v1 goes through the same proofs-green gate and your environment approval as every later
 > release. After v1 you bind the trusted publisher and delete the secret.
 
-He declined publishing v1 by hand with his own token. The `release` workflow decides by the crate's
+He declined publishing v1 by hand. The `release` workflow decides by the crate's
 presence on crates.io, never by the secret's: an existing crate publishes through trusted
 publishing only, with no fallback to the token. A missing secret on an absent crate fails naming
 it. Built in nifeos/crate-workflows #8 (`3a2160b`), after the newest release, `v5`. The secret is
@@ -127,54 +140,51 @@ roadmap or merge queue; each row applies that test.
 |---|---|---|
 | `script/fmt` (rustfmt) | adapt | Stable rustfmt, without nife's two unstable options |
 | clippy `-D warnings` | adapt | Host, each listed target and a `--cfg kani` build, at the stated MSRV and at the newest stable |
-| rustdoc broken links | keep | The docs are the crate's manual on docs.rs |
-| cargo-machete | keep | Every downstream user pays for an unused dependency |
+| rustdoc broken links | keep | The docs are the crate's manual |
+| cargo-machete | keep | Downstream users pay for an unused dependency |
 | host tests (`cargo test`) | keep | No QEMU leg; the crates are pure logic |
 | coverage, 85% per file | keep | Same floor, same tool (cargo-llvm-cov) |
-| fuzz (cargo-fuzz) | keep | For crates that parse bytes; nightly, so weekly rather than on the publish path |
+| fuzz (cargo-fuzz) | keep | For crates that parse bytes; nightly, so weekly |
 | Miri, weekly | keep | Same job, nightly |
-| mutation (cargo-mutants), weekly | keep | A report, as in nife |
+| mutation (cargo-mutants), weekly | keep | A report |
 | `script/verify` (Kani) | adapt | Kani installed with `cargo install` at the version in `.kani-version` (0.68.0), run on every pull request (Fork 4) |
 | falsification sweep | adapt | Every patch applied with `-p1` must turn its harness red at its own assertion; on every pull request, since a crate has few |
-| `script/falsifications --check` | keep | Every harness carries a patch or a stated reason |
+| `script/falsifications --check` | keep | Every harness has a patch or a stated reason |
 | kani-reach | drop | A dispatch-only measurement of nife's reach |
-| loom interleavings | drop | None of the nine crates uses loom; return when one does |
+| loom interleavings | drop | No crate uses loom yet |
 | cargo-deny | adapt | nife's policy without its own exceptions |
 | vendor-verify, vendor-watch | drop | No vendored code |
-| toolchain drift and bump | adapt | A weekly build on the newest stable and beta replaces the nightly pin |
+| toolchain drift and bump | adapt | A weekly stable and beta build replaces the nightly pin |
 | MSRV build | new | The stated `rust-version` builds; nife has no MSRV to check |
 | semver check | adapt | cargo-semver-checks against the last release stands in for milestone 610 (the interface's stability is measured weekly) |
 | `script/crate-standalone` | adapt | Its citation and file checks run in the repository, keeping nife's vocabulary out |
-| file-length ratchet, 2,000 lines | keep | The same limit on Rust files |
-| comment-block ratchet | keep | Same rule |
-| workspace lints (`unsafe_op_in_unsafe_fn`, `missing_docs`) | keep | Inlined into each crate's own `[lints]`, which `crate-standalone` requires anyway |
+| file-length ratchet (2,000 lines), comment-block ratchet | keep | Same rules |
+| workspace lints (`unsafe_op_in_unsafe_fn`, `missing_docs`) | keep | Inlined into each crate's `[lints]` |
 | orphan Rust files | keep | Every `.rs` file is in the module tree |
-| prose ratchet | adapt | The README and changelog, at nife's caps |
-| house style, typos, no em-dashes | keep | American spelling and the same `typos` run |
-| markdown links resolve | keep | Same check |
-| EXAMPLES and BUGS | new | The template checks that the README carries both headings; nife has no such gate |
+| prose ratchet | adapt | README and changelog, at nife's caps |
+| house style, typos, no em-dashes, markdown links resolve | keep | Same checks |
+| EXAMPLES and BUGS | new | The README must carry both headings |
 | actions pinned to a SHA | keep | Supply chain, unchanged |
 | a workflow that swallows a failure says where it goes | keep | Same rule |
-| shellcheck, `sh -n` | keep | Where a repository has scripts |
-| tracked-but-ignored files | keep | Same check |
+| shellcheck, `sh -n`, tracked-but-ignored files | keep | Same checks |
 | job budgets | adapt | Per repository, with time read by `helpers/ci_job_times.py` |
 | CodeQL (Rust) | keep | Same job |
-| commit-msg `Co-Authored-By` hook | keep | Agent attribution is the rule everywhere nife writes |
+| commit-msg `Co-Authored-By` hook | keep | Agent attribution everywhere nife writes |
 | empty diff | keep | Same check |
 | architect label (`helpers/architect-label-rules.py`, `architect-label.yml`) | adapt | Keeps the new-dependency rule and adds a semver rule (below); drops the abi-surface, spawnproto, syscall-error and decisions rules |
 | architect hold (`architect-hold.yml`) | keep | Red while `needs-architect` is on, and a required check |
-| `script/record-ruling` | adapt | A ruling swaps `needs-architect` for `architect-ruled` the same way, from a template script |
+| `script/record-ruling` | adapt | The same label swap, from a template script |
 | name provenance blocks (`script/names`) | drop | A crate's name is ratified before first publish; `crate-standalone` refuses a `Name:` block |
 | citations, decisions, roadmap, fatal risks, audits index, TODO cites a milestone | drop | Records that live in nife; a TODO cites an issue in the crate repository |
 | naming checks 1 to 3, branch names, ready-status, script docs, env names in prose, agent instructions | drop | nife's own vocabulary and lane process |
 | merge drain, trunk health, ci-failing, verify shard refresh | drop | No merge queue at one crate's traffic |
-| audit and stranger cadence | adapt | A stranger builds and proves the crate from its README alone |
+| audit and stranger cadence | adapt | A stranger builds and proves the crate from its README |
 | kernel and image gates: boot, swish, icount, bench, cpu-matrix, stack frames, W^X, reproducible image, arch rules, syscall registers, `#[path]` sharing | drop | A library crate has no kernel, QEMU or image |
 
 ## Reuse
 
 Taken, not written: GitHub's reusable workflows, `rust-lang/crates-io-auth-action` (RFC 3691),
-Dependabot, `cargo-semver-checks`, and `taiki-e/install-action` for nife's pinned tools. Kani is the exception to taking an action: the template installs it with
+Dependabot, `cargo-semver-checks` and `taiki-e/install-action`. Kani is the exception to taking an action: the template installs it with
 `cargo install` at the version in `.kani-version`, so the Actions allowlist names no Kani action. A
 weekly template job proposes the version bump as one pull request (crate-workflows #5). Prior art for
 the shape: rust-embedded's and RustCrypto's shared workflows, read for structure rather than
@@ -184,21 +194,18 @@ copied. The workflows themselves are written, since none publishes a falsificati
 
 A crate repository, `nifeos/crate-workflows-test`, calls every reusable workflow from releases v1
 and v2. Built 2026-10-16 (UTC). The same day, calef ruled that it
-stands as the template's release canary, adopting every new release before a crate depends on
-one. It has adopted release v5 (commit 30d26230faf82f54653cb302803edf2207f5392b), through its pull
+stands as the template's release canary, adopting each release before a crate depends on it. It has adopted release v5 (commit 30d26230faf82f54653cb302803edf2207f5392b), through its pull
 request 5, merged at 726058495831c9bd3968c405a4d5354709e3233e on `main`, which is the ritual's
 first run. The template's
 own selftest is green on every job, plus the release gate's refusal. The canary's earlier pull
 requests show fmt, tests, coverage, standalone and the falsification replay red on a commit made
 to break them and green on the next. Others show the lag check naming a stale pin and the
-supply-chain refusal of a floating action. A pull request held by `needs-architect` took a recorded ruling, which swapped
-the label for `architect-ruled` and turned the hold green. The apply script configures the canary
+supply-chain refusal of a floating action. A pull request held by `needs-architect` took a recorded ruling that swapped the label and turned the hold green. The apply script configures the canary
 from the settings file and reports what it cannot do. It sets the features, the security toggles,
 the Actions permissions, the `crates-io` environment with calef as required reviewer, the team,
 the labels, and the `main` ruleset with the nine required checks. The drift check reads the
 settings back. It went red naming a hand-changed setting. The tag ruleset is live on the canary
-(ruleset 25290943), and `script/apply-settings` applies it from the settings file. The release gate passed on a green
-commit and created no tag under `dry-run`. The publish job then sat in the `crates-io`
+(ruleset 25290943), and `script/apply-settings` applies it from the settings file. The release gate passed on a green commit and created no tag under `dry-run`. The publish job then sat in the `crates-io`
 environment waiting on a person, which is the "publishes nothing without calef's environment
 approval" row. In nife, the allowlist lint fails a crate that drops `publish = false` without
 being on the list, and `helpers/ci_job_times.py` reads a crate repository by argument.
@@ -206,11 +213,9 @@ being on the list, and `helpers/ci_job_times.py` reads a crate repository by arg
 ## BUGS
 
 - The table is a reading of nife's gates on 2026-10-11, not a ruling. A gate added to nife
-  after that date is not in it, and nothing yet makes adding one ask "and the template?".
-- The template's repository name (`crate-workflows`), workflow names and release cadence are
-  provisional. The `crates-io` team slug and the required-check names (`ci / fmt`, ...) are
-  provisional with them; the check names are measured against what GitHub shows for
-  cross-repository reusable workflow calls and match.
+  since is not in it, and nothing makes adding one ask "and the template?".
+- The template's release cadence is provisional. The check names are measured against what GitHub
+  shows for cross-repository reusable workflow calls.
 - `needs_person` is `yes`. The first publish needs calef to create the scoped token on his
   crates.io account and, after v1, to bind the trusted publisher. Organization administration,
   which the lane's token does not carry, covers the rest.
@@ -239,13 +244,11 @@ being on the list, and `helpers/ci_job_times.py` reads a crate repository by arg
   request on `nifeos/crate-workflows-test` moves every caller's pin to the new commit. A
   template-side workflow can open it once `nife-smelter` holds the workflows permission; it holds
   contents and pull requests write, measured 2026-10-17 (UTC). Until then it is by hand.
-- **Outstanding.** The stranger cadence's first run, a person's as in nife. `docs/stranger-test.md`
-  records none, so the weekly job fails. Checked by that job going green.
-- **Outstanding.** calef's naming pass over the names this milestone shipped provisionally: the
-  repository `crate-workflows`, the canary repository's name, the workflow names, the `crates-io`
-  team slug, and the required-check names. GitHub redirects renames, and required-check names are
-  fixed per ruleset at adoption, so renaming after the first crate repositories exist costs one
-  ruleset update each.
+- **Outstanding.** The stranger cadence's first run, a person's as in nife; the weekly job fails
+  until `docs/stranger-test.md` records one.
+- **Outstanding.** The live switch to the ruled names: release the template with #9, re-adopt it on
+  the canary, rename the team `crates-io` to `crate-maintainers`, and apply the settings, which
+  updates the required checks in each ruleset. Checked by the canary's `main` ruleset listing the new check names.
 
 ## Index row
 
