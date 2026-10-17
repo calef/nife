@@ -207,6 +207,11 @@ script/names --check       the gate; script/lint runs it
 The gate checks presence and form, and never keys on `ratified`, so an unratified name never fails
 a build.
 
+A rule calef ratified for a class of names is recorded with his words in
+[convention-rulings.md](naming/convention-rulings.md) (2026-10-17). `script/names` counts every name
+a rule covers as ratified and `script/names <name>` cites the rule. A name the rule pulls aside keeps
+the status its own block claims.
+
 ## Where a document goes
 
 | | holds | shape |
