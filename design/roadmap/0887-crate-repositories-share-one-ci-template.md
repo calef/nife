@@ -68,14 +68,18 @@ difference. A setting changed by hand in the web interface is then a red run, no
   holds nothing. The template's label workflow therefore adds the label itself, on two rules: a
   dependency new to the crate's graph, and a breaking change that `cargo-semver-checks` reports
   against the last published version.
-- A tag ruleset on `v*`: only the release workflow creates one, and none is updated or deleted.
+- A tag ruleset on `v*`, in each repository: no tag is updated or deleted, and creating one is
+  refused to everyone except the `nife-smelter` app, the only bypass actor, which the release
+  workflow's tag job authenticates as. A hand-made `v*` tag is refused. The template's
+  `script/apply-settings` applies it from the settings file.
 - A `crates-io` environment with calef as required reviewer, and the trusted publisher bound to
   it. Fork 6's approval is then enforced by GitHub rather than remembered.
 - Security: private vulnerability reporting and a `SECURITY.md`, secret scanning with push
   protection, and Dependabot alerts, security updates and version updates for `cargo` and
   `github-actions`.
 - Actions: only SHA-pinned actions from GitHub, verified creators and an allowlist naming
-  `kani-github-action`. The default `GITHUB_TOKEN` is read-only, and the release job alone gets
+  `taiki-e/install-action@*`, the template's one third-party action (named in
+  `settings/repository-settings.json`). The default `GITHUB_TOKEN` is read-only, and the release job alone gets
   `id-token: write`. A fork's pull request runs no workflow until a maintainer approves it, for
   every outside contributor and every time. That is the `all_external_contributors` approval
   policy nife has had since milestone 588 (a merge needs a review no fork can supply), not
@@ -113,7 +117,7 @@ QEMU, roadmap or merge queue, so that is the test each row applies.
 | fuzz (cargo-fuzz) | keep | For crates that parse bytes; nightly, so weekly rather than on the publish path |
 | Miri, weekly | keep | Same job, nightly |
 | mutation (cargo-mutants), weekly | keep | A report, as in nife |
-| `script/verify` (Kani) | adapt | Stock `kani-github-action` on every pull request (Fork 4) |
+| `script/verify` (Kani) | adapt | Kani installed with `cargo install` at the version in `.kani-version` (0.68.0), run on every pull request (Fork 4) |
 | falsification sweep | adapt | Every patch applied with `-p1` must turn its harness red at its own assertion; on every pull request, not weekly, since a crate has few |
 | `script/falsifications --check` | keep | Every harness carries a patch or a stated reason |
 | kani-reach | drop | A dispatch-only measurement of nife's reach |
@@ -153,9 +157,11 @@ QEMU, roadmap or merge queue, so that is the test each row applies.
 
 ## Reuse
 
-Taken, not written: GitHub's reusable workflows, `model-checking/kani-github-action`,
-`rust-lang/crates-io-auth-action` for trusted publishing (RFC 3691), Dependabot,
-`cargo-semver-checks`, and `taiki-e/install-action` for the tools nife already pins. Prior art for
+Taken, not written: GitHub's reusable workflows, `rust-lang/crates-io-auth-action` for trusted
+publishing (RFC 3691), Dependabot, `cargo-semver-checks`, and `taiki-e/install-action` for the
+tools nife already pins. Kani is the exception to taking an action: the template installs it with
+`cargo install` at the version in `.kani-version`, so the Actions allowlist names no Kani action. A
+weekly template job proposes the version bump as one pull request (crate-workflows #5). Prior art for
 the shape: rust-embedded's and RustCrypto's shared workflows, read for structure rather than
 copied. The workflows themselves are written, since none publishes a falsification job.
 
@@ -164,8 +170,9 @@ copied. The workflows themselves are written, since none publishes a falsificati
 A crate repository, `nifeos/crate-workflows-test`, calls every reusable workflow from releases v1
 and v2. Built 2026-10-16 (UTC). The same day, calef ruled that it
 stands as the template's release canary, adopting every new release before a crate depends on
-one. Its adoption of v4 is open and blocked by a GitHub resolution failure measured in the
-template's README; the ritual's first green run is the unblock test. The template's
+one. It has adopted release v5 (commit 30d26230faf82f54653cb302803edf2207f5392b), through its pull
+request 5, merged at 726058495831c9bd3968c405a4d5354709e3233e on `main`, which is the ritual's
+first run. The template's
 own selftest is green on every job: check, proofs, and weekly against `sample/`, plus the release gate's refusal. The canary's
 earlier pull requests show the rows red on a commit made to break them and green on the
 commit after: fmt, tests, coverage, standalone and the falsification replay on one pair. Another
@@ -176,8 +183,8 @@ defect in the label workflow's rule 2, fixed in v2. The apply script configures 
 from the settings file and reports what it cannot do. It sets the features, the security toggles,
 the Actions permissions, the `crates-io` environment with calef as required reviewer, the team,
 the labels, and the `main` ruleset with the nine required checks. The drift check reads the
-settings back. It went red naming a hand-changed setting, and back to its one known finding (the
-refused tags ruleset) on restore. The release gate passed on a green
+settings back. It went red naming a hand-changed setting. The tag ruleset is live on the canary
+(ruleset 25290943), and `script/apply-settings` applies it from the settings file. The release gate passed on a green
 commit and created no tag under `dry-run`. The publish job then sat in the `crates-io`
 environment waiting on a person, which is the "publishes nothing without calef's environment
 approval" row. In nife, the allowlist lint fails a crate that drops `publish = false` without
@@ -192,10 +199,13 @@ being on the list, and `helpers/ci_job_times.py` reads a crate repository by arg
   provisional with them; the check names are measured against what GitHub shows for
   cross-repository reusable workflow calls and match.
 - `needs_person` is `yes`. The crates.io trusted publisher needs calef's crates.io account, and
-  the org-level setup (the Actions allowlist, the app's installation permission, the tag ruleset,
-  the `SETTINGS_TOKEN` secret) needs org administration, which the lane's token does not carry.
-  The `crates-io` team and the approval environment turned out to be creatable with calef's
-  existing token, contrary to what this block first assumed.
+  the fork pull request approval policy is an organization administration setting, which the
+  lane's token does not carry.
+- A crates.io trusted publisher cannot be bound before a crate's first publish. crates.io's
+  trusted-publishing documentation (rust-lang/crates.io,
+  `svelte/src/routes/docs/trusted-publishing/+page.svelte`) says: "Your crate must already be
+  published to crates.io (initial publish requires an API token)." How a crate's first publish
+  happens is an open question for calef; this block does not answer it.
 - A push-triggered cross-repository reusable workflow call start-fails on GitHub with an empty
   error (crate-workflows-test runs 38914536439 and 38914537601, same file green on
   pull_request), so the gating callers trigger on pull_request only. A release dispatches at a
@@ -206,35 +216,27 @@ being on the list, and `helpers/ci_job_times.py` reads a crate repository by arg
 - The settings-drift check's security rows and its ruleset read want an administration-scoped
   token; with the caller's `GITHUB_TOKEN` they report what was unreadable rather than passing
   silently.
-- The weekly `stranger cadence` job fails until `docs/stranger-test.md` records a first run;
-  the stranger ritual itself is a person's, as in nife.
 
 ## Follow-on
 
-- **Outstanding.** A real crates.io publish end to end: the trusted publisher bound on calef's
-  crates.io account, a tag made by the release workflow, and the publish itself. Checked by the
-  dry-run rehearsal, which stopped at the environment's approval gate by design.
+- **Outstanding.** A real crates.io publish end to end: a trusted publisher bound on calef's
+  crates.io account, a tag made by the release workflow, and the publish itself. The bind needs
+  the crate to be published already (see `BUGS`). Checked by the dry-run rehearsal, which stopped
+  at the environment's approval gate by design.
 - **Outstanding.** The labeler's semver rule firing against a published baseline. The test crate
   is unpublished, so only the no-baseline path has run; the false positive it produced is fixed in
-  v2. Checked by the canary's pull requests, which never saw a baseline. The first published crate (milestones 813 to 821) is the test.
+  v2. The first published crate (milestones 813 to 821) is the test.
 - **Outstanding.** A driver for the canary's release ritual. After each template release, a pull
   request on `nifeos/crate-workflows-test` moves every caller's pin to the new release's commit.
-  When `nife-smelter` holds write there, a template-side workflow can open it instead; until then
-  it is by hand.
-- **Outstanding.** The unblock of the canary's first ritual run. GitHub refuses full-name
-  resolution of the callees whose graphs use third-party actions, measured 2026-10-16 and
-  recorded with the probe matrix in the template's README. Checked by the open adoption pull
-  request going green unchanged.
-- **Outstanding.** The organization setup the template cannot do to itself, each with its
-  consequence while undone, from `nifeos/crate-workflows`' README. It covers the Actions
-  allowlist (SHA-pinned only, verified creators, `kani-github-action` named), the `nife-smelter`
-  app's installation permission, the `SETTINGS_TOKEN` organization secret the settings-drift reads
-  authenticate with, the organization-level tag ruleset, and the fork pull request approval
-  policy. The tag ruleset cannot live in a repository: the rulesets API refuses `ref_name` on
-  push-target rulesets, measured. The approval policy cannot be read by a non-admin token either,
-  so it is set once in the org's Actions settings. None can bite while no crate repository exists; the first
-  adoption is the deadline. Checked live on the canary, which runs
-  its weekly jobs against exactly this gap.
+  A template-side workflow can open it once `nife-smelter` holds the workflows permission, since
+  the pull request edits `.github/workflows`; the app holds contents and pull requests write,
+  measured 2026-10-17 (UTC). Until then it is by hand.
+- **Outstanding.** The fork pull request approval policy. `nifeos/crate-workflows` and
+  `nifeos/crate-workflows-test` both read `first_time_contributors`, measured 2026-10-17 (UTC);
+  calef asked for `all_external_contributors`. Checked by reading
+  `actions/permissions/fork-pr-contributor-approval` on each repository.
+- **Outstanding.** The stranger cadence's first run, a person's as in nife. `docs/stranger-test.md`
+  records none, so the weekly job fails. Checked by that job going green.
 - **Outstanding.** calef's naming pass over the names this milestone shipped provisionally: the
   repository `crate-workflows`, the canary repository's name, the workflow names, the `crates-io`
   team slug, and the required-check names. GitHub redirects renames, and required-check names are
