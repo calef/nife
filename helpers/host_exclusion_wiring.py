@@ -1,6 +1,6 @@
 """The host-exclusion wiring gate: every consumer CALLS the derivation, and nothing else lists it.
 
-Roadmap 393 (the host-excluded crate set lives in one place) put the set in
+Milestone 393 (four files each record which crates cannot compile for the host, and one of them derives it) put the set in
 helpers/host-excluded-crates.sh. script/lint's "the host pass excludes exactly the bare-metal
 crates" section checks the derivation against `cargo metadata`; this helper checks the other half,
 that nothing bypasses it.
@@ -24,13 +24,13 @@ Two checks, each closing a hole the first version of the gate had:
    naming file:line. It also matches the split forms xtask would use (`"--exclude", "user_mode_runtime"`,
    including across a line break) and `--exclude=name`.
 
-A ban that matched nothing would pass by checking nothing (milestone 401), so `--check` fails if it
+A ban that matched nothing would pass by checking nothing (milestone 401 (a gate that selects the set it judges can pass by checking nothing)), so `--check` fails if it
 scanned fewer than `MIN_SCANNED` files or did not scan the consumers, and the selftest proves each
 form fires.
 
 Every literal this file would match is assembled from parts, so the ban does not hit its own source.
 
-Name: provisional, minted by the lane for the milestone 393 wiring fix.
+Name: provisional, minted by the lane that fixed the wiring gate of milestone 393 (four files each record which crates cannot compile for the host, and one of them derives it).
 """
 import re
 import subprocess
@@ -153,7 +153,7 @@ def check():
             problems.append(f"{needed} was not read, so the wiring check would have checked nothing")
     if len(files) < MIN_SCANNED:
         problems.append(f"only {len(files)} text files scanned (want at least {MIN_SCANNED}); the ban "
-                        "would pass by looking at nothing (milestone 401)")
+                        "would pass by looking at nothing (milestone 401 (a gate that selects the set it judges can pass by checking nothing))")
     if problems:
         sys.exit("lint: host-exclusion wiring gate cannot run:\n  " + "\n  ".join(problems))
     problems = wiring_problems(files)
