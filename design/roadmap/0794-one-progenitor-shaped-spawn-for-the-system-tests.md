@@ -1,5 +1,6 @@
 ---
-status: PARTIAL
+status: BUILT
+built: 2026-10-16
 promoted_from: one-progenitor-shaped-spawn-for-the-system-tests
 raised: 2026-10-05
 milestone_dependencies: none
@@ -58,24 +59,27 @@ Nothing. The copies agree today; the risk is the next edit that reaches four of 
 
 ## Scope
 
-2026-10-16 (UTC): built as `test_programs::spawn_progenitor_shaped` (name provisional). The report
-rendezvous is made by the caller and passed in, because `live_swap_tests` carves its notification
-and timer from the same region the report line comes from; the helper takes both capabilities'
-rights. Four of the five call sites are one call each, and the `log_pages_for(initial_ramdisk_pages)`
-term is in one place. The helper carries two beyond-the-floor parameters for the operator:
-capabilities past slot 1, and one notification bound between configure and start.
-`timetable_tests::spawn_timetable_with` stayed whole. Its slots are its own four-slot contract
-(output, budget, child report, deaths), its archive is a narrowed copy it builds rather than the
-initial ramdisk, and its stack, optional mappings and start arguments are its own. A helper
-parameterized to cover all that would be that function wearing this one's name. The kernel's
-`spawn_hello` remains the sixth copy, out of scope here.
+Built as `test_programs::spawn_progenitor_shaped` (name provisional). The report rendezvous is made
+by the caller and passed in, because `live_swap_tests` carves its notification and timer from the
+same region the report line comes from; the helper takes both capabilities' rights. Four of the five
+call sites are one call each, and the `log_pages_for(initial_ramdisk_pages)` term is in one place.
+The helper carries two beyond-the-floor parameters for the operator: capabilities past slot 1, and
+one notification bound between configure and start.
+
+`timetable_tests::spawn_timetable_with` is a deliberate keep as its own spawn site. Its slots are
+its own four-slot contract (output, budget, child report, deaths), its archive is a narrowed copy it
+builds rather than the initial ramdisk, and its stack, optional mappings and start arguments are its
+own. A helper parameterized to cover all that would be that function wearing this one's name. What
+it does share is lifted: `test_programs::segment_pages` (the segment term of the space budget) and
+`test_programs::lay_out_program` (segments, stack, timebase page), which both spawns call. The
+kernel's `spawn_hello` remains the sixth copy, out of scope here.
 
 ## Follow-on
 
-- **Outstanding.** `timetable_tests::spawn_timetable_with` is still its own spawn site, the one of
-  the five this block did not fold, for the scope paragraph's reason. Checked with the grep the
-  block was raised with (`grep -rn INITIAL_RAMDISK_VA system_tests/src/user system_tests/src/user.rs`):
-  five hits at the raise, one now, and this is it.
+- **Recorded.** `timetable_tests::spawn_timetable_with` stays its own spawn site for the scope
+  paragraph's reason. `grep -rn INITIAL_RAMDISK_VA system_tests/src/user system_tests/src/user.rs`
+  found five hits at the raise; the ones left are the helper, the timetable's narrowed-archive
+  mapping, and comments.
 - **Recorded.** `system_tests/src/user/test_programs.rs`: the kernel's `spawn_hello` remains the
   sixth copy, and the helper's own doc says why it stays one (it measures the program and routes
   the boot interrupts, which no test harness wants).

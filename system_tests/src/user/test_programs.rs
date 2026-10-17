@@ -142,6 +142,33 @@ pub(super) struct Started {
     pub thread_control_block_region: u64,
 }
 
+/// The pages an ELF's loadable segments occupy: the first term of every hand-built space's budget
+/// here, with the stack, the archive window and slack each site adds for itself.
+pub(super) fn segment_pages(elf: &Elf) -> u64 {
+    elf.segments()
+        .map(|seg| {
+            let (s, e) = seg.page_range(FRAME_SIZE);
+            (e - s) / FRAME_SIZE
+        })
+        .sum()
+}
+
+/// Lay `elf` out in `space`, map `stack_pages` of stack ending at [`USER_STACK_VA`], and on x86_64
+/// and riscv64 map the timebase page. The part of a progenitor-shaped spawn that
+/// [`spawn_progenitor_shaped`] and the timetable's own spawn share; the stack size is each site's
+/// stated choice, never inherited. `name` only words the panic messages.
+pub(super) fn lay_out_program(space: &mut AddressSpace, elf: &Elf, stack_pages: u64, name: &str) {
+    map_segments(space, elf).unwrap_or_else(|e| panic!("could not lay out {name}: {e}"));
+    for k in 0..stack_pages {
+        space
+            .map_new(USER_STACK_VA - k * FRAME_SIZE, Flags::user_data())
+            .unwrap_or_else(|e| panic!("could not map {name}'s stack: {e:?}"));
+    }
+    #[cfg(any(target_arch = "x86_64", target_arch = "riscv64"))]
+    map_timebase_page(space)
+        .unwrap_or_else(|e| panic!("could not map {name}'s timebase page: {e:?}"));
+}
+
 /// **One progenitor-shaped spawn for the system tests** (milestone 794 (one progenitor-shaped spawn
 /// for the system tests)).
 ///
@@ -162,7 +189,8 @@ pub(super) struct Started {
 /// harness wants. `timetable_tests::spawn_timetable_with` is the call site that stayed whole: its
 /// slots are its own four-slot contract (output, budget, child report, deaths), its archive is a
 /// narrowed copy it builds rather than the initial ramdisk, and its stack, extra mappings and
-/// start arguments are its own. A helper parameterized to cover all of that would be
+/// start arguments are its own. It shares [`segment_pages`] and [`lay_out_program`] with this
+/// function and nothing else; a helper parameterized to cover the rest would be
 /// `spawn_timetable_with` wearing this one's name.
 ///
 /// [`crate::user::run`] cannot serve these callers: its extra mapped pages arrive as a slice,
@@ -202,28 +230,14 @@ pub(super) fn spawn_progenitor_shaped(
 
     // The budget every hand-built space here counts: each segment's pages, a table share for the
     // archive window, the window's log pages (`map_physical` records), the stack, and slack.
-    let content: u64 = elf
-        .segments()
-        .map(|seg| {
-            let (s, e) = seg.page_range(FRAME_SIZE);
-            (e - s) / FRAME_SIZE
-        })
-        .sum::<u64>()
+    let content: u64 = segment_pages(&elf)
         + 1
         + initial_ramdisk_pages / 512
         + crate::revoke::log_pages_for(initial_ramdisk_pages)
         + INIT_STACK_PAGES
         + 8;
     let mut space = AddressSpace::new(content).unwrap_or_else(|| panic!("no memory for {name}"));
-    map_segments(&mut space, &elf).unwrap_or_else(|e| panic!("could not lay out {name}: {e}"));
-    for k in 0..INIT_STACK_PAGES {
-        space
-            .map_new(USER_STACK_VA - k * FRAME_SIZE, Flags::user_data())
-            .unwrap_or_else(|e| panic!("could not map {name}'s stack: {e:?}"));
-    }
-    #[cfg(any(target_arch = "x86_64", target_arch = "riscv64"))]
-    map_timebase_page(&mut space)
-        .unwrap_or_else(|e| panic!("could not map {name}'s timebase page: {e:?}"));
+    lay_out_program(&mut space, &elf, INIT_STACK_PAGES, name);
     // The ramdisk is reserved RAM the frame allocator does not own, so this maps rather than
     // allocates, one read-only page at a time, exactly as `spawn_hello` maps it.
     for i in 0..initial_ramdisk_pages {
