@@ -54,7 +54,7 @@ fn net_stack_gets_a_dhcp_lease_over_the_e1000e_nic_behind_the_iommu() {
     let w = match e1000e_service::start_net_server(image(), socket_protocol::NO_LISTEN_GRANT) {
         Ok(w) => w,
         Err(e1000e_service::Absent::NoController) => {
-            crate::testing::skip!("no e1000e NIC attached");
+            skip_unless_required!(X86_NIC_ATTACHED, "no e1000e NIC attached");
         }
         Err(why) => refused(why),
     };
@@ -103,7 +103,7 @@ fn a_client_echoes_over_tcp_through_the_e1000e_nic() {
     ) {
         Ok(v) => v,
         Err(e1000e_service::Absent::NoController) => {
-            crate::testing::skip!("no e1000e NIC attached");
+            skip_unless_required!(X86_NIC_ATTACHED, "no e1000e NIC attached");
         }
         Err(why) => refused(why),
     };
@@ -130,7 +130,7 @@ fn a_client_completes_a_udp_round_trip_through_the_e1000e_nic() {
     ) {
         Ok(v) => v,
         Err(e1000e_service::Absent::NoController) => {
-            crate::testing::skip!("no e1000e NIC attached");
+            skip_unless_required!(X86_NIC_ATTACHED, "no e1000e NIC attached");
         }
         Err(why) => refused(why),
     };
@@ -163,7 +163,7 @@ fn a_package_fetched_over_the_e1000e_nic_is_accepted_only_by_the_image_digest() 
     ) {
         Ok(v) => v,
         Err(e1000e_service::Absent::NoController) => {
-            crate::testing::skip!("no e1000e NIC attached");
+            skip_unless_required!(X86_NIC_ATTACHED, "no e1000e NIC attached");
         }
         Err(why) => refused(why),
     };

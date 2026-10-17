@@ -886,6 +886,15 @@ pub(crate) fn uefi_test() -> bool {
     // 857654808 already recorded: switching between a test and any other boot recompiles
     // `components`, because cargo fingerprints features. See `CONFINEMENT_ATTACKERS`.
     crate::CONFINEMENT_ATTACKERS.store(true, std::sync::atomic::Ordering::Relaxed);
+    // **The OVMF runner attaches one block fixture, not the PVH runner's five**
+    // (helpers/qemu-uefi-x86_64.sh, BUGS), so the test image built for this boot must not grade
+    // the roster against five. The `x86_64` leg sets this for the PVH suite; the rebuild between
+    // the two is `system_tests/build.rs` re-running on the changed variable.
+    // SAFETY: `remove_var` became unsafe in edition 2024 because it races other threads. xtask is
+    // single-threaded here: this runs on the main thread before the child that reads it is
+    // spawned, and the only thread xtask ever starts (the transcript reader in swish_check_leg)
+    // copies pipe bytes into a String and never touches the environment.
+    unsafe { std::env::remove_var("NIFE_X86_FIXTURES_REQUIRED") };
     if !initial_ramdisk_x86() || !mkdisk() || !mknvmedisk() {
         return false;
     }

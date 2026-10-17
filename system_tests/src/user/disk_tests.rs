@@ -70,8 +70,27 @@ fn the_disk_surveyor_reads_a_table_gptfdisk_wrote() {
         // silently and be counted as a pass (milestone 214,
         // design/roadmap/0214-print-and-return-skips.md); the silent form is the same defect with
         // the line left out.
-        crate::testing::skip!("no GPT disk attached (this boot did not build the GPT image)");
+        skip_unless_required!(
+            X86_FIXTURES_REQUIRED,
+            "no GPT disk attached (this boot did not build the GPT image)"
+        );
     };
+    // **On the PVH x86_64 leg the roster is exactly the five fixtures, no more and no fewer**
+    // (milestone 420 (x86_64 has one fixture of five and no NIC, GPU, keyboard or RNG)). The runner
+    // attaches the crash, GPT and blank disks softly (`[ -f img ]`), and the assertions below hold
+    // for any count from zero to five, so a runner that lost those lines used to pass this test
+    // with a skip (measured 2026-10-16: GPT and blank removed, "0 passed, 1 skipped", exit 0).
+    // Removing only the GPT disk slid the blank one into ordinal 3 and went red by accident, on a
+    // protective-MBR panic that names neither disk. This names them.
+    if X86_FIXTURES_REQUIRED {
+        assert_eq!(
+            w.devices, 5,
+            "the x86_64 roster names {} block functions; the runner owes five (nifefs=0, \
+             redoxfs=1, crash=2, gpt=3, blank=4). A fixture is missing from \
+             helpers/qemu-runner-x86_64.sh, and ordinals above the missing one have slid down",
+            w.devices,
+        );
+    }
     // Past device bring-up, so a hang below is a hang in a read rather than in the driver.
     let [ready, ..] = crate::sched::ipc_receive(w.ready);
     assert_eq!(ready, filesystem_protocol::READY);
@@ -119,6 +138,15 @@ fn the_disk_surveyor_reads_a_table_gptfdisk_wrote() {
     // rather than by trusting the number the program sent back.
     let here = Roster::read(w.roster()).expect("the kernel wrote a roster it cannot read");
     assert_eq!(here.len(), w.devices);
+    if X86_FIXTURES_REQUIRED {
+        for (i, d) in here.iter().enumerate() {
+            assert_eq!(
+                (d.transport, d.ordinal as usize),
+                (TRANSPORT_PCI, i),
+                "roster entry {i} is not PCI function {i}: the five fixtures ride in ordinal order"
+            );
+        }
+    }
     assert_eq!(here.count_on(TRANSPORT_MMIO) as u64, mmio);
     assert_eq!(here.count_on(TRANSPORT_PCI) as u64, pci);
 
@@ -327,7 +355,10 @@ fn the_write_half_needs_a_disk_and_an_entropy_rendezvous_and_holds_nothing_else(
     let Some(disk) = disk_service::blank_disk(fs_service::blk_server_image()) else {
         // No fifth mmio block device: this boot did not build the blank image. A fact about the
         // machine, not a failure (milestone 145: reported as skipped rather than a silent "ok").
-        crate::testing::skip!("no blank-disk fixture attached (this boot did not build one)");
+        skip_unless_required!(
+            X86_FIXTURES_REQUIRED,
+            "no blank-disk fixture attached (this boot did not build one)"
+        );
     };
     if let Some(ready) = disk.blk_ready {
         // Past device bring-up, so a hang below is a hang in a write rather than in the driver.
@@ -335,7 +366,8 @@ fn the_write_half_needs_a_disk_and_an_entropy_rendezvous_and_holds_nothing_else(
         assert_eq!(word, filesystem_protocol::READY);
     }
     let Some(entropy) = entropy_rendezvous() else {
-        crate::testing::skip!(
+        skip_unless_required!(
+            X86_RNG_ATTACHED,
             "no virtio-rng device on the bus this fixture asks for (NIFE_RNG not set?)"
         );
     };

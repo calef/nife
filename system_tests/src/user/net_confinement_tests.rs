@@ -185,7 +185,7 @@ fn next_report(report: RendezvousId, what: &str) -> [u64; 5] {
 #[test_case]
 fn a_squatter_at_a_shared_stack_endpoint_cannot_capture_the_clients_traffic() {
     let Some((mut held, stack)) = start_stack() else {
-        crate::testing::skip!("no e1000e NIC attached");
+        skip_unless_required!(X86_NIC_ATTACHED, "no e1000e NIC attached");
     };
     let go_region = crate::memory_region::create(1).expect("no region for the go endpoint");
     let go = crate::sched::create_rendezvous_from(go_region).expect("no go endpoint");
@@ -261,7 +261,7 @@ fn a_squatter_at_a_shared_stack_endpoint_cannot_capture_the_clients_traffic() {
 #[test_case]
 fn a_socket_holder_cannot_receive_on_its_socket_capability() {
     let Some((mut held, stack)) = start_stack() else {
-        crate::testing::skip!("no e1000e NIC attached");
+        skip_unless_required!(X86_NIC_ATTACHED, "no e1000e NIC attached");
     };
     let squatter = spawn_client(NET_ROLE_SQUATTER, Some(stack), &[], &mut held);
     let armed = next_report(squatter, "squatter");
@@ -294,7 +294,7 @@ fn a_socket_holder_cannot_receive_on_its_socket_capability() {
 #[test_case]
 fn a_socket_moves_by_its_capability_and_a_closed_one_reaches_nothing() {
     let Some((mut held, stack)) = start_stack() else {
-        crate::testing::skip!("no e1000e NIC attached");
+        skip_unless_required!(X86_NIC_ATTACHED, "no e1000e NIC attached");
     };
     let region = crate::memory_region::create(2).expect("no region for the hand-off endpoints");
     let handoff = crate::sched::create_rendezvous_from(region).expect("no hand-off endpoint");
@@ -352,7 +352,7 @@ fn a_socket_moves_by_its_capability_and_a_closed_one_reaches_nothing() {
 #[test_case]
 fn a_re_badged_socket_capability_is_refused_and_the_socket_survives() {
     let Some((mut held, stack)) = start_stack() else {
-        crate::testing::skip!("no e1000e NIC attached");
+        skip_unless_required!(X86_NIC_ATTACHED, "no e1000e NIC attached");
     };
     let forger = spawn_client(NET_TEST_SOCKET_BADGE_FORGE, Some(stack), &[], &mut held);
     let verdict = next_report(forger, "badge forger");

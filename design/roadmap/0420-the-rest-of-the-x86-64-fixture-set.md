@@ -82,6 +82,11 @@ milestone's deliverable:
 - The mmio skip lines (`no virtio-rng device on the mmio bus (NIFE_RNG not set?)`) mislead on this
   one machine. No value of `NIFE_RNG` can attach an mmio device to `q35`. The lines are true on
   the other two, where setting it works.
+- The roster guard rides an environment variable. `cargo xtask test` sets `NIFE_X86_FIXTURES_REQUIRED`
+  (provisional name) on the PVH leg, `NIFE_RNG` and `NIFE_NET` on every x86_64 leg, and
+  `system_tests/build.rs` bakes them in. A bare `cargo test -p system_tests` sets none, so a
+  runner that lost a `-device` line still skips there. The OVMF leg unsets the fixtures variable
+  and grades no fixture count.
 
 ## Follow-on
 
