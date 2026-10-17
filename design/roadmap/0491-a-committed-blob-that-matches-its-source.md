@@ -51,7 +51,7 @@ like every other check in `script/lint`.
 Rung one, refused: drop the blobs and compile at build time. That would make fixtures vary with the
 local `dtc`, which is not byte-stable across versions, so the test input itself would stop being
 stable unless `dtc` were pinned too. It also puts a build dependency on `dtc` on every contributor
-and every CI leg, a cost every builder pays under DECISIONS §46. The one incident on record is
+and every CI leg, a cost every builder pays under DECISIONS §46 (thin primitives or whole subsystems; we write everything in between). The one incident on record is
 already closed at every push by the check above. Reopens on a second drift incident, or on drift in
 the sourceless fixtures.
 
