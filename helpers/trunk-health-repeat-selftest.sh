@@ -259,6 +259,45 @@ for silent in vendor-watch toolchain-bump trunk-health merge-drain; do
 	fi
 done
 
+# --- an API failure is UNKNOWN, never health ---------------------------------------------------
+# A `gh` that fails the way a rate limit does (exit 1, message on stderr). The pass used to print
+# `main is green` and no DEAD or REPEAT rows, because `state()` turned the failed call into an empty
+# list, `repeat()` had `|| continue` on the runs fetch and the watcher check had `|| true`. Each
+# guard has its own expectation below, so reverting any one of them turns this red.
+mkdir "$tmp/failbin"
+cat >"$tmp/failbin/gh" <<'EOF2'
+#!/bin/sh
+echo "gh: HTTP 403: API rate limit exceeded" >&2
+exit 1
+EOF2
+cp "$tmp/bin/git" "$tmp/failbin/git"
+chmod +x "$tmp/failbin/gh" "$tmp/failbin/git"
+PATH="$tmp/failbin:$PATH" helpers/trunk-health.sh --once >"$tmp/out-fail" 2>/dev/null
+
+expect_fail_out() {
+	if ! grep -q -e "$1" "$tmp/out-fail"; then
+		echo "$me: failing gh: expected <$1> in the output:" >&2
+		cat "$tmp/out-fail" >&2
+		exit 1
+	fi
+}
+if grep -q 'main is green' "$tmp/out-fail"; then
+	echo "$me: failing gh must never print 'main is green':" >&2
+	cat "$tmp/out-fail" >&2
+	exit 1
+fi
+expect_fail_out '^main: UNKNOWN at '
+expect_fail_out '^repeat-check  *cannot ask  *CANNOT-ASK: unknown; .*audit-cadence'
+expect_fail_out '^merge watchers  *cannot ask  *CANNOT-ASK'
+expect_fail_out '^cadence-check  *cannot ask  *CANNOT-ASK'
+
+# The other side of the exit-code test: a call that succeeds with an empty list is a quiet branch,
+# and stays green. Without this, "UNKNOWN on anything empty" would pass the block above.
+printf '[]' >"$fix/state-runs.json"
+PATH="$tmp/bin:$PATH" helpers/trunk-health.sh --once >"$tmp/out-empty" 2>/dev/null
+grep -q '^main is green at ' "$tmp/out-empty" ||
+	{ echo "$me: an empty run list from a call that succeeded must read green" >&2; cat "$tmp/out-empty" >&2; exit 1; }
+
 # --- the ruled home: one issue per distinct repeat, proved offline -------------------------------
 # calef ruled the repeat report's home on 2026-10-16 (UTC): an issue per workflow on the
 # helpers/watcher_watch.py pattern, deduped by workflow name, body updated when the failing line
@@ -344,4 +383,4 @@ rm -f "$iss/fix/issues.json"
 printf '%s\n' "$audit_row" | sync_rows >/dev/null
 expect_calls '"issue", "create"' 1
 
-echo "$me: repeat rows, thresholds, exclusions, silences and the ruled issue home all as expected"
+echo "$me: repeat rows, thresholds, exclusions, silences, API failures and the ruled issue home all as expected"

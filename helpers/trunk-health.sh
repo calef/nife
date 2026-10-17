@@ -89,6 +89,17 @@
 #     a job did any work, and a fix would mean reading each run's steps rather than its conclusion,
 #     which is a different and much chattier API. Until then, a docs-only merge is a moment to
 #     distrust this watcher rather than to be reassured by it.
+#   - **An API failure is UNKNOWN, never green** (calef, 2026-10-16 UTC). `state()` prints
+#     `UNKNOWN <sha>` when `gh run list` fails or returns something that is not a list; the repeat
+#     half prints a `cannot ask` row naming the workflows whose run list failed; the merge-watcher
+#     half prints one when `helpers/watcher_watch.py check` exits 2. `script/cadence-check` already
+#     exits 2 for the same cause and has its row. Before this, a rate limit or an expired token
+#     printed `main is green` and no DEAD or REPEAT rows, measured with a stub `gh` that exits 1.
+#     Rate limiting is therefore loud now rather than silent: the repeat half's log reads cost two
+#     API calls per failing run on every five-minute pass (about 30 per pass when this was
+#     written), unchanged, and a pass that runs out says so. The watching loop announces UNKNOWN
+#     once and does not let it change the RED/GREEN memory. A `cannot ask` row is a gap in the
+#     stream, so it also means a REPEAT that stands is not being re-announced on that pass.
 #   - **It reports and never resolves**, deliberately, which was the whole gap calef named on
 #     2026-09-23. The response now exists as `helpers/queue-hold.sh` and briefs/main-is-red.md, and
 #     a person still has to run it: this script does not, because holding the queue needs the
@@ -157,8 +168,15 @@ state() {
 	full=$(git ls-remote "$(git remote get-url origin 2>/dev/null || echo origin)" refs/heads/main 2>/dev/null | cut -f1)
 	sha=$(printf '%.8s' "$full")
 	[ -z "$sha" ] && { echo "unknown"; return; }
-	runs=$(gh run list --repo "$REPO" --branch main --limit 12 \
-		--json workflowName,status,conclusion,headSha 2>/dev/null || echo '[]')
+	# An empty list and a failed call are different answers: the first is a quiet branch, the
+	# second is "nobody asked", and only the exit code tells them apart. A rate limit or an
+	# expired token used to read as `[]` and print GREEN.
+	if ! runs=$(gh run list --repo "$REPO" --branch main --limit 12 \
+		--json workflowName,status,conclusion,headSha 2>/dev/null) ||
+		! printf '%s' "$runs" | jq -e 'type == "array"' >/dev/null 2>&1; then
+		echo "UNKNOWN $sha"
+		return
+	fi
 	failed=$(printf '%s' "$runs" | jq -r --arg s "$sha" \
 		'[.[] | select(.headSha[0:8] == $s) | select(.conclusion == "failure") | .workflowName] | unique | join(", ")' 2>/dev/null)
 	running=$(printf '%s' "$runs" | jq -r --arg s "$sha" \
@@ -232,7 +250,19 @@ cadence() {
 		effort_say="$(script/effort --check 2>&1)" ||
 			printf '%-32s %-24s %s\n' "effort capture" "not this week" "DEAD: ${effort_say#effort: }"
 	fi
-	python3 helpers/watcher_watch.py check --quiet 2>/dev/null || true
+	# Exit 1 is a stopped watcher, with its rows on stdout. Exit 2 is "could not ask" with nothing
+	# printed, and `|| true` used to read that as every watcher healthy.
+	# Absent, as in helpers/trunk-health-cadence-selftest.sh's copy of the tree, it is not asked.
+	watchers_rc=0
+	if [ -f helpers/watcher_watch.py ]; then
+		watchers_say="$(python3 helpers/watcher_watch.py check --quiet 2>/dev/null)" || watchers_rc=$?
+		[ -n "$watchers_say" ] && printf '%s\n' "$watchers_say"
+	fi
+	if [ "$watchers_rc" -ge 2 ]; then
+		printf '%-32s %-24s %s\n' "merge watchers" "cannot ask" \
+			"CANNOT-ASK: unknown; helpers/watcher_watch.py check without --quiet says what it could not read"
+	fi
+	return 0
 }
 
 # --- DUE: a cadence that says "a person must now do something" ----------------------------------
@@ -397,10 +427,14 @@ repeat() {
 		grep -v -e '/merge-drain\.yml$' -e '/trunk-health\.yml$' | sort) || true
 	[ -n "$scheduled" ] || return 0
 	rows=""
+	unasked=""
 	for file in $scheduled; do
 		name=$(basename "$file" .yml)
-		runs=$(gh api "repos/$REPO/actions/workflows/$name.yml/runs?event=schedule&per_page=6" \
-			--jq '.workflow_runs[] | [.conclusion, .created_at, (.id|tostring)] | @tsv' 2>/dev/null) || continue
+		if ! runs=$(gh api "repos/$REPO/actions/workflows/$name.yml/runs?event=schedule&per_page=6" \
+			--jq '.workflow_runs[] | [.conclusion, .created_at, (.id|tostring)] | @tsv' 2>/dev/null); then
+			unasked="${unasked:+$unasked, }$name"
+			continue
+		fi
 		failed=$(printf '%s\n' "$runs" | awk -F'\t' '$1 == "failure" { n++ } END { print n + 0 }')
 		# Below two failed runs no row is possible, and the log reads behind this line cost two
 		# API calls each, so two is also where the spending starts.
@@ -470,6 +504,13 @@ $row"
 			rows="$row"
 		fi
 	done
+	if [ -n "$unasked" ]; then
+		# One row for the pass, in the `due()` shape: a skipped workflow is a REPEAT nobody looked for.
+		row="$(printf '%-32s %-24s %s\n' "repeat-check" "cannot ask" \
+			"CANNOT-ASK: unknown; gh api workflows/<name>.yml/runs failed for: ${unasked}")"
+		rows="${rows:+$rows
+}$row"
+	fi
 	if [ -n "$rows" ]; then
 		printf '%s\n' "$rows"
 	fi
@@ -487,6 +528,7 @@ if [ -n "$once" ]; then
 	case "$s" in
 	RED*) echo "main is RED: ${s#RED }" ;;
 	GREEN*) echo "main is green at ${s#GREEN }" ;;
+	UNKNOWN*) echo "main: UNKNOWN at ${s#UNKNOWN }; gh run list failed, so this pass has no answer for main" ;;
 	*) echo "main: ${s}" ;;
 	esac
 	c=$(cadence)
@@ -501,21 +543,33 @@ if [ -n "$once" ]; then
 fi
 
 prev=""
+prev_unknown=""
 prev_cadence="unknown"
 prev_due="unknown"
 while true; do
 	s=$(state)
 	case "$s" in
+	UNKNOWN*)
+		# Not a transition of RED/GREEN: `prev` keeps the last real answer, so RED then UNKNOWN then
+		# GREEN still announces the recovery, and UNKNOWN then GREEN announces nothing.
+		[ -z "$prev_unknown" ] && echo "main: UNKNOWN at ${s#UNKNOWN } -- gh run list failed; this watcher has no answer for main"
+		prev_unknown=1
+		;;
 	RED*)
+		prev_unknown=""
 		[ "$s" != "$prev" ] && echo "MAIN IS RED at $(echo "$s" | cut -d' ' -f2) -- failing: $(echo "$s" | cut -d' ' -f3-) -- nobody is assigned to this"
 		;;
 	GREEN*)
+		prev_unknown=""
 		case "$prev" in
 		RED*) echo "main recovered at $(echo "$s" | cut -d' ' -f2)" ;;
 		esac
 		;;
 	esac
-	prev="$s"
+	case "$s" in
+	UNKNOWN*) ;;
+	*) prev="$s" ;;
+	esac
 
 	# Recovery is announced here too, and for the reason the header already gives about RED/GREEN: a
 	# watcher that only ever speaks on failure teaches its reader that silence means health, and

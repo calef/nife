@@ -33,6 +33,8 @@ name: trunk health
 #   - **A dead cadence only warns.** See the step's own comment: it is a standing condition rather
 #     than a transient one, and failing on it every five minutes would drown the red-trunk signal
 #     this job exists to carry.
+#   - **An API failure warns and does not fail.** UNKNOWN and `cannot ask` rows annotate the run
+#     (see the step's comment) and exit 0, so a rate limit does not turn into 288 red runs a day.
 #   - **PENDING reads as healthy.** A tip whose checks are still running exits 0 here, because the
 #     alternative is a red workflow every time anything merges. So this watcher is late by however
 #     long CI takes, which it always was.
@@ -121,6 +123,15 @@ jobs:
           case "$out" in
           *DEAD*|*"produced no result"*)
             echo "::warning::a scheduled workflow has stopped producing results (script/cadence-check)"
+            ;;
+          esac
+          # A pass that could not ask is not a pass that found nothing. UNKNOWN (gh run list failed)
+          # and `cannot ask` rows (repeat check, merge watchers, cadence) warn here beside DEAD, for
+          # the same reason DEAD only warns: a rate limit is weather, and failing the job on it would
+          # bury the red-trunk signal. A warning is loud where silence used to read as health.
+          case "$out" in
+          *"main: UNKNOWN"*|*"cannot ask"*)
+            echo "::warning::trunk-health could not ask GitHub for part of this pass; absence of RED, DEAD or REPEAT rows is not health (helpers/trunk-health.sh)"
             ;;
           esac
           # A repeating failure is the other standing condition this script reports, and it warns
