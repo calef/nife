@@ -22,7 +22,7 @@ kept in full above it, unedited, because it was correct on the premise it had.
 Milestone 49's boot-wiring lane traced "not wired into the interactive boot" down to a real
 blocker: `login` needs `credentialer`, which refuses to start without the entropy service
 (DECISIONS §42, no silent degradation), which needs a `Virtio` capability onto a virtio-rng
-device. Neither aarch64's `spawn_init` nor riscv64's `riscv_shell_boot` grants one, and the
+device. Neither aarch64's `spawn_init` nor riscv64's `riscv_shell_boot`, both `boot_progenitor` since milestone 166 (one boot loader), grants one, and the
 interactive boot's QEMU invocation does not attach the device either -- a deliberate, existing
 minimal-device-surface choice (`NIFE_RNG`, like `NIFE_GPU`/`NIFE_KBD`/`NIFE_NVME`, is test-leg
 only). The fork the lane surfaced rather than decided: add virtio-rng to the interactive boot now,

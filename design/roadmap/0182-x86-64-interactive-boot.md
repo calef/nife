@@ -19,7 +19,7 @@ cannot read a monitor.
 
 ## What this needs
 
-1. A real ELF-loading boot entry, matching `spawn_init`/`boot_progenitor`'s shape: parse the
+1. A real ELF-loading boot entry, matching `boot_progenitor`'s shape: parse the
    initrd archive. Measure and verify `init` against the boot's own measurement table (DECISIONS
    §104 (font and palette)'s discipline, the same check the other two architectures' entries already
    make). Build its

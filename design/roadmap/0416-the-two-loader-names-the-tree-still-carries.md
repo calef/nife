@@ -1,5 +1,6 @@
 ---
-status: PARTIAL
+status: BUILT
+built: 2026-10-17
 raised: 2026-09-15
 promoted_from: the-two-loader-names-the-tree-still-carries
 milestone_dependencies: none
@@ -57,37 +58,34 @@ some. The judgments a reader should know:
 - Two deliberate keeps, each with successor and milestone named: `script/lint`'s parity note (it
   explains why the gate covers both ISAs) and `boot_progenitor`'s own provenance clause.
 
-## What remains: the design/ citations, which are a maintainer's
+## The design/ citations, which are a maintainer's
 
-A developer lane does not edit `design/` outside its own block, and 0266's BUGS already assigns
-these citations to a maintainer. The lane enumerated and judged each one so the sweep needs no
-re-derivation:
+A developer lane does not edit `design/` outside its own block, and 0266's BUGS assigned these
+citations to a maintainer, who applied them 2026-10-16 through an assertion-checked list against
+98bea98a7. Re-counted there: 43 lines in `design/` carried the two names before the sweep (27 lines
+of `riscv_shell_boot`, 16 of `spawn_init`, some on both), 36 of them outside this block. 19 lines
+were edited (15 moved or rewritten, 1 in 0120 by ruling, 3 kept with a successor clause: 0177 lines 49, 72 and 74), and the
+rest keep, as judged:
 
-| file | judgment |
+| file | in force |
 |---|---|
-| `decisions/0120` | the entropy refusal's reason names the boot functions of its day; calef's call whether the refusal keeps its day's names or gains the successor in a clause |
-| `roadmap/0049/bugs-found.md` | keeps: past-tense account of the budget raise |
-| `roadmap/0161`/`processes-and-userspace.md` | moves to `spawn_hello`: it is the slot-2 `UART_PHYS` grant the paragraph describes |
-| `roadmap/0166-init-boot-parity.md` | keeps: the rename's own account |
-| `roadmap/0167` | moves to `boot_progenitor` and `spawn_hello`, the hand-built spawns that call `map_physical` today |
-| `roadmap/0177` | lines naming the reachable boot move to `boot_progenitor`; the slot-count lines are old-layout measurements, keep or re-derive, maintainer's call |
-| `roadmap/0182` | drops the dead half of "`spawn_init`/`boot_progenitor`'s shape" |
-| `roadmap/0266` | line 130 keeps (history); the BUGS row naming these citations updates when the sweep lands |
-| `roadmap/0267`/`evidence.md`, `roadmap/0268`/`second-pass.md` | move to `boot_progenitor` |
-| `roadmap/0289` | moves to `boot_progenitor`; line 27's `#[cfg(feature = "shell")]` claim is also false now, the default riscv boot runs it |
-| `roadmap/0295` | line 42 keeps ("was ... then"); lines 155 and 160 move to `boot_progenitor` |
-| `roadmap/0296` | moves to `boot_progenitor` |
-| `roadmap/0301` | keeps: the proposal-as-filed account carries its own mapping clause |
-| `roadmap/0406` | moves to `boot_progenitor`; re-check the "halts before the tour" half while there |
+| `decisions/0120` | calef ruled 2026-10-17: the entropy refusal gains the successor in a clause, "both `boot_progenitor` since milestone 166" |
+| `roadmap/0049/bugs-found.md`, `0166`, `0301`, `0266` line 130, `0295` line 42 | keep: past-tense accounts, the rename's own account, and a proposal as filed |
+| `roadmap/0161`/`processes-and-userspace.md` | names `spawn_hello`, the slot-2 `UART_PHYS` grant |
+| `roadmap/0167` | names `boot_progenitor` and `spawn_hello` |
+| `roadmap/0177` | the reachable-boot lines name `boot_progenitor`; the slot-count lines keep as old-layout measurements, with a clause naming the successor |
+| `roadmap/0182` | drops the dead half |
+| `roadmap/0267`/`evidence.md`, `0268`/`second-pass.md`, `0296`, `0295` lines 155 and 160 | name `boot_progenitor` |
+| `roadmap/0289` | names `boot_progenitor`; line 27's `#[cfg(feature = "shell")]` claim now states the current fact: the default riscv64 boot hands over through `boot_progenitor` after the tour, and the `shell` feature reaches it before |
+| `roadmap/0406` | names `boot_progenitor`; the shell build hands over through `riscv_hand_over` and the boot thread exits the scheduler before the tour, so "halts" was wrong too |
 
 Reuse: none exists (a prose sweep of two dead names; nothing to take or adapt).
 
 ## Follow-on
 
-- **Outstanding.** The `design/` citations in the table above, a maintainer's to apply per 0266's
-  BUGS. Checked 2026-10-15 at 8fad33799f by grep: outside `design/` and the generated census, the
-  two names leave exactly the two deliberate keeps (`script/lint`'s parity note and
-  `boot_progenitor`'s provenance clause), each carrying its successor and milestone.
+- **Recorded.** Nothing is open. Outside `design/` and the generated census, the two names leave exactly
+  the two deliberate keeps (`script/lint`'s parity note and `boot_progenitor`'s provenance clause),
+  each carrying its successor and milestone.
 
 ## BUGS
 
@@ -102,10 +100,8 @@ Reuse: none exists (a prose sweep of two dead names; nothing to take or adapt).
 
 ## Index row
 
-Two function names survive in prose and code comments after the functions themselves are gone.
+Two function names survived in prose and code comments after the functions themselves were gone.
 `riscv_shell_boot`'s one successor is `boot_progenitor` (milestone 166 unified the boot loaders).
 `spawn_init`'s sites split between `boot_progenitor` and `spawn_hello` by which endowment they
-describe. Swept 2026-10-15 everywhere a developer lane may edit: 12 sites rewritten, two old names
-kept deliberately with their successors named. What remains is the citations inside other
-milestones' roadmap blocks and `design/decisions/`, enumerated and judged in the table above for a
-maintainer, per 0266's BUGS.
+describe. Swept everywhere, `design/` included, with past-tense accounts and quotations keeping the
+old name beside a clause naming the successor. `decisions/0120` gained its clause by calef's ruling.
