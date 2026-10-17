@@ -34,7 +34,7 @@ document inside it whose stem is made of the words of one heading of that parent
   word of the stem, articles aside, must be a word of one heading. A stem with a word no heading
   holds was not derived from a heading. The check and the word rules together pull aside 343 of the 507.
 - A stem that breaks a word rule a script can see (`_word_rule`): not lowercase and hyphenated,
-  claims a Unix daemon (`daemon`, a trailing `-d`), or uses a British spelling `helpers/house_style.py`
+  claims the Unix service model (a trailing `-d`, or the word the naming check refuses), or uses a British spelling `helpers/house_style.py`
   lists. The acronym test and the noun test need a reader and are not checked.
 - A stem opening with a digit (a numbered or dated record), everything under `design/roadmap/`, and a
   directory named for an index (`notes/README/`).
