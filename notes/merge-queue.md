@@ -70,6 +70,10 @@ The causes and their comments are in [queue-ejection.md](queue-ejection.md). The
 `helpers/needs-maintainer.jq`, checked by `helpers/needs-maintainer-selftest.sh` against a recorded
 response, and that selftest also fails if the drain arms or enqueues again.
 
+The `unarmed` cause waits out CI. A ready pull request whose head has a `CI` or `verify` run queued
+or in progress is not counted, because the gate-in-CI flow (`briefs/gate-in-ci.md`) leaves it ready
+and unarmed for the whole run by design. The 30 minutes restart when the last of them finishes.
+
 The session-side half is rung three. `briefs/session-start.md` reads
 the `needs-maintainer` listing before anything else, and `helpers/nanny.py` wakes a running
 session when the label lands.

@@ -65,7 +65,7 @@ permissions:
 # though, below, cancellation itself is off.
 #
 # **`cancel-in-progress` is `false`, unlike ci.yml and verify.yml, and deliberately** (briefs/
-# gate-in-ci.md's Step 5 and its BUGS note have the general case: a push closely followed by
+# gate-in-ci.md's BUGS section has the general case: a push closely followed by
 # `ready_for_review` lands two events in one concurrency group, and GitHub cancels the older run,
 # which then shows as a permanent red X indistinguishable from a real failure). ci.yml and verify.yml
 # keep cancelling because they cost 23 to 47 minutes and a superseded run wastes real CI time; this

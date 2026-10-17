@@ -90,7 +90,9 @@ build arbitrates. Arm it only once no run is in flight, and push nothing afterwa
 queued branch removes the pull request from the queue, throws away its group build and cancels
 its auto-merge. The pre-push hook refuses it; see `notes/merge-queue.md`, "A push to a queued
 branch". A ready pull request left unarmed for 30 minutes is labelled `needs-maintainer` for a
-maintainer session to pick up.
+maintainer session to pick up. The 30 minutes count only while no `CI` or `verify` run is queued or
+in progress on its head. They restart when the last one finishes, so the 25 to 47 minutes of CI
+between marking ready and arming do not spend them.
 
 ## Gating while the pull request stays draft
 

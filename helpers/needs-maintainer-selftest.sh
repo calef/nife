@@ -70,7 +70,7 @@ expect "the recorded 2026-10-03T23:54:15Z response decided wrong" \
 
 # 2. Every cause, and every clearing, at 22:00 UTC with a 30-minute grace. #11, #22 and #33 name
 #    an open blocker and #12 only resolved ones.
-want='["1:label:ejected","2:clear","3:clear","4:label:conflict,ejected","5:clear","6:label:unarmed","7:label:unarmed","9:label:unarmed","12:label:unarmed","14:label:conflict","16:clear","20:label:off-main","24:label:red","27:label:red","29:label:red","30:label:stale-draft","32:label:stale-draft","36:keep:stale-draft","39:clear","41:label:unmergeable","42:clear","50:label:budget","51:keep:budget","52:clear","53:label:budget","1555:keep:stale","1556:clear"]'
+want='["1:label:ejected","2:clear","3:clear","4:label:conflict,ejected","5:clear","6:label:unarmed","7:label:unarmed","9:label:unarmed","12:label:unarmed","14:label:conflict","16:clear","20:label:off-main","24:label:red","27:label:red","29:label:red","30:label:stale-draft","32:label:stale-draft","36:keep:stale-draft","39:clear","41:label:unmergeable","42:clear","45:label:unarmed","47:label:unarmed","50:label:budget","51:keep:budget","52:clear","53:label:budget","1555:keep:stale","1556:clear"]'
 got="$(decide "$fx/every-cause.json" 2026-10-03T22:00:00Z '{"11": ["OPEN", "MERGED"], "12": ["MERGED"], "22": ["OPEN"], "33": ["OPEN"]}')"
 if [ "$got" != "$want" ]; then
 	echo "$me: the needs-maintainer decision is wrong." >&2
@@ -103,7 +103,12 @@ if [ "$got" != "$want" ]; then
   50 an open near-budget issue (milestone 808 (every gate accounts for its time)), seen by both
   the issues list and the budget search: budget, once. 51 the same, already labeled: keep.
   52 a closed near-budget issue still labeled: clear. 53 an open near-budget issue older than the
-  issues list reaches, seen only by the budget search: budget.
+  issues list reaches, seen only by the budget search: budget. 43 ready an hour, unarmed, its `CI`
+  run IN_PROGRESS: nothing yet. 44 the same with `verify` QUEUED: nothing yet. 45 the same with CI and
+  verify COMPLETED and only `architect hold` running: unarmed (briefs/gate-in-ci.md: the grace
+  counts once the gating runs are idle). 46 the same, both finished 10 minutes ago: nothing yet,
+  the grace restarts at the last finish. 47 finished 40 minutes ago: unarmed. The check-run shape is the live query's (checked on
+  2026-10-16 against #2236 and #2253).
 EOF
 	exit 1
 fi
@@ -326,7 +331,7 @@ if ! grep -qF '"$(cat "$ELIGIBLE_JQ" "$OQ_JQ" "$NM_JQ")"' "$f"; then
 fi
 for field in 'mergeQueue(branch: "main")' 'position enqueuedAt state' 'mergedAt headRefOid' enqueuedAt mergedAt isDraft baseRefName isCrossRepository \
 	headRefName headRefOid createdAt mergeable body autoMergeRequest REMOVED_FROM_MERGE_QUEUE_EVENT \
-	ADDED_TO_MERGE_QUEUE_EVENT READY_FOR_REVIEW_EVENT AUTO_MERGE_DISABLED_EVENT LABELED_EVENT committedDate beforeCommit \
+	ADDED_TO_MERGE_QUEUE_EVENT READY_FOR_REVIEW_EVENT AUTO_MERGE_DISABLED_EVENT LABELED_EVENT committedDate statusCheckRollup completedAt beforeCommit \
 	'parents(first: 2)' 'search(query: $labelled' 'refs(refPrefix: "refs/heads/"' 'compare(headRef: "main") { behindBy }' \
 	associatedPullRequests 'comments(last: 30) { nodes { createdAt url body } }' 'issues(states: OPEN' \
 	'budget: search(query: $budget' '... on Issue { number state' __typename \
