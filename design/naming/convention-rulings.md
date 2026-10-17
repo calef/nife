@@ -65,6 +65,7 @@ here in the commit that adds it, and until then it is provisional like any other
 
 Covered:
 
+```
 - `carried_capability_client`
 - `carried_capability_server`
 - `confined_syscall_fuzzer`
@@ -89,6 +90,7 @@ Covered:
 - `scratch_window_exerciser`
 - `sink_transcript_writer`
 - `unreachable_network_witness`
+```
 
 What it pulls aside, leaving it provisional. `alto`, `tenor`, `greeting`, `hello`, `noteless`,
 `outlaw`, `chatty` and `flaky`. None names a role in its test: `alto` and `tenor` are two voices of a
