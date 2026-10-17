@@ -259,7 +259,7 @@ applied, stated so it can be disagreed with:
   them. Anyone with a saved transcript, or a script grepping one, sees a different word.
 - References to `spawn_init` and `riscv_shell_boot` remain in `design/` on purpose: past-tense
   accounts and the rename's own record keep the old name beside a clause naming the successor, and
-  `decisions/0120`'s two citations wait for calef (milestone 416 (two loader names the tree still carries) holds the list and the rulings). A
+  `decisions/0120`'s two citations wait for calef. Milestone 416 (two loader names the tree still carries) holds the list. A
   dangling `boot_via_init`, `INIT_ROLES_ENTRY` or `INIT_BOOT_ROLE` would be a defect.
 - `notes/pipes.md` carries a dead path in a fixed-width diagram, `user/src/system_initializer`,
   left because the diagram is aligned and dated. It is the one place a path was knowingly left broken.

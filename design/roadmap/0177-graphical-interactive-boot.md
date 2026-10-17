@@ -46,7 +46,7 @@ and riscv64: *"x86_64 has no shell leg."* That comment's own justification, "the
 on that target at all yet," is stale, since x86_64 has had real userspace running for most of this
 session; the fact itself is not stale, for a narrower and still-current reason). Nothing boots
 straight to a shell prompt on x86_64 today; `kernel/src/user.rs` has no third function beside
-`spawn_init`/`riscv_shell_boot`, both `boot_progenitor` since milestone 166 (one boot loader, reached two inconsistent ways). This is milestone 49 (users, login, and attribution)'s gap as much as this milestone's: neither
+`spawn_init`/`riscv_shell_boot`, both `boot_progenitor` since milestone 166 (one boot loader). This is milestone 49 (users, login, and attribution)'s gap as much as this milestone's: neither
 currently plans it.
 
 This milestone was originally scoped as three joined pieces; **the third split off as its own
@@ -69,7 +69,7 @@ A lane investigated all three pieces before writing code, and reverted the one p
 
 **Finding 1: `BootEndowment` has no room for GPU/keyboard grants as piece 1 describes them
 (mechanical, not a fork).** Counted the actual slots rather than assumed them: aarch64's
-`spawn_init` (now `boot_progenitor`, milestone 166; the table has grown to 32 slots since) (`fixtures/src/hello.rs`'s `init_boot`) fills capability-table slots 0-11 of 16 already
+`spawn_init` (now `boot_progenitor`; the table has 32 slots today) (`fixtures/src/hello.rs`'s `init_boot`) fills capability-table slots 0-11 of 16 already
 (`untyped`, the report endpoint, `uart_dev`, the test IRQ, `uart_irq`, `clock_page`, `config_page`,
 `fs_ep`, `fs_page`, the virtio-rng trio); 3 free. riscv64's `riscv_shell_boot` (likewise) fills 0-9; 5 free. A
 virtio-gpu device needs 11 (`display_service.rs`'s own shape: transport, irq, and a nine-page DMA
