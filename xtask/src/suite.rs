@@ -20,7 +20,9 @@ use crate::host::{
     cargo, cargo_test_counting_selected, flag_value, run, runner_env, selected_by, workspace_root,
 };
 use crate::inbound::InboundProber;
-use crate::scanout::{HostLoad, ScanoutReferee, cargo_test_with_scanout_check};
+use crate::scanout::{
+    HostLoad, ScanoutReferee, cargo_test_with_scanout_check, cargo_test_with_scanout_only,
+};
 use crate::uefi::{uefi_boot, uefi_test};
 use crate::{RELEASE, RISCV_TARGET, RUNNER, TARGET, X86_TARGET, time_record, user};
 
@@ -800,9 +802,8 @@ fn x86_64_suite(filtered: bool) -> bool {
         &time_record::leg("x86_64"),
         "kernel",
         &["test", "-p", "kernel", "--target", X86_TARGET],
-    ) || !time_record::cargo_test(
-        &time_record::leg("x86_64"),
-        "system_tests",
+    ) || !cargo_test_with_scanout_only(
+        "x86_64",
         &["test", "-p", "system_tests", "--target", X86_TARGET],
     ) {
         return false;
@@ -914,9 +915,8 @@ fn x86_64_on_amd_vi() -> bool {
         &time_record::leg("x86_64"),
         "kernel",
         &["test", "-p", "kernel", "--target", X86_TARGET],
-    ) && time_record::cargo_test(
-        &time_record::leg("x86_64"),
-        "system_tests",
+    ) && cargo_test_with_scanout_only(
+        "x86_64",
         &["test", "-p", "system_tests", "--target", X86_TARGET],
     );
     // Removed whether or not it passed, so every later boot gets the VT-d machine.
@@ -996,10 +996,19 @@ fn hvf_both_images(filtered: bool) -> bool {
 fn filtered_leg(arch: &str, target: &str) -> bool {
     let mut selected = 0;
     for package in ["kernel", "system_tests"] {
+        // **The system image runs with the referee beside it, verdict dropped.** The referee is also
+        // what presses the key the keyboard test waits for (`sendkey` over the monitor), so a filter
+        // that selects that test failed it in ten seconds on every ISA for want of a finger. Its
+        // scanout verdict is advisory under a filter (the tests that paint may not be selected), so
+        // it is never reported; only the key matters here.
+        let referee = (package == "system_tests").then(|| ScanoutReferee::new(arch));
+        let (running, watcher) = watch_the_scanout(referee);
         let (ok, n) = cargo_test_counting_selected(
             &["test", "-p", package, "--target", target],
             &format!("{} {package}", time_record::leg(arch)),
         );
+        running.store(false, Ordering::Relaxed);
+        let _ = watcher.join();
         if !ok {
             return false;
         }

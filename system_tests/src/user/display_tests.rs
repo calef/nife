@@ -41,16 +41,15 @@ fn a_confined_userspace_driver_puts_a_known_pattern_in_a_framebuffer() {
     let threads_before = sched::thread_count();
 
     // **A missing GPU is not always the build-order mistake this test exists to catch.** On the
-    // `virt` boards (aarch64, riscv64) a real virtio-gpu-pci function is always wired into the
-    // test runner, so `start` returning `None` there really is a build-order bug. On x86_64's
-    // `q35`, PCI enumeration (milestone 165, ACPI's MCFG) reaches real hardware windows the
-    // runner has never populated with a GPU (`helpers/qemu-runner-x86_64.sh` wires no
-    // `virtio-gpu-pci`), so `None` there is an honest, expected gap rather than a bug.
+    // `virt` boards (aarch64, riscv64) and on x86_64's PVH runner a virtio-gpu-pci function is
+    // always wired into the test runner, so `start` returning `None` there really is a build-order
+    // bug. The one boot without a GPU is x86_64 under OVMF (`helpers/qemu-uefi-x86_64.sh` attaches
+    // none), so `None` there is an honest, expected gap rather than a bug.
     let Some((driver_report, client_report)) = display_service::start(gpu_driver, painter) else {
         crate::testing::skip!(
             "no virtio-gpu-pci function on the bus: either this kernel enumerated no PCI at all, \
-             or (x86_64) the test runner has never wired a GPU device onto the bus it does \
-             enumerate; see notes/x86-port.md"
+             or (x86_64 under OVMF) the firmware runner attaches no GPU; see \
+             design/roadmap/0420-the-rest-of-the-x86-64-fixture-set.md"
         );
     };
 
