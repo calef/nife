@@ -1,6 +1,7 @@
 ---
-status: PARTIAL
+status: BUILT
 raised: 2026-10-06
+built: 2026-10-17
 promoted_from: the-kernel-suite-reports-what-each-test-cost
 milestone_dependencies: none
 decision_dependencies: 254
@@ -197,7 +198,7 @@ provisional.
 | 1 | the record on three architectures, the per-job file, a parser host test | met: run 37650753759 recorded every image of aarch64, riscv64 and x86_64 (PVH, AMD-Vi, root port and OVMF); `crates/test_times` has the round trip and the refusals |
 | 2 | the artifact and step summary from a merge-group run, with no gaps | met on a dispatched run (37650753759); the gap check fails the leg otherwise. The first merge-group run follows the merge |
 | 3 | the cross-check holds everywhere, and a host test proves it can fail | met: guest over host was 0.97 to 1.00 on every PVH image and 0.65 and 0.80 under OVMF; `the_clock_check_fails_when_the_guest_and_host_disagree` |
-| 4 | the notes page over ten or more merge-group runs | **not met**: those runs exist only after the merge. See Follow-on |
+| 4 | the notes page over ten or more merge-group runs | met: `notes/kernel-suite-time.md` reads 30 merge-group runs by id. It says plainly what it cannot explain: nothing before 2026-10-15 was recorded, and about 22 s of the riscv64 suite's growth since 2026-10-06 is unattributed |
 | 5 | the calendar waits fixed or refused; the display test explained | met. The calendar test fell from 10.5 s to 2.4 to 2.7 s with #1779. The display test is below |
 
 ## What the first record says
@@ -232,10 +233,7 @@ Run 37650753759, one run, so a premise check and not a baseline:
 
 ## Follow-on
 
-- **Outstanding.** The notes page (exit criterion 4): medians per test and per module on each
-  architecture over ten or more merge-group runs, read from their `time-record-*` artifacts and
-  cited by run id, and what the riscv64 growth since 2026-09-20 consists of. It needs those runs,
-  which start with this pull request's merge.
+- **Done.** The notes page (exit criterion 4): `notes/kernel-suite-time.md`.
 
 ## Index row
 
