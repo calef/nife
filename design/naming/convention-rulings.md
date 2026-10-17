@@ -60,7 +60,7 @@ The proposal and his reply:
 calef: "Yes"
 
 What it covers. The 24 programs under `fixtures/src/` listed below. The list is explicit because
-"names a role" is a judgement a pattern would guess at. A new fixture is covered by adding a bullet
+"names a role" is a judgment a pattern would guess at. A new fixture is covered by adding a bullet
 here in the commit that adds it, and until then it is provisional like any other new name.
 
 Covered:

@@ -12,7 +12,7 @@ ratified, citing the rule, so the worklist shrinks by the rule and not by someon
 the tree, because 600 stems cannot be listed and a list would rot: a directory beside `X.md` takes
 its parent's stem by construction, and a document inside it is covered when its stem matches a
 heading of the parent (`_matches_heading`). Rule 2 is an explicit list in the rulings page, one
-backticked name per bullet, because "names a role" is a judgement and a pattern would guess.
+backticked name per bullet, because "names a role" is a judgment and a pattern would guess.
 
 **What stays provisional is the point of the checks.** A stem that matches no heading, or breaks a
 word rule that a script can see (`_word_rule`), is pulled aside and keeps its own status. So are
@@ -192,16 +192,16 @@ def _selftest():
         "- `role_one`", "- `role_two`", "- `ghost`"]))
     assert rules["Rule 2"]["covered"] == ["role_one", "role_two", "ghost"], rules
     assert rules["Rule 1"]["not_covered"] == ["notes/coes"], rules
-    tree = {"notes/x.md": "# X\n## The loader\n## The catalogue\n## Limitations and BUGS\n",
+    tree = {"notes/x.md": "# X\n## The loader\n## The zorbspell\n## Limitations and BUGS\n",
             "notes/x/the-loader.md": "", "notes/x/limitations.md": "",
-            "notes/x/elsewhere.md": "", "notes/x/the-catalogue.md": "",
+            "notes/x/elsewhere.md": "", "notes/x/the-zorbspell.md": "",
             "notes/coes.md": "# C\n## Report\n", "notes/coes/report.md": "",
             "notes/y/orphan.md": ""}
-    cov, pulled = appendix_coverage(sorted(tree), tree.get, rules["Rule 1"], ["catalogue"])
+    cov, pulled = appendix_coverage(sorted(tree), tree.get, rules["Rule 1"], ["zorbspell"])
     assert "notes/x/" in cov and "notes/x/the-loader.md" in cov, cov
     assert "notes/x/limitations.md" in cov, "a shortened heading is still its words"
     assert "no heading" in pulled["notes/x/elsewhere.md"], pulled
-    assert "British" in pulled["notes/x/the-catalogue.md"], "a word-rule break is pulled aside"
+    assert "British" in pulled["notes/x/the-zorbspell.md"], "a word-rule break is pulled aside"
     assert not any(k.startswith(("notes/coes", "notes/y")) for k in list(cov) + list(pulled))
     def rec(kind, name, path, status="provisional"):
         return {"kind": kind, "name": name, "path": path, "status": status, "date": None}
