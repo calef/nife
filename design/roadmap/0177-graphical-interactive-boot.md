@@ -46,7 +46,7 @@ and riscv64: *"x86_64 has no shell leg."* That comment's own justification, "the
 on that target at all yet," is stale, since x86_64 has had real userspace running for most of this
 session; the fact itself is not stale, for a narrower and still-current reason). Nothing boots
 straight to a shell prompt on x86_64 today; `kernel/src/user.rs` has no third function beside
-`spawn_init`/`riscv_shell_boot`, both `boot_progenitor` since milestone 166. This is milestone 49 (users, login, and attribution)'s gap as much as this milestone's: neither
+`spawn_init`/`riscv_shell_boot`, both `boot_progenitor` since milestone 166 (one boot loader). This is milestone 49 (users, login, and attribution)'s gap as much as this milestone's: neither
 currently plans it.
 
 This milestone was originally scoped as three joined pieces; **the third split off as its own
