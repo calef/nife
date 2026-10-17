@@ -143,7 +143,7 @@ roadmap or merge queue; each row applies that test.
 | vendor-verify, vendor-watch | drop | No vendored code |
 | toolchain drift and bump | adapt | A weekly build on the newest stable and beta replaces the nightly pin |
 | MSRV build | new | The stated `rust-version` builds; nife has no MSRV to check |
-| semver check | adapt | cargo-semver-checks against the last release stands in for milestone 610 |
+| semver check | adapt | cargo-semver-checks against the last release stands in for milestone 610 (the interface's stability is measured weekly) |
 | `script/crate-standalone` | adapt | Its citation and file checks run in the repository, keeping nife's vocabulary out |
 | file-length ratchet, 2,000 lines | keep | The same limit on Rust files |
 | comment-block ratchet | keep | Same rule |
