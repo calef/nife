@@ -68,12 +68,12 @@ Between the 2026-10-06 scrape (320 `system_tests`, 129.0 s) and these runs (391 
 - **`package_index_tests`, about 20 s.** One test, added on 2026-10-09 (`git log` for the file). It did not exist at the scraped commit. It takes 19 to 20 s on all three architectures, so it is wall time, not emulation. It is the largest single cause and it is not riscv64-specific.
 - **`riscv_virtio_tests`, about 15 s.** The module went from 14.8 s (31 tests at the scraped commit) to 30.3 s (32 tests). One added test cannot account for a doubling, and the record does not say which test grew. Unexplained.
 - **`compositor_tests`, about 7 s.** 24.5 s over 11 tests became 31.7 s over 12.
-- **`login_user_schedule_tests`, 12.8 s.** Not among the scrape's five heaviest modules, so no baseline.
-- **Falls.** `timetable_tests` fell from 12.2 s to 4.2 s, which is consistent with the calendar test's two five-second waits removed in PR #1779. `login_tests` fell from 18.0 s to 4.8 s; I did not find why.
+- `login_user_schedule_tests`, 12.8 s. Not among the scrape's five heaviest modules, so no baseline.
+- Falls. `timetable_tests` fell from 12.2 s to 4.2 s, which is consistent with the calendar test's two five-second waits removed in PR #1779. `login_tests` fell from 18.0 s to 4.8 s; I did not find why.
 
 ## What this does not explain
 
-- **Nothing before 2026-10-15 was recorded.** The growth from 358 to 457 tests and from 47 to 110 s that began on 2026-09-20 cannot be split by test or module from this data. Only the 10-06 to 10-17 slice above can, and only against a scrape of a different kind.
-- **About 22 s of the 56 s is unattributed.** The named modules net to about +34 s: +20, +15, +7 and +13 for the modules above, less the 8 s and 13 s falls. The rest is spread across the other modules and visible in none.
-- **Thirty runs span 24 hours.** They share runner pool conditions that a different day may not. The `rva23s64` model's median is 9 s above its siblings, though its fastest run (183.6 s) matches them, so some of its runs are slow and the record does not say why.
-- **The x86_64 suite varies most.** Its suite phase ranged from 105 s to 139 s. The riscv64 suite ranged from 183 s to 205 s.
+- Nothing before 2026-10-15 was recorded. The growth from 358 to 457 tests and from 47 to 110 s that began on 2026-09-20 cannot be split by test or module from this data. Only the 10-06 to 10-17 slice above can, and only against a scrape of a different kind.
+- About 22 s of the 56 s is unattributed. The named modules net to about +34 s: +20, +15, +7 and +13 for the modules above, less the 8 s and 13 s falls. The rest is spread across the other modules and visible in none.
+- Thirty runs span 24 hours. They share runner pool conditions that a different day may not. The `rva23s64` model's median is 9 s above its siblings, though its fastest run (183.6 s) matches them, so some of its runs are slow and the record does not say why.
+- The x86_64 suite varies most. Its suite phase ranged from 105 s to 139 s. The riscv64 suite ranged from 183 s to 205 s.
