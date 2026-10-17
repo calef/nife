@@ -77,13 +77,25 @@ The system log and compositor targets found nothing in two minutes each.
 
 ## What CI pays
 
-The CI `fuzz` job runs `script/fuzz --time 60`, so each target adds a minute of fuzzing: three
-minutes for the three. Building them, measured locally into an empty target directory, took 8 s on
-top of the 24 s the six parser targets took, almost all of it the RedoxFS engine. A runner is
-slower; at three times this machine the build adds under half a minute. So the job grows by about
-3.5 minutes, from milestone 721 (each merge-group CI job has a 20-minute budget)'s 7.0-minute median
-to about 10.5, against the 20-minute budget. The first merge-group runs with these targets are the
-measurement that settles it.
+The CI `fuzz` job runs `script/fuzz --time 60`, so each target adds a minute of fuzzing. It runs
+ten targets (`script/fuzz --list`): seven parsers and the three service handlers. Building the three
+service targets, measured locally into an empty target directory, took 8 s on top of the 24 s the
+parser targets took, almost all of it the RedoxFS engine.
+
+Measured on 2026-10-17 (UTC) from the 29 most recent merge-group runs of `ci.yml` in which the job ran
+(runs where it was skipped are left out). The figure is the job's own time, from runner start to
+completion, so it excludes queueing: **median 712 s (11.9 minutes), range 678 s to 744 s**. Against the
+20-minute budget (`timeout-minutes: 25`) that is 8.1 minutes of headroom, and the spread is 66 s, so
+the job is dominated by the ten fixed minutes of fuzzing plus about two of setup and build, not by
+anything that varies from run to run. Run ids: 39044362921, 39044296578, 39042260802, 39041012695,
+39031958289, 39026018093, 39024963403, 39022703071, 39008645871, 39004167669, 39003594045,
+39002671195, 39002638565, 39000567580, 38999427449, 38997281221, 38997118765, 38994400601,
+38994366541, 38993833063, 38976866787, 38976812950, 38975708023, 38973117762, 38970563790,
+38969976716, 38934238212, 38934234595, 38932206821.
+
+What this does not say: the 29 runs are all from the last day and ran on whatever runners GitHub
+assigned, so a slower runner pool on another day is not covered; and the figure is the job with ten
+targets, not with the three alone. One more target adds one minute.
 
 ## What the other handlers need
 
