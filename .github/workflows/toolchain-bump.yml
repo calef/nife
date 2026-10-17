@@ -586,7 +586,7 @@ jobs:
             gh pr merge "$branch" --auto --merge || echo "::warning::could not arm the pull request"
           fi
 
-  # **Propose a Kani pin bump daily; never apply one** (milestone 795). The same three steps as the
+  # **Propose a Kani pin bump daily; never apply one** (milestone 795 (pin stock Kani to a version, bumped deliberately like the nightly)). The same three steps as the
   # nightly, for the other input to the proofs that used to move by itself: this job runs
   # `script/kani-bump`, which changes `.kani-version` and nothing else, and opens the pull request;
   # `verify` on that pull request is the proof run on the new Kani; the default is to merge

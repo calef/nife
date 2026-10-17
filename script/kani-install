@@ -3,7 +3,7 @@
 #
 # Every stock-Kani install in the tree goes through here (verify.yml, kani-reach.yml,
 # falsifications.yml, script/verify), so the prover cannot move because a release landed on
-# crates.io while nife did not (milestone 795). `script/lint` fails on any other
+# crates.io while nife did not (milestone 795 (pin stock Kani to a version, bumped deliberately like the nightly)). `script/lint` fails on any other
 # `cargo install ... kani-verifier` outside this file and `script/kani-bump`.
 #
 # An installed cargo-kani at any other version is replaced, loudly, never kept: a proof run on a
