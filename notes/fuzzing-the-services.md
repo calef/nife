@@ -82,8 +82,8 @@ ten targets (`script/fuzz --list`): seven parsers and the three service handlers
 service targets, measured locally into an empty target directory, took 8 s on top of the 24 s the
 parser targets took, almost all of it the RedoxFS engine.
 
-Measured on 2026-10-17 (UTC) from the 29 most recent merge-group runs of `ci.yml` in which the job ran
-(runs where it was skipped are left out). The figure is the job's own time, from runner start to
+Measured on 2026-10-17 (UTC) from the 29 most recent merge-group runs of `ci.yml` in which the job
+ran. Runs where it was skipped are left out. The figure is the job's own time, from runner start to
 completion, so it excludes queueing: **median 712 s (11.9 minutes), range 678 s to 744 s**. Against the
 20-minute budget (`timeout-minutes: 25`) that is 8.1 minutes of headroom. The spread is 66 s. The
 job is dominated by the ten fixed minutes of fuzzing plus about two of setup and build, not by
