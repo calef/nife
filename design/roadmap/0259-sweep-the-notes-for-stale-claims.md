@@ -6,7 +6,7 @@ built: 2026-09-05
 # 259. Sweep `notes/` for claims that stopped being true, because the gate cannot see them
 
 Built. It is the other half of milestone 385 (when a milestone's status flips, tell the lane which
-notes cite it), which catches the notes that cite a milestone and says plainly that the notes which
+notes cite it). It catches the notes that cite a milestone and says plainly that the notes which
 cite nothing are the worse half.
 
 ## Why a sweep rather than a check
@@ -16,8 +16,8 @@ is the shape of the worst instance found so far, and it is inherent: a negative 
 so no citation gate can hang off it. Detecting negative claims in prose is the `git grep -w TODO`
 experiment again, which AGENTS.md prices at an 82% false-positive rate.
 
-But a signal useless as a gate is fine as a worklist, and that is the whole reason this is a
-milestone and not a lint. 82% false positives fails rung two and is perfectly serviceable for
+But a signal useless as a gate is fine as a worklist, and that is the reason this is a
+milestone and not a lint. 82% false positives fails rung two and is serviceable for
 ranking 175 files a person is going to read. The heuristic the check must refuse is the heuristic
 this sweep should use.
 
@@ -72,7 +72,7 @@ against the tree. Do not read 63,000 lines in order.
 
 Rank the deep reads by how load-bearing the claims are, not by age. A note a newcomer meets
 early, or one that tells a reader what the system cannot do, outranks a note about a subsystem's
-internals, because AGENTS.md's third principle is that a stranger must reach a correct mental model
+internals. AGENTS.md's third principle is that a stranger must reach a correct mental model
 without asking anyone.
 
 **Check claims against the tree, not against memory.** Every stale claim found so far was found by
@@ -105,9 +105,9 @@ kind of note or one kind of sentence, that finding is worth more than the correc
 | **found stale** | 66 | 64 notes plus `fuzz/seeds/README.md` and one deleted test file |
 | left alone, deliberately | 109 | correct as written, or held by another lane, or historical by design |
 
-The corrections, by kind. 262 dead citations (a crate, a file or a Rust path renamed away); 8
+The corrections, by kind. 262 dead citations (a crate, a file or a Rust path renamed away). 8
 capability claims falsified by a milestone (single core, revocation, `|`, real hardware, the std
-gap tables); 6 rows of a ranked gap list that a milestone had closed; 4 conditions under a security
+gap tables). 6 rows of a ranked gap list that a milestone had closed; 4 conditions under a security
 audit; 3 first-light cells; 1 restored test.
 
 Held by another lane and reported rather than edited: `notes/visionfive2.md`,
@@ -117,7 +117,7 @@ block, and re-reading it after the merge found nothing further.
 
 Left alone and worth naming as coverage rather than as a gap. The five oldest notes,
 `mmu.md`, `registers.md`, `uart.md`, `page-tables.md` and `higher-half.md`, were read and are
-correct, exactly as this block predicted. So is `net.md`, which is the model answer: its
+correct, exactly as this block predicted. So is `net.md`, which is the model answer. Its
 "not proven by the gate" paragraph is dated *"when this was written"* and followed immediately by
 **"Milestone 107 built exactly that, and the paragraph above is kept as the record of the gap rather
 than edited away."* That is the shape every other stale paragraph should have had.
@@ -144,8 +144,8 @@ Every non-mechanical instance had it.
 Why it recurs is structural rather than careless. A person fixing a fact opens the file at the
 fact. A framing sentence is upstream of it, an index entry is in a different file, and a closing
 aside is past where anybody scrolls. §76 named the same defect in the roadmap ("a status fixed where
-somebody happened to look and left wrong where they did not"); this is that one directory over, and
-the practical rule that falls out is small: when you correct a fact in a note, re-read that note's
+somebody happened to look and left wrong where they did not"); this is that one directory over. The
+practical rule that falls out is small: when you correct a fact in a note, re-read that note's
 first paragraph, its last paragraph, and its `notes/README.md` entry. Three places, all cheap.
 
 ## The second finding: 262 of the corrections were a gate nobody had written
@@ -230,11 +230,11 @@ the other half of the stale-notes proposal: a page saying "there is no networkin
 so no check can catch it. 175 notes read and classified 46 concept / 129 state, 66 found stale,
 109 left alone. **The recurring shape is that a note gets corrected where its subject lives and
 not where its framing does**: `capability-lifecycle.md`'s revocation section said BUILT while its
-own opening paragraph said "cannot yet be revoked", and `target-hardware.md` carried a recast
+own opening paragraph said "cannot yet be revoked". And `target-hardware.md` carried a recast
 banner over a plan section still naming a Pi 4 as the next port. So the rule is three cheap
 places, the first paragraph, the last paragraph and the `notes/README.md` entry. 262 of the
 corrections were one mechanical shape a gate should own, a backticked in-tree path that no
-longer resolves, which every check here passes because it is neither a markdown link nor a `§N`;
-proposed, with the trap that a crate is named three ways and a one-spelling check reports a clean
+longer resolves, which every check here passes because it is neither a markdown link nor a `§N`.
+It was proposed, with the trap that a crate is named three ways and a one-spelling check reports a clean
 tree. It also found a deleted test: `crates/elf/tests/fuzz_seed.rs` went away in a commit about `p_paddr` that never mentions it, and two documents described the guard in the present tense for
 five days

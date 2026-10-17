@@ -33,7 +33,7 @@ over: `design/roadmap/proposals/` holds 81 unnumbered proposals and nothing on t
 them. That is not an omission anyone made. `milestones()` matches index rows in
 `design/roadmap/README.md` and keys on a milestone NUMBER, and a proposal is defined by not having
 one (milestone 247, follow-on work named by a finished milestone goes nowhere, and this is the third
-time), so the pile is invisible to that count by construction. The three `proposals/` strings in that
+time). The pile is invisible to that count by construction. The three `proposals/` strings in that
 README are links inside other blocks' prose, not rows.
 
 It belongs here rather than in a milestone of its own for the reason the naming columns do:
@@ -57,7 +57,7 @@ wrong. That is recorded in `BUGS` below and argued on the page.
 
 **The data is spread across every named thing, not in one index file.** `milestones()` and
 `decisions()` each parse a single README. Naming provenance lives *at the name* (milestone 115's
-whole design: the crate header that would carry a refusal is what a proposer actually reads), so the
+whole design: the crate header that would carry a refusal is what a proposer actually reads). The
 computation has to read every program, crate, package manifest and `script/` entry point in that
 week's tree. `script/metrics` already streams a whole tree's blobs in one `git cat-file --batch`, so
 the machinery exists; the cost is the enumeration, not the reading.
@@ -67,7 +67,7 @@ The early weeks will read as zero, and that is an artifact rather than a fact. T
 (2026W32). So three weeks of this series would show no ratified names, not because nothing was
 ratified but because the convention that records ratification had not been invented. `script/metrics`'
 own header already warns that *"every row is a RESTATEMENT, not a report... regenerated from git
-history by applying TODAY's definitions to old commits"*; this series is the sharpest instance of that
+history by applying TODAY's definitions to old commits"*. This series is the sharpest instance of that
 hazard in the file, and the page should say so where those weeks are rendered rather than leave a
 reader to infer a trend from a convention's birth.
 
@@ -108,7 +108,7 @@ The parse is shared rather than copied (`helpers/name_provenance.py`, a provisio
 is milestone 236's (three derivations are copied between scripts, and nothing notices when they
 drift) rule applied the moment the dashboard became a second reader of these blocks. `script/names`
 keeps its file walk and `script/metrics` keeps its `git ls-tree`, because a gate is asked about the
-tree in front of it and a report is asked about eight revisions nobody has checked out; that is the
+tree in front of it and a report is asked about eight revisions nobody has checked out. That is the
 same line `helpers/rust_source.py` already draws. `script/names`' output is byte-identical on every
 mode, checked against the pre-refactor run on stdout and stderr both.
 
@@ -126,8 +126,8 @@ so the three pre-115 weeks show a tree with 119 named things and no provenance r
 empty bars, which this page's own rule would otherwise read as "no data".
 
 The band found something the block did not predict. It survives two weeks past milestone 115 and
-is exactly seven names, all of them Cargo packages: milestone 115 covered three surfaces and a
-package was not one, the `package` kind closed the hole on 2026-08-18, and this series reproduces the
+is exactly seven names, all of them Cargo packages. Milestone 115 (the names ratified and refused) covered three surfaces and a
+package was not one; the `package` kind closed the hole on 2026-08-18, and this series reproduces the
 hole and its closing without being told about either.
 
 And a bug, found by running the thing. `script/metrics --backfill` dropped the `coverage_lines_pct`
@@ -145,7 +145,7 @@ accumulates. Its parse is shared the same way (`helpers/roadmap_proposals.py`, a
 The premise that it is a one-way queue is false, and the checking is the useful part. Five
 proposals have left the directory, so 86 have been written and 81 remain. One was promoted to a
 number the ordinary way (milestone 256, x86_64 places PCI BARs in a hardcoded window, and on xenon
-that window is RAM); the rest were done, by a lane that picked the file up and fixed the thing,
+that window is RAM). The rest were done, by a lane that picked the file up and fixed the thing,
 twice filing a narrower proposal in its place. So the column is a NET count over a gross flow, and a
 flat line on it would be consistent with a stalled pile and equally consistent with one draining as
 fast as it fills.

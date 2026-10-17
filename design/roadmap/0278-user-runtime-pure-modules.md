@@ -13,7 +13,7 @@ A packaging change. Nothing here is a design fork, and it is reversible: the mod
 move back by moving the files back.
 
 **In brief.** `crates/user_rt` is excluded from the host pass, from coverage, from mutation and from
-Kani, and correctly so: it is the EL0 syscall floor, and `svc` on a machine with no nife kernel
+Kani, and correctly so. It is the EL0 syscall floor, and `svc` on a machine with no nife kernel
 under it is a fault rather than a syscall. The exclusion is crate-level. Two of the crate's
 modules make no syscall at all, and they inherit the exclusion because of the file they are declared
 in.
@@ -82,10 +82,10 @@ a name had been refused. Read before sweeping.
 
 ## The refusals, which are the valuable half
 
-- Make the runtime a program. Refused on a bootstrapping impossibility rather than on taste:
-  `invoke` *is* `svc`/`ecall`, and IPC is built on it, so a program that had to send a message to
+- Make the runtime a program. Refused on a bootstrapping impossibility rather than on taste.
+  `invoke` *is* `svc`/`ecall`, and IPC is built on it. So a program that had to send a message to
   reach the syscall layer would need the syscall layer to send the message. The upper modules escape
-  that circle and still lose, for the opposite reason: they make no syscalls, so routing them
+  that circle and still lose, for the opposite reason. They make no syscalls, so routing them
   through a server would add syscalls to code that has none, and a `GlobalAlloc` that performs IPC
   per allocation is its own disaster. In a capability system the program already holds its budget;
   there is nothing for a server to arbitrate.
@@ -122,7 +122,7 @@ a name had been refused. Read before sweeping.
 ## Index row
 
 `crates/user_rt` is excluded from the host pass, coverage, mutation and Kani because it is
-the EL0 syscall floor, and the exclusion is crate-level: `mapped_window` (176 lines, 29 consumers)
+the EL0 syscall floor. The exclusion is crate-level: `mapped_window` (176 lines, 29 consumers)
 and `initial_ramdisk` (60 lines) make no syscall at all and inherit it from the file they are declared
 in. `MappedWindow`'s one-line bounds check with an overflow guard stands behind 29 call sites and
 cannot be reached by a prover; the crate has zero harnesses. Milestone 191's finding one scale
