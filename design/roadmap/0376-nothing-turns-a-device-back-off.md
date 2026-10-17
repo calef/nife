@@ -19,9 +19,9 @@ gate is decided:
 [§304 (who may turn a device off)](../decisions/0304-who-may-turn-a-device-off.md), 2026-10-15:
 measure before building. This milestone's next work is the bench run, radon with the STG domain
 ungated and gated, the power difference recorded. What gets built, if anything, is considered
-against that number; the kernel-reclaim shape (per-job off
+against that number. The kernel-reclaim shape (per-job off
 [§40 (a supervisor's death is its subtree's death)](../decisions/0040-no-reaper-of-last-resort.md),
-refcounted per shared line, no new surface) is the named candidate, and no capability variant
+refcounted per shared line, no new surface) is the named candidate. No capability variant
 appears without a driver that needs one.
 
 The mechanism is small; the authority question is ruled. No capability variant in the category
@@ -75,7 +75,7 @@ forever with nothing able to reclaim it. On a board with one TRNG that costs not
 the same SoC's USB, PCIe and DMA blocks it is the whole of device power management. The lane
 refused to just add the inverse, for a reason in the hardware: the JH7110's TRNG reset is documented
 as shared, the same line resets the PL080 DMA engine, so "turn my device off" is "reset a block my
-neighbor is using", and the refcounting Linux gets from its clock framework does not exist here.
+neighbor is using". The refcounting Linux gets from its clock framework does not exist here.
 Three questions make it calef's. Who may gate a clock, since a teardown a driver can ask for is a
 different question from a controller a driver can hold and the first may need no new syscall
 surface. What the unit of reclamation is, per-device with a refcount or per-job off §40's subtree

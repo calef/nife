@@ -13,10 +13,10 @@ needs_person: no
 Filed 2026-09-12 as an unnumbered proposal from milestone 278's block,
 which touches all four lists and would have made it five; numbered 2026-09-19 by milestone 433's
 drain of the proposal pile. Premise re-read against the tree on 2026-09-19 and still true, all
-four still present: `script/lint` carries `--exclude user_mode_runtime` and its siblings by hand
+four still present. `script/lint` carries `--exclude user_mode_runtime` and its siblings by hand
 in two clippy invocations (lines 41 and 120) *and* derives the same set for its own gate (line 812,
-"the host pass excludes exactly the bare-metal crates"); `xtask/src/main.rs` carries the list twice
-(lines 5133 and 5789); `script/coverage` carries it twice (lines 70 and 100); and
+"the host pass excludes exactly the bare-metal crates"). `xtask/src/main.rs` carries the list twice
+(lines 5133 and 5789). `script/coverage` carries it twice (lines 70 and 100). And
 `.cargo/mutants.toml` still says in its own head comment that its list "deliberately mirrors
 script/coverage's exclusions". One place derives it and the rest restate it, which is the whole
 block. *(Number provisional until the merge queue lands it.)*
@@ -36,7 +36,8 @@ This has already broken once, and the way it broke is the argument. The exclusio
 an aarch64 runner the same day, where the EL0 assembly compiles by accident. `script/lint`'s own
 header records that, and the derived check it now runs is the repair.
 
-Milestone 244 then found the repair had covered **two consumers, not four**, and that the two it had
+Milestone 244 (the largest crate in the tree is proved by nothing a mutation can reach) then found
+the repair had covered **two consumers, not four**. The two it had
 missed are the two that publish a number: coverage and mutation. `.cargo/mutants.toml` says in its
 own head comment that its list "deliberately mirrors script/coverage's exclusions" and asks the next
 person to keep the two in step. That is rung four of the ladder, in a file whose output is quoted in
@@ -83,14 +84,14 @@ milestone 278's argument is that the *boundary* is in the wrong place, not that 
 ## Index row
 
 A crate that reaches `crates/user_mode_runtime` cannot compile for the host, because `svc` and
-`ecall` from EL0 on a machine with no nife kernel under it are a fault, and four separate files
+`ecall` from EL0 on a machine with no nife kernel under it are a fault. Four separate files
 record which crates those are: `script/lint`'s two clippy invocations, `xtask`'s `test`,
 `script/coverage`'s exclusions and `.cargo/mutants.toml`'s. `script/lint` asks cargo; the other
-three carry a list. This has already broken once and the way it broke is the argument: the exclusion
+three carry a list. This has already broken once and the way it broke is the argument. The exclusion
 set went wrong on 2026-08-03 and stayed wrong until 2026-08-14, invisible for eleven days, because
 CI had moved to an aarch64 runner the same day, where the EL0 assembly compiles by accident.
-Milestone 244 then found the repair had covered two consumers rather than four, and that the two it
-missed are the two that publish a number, coverage and mutation, with `.cargo/mutants.toml` asking
+Milestone 244 then found the repair had covered two consumers rather than four. The two it
+missed are the two that publish a number, coverage and mutation. `.cargo/mutants.toml` asks
 the next person in a comment to keep it in step with `script/coverage`, which is rung four in a file
 whose output is quoted in a fatal risk's verdict. The derivation is what landed, 2026-10-16 (UTC):
 every consumer now emits the set or consumes it, and `.cargo/mutants.toml`, which is static TOML,

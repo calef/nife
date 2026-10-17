@@ -34,7 +34,7 @@ minutes before they walk to the bench.
 
 So an ordinary refactor in `kernel/src/sched.rs` or `kernel/src/smp.rs` can break a card build, and
 the tree stays green for as long as nobody writes a card. The failure surfaces as a bench session
-that starts with a four-minute cargo error instead of a boot, which is the most expensive place in
+that starts with a four-minute cargo error instead of a boot. That is the most expensive place in
 this project to discover a compile error: the board is powered, the card is out, and the person is
 not at their desk.
 
@@ -68,7 +68,7 @@ than fix it.
 ## The same shape one level out
 
 The list above is hardcoded, which is finding 11 of notes/architecture-list-sweep.md wearing new
-clothes: the seventh card feature somebody adds is measured here only if they remember to type it.
+clothes. The seventh card feature somebody adds is measured here only if they remember to type it.
 Deriving it from `[features]` is possible and is a second decision, because not every feature in
 that file belongs on a card.
 
@@ -79,10 +79,10 @@ nothing but a person's own `script/board-image` run has ever compiled it.
 
 ## Index row
 
-`kernel/Cargo.toml` carries feature flags whose only consumer is a microSD card, and an ordinary
+`kernel/Cargo.toml` carries feature flags whose only consumer is a microSD card. An ordinary
 refactor in `kernel/src/sched.rs` or `kernel/src/smp.rs` can break a card build while the tree stays
-green, because the failure surfaces as a four-minute cargo error at the start of a bench session,
-which is the most expensive place in this project to find a compile error. `script/lint` has since
+green. The failure surfaces as a four-minute cargo error at the start of a bench session. That is
+the most expensive place in this project to find a compile error. `script/lint` has since
 closed half of it by clippy-building most of these features individually; `single_hart` and
 `reboot_soak_test` are compiled by nothing, and no combination a card actually uses is built at all.
 Six release builds of one crate would cover the set. It proves compilation and nothing else, which

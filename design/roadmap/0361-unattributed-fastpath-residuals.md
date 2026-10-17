@@ -92,8 +92,9 @@ re-recorded here."*
 Two of three fastpath footprint baselines had drifted with nobody able to say why, and milestone 237
 exists to refuse exactly the move of re-saving a baseline because the number moved. Milestone 188
 overtook it: phases 1 to 3 changed what the gate measures (two IPC shapes rather than one merged
-figure), cut 6% to 10% off every shape by reading `#[cold]` out of the workspace's own source, and
-re-recorded all three baselines against the smaller numbers on 2026-09-04. The residuals named here
-cannot be bisected against baselines that no longer exist. Promoted and disposed of in one act by
-milestone 433, with the measurement it carried (all three ISAs drifting, x86_64 the fastest at 1.9%
-against a 5% bound) left in the body as the record of what was true on 2026-09-04.
+figure) and cut 6% to 10% off every shape by reading `#[cold]` out of the workspace's own source.
+All three baselines were re-recorded against the smaller numbers on 2026-09-04. The residuals named
+here cannot be bisected against baselines that no longer exist. Promoted and disposed of in one act
+by milestone 433 (drain the proposal pile to zero), with the measurement it carried left in the body
+as the record of what was true on 2026-09-04. All three ISAs were drifting, x86_64 the fastest at
+1.9% against a 5% bound.

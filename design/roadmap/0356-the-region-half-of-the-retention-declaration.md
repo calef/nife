@@ -14,9 +14,10 @@ Filed as a proposal on 2026-09-03 by the
 milestone 433 on 2026-09-19. Premise checked against the tree that day and unchanged:
 `crates/supervision_protocol/src/lib.rs` still declares `Retention` with exactly two variants
 (`Nothing` and `ThreadControlBlock { reason }`), the region is named only in prose there ("after
-`START` the only authority over this child is the region it was built from"), and §142 has been
-DECIDED since 2026-09-03 with nothing added about the region. The three spawn paths this file names
-as disagreeing still disagree.
+`START` the only authority over this child is the region it was built from"). §142 (what a spawner
+retains over a child after `START`) has been DECIDED since 2026-09-03 with nothing added about the
+region. The three spawn paths this file names as
+disagreeing still disagree.
 
 The question is decided:
 [§303 (the region)](../decisions/0303-the-retention-declaration-says-nothing-about-the-region.md),
@@ -25,7 +26,7 @@ delegated region. The enforcement is named as work for this milestone or its own
 owning region beside `build_ut`, and the kernel refuses when `build_ut`'s recorded parent is not
 it.
 
-**In brief.** §142 gave `ChildEndowment` a `retention` field, so one struct literal now states both
+**In brief.** §142 gave `ChildEndowment` a `retention` field. One struct literal now states both
 what a child is given and what its spawner keeps. What it states is the disposal of one capability,
 the child's `ThreadControlBlock`, which the tree's own audit showed is inert after `START`: all
 three of its methods refuse anything but an `Embryo`. The capability that is *not* inert, and that
@@ -53,22 +54,26 @@ what they do. Neither is stated anywhere a reader of the endowment can see.
 first recorded caveat was this question in other words: the ownership chain that makes a
 reap work "holds only if children are built from the supervisor's own region," and whether building
 a child from a *delegated* region is forbidden or merely discouraged "is not yet decided, and it
-should be before someone writes a supervisor that does it."
-[§303 (the region)](../decisions/0303-the-retention-declaration-says-nothing-about-the-region.md)
-answered it in §40 itself, 2026-10-15: forbidden. The rule lives in the docs at the builder and in
-the named enforcement check, not in a declared field.
+should be before someone writes a supervisor that does it." A declared field is the natural place
+for that answer to live. The declaration is per-child and the rule is per-child.
 
 ## The fork, so it is not decided by accident
 
-## The fork, decided
+There are at least three shapes and they are not equivalent. That is why this is `DECISION` rather
+than a lane:
 
-The three shapes are decided as the third. The declaration stays the TCB's. The region's rule is
-stated in `Retention`'s and `build_child`'s docs, so the endowment no longer reads as a fuller
-account than it is. Building a child from a retained delegated region is forbidden, with the
-presentation check named in
-[§303 (the region)](../decisions/0303-the-retention-declaration-says-nothing-about-the-region.md)
-as the work that makes the refusal real. What remains of this milestone is those doc sentences and
-that check.
+- **Widen `Retention`** into an enum over both objects, so one field says what is kept of each. One
+  noun to learn, and the two are genuinely one question about one child.
+- **A second field beside it**, since the region is passed to `build_child` as an argument
+  (`build_ut`) rather than named in the endowment. The two capabilities have different lifetimes.
+  The TCB is disposed of at `START` and the region at reap, which may be much later.
+- Leave it out and say so in `Retention`'s own docs, on the ground that the region's disposal is
+  a property of the *builder's* bookkeeping rather than of the child. A field which cannot be acted
+  on at one moment is a declaration the code cannot enforce.
+
+The third is a real answer and may be the right one. What is not an answer is the present state,
+where the endowment reads as a complete account of the authority in play and is silent about the
+capability that carries most of it.
 
 ## Index row
 
@@ -76,9 +81,10 @@ DECISIONS §142 gave `ChildEndowment` a `retention` field so one struct literal 
 child is given and what its spawner keeps. What it states is the disposal of the child's
 `ThreadControlBlock`, which the tree's own audit showed is inert after `START`. The capability that
 actually decides whether a child can be ended is the region it was built from, and the endowment
-says nothing about it: `components/src/spawner.rs`, `fixtures/src/c_confiner.rs` and
-`components/src/timetable.rs` drop the region when the child runs while `crates/system_initializer`
-keeps its across the child's life, both correct for what they do and neither stated where a reader
-of the endowment can see it. §303 decided it, 2026-10-15: the declaration stays the TCB's, the
-region's rule is stated at the builder, building from a retained delegated region is forbidden,
-and the enforcement check is named. What remains here is the doc sentences and the check.
+says nothing about it. `components/src/spawner.rs`, `fixtures/src/c_confiner.rs` and
+`components/src/timetable.rs` drop the region when the child runs, while `crates/system_initializer`
+keeps its across the child's life: both correct for what they do and neither stated where a reader
+of the endowment can see it. §40's first recorded caveat is the same question in other words.
+Whether the declaration widens is an architect's, which is why the gate is DECISION: three shapes
+are written out here and the third, leaving it out and saying so in `Retention`'s own docs, is a
+real answer.

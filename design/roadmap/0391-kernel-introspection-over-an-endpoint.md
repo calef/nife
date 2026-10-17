@@ -20,15 +20,17 @@ becomes a `design/decisions/` section when 269 is taken, not before.
 
 This is a design fork about the kernel's shape, not work to schedule.
 The decision it waits on is [§149](../decisions/0149-kernel-served-console-endpoint.md), cited
-here on 2026-09-19 by milestone 435's slice-c lane, which found this gate naming no section. §149 is
-`DECIDED` and what it decided about *this* question is to refuse it: it separated the console case
+here on 2026-09-19 by milestone 435 (forty-five milestones are gated on a decision nobody wrote
+down)'s slice-c lane, which found this gate naming no section. §149
+(may the kernel answer on an endpoint) is
+`DECIDED` and what it decided about *this* question is to refuse it. It separated the console case
 from kernel introspection in a six-row table, on the ground that the console is **forced** by
-hardware and introspection is **chosen**, and it says in its own words that *"a reader citing this
+hardware and introspection is **chosen**. And it says in its own words that *"a reader citing this
 section for the general case is misreading it"* and that the introspection question *"should get its
 own section when there is an actual fact to expose rather than in the abstract."*
 
 So no `design/decisions/` section is minted here, and that is the answer rather than an omission.
-Milestone 269 is the consumer §149 named, it is still `NOT-STARTED`, and writing this fork up before
+Milestone 269 (`machine` at the prompt) is the consumer §149 named. It is still `NOT-STARTED`. Writing this fork up before
 it is taken would put the general case in front of calef on the narrow case's momentum, which is the
 exact thing §149 refused. The section gets minted when 269 is taken.
 
@@ -70,8 +72,8 @@ new method to design, document and never remove. Over an endpoint, it is a messa
 ## Why it is not decided yet, deliberately
 
 `design/decisions/0149-kernel-served-console-endpoint.md` refused to settle this while deciding the
-console, on the grounds that the console is *forced* by hardware and this is *chosen*, and that
-deciding a chosen thing on the momentum of a forced one is how a narrow surface stops being narrow.
+console, on the grounds that the console is *forced* by hardware and this is *chosen*. Deciding a
+chosen thing on the momentum of a forced one is how a narrow surface stops being narrow.
 It said the question should be answered when a real consumer exists rather than in the abstract.
 
 Milestone 269 is that consumer, and this proposal should be promoted to a `DECISIONS` section
@@ -89,12 +91,13 @@ when that milestone is taken rather than before.
 
 Some facts exist only in the kernel (preemption counts, scheduler state, the machine description
 milestone 268 prints at boot) and no program can ask for any of them today. The obvious route is a
-syscall per fact, which grows the surface DECISIONS §10 and §16 exist to keep narrow; the
+syscall per fact, which grows the surface DECISIONS §10 (process model) and §16 (object
+revocation) exist to keep narrow. The
 alternative is a kernel thread parked on a rendezvous, answering questions, which needs no new
 object type and no new syscall number, because `ipc::Rendezvous` is generic over `T: Node` and has
-no privilege level in it. The argument that makes it more than tidiness is easy to get backwards: a
+no privilege level in it. The argument that makes it more than tidiness is easy to get backwards. A
 syscall is reachable by every thread in the system, so restricting who may read the scheduler's
-state means a check inside the kernel and a rule about who should call it, where an endpoint is
+state means a check inside the kernel and a rule about who should call it. An endpoint is
 reachable only by a program handed the capability and the right can be revoked, which is rung one
 against rung four wearing a syscall's clothes. Against it: the kernel becomes a parser of untrusted
 input inside the trusted computing base, read-only introspection is the cheapest possible violation

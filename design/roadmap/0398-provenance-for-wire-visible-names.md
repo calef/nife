@@ -19,7 +19,7 @@ moved: `--unratified` is 72 deep rather than 97, and the program surface is `com
 `fixtures/` rather than `user/src/` since milestone 175. **The cheap half this block asks for first
 has a first answer**: `pub const <NAME>: &str` matches 77 times across `crates/`, `components/`,
 `fixtures/` and `kernel/`, which is the order of magnitude that decides between a list in
-`design/naming.md` and a declared out-of-scope, and it is an upper bound rather than the count,
+`design/naming.md` and a declared out-of-scope. It is an upper bound rather than the count,
 since not every one of the 77 is agreed between two binaries.
 *(Number provisional until the merge queue lands it.)*
 
@@ -34,7 +34,7 @@ Whether to widen at all is his call, not a lane's.
 `script/names` enumerates four kinds: a crate (`crates/*/src/lib.rs`), a program (`user/src/*.rs`),
 a `script/` entry point, and a Cargo package (any `Cargo.toml` outside `crates/`). The `package`
 kind was added on 2026-08-18 because `script/names std_exerciser` had been answering *"neither a
-name in the tree nor a recorded refusal"* for weeks about eight real packages, and the note written
+name in the tree nor a recorded refusal"* for weeks about eight real packages. The note written
 at the time is the whole argument for this one too: **a registry with a hole is worse than no
 registry, because it answers confidently about the names it happens to cover.**
 
@@ -46,7 +46,7 @@ pub const PROGRAM_MEASUREMENTS: &str = "program_measurements";
 ```
 
 `"program_measurements"` is an archive entry name. The kernel's trust root names it and init reads
-it out of the archive at boot, so it is a string two programs agree on, which `AGENTS.md` puts
+it out of the archive at boot. So it is a string two programs agree on, which `AGENTS.md` puts
 in the expensive, hard-to-reverse category alongside a wire format and an opcode number. It has a
 provisional name, its author said so, and `script/names --unratified` has never listed it because
 the surface does not exist.
@@ -93,18 +93,20 @@ measured against.
 ## Index row
 
 `script/names` enumerates four kinds of named thing (a crate, a program, a `script/` entry point and
-a Cargo package) and milestone 283's gate fired on a fifth that carries provenance at the thing
-exactly as milestone 115 asks, on a surface nothing has ever listed: `measured_boot`'s
-`PROGRAM_MEASUREMENTS` is an archive entry name, so it is a string two programs agree on, which
+a Cargo package). Milestone 283 (one provenance block per file, in the spelling the parse reads)'s
+gate fired on a fifth that carries provenance at the thing,
+exactly as milestone 115 (the names that were ratified, and the ones that were refused) asks. It
+fired on a surface nothing has ever listed. `measured_boot`'s
+`PROGRAM_MEASUREMENTS` is an archive entry name. So it is a string two programs agree on, which
 AGENTS.md puts in the expensive, hard-to-reverse category beside a wire format and an opcode number.
 It has a provisional name, its author said so, and `--unratified` has never listed it. This is the
 defect the `package` kind was added to fix, and worse: a package name is read inside this repository
-where a wire string is agreed between two binaries, so the names with the least reversibility are
+where a wire string is agreed between two binaries. The names with the least reversibility are
 the ones with no record, and a registry with a hole answers confidently about the names it happens
-to cover. Three things have to be decided first: whether a wire string is a name for this purpose or
-data, where its block lives (not the file header, which 283 reserved for the file's own one block),
-and how the set is enumerated at all, since the four existing kinds are a directory listing or a
-manifest walk and a `const` in an arbitrary file is neither. The counting is the cheap half and
-comes first: if it is a dozen names the answer is a list in `design/naming.md` and no new machinery,
-and if it is two hundred the answer is probably that wire strings are out of scope and the record
+to cover. Three things have to be decided first. Whether a wire string is a name for this purpose or
+data; where its block lives (not the file header, which 283 reserved for the file's own one block);
+and how the set is enumerated at all. The four existing kinds are a directory listing or a
+manifest walk, and a `const` in an arbitrary file is neither. The counting is the cheap half and
+comes first: if it is a dozen names the answer is a list in `design/naming.md` and no new machinery.
+If it is two hundred the answer is probably that wire strings are out of scope and the record
 says so on purpose, the way `unrecorded` is a first-class answer rather than a gap.

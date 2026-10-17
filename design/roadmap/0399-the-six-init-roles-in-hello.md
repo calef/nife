@@ -12,13 +12,14 @@ needs_person: no
 
 Milestone 405 (the nine `INIT` roles) covers this block: filed one day after this one by a lane holding the whole
 inventory, it takes the same six constants as part of a larger change.
-Filed 2026-09-13 as an unnumbered proposal by the lane that finished milestone 266's prose sweep;
-numbered and disposed of in one act on 2026-09-19 by milestone 433's drain of the proposal pile,
-which is how a proposal reaches a disposition at all. **The premise was checked before it was
+Filed 2026-09-13 as an unnumbered proposal by the lane that finished milestone 266 (one progenitor,
+on all three architectures, and `init` stops being a role)'s prose sweep.
+Milestone 433 (drain the proposal pile to zero) numbered and disposed of it in one act on
+2026-09-19, which is how a proposal reaches a disposition at all. **The premise was checked before it was
 closed, and it is still true**: `fixtures/src/hello.rs` declares all six constants and
 `kernel/src/user/tests.rs` declares all six again, so the defect this names is live. What makes it
 `SUPERSEDED` rather than `NOT-STARTED` is milestone 405's own argument, which this block cannot
-answer: after that split the six parents are programs with their own names and these constants do
+answer. After that split the six parents are programs with their own names and these constants do
 not exist, so renaming them now spends a naming decision, which is an architect's scarcest resource,
 on an interim state. 405 quotes his deferral in the same breath (*"If there is anything left then we
 can consider a name for what remains"*). The refusals below are the durable half and are cited from
@@ -110,15 +111,15 @@ Milestone 266 is titled *"One progenitor, on all three architectures, and `init`
 role"*, and it is still a role six times in `fixtures/src/hello.rs` and six more as duplicate
 constants in `kernel/src/user/tests.rs`. Traced rather than assumed, none of the six is the first
 process: the role that meant "boot the system" was `INIT_BOOT_ROLE`, which is exactly the one 266
-moved out to `components/src/progenitor.rs`, and what is left is the 19d/19e catalog in which
+moved out to `components/src/progenitor.rs`. What is left is the 19d/19e catalog in which
 `hello` plays the parent that parses, builds, endows, delegates and collects a report. The
 recommendation was `PARENT_*`, a noun, what the role is, and what the tests already assert about.
 The refusals are the durable half: `PROGENITOR_*` would be false, since the progenitor is one
-program under one archive entry and `hello` entered at role 20 is neither, and replacing a wrong
-name with a wrong name is worse because the second one looks decided; `LOADER_*` names one of three
-things the roles do; `BUILDER_*` and `SPAWNER_*` each collide with a program that already exists
+program under one archive entry and `hello` entered at role 20 is neither. Replacing a wrong
+name with a wrong name is worse because the second one looks decided. `LOADER_*` names one of three
+things the roles do. `BUILDER_*` and `SPAWNER_*` each collide with a program that already exists
 here, which is the refusal that cost `system_builder` a crate name twice. It is `SUPERSEDED` by
 milestone 405 rather than open, because 405 turns these six parents into programs with their own
-names and the constants stop existing, so the rename would spend a naming decision on an interim;
+names and the constants stop existing, so the rename would spend a naming decision on an interim.
 405 carries the refusals forward and picks up the one thing this block found that it did not, which
 is that the six role numbers live in two files with nothing gating them against each other.
