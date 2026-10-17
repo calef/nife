@@ -25,7 +25,7 @@ would build the shell kernel. The four modes are the plain tour, `--soak`, `--jo
 and the last three *replace the end of* the tour rather than skipping it, which the script says in
 its own argument check ("all replace the end of the boot tour; pick one"). So every VisionFive 2
 (radon) boot this tree can produce runs the tour. `boot_progenitor`'s riscv64 caller (`riscv_shell_boot` until milestone 166 (one boot loader)) was
-`#[cfg(feature = "shell")]` when this was written; milestone 268 later made the default boot reach it.
+`#[cfg(feature = "shell")]` when this was written. Milestone 268 later made the default boot reach it.
 Then `script/swish-check` was the only thing in the tree that built that kernel, and it built it for
 QEMU. So nothing here produces a board payload that would run `progenitor`, and no bench record in
 `notes/visionfive2.md` shows one having run.
