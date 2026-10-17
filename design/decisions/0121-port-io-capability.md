@@ -240,19 +240,15 @@ kind of device capability for the one class that has no page, it does not replac
 
 ## A port range grants only with WRITE (calef, 2026-10-05)
 
-A `PortRange` capability opens I/O ports only when its rights include `WRITE`. A capability narrowed
-to `READ`, or to no rights, grants nothing. calef's ruling of 2026-10-05 16:33 UTC, quoted: "grant
-nothing without WRITE since we can't grant READ without write"
+A `PortRange` capability opens I/O ports only when its rights include `WRITE`. calef's ruling of
+2026-10-05 16:33 UTC, quoted: "grant nothing without WRITE since we can't grant READ without write"
 ([comment on #1687](https://github.com/nifeos/nife/pull/1687#issuecomment-5998739348)).
 
-The reason is the mechanism this section already chose. The TSS I/O bitmap has one bit per port, so it
-cannot permit `in` without `out`; a `READ`-only grant has no honest meaning. The install site,
-`thread_control_block_insert_from` (`kernel/src/sched/thread_control_block.rs`), reads `cap.rights` and grants only on `WRITE`, the same check
-every other object's syscall arm makes. `component_plan` maps `Serve` to `READ` and `Use` to `WRITE`, so
-a component given an observe-only view of a port range gets no port.
+The TSS I/O bitmap has one bit per port and cannot permit `in` without `out`, so a `READ`-only grant
+has no honest meaning. `thread_control_block_insert_from` (`kernel/src/sched/thread_control_block.rs`)
+grants only on `WRITE`; `component_plan` maps `Serve` to `READ`, so an observe-only view gets no port.
 
-Refused: declaring a port range a rights-free object, which makes `READ` on it a statement a reader must
-know to disbelieve. Also refused: splitting it into an `in`-only kind and an `out`-only kind, which needs
-trapping every port access, the cost the bitmap exists to avoid. Milestone 768 (a read-only port range
-grants nothing) builds it, with
+Refused: a rights-free port range, which makes `READ` on it a statement a reader must disbelieve; and
+separate `in`-only and `out`-only kinds, which need every port access trapped. Milestone 768 (a
+read-only port range grants nothing) builds it, with
 `x86_port_tests::a_read_only_port_capability_must_not_grant_port_output` and a replayable falsification.
