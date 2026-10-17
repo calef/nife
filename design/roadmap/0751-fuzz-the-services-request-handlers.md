@@ -1,6 +1,7 @@
 ---
-status: PARTIAL
+status: BUILT
 raised: 2026-10-04
+built: 2026-10-17
 milestone_dependencies: none
 decision_dependencies: none
 machine_requirements: none
@@ -41,9 +42,9 @@ has the rules, the rates and the findings in full.
    badge fails closed in subtree_scope)'s fail-open arm restored. Met.
 3. `net_stack` and the three file caretakers carry a `BUGS` entry saying what extraction blocks a
    target, and the note measures `net_stack`'s. Met.
-4. The CI `fuzz` job stays inside its 20-minute budget, from the first merge-group runs. Estimated
-   at about 10.5 minutes against a 7.0-minute median; not yet measured, which is why this block is
-   PARTIAL.
+4. The CI `fuzz` job stays inside its 20-minute budget. Met: the median over 29 merge-group runs
+   (2026-10-16 and 2026-10-17 UTC) is 712 s, 11.9 minutes, range 678 s to 744 s;
+   `notes/fuzzing-the-services.md` lists the run ids.
 
 ## What it found
 
@@ -56,9 +57,7 @@ file, is recorded and proposed rather than fixed.
 
 ## Follow-on
 
-- **Outstanding.** Proof condition 4, the CI `fuzz` job's wall time with these targets, read from
-  the first merge-group runs after this lands. Checked on 2026-10-04 (UTC): none has run, because
-  the branch had not merged.
+- **Done.** Proof condition 4 is measured: `notes/fuzzing-the-services.md`, "What CI pays".
 - **Done.** The level-4 `NodeLevel::new` constant, as a RedoxFS pin divergence, is #1606
   (`lane/redoxfs-level4`).
 - **Milestone 772.** Milestone 772 (a client cannot stall the file server with a sparse file). The sparse-file stall in `Server::truncate`'s `BUGS` section, as
