@@ -17,9 +17,6 @@ Micron NVMe at `01:00.0` behind root port `00:1b.0`, the topology this block pre
 pub const PCI_ECAM_BUSES: u16 = 1;
 ```
 
-Quoted from the file as this milestone found it, at its build on 2026-10-04, before the mmu split
-into child modules: the constant is `PCI_ECAM_BUSES` in `kernel/src/arch/x86_64/mmu/layout.rs` now.
-
 The kernel mapped one megabyte of configuration space and enumerated one bus. ACPI's MCFG described
 `buses 0..=127` and the boot printed exactly that, two lines apart, and the discrepancy sat in plain
 sight for a year because both sentences were true.

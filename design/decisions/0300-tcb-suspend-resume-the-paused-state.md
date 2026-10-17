@@ -7,14 +7,12 @@ ratified_by: calef
 
 # 300. `ThreadControlBlock::SUSPEND` and `ThreadControlBlock::RESUME`: the paused state, a TCB verb, silent
 
-Raised 2026-10-15 by the lane for milestone 652 (twelve `DECISION` gates cite only sections that
-are already ruled), which wrote the open fork into the place an open decision lives. The fork is
+Raised by [milestone 652 (twelve `DECISION` gates cite only sections that are already ruled)](../roadmap/0652-twelve-decision-gates-cite-only-ruled-sections.md). The fork is
 [§24 (interrupting the foreground)](0024-interrupting-the-foreground.md)'s own deferral, older
 than the block that waits on it. Milestone 48 (job control: `jobs`, `wait`, `kill`, `fg`, `bg`, and
 a stopped state) has gated on it since it was recorded. §24's trigger list in
 `design/open-design-ideas.md` names real job control as trigger 2, and the shell's job-control work
-has fired it. Ruled the day it was proposed; what the proposal first recommended, and why the
-ruling went the other way, is in the commit that recorded it.
+has fired it.
 
 ## The decision
 
@@ -78,9 +76,7 @@ pid, which is the model this kernel does not have.
 
 The effort test, stated because the skill asks: would B still be chosen if it cost the same as A?
 No. B costs more, so the question is whether its extra buys anything. It buys news for an observer
-who does not exist. The effort test in the original proposal ran the other way on the strength of
-the block's "one surface with the fault endpoint" phrasing. The defensible reading of that phrase
-is conceptual: design suspend in §26's frame rather than ad hoc. A satisfies it. The kernel
+who does not exist. The block's "one surface with the fault endpoint" phrasing is read as conceptual: design suspend in §26's frame rather than ad hoc. A satisfies it. The kernel
 witnesses the state change, the authority is named, and the endpoint keeps the news that is
 actually news.
 

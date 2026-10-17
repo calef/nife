@@ -32,7 +32,7 @@ FS server's async-event notification, and the network stack retiring its yield-a
 Exactly §101's spec, no re-derivation needed:
 
 - A new `objtype::NOTIFICATION` (= 4), holding a data word and a wait queue, plus at most one
-  bound TCB (`Option<Tid>`, set by `BIND`).
+  bound TCB (`Option<ThreadId>`, set by `BIND`).
 - Four methods under the existing `SYS_INVOKE` surface (no new syscall number): `SIGNAL`
   (async, non-rendezvous, never lost), `WAIT` (blocks until a signal arrives, returns the word),
   `POLL` (non-blocking `WAIT`), `BIND` (attach a notification to a TCB, at most one).

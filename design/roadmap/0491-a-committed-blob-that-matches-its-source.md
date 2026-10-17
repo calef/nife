@@ -48,11 +48,12 @@ Rung two, built: the `script/lint` check described above, in
 `helpers/lint_dtb_matches_dts.py` and its `--selftest`. It fires without anybody remembering,
 like every other check in `script/lint`.
 
-Rung one, refused here rather than ignored: drop the blobs and compile at build time. That makes
-the wrong state unrepresentable, which is the ladder's top rung, and it buys a **build dependency on
-`dtc`** for every contributor and every CI leg. DECISIONS §46 makes taking a dependency a decision
-rather than a convenience, so proposing it here would be claiming a ruling that is an architect's.
-If they want the stronger answer, this proposal is where the weaker one's cost is written down.
+Rung one, refused: drop the blobs and compile at build time. That would make fixtures vary with the
+local `dtc`, which is not byte-stable across versions, so the test input itself would stop being
+stable unless `dtc` were pinned too. It also puts a build dependency on `dtc` on every contributor
+and every CI leg, a cost every builder pays under DECISIONS §46 (thin primitives or whole subsystems; we write everything in between). The one incident on record is
+already closed at every push by the check above. Reopens on a second drift incident, or on drift in
+the sourceless fixtures.
 
 ## BUGS
 
@@ -70,12 +71,8 @@ If they want the stronger answer, this proposal is where the weaker one's cost i
 
 ## Follow-on
 
-- **Refused.** Rung one, compiling the blobs at build time. calef refused it on 2026-10-16
-  (UTC). The blobs are fixtures, and fixtures compiled at build time would vary with the local
-  `dtc`, which is not byte-stable across versions; the test input itself would stop being
-  stable unless `dtc` were pinned too. The dependency's cost would be paid by everyone who
-  builds the tree. The one incident on record is already closed at every push by the check
-  above. Reopens on a second drift incident, or on drift in the sourceless fixtures.
+- **Refused.** Rung one, compiling the blobs at build time; the reason and the reopening
+  condition are under "The two shapes".
 
 ## Index row
 

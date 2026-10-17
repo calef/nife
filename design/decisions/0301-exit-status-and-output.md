@@ -7,17 +7,14 @@ ratified_by: calef
 
 # 301. How a spawned child's exit status and output reach the program that spawned it
 
-Raised 2026-10-15 by the lane for milestone 652 (twelve `DECISION` gates cite only sections that
-are already ruled). The fork belongs to
+Raised by [milestone 652 (twelve `DECISION` gates cite only sections that are already ruled)](../roadmap/0652-twelve-decision-gates-cite-only-ruled-sections.md). The fork belongs to
 milestone 172 (a capability-native subprocess primitive), whose gate has named it
 since the block was written. [§219 (how the shell names an installed program to the
 spawner)](0219-naming-an-installed-program-to-the-spawner.md) decided how a caller *starts* a child.
 [§264 (fork is declined, and spawn is supported)](0264-fork-is-declined-and-spawn-is-supported.md)
 declined `fork` and made spawn the supported path. What neither settles is the other half of
 `cargo`'s loop, "run
-this, block until it is done, give me its output". Ruled the day it was proposed, on the prior
-art's unanimous shape; the proposal had recommended a frame where the art carries the code through
-the kernel, and the ruling went with the art.
+this, block until it is done, give me its output".
 
 ## The decision
 
@@ -83,7 +80,7 @@ anyway, for the art's reason: the status is where every parent already has to lo
 |---|---|---|
 | **A** | The child's runtime writes one status word to a frame the parent owns before exiting; the parent receives §26's death message, reads the word, then reaps. | No kernel change, and the status is a convention the kernel never sees. It is the one shape here where the kernel is not told the code, and the exit path is the one moment a child may not be able to write memory. |
 | **A′** | `SYS_EXIT` carries the status word; the kernel forwards it in the `EVENT_EXIT` message's currently-zero words. Chosen. | A semantic commitment of words that were reserved-zero on two existing wires, and one kernel touch on the exit path. No new surface, no second channel, and the status arrives where the death already does. |
-| **B** | `Tcb::WAIT`, a blocking method on the TCB, returning an exit status the kernel records at exit. | New syscall surface, and §26's message stays the supervisor's channel while the status travels on another one: two ways to learn about one death. |
+| **B** | `ThreadControlBlock::WAIT`, a blocking method on the TCB, returning an exit status the kernel records at exit. | New syscall surface, and §26's message stays the supervisor's channel while the status travels on another one: two ways to learn about one death. |
 | **C** | A job object: spawn returns one, `Job::WAIT` collects status and the granted output ends, `Job::DESTROY` reaps. | The most machinery: a new object kind, retype and slot costs, and a second lifetime beside the region and the endpoint, exactly the bookkeeping [§142 (what a spawner retains over a child)](0142-spawn-retention.md)'s decision just finished paying down for the TCB. |
 
 The effort test, stated because the skill asks: would A′ still be chosen if it cost the same as
