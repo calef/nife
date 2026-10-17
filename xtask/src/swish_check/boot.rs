@@ -284,7 +284,8 @@ fn read_console_plain(
 fn leg_runner(arch: &str, kvm: bool, uefi_timeout_secs: u64) -> Command {
     let riscv = arch == "riscv64";
     if arch == "x86_64" {
-        // OVMF, one core (the runner's default, for `ap_boot`'s BUGS #3). The runner bounds itself
+        // OVMF, one core (the runner's default; the tour is where the second core is gated). The
+        // runner bounds itself
         // with `qemu-bounded.sh`; the bound the caller passes is every wait it makes added up, so
         // it only ever fires on a leg that has already failed.
         let mut c = Command::new("helpers/qemu-uefi-x86_64.sh");

@@ -14,8 +14,8 @@ Filed 2026-09-10 as an unnumbered proposal by the lane that built milestone
 2026-09-19 by milestone 433's drain of the proposal pile. Premise re-read against the tree on
 2026-09-19 and still true: `kernel/src/virtio.rs` still reaches the `debug_assert_eq!` on
 `REG_VERSION` at line 67, inside `find_by_device_id`'s walk, immediately after the `DeviceID` match
-and before the device is returned, with the message still reading "expected modern virtio-mmio" and
-naming neither the slot nor the runner flag. The runner bug that exposed it was fixed in both
+and before the device is returned. The message still reads "expected modern virtio-mmio", naming
+neither the slot nor the runner flag. The runner bug that exposed it was fixed in both
 runners at the time; the shape that turns a missing command-line flag into a kernel panic is
 untouched. *(Number provisional until the merge queue lands it.)*
 
@@ -30,20 +30,21 @@ debug build, at whatever point in the boot happened to ask.
 
 How it presented, which is the argument for changing it. On 2026-09-10 the riscv64 boot tour
 grew a step that scans for a virtio-rng. Booted with `NIFE_RNG=1` and no `NIFE_DISK`, the runner
-attached a legacy RNG (the `-global` that selects modern mmio lived inside the disk block; fixed
-separately, in both runners) and the kernel panicked with `expected modern virtio-mmio, left: 1,
+attached a legacy RNG. The `-global` that selects modern mmio lived inside the disk block; it was
+fixed separately, in both runners. The kernel panicked with `expected modern virtio-mmio, left: 1,
 right: 2` at a point in the tour that names no device and gives a reader nothing to go on. The
 runner bug is fixed; the shape that turned a missing command-line flag into a kernel panic is not.
 
-Why it survived. Every leg of the suite builds disks, so the global was always present and no
-legacy slot has ever existed on a machine this repository boots. The assertion has therefore never
+Why it survived. Every leg of the suite builds disks. The global was always present and no legacy
+slot has ever existed on a machine this repository boots. The assertion has therefore never
 fired in CI and never will; it fires only for someone assembling a QEMU command line by hand, which
 is exactly the person least equipped to read it.
 
 **What to weigh, because the assertion is not obviously wrong.** It was written as a tripwire for a
-runner that had silently stopped selecting modern virtio, and that is a real failure worth catching:
-a scan that skipped quietly would report "no device" where the truth is "a device this kernel
-declines to drive", and milestone 145's `None` path already means the first thing. So the choice is
+runner that had silently stopped selecting modern virtio, and that is a real failure worth catching.
+A scan that skipped quietly would report "no device" where the truth is "a device this kernel
+declines to drive". Milestone 145 (a test that needs hardware the boot doesn't have can say so)'s
+`None` path already means the first thing. So the choice is
 between skipping with a printed line that says which slot was declined and why, and keeping the
 panic with a message that names the missing runner flag. The first is probably right (a kernel
 should not die of a device it does not want) but the second is defensible and the difference is a
@@ -60,9 +61,10 @@ the wrong type: keep walking. What happens instead is a panic at whatever point 
 to ask, which on 2026-09-10 was the riscv64 tour's new entropy step, printing `expected modern
 virtio-mmio, left: 1, right: 2` at a step that names no device. It survived because every leg of the
 suite builds disks, so the `-global` selecting modern mmio was always present and no legacy slot has
-ever existed on a machine this repository boots: the assertion has never fired in CI and never will,
-only for someone assembling a QEMU command line by hand, who is the person least equipped to read
-it. The assertion is not obviously wrong, which is what the work has to weigh: it was a tripwire for
+ever existed on a machine this repository boots. The assertion has never fired in CI and never will.
+It fires only for someone assembling a QEMU command line by hand. That is the person least equipped
+to read it. The assertion is not obviously wrong, which is what the work has to weigh. It was a
+tripwire for
 a runner that had silently stopped selecting modern virtio, and a scan that skipped quietly reports
 "no device" where the truth is "a device this kernel declines to drive", which is what milestone
 145's `None` path already means. So the choice is between skipping with a printed line naming the

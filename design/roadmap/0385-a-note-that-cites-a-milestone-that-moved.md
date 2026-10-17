@@ -9,18 +9,18 @@ Filed 2026-09-05 as an unnumbered proposal, written after six "is there a
 milestone for X" questions in one evening turned up four things wrong on `main` rather than four
 things missing; numbered 2026-09-19 by milestone 433's drain of the proposal pile. Premise re-read
 against the tree on 2026-09-19 and still true: `script/citations` still takes `--check` and
-`--untracked` and nothing else, so there is still no mode that reads a pull request's base commit,
+`--untracked` and nothing else. There is still no mode that reads a pull request's base commit,
 notices a milestone's status moving, and prints the notes citing it. The instances have been
-corrected, which is the whole point of the block rather than a reason to close it: milestone 99's
+corrected, which is the whole point of the block rather than a reason to close it. Milestone 99's
 block no longer claims a compressor among the things this tree has or is building, and the other
 three were fixed before the file was written. *(Number provisional until the merge queue lands it.)*
 
 *(The `**Gate:**` line this block carried is retired by DECISIONS §207 (the roadmap is a graph, and
 the block says so in fields a script can walk), which this milestone's design had to be read
-against; it said `NONE` and was true.)*
+against. It said `NONE` and was true.)*
 
 Landed 2026-09-14, nine days late. It was committed on 2026-09-05 to a maintainer branch that was
-never pushed, while milestone 259 (sweep `notes/` for claims that stopped being true), minted and
+never pushed. Milestone 259 (sweep `notes/` for claims that stopped being true), minted and
 built the same day as "the other half" of this proposal, cited this file by path from `main`. So for
 nine days a `BUILT` block pointed at a file that did not exist, and no gate said so (see `BUGS`). It
 surfaced during a branch cleanup that checked each stale branch for unique commits before deleting.
@@ -45,7 +45,7 @@ rewritten and now marks each old claim false, milestone 66's table no longer say
 are absent, and the TLS proposal was corrected that evening. The fourth was still on `main`:
 milestone 99 still counted a compressor among things the tree has or is building, when nothing in the
 tree compresses and milestone 258 (archive and compression) is `NOT-STARTED`. It is corrected in the
-same pull request that lands this file, which is the proposal's own point made a fifth time: fixing
+same pull request that lands this file, which is the proposal's own point made a fifth time. Fixing
 the instances does not fix the class, and one of four survived a sweep aimed at exactly this.
 
 Every one is rung four in AGENTS.md's ladder: a note, a table, a gloss. Every one stayed green
@@ -143,7 +143,7 @@ A version that demanded edits would have reintroduced what §207 refused, three 
 moving without the pull request touching the index and asked the implementation to read both. There
 is no longer a both: `design/roadmap/README.md` was generated from the blocks by
 milestone 294 (`design/roadmap/README.md`'s index is generated, not hand-maintained) and retired by
-calef on 2026-09-21, so the `Status:` line is the single record, and §76 (what catches a milestone
+calef on 2026-09-21. The `Status:` line is the single record, and §76 (what catches a milestone
 status that is wrong in both places?) cannot recur.
 
 **It reads `design/` as well as `notes/`, which this block's `BUGS` asked for and the proposal had
@@ -169,7 +169,7 @@ which is the median-sized worklist the proposal predicted.
 Measured over the 150 most recent merges into `main` on 2026-09-23: 50 moved at least one status
 and 100 printed one line saying nothing moved. Of the 50, the median is 4 citing files. The tail
 is three merges, two of them sweeps that restatused dozens of blocks at once and one flip on a
-heavily cited number; notes/citations.md has the table and the worst single case,
+heavily cited number. notes/citations.md has the table and the worst single case,
 milestone 433 (drain the proposal pile to zero, and keep it there) at 108 citing files.
 
 **Name provisional.** `--moved` is the lane's, not calef's.
@@ -198,9 +198,9 @@ milestone 433 (drain the proposal pile to zero, and keep it there) at 108 citing
   look, and if looking is usually wasted the check will be skipped, which is the failure mode to
   watch for after it ships.
 - **It sees prose and not code.** It walks `notes/` and `design/`, which answers this entry's
-  original form (`notes/` only) and the two instances it named: the stale gap table in
-  milestone 66 (Vaultwarden: somebody else's real application, running here) and the compressor
-  claim in milestone 99 (`git` on nife: the tool this project is built with), both in `design/roadmap/`. A `milestone N` in a Rust comment is usually
+  original form (`notes/` only) and the two instances it named. The stale gap table is in
+  milestone 66 (Vaultwarden: somebody else's real application, running here), and the compressor
+  claim is in milestone 99 (`git` on nife: the tool this project is built with), both in `design/roadmap/`. A `milestone N` in a Rust comment is usually
   provenance for the code beneath it rather than a present-tense claim, so `*.rs` is out. Untested
   rather than proved: nobody has measured how often a code comment makes such a claim.
 - ~~A status can move without a pull request touching the index.~~ Closed by the tree rather
@@ -227,16 +227,17 @@ milestone 433 (drain the proposal pile to zero, and keep it there) at 108 citing
 Six "is there a milestone for X" questions in one evening turned up four things wrong on `main`
 rather than four things missing, all the same shape: prose that was true when written and went
 silently false when a milestone landed. `notes/why-not-general-purpose.md` told newcomers there was
-no networking, no writable filesystem, no display and no SMP, five of six rows false; milestone 66's
+no networking, no writable filesystem, no display and no SMP, five of six rows false. Milestone 66's
 gap table said TCP listen and accept were absent from the contract a month after milestone 107
+(the socket contract learns to accept)
 shipped them. Every one is rung four of AGENTS.md's ladder and every one stayed green through every
 gate. The mechanism is a worklist rather than a failure, in the shape `script/names --unratified`
-already uses: when a pull request moves a milestone's status, print the notes that cite that
-milestone, because the lane doing the flipping is the one person who knows what that milestone now
+already uses. When a pull request moves a milestone's status, print the notes that cite that
+milestone. The lane doing the flipping is the one person who knows what that milestone now
 makes true and is holding that knowledge at exactly the moment the check fires. Four measurements
-decided the design: the median milestone is cited by three notes, so a worklist is readable; 68
+decided the design: the median milestone is cited by three notes, so a worklist is readable. 68
 statuses flipped in fourteen days, so it must be scoped to a pull request rather than swept over the
-tree; only 4% of the 1,519 milestone citations in `notes/` carry a gloss, so it keys on the bare
-`milestone N` and not on what `script/citations` checks; and it catches one of the two real cases.
+tree. Only 4% of the 1,519 milestone citations in `notes/` carry a gloss, so it keys on the bare
+`milestone N` and not on what `script/citations` checks. It catches one of the two real cases.
 The half it misses is stated rather than glossed: a page saying "there is no networking" cites
 nothing, so there is no anchor to hang a check on, and that half wants a sweep rather than a gate.

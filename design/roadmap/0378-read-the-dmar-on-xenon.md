@@ -21,7 +21,7 @@ needs no board. The boot on xenon was taken on 2026-09-17, and carrying every DR
 Built, and by whom. Milestone 161 (the x86_64 kernel port) gave `crates/machine_discovery`'s `parse_dmar` and
 `first_drhd`, so the table is parsed at boot, its well-formedness checked, and the first remapping
 unit's register base carried into `arch::x86_64::machine`. Milestone 317 (2026-09-17) answered the
-question this file was really asking: `ECAP.IR`, the bit that says the hardware can remap interrupts
+question this file was really asking. `ECAP.IR`, the bit that says the hardware can remap interrupts
 at all, is read from inside the guest on every boot and printed on the `iommu` line as
 `interrupt remapping offered` or `absent`. It also overturned the premise §86 had been reasoning
 from, since x86_64 has been offering interrupt remapping in every boot this tree has ever run and
@@ -60,8 +60,8 @@ above rather than as a description of the tree today.
 ## What is being proposed
 
 Parse the DMAR (DMA Remapping Reporting table) at boot and print what it says: the remapping units,
-their register base addresses, the `INTR_REMAP` flag in the table's own flags field, and each
-unit's extended capability register, whose `IR` bit is the one that says the hardware can remap
+their register base addresses, and the `INTR_REMAP` flag in the table's own flags field. Also print
+each unit's extended capability register, whose `IR` bit is the one that says the hardware can remap
 interrupts at all.
 
 ## Why
@@ -72,7 +72,7 @@ Two in-tree records have been waiting on a fact that turns out not to live where
 OptiPlex's firmware leaves interrupt remapping off. Nothing under QEMU can answer that, because the
 answer is a setting in somebody else's firmware."* `notes/confinement-claims.md` carries the same
 thing as a fifth claim: a confined component's MSI-X write is a memory write, so DMA remapping does
-not cover it, and VFIO refuses to hand a device to an untrusted userspace driver on a machine
+not cover it. VFIO refuses to hand a device to an untrusted userspace driver on a machine
 without interrupt remapping for exactly that reason. `design/decisions/0086-el0-nvme-driver.md` names
 it as the axis its options had not priced.
 
@@ -138,9 +138,9 @@ when it finds a DMAR it did not expect, and the answer for this proposal is noth
 Two in-tree records were waiting on a fact nobody could check: whether xenon's firmware leaves
 interrupt remapping off. The premise was half wrong, and finding that out is what this block is.
 Seventy photographs of the OptiPlex 7050's setup UI contain no interrupt-remapping control at all,
-so there is no switch to photograph; what there is instead is a table the firmware publishes and any
+so there is no switch to photograph. What there is instead is a table the firmware publishes and any
 kernel can read, which relocates the work from the most expensive place in this project to the
 cheapest. Most of it has since been built elsewhere: milestone 161 parses the DMAR and carries the
-first unit's register base, and milestone 317 reads `ECAP.IR` from inside the guest and prints it,
+first unit's register base. Milestone 317 reads `ECAP.IR` from inside the guest and prints it,
 overturning DECISIONS §86 (whether an NVMe driver can leave the kernel)'s reading that x86_64 boots with remapping off. What remains is the DMAR's own `INTR_REMAP` flag, which is parsed and discarded. The xenon boot
 (2026-09-17) and the second remapping unit (milestone 594) are done.

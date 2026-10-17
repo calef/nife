@@ -102,6 +102,21 @@
 #     watching is never reported at all. No persistent state sits behind any transition in this
 #     script; that has been true of the RED/GREEN and cadence halves all along and is stated once,
 #     here.
+#   - **The repeat half reads logs through `gh run view --log-failed`, which is a screen, not an
+#     API.** Its two leading columns, its timestamp, its ANSI-marked script echoes and its runner
+#     teardown lines are stripped by pattern, and the "final line" is the last content line before
+#     GitHub's own `##[error]Process completed with exit code` annotation. A log that will not
+#     parse lands in an unreadable-line group rather than a wrong one; the pattern strip is where
+#     this breaks first if `gh` changes its log shape. Run 34109632590 (2026-09-07 UTC) is the
+#     known case of teardown lines arriving ahead of the annotation, and the strip handles it.
+#   - **The repeat half spends real API quota, on purpose and bounded.** One listing call per
+#     scheduled workflow plus two calls per failing run examined, on every pass that reads it.
+#     That cost is why the watching loop below does not call it; the Actions relay is the reader.
+#   - **A repeat row reports, and the issue the relay opens is its home and its close condition.**
+#     What the row asks for ("run the audit") is a lane and a day. `helpers/repeat_issue.py` opens
+#     one issue per workflow on the `trunk-health.yml` pass, and the issue body names the close:
+#     the audit lane's report pull request says `Closes #N`. This script's own output still closes
+#     nothing, and the watching loop below opens nothing either.
 #
 # Name: unrecorded. Provisional, minted 2026-08-04 and not yet put to calef. `trunk` rather than
 # `main` because the branch could be renamed and the concept could not, and because "trunk health"
@@ -290,6 +305,176 @@ $row"
 	fi
 }
 
+# --- REPEAT: a scheduled workflow that keeps failing with the same final line --------------------
+#
+# **Red is ambiguous for a job whose healthy state is red on purpose, and a repeat is the part a
+# conclusion alone cannot say** (milestone 422 (a cadence job whose healthy state is red)). `audit-cadence` has failed every scheduled Monday
+# since it was created, and almost all of those runs are the mechanism working: an audit was due,
+# the workflow said so, and red is its correct output. Buried among them, on 2026-09-14, sat one
+# run that failed on `FileNotFoundError` instead, broken for real and indistinguishable in the
+# Actions tab from the correct reds on both sides of it. The `due()` section above cannot see that
+# difference, because it asks the tree's scripts what is due now, and on 2026-09-14 the tree was
+# fine: the workflow was broken. So this section asks the other witness, GitHub's own run history,
+# the read-only source `script/cadence-check` already reads: what did each failing run's step
+# actually print last.
+#
+# The sketch is the block's, unchanged: take the last six scheduled runs of each scheduled
+# workflow, group the failed ones by the final line of their failing step, and report a workflow
+# whose largest group holds three or more, naming the line and the span of dates (UTC). Three is
+# the block's threshold, not this script's invention: one failure is weather, two same-line
+# failures on a weekly cadence are a coincidence and a confirmation, and the row waits for the
+# third, accepting the lag. A workflow whose failures disagree with each other is CHURN, a
+# separate and less urgent finding on its own row, never folded into the repeat one; the block's
+# word for it. A single line failing exactly twice is an unconfirmed repeat and stays silent until
+# the third occurrence settles which it is.
+#
+# **The line is compared whole, digits included.** A mutation failure's final line names the mutant
+# that killed it, and those lines differ for good reason; a key that normalized numbers away would
+# merge genuinely different failures into one false repeat. The specimen needs no normalization:
+# the audit-cadence runs end in an epilogue printed by `script/audits` itself ("design/
+# audit-reports/README.md says how, ..."), identical across every due-red, which is why the
+# FileNotFoundError run falls out of its group on its own.
+#
+# **The per-workflow runs endpoint is the point, not a style choice.** The all-workflows listing
+# `script/cadence-check` uses caps at 100 runs, and at this tree's daily cadence that window no
+# longer reaches back to a weekly's own last six: on 2026-10-16 it held a single audit-cadence
+# run. cadence-check's BUGS records the same cap biting its own 15-day threshold.
+#
+# **Reading the final line is best effort, because `gh run view --log-failed` is a screen rather
+# than an API** (the header's BUGS carries the caveat). The frame is stripped, then the content:
+# `repeat_line` below says what each pattern is for. A log that yields nothing readable groups as
+# "(final line could not be read)" instead of pretending to a line it never saw.
+#
+# **Cost, and why the loop below does not call this.** One listing call per scheduled workflow,
+# plus two per failing run of any workflow with two or more failures in its last six: at this
+# tree's failures that is a few dozen calls per pass. The watching loop polls every 90 seconds,
+# and on that cadence the spend runs past what the credential the merge drain shares should pay
+# for a report. `trunk-health.yml` runs `--once` every five minutes and is the reader that exists;
+# a person running `--once` by hand gets the same rows. Like DEAD and DUE in that relay, a standing
+# repeat re-announces on every pass, which that workflow's own BUGS owns.
+#
+# **A repeat row reports, and its home is the issue the relay opens**, not this script. What a
+# repeat row asks for ("run the audit") is a lane and a day, and the home ruled for it is one open
+# issue per workflow: `trunk-health.yml` hands this section's REPEAT rows to
+# `helpers/repeat_issue.py`, which dedupes by workflow name, updates the body when the line drifts,
+# and leaves the close to the audit lane's report pull request (`Closes #N`, routed by the
+# audit-cadence step summary). This script opens nothing itself, and the watching loop below opens
+# nothing either.
+#
+# Names here are provisional (milestone 422): `repeat`, `repeat_line`, and the REPEAT and CHURN
+# row labels.
+repeat_line() {
+	# Capture first, then parse: `gh` announces its own failures (a truncated download prints
+	# "Error: ...") on stdout, and a pipeline would feed that announcement to the awk below as if
+	# the step had printed it. A `gh` that exits nonzero yields no line at all.
+	log=$(gh run view "$1" --repo "$REPO" --log-failed 2>/dev/null) || return 0
+	printf '%s\n' "$log" |
+	awk -v esc="$(printf '\033')" '
+		# The log frame: two tab-separated columns, then a timestamp and one space. A line with
+		# no frame is kept whole rather than stripped blind.
+		{ if (sub(/^[^\t]*\t[^\t]*\t/, "")) sub(/^[^ ]* /, "") }
+		# The annotation is where the failing step stopped saying anything of its own; everything
+		# after it is later steps and runner teardown, none of it this failure.
+		/^##\[error\]Process completed with exit code/ { done = 1 }
+		done { next }
+		# The resolved script echoed back, identical on every run, worthless as a key.
+		index($0, esc "[36;1m") == 1 { next }
+		/^##\[/ { next }
+		/^\[command\]\// { next }
+		# Runner teardown, dropped by name: run 34109632590 (2026-09-07 UTC) puts some of it
+		# ahead of the annotation, where the marker alone would not screen it out.
+		/^(Cleaning up orphan processes|Terminate orphan process:|Removing credentials config |Evaluate and set job outputs|Set output )/ { next }
+		NF { last = $0 }
+		END { print last }
+	'
+}
+
+repeat() {
+	# The workflows that claim a schedule, read from the tree the way `script/cadence-check` reads
+	# them, leaving out the same two watcher files: `helpers/watcher_watch.py` watches those two,
+	# and a watcher restarted five minutes ago must not become its own finding.
+	scheduled=$(grep -l '^  schedule:$' .github/workflows/*.yml 2>/dev/null |
+		grep -v -e '/merge-drain\.yml$' -e '/trunk-health\.yml$' | sort) || true
+	[ -n "$scheduled" ] || return 0
+	rows=""
+	for file in $scheduled; do
+		name=$(basename "$file" .yml)
+		runs=$(gh api "repos/$REPO/actions/workflows/$name.yml/runs?event=schedule&per_page=6" \
+			--jq '.workflow_runs[] | [.conclusion, .created_at, (.id|tostring)] | @tsv' 2>/dev/null) || continue
+		failed=$(printf '%s\n' "$runs" | awk -F'\t' '$1 == "failure" { n++ } END { print n + 0 }')
+		# Below two failed runs no row is possible, and the log reads behind this line cost two
+		# API calls each, so two is also where the spending starts.
+		[ "$failed" -ge 2 ] || continue
+		failed_runs=$(printf '%s\n' "$runs" | awk -F'\t' '$1 == "failure" { print $3 "\t" $2 }')
+		lines=""
+		while IFS="$(printf '\t')" read -r id when; do
+			[ -n "$id" ] || continue
+			# The line travels tab-free so it can be one field for the grouping that follows.
+			line=$(repeat_line "$id" | tr '\t' ' ')
+			[ -n "$line" ] || line="(final line could not be read)"
+			lines="${lines}${when}	${line}
+"
+		done <<EOF
+$failed_runs
+EOF
+		verdict=$(printf '%s\n' "$lines" | awk -F'\t' '
+			# The NF guard is load-bearing: the here-doc hands this one row per failure, and the
+			# trailing newline that carries the last one would otherwise arrive as an extra empty
+			# record and be counted as a failure with an empty final line.
+			NF {
+				count[$2]++
+				failed++
+				if (!($2 in oldest) || $1 < oldest[$2]) oldest[$2] = $1
+				if (!($2 in freshest) || $1 > freshest[$2]) freshest[$2] = $1
+			}
+			END {
+				best = ""; bestn = 0; bestfresh = ""
+				for (k in count) {
+					if (count[k] > bestn || (count[k] == bestn && freshest[k] > bestfresh)) {
+						best = k; bestn = count[k]; bestfresh = freshest[k]
+					}
+				}
+				if (bestn >= 3) {
+					printf "REPEAT\t%d\t%s\t%s\t%s\n", bestn, best, oldest[best], freshest[best]
+				} else {
+					distinct = 0
+					for (k in count) distinct++
+					if (distinct >= 2) {
+						detail = "no line three times"
+						if (distinct == failed) detail = "all " failed " different"
+						printf "CHURN\t%d\t%s\n", failed, detail
+					}
+				}
+			}')
+		[ -n "$verdict" ] || continue
+		case "$verdict" in
+		REPEAT*)
+			n=$(printf '%s' "$verdict" | cut -f2)
+			text=$(printf '%s' "$verdict" | cut -f3)
+			first=$(printf '%s' "$verdict" | cut -f4)
+			last=$(printf '%s' "$verdict" | cut -f5)
+			row="$(printf '%-32s %-24s %s\n' "$name" "$n of last 6 failed" \
+				"REPEAT: ${text} (${first%T*}..${last%T*} UTC)")"
+			;;
+		CHURN*)
+			n=$(printf '%s' "$verdict" | cut -f2)
+			detail=$(printf '%s' "$verdict" | cut -f3)
+			row="$(printf '%-32s %-24s %s\n' "$name" "$n of last 6 failed" \
+				"CHURN: ${n} of the last 6 failed, ${detail}")"
+			;;
+		esac
+		if [ -n "$rows" ]; then
+			rows="$rows
+$row"
+		else
+			rows="$row"
+		fi
+	done
+	if [ -n "$rows" ]; then
+		printf '%s\n' "$rows"
+	fi
+}
+
 # Relayed by `--once` only; the watching form no longer calls it. See the header section above for
 # why the fold was undone. `helpers/at-risk-check.sh` reports and never acts; this only relays it,
 # and on a machine with no lane worktrees it prints nothing rather than being wrong.
@@ -308,6 +493,8 @@ if [ -n "$once" ]; then
 	[ -n "$c" ] && printf '%s\n' "$c"
 	d=$(due)
 	[ -n "$d" ] && printf '%s\n' "$d"
+	r=$(repeat)
+	[ -n "$r" ] && printf '%s\n' "$r"
 	a=$(at_risk)
 	[ -n "$a" ] && printf '%s\n' "$a"
 	exit 0

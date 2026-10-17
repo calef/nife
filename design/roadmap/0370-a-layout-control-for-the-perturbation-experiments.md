@@ -6,8 +6,8 @@ built: 2026-09-19
 # 370. A layout control, because the perturbation experiments cannot tell footprint from addresses
 
 Filed as a proposal on 2026-09-04 out of the E3 session on radon,
-promoted by milestone 433 on 2026-09-19, built the same day. "What was built" below is the record;
-everything after it is the proposal's own argument, kept because it is why this exists.
+promoted by milestone 433 (drain the proposal pile to zero) on 2026-09-19, built the same day. "What was built" below is the record.
+Everything after it is the proposal's own argument, kept because it is why this exists.
 
 The promoted block said `Gate: MILESTONE 134`, and that was backwards, which is worth recording
 rather than deleting: the gate read as though the control had to wait on the register of measures.
@@ -28,15 +28,15 @@ procedure, the sizes and why each was chosen.
 
 The linker scripts pin the sled's section first in `.text`, right after the boot stub, and that
 is what makes the two numbers comparable: each moves the whole kernel text by the bytes asked
-for, so a pad and a shift of equal displacement are the same binary apart from the sled's own
+for. A pad and a shift of equal displacement are the same binary apart from the sled's own
 bytes. Checked: `PAD=1` and `SHIFT=5088` place all 1,047 riscv64 text symbols at identical
 addresses. Two of the four shifts are therefore matched twins of pads, and they are the
-sharpest comparison the experiment has: any difference between a pad and its twin is the counted
+sharpest comparison the experiment has. Any difference between a pad and its twin is the counted
 footprint alone, which the physics says must be zero because the sled is never fetched.
 
 **Pinning it was not tidiness.** Nothing had pinned the section, so where the linker dropped it was
 redrawn every commit: on 2026-09-04 it landed ahead of the entire trap path, and by 2026-09-19 it
-landed past all but 5% of the fastpath's bytes, which would have made the evening a
+landed past all but 5% of the fastpath's bytes. That would have made the evening a
 dose-response on a path the doses barely touched. `--layout` now prints that share
 (`the sled precedes N of M hot symbols`), so the check is a line of output rather than a hope. The
 default build has no such section, so the default link order is unchanged, checked by comparing
@@ -48,14 +48,15 @@ set with address operands normalized away (direct call and branch targets, `auip
 and the low-12 immediates that pair with one; it prints how many of each it touched). All eight
 images share one hash, on riscv64, on aarch64 and on the `board,bench,single_hart` card set. Read
 off the built binaries as well: only the 7 boot symbols ahead of the sled keep their address, all
-1,038 after it move by exactly the bytes asked for and none changes size; the sled has exactly one
+1,038 after it move by exactly the bytes asked for and none changes size. The sled has exactly one
 reference in the whole binary, the guard's skipped branch, and the shift block has none. The
-same flag prints where the hot path landed: each symbol's address, its set in the U74's L1i
-(32 KiB, 2-way, 64-byte lines, virtually indexed, so 256 sets from address bits 6 to 13, `SiFive`
-U74-MC Core Complex Manual 21G3.02.00 §4.2.2), its line phase, whether it starts 8-byte aligned
-(§4.2.6: the BTB predicts a taken branch or jump with no bubble only for an 8-byte-aligned target),
-and where `.text` ends and `.data` starts, because the page-aligned sections after `.text` move in
-whole pages and the L1d way is 8 KiB (§4.4.1).
+same flag prints where the hot path landed: each symbol's address, its set in the U74's L1i, and
+its line phase. The L1i is 32 KiB, 2-way, 64-byte lines, virtually indexed, so 256 sets from
+address bits 6 to 13 (`SiFive` U74-MC Core Complex Manual 21G3.02.00, section 4.2.2). It prints
+whether each symbol starts 8-byte aligned (section 4.2.6: the BTB predicts a taken branch or jump
+with no bubble only for an 8-byte-aligned target). And it prints where `.text` ends and `.data`
+starts, because the page-aligned sections after `.text` move in whole pages and the L1d way is
+8 KiB (section 4.4.1).
 
 A bench boot names its own image: `bench-probe: fastpath_pad units <u> shift <s>`. Nothing on a
 card said which build it carried, and an interleave of eight is where that matters most.
@@ -66,7 +67,7 @@ set without the feature.
 
 1. A feature per size would have reproduced the defect. It was built that way first, as seven
    sibling Cargo features. A feature's *name* enters cargo's `-C metadata` hash, which renames every
-   symbol and repartitions codegen units: measured on the card build, that moved code linked
+   symbol and repartitions codegen units. Measured on the card build, that moved code linked
    ahead of the sled by up to 11 KB and put `syscall::dispatch` anywhere across 240 of the 256
    L1i sets. Each image was an uncontrolled layout draw and the variable of interest was noise on
    top of it. Environment variables do not enter that hash. Editing the module's own source has the
@@ -112,8 +113,8 @@ is no mechanism by which 5 KB of dead text makes a round trip 193 ns quicker.
 
 What changed is the layout: different cache-line boundaries, different set indices in a 32 KB
 2-way L1i, different branch-predictor aliasing. Mytkowicz, Diwan, Hauswirth and Sweeney measured
-exactly this in *Producing Wrong Data Without Doing Anything Obviously Wrong* (ASPLOS 2009), where
-changing link order or the size of a UNIX environment variable, neither of which alters an
+exactly this in *Producing Wrong Data Without Doing Anything Obviously Wrong* (ASPLOS 2009).
+Changing link order or the size of a UNIX environment variable, neither of which alters an
 instruction, moved measured performance by more than the optimization being studied.
 
 **So the +1.49% is a real difference between two binaries and is not evidence about two
@@ -151,7 +152,7 @@ of it, and nobody should buy a second IPC path with that.
 It also protects the numbers already published. `bench/` holds stored baselines that a future
 reader will diff across builds, and every one of those diffs has this exposure. The E4 displacement
 percentages in the same capture (0 to 1% at ordinary load, 5 to 8% at 96 threads, peaking at 32 KiB
-which is radon's L1d exactly) are the more interesting result of that session, and they are a
+which is radon's L1d exactly) are the more interesting result of that session. They are a
 single-build measurement, so they are unaffected. The moment anyone compares them against another
 build, they are affected.
 
@@ -205,8 +206,8 @@ E3 compares two kernels that differ in one Cargo feature and reads the differenc
 footprint that feature adds. The 2026-09-04 radon session proved that inference does not hold: six
 interleaved boots on a `single_hart` card separated cleanly in three rows, and the third said the
 padded build was 3.01% faster on a padding that is never executed. What changed is the layout,
-which is *Producing Wrong Data Without Doing Anything Obviously Wrong* (ASPLOS 2009) in one capture,
-so the +1.49% on the row that matters is the sum of a footprint effect and a layout effect and the
+which is *Producing Wrong Data Without Doing Anything Obviously Wrong* (ASPLOS 2009) in one capture.
+So the +1.49% on the row that matters is the sum of a footprint effect and a layout effect, and the
 experiment reports the sum. The control is several unpadded kernels differing only in address
 assignment, which by construction add no reachable instruction, read across the same three rows to
 give a layout distribution: inside it is layout, outside it is footprint. The cheapest version is
@@ -215,8 +216,8 @@ layout does not. It decides milestone 188's phase 4, which is holding a hand-wri
 evidence of a 19 ns effect with a 193 ns artifact sitting on top of it. BUILT 2026-09-19:
 `NIFE_FASTPATH_PAD` and `NIFE_FASTPATH_SHIFT` size the sled and add an unreachable shift, the
 linker scripts pin that section first in `.text` so both move the whole kernel text and a pad has a
-byte-identical un-padded twin, eight images share one normalized instruction hash that
+byte-identical un-padded twin. Eight images share one normalized instruction hash that
 `script/fastpath-footprint --layout` prints, and a bench boot names its own image. Building it found that a Cargo feature per size reproduces the
 defect (a feature name repartitions codegen units, moving 11 KB of unrelated code), and that a pad
-never executed can only act through addresses, so E3 tests whether the footprint number predicts
+never executed can only act through addresses. E3 tests whether the footprint number predicts
 latency, not Liedtke's claim about an executed footprint.

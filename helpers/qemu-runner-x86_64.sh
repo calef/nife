@@ -57,8 +57,9 @@ shift
 # broadcasting the reset over the TLB shootdown's NMI (`segments::revoke_port_grant_everywhere`),
 # and DECISIONS §153's rule is why the flip is here rather than in a later lane: the two-core suite
 # going green IS the verification that the broadcast worked, so leaving it to be remembered is how
-# it would not happen. `arch::x86_64::ap_boot`'s own BUGS section is the authoritative account of
-# what is still open at three cores and above; see also design/roadmap/0316-x86-smp-two-cores.md and
+# it would not happen. What is still open at three cores and above is a silicon question, carried
+# by `arch::x86_64::ap_boot`'s module doc (unmeasured above two on real hardware; xenon has not
+# been asked to bring all four online); see also design/roadmap/0316-x86-smp-two-cores.md and
 # design/roadmap/0161-x86-64-kernel-port.md item 5.
 SMP="${NIFE_SMP:-2}"
 

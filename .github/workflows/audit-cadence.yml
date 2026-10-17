@@ -87,4 +87,8 @@ jobs:
             echo
             echo 'Closing it by editing the index without running an audit is available, cheap, and'
             echo 'the one thing that makes this whole mechanism a lie.'
+            echo
+            echo 'If the trunk watcher has opened a `scheduled failure repeats:` issue for this workflow,'
+            echo 'your report pull request is what closes it: put `Closes #N` naming that issue in the pull'
+            echo 'request body. That close is the repeat report retiring, and nothing else closes the issue.'
           } >> "$GITHUB_STEP_SUMMARY"

@@ -15,7 +15,8 @@ of the proposal pile. **`script/bootstrap` was re-read on 2026-09-19. The confla
 and the measurement that argued for it has weakened**, which is worth separating. Still true: the
 header still promises only that the script installs what is missing, and line 174 still runs
 `script/qemu-check`, which judges whether what is present is adequate. Weakened: milestone 287
-landed the same day this was filed and gave the Linux arm a source-build fallback, so a Linux box
+(`script/bootstrap` installs a working QEMU on Linux, instead of printing how to) landed the same
+day this was filed and gave the Linux arm a source-build fallback. A Linux box
 with a too-old packaged QEMU now builds the pinned one and re-checks rather than exiting 1, which is
 the exact container failure the table below was priced against. What is left of the case is the
 shape rather than the instance: macOS has no fallback and still exits 1 from inside a provisioning
@@ -37,7 +38,7 @@ present and installs only what is missing, so it is cheap to re-run and safe to 
 second thing the header does not mention. After installing, it calls `script/qemu-check`, which
 asks whether the QEMU on `PATH` is *new enough* to boot this kernel, and exits non-zero when it is
 not. Installing what is missing and judging whether what is present is adequate are two different
-questions, and they fail in two different ways.
+questions. They fail in two different ways.
 
 ## Why now
 
@@ -51,9 +52,10 @@ everything it looks for present, and exited 1 on the adequacy check. On that mac
 `script/ci-build fmt`, `script/ci-build lint` and `script/ci-build image-permissions` all pass
 perfectly well; the no-argument path runs none of them.
 
-Milestone 286 made that loud rather than silent, which is the half a lane could fix without a
-ruling: the exit now says NO CHECKS RAN, lists the skipped tier out of `script/ci-build`'s table,
-and names what is still runnable by hand. The half it could not fix is that the developer still has
+Milestone 286 (one enumeration of the checks that gate a pull request) made that loud rather than
+silent, which is the half a lane could fix without a ruling. The exit now says NO CHECKS RAN, lists
+the skipped tier out of `script/ci-build`'s table, and names what is still runnable by hand. The half
+it could not fix is that the developer still has
 to type those by hand on a machine that is merely out of date.
 
 ## The options
@@ -90,14 +92,14 @@ developer can type. This is a sharpness problem rather than a correctness one.
 cheap to re-run. It does a second thing the header does not mention: after installing it calls
 `script/qemu-check`, which asks whether the QEMU on `PATH` is new enough to boot this kernel and
 exits non-zero when it is not. Installing what is missing and judging whether what is present is
-adequate are different questions that fail in different ways, and milestone 286 made the conflation
+adequate are different questions that fail in different ways. Milestone 286 made the conflation
 expensive for the first time by putting `bootstrap` at the head of the command a developer runs
-before pushing, so a non-zero exit now ends the whole local tier on a machine where `fmt`, `lint`
-and `image-permissions` would all have passed. Four options, priced: leave it and let the developer
-on a stale machine keep typing three commands by hand; a `--no-verify` flag, which moves the
+before pushing. A non-zero exit now ends the whole local tier on a machine where `fmt`, `lint`
+and `image-permissions` would all have passed. Four options, priced: leave it, and the developer
+on a stale machine keeps typing three commands by hand. A `--no-verify` flag, which moves the
 judgment into a caller that has no opinion about QEMU versions and is refused unless calef wants
-it; a split, where `bootstrap` provisions and returns zero when it installed everything it could and
-the adequacy check becomes its own row in `script/ci-build`'s table; or distinct exit codes, which
+it. A split, where `bootstrap` provisions and returns zero when it installed everything it could and
+the adequacy check becomes its own row in `script/ci-build`'s table. Or distinct exit codes, which
 does not fix the conflation but makes it legible to one caller and should be priced honestly as the
 cheap one. The split is the shape this tree already reaches for, and its own cost is that
 `script/setup` and `script/update` currently get the adequacy verdict for free on a fresh machine,

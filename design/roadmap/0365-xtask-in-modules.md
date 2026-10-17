@@ -9,10 +9,10 @@ Built 2026-09-19, on a board thin enough to take it: no other lane running and t
 requests armed. Filed as a proposal on 2026-09-03 by the milestone 247 sweep, from milestone 130's
 block; promoted by milestone 433 on 2026-09-19 and taken the same day. The file was 11,124 lines
 when the lane cut its branch, not the 6,785 the title names and not the 10,680 the promotion
-measured that morning: it grew 4% in the hours between, which is the argument for the timing rather
+measured that morning. It grew 4% in the hours between, which is the argument for the timing rather
 than against it.
 
-No decision was owed, and what it needed was a scheduled slot rather than a permission:
+No decision was owed, and what it needed was a scheduled slot rather than a permission.
 `xtask/src/main.rs` was one of the three merge hotspots every lane wires its test into, so a
 wholesale restructure conflicts with every branch in flight and had to run when the board was thin.
 
@@ -60,12 +60,12 @@ worth recording are the four places where something else won.
 **Shared machinery got a module when it is a thing, not when it is leftovers.** `scanout.rs`,
 `inbound.rs` and `measure.rs` are not commands; they are instruments several commands use, and each
 one names what it does. The alternative was a `common.rs`, which is the failure this split exists to
-prevent: a grab bag of everything shared is a second hotspot wearing a new name, and every lane
+prevent: a grab bag of everything shared is a second hotspot wearing a new name. Every lane
 would wire into it exactly as they wire into `main.rs` today.
 
 `host.rs` is the one module named for a category rather than a subject, and it is deliberately
 small. `cargo`, `run`, `capture`, `llvm_tool`, `workspace_root`, `bin_elf`, `flag_value`: 130
-lines with no state and no policy. It is the residue a split always leaves, and the way to keep it
+lines with no state and no policy. It is the residue a split always leaves. The way to keep it
 from growing into a `common.rs` is that it is named for what it holds (running a host command and
 finding a build output) rather than for the fact of being shared. If something lands there that is
 neither, that is the tell.
@@ -123,7 +123,7 @@ The honest answer is that most of this is a readability win, and a readability w
 is worth less than one in the kernel. Two things make it more than tidiness.
 
 The first is the merge cost, which cuts both ways and is the reason to do it deliberately rather
-than never. Every lane that adds a command or wires a test edited the same file, and AGENTS.md's own
+than never. Every lane that adds a command or wires a test edited the same file. AGENTS.md's own
 measurement of the merge queue found that lane collisions scale through files rather than through
 numbers, with this file named as one of the three hotspots. Modules turn most of those edits into
 edits of different files. The restructure itself is one large conflict, paid once, in exchange for
@@ -140,12 +140,12 @@ scheduled slot, because that file is one of the three merge hotspots every lane 
 and a wholesale restructure conflicts with every branch in flight."*
 
 The same block refused a related split for a measured reason worth carrying: splitting
-`kernel_main` came out byte-identical and still broke the build, because four `cfg`-gated blocks
+`kernel_main` came out byte-identical and still broke the build. Four `cfg`-gated blocks
 park early in `arch::halt()` and one divergent function absorbs the unreachable tail where two do
 not. Nothing like that was expected here, since `xtask` builds for the host and has no early-park
 pattern, and the reason to run the split as its own commit was that precedent. It is why the move
 and the fixups the compiler then demanded are two commits: the first one does not build on its own,
-by construction, so a reviewer can read it as "these lines went there" with no visibility change or
+by construction. A reviewer can read it as "these lines went there" with no visibility change or
 import line in the way.
 
 ## BUGS
@@ -178,7 +178,7 @@ into the module the code now lives in rather than to merge line by line.
   one command, its script table and its two legs; nothing here required cutting it further and the
   argument for doing so is not this milestone's.
 - **Recorded.** Seven citations of `xtask/src/main.rs` survive in `notes/documentation-audit.md`,
-  `notes/smb.md`, `notes/architecture-list-sweep.md` and `script/audits`, deliberately: they are a
+  `notes/smb.md`, `notes/architecture-list-sweep.md` and `script/audits`, deliberately. They are a
   captured tool transcript, a struck-through closed row, an SMB prober that no longer exists in
   xtask, and two observations about which file the commit ranking used to put on top. Eighteen that
   direct a reader somewhere were repointed at the module that now holds the symbol.
@@ -191,10 +191,10 @@ into the module the code now lives in rather than to merge line by line.
 
 `xtask/src/main.rs` was one file with no module structure, 6,785 lines when this was filed on
 2026-09-03 and 11,124 when the lane took it on 2026-09-19. It is now 19 modules plus a 294-line
-dispatcher, split along the seams the file already had, which are the commands, with instruments
-that several commands share (the scanout referee, the inbound probe, the measured-boot digest) named
+dispatcher, split along the seams the file already had, which are the commands. Instruments that
+several commands share (the scanout referee, the inbound probe, the measured-boot digest) are named
 for what they are rather than swept into a `common`. The move is provably a move: every line of the
 original appears in the new files, `script/fastpath-footprint` is byte-identical on all three ISAs,
-the usage text is byte-identical, and the 21 host tests are the same 21 beside the code they test.
+and the usage text is byte-identical. The 21 host tests are the same 21 beside the code they test.
 Three things broke and all three were build errors, which is the failure mode milestone 130's
 refused `kernel_main` split is the cautionary precedent for.
