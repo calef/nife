@@ -8,7 +8,7 @@ ratified_by: calef
 # 305. Git dependencies are allowed on `nifeos/*` only, pinned to a landed commit
 
 Raised by the soak for the crates nife publishes itself (milestones 813 to 821). calef agreed on
-2026-10-17 (UTC), replying "Agrred" to the maintainer's proposal that each such crate first operates
+2026-10-17 (UTC), replying "Agrred" (sic) to the maintainer's proposal that each such crate first operates
 as its own repository, consumed by nife from that repository, until evidence shows its API and its
 cut are settled. A crate that has left this tree is a dependency of nife that no registry serves, so
 `deny.toml`'s `unknown-git = "deny"` with an empty `allow-git` had to give way.

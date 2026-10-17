@@ -47,6 +47,8 @@ extend-ignore-re = ["\\b[0-9a-f]{12,}\\b"]
 # calef's own spelling, quoted verbatim in design/roadmap/0710-firefox-port.md (2026-10-03). A
 # ruling is recorded as spoken, so the quotation is not corrected to please the checker.
 targetting = "targetting"
+# calef's reply of 2026-10-17, quoted verbatim in design/decisions/0305 and marked (sic) there.
+Agrred = "Agrred"
 nife = "nife"
 Nife = "Nife"
 NIFE = "NIFE"
