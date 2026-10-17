@@ -267,10 +267,8 @@ else
 	kani() { cargo kani "$@"; }
 fi
 
-if [ -z "${VERIFY_CARGO_KANI:-}" ] && ! cargo kani --version >/dev/null 2>&1; then
-	echo "==> installing Kani (first run only)"
-	cargo install --locked kani-verifier
-	cargo kani setup
+if [ -z "${VERIFY_CARGO_KANI:-}" ]; then
+	script/kani-install
 fi
 
 # Verify harnesses in parallel. The suite was serial twice over (one harness at a time, one crate

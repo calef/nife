@@ -91,7 +91,7 @@ jobs:
       # script/verify installs Kani on first run; do it here as its own step so an install failure
       # is not reported as a sweep failure.
       - name: Install Kani
-        run: cargo kani --version || (cargo install --locked kani-verifier && cargo kani setup)
+        run: script/kani-install
 
       # Not `continue-on-error` any more (milestone 742, provisional): the step fails when the
       # sweep has a survivor, a stale record or no verdict, the report below still publishes
@@ -244,7 +244,7 @@ jobs:
       - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2
 
       - name: Install Kani
-        run: cargo kani --version || (cargo install --locked kani-verifier && cargo kani setup)
+        run: script/kani-install
 
       - name: Sweep the attested records
         shell: bash

@@ -18,11 +18,11 @@
 # header records: this is the ~47-minute half of the suite, and a §90 claim commit's whole point is
 # to be an empty diff, which cannot fail these proofs differently than `main` already has.
 #
-# BUGS: stock Kani is installed below with an unpinned `cargo install --locked kani-verifier`
-# (0.68.0 on 2026-10-05), while the riscv64 job is pinned to 0.67.0 plus a carried patch. A proof
-# result can change because a Kani release moved, with no change in nife, and the rows are not proved
-# by one version. Recorded, not decided: see
-# design/roadmap/0795-pin-stock-kani-to-a-version-bumped-deliberately.md.
+# Stock Kani is pinned in `.kani-version` and installed only by `script/kani-install` (milestone
+# 795); `script/kani-bump` and the `toolchain bump` workflow move the pin by a pull request that
+# changes that one file. The riscv64 job builds 0.67.0 plus a carried patch and is the one row that
+# is not on the pin until upstream kani#4913 ships, so `kernel` is proved by two Kani versions
+# today. See design/roadmap/0795-pin-stock-kani-to-a-version-bumped-deliberately.md.
 name: verify
 
 # Observed failing: 2026-10-03, run 37156069481: the `re-falsify` leg went red on a push to main,
@@ -261,9 +261,7 @@ jobs:
       # against GitHub's 10 GB limit that day, and an entry this size evicts rust-cache entries that
       # cost more to miss. Revisit if this step's time grows past a minute.
       - name: Install Kani
-        run: |
-          cargo install --locked kani-verifier
-          cargo kani setup
+        run: script/kani-install
       # Four shards, calef's ruling on #1979 (2026-10-12 UTC): "A", prove goes from three shards
       # to four. Three was his ruling on #1802 (2026-10-07 UTC): "Add a third prove shard." On
       # 2026-08-14 two was a measurement (`glob` alone was half the job, so a third bought
@@ -333,9 +331,7 @@ jobs:
       # growing. See notes/actions-cache-budget-2026-10-07.md.
       # Not cached; the `prove` job's comment has the measurement.
       - name: Install Kani
-        run: |
-          cargo install --locked kani-verifier
-          cargo kani setup
+        run: script/kani-install
       - name: script/verify --only kernel
         run: script/verify --only kernel
 
@@ -462,9 +458,7 @@ jobs:
           save-if: ${{ github.event_name != 'merge_group' }}
       # Not cached; the `prove` job's comment has the measurement.
       - name: Install Kani
-        run: |
-          cargo install --locked kani-verifier
-          cargo kani setup
+        run: script/kani-install
       - name: script/falsifications --affected-since --shard
         run: |
           script/falsifications --affected-since "${{ needs.scope.outputs.base }}" \

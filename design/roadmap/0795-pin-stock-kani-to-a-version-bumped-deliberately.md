@@ -1,12 +1,13 @@
 ---
-status: NOT-STARTED
+status: BUILT
+built: 2026-10-17
 promoted_from: pin-stock-kani-to-a-version-bumped-deliberately
 raised: 2026-10-05
 milestone_dependencies: 589
 decision_dependencies: none
 machine_requirements: none
 specific_machine: none
-needs_person: yes
+needs_person: no
 ---
 # 795. Pin stock Kani to a version, bumped deliberately like the nightly
 
@@ -15,27 +16,31 @@ that day. Title, slug and every name here are provisional.
 
 Reuse: `script/toolchain-bump` and the `rust-toolchain.toml` pin are the existing deliberate-bump mechanism, and this extends it to the prover; `cargo install --version` is the stock way to pin, so nothing new is built.
 
-## The problem
+## What is in force
 
-`.github/workflows/verify.yml` installs stock Kani with `cargo install --locked kani-verifier` in
-three places, unpinned. That was 0.68.0 on 2026-10-05. The riscv64 job builds 0.67.0 plus
-`patches/kani-0.67.0-riscv64-target.patch`. So a proof can change outcome because a Kani release
-moved while nife did not, and the architecture rows of `kernel` are not proved by one version.
-`rust-toolchain.toml` pins the nightly and `script/toolchain-bump` moves it on purpose; the prover is
-the one input to the proofs that moves by itself.
+Stock Kani is pinned to one exact version in `.kani-version` (0.68.0, the release in use on
+2026-10-05 and the newest on crates.io). Every stock install goes through `script/kani-install`:
+`verify.yml`, `kani-reach.yml`, `falsifications.yml` and `script/verify`'s first run. It reinstalls
+when the installed `cargo-kani` differs from the pin, and says so. `script/lint` fails on any other
+`cargo install ... kani-verifier` and on a malformed pin, so an install at a different version
+cannot happen silently.
 
-## Proposal
+The pin moves only by a pull request that changes `.kani-version`. `script/kani-bump` writes it
+(newest stable on crates.io, or a version given), and the `propose-kani` job of `toolchain bump`
+opens that pull request daily on `toolchain/kani-bump`. `verify` on the pull request is the proof
+on the new version; the default is to merge, and a changed proof or falsification result holds it
+for an architect, as for the nightly.
 
-Pin stock Kani to an exact version (`cargo install --locked kani-verifier --version X`) in the
-workflow and in `script/verify`'s first-run install, and move it with a deliberate bump. That is a commit
-that changes the pin, runs the full suite, and records any harness whose result or time changed.
-Whether the stock pin and the riscv64 pin should be one version is part of the bump decision; today
-the patch forces 0.67.0 on one row.
+The riscv64 row builds 0.67.0 plus `patches/kani-0.67.0-riscv64-target.patch` and is not on the
+pin, so `kernel` is proved by two Kani versions until the upstream change below ships. The skew is
+named in `verify.yml` and in `notes/kernel-proofs/riscv64-with-a-patched-kani.md`.
 
-Refused: leaving it floating and relying on the failure being obvious. A newer Kani that proves less
-(a changed default, a dropped check) is green, and nothing would say so.
+Refused: leaving it floating and relying on the failure being obvious. A newer Kani that proves
+less (a changed default, a dropped check) is green, and nothing would say so.
 
-The pin policy is an architect's call; this lane changed nothing.
+The pin policy was approved by calef on 2026-10-17 (UTC) for the shared crate CI, with this
+milestone launched on the same design. Whether the stock and riscv64 pins must converge before
+kani#4913 ships is open and asked on the pull request.
 
 ## What becomes droppable if upstream Kani PR #4913 lands
 
@@ -51,6 +56,11 @@ The pin policy is an architect's call; this lane changed nothing.
 
 Exit criteria: one pinned stock version proves all three `kernel` rows in CI; the patch, the
 `KANI_TARGET` plumbing and (if the rows agree) the arm64 job are gone.
+
+## Follow-on
+
+- **Milestone 589.** Milestone 589 (Kani can prove riscv64 from the hosts we already have) carries the patched row; the skew ends with it.
+- **Recorded.** The first `propose-kani` run needs the `automation` environment on `main`, so the job is unproven until it merges; `script/kani-bump` itself is run by hand in this pull request.
 
 ## Index row
 
