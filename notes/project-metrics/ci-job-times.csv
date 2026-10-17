@@ -13398,400 +13398,400 @@ date,workflow,job,variant,kind,name,runs,median_seconds,max_seconds
 2026-10-16,verify.yml,verify,,step,Complete job,25,0,1
 2026-10-16,verify.yml,verify,,step,Report the shards' combined result,25,0,1
 2026-10-16,verify.yml,verify,,step,Set up job,25,0,1
-2026-10-17,ci.yml,bench,,job,,13,105,118
-2026-10-17,ci.yml,bench,,step,Build QEMU if the cache missed,13,3,13
-2026-10-17,ci.yml,bench,,step,Cache QEMU,13,3,4
-2026-10-17,ci.yml,bench,,step,Check the job's wall time against its budget,13,0,1
-2026-10-17,ci.yml,bench,,step,Complete job,13,0,0
-2026-10-17,ci.yml,bench,,step,Post Cache QEMU,13,0,1
-2026-10-17,ci.yml,bench,,step,Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1,13,0,1
-2026-10-17,ci.yml,bench,,step,Put it on PATH,13,0,0
-2026-10-17,ci.yml,bench,,step,Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1,13,6,7
-2026-10-17,ci.yml,bench,,step,Run script/bootstrap,13,22,31
-2026-10-17,ci.yml,bench,,step,Run script/ci-build bench,13,57,59
-2026-10-17,ci.yml,bench,,step,Run script/ci-build icount,13,10,11
-2026-10-17,ci.yml,bench,,step,Set up job,13,1,1
-2026-10-17,ci.yml,bench,,step,Start the job wall-time clock,13,0,1
-2026-10-17,ci.yml,boot-check,,job,,13,93,102
-2026-10-17,ci.yml,boot-check,,step,Build QEMU if the cache missed,13,2,6
-2026-10-17,ci.yml,boot-check,,step,Cache QEMU,13,2,3
-2026-10-17,ci.yml,boot-check,,step,Check the job's wall time against its budget,13,0,1
-2026-10-17,ci.yml,boot-check,,step,Complete job,13,0,0
-2026-10-17,ci.yml,boot-check,,step,Post Cache QEMU,13,0,1
-2026-10-17,ci.yml,boot-check,,step,Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1,13,0,1
-2026-10-17,ci.yml,boot-check,,step,Put it on PATH,13,0,0
-2026-10-17,ci.yml,boot-check,,step,Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1,13,5,7
-2026-10-17,ci.yml,boot-check,,step,Run script/bootstrap,13,19,24
-2026-10-17,ci.yml,boot-check,,step,Run script/ci-build boot-check,13,59,62
-2026-10-17,ci.yml,boot-check,,step,Set up job,13,1,1
-2026-10-17,ci.yml,boot-check,,step,Start the job wall-time clock,13,0,0
-2026-10-17,ci.yml,boot-file-size-check,,job,,13,64,68
-2026-10-17,ci.yml,boot-file-size-check,,step,Check the job's wall time against its budget,13,0,1
-2026-10-17,ci.yml,boot-file-size-check,,step,Complete job,13,0,1
-2026-10-17,ci.yml,boot-file-size-check,,step,Install the targets and llvm-tools,13,18,21
-2026-10-17,ci.yml,boot-file-size-check,,step,Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1,13,0,1
-2026-10-17,ci.yml,boot-file-size-check,,step,Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1,13,4,5
-2026-10-17,ci.yml,boot-file-size-check,,step,Run script/ci-build boot-file-size-check,13,39,41
-2026-10-17,ci.yml,boot-file-size-check,,step,Set up job,13,0,1
-2026-10-17,ci.yml,boot-file-size-check,,step,Start the job wall-time clock,13,0,1
-2026-10-17,ci.yml,build-is-reproducible,,job,,13,44,49
-2026-10-17,ci.yml,build-is-reproducible,,step,Check the job's wall time against its budget,13,0,1
-2026-10-17,ci.yml,build-is-reproducible,,step,Complete job,13,0,0
-2026-10-17,ci.yml,build-is-reproducible,,step,Install the bare-metal target,13,18,22
-2026-10-17,ci.yml,build-is-reproducible,,step,Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1,13,0,1
-2026-10-17,ci.yml,build-is-reproducible,,step,Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1,13,4,5
-2026-10-17,ci.yml,build-is-reproducible,,step,Run script/ci-build build-is-reproducible,13,17,19
-2026-10-17,ci.yml,build-is-reproducible,,step,Set up job,13,1,1
-2026-10-17,ci.yml,build-is-reproducible,,step,Start the job wall-time clock,13,0,1
-2026-10-17,ci.yml,clippy,,job,,17,3,4
-2026-10-17,ci.yml,clippy,,step,Complete job,17,0,0
-2026-10-17,ci.yml,clippy,,step,Report lint's verdict under the old check name,17,0,1
-2026-10-17,ci.yml,clippy,,step,Set up job,17,0,1
-2026-10-17,ci.yml,coverage,,job,,13,96,125
-2026-10-17,ci.yml,coverage,,step,Check the job's wall time against its budget,13,0,0
-2026-10-17,ci.yml,coverage,,step,Complete job,13,0,0
-2026-10-17,ci.yml,coverage,,step,Install llvm-tools (pinned nightly),13,10,12
-2026-10-17,ci.yml,coverage,,step,Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1,13,0,1
-2026-10-17,ci.yml,coverage,,step,Publish the summary to the run,13,0,1
-2026-10-17,ci.yml,coverage,,step,Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1,13,6,8
-2026-10-17,ci.yml,coverage,,step,Run script/ci-build coverage,13,71,98
-2026-10-17,ci.yml,coverage,,step,Run taiki-e/install-action@ab6895351a88b908e96a4697860d4ffea5e57dbe,13,0,1
-2026-10-17,ci.yml,coverage,,step,Set up job,13,1,3
-2026-10-17,ci.yml,coverage,,step,Start the job wall-time clock,13,0,0
-2026-10-17,ci.yml,coverage,,step,Upload the lcov + HTML report,13,2,3
-2026-10-17,ci.yml,cpu-matrix,,job,,13,3,4
-2026-10-17,ci.yml,cpu-matrix,,step,Complete job,13,0,1
-2026-10-17,ci.yml,cpu-matrix,,step,Report the shards' combined result,13,0,1
-2026-10-17,ci.yml,cpu-matrix,,step,Set up job,13,0,1
-2026-10-17,ci.yml,cpu-matrix-shard,rv64 sifive-u54 rva22s64,job,,13,839,872
-2026-10-17,ci.yml,cpu-matrix-shard,rv64 sifive-u54 rva22s64,step,Build QEMU if the cache missed,13,3,9
-2026-10-17,ci.yml,cpu-matrix-shard,rv64 sifive-u54 rva22s64,step,Cache QEMU,13,2,3
-2026-10-17,ci.yml,cpu-matrix-shard,rv64 sifive-u54 rva22s64,step,Check the job's wall time against its budget,13,0,0
-2026-10-17,ci.yml,cpu-matrix-shard,rv64 sifive-u54 rva22s64,step,Complete job,13,0,1
-2026-10-17,ci.yml,cpu-matrix-shard,rv64 sifive-u54 rva22s64,step,Post Cache QEMU,13,0,1
-2026-10-17,ci.yml,cpu-matrix-shard,rv64 sifive-u54 rva22s64,step,Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1,13,0,1
-2026-10-17,ci.yml,cpu-matrix-shard,rv64 sifive-u54 rva22s64,step,Put it on PATH,13,0,0
-2026-10-17,ci.yml,cpu-matrix-shard,rv64 sifive-u54 rva22s64,step,Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1,13,5,6
-2026-10-17,ci.yml,cpu-matrix-shard,rv64 sifive-u54 rva22s64,step,Run script/bootstrap,13,18,21
-2026-10-17,ci.yml,cpu-matrix-shard,rv64 sifive-u54 rva22s64,step,Run script/ci-build cpu-matrix,13,807,844
-2026-10-17,ci.yml,cpu-matrix-shard,rv64 sifive-u54 rva22s64,step,Set up job,13,1,2
-2026-10-17,ci.yml,cpu-matrix-shard,rv64 sifive-u54 rva22s64,step,Start the job wall-time clock,13,0,1
-2026-10-17,ci.yml,cpu-matrix-shard,rv64 sifive-u54 rva22s64,step,Summarize where the time went,13,0,1
-2026-10-17,ci.yml,cpu-matrix-shard,rv64 sifive-u54 rva22s64,step,Upload the time record,13,1,2
-2026-10-17,ci.yml,cpu-matrix-shard,rva23s64 thead-c906,job,,13,639,698
-2026-10-17,ci.yml,cpu-matrix-shard,rva23s64 thead-c906,step,Build QEMU if the cache missed,13,2,6
-2026-10-17,ci.yml,cpu-matrix-shard,rva23s64 thead-c906,step,Cache QEMU,13,2,3
-2026-10-17,ci.yml,cpu-matrix-shard,rva23s64 thead-c906,step,Check the job's wall time against its budget,13,0,0
-2026-10-17,ci.yml,cpu-matrix-shard,rva23s64 thead-c906,step,Complete job,13,0,0
-2026-10-17,ci.yml,cpu-matrix-shard,rva23s64 thead-c906,step,Post Cache QEMU,13,0,1
-2026-10-17,ci.yml,cpu-matrix-shard,rva23s64 thead-c906,step,Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1,13,0,1
-2026-10-17,ci.yml,cpu-matrix-shard,rva23s64 thead-c906,step,Put it on PATH,13,0,0
-2026-10-17,ci.yml,cpu-matrix-shard,rva23s64 thead-c906,step,Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1,13,5,6
-2026-10-17,ci.yml,cpu-matrix-shard,rva23s64 thead-c906,step,Run script/bootstrap,13,17,22
-2026-10-17,ci.yml,cpu-matrix-shard,rva23s64 thead-c906,step,Run script/ci-build cpu-matrix,13,610,668
-2026-10-17,ci.yml,cpu-matrix-shard,rva23s64 thead-c906,step,Set up job,13,1,2
-2026-10-17,ci.yml,cpu-matrix-shard,rva23s64 thead-c906,step,Start the job wall-time clock,13,0,0
-2026-10-17,ci.yml,cpu-matrix-shard,rva23s64 thead-c906,step,Summarize where the time went,13,0,1
-2026-10-17,ci.yml,cpu-matrix-shard,rva23s64 thead-c906,step,Upload the time record,13,1,1
-2026-10-17,ci.yml,fastpath-footprint,,job,,13,64,69
-2026-10-17,ci.yml,fastpath-footprint,,step,Check the job's wall time against its budget,13,0,0
-2026-10-17,ci.yml,fastpath-footprint,,step,Complete job,13,0,1
-2026-10-17,ci.yml,fastpath-footprint,,step,Install the bare-metal targets and llvm-tools,13,18,20
-2026-10-17,ci.yml,fastpath-footprint,,step,Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1,13,0,1
-2026-10-17,ci.yml,fastpath-footprint,,step,Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1,13,4,5
-2026-10-17,ci.yml,fastpath-footprint,,step,Run script/ci-build fastpath-footprint,13,39,41
-2026-10-17,ci.yml,fastpath-footprint,,step,Set up job,13,0,1
-2026-10-17,ci.yml,fastpath-footprint,,step,Start the job wall-time clock,13,0,0
-2026-10-17,ci.yml,fmt,,job,,13,36,43
-2026-10-17,ci.yml,fmt,,step,Check the job's wall time against its budget,13,0,1
-2026-10-17,ci.yml,fmt,,step,Complete job,13,0,0
-2026-10-17,ci.yml,fmt,,step,Install rustfmt (pinned nightly),13,8,10
-2026-10-17,ci.yml,fmt,,step,Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1,13,0,1
-2026-10-17,ci.yml,fmt,,step,Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1,13,4,5
-2026-10-17,ci.yml,fmt,,step,Run script/ci-build fmt,13,21,24
-2026-10-17,ci.yml,fmt,,step,Set up job,13,0,1
-2026-10-17,ci.yml,fmt,,step,Start the job wall-time clock,13,0,1
-2026-10-17,ci.yml,fuzz,,job,,13,712,744
-2026-10-17,ci.yml,fuzz,,step,Check the job's wall time against its budget,13,0,1
-2026-10-17,ci.yml,fuzz,,step,Complete job,13,0,1
-2026-10-17,ci.yml,fuzz,,step,Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1,13,0,1
-2026-10-17,ci.yml,fuzz,,step,Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1,13,6,8
-2026-10-17,ci.yml,fuzz,,step,Run script/ci-build fuzz,13,700,731
-2026-10-17,ci.yml,fuzz,,step,Set up job,13,0,1
-2026-10-17,ci.yml,fuzz,,step,Start the job wall-time clock,13,0,0
-2026-10-17,ci.yml,gate,,job,,17,11,13
-2026-10-17,ci.yml,gate,,step,Check the job's wall time against its budget,17,0,0
-2026-10-17,ci.yml,gate,,step,Complete job,17,0,1
-2026-10-17,ci.yml,gate,,step,Is this change prose that no build or test reads?,17,1,2
-2026-10-17,ci.yml,gate,,step,Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1,17,0,1
-2026-10-17,ci.yml,gate,,step,Run # A′: a push to `main` whose exact commit a merge group already tested. See the comment,17,0,1
-2026-10-17,ci.yml,gate,,step,Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1,17,6,7
-2026-10-17,ci.yml,gate,,step,Set up job,17,1,1
-2026-10-17,ci.yml,gate,,step,Start the job wall-time clock,17,0,1
-2026-10-17,ci.yml,image-permissions,,job,,13,51,60
-2026-10-17,ci.yml,image-permissions,,step,Check the job's wall time against its budget,13,0,0
-2026-10-17,ci.yml,image-permissions,,step,Complete job,13,0,0
-2026-10-17,ci.yml,image-permissions,,step,Install the bare-metal targets,13,12,14
-2026-10-17,ci.yml,image-permissions,,step,Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1,13,0,1
-2026-10-17,ci.yml,image-permissions,,step,Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1,13,4,5
-2026-10-17,ci.yml,image-permissions,,step,Run script/ci-build image-permissions,13,32,39
-2026-10-17,ci.yml,image-permissions,,step,Set up job,13,0,1
-2026-10-17,ci.yml,image-permissions,,step,Start the job wall-time clock,13,0,1
-2026-10-17,ci.yml,interleavings,,job,,13,45,48
-2026-10-17,ci.yml,interleavings,,step,Check the job's wall time against its budget,13,0,0
-2026-10-17,ci.yml,interleavings,,step,Complete job,13,0,1
-2026-10-17,ci.yml,interleavings,,step,Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1,13,0,1
-2026-10-17,ci.yml,interleavings,,step,Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1,13,6,8
-2026-10-17,ci.yml,interleavings,,step,Run script/interleaving-check,13,35,37
-2026-10-17,ci.yml,interleavings,,step,Set up job,13,1,1
-2026-10-17,ci.yml,interleavings,,step,Start the job wall-time clock,13,0,1
-2026-10-17,ci.yml,lint,,job,,17,444,467
-2026-10-17,ci.yml,lint,,step,Check the job's wall time against its budget,17,0,0
-2026-10-17,ci.yml,lint,,step,Complete job,17,0,0
-2026-10-17,ci.yml,lint,,step,"Install clang (the C component's compiler), shellcheck and dtc",17,9,17
-2026-10-17,ci.yml,lint,,step,Install clippy and the bare-metal target,17,10,12
-2026-10-17,ci.yml,lint,,step,"Install the lint tools (cargo-machete, typos)",17,101,106
-2026-10-17,ci.yml,lint,,step,Post Run Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6,17,0,1
-2026-10-17,ci.yml,lint,,step,Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1,17,0,1
-2026-10-17,ci.yml,lint,,step,Run Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6,17,19,27
-2026-10-17,ci.yml,lint,,step,Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1,17,6,7
-2026-10-17,ci.yml,lint,,step,Run script/ci-build lint,17,283,303
-2026-10-17,ci.yml,lint,,step,Selftest of script/metrics,17,0,1
-2026-10-17,ci.yml,lint,,step,Set up job,17,1,2
-2026-10-17,ci.yml,lint,,step,Start the job wall-time clock,17,0,0
-2026-10-17,ci.yml,lint,,step,The fleet tooling's checks,17,4,5
-2026-10-17,ci.yml,lint,,step,The tests of the code that reads the prose this change touched,4,8,10
-2026-10-17,ci.yml,rg-threads,aarch64 and riscv64,job,,13,406,429
-2026-10-17,ci.yml,rg-threads,aarch64 and riscv64,step,Build QEMU if the cache missed,13,2,8
-2026-10-17,ci.yml,rg-threads,aarch64 and riscv64,step,Cache QEMU,13,2,7
-2026-10-17,ci.yml,rg-threads,aarch64 and riscv64,step,Check the job's wall time against its budget,13,0,0
-2026-10-17,ci.yml,rg-threads,aarch64 and riscv64,step,Complete job,13,0,0
-2026-10-17,ci.yml,rg-threads,aarch64 and riscv64,step,Post Cache QEMU,13,0,1
-2026-10-17,ci.yml,rg-threads,aarch64 and riscv64,step,Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1,13,0,1
-2026-10-17,ci.yml,rg-threads,aarch64 and riscv64,step,Put it on PATH,13,0,0
-2026-10-17,ci.yml,rg-threads,aarch64 and riscv64,step,Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1,13,2,4
-2026-10-17,ci.yml,rg-threads,aarch64 and riscv64,step,Run script/bootstrap,13,18,22
-2026-10-17,ci.yml,rg-threads,aarch64 and riscv64,step,Run script/ci-build rg-threads-aarch64-riscv64,13,371,399
-2026-10-17,ci.yml,rg-threads,aarch64 and riscv64,step,Set up job,13,1,2
-2026-10-17,ci.yml,rg-threads,aarch64 and riscv64,step,Start the job wall-time clock,13,0,1
-2026-10-17,ci.yml,rg-threads,x86_64,job,,13,362,376
-2026-10-17,ci.yml,rg-threads,x86_64,step,Build QEMU if the cache missed,13,2,7
-2026-10-17,ci.yml,rg-threads,x86_64,step,Cache QEMU,13,2,3
-2026-10-17,ci.yml,rg-threads,x86_64,step,Check the job's wall time against its budget,13,0,0
-2026-10-17,ci.yml,rg-threads,x86_64,step,Complete job,13,0,1
-2026-10-17,ci.yml,rg-threads,x86_64,step,Post Cache QEMU,13,0,1
-2026-10-17,ci.yml,rg-threads,x86_64,step,Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1,13,0,1
-2026-10-17,ci.yml,rg-threads,x86_64,step,Put it on PATH,13,0,0
-2026-10-17,ci.yml,rg-threads,x86_64,step,Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1,13,2,4
-2026-10-17,ci.yml,rg-threads,x86_64,step,Run script/bootstrap,13,18,22
-2026-10-17,ci.yml,rg-threads,x86_64,step,Run script/ci-build rg-threads-x86_64,13,331,345
-2026-10-17,ci.yml,rg-threads,x86_64,step,Set up job,13,1,1
-2026-10-17,ci.yml,rg-threads,x86_64,step,Start the job wall-time clock,13,0,0
-2026-10-17,ci.yml,stack-frame-check,,job,,13,124,133
-2026-10-17,ci.yml,stack-frame-check,,step,Check the job's wall time against its budget,13,0,0
-2026-10-17,ci.yml,stack-frame-check,,step,Complete job,13,0,1
-2026-10-17,ci.yml,stack-frame-check,,step,Install the bare-metal targets and llvm-tools,13,14,17
-2026-10-17,ci.yml,stack-frame-check,,step,Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1,13,0,1
-2026-10-17,ci.yml,stack-frame-check,,step,Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1,13,4,4
-2026-10-17,ci.yml,stack-frame-check,,step,Run script/ci-build stack-depth-check,13,56,60
-2026-10-17,ci.yml,stack-frame-check,,step,Run script/ci-build stack-frame-check,13,45,48
-2026-10-17,ci.yml,stack-frame-check,,step,Set up job,13,1,1
-2026-10-17,ci.yml,stack-frame-check,,step,Start the job wall-time clock,13,0,0
-2026-10-17,ci.yml,supply-chain,,job,,13,32,48
-2026-10-17,ci.yml,supply-chain,,step,Cache the vendored tarballs,13,1,2
-2026-10-17,ci.yml,supply-chain,,step,Check the job's wall time against its budget,13,0,0
-2026-10-17,ci.yml,supply-chain,,step,Complete job,13,0,1
-2026-10-17,ci.yml,supply-chain,,step,Post Cache the vendored tarballs,13,0,1
-2026-10-17,ci.yml,supply-chain,,step,Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1,13,0,1
-2026-10-17,ci.yml,supply-chain,,step,Read the pinned cargo-deny version,13,0,0
-2026-10-17,ci.yml,supply-chain,,step,Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1,13,4,5
-2026-10-17,ci.yml,supply-chain,,step,Run script/ci-build supply-chain,13,24,38
-2026-10-17,ci.yml,supply-chain,,step,Run taiki-e/install-action@ab6895351a88b908e96a4697860d4ffea5e57dbe,13,0,1
-2026-10-17,ci.yml,supply-chain,,step,Set up job,13,1,2
-2026-10-17,ci.yml,supply-chain,,step,Start the job wall-time clock,13,0,0
-2026-10-17,ci.yml,swish-check,,job,,13,638,675
-2026-10-17,ci.yml,swish-check,,step,Build QEMU if the cache missed,13,2,9
-2026-10-17,ci.yml,swish-check,,step,Cache QEMU,13,2,4
-2026-10-17,ci.yml,swish-check,,step,Check the job's wall time against its budget,13,0,0
-2026-10-17,ci.yml,swish-check,,step,Complete job,13,0,0
-2026-10-17,ci.yml,swish-check,,step,Post Cache QEMU,13,0,1
-2026-10-17,ci.yml,swish-check,,step,Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1,13,0,1
-2026-10-17,ci.yml,swish-check,,step,Put it on PATH,13,0,0
-2026-10-17,ci.yml,swish-check,,step,Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1,13,5,7
-2026-10-17,ci.yml,swish-check,,step,Run script/bootstrap,13,18,21
-2026-10-17,ci.yml,swish-check,,step,Run script/ci-build swish-check-aarch64-riscv64,13,606,638
-2026-10-17,ci.yml,swish-check,,step,Set up job,13,1,1
-2026-10-17,ci.yml,swish-check,,step,Start the job wall-time clock,13,0,0
-2026-10-17,ci.yml,swish-check-x86_64,,job,,13,343,429
-2026-10-17,ci.yml,swish-check-x86_64,,step,Build QEMU if the cache missed,13,2,5
-2026-10-17,ci.yml,swish-check-x86_64,,step,Cache QEMU,13,3,5
-2026-10-17,ci.yml,swish-check-x86_64,,step,Check the job's wall time against its budget,13,0,0
-2026-10-17,ci.yml,swish-check-x86_64,,step,Complete job,13,0,1
-2026-10-17,ci.yml,swish-check-x86_64,,step,Open /dev/kvm to the runner user,13,0,1
-2026-10-17,ci.yml,swish-check-x86_64,,step,Post Cache QEMU,13,0,1
-2026-10-17,ci.yml,swish-check-x86_64,,step,Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1,13,0,1
-2026-10-17,ci.yml,swish-check-x86_64,,step,Put it on PATH,13,0,0
-2026-10-17,ci.yml,swish-check-x86_64,,step,Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1,13,6,7
-2026-10-17,ci.yml,swish-check-x86_64,,step,Run script/bootstrap,13,20,22
-2026-10-17,ci.yml,swish-check-x86_64,,step,Run script/ci-build swish-check-x86_64,13,307,390
-2026-10-17,ci.yml,swish-check-x86_64,,step,Set up job,13,1,1
-2026-10-17,ci.yml,swish-check-x86_64,,step,Start the job wall-time clock,13,0,0
-2026-10-17,ci.yml,test,,job,,13,3,3
-2026-10-17,ci.yml,test,,step,Complete job,13,0,0
-2026-10-17,ci.yml,test,,step,Report the shards' combined result,13,0,1
-2026-10-17,ci.yml,test,,step,Set up job,13,0,1
-2026-10-17,ci.yml,test-shard,"host crates, aarch64 and riscv64",job,,13,730,759
-2026-10-17,ci.yml,test-shard,"host crates, aarch64 and riscv64",step,Build QEMU if the cache missed,13,2,7
-2026-10-17,ci.yml,test-shard,"host crates, aarch64 and riscv64",step,Cache QEMU,13,2,4
-2026-10-17,ci.yml,test-shard,"host crates, aarch64 and riscv64",step,Check the job's wall time against its budget,13,0,0
-2026-10-17,ci.yml,test-shard,"host crates, aarch64 and riscv64",step,Complete job,13,0,0
-2026-10-17,ci.yml,test-shard,"host crates, aarch64 and riscv64",step,Post Cache QEMU,13,0,0
-2026-10-17,ci.yml,test-shard,"host crates, aarch64 and riscv64",step,Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1,13,0,1
-2026-10-17,ci.yml,test-shard,"host crates, aarch64 and riscv64",step,Put it on PATH,13,0,0
-2026-10-17,ci.yml,test-shard,"host crates, aarch64 and riscv64",step,Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1,13,5,6
-2026-10-17,ci.yml,test-shard,"host crates, aarch64 and riscv64",step,Run script/bootstrap,13,17,23
-2026-10-17,ci.yml,test-shard,"host crates, aarch64 and riscv64",step,Run script/ci-build test-aarch64-riscv64,13,693,721
-2026-10-17,ci.yml,test-shard,"host crates, aarch64 and riscv64",step,Set up job,13,1,2
-2026-10-17,ci.yml,test-shard,"host crates, aarch64 and riscv64",step,Start the job wall-time clock,13,0,1
-2026-10-17,ci.yml,test-shard,"host crates, aarch64 and riscv64",step,Summarize where the time went,13,0,0
-2026-10-17,ci.yml,test-shard,"host crates, aarch64 and riscv64",step,Upload the time record,13,1,2
-2026-10-17,ci.yml,test-shard,x86_64,job,,13,691,737
-2026-10-17,ci.yml,test-shard,x86_64,step,Build QEMU if the cache missed,13,2,7
-2026-10-17,ci.yml,test-shard,x86_64,step,Cache QEMU,13,2,3
-2026-10-17,ci.yml,test-shard,x86_64,step,Check the job's wall time against its budget,13,0,0
-2026-10-17,ci.yml,test-shard,x86_64,step,Complete job,13,0,0
-2026-10-17,ci.yml,test-shard,x86_64,step,Post Cache QEMU,13,0,1
-2026-10-17,ci.yml,test-shard,x86_64,step,Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1,13,0,1
-2026-10-17,ci.yml,test-shard,x86_64,step,Put it on PATH,13,0,0
-2026-10-17,ci.yml,test-shard,x86_64,step,Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1,13,5,6
-2026-10-17,ci.yml,test-shard,x86_64,step,Run script/bootstrap,13,16,22
-2026-10-17,ci.yml,test-shard,x86_64,step,Run script/ci-build test-x86_64,13,662,707
-2026-10-17,ci.yml,test-shard,x86_64,step,Set up job,13,1,2
-2026-10-17,ci.yml,test-shard,x86_64,step,Start the job wall-time clock,13,0,1
-2026-10-17,ci.yml,test-shard,x86_64,step,Summarize where the time went,13,0,1
-2026-10-17,ci.yml,test-shard,x86_64,step,Upload the time record,13,1,2
-2026-10-17,ci.yml,watchdog,,job,,13,10,414
+2026-10-17,ci.yml,bench,,job,,20,105,120
+2026-10-17,ci.yml,bench,,step,Build QEMU if the cache missed,20,3,13
+2026-10-17,ci.yml,bench,,step,Cache QEMU,20,3,4
+2026-10-17,ci.yml,bench,,step,Check the job's wall time against its budget,20,0,1
+2026-10-17,ci.yml,bench,,step,Complete job,20,0,0
+2026-10-17,ci.yml,bench,,step,Post Cache QEMU,20,0,1
+2026-10-17,ci.yml,bench,,step,Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1,20,0,1
+2026-10-17,ci.yml,bench,,step,Put it on PATH,20,0,1
+2026-10-17,ci.yml,bench,,step,Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1,20,6,7
+2026-10-17,ci.yml,bench,,step,Run script/bootstrap,20,22,31
+2026-10-17,ci.yml,bench,,step,Run script/ci-build bench,20,57,61
+2026-10-17,ci.yml,bench,,step,Run script/ci-build icount,20,10,12
+2026-10-17,ci.yml,bench,,step,Set up job,20,1,1
+2026-10-17,ci.yml,bench,,step,Start the job wall-time clock,20,0,1
+2026-10-17,ci.yml,boot-check,,job,,20,90,102
+2026-10-17,ci.yml,boot-check,,step,Build QEMU if the cache missed,20,2,6
+2026-10-17,ci.yml,boot-check,,step,Cache QEMU,20,2,3
+2026-10-17,ci.yml,boot-check,,step,Check the job's wall time against its budget,20,0,1
+2026-10-17,ci.yml,boot-check,,step,Complete job,20,0,0
+2026-10-17,ci.yml,boot-check,,step,Post Cache QEMU,20,0,1
+2026-10-17,ci.yml,boot-check,,step,Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1,20,0,1
+2026-10-17,ci.yml,boot-check,,step,Put it on PATH,20,0,0
+2026-10-17,ci.yml,boot-check,,step,Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1,20,5,7
+2026-10-17,ci.yml,boot-check,,step,Run script/bootstrap,20,18,24
+2026-10-17,ci.yml,boot-check,,step,Run script/ci-build boot-check,20,57,62
+2026-10-17,ci.yml,boot-check,,step,Set up job,20,1,1
+2026-10-17,ci.yml,boot-check,,step,Start the job wall-time clock,20,0,0
+2026-10-17,ci.yml,boot-file-size-check,,job,,20,64,71
+2026-10-17,ci.yml,boot-file-size-check,,step,Check the job's wall time against its budget,20,0,1
+2026-10-17,ci.yml,boot-file-size-check,,step,Complete job,20,0,1
+2026-10-17,ci.yml,boot-file-size-check,,step,Install the targets and llvm-tools,20,18,23
+2026-10-17,ci.yml,boot-file-size-check,,step,Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1,20,0,1
+2026-10-17,ci.yml,boot-file-size-check,,step,Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1,20,4,5
+2026-10-17,ci.yml,boot-file-size-check,,step,Run script/ci-build boot-file-size-check,20,38,41
+2026-10-17,ci.yml,boot-file-size-check,,step,Set up job,20,0,1
+2026-10-17,ci.yml,boot-file-size-check,,step,Start the job wall-time clock,20,0,1
+2026-10-17,ci.yml,build-is-reproducible,,job,,20,44,49
+2026-10-17,ci.yml,build-is-reproducible,,step,Check the job's wall time against its budget,20,0,1
+2026-10-17,ci.yml,build-is-reproducible,,step,Complete job,20,0,0
+2026-10-17,ci.yml,build-is-reproducible,,step,Install the bare-metal target,20,18,22
+2026-10-17,ci.yml,build-is-reproducible,,step,Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1,20,0,1
+2026-10-17,ci.yml,build-is-reproducible,,step,Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1,20,4,5
+2026-10-17,ci.yml,build-is-reproducible,,step,Run script/ci-build build-is-reproducible,20,17,19
+2026-10-17,ci.yml,build-is-reproducible,,step,Set up job,20,1,1
+2026-10-17,ci.yml,build-is-reproducible,,step,Start the job wall-time clock,20,0,1
+2026-10-17,ci.yml,clippy,,job,,25,3,4
+2026-10-17,ci.yml,clippy,,step,Complete job,25,0,0
+2026-10-17,ci.yml,clippy,,step,Report lint's verdict under the old check name,25,0,1
+2026-10-17,ci.yml,clippy,,step,Set up job,25,0,1
+2026-10-17,ci.yml,coverage,,job,,20,96,125
+2026-10-17,ci.yml,coverage,,step,Check the job's wall time against its budget,20,0,1
+2026-10-17,ci.yml,coverage,,step,Complete job,20,0,0
+2026-10-17,ci.yml,coverage,,step,Install llvm-tools (pinned nightly),20,10,12
+2026-10-17,ci.yml,coverage,,step,Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1,20,0,1
+2026-10-17,ci.yml,coverage,,step,Publish the summary to the run,20,0,1
+2026-10-17,ci.yml,coverage,,step,Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1,20,6,8
+2026-10-17,ci.yml,coverage,,step,Run script/ci-build coverage,20,71,98
+2026-10-17,ci.yml,coverage,,step,Run taiki-e/install-action@ab6895351a88b908e96a4697860d4ffea5e57dbe,20,0,1
+2026-10-17,ci.yml,coverage,,step,Set up job,20,1,3
+2026-10-17,ci.yml,coverage,,step,Start the job wall-time clock,20,0,1
+2026-10-17,ci.yml,coverage,,step,Upload the lcov + HTML report,20,2,3
+2026-10-17,ci.yml,cpu-matrix,,job,,20,3,4
+2026-10-17,ci.yml,cpu-matrix,,step,Complete job,20,0,1
+2026-10-17,ci.yml,cpu-matrix,,step,Report the shards' combined result,20,0,1
+2026-10-17,ci.yml,cpu-matrix,,step,Set up job,20,0,1
+2026-10-17,ci.yml,cpu-matrix-shard,rv64 sifive-u54 rva22s64,job,,20,838,876
+2026-10-17,ci.yml,cpu-matrix-shard,rv64 sifive-u54 rva22s64,step,Build QEMU if the cache missed,20,2,9
+2026-10-17,ci.yml,cpu-matrix-shard,rv64 sifive-u54 rva22s64,step,Cache QEMU,20,2,3
+2026-10-17,ci.yml,cpu-matrix-shard,rv64 sifive-u54 rva22s64,step,Check the job's wall time against its budget,20,0,0
+2026-10-17,ci.yml,cpu-matrix-shard,rv64 sifive-u54 rva22s64,step,Complete job,20,0,1
+2026-10-17,ci.yml,cpu-matrix-shard,rv64 sifive-u54 rva22s64,step,Post Cache QEMU,20,0,1
+2026-10-17,ci.yml,cpu-matrix-shard,rv64 sifive-u54 rva22s64,step,Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1,20,0,1
+2026-10-17,ci.yml,cpu-matrix-shard,rv64 sifive-u54 rva22s64,step,Put it on PATH,20,0,0
+2026-10-17,ci.yml,cpu-matrix-shard,rv64 sifive-u54 rva22s64,step,Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1,20,5,6
+2026-10-17,ci.yml,cpu-matrix-shard,rv64 sifive-u54 rva22s64,step,Run script/bootstrap,20,18,21
+2026-10-17,ci.yml,cpu-matrix-shard,rv64 sifive-u54 rva22s64,step,Run script/ci-build cpu-matrix,20,808,844
+2026-10-17,ci.yml,cpu-matrix-shard,rv64 sifive-u54 rva22s64,step,Set up job,20,1,2
+2026-10-17,ci.yml,cpu-matrix-shard,rv64 sifive-u54 rva22s64,step,Start the job wall-time clock,20,0,1
+2026-10-17,ci.yml,cpu-matrix-shard,rv64 sifive-u54 rva22s64,step,Summarize where the time went,20,0,1
+2026-10-17,ci.yml,cpu-matrix-shard,rv64 sifive-u54 rva22s64,step,Upload the time record,20,1,2
+2026-10-17,ci.yml,cpu-matrix-shard,rva23s64 thead-c906,job,,20,641,698
+2026-10-17,ci.yml,cpu-matrix-shard,rva23s64 thead-c906,step,Build QEMU if the cache missed,20,2,6
+2026-10-17,ci.yml,cpu-matrix-shard,rva23s64 thead-c906,step,Cache QEMU,20,2,3
+2026-10-17,ci.yml,cpu-matrix-shard,rva23s64 thead-c906,step,Check the job's wall time against its budget,20,0,1
+2026-10-17,ci.yml,cpu-matrix-shard,rva23s64 thead-c906,step,Complete job,20,0,0
+2026-10-17,ci.yml,cpu-matrix-shard,rva23s64 thead-c906,step,Post Cache QEMU,20,0,1
+2026-10-17,ci.yml,cpu-matrix-shard,rva23s64 thead-c906,step,Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1,20,0,1
+2026-10-17,ci.yml,cpu-matrix-shard,rva23s64 thead-c906,step,Put it on PATH,20,0,0
+2026-10-17,ci.yml,cpu-matrix-shard,rva23s64 thead-c906,step,Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1,20,5,6
+2026-10-17,ci.yml,cpu-matrix-shard,rva23s64 thead-c906,step,Run script/bootstrap,20,16,22
+2026-10-17,ci.yml,cpu-matrix-shard,rva23s64 thead-c906,step,Run script/ci-build cpu-matrix,20,610,668
+2026-10-17,ci.yml,cpu-matrix-shard,rva23s64 thead-c906,step,Set up job,20,1,2
+2026-10-17,ci.yml,cpu-matrix-shard,rva23s64 thead-c906,step,Start the job wall-time clock,20,0,0
+2026-10-17,ci.yml,cpu-matrix-shard,rva23s64 thead-c906,step,Summarize where the time went,20,0,1
+2026-10-17,ci.yml,cpu-matrix-shard,rva23s64 thead-c906,step,Upload the time record,20,1,1
+2026-10-17,ci.yml,fastpath-footprint,,job,,20,64,69
+2026-10-17,ci.yml,fastpath-footprint,,step,Check the job's wall time against its budget,20,0,1
+2026-10-17,ci.yml,fastpath-footprint,,step,Complete job,20,0,1
+2026-10-17,ci.yml,fastpath-footprint,,step,Install the bare-metal targets and llvm-tools,20,18,20
+2026-10-17,ci.yml,fastpath-footprint,,step,Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1,20,0,1
+2026-10-17,ci.yml,fastpath-footprint,,step,Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1,20,4,5
+2026-10-17,ci.yml,fastpath-footprint,,step,Run script/ci-build fastpath-footprint,20,39,42
+2026-10-17,ci.yml,fastpath-footprint,,step,Set up job,20,0,1
+2026-10-17,ci.yml,fastpath-footprint,,step,Start the job wall-time clock,20,0,0
+2026-10-17,ci.yml,fmt,,job,,20,36,43
+2026-10-17,ci.yml,fmt,,step,Check the job's wall time against its budget,20,0,1
+2026-10-17,ci.yml,fmt,,step,Complete job,20,0,0
+2026-10-17,ci.yml,fmt,,step,Install rustfmt (pinned nightly),20,8,10
+2026-10-17,ci.yml,fmt,,step,Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1,20,0,1
+2026-10-17,ci.yml,fmt,,step,Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1,20,4,5
+2026-10-17,ci.yml,fmt,,step,Run script/ci-build fmt,20,21,25
+2026-10-17,ci.yml,fmt,,step,Set up job,20,0,1
+2026-10-17,ci.yml,fmt,,step,Start the job wall-time clock,20,0,1
+2026-10-17,ci.yml,fuzz,,job,,20,712,744
+2026-10-17,ci.yml,fuzz,,step,Check the job's wall time against its budget,20,0,1
+2026-10-17,ci.yml,fuzz,,step,Complete job,20,0,1
+2026-10-17,ci.yml,fuzz,,step,Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1,20,0,1
+2026-10-17,ci.yml,fuzz,,step,Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1,20,6,8
+2026-10-17,ci.yml,fuzz,,step,Run script/ci-build fuzz,20,702,731
+2026-10-17,ci.yml,fuzz,,step,Set up job,20,0,1
+2026-10-17,ci.yml,fuzz,,step,Start the job wall-time clock,20,0,0
+2026-10-17,ci.yml,gate,,job,,25,11,19
+2026-10-17,ci.yml,gate,,step,Check the job's wall time against its budget,25,0,0
+2026-10-17,ci.yml,gate,,step,Complete job,25,0,1
+2026-10-17,ci.yml,gate,,step,Is this change prose that no build or test reads?,25,2,10
+2026-10-17,ci.yml,gate,,step,Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1,25,0,1
+2026-10-17,ci.yml,gate,,step,Run # A′: a push to `main` whose exact commit a merge group already tested. See the comment,25,0,1
+2026-10-17,ci.yml,gate,,step,Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1,25,6,7
+2026-10-17,ci.yml,gate,,step,Set up job,25,1,1
+2026-10-17,ci.yml,gate,,step,Start the job wall-time clock,25,0,1
+2026-10-17,ci.yml,image-permissions,,job,,20,52,60
+2026-10-17,ci.yml,image-permissions,,step,Check the job's wall time against its budget,20,0,0
+2026-10-17,ci.yml,image-permissions,,step,Complete job,20,0,0
+2026-10-17,ci.yml,image-permissions,,step,Install the bare-metal targets,20,12,14
+2026-10-17,ci.yml,image-permissions,,step,Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1,20,0,1
+2026-10-17,ci.yml,image-permissions,,step,Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1,20,4,5
+2026-10-17,ci.yml,image-permissions,,step,Run script/ci-build image-permissions,20,32,39
+2026-10-17,ci.yml,image-permissions,,step,Set up job,20,0,1
+2026-10-17,ci.yml,image-permissions,,step,Start the job wall-time clock,20,0,1
+2026-10-17,ci.yml,interleavings,,job,,20,46,49
+2026-10-17,ci.yml,interleavings,,step,Check the job's wall time against its budget,20,0,0
+2026-10-17,ci.yml,interleavings,,step,Complete job,20,0,1
+2026-10-17,ci.yml,interleavings,,step,Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1,20,0,1
+2026-10-17,ci.yml,interleavings,,step,Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1,20,6,8
+2026-10-17,ci.yml,interleavings,,step,Run script/interleaving-check,20,35,38
+2026-10-17,ci.yml,interleavings,,step,Set up job,20,1,1
+2026-10-17,ci.yml,interleavings,,step,Start the job wall-time clock,20,0,1
+2026-10-17,ci.yml,lint,,job,,25,454,472
+2026-10-17,ci.yml,lint,,step,Check the job's wall time against its budget,25,0,0
+2026-10-17,ci.yml,lint,,step,Complete job,25,0,0
+2026-10-17,ci.yml,lint,,step,"Install clang (the C component's compiler), shellcheck and dtc",25,9,21
+2026-10-17,ci.yml,lint,,step,Install clippy and the bare-metal target,25,10,12
+2026-10-17,ci.yml,lint,,step,"Install the lint tools (cargo-machete, typos)",25,102,107
+2026-10-17,ci.yml,lint,,step,Post Run Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6,25,0,1
+2026-10-17,ci.yml,lint,,step,Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1,25,0,1
+2026-10-17,ci.yml,lint,,step,Run Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6,25,19,27
+2026-10-17,ci.yml,lint,,step,Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1,25,6,7
+2026-10-17,ci.yml,lint,,step,Run script/ci-build lint,25,293,309
+2026-10-17,ci.yml,lint,,step,Selftest of script/metrics,25,0,1
+2026-10-17,ci.yml,lint,,step,Set up job,25,1,2
+2026-10-17,ci.yml,lint,,step,Start the job wall-time clock,25,0,1
+2026-10-17,ci.yml,lint,,step,The fleet tooling's checks,25,5,6
+2026-10-17,ci.yml,lint,,step,The tests of the code that reads the prose this change touched,5,8,10
+2026-10-17,ci.yml,rg-threads,aarch64 and riscv64,job,,20,406,429
+2026-10-17,ci.yml,rg-threads,aarch64 and riscv64,step,Build QEMU if the cache missed,20,2,8
+2026-10-17,ci.yml,rg-threads,aarch64 and riscv64,step,Cache QEMU,20,2,7
+2026-10-17,ci.yml,rg-threads,aarch64 and riscv64,step,Check the job's wall time against its budget,20,0,0
+2026-10-17,ci.yml,rg-threads,aarch64 and riscv64,step,Complete job,20,0,1
+2026-10-17,ci.yml,rg-threads,aarch64 and riscv64,step,Post Cache QEMU,20,0,1
+2026-10-17,ci.yml,rg-threads,aarch64 and riscv64,step,Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1,20,0,1
+2026-10-17,ci.yml,rg-threads,aarch64 and riscv64,step,Put it on PATH,20,0,0
+2026-10-17,ci.yml,rg-threads,aarch64 and riscv64,step,Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1,20,2,5
+2026-10-17,ci.yml,rg-threads,aarch64 and riscv64,step,Run script/bootstrap,20,18,22
+2026-10-17,ci.yml,rg-threads,aarch64 and riscv64,step,Run script/ci-build rg-threads-aarch64-riscv64,20,372,399
+2026-10-17,ci.yml,rg-threads,aarch64 and riscv64,step,Set up job,20,1,2
+2026-10-17,ci.yml,rg-threads,aarch64 and riscv64,step,Start the job wall-time clock,20,0,1
+2026-10-17,ci.yml,rg-threads,x86_64,job,,20,362,387
+2026-10-17,ci.yml,rg-threads,x86_64,step,Build QEMU if the cache missed,20,2,10
+2026-10-17,ci.yml,rg-threads,x86_64,step,Cache QEMU,20,2,3
+2026-10-17,ci.yml,rg-threads,x86_64,step,Check the job's wall time against its budget,20,0,0
+2026-10-17,ci.yml,rg-threads,x86_64,step,Complete job,20,0,1
+2026-10-17,ci.yml,rg-threads,x86_64,step,Post Cache QEMU,20,0,1
+2026-10-17,ci.yml,rg-threads,x86_64,step,Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1,20,0,1
+2026-10-17,ci.yml,rg-threads,x86_64,step,Put it on PATH,20,0,0
+2026-10-17,ci.yml,rg-threads,x86_64,step,Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1,20,2,4
+2026-10-17,ci.yml,rg-threads,x86_64,step,Run script/bootstrap,20,17,22
+2026-10-17,ci.yml,rg-threads,x86_64,step,Run script/ci-build rg-threads-x86_64,20,336,351
+2026-10-17,ci.yml,rg-threads,x86_64,step,Set up job,20,1,1
+2026-10-17,ci.yml,rg-threads,x86_64,step,Start the job wall-time clock,20,0,0
+2026-10-17,ci.yml,stack-frame-check,,job,,20,124,134
+2026-10-17,ci.yml,stack-frame-check,,step,Check the job's wall time against its budget,20,0,0
+2026-10-17,ci.yml,stack-frame-check,,step,Complete job,20,0,1
+2026-10-17,ci.yml,stack-frame-check,,step,Install the bare-metal targets and llvm-tools,20,14,17
+2026-10-17,ci.yml,stack-frame-check,,step,Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1,20,0,1
+2026-10-17,ci.yml,stack-frame-check,,step,Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1,20,4,5
+2026-10-17,ci.yml,stack-frame-check,,step,Run script/ci-build stack-depth-check,20,56,60
+2026-10-17,ci.yml,stack-frame-check,,step,Run script/ci-build stack-frame-check,20,45,49
+2026-10-17,ci.yml,stack-frame-check,,step,Set up job,20,1,1
+2026-10-17,ci.yml,stack-frame-check,,step,Start the job wall-time clock,20,0,0
+2026-10-17,ci.yml,supply-chain,,job,,20,34,48
+2026-10-17,ci.yml,supply-chain,,step,Cache the vendored tarballs,20,1,2
+2026-10-17,ci.yml,supply-chain,,step,Check the job's wall time against its budget,20,0,0
+2026-10-17,ci.yml,supply-chain,,step,Complete job,20,0,1
+2026-10-17,ci.yml,supply-chain,,step,Post Cache the vendored tarballs,20,0,1
+2026-10-17,ci.yml,supply-chain,,step,Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1,20,0,1
+2026-10-17,ci.yml,supply-chain,,step,Read the pinned cargo-deny version,20,0,1
+2026-10-17,ci.yml,supply-chain,,step,Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1,20,4,5
+2026-10-17,ci.yml,supply-chain,,step,Run script/ci-build supply-chain,20,24,38
+2026-10-17,ci.yml,supply-chain,,step,Run taiki-e/install-action@ab6895351a88b908e96a4697860d4ffea5e57dbe,20,0,1
+2026-10-17,ci.yml,supply-chain,,step,Set up job,20,1,3
+2026-10-17,ci.yml,supply-chain,,step,Start the job wall-time clock,20,0,0
+2026-10-17,ci.yml,swish-check,,job,,20,647,675
+2026-10-17,ci.yml,swish-check,,step,Build QEMU if the cache missed,20,2,9
+2026-10-17,ci.yml,swish-check,,step,Cache QEMU,20,2,4
+2026-10-17,ci.yml,swish-check,,step,Check the job's wall time against its budget,20,0,0
+2026-10-17,ci.yml,swish-check,,step,Complete job,20,0,0
+2026-10-17,ci.yml,swish-check,,step,Post Cache QEMU,20,0,1
+2026-10-17,ci.yml,swish-check,,step,Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1,20,0,1
+2026-10-17,ci.yml,swish-check,,step,Put it on PATH,20,0,0
+2026-10-17,ci.yml,swish-check,,step,Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1,20,5,7
+2026-10-17,ci.yml,swish-check,,step,Run script/bootstrap,20,18,21
+2026-10-17,ci.yml,swish-check,,step,Run script/ci-build swish-check-aarch64-riscv64,20,614,643
+2026-10-17,ci.yml,swish-check,,step,Set up job,20,1,1
+2026-10-17,ci.yml,swish-check,,step,Start the job wall-time clock,20,0,0
+2026-10-17,ci.yml,swish-check-x86_64,,job,,20,407,435
+2026-10-17,ci.yml,swish-check-x86_64,,step,Build QEMU if the cache missed,20,2,5
+2026-10-17,ci.yml,swish-check-x86_64,,step,Cache QEMU,20,3,5
+2026-10-17,ci.yml,swish-check-x86_64,,step,Check the job's wall time against its budget,20,0,0
+2026-10-17,ci.yml,swish-check-x86_64,,step,Complete job,20,0,1
+2026-10-17,ci.yml,swish-check-x86_64,,step,Open /dev/kvm to the runner user,20,0,1
+2026-10-17,ci.yml,swish-check-x86_64,,step,Post Cache QEMU,20,0,1
+2026-10-17,ci.yml,swish-check-x86_64,,step,Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1,20,0,1
+2026-10-17,ci.yml,swish-check-x86_64,,step,Put it on PATH,20,0,0
+2026-10-17,ci.yml,swish-check-x86_64,,step,Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1,20,6,7
+2026-10-17,ci.yml,swish-check-x86_64,,step,Run script/bootstrap,20,21,27
+2026-10-17,ci.yml,swish-check-x86_64,,step,Run script/ci-build swish-check-x86_64,20,370,398
+2026-10-17,ci.yml,swish-check-x86_64,,step,Set up job,20,1,1
+2026-10-17,ci.yml,swish-check-x86_64,,step,Start the job wall-time clock,20,0,0
+2026-10-17,ci.yml,test,,job,,20,2,3
+2026-10-17,ci.yml,test,,step,Complete job,20,0,1
+2026-10-17,ci.yml,test,,step,Report the shards' combined result,20,0,1
+2026-10-17,ci.yml,test,,step,Set up job,20,0,1
+2026-10-17,ci.yml,test-shard,"host crates, aarch64 and riscv64",job,,20,734,759
+2026-10-17,ci.yml,test-shard,"host crates, aarch64 and riscv64",step,Build QEMU if the cache missed,20,2,7
+2026-10-17,ci.yml,test-shard,"host crates, aarch64 and riscv64",step,Cache QEMU,20,2,4
+2026-10-17,ci.yml,test-shard,"host crates, aarch64 and riscv64",step,Check the job's wall time against its budget,20,0,0
+2026-10-17,ci.yml,test-shard,"host crates, aarch64 and riscv64",step,Complete job,20,0,1
+2026-10-17,ci.yml,test-shard,"host crates, aarch64 and riscv64",step,Post Cache QEMU,20,0,0
+2026-10-17,ci.yml,test-shard,"host crates, aarch64 and riscv64",step,Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1,20,0,1
+2026-10-17,ci.yml,test-shard,"host crates, aarch64 and riscv64",step,Put it on PATH,20,0,0
+2026-10-17,ci.yml,test-shard,"host crates, aarch64 and riscv64",step,Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1,20,5,6
+2026-10-17,ci.yml,test-shard,"host crates, aarch64 and riscv64",step,Run script/bootstrap,20,16,23
+2026-10-17,ci.yml,test-shard,"host crates, aarch64 and riscv64",step,Run script/ci-build test-aarch64-riscv64,20,698,723
+2026-10-17,ci.yml,test-shard,"host crates, aarch64 and riscv64",step,Set up job,20,1,2
+2026-10-17,ci.yml,test-shard,"host crates, aarch64 and riscv64",step,Start the job wall-time clock,20,0,1
+2026-10-17,ci.yml,test-shard,"host crates, aarch64 and riscv64",step,Summarize where the time went,20,0,0
+2026-10-17,ci.yml,test-shard,"host crates, aarch64 and riscv64",step,Upload the time record,20,1,2
+2026-10-17,ci.yml,test-shard,x86_64,job,,20,708,737
+2026-10-17,ci.yml,test-shard,x86_64,step,Build QEMU if the cache missed,20,2,7
+2026-10-17,ci.yml,test-shard,x86_64,step,Cache QEMU,20,2,3
+2026-10-17,ci.yml,test-shard,x86_64,step,Check the job's wall time against its budget,20,0,0
+2026-10-17,ci.yml,test-shard,x86_64,step,Complete job,20,0,1
+2026-10-17,ci.yml,test-shard,x86_64,step,Post Cache QEMU,20,0,1
+2026-10-17,ci.yml,test-shard,x86_64,step,Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1,20,0,1
+2026-10-17,ci.yml,test-shard,x86_64,step,Put it on PATH,20,0,0
+2026-10-17,ci.yml,test-shard,x86_64,step,Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1,20,5,6
+2026-10-17,ci.yml,test-shard,x86_64,step,Run script/bootstrap,20,17,22
+2026-10-17,ci.yml,test-shard,x86_64,step,Run script/ci-build test-x86_64,20,676,707
+2026-10-17,ci.yml,test-shard,x86_64,step,Set up job,20,1,2
+2026-10-17,ci.yml,test-shard,x86_64,step,Start the job wall-time clock,20,0,1
+2026-10-17,ci.yml,test-shard,x86_64,step,Summarize where the time went,20,0,1
+2026-10-17,ci.yml,test-shard,x86_64,step,Upload the time record,20,1,2
+2026-10-17,ci.yml,watchdog,,job,,20,10,414
 2026-10-17,ci.yml,watchdog,,step,Build QEMU if the cache missed,2,2,3
 2026-10-17,ci.yml,watchdog,,step,Cache QEMU,2,3,3
-2026-10-17,ci.yml,watchdog,,step,Check the job's wall time against its budget,13,0,1
-2026-10-17,ci.yml,watchdog,,step,Complete job,13,0,0
-2026-10-17,ci.yml,watchdog,,step,Does this change touch the watchdog?,13,0,0
+2026-10-17,ci.yml,watchdog,,step,Check the job's wall time against its budget,20,0,1
+2026-10-17,ci.yml,watchdog,,step,Complete job,20,0,0
+2026-10-17,ci.yml,watchdog,,step,Does this change touch the watchdog?,20,0,1
 2026-10-17,ci.yml,watchdog,,step,Post Cache QEMU,2,0,0
-2026-10-17,ci.yml,watchdog,,step,Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1,13,0,1
+2026-10-17,ci.yml,watchdog,,step,Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1,20,0,1
 2026-10-17,ci.yml,watchdog,,step,Put it on PATH,2,0,0
-2026-10-17,ci.yml,watchdog,,step,Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1,13,5,6
+2026-10-17,ci.yml,watchdog,,step,Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1,20,5,6
 2026-10-17,ci.yml,watchdog,,step,Run script/bootstrap,2,94,99
 2026-10-17,ci.yml,watchdog,,step,Run script/ci-build watchdog-check,2,298,299
-2026-10-17,ci.yml,watchdog,,step,Set up job,13,1,1
-2026-10-17,ci.yml,watchdog,,step,Start the job wall-time clock,13,0,0
-2026-10-17,verify.yml,falsify,,job,,18,3,4
-2026-10-17,verify.yml,falsify,,step,Complete job,18,0,0
-2026-10-17,verify.yml,falsify,,step,Report the shards' combined result,18,0,1
-2026-10-17,verify.yml,falsify,,step,Set up job,18,0,0
-2026-10-17,verify.yml,falsify-shard,1 4,job,,3,638,712
-2026-10-17,verify.yml,falsify-shard,1 4,step,Complete job,3,0,1
-2026-10-17,verify.yml,falsify-shard,1 4,step,Install Kani,3,14,16
-2026-10-17,verify.yml,falsify-shard,1 4,step,Post Run Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6,3,0,0
-2026-10-17,verify.yml,falsify-shard,1 4,step,Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1,3,0,1
-2026-10-17,verify.yml,falsify-shard,1 4,step,Run Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6,3,14,16
-2026-10-17,verify.yml,falsify-shard,1 4,step,Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1,3,5,6
-2026-10-17,verify.yml,falsify-shard,1 4,step,Set up job,3,0,1
-2026-10-17,verify.yml,falsify-shard,1 4,step,script/falsifications --affected-since --shard,3,597,677
-2026-10-17,verify.yml,falsify-shard,2 4,job,,3,530,541
-2026-10-17,verify.yml,falsify-shard,2 4,step,Complete job,3,0,0
-2026-10-17,verify.yml,falsify-shard,2 4,step,Install Kani,3,11,11
-2026-10-17,verify.yml,falsify-shard,2 4,step,Post Run Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6,3,0,0
-2026-10-17,verify.yml,falsify-shard,2 4,step,Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1,3,0,0
-2026-10-17,verify.yml,falsify-shard,2 4,step,Run Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6,3,16,17
-2026-10-17,verify.yml,falsify-shard,2 4,step,Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1,3,5,6
-2026-10-17,verify.yml,falsify-shard,2 4,step,Set up job,3,1,1
-2026-10-17,verify.yml,falsify-shard,2 4,step,script/falsifications --affected-since --shard,3,495,505
-2026-10-17,verify.yml,falsify-shard,3 4,job,,3,525,566
-2026-10-17,verify.yml,falsify-shard,3 4,step,Complete job,3,0,0
-2026-10-17,verify.yml,falsify-shard,3 4,step,Install Kani,3,11,12
-2026-10-17,verify.yml,falsify-shard,3 4,step,Post Run Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6,3,0,0
-2026-10-17,verify.yml,falsify-shard,3 4,step,Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1,3,1,1
-2026-10-17,verify.yml,falsify-shard,3 4,step,Run Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6,3,16,16
-2026-10-17,verify.yml,falsify-shard,3 4,step,Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1,3,5,6
-2026-10-17,verify.yml,falsify-shard,3 4,step,Set up job,3,1,1
-2026-10-17,verify.yml,falsify-shard,3 4,step,script/falsifications --affected-since --shard,3,490,532
-2026-10-17,verify.yml,falsify-shard,4 4,job,,3,481,505
-2026-10-17,verify.yml,falsify-shard,4 4,step,Complete job,3,0,1
-2026-10-17,verify.yml,falsify-shard,4 4,step,Install Kani,3,13,13
-2026-10-17,verify.yml,falsify-shard,4 4,step,Post Run Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6,3,0,0
-2026-10-17,verify.yml,falsify-shard,4 4,step,Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1,3,0,0
-2026-10-17,verify.yml,falsify-shard,4 4,step,Run Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6,3,15,16
-2026-10-17,verify.yml,falsify-shard,4 4,step,Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1,3,5,6
-2026-10-17,verify.yml,falsify-shard,4 4,step,Set up job,3,1,1
-2026-10-17,verify.yml,falsify-shard,4 4,step,script/falsifications --affected-since --shard,3,443,468
-2026-10-17,verify.yml,gate,,job,,18,11,14
-2026-10-17,verify.yml,gate,,step,Complete job,18,0,1
-2026-10-17,verify.yml,gate,,step,Is this change prose that no build or test reads?,18,1,2
-2026-10-17,verify.yml,gate,,step,Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1,18,0,1
-2026-10-17,verify.yml,gate,,step,Run # A′: a push to `main` whose exact commit a merge group already tested. See the comment,18,0,1
-2026-10-17,verify.yml,gate,,step,Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1,18,6,7
-2026-10-17,verify.yml,gate,,step,Set up job,18,1,1
-2026-10-17,verify.yml,prove,1,job,,3,727,776
-2026-10-17,verify.yml,prove,1,step,Complete job,3,0,0
-2026-10-17,verify.yml,prove,1,step,Install Kani,3,17,18
-2026-10-17,verify.yml,prove,1,step,Post Run Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6,3,0,1
-2026-10-17,verify.yml,prove,1,step,Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1,3,0,0
-2026-10-17,verify.yml,prove,1,step,Run Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6,3,19,21
-2026-10-17,verify.yml,prove,1,step,Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1,3,4,4
-2026-10-17,verify.yml,prove,1,step,Set up job,3,1,2
-2026-10-17,verify.yml,prove,1,step,script/verify --shard 1/4,3,682,731
-2026-10-17,verify.yml,prove,2,job,,3,793,806
-2026-10-17,verify.yml,prove,2,step,Complete job,3,0,0
-2026-10-17,verify.yml,prove,2,step,Install Kani,3,14,15
-2026-10-17,verify.yml,prove,2,step,Post Run Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6,3,0,0
-2026-10-17,verify.yml,prove,2,step,Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1,3,0,1
-2026-10-17,verify.yml,prove,2,step,Run Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6,3,19,21
-2026-10-17,verify.yml,prove,2,step,Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1,3,2,5
-2026-10-17,verify.yml,prove,2,step,Set up job,3,1,1
-2026-10-17,verify.yml,prove,2,step,script/verify --shard 2/4,3,753,761
-2026-10-17,verify.yml,prove,3,job,,3,769,806
-2026-10-17,verify.yml,prove,3,step,Complete job,3,0,0
-2026-10-17,verify.yml,prove,3,step,Install Kani,3,14,19
-2026-10-17,verify.yml,prove,3,step,Post Run Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6,3,0,0
-2026-10-17,verify.yml,prove,3,step,Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1,3,0,1
-2026-10-17,verify.yml,prove,3,step,Run Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6,3,20,20
-2026-10-17,verify.yml,prove,3,step,Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1,3,3,3
-2026-10-17,verify.yml,prove,3,step,Set up job,3,1,1
-2026-10-17,verify.yml,prove,3,step,script/verify --shard 3/4,3,727,759
-2026-10-17,verify.yml,prove,4,job,,3,796,879
-2026-10-17,verify.yml,prove,4,step,Complete job,3,0,0
-2026-10-17,verify.yml,prove,4,step,Install Kani,3,14,14
-2026-10-17,verify.yml,prove,4,step,Post Run Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6,3,0,1
-2026-10-17,verify.yml,prove,4,step,Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1,3,0,1
-2026-10-17,verify.yml,prove,4,step,Run Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6,3,20,21
-2026-10-17,verify.yml,prove,4,step,Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1,3,2,2
-2026-10-17,verify.yml,prove,4,step,Set up job,3,1,1
-2026-10-17,verify.yml,prove,4,step,script/verify --shard 4/4,3,756,840
-2026-10-17,verify.yml,prove-kernel-aarch64,,job,,3,44,58
-2026-10-17,verify.yml,prove-kernel-aarch64,,step,Complete job,3,0,0
-2026-10-17,verify.yml,prove-kernel-aarch64,,step,Install Kani,3,26,29
-2026-10-17,verify.yml,prove-kernel-aarch64,,step,Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1,3,0,0
-2026-10-17,verify.yml,prove-kernel-aarch64,,step,Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1,3,3,3
-2026-10-17,verify.yml,prove-kernel-aarch64,,step,Set up job,3,1,1
-2026-10-17,verify.yml,prove-kernel-aarch64,,step,script/verify --only kernel,3,12,24
-2026-10-17,verify.yml,prove-kernel-riscv64,,job,,3,47,49
-2026-10-17,verify.yml,prove-kernel-riscv64,,step,Build the patched Kani if the cache missed,3,14,20
-2026-10-17,verify.yml,prove-kernel-riscv64,,step,Cache the patched Kani,3,2,2
-2026-10-17,verify.yml,prove-kernel-riscv64,,step,Complete job,3,0,0
-2026-10-17,verify.yml,prove-kernel-riscv64,,step,Name the carried Kani patch,3,0,0
-2026-10-17,verify.yml,prove-kernel-riscv64,,step,Post Cache the patched Kani,3,0,0
-2026-10-17,verify.yml,prove-kernel-riscv64,,step,Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1,3,1,1
-2026-10-17,verify.yml,prove-kernel-riscv64,,step,Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1,3,2,2
-2026-10-17,verify.yml,prove-kernel-riscv64,,step,Set up job,3,0,1
-2026-10-17,verify.yml,prove-kernel-riscv64,,step,script/verify-riscv64,3,24,24
-2026-10-17,verify.yml,scope,,job,,14,10,31
-2026-10-17,verify.yml,scope,,step,Complete job,14,0,0
-2026-10-17,verify.yml,scope,,step,Does this change need the proofs?,14,0,20
-2026-10-17,verify.yml,scope,,step,Plan the re-falsify shards,3,1,2
-2026-10-17,verify.yml,scope,,step,Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1,14,0,1
-2026-10-17,verify.yml,scope,,step,Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1,14,6,7
-2026-10-17,verify.yml,scope,,step,Set up job,14,1,1
-2026-10-17,verify.yml,verify,,job,,14,3,4
-2026-10-17,verify.yml,verify,,step,Complete job,14,0,0
-2026-10-17,verify.yml,verify,,step,Report the shards' combined result,14,0,0
-2026-10-17,verify.yml,verify,,step,Set up job,14,0,1
+2026-10-17,ci.yml,watchdog,,step,Set up job,20,1,2
+2026-10-17,ci.yml,watchdog,,step,Start the job wall-time clock,20,0,0
+2026-10-17,verify.yml,falsify,,job,,26,3,4
+2026-10-17,verify.yml,falsify,,step,Complete job,26,0,0
+2026-10-17,verify.yml,falsify,,step,Report the shards' combined result,26,0,1
+2026-10-17,verify.yml,falsify,,step,Set up job,26,0,1
+2026-10-17,verify.yml,falsify-shard,1 4,job,,4,618,712
+2026-10-17,verify.yml,falsify-shard,1 4,step,Complete job,4,0,1
+2026-10-17,verify.yml,falsify-shard,1 4,step,Install Kani,4,14,16
+2026-10-17,verify.yml,falsify-shard,1 4,step,Post Run Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6,4,0,0
+2026-10-17,verify.yml,falsify-shard,1 4,step,Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1,4,0,1
+2026-10-17,verify.yml,falsify-shard,1 4,step,Run Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6,4,14,16
+2026-10-17,verify.yml,falsify-shard,1 4,step,Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1,4,5,6
+2026-10-17,verify.yml,falsify-shard,1 4,step,Set up job,4,0,1
+2026-10-17,verify.yml,falsify-shard,1 4,step,script/falsifications --affected-since --shard,4,579,677
+2026-10-17,verify.yml,falsify-shard,2 4,job,,4,528,541
+2026-10-17,verify.yml,falsify-shard,2 4,step,Complete job,4,0,0
+2026-10-17,verify.yml,falsify-shard,2 4,step,Install Kani,4,11,12
+2026-10-17,verify.yml,falsify-shard,2 4,step,Post Run Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6,4,0,0
+2026-10-17,verify.yml,falsify-shard,2 4,step,Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1,4,0,1
+2026-10-17,verify.yml,falsify-shard,2 4,step,Run Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6,4,16,18
+2026-10-17,verify.yml,falsify-shard,2 4,step,Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1,4,5,6
+2026-10-17,verify.yml,falsify-shard,2 4,step,Set up job,4,1,2
+2026-10-17,verify.yml,falsify-shard,2 4,step,script/falsifications --affected-since --shard,4,493,505
+2026-10-17,verify.yml,falsify-shard,3 4,job,,4,523,566
+2026-10-17,verify.yml,falsify-shard,3 4,step,Complete job,4,0,0
+2026-10-17,verify.yml,falsify-shard,3 4,step,Install Kani,4,11,12
+2026-10-17,verify.yml,falsify-shard,3 4,step,Post Run Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6,4,0,0
+2026-10-17,verify.yml,falsify-shard,3 4,step,Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1,4,0,1
+2026-10-17,verify.yml,falsify-shard,3 4,step,Run Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6,4,16,16
+2026-10-17,verify.yml,falsify-shard,3 4,step,Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1,4,6,6
+2026-10-17,verify.yml,falsify-shard,3 4,step,Set up job,4,1,1
+2026-10-17,verify.yml,falsify-shard,3 4,step,script/falsifications --affected-since --shard,4,487,532
+2026-10-17,verify.yml,falsify-shard,4 4,job,,4,487,505
+2026-10-17,verify.yml,falsify-shard,4 4,step,Complete job,4,0,1
+2026-10-17,verify.yml,falsify-shard,4 4,step,Install Kani,4,12,13
+2026-10-17,verify.yml,falsify-shard,4 4,step,Post Run Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6,4,0,0
+2026-10-17,verify.yml,falsify-shard,4 4,step,Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1,4,0,0
+2026-10-17,verify.yml,falsify-shard,4 4,step,Run Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6,4,15,16
+2026-10-17,verify.yml,falsify-shard,4 4,step,Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1,4,5,6
+2026-10-17,verify.yml,falsify-shard,4 4,step,Set up job,4,1,1
+2026-10-17,verify.yml,falsify-shard,4 4,step,script/falsifications --affected-since --shard,4,450,468
+2026-10-17,verify.yml,gate,,job,,26,11,18
+2026-10-17,verify.yml,gate,,step,Complete job,26,0,1
+2026-10-17,verify.yml,gate,,step,Is this change prose that no build or test reads?,26,1,7
+2026-10-17,verify.yml,gate,,step,Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1,26,0,1
+2026-10-17,verify.yml,gate,,step,Run # A′: a push to `main` whose exact commit a merge group already tested. See the comment,26,0,1
+2026-10-17,verify.yml,gate,,step,Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1,26,6,13
+2026-10-17,verify.yml,gate,,step,Set up job,26,1,1
+2026-10-17,verify.yml,prove,1,job,,4,752,821
+2026-10-17,verify.yml,prove,1,step,Complete job,4,0,1
+2026-10-17,verify.yml,prove,1,step,Install Kani,4,17,18
+2026-10-17,verify.yml,prove,1,step,Post Run Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6,4,0,1
+2026-10-17,verify.yml,prove,1,step,Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1,4,0,0
+2026-10-17,verify.yml,prove,1,step,Run Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6,4,19,21
+2026-10-17,verify.yml,prove,1,step,Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1,4,4,4
+2026-10-17,verify.yml,prove,1,step,Set up job,4,1,2
+2026-10-17,verify.yml,prove,1,step,script/verify --shard 1/4,4,706,780
+2026-10-17,verify.yml,prove,2,job,,4,782,806
+2026-10-17,verify.yml,prove,2,step,Complete job,4,0,0
+2026-10-17,verify.yml,prove,2,step,Install Kani,4,14,15
+2026-10-17,verify.yml,prove,2,step,Post Run Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6,4,0,0
+2026-10-17,verify.yml,prove,2,step,Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1,4,0,1
+2026-10-17,verify.yml,prove,2,step,Run Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6,4,19,21
+2026-10-17,verify.yml,prove,2,step,Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1,4,2,5
+2026-10-17,verify.yml,prove,2,step,Set up job,4,1,1
+2026-10-17,verify.yml,prove,2,step,script/verify --shard 2/4,4,742,761
+2026-10-17,verify.yml,prove,3,job,,4,648,806
+2026-10-17,verify.yml,prove,3,step,Complete job,4,0,0
+2026-10-17,verify.yml,prove,3,step,Install Kani,4,14,19
+2026-10-17,verify.yml,prove,3,step,Post Run Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6,4,0,1
+2026-10-17,verify.yml,prove,3,step,Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1,4,0,1
+2026-10-17,verify.yml,prove,3,step,Run Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6,4,18,20
+2026-10-17,verify.yml,prove,3,step,Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1,4,3,3
+2026-10-17,verify.yml,prove,3,step,Set up job,4,1,1
+2026-10-17,verify.yml,prove,3,step,script/verify --shard 3/4,4,610,759
+2026-10-17,verify.yml,prove,4,job,,4,822,879
+2026-10-17,verify.yml,prove,4,step,Complete job,4,0,0
+2026-10-17,verify.yml,prove,4,step,Install Kani,4,14,15
+2026-10-17,verify.yml,prove,4,step,Post Run Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6,4,0,1
+2026-10-17,verify.yml,prove,4,step,Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1,4,0,1
+2026-10-17,verify.yml,prove,4,step,Run Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6,4,20,21
+2026-10-17,verify.yml,prove,4,step,Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1,4,2,4
+2026-10-17,verify.yml,prove,4,step,Set up job,4,1,1
+2026-10-17,verify.yml,prove,4,step,script/verify --shard 4/4,4,779,840
+2026-10-17,verify.yml,prove-kernel-aarch64,,job,,4,47,58
+2026-10-17,verify.yml,prove-kernel-aarch64,,step,Complete job,4,0,0
+2026-10-17,verify.yml,prove-kernel-aarch64,,step,Install Kani,4,26,29
+2026-10-17,verify.yml,prove-kernel-aarch64,,step,Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1,4,0,0
+2026-10-17,verify.yml,prove-kernel-aarch64,,step,Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1,4,3,4
+2026-10-17,verify.yml,prove-kernel-aarch64,,step,Set up job,4,1,1
+2026-10-17,verify.yml,prove-kernel-aarch64,,step,script/verify --only kernel,4,15,24
+2026-10-17,verify.yml,prove-kernel-riscv64,,job,,4,46,49
+2026-10-17,verify.yml,prove-kernel-riscv64,,step,Build the patched Kani if the cache missed,4,14,20
+2026-10-17,verify.yml,prove-kernel-riscv64,,step,Cache the patched Kani,4,2,2
+2026-10-17,verify.yml,prove-kernel-riscv64,,step,Complete job,4,0,0
+2026-10-17,verify.yml,prove-kernel-riscv64,,step,Name the carried Kani patch,4,0,0
+2026-10-17,verify.yml,prove-kernel-riscv64,,step,Post Cache the patched Kani,4,0,0
+2026-10-17,verify.yml,prove-kernel-riscv64,,step,Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1,4,0,1
+2026-10-17,verify.yml,prove-kernel-riscv64,,step,Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1,4,2,4
+2026-10-17,verify.yml,prove-kernel-riscv64,,step,Set up job,4,0,1
+2026-10-17,verify.yml,prove-kernel-riscv64,,step,script/verify-riscv64,4,24,24
+2026-10-17,verify.yml,scope,,job,,20,10,31
+2026-10-17,verify.yml,scope,,step,Complete job,20,0,0
+2026-10-17,verify.yml,scope,,step,Does this change need the proofs?,20,0,20
+2026-10-17,verify.yml,scope,,step,Plan the re-falsify shards,4,2,2
+2026-10-17,verify.yml,scope,,step,Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1,20,0,1
+2026-10-17,verify.yml,scope,,step,Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1,20,6,7
+2026-10-17,verify.yml,scope,,step,Set up job,20,0,1
+2026-10-17,verify.yml,verify,,job,,20,3,4
+2026-10-17,verify.yml,verify,,step,Complete job,20,0,0
+2026-10-17,verify.yml,verify,,step,Report the shards' combined result,20,0,1
+2026-10-17,verify.yml,verify,,step,Set up job,20,0,1

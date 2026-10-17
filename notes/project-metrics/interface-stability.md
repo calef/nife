@@ -43,7 +43,7 @@ Sorted by breaking changes in the last four weeks (2026W39 to 2026W42), then by 
 
 ## What broke in 2026W42
 
-Read at `e6611156377d` against the week before. Each line is one removed or changed public item, quoted as it stood that week; a crate rename is one line for the whole crate.
+Read at `4d52a65f3a7d` against the week before. Each line is one removed or changed public item, quoted as it stood that week; a crate rename is one line for the whole crate.
 
 > - `abi`: syscall renamed, number kept (method or encoding), now `interrupt::ACK` `irq::ACK`
 > - `abi`: syscall renamed, number kept (method or encoding), now `interrupt::WAIT` `irq::WAIT`
