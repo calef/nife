@@ -4,6 +4,17 @@ An appendix to [notes/merge-queue.md](../merge-queue.md). It holds two changes o
 were both answers to starved runners: A′, which stops a push to `main` repeating the merge group's
 suite, and the check timeout raised from 60 minutes to 240.
 
+**Status of the first half, 2026-10-16 (UTC): the `push` to `main` can no longer fire.** `main` now
+sits behind a repository rule, and a push is declined outright (`push declined due to repository
+rule violations`); everything lands through the merge queue, including the maintainer's own filings.
+The A′ branch remains in `ci.yml` and `verify.yml` and still works as designed should the rule ever
+change, but no current flow reaches it. `helpers/trunk-health.sh` is unaffected where it matters:
+its health lookup names merge-group runs by exact SHA, which is still how every commit arrives; only
+its A′ branch (reading a skipped push run as green) has nothing left to read. The second half below,
+the ruleset's `check_response_timeout_minutes`, is the
+ruleset's own setting, still operative, and is why the queue's green entries stopped being evicted
+for runner supply.
+
 ## A push to `main` cites the merge group instead of repeating it (A′)
 
 calef approved this on 2026-09-24 ("Proceed with A′"). On a `push` to `main`, the `draft gate` job in
