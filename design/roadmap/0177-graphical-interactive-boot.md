@@ -71,7 +71,7 @@ A lane investigated all three pieces before writing code, and reverted the one p
 (mechanical, not a fork).** Counted the actual slots rather than assumed them: aarch64's
 `spawn_init` (now `boot_progenitor`) (`fixtures/src/hello.rs`'s `init_boot`) fills capability-table slots 0-11 of 16 already
 (`untyped`, the report endpoint, `uart_dev`, the test IRQ, `uart_irq`, `clock_page`, `config_page`,
-`fs_ep`, `fs_page`, the virtio-rng trio); 3 free. riscv64's `riscv_shell_boot` (likewise) fills 0-9; 5 free. The table has 32 slots today. A
+`fs_ep`, `fs_page`, the virtio-rng trio); 3 free. riscv64's `riscv_shell_boot` (likewise) fills 0-9; 5 free. A
 virtio-gpu device needs 11 (`display_service.rs`'s own shape: transport, irq, and a nine-page DMA
 region, one `PageFrame` capability per page, because the ABI's `MAP_INTO`/`CAP_INSERT` are strictly
 one-capability-per-physical-page). A virtio-keyboard device needs 3-4. Neither fits what remains on

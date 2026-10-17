@@ -73,7 +73,7 @@ rest keep, as judged:
 | `roadmap/0049/bugs-found.md`, `0166`, `0301`, `0266` line 130, `0295` line 42 | keep: past-tense accounts, the rename's own account, and a proposal as filed |
 | `roadmap/0161`/`processes-and-userspace.md` | names `spawn_hello`, the slot-2 `UART_PHYS` grant |
 | `roadmap/0167` | names `boot_progenitor` and `spawn_hello` |
-| `roadmap/0177` | the reachable-boot lines name `boot_progenitor`; the slot-count lines keep as old-layout measurements, with a clause naming the successor and the table's 32 slots today |
+| `roadmap/0177` | the reachable-boot lines name `boot_progenitor`; the slot-count lines keep as old-layout measurements, with a clause naming the successor |
 | `roadmap/0182` | drops the dead half |
 | `roadmap/0267`/`evidence.md`, `0268`/`second-pass.md`, `0296`, `0295` lines 155 and 160 | name `boot_progenitor` |
 | `roadmap/0289` | names `boot_progenitor`; line 27's `#[cfg(feature = "shell")]` claim now states the current fact: the default riscv64 boot hands over through `boot_progenitor` after the tour, and the `shell` feature reaches it before |
