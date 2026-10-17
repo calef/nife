@@ -142,11 +142,16 @@ calef, 2026-10-06 (UTC): *"A machine may write many indexes."* So a machine hold
 an index the owner adds is the machine's. §195 clause 2 scopes trust per source, and §196 clause 4
 holds roots per source.
 
-To settle before `add-repository` is built:
+To settle before `add-repository` is built (item 1 is ruled):
 
-1. How is a second index authenticated? §250 authenticates basalt's index by TLS alone, pinned to
-   ISRG Root X1. A second index needs a root or key the owner supplies at `add-repository`. There is no
-   system store to fall back on, by §196 clause 4's design.
+1. How an added index is authenticated: ruled 2026-10-17 (UTC). calef: *"Just a URL."*
+   `jig add-repository <url>` takes only a URL. The index is checked against the roots the image
+   already pins for basalt (ISRG Root X1 today), and a server whose certificate chains elsewhere is
+   refused with a message naming the root it needed. The owner supplies no root or key, so there is
+   no system store to fall back on, by §196 clause 4's design. A separate proposal, [the web's
+   authority list as a package and a capability](https://github.com/nifeos/nife/pull/2277)
+   (proposed, unmerged), may later change what added indexes are checked against; this ruling does not
+   decide it.
 2. Two indexes may vouch for different bytes under one name. The tree's analogous case is milestone
    614: a bare name the catalog vouches for at several versions is refused as `Ambiguous`, and
    `name@version` picks one. The same refusal, with an index-qualified name to pick, is one answer.
