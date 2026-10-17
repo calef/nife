@@ -475,12 +475,27 @@ fn parse_load_average(uptime_output: &str) -> Option<f64> {
 /// or a component that never got its picture to the device, fails loudly instead of being waved
 /// through. The child inherits stdio, so the suite's output streams exactly as before.
 pub(crate) fn cargo_test_with_scanout_check(arch: &str, test_args: &[&str]) -> bool {
+    scanout_check(arch, test_args, true)
+}
+
+/// **The same run without the inbound prober**, for a machine with no host-forwarded listener.
+///
+/// x86_64's `q35` has no virtio-mmio NIC, and the two programs that listen on the forwarded port
+/// (milestone 107, milestone 64) reach it through that NIC, so `helpers/qemu-runner-x86_64.sh`
+/// carries no `hostfwd`. A prober there would fail every run for want of a guest to connect to,
+/// which would make its verdict noise. The scanout referee is wanted all the same: it grades the
+/// three pictures and presses the key the keyboard test waits for.
+pub(crate) fn cargo_test_with_scanout_only(arch: &str, test_args: &[&str]) -> bool {
+    scanout_check(arch, test_args, false)
+}
+
+fn scanout_check(arch: &str, test_args: &[&str], inbound_wanted: bool) -> bool {
     let mut referee = ScanoutReferee::new(arch);
     // The other host-side actor (milestone 107): a process that connects INTO the guest, which is
     // the one thing no in-guest test can stage. Constructed before the child for the same reason
     // the referee is: it is what sets `NIFE_HOSTFWD_PORT`, and the runner reads it from the
     // environment the child inherits.
-    let prober = InboundProber::new(arch);
+    let prober = inbound_wanted.then(|| InboundProber::new(arch));
     // Timed and recorded (milestone 807 (the kernel suite reports what each test cost)): stdout
     // passes through as it did when the child inherited it, and the transcript is kept for
     // `time_record::account` below.
@@ -546,7 +561,7 @@ pub(crate) fn cargo_test_with_scanout_check(arch: &str, test_args: &[&str]) -> b
     let scanout = referee.report();
     // There were three until 2026-09-15, when milestone 298 retired the multicast DNS responder
     // and the multicast prober that checked its answers (notes/mdns.md).
-    let inbound = prober.report();
+    let inbound = prober.is_none_or(|prober| prober.report());
     let (lines, exited) = watch.finish();
     let image = test_args
         .iter()

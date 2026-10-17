@@ -935,20 +935,18 @@ fn focus_routes_a_keystroke_to_one_terminals_grid_and_not_its_neighbours() {
 #[test_case]
 fn three_clients_compose_into_one_scanout_and_the_host_sees_it() {
     // **A missing GPU is not always the build-order mistake this test exists to catch.** On the
-    // `virt` boards (aarch64, riscv64) a real virtio-gpu-pci function is always wired into the
-    // test runner, so `start_driver` returning `None` there really is a build-order bug: PCI is
-    // enumerated and the device is simply not on the bus. On x86_64's `q35`, PCI enumeration
-    // (milestone 165, ACPI's MCFG) reaches real hardware windows the runner has never populated
-    // with a GPU (`helpers/qemu-runner-x86_64.sh` wires no `virtio-gpu-pci`), so `None` there is
-    // an honest, expected gap rather than a bug -- milestone 164's own shape (a scope gap named
-    // where the reader meets the feature) rather than a loud panic. Skipping either way keeps the
-    // one thing this test cannot tell apart from a hardware absence out of its own hands.
+    // `virt` boards (aarch64, riscv64) and on x86_64's PVH runner a real virtio-gpu-pci function
+    // is always wired into the test runner, so `start_driver` returning `None` there really is a
+    // build-order bug: PCI is enumerated and the device is simply not on the bus. The one boot
+    // without a GPU is x86_64 under OVMF (`helpers/qemu-uefi-x86_64.sh` attaches none), so `None`
+    // there is an honest, expected gap rather than a bug. Skipping either way keeps the one thing
+    // this test cannot tell apart from a hardware absence out of its own hands.
     let gpu_driver = program("gpu_driver").expect("no gpu_driver program in the initial ramdisk");
     let Some((driver_report, display, screen)) = display_service::start_driver(gpu_driver) else {
         crate::testing::skip!(
             "no virtio-gpu-pci function on the bus: either this kernel enumerated no PCI at all, \
-             or (x86_64) the test runner has never wired a GPU device onto the bus it does \
-             enumerate; see notes/x86-port.md"
+             or (x86_64 under OVMF) the firmware runner attaches no GPU; see \
+             design/roadmap/0420-the-rest-of-the-x86-64-fixture-set.md"
         );
     };
     assert!(

@@ -13,11 +13,15 @@
 # redoxfs=1, crash=2, gpt=3, blank=4); an NVMe controller (below, decisions §86's x86_64/VT-d data
 # point, because the kernel-resident NVMe driver is arch-neutral); an `e1000e` NIC under `NIFE_NET`
 # (milestone 494, the network card a PC actually has; there is no `virtio-net-pci`, because the
-# virtio-net tests' driver is not this port's NIC); and a `virtio-rng-pci` under `NIFE_RNG`. STILL
-# NOT HERE: a GPU and a keyboard. The `-device` lines are not the obstacle (the aarch64 runner
-# shows both); what is missing is the work milestone 161's note records beyond attaching hardware:
-# the keyboard test needs the host monitor's `sendkey`, which only cargo xtask's scanout referee
-# provides, and this leg runs no referee. See design/roadmap/0161-x86-64-kernel-port.md and
+# virtio-net tests' driver is not this port's NIC); a `virtio-rng-pci` under `NIFE_RNG`; and, under
+# `NIFE_GPU` and `NIFE_KEYBOARD`, a `virtio-gpu-pci` (with `-vga none`, below) and a
+# `virtio-keyboard-pci`, plus a monitor socket under `NIFE_GPU_MON`. The monitor is what makes the
+# two display tests run rather than fail: the keyboard test's keystroke is the host's `sendkey` and
+# the scanout is graded from `screendump`, both of which come from cargo xtask's scanout referee.
+# The system-suite legs run it (`cargo_test_with_scanout_only`, with no inbound prober, because the
+# listeners ride a virtio-mmio NIC that `q35` lacks). Without a referee an attached keyboard fails
+# its test, so those variables belong to the test legs and not to a bare run. The OVMF runner
+# (helpers/qemu-uefi-x86_64.sh) attaches no GPU or keyboard. See
 # design/roadmap/0420-the-rest-of-the-x86-64-fixture-set.md.
 #
 # The kernel halts with `hlt` (arch::halt), so QEMU does not exit on its own. Bound any interactive
@@ -401,6 +405,37 @@ fi
 # `NIFE_ALLOW_REBOOT=1` drops it, for the one run that wants a reset to reset: milestone 249 (the boot lottery is sampled by a person walking to the board)'s
 # `script/soak-test --reboot --arch x86_64`, whose proof is a second boot. That run bounds itself
 # and fails on a panic line, so a triple-fault loop costs it a timeout rather than a blank terminal.
+# A virtio-gpu when NIFE_GPU is set (milestone 29), the twin of the other two runners' block: modern
+# (disable-legacy=on) and behind the IOMMU (iommu_platform=on), because a GPU's backing addresses
+# ride in a device-level command payload that the transport's shadow-ring validator never sees, so
+# the IOMMU is the only thing that bounds them.
+GPU=""
+if [ -n "$NIFE_GPU" ]; then
+    GPU="-device virtio-gpu-pci,disable-legacy=on,iommu_platform=on"
+    # **`-vga none` is not optional on q35.** The machine carries a standard VGA by default, and
+    # `screendump` with no device argument writes console 0, which is whichever display QEMU
+    # created first. Measured 2026-10-17 (UTC), QEMU 11.1.2: with both, the referee's 729 dumps were
+    # all the VGA's 720x400 text screen and never the virtio-gpu's scanout. The aarch64 and riscv64
+    # `virt` machines have no default display, so their runners need no such line.
+    GPU="-vga none $GPU"
+fi
+
+# A virtio keyboard when NIFE_KEYBOARD is set (milestone 29's input), on the same terms. The keys
+# come from the host over the monitor below (`sendkey`), because nothing in the guest can press one.
+KBD=""
+if [ -n "$NIFE_KEYBOARD" ]; then
+    KBD="-device virtio-keyboard-pci,disable-legacy=on,iommu_platform=on"
+fi
+
+# A QEMU monitor on a unix socket when NIFE_GPU_MON names one (milestone 29): `screendump` over it
+# writes a PPM of the scanout even with -display none, and `sendkey` is the keystroke the keyboard
+# test waits for. cargo xtask's scanout referee owns that connection. The path must stay under
+# 104 bytes, which is why xtask puts it in /tmp.
+MON=""
+if [ -n "$NIFE_GPU_MON" ]; then
+    MON="-monitor unix:$NIFE_GPU_MON,server,nowait"
+fi
+
 NO_REBOOT="-no-reboot"
 if [ -n "$NIFE_ALLOW_REBOOT" ]; then
     NO_REBOOT=""
@@ -444,6 +479,9 @@ qemu-system-x86_64 \
     $NVME \
     $NET \
     $RNG \
+    $GPU \
+    $KBD \
+    $MON \
     -kernel "$ELF" \
     $INITIAL_RAMDISK \
     "$@" <&3 3<&- &

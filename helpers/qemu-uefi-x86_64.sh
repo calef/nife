@@ -187,11 +187,13 @@ fi
 #
 # - **The fixture set here is the two-disk one, and it stayed that way when the PVH runner got all
 #   five** (milestone 420 (x86_64 has one fixture of five and no NIC, GPU, keyboard or RNG)). The
-#   crash, GPT and blank disks and the RNG are the PVH runner's alone; under OVMF the tests that
-#   want them skip on their own lines, which is honest but means the firmware path proves none of
-#   them. (The NIC is not in that set: the e1000e below is unconditional, so the net tests do run
-#   here.) Extending this file is a `-device`-line-sized piece of follow-on work, undone by
-#   nothing except nobody having asked yet.
+#   crash, GPT and blank disks are the PVH runner's alone, and they stay so for a reason that is
+#   not a `-device` line: they ride behind the RedoxFS disk in the ordinal order
+#   `find_block_device_n` counts, the RedoxFS disk is opt-in here (above, a recorded defect), and
+#   `uefi_test` builds only the nifefs and NVMe images. Under OVMF the tests that want them skip on
+#   their own lines, which is honest but means the firmware path proves none of them. (The NIC is
+#   not in that set: the e1000e below is unconditional, so the net tests do run here. The RNG is
+#   attached under `NIFE_RNG`, so the PCIe entropy test runs here.)
 DISK=""
 if [ -n "$NIFE_DISK" ]; then
     PCI_DISK="${NIFE_DISK%.img}-pci.img"
@@ -317,6 +319,13 @@ NIFE_BOOT_TAG="$$-$(date +%s)"
 export NIFE_BOOT_TAG
 NET="-netdev user,id=net0,guestfwd=tcp:10.0.2.9:7777-cmd:/bin/cat,guestfwd=tcp:10.0.2.9:8080-cmd:$PACKAGE_PEER,guestfwd=tcp:10.0.2.9:53-cmd:$NAME_SERVER_PEER,guestfwd=tcp:10.0.2.9:9494-cmd:$BENCH_PEER,guestfwd=tcp:10.0.2.9:8443-cmd:$TLS_PEER,tftp=$TFTPDIR -device e1000e,netdev=net0,mac=52:54:00:e1:00:0e,romfile="
 
+# A virtio-rng-pci under NIFE_RNG, as on the PVH runner (milestone 420), behind the same
+# `iommu_platform=on` the disks use, so the PCIe entropy test runs on the firmware path too.
+RNG=""
+if [ -n "$NIFE_RNG" ]; then
+    RNG="-device virtio-rng-pci,disable-legacy=on,iommu_platform=on"
+fi
+
 exec helpers/qemu-bounded.sh "$TIMEOUT" qemu-system-x86_64 \
     $ACCEL \
     -machine q35 \
@@ -332,6 +341,7 @@ exec helpers/qemu-bounded.sh "$TIMEOUT" qemu-system-x86_64 \
     $DISK \
     $NVME \
     $NET \
+    $RNG \
     $USBKBD \
     -drive "if=pflash,format=raw,unit=0,readonly=on,file=$NIFE_OVMF_CODE" \
     -drive "if=pflash,format=raw,unit=1,file=$VARS" \
