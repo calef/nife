@@ -2,6 +2,7 @@
 
 Part of [the notes index](../README.md), which says how to add a line.
 
+- [Where the kernel suite's time goes](../kernel-suite-time.md): per-test and per-module medians on each architecture from 30 merge-group runs, and what the riscv64 suite's growth consists of.
 - [Benchmarks with teeth](../benchmarks.md): the current numbers and their gates, with the dated history in `notes/benchmarks/` appendices.
 - [The instruction clock](../instruction-clock.md): timing claims measured in instructions retired, not wall time.
 - [What fio needs from nife's C library](../fio-on-nife.md): milestone 833 (the same storage benchmark on nife and Linux, by porting real fio)'s list of missing headers and functions, found by compiling fio 3.40. Name provisional.
