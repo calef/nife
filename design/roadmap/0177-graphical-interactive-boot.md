@@ -30,7 +30,7 @@ two options not taken.
 ## What actually blocks this
 
 The real interactive boot (`crates/system_initializer::boot`, reached by
-`kernel::user::spawn_init` on aarch64 and `riscv_shell_boot` on riscv64) spawns exactly `console,
+`kernel::user::boot_progenitor` on every architecture) spawns exactly `console,
 input, line_editor, swish, job_undertaker`. `console` and `input` are the plain UART pair (DECISIONS
 §26): `input.rs`'s real-boot path reads only the UART register layout, with no code path to a
 virtio device at all outside `cargo xtask test`. Checked directly, not assumed: neither the GPU nor
@@ -46,7 +46,7 @@ and riscv64: *"x86_64 has no shell leg."* That comment's own justification, "the
 on that target at all yet," is stale, since x86_64 has had real userspace running for most of this
 session; the fact itself is not stale, for a narrower and still-current reason). Nothing boots
 straight to a shell prompt on x86_64 today; `kernel/src/user.rs` has no third function beside
-`spawn_init`/`riscv_shell_boot`. This is milestone 49's gap as much as this milestone's: neither
+`spawn_init`/`riscv_shell_boot`, both `boot_progenitor` since milestone 166. This is milestone 49's gap as much as this milestone's: neither
 currently plans it.
 
 This milestone was originally scoped as three joined pieces; **the third split off as its own
@@ -69,9 +69,9 @@ A lane investigated all three pieces before writing code, and reverted the one p
 
 **Finding 1: `BootEndowment` has no room for GPU/keyboard grants as piece 1 describes them
 (mechanical, not a fork).** Counted the actual slots rather than assumed them: aarch64's
-`spawn_init` (`fixtures/src/hello.rs`'s `init_boot`) fills capability-table slots 0-11 of 16 already
+`spawn_init` (now `boot_progenitor`, milestone 166; the table has grown to 32 slots since) (`fixtures/src/hello.rs`'s `init_boot`) fills capability-table slots 0-11 of 16 already
 (`untyped`, the report endpoint, `uart_dev`, the test IRQ, `uart_irq`, `clock_page`, `config_page`,
-`fs_ep`, `fs_page`, the virtio-rng trio); 3 free. riscv64's `riscv_shell_boot` fills 0-9; 5 free. A
+`fs_ep`, `fs_page`, the virtio-rng trio); 3 free. riscv64's `riscv_shell_boot` (likewise) fills 0-9; 5 free. A
 virtio-gpu device needs 11 (`display_service.rs`'s own shape: transport, irq, and a nine-page DMA
 region, one `PageFrame` capability per page, because the ABI's `MAP_INTO`/`CAP_INSERT` are strictly
 one-capability-per-physical-page). A virtio-keyboard device needs 3-4. Neither fits what remains on
@@ -79,8 +79,8 @@ either board, let alone both together. The lane found this by writing the grant 
 watching it try to `grant_at` a slot past 16, then reverted it (`kernel/src/user.rs` is unaffected
 by this milestone as of this writing).
 
-The fix is mechanical: build the graphical stack **kernel-side**, called from `spawn_init`/
-`riscv_shell_boot` before init exists, the same shape `fs_service::root_directory` already uses for
+The fix is mechanical: build the graphical stack **kernel-side**, called from
+`boot_progenitor` before init exists, the same shape `fs_service::root_directory` already uses for
 the filesystem pair (the block server and FS server are built kernel-side; init receives only two
 capabilities, `fs_ep`/`fs_page`, regardless of how many processes or pages sit behind them).
 Kernel-side spawning maps physical pages directly and is not bound by any one process's

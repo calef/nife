@@ -11,7 +11,7 @@ boot)](../0182-x86-64-interactive-boot.md), whose block carries the entry point 
 
 The default boot ends by handing the machine to the progenitor, loaded from the archive and
 measured, through the same function riscv64's default boot enters
-(`kernel::user::riscv_shell_boot`). It reaches ring 3, builds the system, and stays running. What it
+(`kernel::user::boot_progenitor`). It reaches ring 3, builds the system, and stays running. What it
 cannot do is offer a prompt, because the console server and the input driver it builds trap on first
 use: a ring-3 process cannot reach port I/O (§121 (port I/O as a capability)). The boot says so
 rather than going quiet:

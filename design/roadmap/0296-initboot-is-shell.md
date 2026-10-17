@@ -111,7 +111,7 @@ remaining feature worth keeping:
 Two of those three are not what they look like. x86_64's boot arm is self-contained and ends in
 `arch::halt()`, so the shared tour is unreachable there and LLVM had already deleted it; the feature
 removes nothing on that architecture and never has. riscv64's arm halts too, and its `shell` swaps
-its own arch tour for `user::riscv_shell_boot`, so 5,828 bytes is the difference between two RISC-V
+its own arch tour for `user::boot_progenitor`, so 5,828 bytes is the difference between two RISC-V
 boot paths rather than the cost of the aarch64 tour. The thing the surviving feature removes is one
 architecture's 14 KB, and symbol attribution says almost none of it was ever the narrative.
 `console_service` ~3.0 KB; the two never-yielding spinner closures ~3.3 KB; `virtio_service` ~1.7 KB;

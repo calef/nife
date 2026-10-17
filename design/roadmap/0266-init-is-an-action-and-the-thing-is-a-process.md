@@ -257,11 +257,10 @@ applied, stated so it can be disagreed with:
 - The boot transcript prefix changed, from `init: ` to `progenitor: `, in
   `crates/system_initializer`. `script/swish-check` matches those strings exactly and moved with
   them. Anyone with a saved transcript, or a script grepping one, sees a different word.
-- Dangling references remain in `design/`, and they are not oversights. 471 occurrences of the
-  word sit in other milestones' roadmap blocks and in `design/decisions/`, which a developer lane may
-  not edit. Among them are live citations of `spawn_init`, `boot_via_init`, `INIT_ROLES_ENTRY` and
-  `INIT_BOOT_ROLE` (milestones 166, 177, 182, 161, 49 and 105, and decisions 21 and 120). They will
-  not resolve against the tree until a maintainer sweeps them.
+- References to `spawn_init` and `riscv_shell_boot` remain in `design/` on purpose: past-tense
+  accounts and the rename's own record keep the old name beside a clause naming the successor, and
+  `decisions/0120`'s two citations wait for calef (milestone 416 holds the list and the rulings). A
+  dangling `boot_via_init`, `INIT_ROLES_ENTRY` or `INIT_BOOT_ROLE` would be a defect.
 - `notes/pipes.md` carries a dead path in a fixed-width diagram, `user/src/system_initializer`,
   left because the diagram is aligned and dated. It is the one place a path was knowingly left broken.
 - The captured transcripts in `notes/trusted-init.md` still read `init:`. They are evidence from

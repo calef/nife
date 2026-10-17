@@ -16,7 +16,7 @@ No hardware dependency; this is capability plumbing.
 
 ## Why the kernel-built path works
 
-`kernel/src/user.rs`'s `load()` (and the hand-built spawns: `spawn_init`, and every
+`kernel/src/user.rs`'s `load()` (and the hand-built spawns: `boot_progenitor` and `spawn_hello`, and every
 `spawn_<program>`-shaped kernel test harness) call `AddressSpace::map_physical` directly on the
 `AddressSpace` struct they are constructing. This is privileged kernel code with unconditional
 physical-memory access: it just maps the kernel's pre-computed timebase frame

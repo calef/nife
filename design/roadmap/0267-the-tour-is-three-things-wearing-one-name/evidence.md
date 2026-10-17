@@ -23,7 +23,7 @@ so the shared milestone tour is unreachable and LLVM had already deleted it. The
 have never removed a byte on that architecture.
 
 riscv64's number is a different quantity. That arm halts too, and its `shell` feature swaps its
-own arch tour for `user::riscv_shell_boot`. 5,828 bytes is the difference between two RISC-V boot
+own arch tour for `user::boot_progenitor`. 5,828 bytes is the difference between two RISC-V boot
 paths, not the cost of the 230 lines this block was written about.
 
 So the tour is one architecture's 14 KB. And the symbol-level attribution is the part that

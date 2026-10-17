@@ -152,12 +152,12 @@ chain reached the first process and stopped one link short of the only child it 
 
 That gap is closed by the program going away rather than by the call being added, and the note now
 says so in those terms. The default riscv64 boot's userspace is covered by the interactive chain
-(`riscv_shell_boot` measures `progenitor` and hands it the table; `crates/system_initializer` is the
+(`boot_progenitor` measures `progenitor` and hands it the table; `crates/system_initializer` is the
 same code aarch64 runs), not by an exception to it. Two loaders are left and both really are QEMU
 only.
 
 The measured-boot refusal stays, which is the one thing a board operator will see differently.
-The archive is checked against the trust root in `riscv_shell_boot` at the handoff. A card with the
+The archive is checked against the trust root in `boot_progenitor` at the handoff. A card with the
 wrong archive halts with `MEASURED BOOT REFUSED` there, and `board_console` reads that marker.
 
 And the name went without a ruling, which was the point. `builder`'s provisional

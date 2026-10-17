@@ -194,7 +194,7 @@ nothing to open it with.
 
 ### One foot gun is marked rather than removed
 
-AGENTS.md's ladder says an exception must say it is one. `spawn_init` grants slot 2 a device
+AGENTS.md's ladder says an exception must say it is one. `spawn_hello` grants slot 2 a device
 capability over `user::UART_PHYS`, which on this architecture is physical page zero. The slot is
 positional. Declining to grant would renumber the interrupt capability and every role that names it.
 Nothing better can go there: §121's answer to what a port capability is, is that there is none.

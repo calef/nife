@@ -54,7 +54,7 @@ nothing that runs on a pull request.
 |---|---|---|
 | `script/test` (riscv64 leg) | `#[cfg(test)]` | No. `main.rs`'s test arm runs `test_main()` and exits via semihosting **before** the tour block. |
 | `script/cpu-matrix` | the same test build, five CPU models (`rv64 sifive-u54 rva22s64 rva23s64 thead-c906`) | No, same arm. |
-| `script/swish-check` (riscv64 leg) | `--features shell` | No. `riscv_shell_boot` runs and `arch::halt()`s before the tour. |
+| `script/swish-check` (riscv64 leg) | `--features shell` | No. `boot_progenitor` runs (through `riscv_hand_over`) and the boot thread leaves the scheduler before the tour. |
 | `script/bench --riscv --check` | `--features bench` | No. `bench::run()` parks before the tour. |
 | `script/icount` | `--features icount` | No, same shape. |
 | `script/soak-test --arch riscv64` | `--features soak_test` | **Yes**, whole tour, then the workload. Not in CI. |

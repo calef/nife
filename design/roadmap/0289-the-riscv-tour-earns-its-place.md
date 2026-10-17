@@ -24,7 +24,7 @@ Yes, four things, none of them a note.
 would build the shell kernel. The four modes are the plain tour, `--soak`, `--jobmix` and `--bench`,
 and the last three *replace the end of* the tour rather than skipping it, which the script says in
 its own argument check ("all replace the end of the boot tour; pick one"). So every VisionFive 2
-(radon) boot this tree can produce runs the tour. `riscv_shell_boot` is `#[cfg(feature = "shell")]`,
+(radon) boot this tree can produce runs the tour. `boot_progenitor`'s riscv64 caller was `#[cfg(feature = "shell")]` when this was written (milestone 268 later made the default boot reach it, and `riscv_shell_boot`, the name then, became `boot_progenitor` at milestone 166),
 `script/swish-check` is the only thing in the tree that builds that kernel, and it builds it for
 QEMU. So nothing here produces a board payload that would run `progenitor`, and no bench record in
 `notes/visionfive2.md` shows one having run.
@@ -76,7 +76,7 @@ trimming is the reason it can.
 `progenitor` proves the claim far harder in QEMU: console server, input driver, line discipline,
 shell, terminal sink, job undertaker, one program on three architectures since milestone 266, gated
 by `script/swish-check`'s riscv64 leg in CI. If the board could boot it, this milestone would have
-retired the tour. The board cannot. `riscv_shell_boot` needs the PLIC initialized, the NS16550's
+retired the tour. The board cannot. `boot_progenitor`'s riscv64 caller needs the PLIC initialized, the NS16550's
 registers delegated as a `DeviceFrame`, and the UART interrupt routed. And **the UART's PLIC source
 number is not the same on the board as in QEMU** (10 on QEMU `virt`, 32 on the JH7110). It was a
 hardcoded QEMU constant until `user::uart_irq_and_source()` learned to read the machine's own tree,
@@ -182,7 +182,7 @@ from the tree; these two bullets are the first thing it found.)*
 
 calef asked what `components/src/builder.rs` is for in a world that boots to swish. The answer is
 keep, and the premise was false: booting to swish describes aarch64 and
-riscv64's `--features shell`, not the default riscv64 build, which is what `script/board-image` puts on a card. `progenitor` has never run on RISC-V silicon; `riscv_shell_boot` needs the PLIC, the NS16550 delegated and a UART source number that differs
+riscv64's `--features shell`, not the default riscv64 build, which is what `script/board-image` puts on a card. `progenitor` has never run on RISC-V silicon; `boot_progenitor`'s riscv64 caller needs the PLIC, the NS16550 delegated and a UART source number that differs
 between QEMU (10) and the JH7110 (32), and `builder` needs a budget and a report endpoint and
 nothing else. `crates/board_console` parses its `init/build` line into `userspace_ran`, asserted
 by four host tests and two captured board fixtures, and `notes/board-console.md` calls it the only
