@@ -684,7 +684,7 @@ jobs:
       # calef's amber ruling on fatal risk 1 names; milestone 810 (`ripgrep` is packaged in basalt
       # and installed with `jig`)). `cargo xtask basalt-fetch` takes basalt's published ripgrep
       # 14.1.1 package for each architecture, accepted only under the SHA-256
-      # `xtask/basalt-pins.index` pins, and ripgrep's own host build for the reference answer. The
+      # basalt's recipe records at the commit `xtask/basalt-pin` names, and ripgrep's own host build for the reference answer. The
       # legs then type `jig install ripgrep` against those bytes, so this job tests `jig` and
       # basalt's delivery too, and run the package's `rg` by path over the walk. About 9 MB.
       - run: script/ci-build swish-check-aarch64-riscv64

@@ -112,7 +112,7 @@ cd "$(dirname "$0")/.."
 # (`ripgrep` on nife)'s walk of a copy of `crates/`, and `jig install ripgrep`, only when `cargo
 # xtask basalt-fetch` has fetched basalt's published package, and in CI it refuses to skip them.
 # The fetch is basalt's Release asset for each architecture, accepted only under the SHA-256
-# `xtask/basalt-pins.index` pins, and ripgrep's own host build for the reference answer, pinned the
+# basalt's recipe records at the commit `xtask/basalt-pin` names, and ripgrep's own host build for the reference answer, pinned the
 # same way. calef, 2026-10-13 (UTC): "1 is preferable because that tests jig and basalt's delivery
 # mechanism as well."
 #

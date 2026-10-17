@@ -3,7 +3,7 @@
 //! package `jig` installs from basalt) item 3). Name: provisional, `cargo xtask basalt-fetch`,
 //! minted 2026-10-13 (UTC) by lane `lane/ripgrep-from-basalt`.
 //!
-//! nife builds none of the foreign programs [`PINNED_INDEX`] names (`rg`, `ioping`, `hackbench`,
+//! nife builds none of the foreign programs [`PACKAGES`] names (`rg`, `ioping`, `hackbench`,
 //! `speedtest1`). basalt does, from its `recipes/`, and publishes one package per architecture on a
 //! GitHub Release with an index at `basalt.nifeos.org`. calef ruled on 2026-10-13 (UTC) that
 //! nife's tests take that package rather than a build of their own: *"1 is preferable because that
@@ -11,10 +11,17 @@
 //! for `jig install`; nife's tests run their own builds (milestone 909 (basalt composes the
 //! bootable image from its packages) item 5).
 //!
-//! For each of basalt's index lines in [`PINNED_INDEX`], this:
+//! **What is pinned is a basalt commit and the Release it published** ([`PIN`], the file
+//! `xtask/basalt-pin`), and no digest. Each package's SHA-256 is read from basalt's recipe at that
+//! commit (`recipes/<name>.toml`'s `[package_digest]`, which basalt's build refuses to publish
+//! unless the package matches; nife milestone 917 (basalt's packages build reproducibly, and the
+//! recipe records each package's digest)). So a basalt republish needs one edit here, the pin, and
+//! never a digest.
 //!
-//! 1. fetches the package from the Release the line lists, and refuses it unless
-//!    `package_index::accept`, the installer's own decision, takes it under that line's SHA-256;
+//! For each package of [`PACKAGES`] and each architecture, this:
+//!
+//! 1. fetches the package from the Release [`PIN`] names, and refuses it unless
+//!    `package_index::accept`, the installer's own decision, takes it under the recipe's SHA-256;
 //! 2. writes it into a repository in basalt's layout under `target/basalt/`, whose index
 //!    [`crate::disk`] hands to the test index host for `script/swish-check`'s `jig install` lines;
 //! 3. writes the package's program member to `target/basalt/programs/<triple>/<program>`, which the
@@ -33,20 +40,28 @@
 //! test of basalt's programs skips and says why. In CI (`CI` set) a failed fetch fails the row.
 //!
 //! **Bumping the pin.** When basalt republishes and nife should take the new build, the lane that
-//! wants it copies basalt's served lines over [`PINNED_INDEX`]'s file and lets CI judge them:
-//!
-//! ```text
-//! curl -sSf https://basalt.nifeos.org/rolling/metadata/stand-in-index | grep -E '^(ripgrep|ioping|hackbench|sqlite|rmle|demos)-' > xtask/basalt-pins.index
-//! ```
+//! wants it writes the published basalt commit and its Release tag into `xtask/basalt-pin` and lets
+//! CI judge them. The tag is `rolling-<UTC date of the commit>-<first seven characters of the
+//! commit>`, as basalt's `packages` workflow names it, and a test holds the file to that shape.
 
 use std::path::{Path, PathBuf};
 
 use crate::host::workspace_root;
 
-/// **basalt's index lines for the packages nife's tests install**, as basalt served them: one per
-/// architecture, `<stem> sha256:<hex> <root>=<Release URL>`. The file is
-/// `xtask/basalt-pins.index`; its name is provisional.
-const PINNED_INDEX: &str = include_str!("../basalt-pins.index");
+/// **The basalt commit and Release nife's tests take their packages from**: two lines,
+/// `commit <40 hex digits>` and `release <tag>`. The file is `xtask/basalt-pin`; its name and
+/// format are provisional.
+const PIN: &str = include_str!("../basalt-pin");
+
+/// The packages nife's tests install, by their basalt recipe's file name.
+const PACKAGES: [&str; 6] = ["ripgrep", "ioping", "hackbench", "sqlite", "rmle", "demos"];
+
+/// The architectures every recipe records a digest for.
+const ARCHITECTURES: [&str; 3] = ["aarch64", "riscv64", "x86_64"];
+
+/// The root name github.com's certificate chain is carried under in nife's images
+/// (`package_index::BASALT_SOURCES`'s `location-root`), which basalt's index lines name too.
+const RELEASE_ROOT: &str = "sectigo-root-e46";
 
 /// The channel basalt's repository is laid out under (`package_index::PROVISIONAL_CHANNEL`).
 const CHANNEL: &str = "rolling";
@@ -159,11 +174,114 @@ pub(crate) fn fetch() -> bool {
     ok
 }
 
-/// Fetch every package [`PINNED_INDEX`] names into `target/basalt`, keeping a copy already there
+/// The index lines for [`PACKAGES`] at [`PIN`]: each recipe is read from basalt at the pinned
+/// commit, and each package's line is `<stem> <recipe's digest> <root>=<Release URL>`.
+fn pinned_index() -> Result<String, String> {
+    let (commit, release) = parse_pin(PIN)?;
+    let mut lines = String::new();
+    for name in PACKAGES {
+        let url =
+            format!("https://raw.githubusercontent.com/nifeos/basalt/{commit}/recipes/{name}.toml");
+        let text = String::from_utf8(download(&url)?).map_err(|_| format!("{url}: not UTF-8"))?;
+        let recipe = parse_recipe(&text).map_err(|why| format!("{url}: {why}"))?;
+        for (architecture, digest) in recipe.digests {
+            let stem = format!("{}-{}-{architecture}", recipe.name, recipe.version);
+            lines.push_str(&format!(
+                "{stem} {digest} {RELEASE_ROOT}=https://github.com/nifeos/basalt/releases/download/{release}/{stem}.nifepkg\n"
+            ));
+        }
+    }
+    Ok(lines)
+}
+
+/// `(commit, release tag)` from `xtask/basalt-pin`'s text, refused unless the commit is 40
+/// lowercase hex digits and the tag is basalt's `rolling-<date>-<first seven of the commit>`.
+fn parse_pin(text: &str) -> Result<(&str, &str), String> {
+    let field = |key: &str| {
+        text.lines()
+            .find_map(|line| line.strip_prefix(key)?.strip_prefix(' '))
+            .map(str::trim)
+            .ok_or_else(|| format!("xtask/basalt-pin has no `{key}` line"))
+    };
+    let (commit, release) = (field("commit")?, field("release")?);
+    if commit.len() != 40
+        || !commit
+            .bytes()
+            .all(|b| b.is_ascii_digit() || (b'a'..=b'f').contains(&b))
+    {
+        return Err(format!(
+            "xtask/basalt-pin: `{commit}` is not a full lowercase commit id"
+        ));
+    }
+    let shape_ok = release.strip_prefix("rolling-").is_some_and(|rest| {
+        rest.len() == "YYYY-MM-DD-".len() + 7
+            && rest.ends_with(&commit[..7])
+            && rest.as_bytes()[10] == b'-'
+    });
+    if !shape_ok {
+        return Err(format!(
+            "xtask/basalt-pin: release `{release}` is not `rolling-<date>-{}`",
+            &commit[..7]
+        ));
+    }
+    Ok((commit, release))
+}
+
+/// What nife reads of a basalt recipe.
+#[derive(Debug, PartialEq)]
+struct Recipe {
+    name: String,
+    version: String,
+    /// `(architecture, "sha256:<hex>")`, in [`ARCHITECTURES`] order.
+    digests: Vec<(&'static str, String)>,
+}
+
+/// The package name, version and `[package_digest]` of a basalt recipe. Only those are read, so the
+/// rest of a recipe is basalt's to change.
+fn parse_recipe(text: &str) -> Result<Recipe, String> {
+    let table: toml::Table = text
+        .parse()
+        .map_err(|e: toml::de::Error| e.message().to_owned())?;
+    let string = |t: &toml::Table, key: &str| match t.get(key) {
+        Some(toml::Value::String(value)) => Ok(value.clone()),
+        _ => Err(format!("no string `{key}`")),
+    };
+    let Some(toml::Value::Table(recorded)) = table.get("package_digest") else {
+        return Err("no [package_digest] table".to_owned());
+    };
+    let mut digests = Vec::new();
+    for architecture in ARCHITECTURES {
+        let digest =
+            string(recorded, architecture).map_err(|why| format!("[package_digest]: {why}"))?;
+        let hex_ok = digest.strip_prefix("sha256:").is_some_and(|h| {
+            h.len() == 64
+                && h.bytes()
+                    .all(|b| b.is_ascii_digit() || (b'a'..=b'f').contains(&b))
+        });
+        if !hex_ok {
+            return Err(format!(
+                "{architecture}: `{digest}` is not `sha256:<64 hex digits>`"
+            ));
+        }
+        digests.push((architecture, digest));
+    }
+    Ok(Recipe {
+        name: string(&table, "name")?,
+        version: string(&table, "version")?,
+        digests,
+    })
+}
+
+/// Fetch every package [`pinned_index`] names into `target/basalt`, keeping a copy already there
 /// that the index still accepts, and write the index beside them.
 fn fetch_pinned() -> Result<(), String> {
-    let index = package_index::Index::parse(PINNED_INDEX)
-        .map_err(|e| format!("xtask/basalt-pins.index line {} is unreadable", e.number))?;
+    let pinned = pinned_index()?;
+    let index = package_index::Index::parse(&pinned).map_err(|e| {
+        format!(
+            "the index built from basalt's recipes has line {} unreadable",
+            e.number
+        )
+    })?;
     let root = workspace_root().join("target/basalt").join(CHANNEL);
     let targets = root.join("targets");
     std::fs::create_dir_all(&targets).map_err(|e| format!("{}: {e}", targets.display()))?;
@@ -184,12 +302,12 @@ fn fetch_pinned() -> Result<(), String> {
         );
         let bytes = download(&url)?;
         package_index::accept(&entry, &bytes)
-            .map_err(|why| format!("{url}: refused under its pinned digest ({why:?})"))?;
+            .map_err(|why| format!("{url}: refused under its recipe's digest ({why:?})"))?;
         std::fs::write(&file, &bytes).map_err(|e| format!("{}: {e}", file.display()))?;
     }
     let metadata = root.join("metadata");
     std::fs::create_dir_all(&metadata).map_err(|e| format!("{}: {e}", metadata.display()))?;
-    std::fs::write(metadata.join("stand-in-index"), PINNED_INDEX)
+    std::fs::write(metadata.join("stand-in-index"), pinned)
         .map_err(|e| format!("{}: {e}", metadata.display()))
 }
 
@@ -284,4 +402,74 @@ fn download(url: &str) -> Result<Vec<u8>, String> {
         ));
     }
     Ok(out.stdout)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    const COMMIT: &str = "0123456789abcdef0123456789abcdef01234567";
+
+    /// The checked-in pin is one the fetch accepts, so a hand edit that breaks its shape fails
+    /// here and not in a CI row that needs the network.
+    #[test]
+    fn the_checked_in_pin_parses() {
+        parse_pin(PIN).expect("xtask/basalt-pin");
+    }
+
+    #[test]
+    fn a_pin_needs_a_full_commit_and_the_tag_basalt_names() {
+        let ok = format!("commit {COMMIT}\nrelease rolling-2026-10-17-0123456\n");
+        assert_eq!(parse_pin(&ok), Ok((COMMIT, "rolling-2026-10-17-0123456")));
+        for bad in [
+            format!(
+                "commit {}\nrelease rolling-2026-10-17-0123456\n",
+                &COMMIT[..39]
+            ),
+            format!("commit {COMMIT}\nrelease rolling-2026-10-17-abcdef0\n"),
+            format!("commit {COMMIT}\nrelease latest\n"),
+            format!("commit {COMMIT}\n"),
+        ] {
+            assert!(parse_pin(&bad).is_err(), "{bad}");
+        }
+    }
+
+    const RECIPE: &str = r#"
+# comment with name = "wrong"
+name = "ripgrep"
+version = "14.1.1"
+
+[[patch]]
+crate = "ignore"
+version = "0.4.23"
+
+# note
+[package_digest]
+aarch64 = "sha256:0000000000000000000000000000000000000000000000000000000000000001"
+riscv64 = "sha256:0000000000000000000000000000000000000000000000000000000000000002"
+x86_64 = "sha256:0000000000000000000000000000000000000000000000000000000000000003"
+"#;
+
+    #[test]
+    fn a_recipe_gives_its_name_version_and_one_digest_per_architecture() {
+        let recipe = parse_recipe(RECIPE).unwrap();
+        assert_eq!(
+            (recipe.name.as_str(), recipe.version.as_str()),
+            ("ripgrep", "14.1.1")
+        );
+        let digests: Vec<_> = recipe.digests.iter().map(|(a, d)| (*a, &d[70..])).collect();
+        assert_eq!(
+            digests,
+            [("aarch64", "1"), ("riscv64", "2"), ("x86_64", "3")]
+        );
+    }
+
+    #[test]
+    fn a_recipe_without_every_digest_is_refused() {
+        let missing = RECIPE.replace("x86_64 =", "x86_65 =");
+        assert!(parse_recipe(&missing).unwrap_err().contains("x86_64"));
+        let short = RECIPE.replace("0001", "1");
+        assert!(parse_recipe(&short).unwrap_err().contains("64 hex"));
+        assert!(parse_recipe("name = \"x\"\nversion = \"1\"\n").is_err());
+    }
 }
