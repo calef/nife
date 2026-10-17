@@ -150,6 +150,8 @@ helpers/trunk-health-cadence-selftest.sh >/dev/null
 # ruled issue home, helpers/repeat_issue.py, whose pure parsing and planning have their own
 # --selftest beside it.
 helpers/trunk-health-repeat-selftest.sh >/dev/null
+# The DUE half (milestone 495 (a cadence that says "due" reaches nobody)): exit code is the authority, drift is cannot-ask.
+helpers/trunk-health-due-selftest.sh >/dev/null
 python3 helpers/repeat_issue.py --selftest >/dev/null
 
 echo "==> clippy: host crates + xtask"
