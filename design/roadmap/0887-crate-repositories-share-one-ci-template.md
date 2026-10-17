@@ -212,7 +212,8 @@ being on the list, and `helpers/ci_job_times.py` reads a crate repository by arg
   merge commit, whose runs exist from the pull request event, so nothing is lost.
 - The semver half of the labeler never fired against a real baseline: the test crate is
   unpublished, so `cargo-semver-checks` has nothing to compare. It is exercised only to the
-  no-baseline path. The first published crate is the test.
+  no-baseline path. The first published crate is the test, and its publication waits on that crate's
+  soak (milestone 818 (`jh7110_entropy`: proven JH7110 TRNG logic, released on its own) is the pilot).
 - The settings-drift check's security rows and its ruleset read want an administration-scoped
   token; with the caller's `GITHUB_TOKEN` they report what was unreadable rather than passing
   silently.

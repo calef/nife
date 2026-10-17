@@ -81,20 +81,34 @@ and controller bring-up.
 3. In the tree, `script/verify` proves the harnesses and `Cargo.toml` says `publish = false`.
 4. The package is 0.1.0 with its own semver, states `rust-version` (#1806's note built it on stable
    1.94.1), and ships its harnesses and falsification patches. `cargo package --list` shows them.
-5. Ready means proofs passing and the API stable. §235 (the OS is built and updated from
-   packages, and the tree divides by what releases together) has milestone 610 (the interface's
-   stability is measured weekly)'s per-package co-change column judges the second. When it is ready,
-   calef adds it to the lint-checked publish allowlist. A `nifeos/designware_ethernet` repository is
-   then created on the shared CI template (milestone 887), through reusable workflows: Kani through
-   `kani-github-action`, lint, release. Its release workflow refuses to publish unless the proof job
-   is green. No harness here reads `target_arch`, so stock Kani proves them. The patched Kani of
-   §218 (carry a Kani patch so riscv64 is proved, and send it upstream) is carried only if one comes
-   to need riscv64. Milestone 589 (Kani can prove riscv64 from the hosts we already have) built it.
-6. crates.io trusted publishing from that workflow, owned by a `nifeos` team, with no stored token.
-7. calef approves this publication, as he does every one.
-8. nife consumes the crates.io release, pinned with its checksum in `Cargo.lock`. A `[patch]` to a
-   checkout is allowed only during development, and a lint fails one that reaches `main`. The copy
-   under `crates/` goes.
+5. Ready means proofs passing and the API stable. §235 (the OS is built and updated from packages,
+   and the tree divides by what releases together) has milestone 610 (the interface's stability is
+   measured weekly)'s per-package co-change column, and the soak (step 6) is how the second is
+   measured. When the soak exits, calef adds it to the lint-checked publish allowlist. The
+   `nifeos/designware_ethernet` repository is created when the crate moves, on the shared CI
+   template (milestone 887), through reusable workflows: Kani through `kani-github-action`, lint,
+   release. Its release workflow refuses to publish unless the proof job is green. No harness here
+   reads `target_arch`, so stock Kani proves them. The patched Kani of §218 (carry a Kani patch so
+   riscv64 is proved, and send it upstream) is carried only if one comes to need riscv64. Milestone
+   589 (Kani can prove riscv64 from the hosts we already have) built it.
+6. Soak, as its own repository (calef, 2026-10-17 UTC, replying "Agrred" (sic) to the maintainer's
+   proposal; §305 (git dependencies are allowed on `nifeos/*` only, pinned to a landed commit)).
+   Milestone 818 (`jh7110_entropy`: proven JH7110 TRNG logic, released on its own) is the pilot and
+   soaks first. Before publication the crate is moved, not copied: it leaves this tree, and nife
+   depends on `nifeos/designware_ethernet` by `rev`. A copy left behind does not count. The soak
+   ends on evidence, not a duration, when all five hold:
+   1. nife builds and passes CI against the repository at a pinned commit, with no path dependency
+      left.
+   2. The shared template's weekly run (milestone 887) is green on the crate.
+   3. A release dry run is green.
+   4. The stranger test builds and proves the crate from its README alone.
+   5. The API has gone a set period with no change `cargo-semver-checks` calls breaking. The period
+      is not yet set.
+7. crates.io trusted publishing from that workflow, owned by a `nifeos` team, with no stored token.
+8. calef approves this publication, as he does every one.
+9. nife consumes the crates.io release, pinned with its checksum in `Cargo.lock`. A `[patch]` to
+   a checkout is allowed only during development, and a lint fails one that reaches `main`. The
+   soak's git dependency goes.
 
 ## Parity
 
@@ -128,7 +142,7 @@ A check proves it. In nife, `cargo tree --locked -i designware_ethernet` resolve
 crates.io with a checksum in `Cargo.lock`, `crates/designware_ethernet` no longer exists, and the
 tree builds for all three targets. In `nifeos/designware_ethernet`, the run that published 0.1.0
 shows the Kani job green ahead of the publish job, and every harness's falsification patch makes its
-proof fail.
+proof fail. The five soak criteria of release step 6 hold before it publishes.
 
 The name check of release step 1 passes first, so the repository, the package and every doc link
 carry a ratified name. Before the move, `script/crate-standalone designware_ethernet` exits 0 in
