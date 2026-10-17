@@ -1,5 +1,5 @@
 ---
-status: PARTIAL
+status: BUILT
 raised: 2026-09-15
 promoted_from: the-two-loader-names-the-tree-still-carries
 milestone_dependencies: none
@@ -62,30 +62,29 @@ some. The judgments a reader should know:
 A developer lane does not edit `design/` outside its own block, and 0266's BUGS assigned these
 citations to a maintainer, who applied them 2026-10-16 through an assertion-checked list against
 98bea98a7. Re-counted there: 43 lines in `design/` carried the two names before the sweep (27 lines
-of `riscv_shell_boot`, 16 of `spawn_init`, some on both), 36 of them outside this block. 18 lines
-were edited (15 moved or rewritten, 3 kept with a successor clause: 0177 lines 49, 72 and 74), and the
+of `riscv_shell_boot`, 16 of `spawn_init`, some on both), 36 of them outside this block. 19 lines
+were edited (15 moved or rewritten, 1 in 0120 by ruling, 3 kept with a successor clause: 0177 lines 49, 72 and 74), and the
 rest keep, as judged:
 
 | file | in force |
 |---|---|
-| `decisions/0120` | open: calef's call whether the entropy refusal keeps its day's names or gains the successor in a clause |
+| `decisions/0120` | calef ruled 2026-10-17: the entropy refusal gains the successor in a clause, "both `boot_progenitor` since milestone 166" |
 | `roadmap/0049/bugs-found.md`, `0166`, `0301`, `0266` line 130, `0295` line 42 | keep: past-tense accounts, the rename's own account, and a proposal as filed |
 | `roadmap/0161`/`processes-and-userspace.md` | names `spawn_hello`, the slot-2 `UART_PHYS` grant |
 | `roadmap/0167` | names `boot_progenitor` and `spawn_hello` |
 | `roadmap/0177` | the reachable-boot lines name `boot_progenitor`; the slot-count lines keep as old-layout measurements, with a clause naming the successor and the table's 32 slots today |
 | `roadmap/0182` | drops the dead half |
 | `roadmap/0267`/`evidence.md`, `0268`/`second-pass.md`, `0296`, `0295` lines 155 and 160 | name `boot_progenitor` |
-| `roadmap/0289` | names `boot_progenitor`; line 27's `#[cfg(feature = "shell")]` claim now says it held when the block was written and that milestone 268 made the default boot reach it |
+| `roadmap/0289` | names `boot_progenitor`; line 27's `#[cfg(feature = "shell")]` claim now states the current fact: the default riscv64 boot hands over through `boot_progenitor` after the tour, and the `shell` feature reaches it before |
 | `roadmap/0406` | names `boot_progenitor`; the shell build hands over through `riscv_hand_over` and the boot thread exits the scheduler before the tour, so "halts" was wrong too |
 
 Reuse: none exists (a prose sweep of two dead names; nothing to take or adapt).
 
 ## Follow-on
 
-- **Outstanding.** `decisions/0120`'s two citations, held for calef's ruling (needs-architect on the
-  pull request that applied the rest). Outside `design/` and the generated census, the two names
-  leave exactly the two deliberate keeps (`script/lint`'s parity note and `boot_progenitor`'s
-  provenance clause), each carrying its successor and milestone.
+- **Outstanding.** Nothing. Outside `design/` and the generated census, the two names leave exactly
+  the two deliberate keeps (`script/lint`'s parity note and `boot_progenitor`'s provenance clause),
+  each carrying its successor and milestone.
 
 ## BUGS
 
@@ -104,5 +103,4 @@ Two function names survived in prose and code comments after the functions thems
 `riscv_shell_boot`'s one successor is `boot_progenitor` (milestone 166 unified the boot loaders).
 `spawn_init`'s sites split between `boot_progenitor` and `spawn_hello` by which endowment they
 describe. Swept everywhere, `design/` included, with past-tense accounts and quotations keeping the
-old name beside a clause naming the successor. Only `decisions/0120`'s two citations wait, on
-calef.
+old name beside a clause naming the successor. `decisions/0120` gained its clause by calef's ruling.

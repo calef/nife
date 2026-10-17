@@ -15,11 +15,11 @@ local self-hosting of
 "Daily driver" does not have to mean 100% local compilation. This path reaches it without an LLVM
 port or the new primitive of [milestone 172 (a capability-native subprocess primitive)](0172-capability-native-subprocess.md).
 
-[Milestone 171](0171-git-core-userspace.md)'s git core is the structural
+[Milestone 171 (git core plumbing)](0171-git-core-userspace.md)'s git core is the structural
 precondition: there has to be something to commit and send before a remote-build protocol matters.
 [Milestone 169](0169-kilo-editor.md)/[170](0170-nano-editor.md)'s editor work is not a hard gate the
 same way, since a first cut of this milestone could in principle pair with an editor running
-elsewhere, but that would defeat the "daily driver" point of the exercise, so build order should
+elsewhere. That would defeat the "daily driver" point of the exercise. So build order should
 treat the editor as practically necessary even though it is not listed as a formal dependency here.
 
 ## The shape of it
@@ -37,14 +37,14 @@ questions, no LLVM port.
   30's `net_stack`), so the transport layer is not new work; what is new is a client speaking
   whatever remote-build protocol this milestone defines.
 - A remote-build protocol. Not designed here. Could be as simple as "rsync the working tree,
-  run `cargo build` over SSH, rsync results back" replicated by hand, or a purpose-built protocol;
-  sizing that choice is this milestone's own first task.
+  run `cargo build` over SSH, rsync results back" replicated by hand, or a purpose-built protocol.
+  Sizing that choice is this milestone's own first task.
 - **TLS is not a hard prerequisite for a first cut.** nife has no TLS/crypto stack today
-  ([milestone 66](0066-vaultwarden.md) names this exact gap for an unrelated program, "TLS: none.
-  `rustls` needs entropy (have it) and a large crypto surface"), but a first version of this
-  milestone could run over plain TCP on a trusted LAN, the same way calef's own dev machine and a
+  ([milestone 66 (vaultwarden)](0066-vaultwarden.md) names this exact gap for an unrelated program, "TLS: none.
+  `rustls` needs entropy (have it) and a large crypto surface"). A first version of this
+  milestone could still run over plain TCP on a trusted LAN, the same way calef's own dev machine and a
   build box already share a network today. Real TLS becomes necessary only once this needs to cross
-  a network calef does not trust, which is a later, separable hardening pass.
+  a network calef does not trust. That is a later, separable hardening pass.
 
 ## Why it matters
 
@@ -57,14 +57,14 @@ can proceed independently once milestone 171 exists.
 ## What this does not decide
 
 The actual remote-build protocol's shape, whether it is generic enough to reuse for other projects
-or purpose-built for this tree's own layout, and whether `git`'s network operations
+or purpose-built for this tree's own layout. And whether `git`'s network operations
 (`clone`/`fetch`/`push`, explicitly left open by [milestone 171](0171-git-core-userspace.md)) share a
 network-client crate with this milestone's remote-build client or stay separate. Left for whoever
 picks this up.
 
 ## Index row
 
-The nearer-term alternative to full local self-hosting: edit and version-control on nife, hand the
+The nearer-term alternative to full local self-hosting. Edit and version-control on nife, and hand the
 actual `cargo build` to a remote service over the network. Needs a network client and a
 remote-build protocol, not the capability-native subprocess primitive or an LLVM port; could run
 over plain TCP on a trusted LAN before nife's still-missing TLS stack matters.

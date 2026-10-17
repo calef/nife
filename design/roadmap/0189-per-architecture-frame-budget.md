@@ -82,9 +82,9 @@ whether 7,514 already carries a leak, for the reason recorded at the end of this
 
 ## Why this is the same failure the tree already named
 
-`notes/architecture-list-sweep.md` found eleven silent parity gaps and stated the pattern: what is
+`notes/architecture-list-sweep.md` found eleven silent parity gaps and stated the pattern. What is
 complete at three architectures is a Rust `match` the compiler pushed on, or a per-architecture file
-whose absence a build notices; what is stale is a string in a shell script, a YAML step, a TOML
+whose absence a build notices. What is stale is a string in a shell script, a YAML step, a TOML
 array, or a sentence in a note.
 
 This is the same failure in a shape that sweep did not look for: **not a list missing an entry, but

@@ -54,7 +54,7 @@ comment, and milestone 200 makes the mistake unsayable everywhere at once.
 
 ## BUGS
 
-- The field is redundant in every case but one, and that is the hazard rather than a comfort:
+- The field is redundant in every case but one, and that is the hazard rather than a comfort.
   `paddr == vaddr` for every user program in this tree, so a consumer that reaches for the wrong one
   behaves correctly in testing and wrongly on the one path that matters, which is the kernel image.
   The doc comment has to carry that until milestone 200 lands, and a doc comment is rung three.
@@ -96,8 +96,8 @@ comment, and milestone 200 makes the mistake unsayable everywhere at once.
   `0x12b000`, not the reverse, and `0x165000` was a number from an older build. The lane found it by
   building the image rather than by reading anything.
 - **Refused.** Giving `Elf::parse` a `physical_span`. What survives in `uefi_loader/src/image.rs` is
-  not a reader, and it stays out of the shared crate on purpose: a program loader maps at `p_vaddr`
-  and a firmware loader places at `p_paddr`, and on this image they are unrelated, so the span is
+  not a reader, and it stays out of the shared crate on purpose. A program loader maps at `p_vaddr`
+  and a firmware loader places at `p_paddr`; on this image they are unrelated. So the span is
   the firmware loader's own question rather than the format's.
 
 ## Index row

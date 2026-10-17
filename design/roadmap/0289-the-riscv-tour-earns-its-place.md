@@ -24,10 +24,8 @@ Yes, four things, none of them a note.
 would build the shell kernel. The four modes are the plain tour, `--soak`, `--jobmix` and `--bench`,
 and the last three *replace the end of* the tour rather than skipping it, which the script says in
 its own argument check ("all replace the end of the boot tour; pick one"). So every VisionFive 2
-(radon) boot this tree can produce runs the tour. `boot_progenitor`'s riscv64 caller (`riscv_shell_boot` until milestone 166 (one boot loader)) was
-`#[cfg(feature = "shell")]` when this was written. Milestone 268 later made the default boot reach it.
-Then `script/swish-check` was the only thing in the tree that built that kernel, and it built it for
-QEMU. So nothing here produces a board payload that would run `progenitor`, and no bench record in
+(radon) boot this tree can produce runs the tour. The default riscv64 boot ends by handing the machine to `progenitor` through `boot_progenitor`, after the
+tour. The `shell` feature reaches the same hand-over before the tour and parks. No bench record in
 `notes/visionfive2.md` shows one having run.
 
 `crates/board_console` reads the builder's output line. `Progress::userspace_ran` is set by

@@ -42,7 +42,8 @@ Cost: about 10 seconds on `script/verify`'s ~650, almost all compile rather than
 
 A note on how this landed, because a gate caught it. The status was flipped to `BUILT` on the
 records pull request that minted this block, one merge ahead of the work itself. `script/lint`
-refused the work's own branch for changing nothing here, and it was right to: §90's rule is that a
+refused the work's own branch for changing nothing here, and it was right to. §90 (the status flip
+is a gate)'s rule is that a
 milestone branch lands its status flip in the same merge as the work, precisely so `main` never
 claims something is built while its code is still on a branch. For about an hour, `main` did. The
 ordering was the integrator's mistake rather than the lane's.
@@ -78,8 +79,8 @@ development machine. Three errors, all shallow:
 3. The same at `kernel/src/smp.rs:71`, `.secondary_stacks`.
 
 That is the whole list. The kernel very nearly compiles for a host target already, and the
-reason is DECISIONS §4 rule 1 working exactly as designed: `asm!` appears outside
-`kernel/src/arch/` in only two files and three sites (`cpu.rs` once, `user.rs` twice), and
+reason is DECISIONS §4 (kernel shape: monolithic, deferred) rule 1 working exactly as designed. `asm!` appears outside
+`kernel/src/arch/` in only two files and three sites (`cpu.rs` once, `user.rs` twice).
 `kernel/src/arch/` is 14,744 of the 64,818 lines, leaving roughly 50,000 lines of ordinary Rust.
 
 **Take that as an encouraging measurement and not as a schedule.** `cargo check` is not `cargo
@@ -148,11 +149,13 @@ is missing.
 - **Milestone 197.** `user/` and `xtask`, which this block's BUGS names as out of reach for exactly
   the reason the kernel was. The `user/` half is built; `xtask` was argued there and refused, with
   the shape that would reverse the refusal named.
-- **Milestone 197.** The timer re-arm seam. This block nominates the milestone 6 drift as the
+- **Milestone 197.** The timer re-arm seam. This block nominates the milestone 6 (threads, the context
+  switch, and preemption) drift as the
   sharpest candidate (the property is already proved in `crates/timetable`'s `next_after` and the
-  timer does not call it), and this lane could not use it, because `rearm` lives in
-  `kernel/src/arch/*/timer.rs` and reads the counter through `asm!`. 197 carries it as a fork rather
-  than as work: where the seam goes is the design question, too high and the arch layer keeps the
+  timer does not call it). This lane could not use it, because `rearm` lives in
+  `kernel/src/arch/*/timer.rs` and reads the counter through `asm!`. Milestone 197 (`user/` and
+  `xtask` are out of reach of the prover) carries it as a fork rather
+  than as work. Where the seam goes is the design question: too high and the arch layer keeps the
   bug, too low and every ISA restates it.
 - **Recorded.** `notes/kernel-proofs.md`. `kernel/src/arch/` is unreachable and will stay
   unreachable, so nothing here covers the architecture layer, which is where the VisionFive 2's

@@ -157,7 +157,7 @@ arch-contract names that did not stretch to a third architecture were renamed `a
   completion reaches a ring-3 driver, and the enable and acknowledge paths are correctly no-ops for
   one.
 - **Refused.** Item 2's other half, PCI interrupt routing over INTx, was deliberately not taken by
-  milestone 215: ACPI's `_PRT` is AML and this tree will not grow an interpreter, and hardcoding
+  milestone 215: ACPI's `_PRT` is AML and this tree will not grow an interpreter. Hardcoding
   q35's swizzle would pass every gate here and might still fail on xenon. This refusal is
   [milestone 459 (legacy INTx interrupt routing on x86_64)](0459-legacy-intx-interrupt-routing.md),
   which carries it with the condition that would change it.
@@ -235,11 +235,11 @@ makes `a_revoked_holder_faults_on_its_next_port_write` reliable at two cores.
 
 Splits real work out of milestone 20's stale text: DECISIONS §19 declared x86_64 a target,
 milestone 20's own "Deliverable, in two parts" named it, but 20 is BUILT for the HAL split and
-RISC-V alone (`kernel/src/arch/` has no `x86_64/`). BUILT 2026-09-19. The fine map, IO APIC,
-ring 3, real processes, VT-d, a real userspace and SMP bring-up are built; the last four items closed
+RISC-V alone (`kernel/src/arch/` has no `x86_64/`). BUILT 2026-09-19. The fine map, IO APIC, ring
+3, real processes, VT-d, a real userspace and SMP bring-up are built. The last four items closed
 together: 2 MiB and 1 GiB leaves in `crates/paging` on all three formats, proved, taking x86's
-direct map from 560 KiB of tables to 60 KiB; SMP failure (1), which was `cpu_start` counting a
-started core as absent (26 of 40 four-core boots before, 80 of 80 at three to eight cores after);
-failure (3), fixed by milestone 316; and `CR4.PGE`/`PCIDE`, measured and left off because the pinned
-QEMU flushes its TLB on every `CR3` write, so no instrument here can see them. The two-core runner
-default is milestone 315's closing step.
+direct map from 560 KiB of tables to 60 KiB. SMP failure (1) was `cpu_start` counting a started
+core as absent (26 of 40 four-core boots before, 80 of 80 at three to eight cores after).
+Milestone 316 fixed failure (3). `CR4.PGE`/`PCIDE` were measured and left off because the pinned
+QEMU flushes its TLB on every `CR3` write, so no instrument here can see them. The two-core
+runner default is milestone 315's closing step.

@@ -94,11 +94,13 @@ index row, each produced their `DUE: unknown` row.
   measured the 6-against-68 break from its base on 2026-10-15. The rider on milestone 427 (the
   documentation sweep the worklist already ranks) found the same drop from its baseline row and
   fixed `current()` the same day. The trigger now reads the crate's real surface.
-- **Recorded.** The cadence stream's recovery line fires on cannot-ask. `script/cadence-check
-  --quiet 2>/dev/null || true` empties the stream on an API failure. The `prev_cadence` compare
-  then prints "every scheduled workflow is producing results again" about a watcher that could not
-  ask. The DUE section avoids the trap by giving its cannot-ask states rows. The cadence half
-  predates this milestone and wants a lane of its own.
+- **Done.** The cadence stream cannot empty on a pass that could not ask. `helpers/trunk-health.sh`
+  captures the `script/cadence-check --quiet` call and prints a `cannot ask` row when it exits
+  nonzero with no rows, in the DUE section's row shape. The `prev_cadence` compare therefore reads
+  cannot-ask as a state of the stream: it speaks on the transition into it and stays silent while
+  it stands. Its recovery line fires only when a real answer empties the stream.
+  `helpers/trunk-health-cadence-selftest.sh` (name provisional) holds the failure cases and runs in
+  `script/lint`.
 - **Done.** The restart caveat is a BUGS bullet in `helpers/trunk-health.sh`, stated once for all
   three transition memories.
 

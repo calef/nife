@@ -33,13 +33,13 @@ The requirement is calef's own infrastructure, and its history is what retired t
 - The drives holding those borg repositories are ext4, formatted by Linux. They are not going to
   be reformatted, so nife supporting them means supporting the format as it exists on those disks.
 - Time Machine and SMB are no longer the backup path. Milestone 55 (Time Machine: SMB3 with Apple's
-  extensions) and the surrounding blocks are aimed at a workload the customer retired; that
-  repricing is its own edit and is not this block's scope, but this block should not be read as
+  extensions) and the surrounding blocks are aimed at a workload the customer retired. That
+  repricing is its own edit and is not this block's scope. This block should not be read as
   reinstating it.
 
 What that leaves is a durable requirement with no deadline, which is exactly the condition
-AGENTS.md's *elegance and performance beat implementation convenience* tenet was written for: an
-argument from implementation cost is the weakest one available here, and it is weakest of all when
+AGENTS.md's *elegance and performance beat implementation convenience* tenet was written for. An
+argument from implementation cost is the weakest one available here. It is weakest of all when
 nothing is waiting on the answer.
 
 ## The survey, which is the research this block exists to preserve
@@ -101,10 +101,10 @@ capability it binds, so no two TCBs share an address space, which is exactly wha
 wants it is a syscall-surface change entered sideways, and AGENTS.md's *move fast on what can be
 undone* tenet puts the syscall surface in the expensive category.
 
-Three further costs, recorded so a later reader is not surprised: the rest of the host-ops surface
+Three further costs, recorded so a later reader is not surprised. The rest of the host-ops surface
 (`jmp_buf_set`/`longjmp` in assembly for three ISAs, a timer service with callbacks, `ioremap` and
-`iomem_access` for a virtio-mmio shim onto the block server); GPLv2 and therefore vendoring Linux;
-and, most likely to be fatal, `arch/lkl`'s documented hosts are POSIX and Windows userspace, so
+`iomem_access` for a virtio-mmio shim onto the block server). GPLv2 and therefore vendoring Linux.
+And, most likely to be fatal, `arch/lkl`'s documented hosts are POSIX and Windows userspace, so
 whether it builds for a freestanding non-x86 target at all is unverified and DECISIONS §19
 (architectural parity is a tenet) requires all three.
 
@@ -116,10 +116,10 @@ the destination.
 libext2fs as a shipped dependency, refused, and the honest reason is recorded. This was the
 session's first recommendation and it was substantially an argument from effort. Applying the
 tenet's own test, *would I still choose it if both options cost the same?*, the answer is no. A Rust
-implementation wins on memory safety over a parser eating bytes from drives we did not write, on
-being host-testable and Kani-reachable, on needing no libc tier, on carrying no LGPL into the image,
-on parity across three ISAs by construction rather than by luck, and DECISIONS §83 (when the same
-thing exists in C and in Rust, take the Rust one) says so directly. The deadline was doing the work
+implementation wins on memory safety over a parser eating bytes from drives we did not write.
+It wins on being host-testable and Kani-reachable, on needing no libc tier, on carrying no LGPL
+into the image, and on parity across three ISAs by construction rather than by luck. DECISIONS §83
+(when the same thing exists in C and in Rust, take the Rust one) says so directly. The deadline was doing the work
 in that recommendation, and the deadline is gone. DECISIONS §34's (RedoxFS as the primary store) own
 objection to littlefs applies too: it would put a foreign component in the storage path.
 

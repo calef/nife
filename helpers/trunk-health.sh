@@ -191,8 +191,8 @@ state() {
 #
 # `script/cadence-check` is where the judgment lives; this only decides when to speak. Same
 # transition discipline as RED/GREEN, for the same reason: a cadence that has been dead for a month
-# is one fact, not four hundred polls of it. `|| true` because a dead cadence is its exit 1 and this
-# script runs under `set -e`.
+# is one fact, not four hundred polls of it. The call is captured rather than passed through,
+# because a dead cadence is its exit 1 and this script runs under `set -e`.
 #
 # **Two of the cadences are asked here rather than by `script/cadence-check`** (milestone 889 (the
 # tree's gates stop depending on the fleet tooling), provisional, 2026-10-12 UTC). The weekly capture
@@ -201,6 +201,16 @@ state() {
 # are asked on the same five-minute pass as before, in the same row format, so the transitions and
 # trunk-health.yml's DEAD warning read them exactly as they did.
 #
+# **A pass that could not ask gets a row, so the stream never empties on one.** `script/cadence-check`
+# exits 2 with nothing on stdout when it cannot ask (no `gh`, no network, no credentials), and a
+# nonzero exit with no rows prints a `cannot ask` row here, in the `due()` section's shape. That
+# makes cannot-ask a state of the stream the `prev_cadence` compare reads, not a hole in it: the
+# compare speaks on the transition into it, stays silent while it stands, and its recovery line
+# fires only when a real answer empties the stream. The row is deliberately not DEAD-prefixed: the
+# workflow that relays this script warns on a DEAD grep, and one blind pass is weather there, not a
+# dead workflow. helpers/trunk-health-cadence-selftest.sh holds the failure cases (name
+# provisional).
+#
 # The effort capture (milestone 519 (what this project costs, tracked where it cannot rot)) is a
 # person running `script/effort --update` on the machine the lanes ran on, because only that
 # machine has the session records; `--check` asks whether the committed `effort.csv` holds the
@@ -208,7 +218,16 @@ state() {
 # `--quiet` rule. The merge watchers (milestone 723 (a stopped merge watcher is reported within
 # three of its own intervals)) have their own rule, from their own cron, in helpers/watcher_watch.py.
 cadence() {
-	script/cadence-check --quiet 2>/dev/null || true
+	cadence_say=""
+	if ! cadence_say="$(script/cadence-check --quiet 2>/dev/null)"; then
+		if [ -z "$cadence_say" ]; then
+			cadence_say="$(printf '%-32s %-24s %s\n' "cadence-check" "cannot ask" \
+				"CANNOT-ASK: unknown; script/cadence-check without --quiet says what it could not read")"
+		fi
+	fi
+	if [ -n "$cadence_say" ]; then
+		printf '%s\n' "$cadence_say"
+	fi
 	if [ -x script/effort ]; then
 		effort_say="$(script/effort --check 2>&1)" ||
 			printf '%-32s %-24s %s\n' "effort capture" "not this week" "DEAD: ${effort_say#effort: }"
@@ -500,7 +519,8 @@ while true; do
 
 	# Recovery is announced here too, and for the reason the header already gives about RED/GREEN: a
 	# watcher that only ever speaks on failure teaches its reader that silence means health, and
-	# silence is also what a dead watcher sounds like.
+	# silence is also what a dead watcher sounds like. The stream cannot empty on a pass that could
+	# not ask (see cadence above), so this line only ever follows a real answer.
 	c=$(cadence)
 	if [ "$c" != "$prev_cadence" ]; then
 		if [ -n "$c" ]; then
