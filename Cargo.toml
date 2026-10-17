@@ -113,6 +113,7 @@ members = [
     "crates/free",
     "crates/vmstat",
     "crates/slabtop",
+    "crates/number_writer",
 ]
 
 # The vendored RedoxFS engine (vendor/redoxfs) and the host tool that wraps it (tools/redoxfs_host)

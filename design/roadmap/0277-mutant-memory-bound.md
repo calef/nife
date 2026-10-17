@@ -7,7 +7,7 @@ built: 2026-09-12
 
 Built (2026-09-12). Written by the milestone 247 sweep as a proposal on 2026-09-03, from
 milestone 238's block. Promoted out of the proposal queue on 2026-09-11 by calef, who asked for the
-oldest thing in the proposal queue: it was in the founding batch of 46 written the day the proposals
+oldest thing in the proposal queue. It was in the founding batch of 46 written the day the proposals
 mechanism was ratified, and it had sat eight days while the workflow it repairs failed every
 scheduled run. *(Number provisional until the merge queue lands it; 275 and 276 are in flight ahead
 of it.)*
@@ -19,7 +19,7 @@ that: the one name minted is provisional like any lane's, and no syscall surface
 format was touched.
 
 In brief. `script/mutation` gives each mutant a per-mutant timeout of 28 to 51 seconds. That
-bound is on time, and the failure that actually occurs is on memory: one mutant goes from
+bound is on time, and the failure that actually occurs is on memory. One mutant goes from
 1.4 GB to 15.8 GB in twenty seconds and takes the whole runner agent with it, comfortably inside
 the timeout that therefore never fires. The work is to add a memory bound per mutant so the mutant
 dies and the sweep continues.
@@ -75,8 +75,8 @@ five minutes. Every bound the tool has is a clock, and a clock is precisely what
 past.
 
 Chosen: the cargo runner wrapper, as `helpers/memory-bounded-runner.sh` (**name provisional**,
-as every lane-minted name is). cargo runs each test binary through `target.<triple>.runner`, and
-that is the only point in the pipeline that sees exactly one test binary and neither rustc nor the
+as every lane-minted name is). cargo runs each test binary through `target.<triple>.runner`. That
+is the only point in the pipeline that sees exactly one test binary and neither rustc nor the
 other `-j 2` job's binary, which is the granularity a per-mutant bound needs by definition.
 `script/mutation` exports `CARGO_TARGET_<HOST>_RUNNER` for the length of a run and nothing else in
 the tree does, so an ordinary `cargo test` is untouched. The runner sets `RLIMIT_AS` and execs.
@@ -98,16 +98,16 @@ Why the other two lost, with reasons rather than a list.
 
 The number is 4 GiB and it is measured from both ends, which the block asked for and which is
 the part worth keeping. The largest of this tree's 143 host test binaries peaks at 1,028 MiB
-(`board_console`), the mean is 169 MiB, so the ceiling is 4.0x the largest honest binary; and `-j 2`
+(`board_console`), the mean is 169 MiB, so the ceiling is 4.0x the largest honest binary. And `-j 2`
 means two binaries can be resident at once, so 2 x 4 GiB is survivable on a 16 GiB box where twice a
 larger ceiling would not be. Lowering it until it bites confirms the other end: unaffected at 4 GiB
 and at 1 GiB, and at 256 MiB `board_console` fails exactly where its measured peak says.
 
 **It was watched killing something**, because a bound nobody has seen fire is decoration. A
 synthetic mutant that allocates without limit dies at whatever ceiling it is given (0.4 s at
-512 MiB through 8.6 s at 4 GiB, and nowhere else), and 8.6 s is inside the 20 s minimum auto
+512 MiB through 8.6 s at 4 GiB, and nowhere else). And 8.6 s is inside the 20 s minimum auto
 timeout, so it lands in cargo-mutants' accounting as an ordinary **caught** mutant and the sweep
-continues. That accounting was the success criterion rather than the kill: `script/mutation` treats
+continues. That accounting was the success criterion rather than the kill. `script/mutation` treats
 anything but 0, 2 and 3 as a broken run, and a bound that turned a machine kill into a red run would
 be the same failure with a new cause.
 
@@ -124,13 +124,13 @@ it on, and the first person to measure should write the number into the runner's
 **The build is not bounded**, only the test binary. No build-side runaway has been observed and a
 linker legitimately wants a great deal of address space, so it would need its own number.
 
-**And the workflow has still never succeeded.** This is demonstrated and measured, not proven: the
+And the workflow has still never succeeded. This is demonstrated and measured, not proven: the
 first green scheduled run is the evidence that matters, and until one lands, `mutation.yml`'s BUGS
 header keeps saying so.
 
 ## Follow-on
 
-- **Recorded.** The dev Mac is not covered by default, and the limitation is written where a reader
+- **Recorded.** The dev Mac is not covered by default. The limitation is written where a reader
   meets the feature, in the `BUGS` section of `helpers/memory-bounded-runner.sh`, with the XNU
   source that shows the kernel would enforce it and the reason a number was not shipped unmeasured.
 - **Recorded.** The build is bounded by nothing; same `BUGS` section, beside it.
@@ -148,7 +148,7 @@ header keeps saying so.
 
 Promoted from the proposal queue 2026-09-11 by calef, the oldest thing in it. One mutant goes 1.4
 GB to 15.8 GB in twenty seconds and takes the runner agent with it, inside a per-mutant timeout
-that is on time and therefore never fires; the sweep that refreshes fatal risk 3 has failed every
+that is on time and therefore never fires. The sweep that refreshes fatal risk 3 has failed every
 scheduled run since. A cargo runner gives each mutant's test binary a 4 GiB address-space ceiling,
 4.0x the largest of the tree's 143 host test binaries; cargo-mutants 27.1.0 has no memory option
 at all, checked first.

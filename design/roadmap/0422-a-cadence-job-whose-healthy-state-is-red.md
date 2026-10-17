@@ -1,5 +1,6 @@
 ---
-status: NOT-STARTED
+status: BUILT
+built: 2026-10-16
 raised: 2026-09-17
 promoted_from: a-cadence-job-whose-healthy-state-is-red
 milestone_dependencies: none
@@ -46,68 +47,98 @@ And these four look identical to each other, which is the part that actually cos
 2026-09-07  audits: 7 on record, DUE: documentation, security   exit 1
 ```
 
-An audit was overdue every week for a month, the mechanism said so on schedule every time, and no
+An audit was overdue every week for a month. The mechanism said so on schedule every time, and no
 audit was run. Milestone 92 built this tripwire to stop auditing depending on somebody remembering
 to ask. The tripwire fired four times and auditing still depended on somebody remembering.
 
 ## Why `script/cadence-check` does not cover it
 
-Milestone 238's check asks when a workflow last succeeded, and reports one whose last success is
+Milestone 238 (two scheduled checks have never once succeeded)'s check asks when a workflow last
+succeeded. It reports one whose last success is
 more than fifteen days old. That is the right question for a job whose healthy state is green, and it
 is why the mutation and undefined-behavior workflows were caught.
 
 For `audit-cadence` it is the wrong question in both directions. A job that is *supposed* to be red
-has no green to be stale against, so a firing tripwire is indistinguishable from a dead one; and a
+has no green to be stale against, so a firing tripwire is indistinguishable from a dead one. And a
 job that has **never** succeeded is reported forever on a condition it can never clear, which
 generates exactly the standing alarm that teaches a reader to stop looking. It caught milestone 311's
-path bug by coincidence: this workflow had never succeeded, so it tripped the never-succeeded arm,
+path bug by coincidence. This workflow had never succeeded, so it tripped the never-succeeded arm,
 for a reason unrelated to the defect.
 
-## What it would report
+## What it reports
 
-The proposal is to report **a repeat, not a color**: a scheduled workflow whose last N runs all
-failed *with the same final line*. Sketch, for whoever builds it:
+`helpers/trunk-health.sh` answers the question, from the read-only source `script/cadence-check`
+already reads. On every `--once` pass it takes the last six scheduled runs of each scheduled
+workflow through the per-workflow runs endpoint, because the all-workflows listing caps at 100
+runs and no longer reaches a weekly's own last six. It groups the failed ones by the final line of
+their failing step and prints two verdicts beside the DEAD and DUE rows. REPEAT names a line that
+took three or more of those runs, with the line and the span of dates (UTC). CHURN is a separate
+and less urgent finding, never folded in, for failures that disagree with each other. A single
+line failing exactly twice stays silent until a third occurrence settles it. The watching loop
+does not call the section, because each failing run examined costs two API reads;
+`trunk-health.yml` relays the rows every five minutes as a warning annotation, the same treatment
+its own BUGS gives a dead cadence. Reading the line is best effort, because `gh run view
+--log-failed` is a screen rather than an API, and the script's BUGS says where that breaks first;
+`helpers/trunk-health-repeat-selftest.sh` proves the thresholds, the strip and the watcher
+exclusions offline.
 
-- Group the last six scheduled runs per workflow by the final line of their failing step.
-- Report a workflow where the newest group has three or more runs in it, with the line and the span
-  of dates.
-- A workflow whose failures are all *different* is churning, and is a separate and less urgent
-  finding; say so rather than folding it in.
+A REPEAT row also opens its issue, on every five-minute pass, through `helpers/repeat_issue.py`:
+one open issue per workflow, deduped by workflow name, titled `scheduled failure repeats:
+<workflow>`, its body naming the failing line and the span of dates and updating when either
+drifts. A CHURN row opens nothing. The state is GitHub's own, never a file, so the re-announce the
+relay already owns costs one list call per pass and nothing more.
 
-**The delivery is `helpers/trunk-health.sh`, not a new scheduled workflow**, for the reason
-`script/cadence-check`'s header already states and this proposal must not undo: a scheduled workflow
-that watches scheduled workflows dies the way its subjects die.
+Against the live specimen, on 2026-10-16 (UTC), the row read:
 
-## The open question, which is what makes this a proposal rather than a lane brief
+```
+audit-cadence                    5 of last 6 failed       REPEAT: design/audit-reports/README.md says how, and which lens the last one lacked. (2026-09-07..2026-10-12 UTC)
+```
 
-Who is the report for, and what closes it? A repeat report on `audit-cadence` says "run the
-audit", and running an audit is a lane and a day, not a fix somebody applies between tasks. Reported
-to a maintainer session it becomes rung four again, a message somebody has to read; reported into a
-pull request there is no pull request to hang it on. AGENTS.md's answer for work waiting on a person
-is the `needs-architect` label and a `## What I need from you` comment, and neither has a home when
-the finding belongs to no branch.
+Five of the six runs ended in `script/audits`' own epilogue, identical for six weeks, and the
+sixth, on 2026-09-14, ended in a `FileNotFoundError` that fell out of the group on its own. These are the
+two rows the Actions tab renders identically, separated by the only witness that saw both.
 
-That is an architect's call, not a lane's, and it is the same question the steward's own "it
-reported and never acted" failure of 2026-08-04 raised without settling.
+## Where the report lives, and what closes it
+
+The report is an issue, one per workflow, and the audit closes it. The issue's body names the
+workflow, the failing line and the span of dates, and states its own close condition: the audit
+lane's report pull request lands with `Closes #N` naming the issue. That routing lives in
+`audit-cadence.yml`'s step summary, which is what hands the audit lane out. Nothing closes an
+issue but that landing, deliberately: a row stopping is not the work being done, and a broken run
+can hide among correct reds. A CHURN row has no issue and no close; it is a look, not a work item.
 
 ## What this does not propose
 
 Not making the job green when an audit is due. A cadence checker that cannot report "overdue" is
-decoration, and the workflow's own header and `design/audit-reports/README.md`'s `BUGS` both already
+decoration. The workflow's own header and `design/audit-reports/README.md`'s `BUGS` both already
 say that closing this by editing the index is the one thing that makes the mechanism a lie. The
 ambiguity is the cost of a correct design, and the fix is a second signal rather than a quieter
 first one.
 
+## Follow-on
+
+- **Recorded.** The repeat half's per-pass API cost, and the best-effort reading of `gh`'s logs,
+  are limitations beside the feature in `helpers/trunk-health.sh`'s BUGS. A cost ceiling wants a
+  lane only if the tree's scheduled dailies multiply.
+- **Recorded.** The per-workflow runs endpoint is this block's answer to the 100-run listing cap.
+  `script/cadence-check`'s own BUGS still owes that fix for its 15-day threshold (#1511).
+- **Refused.** Making the row a gate, closing the issue by editing the index, and reading the row
+  from an audit lane's gates. The reasons stand in `script/cadence-check`'s header, the audit
+  workflow's own, and the ruling recorded on this milestone's pull request.
+
 ## Index row
 
 `.github/workflows/audit-cadence.yml` reports that an audit is due by failing, which is deliberate
-and correct, and the consequence nobody priced is that red is ambiguous: a firing tripwire and a
+and correct, and the consequence nobody priced is that red is ambiguous. A firing tripwire and a
 `FileNotFoundError` are the same row in the Actions tab, and so are four consecutive weeks of the
 same true report. An audit was overdue every week for a month, the mechanism said so on schedule
-every time, and no audit ran, which is milestone 92's tripwire firing four times into a process that
+every time, and no audit ran. That is milestone 92 (security audits as a mechanism)'s tripwire
+firing four times into a process that
 still depended on somebody remembering. `script/cadence-check` cannot cover it, because a job whose
 healthy state is red has no green to be stale against and a job that never succeeded is reported for
-ever. The proposal is to report a repeat rather than a color, from `helpers/trunk-health.sh` rather
-than a scheduled workflow that would die the way its subjects die. What makes it a block rather than
-a brief is the open question of who the report is for, since running an audit is a lane and a day
-and there is no pull request to hang the finding on.
+ever. `helpers/trunk-health.sh` now reports a repeat rather than a color: each scheduled workflow's
+last six runs grouped by the failing step's final line. A REPEAT row fires when one line took three
+or more, a CHURN row when the failures disagree; an offline selftest proves both against the real
+audit-cadence history. The repeat's home is an issue per workflow, deduped by workflow name, whose
+body updates as the line drifts. Its close is the audit lane's report pull request saying
+`Closes #N`, routed by the audit-cadence step summary that hands the lane out.

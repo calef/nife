@@ -36,7 +36,7 @@ becomes after the split.
 
 1. The ratchet. `script/citations --ratchet`, run by `script/lint` as *"new citations say what
 they cite"*. It reads the diff against `git merge-base HEAD origin/main`, never the tree, so a lane
-is asked only about text it wrote. The rule is **per number per file, not per occurrence**: a
+is asked only about text it wrote. The rule is **per number per file, not per occurrence**. A
 citation on an added line passes if that number, under that scheme, is glossed somewhere in the same
 file, by title, by quotation, by a path into the record, or by an allowlist entry. A paragraph that
 names §151 four times explains it once.

@@ -10,8 +10,8 @@ milestone was briefed with that latitude and executes Decision 1 of the finding 
 stays open for calef as the follow-on.
 
 The drift is a removable regression, not an intended feature cost: milestone 237 (the cycle-counter
-grant) ships the grant OFF, and the cost was an un-`#[cfg]`'d switch tuple, the same class milestone
-299 (the x86 port-range capability) fixed for the port grant. It is fixed, the recovery confirmed on
+grant) ships the grant OFF. The cost was an un-`#[cfg]`'d switch tuple, the same class milestone 299
+(the x86 port-range capability) fixed for the port grant. It is fixed, the recovery confirmed on
 both ISAs by measurement, and the baselines are saved against the recovered numbers. The
 decomposition (QEMU ~0, toolchain ~0, code is the whole move, bisected to `57399c34`) is in "What
 the decomposition found" below.
@@ -59,17 +59,17 @@ The bisect pinned the cost to 139, and it is not intended feature work. Mileston
 cycle-counter grant) makes the cycle-counter grant a *measurement-only* feature that ships OFF:
 `set_cycle_counter_grant` is `#[cfg(any(test, feature = "cycle_counter_grant"))]` and does not
 appear in a feature-off binary at all. So the cost 139 introduced was not paying for a shipping
-feature; it was a residual 237's gating left behind, the const-`false` `next_cycle_counter` element
-still threaded through the shared switch tuple (a `#[cfg]` is not allowed on a tuple element, which
-is why 237 reached for a fold instead). That fold works in the release build but NOT in the debug
+feature. It was a residual 237's gating left behind, the const-`false` `next_cycle_counter` element
+still threaded through the shared switch tuple. (A `#[cfg]` is not allowed on a tuple element, which
+is why 237 reached for a fold instead.) That fold works in the release build but NOT in the debug
 build the icount gate measures, so the read, the tuple element, and a gated-off `install` call all
 stayed in the shipping switch. This is the exact class milestone 299 (the x86 port-range capability)
-fixed for the port grant, and the fix is 299's: carry the grant in a `#[cfg]`-gated local read and
+fixed for the port grant. The fix is 299's: carry the grant in a `#[cfg]`-gated local read and
 installed at the switch site, keep the tuple at its pre-139 width. Recovered, measured on both ISAs
 (inflated floor -> fix, near pre-139): `yield_switch` 1167649->1101149 aarch64 / 195910->184875
-riscv64, `ctx_switch` 3089320->2922971 aarch64 / 522565->495050 riscv64, ~91-93% of the drift, the
-~0.5% residual within the codegen noise floor `coremark` sits in (it stayed flat, 20915884->20915599
-aarch64). The baselines are saved on `nightly-2026-09-15` against these recovered numbers. The full
+riscv64, `ctx_switch` 3089320->2922971 aarch64 / 522565->495050 riscv64, ~91-93% of the drift. The
+~0.5% residual is within the codegen noise floor `coremark` sits in (it stayed flat,
+20915884->20915599 aarch64). The baselines are saved on `nightly-2026-09-15` against these recovered numbers. The full
 per-benchmark grid, the bisect, the recovery table, and the standing "save from the shipping feature
 set" rule live in
 [notes/benchmarks/drift-decomposition.md](../../notes/benchmarks/drift-decomposition.md) under the
@@ -80,7 +80,7 @@ the *shared* switch tuple, not an aarch64/riscv-only path, so the x86 debug icou
 const-`false` element too and paid for it: the fix recovers `yield_switch` 20080160->18903108 (~5.9%)
 and `tss_iomap_switch` 24818161->23661444 (~4.7%), with `coremark` flat (306262395->306261408).
 `bench --x86 --check` passed against the inflated floor only because the residual sits under the
-10% tripwire, but leaving that floor ~5.9% high would bake in exactly the removable regression this
+10% tripwire. Leaving that floor ~5.9% high would bake in exactly the removable regression this
 milestone removes, so x86_64's baseline is re-saved against its recovered numbers as well.
 
 ## What was built
@@ -125,16 +125,18 @@ milestone removes, so x86_64's baseline is re-saved against its recovered number
   TCG icount on the dev Mac. A different runner moves them again, which is the whole reason the
   follow-on argues a bump should re-baseline mechanically rather than have a human eyeball a percent.
 - **The QEMU term was measured out, not eliminated.** Only 11.1.1 is installable locally, so the
-  11.0.2 baseline could not be re-run on its original emulator; the QEMU component was isolated by
-  holding 11.1.1 across the code and nightly axes and reading the same-code/same-nightly pair (B - A),
-  which came back ~0. If a future QEMU does move icount, this method still separates it.
+  11.0.2 baseline could not be re-run on its original emulator. The QEMU component was isolated by
+  holding 11.1.1 across the code and nightly axes and reading the same-code/same-nightly pair
+  (B - A), which came back ~0. If a future QEMU does move icount, this method still separates it.
 
 ## Index row
 
 Decomposed the ~+6.5% icount drift over the 2026-08-27 baselines into QEMU (~0), toolchain (~0), and
-code components, refuting the proposal's nightly-codegen hypothesis: the whole move bisected to one
-commit, milestone 139 (drive the unsafe count down)'s cycle-counter grant at the context switch (`57399c34`). The cost is not an
-intended feature cost: the grant ships OFF since milestone 237, so the cost was a removable residual, the const-`false`
+code components, refuting the proposal's nightly-codegen hypothesis. The whole move bisected to one
+commit, milestone 139 (drive the unsafe count down)'s cycle-counter grant at the context switch
+(`57399c34`). The cost is not an
+intended feature cost: the grant ships OFF since milestone 237. The cost was a removable residual,
+the const-`false`
 switch-tuple element 237's fold did not eliminate in the debug icount build, the same class milestone
 299 fixed for the port grant. Applied 299's `#[cfg]`-gated fix, recovered ~91-93% of the drift on
 aarch64/riscv64 (`yield_switch`/`ctx_switch` back within ~0.5% of pre-139) and ~5.9% on x86_64 (the

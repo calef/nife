@@ -17,18 +17,18 @@ milestone: *"The board's standalone-display story is the DC8200 framebuffer path
 serial input until a USB HID milestone earns its own number."*
 
 In milestone 53's sense: the board is on the desk and this needs hands on it.
-The device-tree parsing and the driver's own logic can be written and host-tested without silicon,
-but the handoff itself (does U-Boot actually hand over the buffer this milestone assumes, at the
+The device-tree parsing and the driver's own logic can be written and host-tested without silicon.
+The handoff itself (does U-Boot actually hand over the buffer this milestone assumes, at the
 address and format it claims) can only be verified by booting the real board.
 
 ## Why this is the path, not the bare-metal GPU driver
 
-The display ladder already ruled out the alternative and said why: a bare-metal driver for the
+The display ladder already ruled out the alternative and said why. A bare-metal driver for the
 VisionFive 2's BXE-4-32 3D core is a Linux-scale, multi-year effort (loaded firmware, thin
-documentation, Mesa still maturing on Linux itself) that proves nothing rung four (virtio-gpu 3D,
+documentation, Mesa still maturing on Linux itself). That effort proves nothing rung four (virtio-gpu 3D,
 milestone 34) does not already prove in QEMU. `simple-framebuffer` sidesteps mode-setting entirely:
 U-Boot has already configured the display and put a linear framebuffer at a known physical address
-before nife's kernel ever runs, the same convention Linux's own `simplefb`/`simpledrm` drivers and
+before nife's kernel ever runs. That is the same convention Linux's own `simplefb`/`simpledrm` drivers and
 every other bare-metal OS booted by U-Boot or UEFI GOP relies on. nife's job is to read where that
 buffer is and write pixels into it, not to program a display controller.
 

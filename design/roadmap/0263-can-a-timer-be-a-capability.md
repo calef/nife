@@ -27,11 +27,11 @@ No, and therefore the userspace-timer-service answer to milestone 106 does not s
 2. The one mechanism that works on all three is per-board MMIO, and it is not uniformly
    available. Both real boards have generous spare timer blocks (argon fourteen channels, radon four,
    each channel with its own interrupt line), but QEMU's aarch64 `virt` has no MMIO timer device at
-   all, and QEMU is what every gate in this tree runs on. A userspace timer service would be three
+   all. And QEMU is what every gate in this tree runs on. A userspace timer service would be three
    different drivers and a hole, against one syscall method.
 
 And the block's aarch64 negative was wrong, which is the correction worth having: aarch64 *can*
-grant a comparator to one thread rather than to all of EL0, and the machinery to do it was built
+grant a comparator to one thread rather than to all of EL0. The machinery to do it was built
 in this tree three days ago for a different reason.
 
 ## Why a spike, and the decision it sits under
@@ -77,7 +77,7 @@ x86_64 alone is not an answer.
    genuinely no U-mode path to arm a timer on riscv64, including Sstc's `stimecmp`?
 2. Price the fourth shape, below, in the kernel. The pricing lane measured that any
    deadline structure costs one comparison per tick (1.000 comparisons and 0.000 writes over
-   100,000 idle ticks, for a scan and for a sorted list), so what is unpriced is the object, its
+   100,000 idle ticks, for a scan and for a sorted list). So what is unpriced is the object, its
    methods and the signaling, not the bookkeeping.
 3. Say plainly whether the userspace-service answer survives parity. If it does not, an
    architect's decision changes, and it is better to know that in a day than three days into a lane.
@@ -118,7 +118,7 @@ service, and because a fork should not be settled by discovering an option late.
 ## What the fourth shape costs, measured
 
 Built as a throwaway scaffold on 2026-09-05, gated green with `script/test` (205 passed, 69 skipped,
-all three ISAs plus the OVMF leg), and deleted, which is milestone 106's own pricing method and
+all three ISAs plus the OVMF leg), and deleted. That is milestone 106's own pricing method and
 its reason: shipping it would settle a syscall-surface fork by accident. Method and error bars:
 [`notes/timer-capability/first-scaffold.md`](../../notes/timer-capability/first-scaffold.md#method) and
 [`notes/timer-capability/second-scaffold.md`](../../notes/timer-capability/second-scaffold.md#method-and-error-bars-both-scaffolds).
@@ -135,9 +135,9 @@ its reason: shipping it would settle a syscall-surface fork by accident. Method 
 footnote.** The scaffold signaled a `Rendezvous`, because that is what exists; §101's whole argument
 is that a notification is *its own object*. If 151 builds that, the byte figures barely move and the
 syscall's meaning does. More importantly: **the fourth shape is not independently useful.** Milestone
-106's title ("wake on either a message or a deadline") is met only by §101's TCB binding, so without
-151 this buys a thread a timer it can block on and no way to block on a timer *and* a message at once,
-which is 106's actual complaint. The fourth shape is 151 plus one object, and it should be priced that
+106's title ("wake on either a message or a deadline") is met only by §101's TCB binding. Without
+151, this buys a thread a timer it can block on and no way to block on a timer *and* a message at once.
+That is 106's actual complaint. The fourth shape is 151 plus one object, and it should be priced that
 way.
 
 ## The two prices the spike did not pay, measured 2026-09-13
@@ -154,13 +154,13 @@ rebuilt from its patch and came out byte-identical). Full method in
 | serving a kernel thread | **+312 B** code, 0 data | +282 B, 0 | +400 B, 0 |
 
 **The holder-death case is not bookkeeping, it is a use-after-free on the timer interrupt**, and
-that is the correction worth carrying: the expiry walk reads and writes a registry entry's page on
+that is the correction worth carrying. The expiry walk reads and writes a registry entry's page on
 every tick, so a timer page freed by `MemoryRegion::DESTROY` is read and written by `on_tick` on
 every core for the life of the machine. The fix is the sweep `reap_region_objects` already runs for
 `rendezvous_table`, one phase earlier, which is why it is 268 bytes. Three things it does **not**
 need, because the tree already has them: a stale signal target is dropped by `irq_notify`'s existing
-generational check; the cached earliest deadline may be early and never late, so it need not be
-recomputed; and the registry slot returns with the page, closing a spawn-and-die slot-exhaustion
+generational check. The cached earliest deadline may be early and never late, so it need not be
+recomputed. And the registry slot returns with the page, closing a spawn-and-die slot-exhaustion
 attack as a side effect.
 
 **And the kernel thread cannot be served by the fourth shape either**, which is the finding this
@@ -202,21 +202,21 @@ block only says what it costs.
 - **Done.** **§147's text was damaged by its own `PROPOSED` -> `DECIDED` edit, and the maintainer
   repaired it the same day this lane reported it (#830).** Kept here because what was found is worth more
   than that it is fixed. Three things, all in the first thirty lines: a mangled clause, *"Milestone
-  151 (notification objects)built) must land first"*; an orphaned sentence fragment, *"invalidates
+  151 (notification objects)built) must land first"*. An orphaned sentence fragment, *"invalidates
   the premise of a decision calef made the same day."*, left behind when the `PROPOSED` preamble
-  above it was replaced; and, the substantive one, a `**No recommendation.**` paragraph and a whole
+  above it was replaced. And, the substantive one, a `**No recommendation.**` paragraph and a whole
   `## What this file does not do` section arguing that the file deliberately names no winner, still
-  standing underneath a header that names one, so a reader was told both that option 1 was chosen
+  standing underneath a header that names one. So a reader was told both that option 1 was chosen
   and that choosing was not this file's job. That is the cheap-edit-destroys-the-expensive-record
   shape AGENTS.md's *move fast on what can be undone* names, one file over from where it names it.
   A lane may not repair a decision section, and this one correctly did not.
 - **Recorded.** **Adding a field to `IpcTables` costs riscv64 roughly the struct again**, and
-  nothing in this tree says so. Measured while pricing the registry above: growing `IpcTables` from
+  nothing in this tree says so. Measured while pricing the registry above. Growing `IpcTables` from
   15,432 to 25,696 bytes made that ISA materialize a 25,680-byte anonymous `.rodata` template of
-  `EMPTY_TABLES` that it did not carry before and that aarch64 and x86_64 do not carry at all, so
+  `EMPTY_TABLES` that it did not carry before and that aarch64 and x86_64 do not carry at all. So
   the same source costs riscv64 +37,061 data bytes against aarch64's +10,980. It is a cliff rather
   than a slope, it prices every future addition to the scheduler's tables rather than anything about
-  timers, and it is left unactioned because the right response may be a smaller registry rather than
+  timers. And it is left unactioned because the right response may be a smaller registry rather than
   a fight with the backend.
   [`notes/timer-capability/second-scaffold.md`](../../notes/timer-capability/second-scaffold.md#one-finding-that-is-not-about-timers-at-all)
   has the symbol-level working.

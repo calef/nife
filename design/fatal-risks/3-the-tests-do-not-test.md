@@ -74,3 +74,12 @@ recorded before that, 9 are now killed, 2 are equivalent and 5 remain. Run
 keys on lines merged pull requests wrote, 43 of them untriaged. Those 43 and one unattributed key
 are triaged: 36 killed and 8 equivalent
 ([inflow triage](../../notes/mutation-testing/inflow-2026-10-14-triage.md)).
+
+Fact, 2026-10-15: the per-pull-request gate exists (milestone 924 (a survivor on a pull request's
+own lines cannot merge untriaged), provisional): a pull request fails the check when
+`cargo mutants --in-diff` finds a surviving mutant on a line it changed and the triage ledger has
+no `equivalent` or `gap` row for it (`helpers/mutation_diff_gate.py`,
+`.github/workflows/mutation-gate.yml`). A `killed` row never clears one, a timeout is untriaged
+the same as a survivor, and a diff whose mutants exceed the 20-minute cap fails. It covers the
+host corpus; `kernel/` and `components/` generate no mutants and pass with the summary that says
+so. The check is not yet in the required set; adding it is calef's settings change.

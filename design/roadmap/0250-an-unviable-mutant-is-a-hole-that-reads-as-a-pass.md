@@ -65,7 +65,7 @@ Not a lower unviable count on its own, which could be bought by deleting code th
   tool upgrade can change which mutants are viable, and the count is therefore versioned rather than
   absolute.
 - It says nothing about functions the tool generates no mutants for at all, which is a different
-  and larger hole: milestone 246's block already records that `system_initializer::measured` gets no
+  and larger hole. Milestone 246's block already records that `system_initializer::measured` gets no
   mutants and that "no mutants generated" is a property of the tool rather than a proof.
 
 ## Evidence arriving before the milestone ran: `uefi_loader`, 2026-09-04
@@ -83,7 +83,7 @@ outside the measurement since it was written.
 It was dispositioned as "cannot be made viable", and that is a second worked example the milestone
 needs. Step 2 above asks whether a small honest change makes the mutant buildable and meaningful.
 Here the default is meaningful (an `Elf` with no segments is exactly the dangerous wrong answer, so
-it passes this block's own anti-gaming test), and the change is still refused: `Elf` is a validated
+it passes this block's own anti-gaming test), and the change is still refused. `Elf` is a validated
 token whose contract is that an `Ok(Elf)` has nothing left to check, and a `Default` impl makes an
 unvalidated one constructible by every consumer in the tree. That is rung one run backwards, bought
 for one mutant on a two-line `map_err` wrapper.

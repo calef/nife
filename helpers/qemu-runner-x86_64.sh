@@ -8,15 +8,16 @@
 # RISC-V's OpenSBI): QEMU's `q35` reads the PVH note in our ELF, loads the segments at their
 # physical addresses and enters the 32-bit trampoline directly. See kernel/src/arch/x86_64/boot.s.
 #
-# WHAT IS NOT HERE YET: no NIC, no GPU, no RNG, and three of the five disk fixtures the other two
-# runners build (milestone 37's crash disk, milestone 57's GPT and blank disks). NVMe is wired
-# (below, decisions §86's x86_64/VT-d data point), because the kernel-resident NVMe driver is
-# arch-neutral and VT-d confinement landed this session; one virtio-blk-pci disk since milestone 215
-# (a PCI function's interrupt on x86_64), because a PCI function's interrupt can now reach a
-# userspace driver here; and a second one, the RedoxFS fixture, since milestone 303, because the
-# block lookup spans both buses now. The rest are wired one at a time as the port reaches them, and
-# adding a device to this file before the kernel can drive it only produces a boot that looks richer
-# than it is. See design/roadmap/0161-x86-64-kernel-port.md and
+# WHAT IS HERE, device by device: all five disk fixtures the other two runners build, every one a
+# `virtio-blk-pci` function, in the ordinal order `find_block_device_n` counts (nifefs=0,
+# redoxfs=1, crash=2, gpt=3, blank=4); an NVMe controller (below, decisions §86's x86_64/VT-d data
+# point, because the kernel-resident NVMe driver is arch-neutral); an `e1000e` NIC under `NIFE_NET`
+# (milestone 494, the network card a PC actually has; there is no `virtio-net-pci`, because the
+# virtio-net tests' driver is not this port's NIC); and a `virtio-rng-pci` under `NIFE_RNG`. STILL
+# NOT HERE: a GPU and a keyboard. The `-device` lines are not the obstacle (the aarch64 runner
+# shows both); what is missing is the work milestone 161's note records beyond attaching hardware:
+# the keyboard test needs the host monitor's `sendkey`, which only cargo xtask's scanout referee
+# provides, and this leg runs no referee. See design/roadmap/0161-x86-64-kernel-port.md and
 # design/roadmap/0420-the-rest-of-the-x86-64-fixture-set.md.
 #
 # The kernel halts with `hlt` (arch::halt), so QEMU does not exit on its own. Bound any interactive
@@ -56,8 +57,9 @@ shift
 # broadcasting the reset over the TLB shootdown's NMI (`segments::revoke_port_grant_everywhere`),
 # and DECISIONS §153's rule is why the flip is here rather than in a later lane: the two-core suite
 # going green IS the verification that the broadcast worked, so leaving it to be remembered is how
-# it would not happen. `arch::x86_64::ap_boot`'s own BUGS section is the authoritative account of
-# what is still open at three cores and above; see also design/roadmap/0316-x86-smp-two-cores.md and
+# it would not happen. What is still open at three cores and above is a silicon question, carried
+# by `arch::x86_64::ap_boot`'s module doc (unmeasured above two on real hardware; xenon has not
+# been asked to bring all four online); see also design/roadmap/0316-x86-smp-two-cores.md and
 # design/roadmap/0161-x86-64-kernel-port.md item 5.
 SMP="${NIFE_SMP:-2}"
 
@@ -276,6 +278,27 @@ if [ -n "$NIFE_DISK" ]; then
     if [ -f "$REDOXFS_DISK" ]; then
         DISK="$DISK -drive file=$REDOXFS_DISK,if=none,format=raw,id=hd2 -device virtio-blk-pci,drive=hd2,disable-legacy=on,iommu_platform=on"
     fi
+    # The crash disk (milestone 37 (prove RedoxFS's crash consistency)), the GPT disk and the
+    # blank disk (milestone 57 (partitioning and formatting a real drive and extended attributes)),
+    # the THIRD through FIFTH functions, when a leg built them. Soft, like the RedoxFS sibling above: `cargo
+    # xtask bench` and `boot-check` set NIFE_DISK without building these, and a fixture's absence
+    # is the test's own skip line rather than a broken boot. The order extends the contract the
+    # two functions above ride on: one function per fixture, in command-line order, so the
+    # ordinals stay nifefs=0, redoxfs=1, crash=2, gpt=3, blank=4. Those are the numbers
+    # `fs_service::crash` (CRASH_DISK_INDEX) and `disk_service` (GPT_DISK, BLANK_DISK) name, the
+    # same ordinals the mmio slots carry on the other two runners.
+    CRASH_DISK="${NIFE_DISK%.img}-redoxfs-crash.img"
+    if [ -f "$CRASH_DISK" ]; then
+        DISK="$DISK -drive file=$CRASH_DISK,if=none,format=raw,id=hd3 -device virtio-blk-pci,drive=hd3,disable-legacy=on,iommu_platform=on"
+    fi
+    GPT_DISK_IMG="${NIFE_DISK%.img}-gpt.img"
+    if [ -f "$GPT_DISK_IMG" ]; then
+        DISK="$DISK -drive file=$GPT_DISK_IMG,if=none,format=raw,id=hd4 -device virtio-blk-pci,drive=hd4,disable-legacy=on,iommu_platform=on"
+    fi
+    BLANK_DISK_IMG="${NIFE_DISK%.img}-blank.img"
+    if [ -f "$BLANK_DISK_IMG" ]; then
+        DISK="$DISK -drive file=$BLANK_DISK_IMG,if=none,format=raw,id=hd5 -device virtio-blk-pci,drive=hd5,disable-legacy=on,iommu_platform=on"
+    fi
 fi
 
 # **NIFE_PCIE_ROOT_PORT puts the NVMe controller behind a PCIe root port** instead of directly on
@@ -353,6 +376,24 @@ if [ -n "$NIFE_NET" ]; then
     NET="-netdev user,id=net0,$GUESTFWD,tftp=$TFTPDIR -device e1000e,netdev=net0,mac=52:54:00:e1:00:0e,romfile="
 fi
 
+# A `virtio-rng-pci` when NIFE_RNG is set, the PCIe transport of milestone 56 (secrets,
+# credentials, and the entropy to make them safe)'s entropy half (milestone 420 (x86_64 has one
+# fixture of five and no NIC, GPU, keyboard or RNG) attached it here). NIFE_RNG=1 is a test-leg
+# device exported for every leg's
+# runner, so this changes no bench or boot-check boot. `iommu_platform=on` is load-bearing for
+# the same reason it is on the disks above, and the entropy tests hold the line: the pcie test
+# ASSERTS the device is confined behind the IOMMU rather than skipping past it, so a line that
+# lost the flag fails loudly instead of quietly shipping an unconfined entropy source. There is
+# no image file to fail loud on; the manufactured-fact hazard (NIFE_RNG set but no device
+# enumerated) is caught by the kernel test, which asserts a device rather than skipping when the
+# bus names one. The mmio RNG the other two runners also attach has no analogue here: `q35` has
+# no virtio-mmio bus at all, so that arm's skip line is a machine fact on this port, not a
+# missing device.
+RNG=""
+if [ -n "$NIFE_RNG" ]; then
+    RNG="-device virtio-rng-pci,disable-legacy=on,iommu_platform=on"
+fi
+
 # `-no-reboot` turns a triple fault into an exit instead of a silent reset loop, which is the
 # difference between seeing that early boot died and watching a blank terminal. Every failure in
 # this port's bring-up so far has been a triple fault; add `-d int,cpu_reset` to see the state.
@@ -402,6 +443,7 @@ qemu-system-x86_64 \
     $DISK \
     $NVME \
     $NET \
+    $RNG \
     -kernel "$ELF" \
     $INITIAL_RAMDISK \
     "$@" <&3 3<&- &

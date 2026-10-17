@@ -3,7 +3,7 @@ status: NOT-STARTED
 raised: 2026-09-16
 promoted_from: a-usurper-that-reports-instead-of-hanging
 milestone_dependencies: none
-decision_dependencies: unwritten
+decision_dependencies: none
 machine_requirements: none
 specific_machine: none
 needs_person: no
@@ -15,9 +15,18 @@ filed 2026-09-16 by milestone 305, which wrote the honest defect for
 `notes/confinement-claims.md`'s row 26 and could not use the result. *(Number provisional until the
 merge queue lands it.)*
 
-It needs a non-blocking or timed receive, which is the syscall surface
-(AGENTS.md: anything two programs agree on, and §10 (process model) / §16 (object revocation)'s
-narrow boundary), so it is an architect's before it is anyone's.
+Written 2026-09-16 as gated on the syscall surface, and the premise moved after that check.
+[milestone 106 (a wait that ends on either the interrupt or the deadline)](0106-deadline-wait.md)
+built `Timer::ARM`, and [§101 (notification objects)](../decisions/0101-notification-objects.md)'s
+binding ends a blocked `RECEIVE_CAP` at the deadline it signals.
+`kernel/src/sched/notification.rs` records that the binding wakes `RECEIVE`, `RECEIVE_CAP` and
+`Irq::WAIT` alike. The reporting
+usurper is therefore buildable on surface that exists: arm a timer, bind the notification, and the
+receive returns either a capability it should not have or the deadline. The first-class
+non-blocking receive this block priced stays unwritten until a consumer that cannot arm a timer
+asks for it, which is the same discipline
+[§149 (may the kernel answer on an endpoint)](../decisions/0149-kernel-served-console-endpoint.md)
+applied to the console.
 
 Premise re-checked 2026-09-19 and still true. Row 26 of `notes/confinement-claims.md` still
 answers no in the falsified column, and `swap_protocol::try_receive_cap` still invokes `RECEIVE_CAP`
@@ -69,7 +78,7 @@ Options, costed as far as this lane could without building them:
    lines, with the authority question the whole problem. That work is adjacent.
 3. **Leave the syscall alone and give the attacker a watchdog thread**, so the *test* bounds the wait
    rather than the kernel. No surface change and no benefit to anything but this test, which is the
-   argument against it: the same gap will be hit by the next component that wants to ask a rendezvous
+   argument against it. The same gap will be hit by the next component that wants to ask a rendezvous
    a question it might not be allowed to ask.
 
 **Recommendation: none**, deliberately. AGENTS.md draws the line at the syscall surface, and a
@@ -84,10 +93,13 @@ keeps one claim whose test has never been shown able to fail. Nothing else waits
 
 Row 26 of `notes/confinement-claims.md` is that a client of a rendezvous cannot become its server,
 and **deleting the three lines of `kernel/src/syscall.rs` that enforce it does not fail the test
-that states it**: measured 2026-09-16, the run came back as a 60-second watchdog reading "a
+that states it**. Measured 2026-09-16, the run came back as a 60-second watchdog reading "a
 lost-wakeup hang" with nothing in it about impersonation. The cause is structural rather than a flaw
 in the patch. `RECEIVE_CAP` blocks, so an attacker the kernel fails to refuse never returns to report
-the escape, and the assertion is reachable only in the world where the kernel does refuse. Making
-the attempt return needs a non-blocking or timed receive, which is the syscall surface and therefore
-calef's; the block deliberately recommends nothing, and names a watchdog thread inside the test as
-the option that buys nothing for the next component with the same question.
+the escape, and the assertion is reachable only in the world where the kernel does refuse. The
+attempt returns on surface that exists.
+[Milestone 106 (a wait that ends on either the interrupt or the deadline)](0106-deadline-wait.md)
+built the timer, and [§101 (notification objects)](../decisions/0101-notification-objects.md)'s
+binding ends a blocked `RECEIVE_CAP` at its deadline. So the falsification is a lane's work. The
+first-class non-blocking receive stays unwritten until a second consumer that cannot arm a timer
+asks for it, and the `try_receive_cap` naming below is still calef's.

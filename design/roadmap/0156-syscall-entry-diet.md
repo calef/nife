@@ -24,12 +24,12 @@ stayed inlined on purpose. Part two: `script/fastpath-footprint`'s comparison no
 on `abs(delta) > TOL` in either direction, requiring `--save` to acknowledge a shrink exactly as it
 already required one to justify growth.
 
-**A correction found during landing, not during the lane's own work**: the lane's final merge of
+**A correction found during landing, not during the lane's own work**. The lane's final merge of
 `origin/main` (its own recorded commit) silently dropped `abi::aspace::LIST`'s match arm and its
-`aspace_list` function during conflict resolution, which made its own `--save` measurement
+`aspace_list` function during conflict resolution. That made its own `--save` measurement
 (`syscall_entry` 1988 riscv64 / 3444 aarch64) look better than reality -- both numbers were measured
 on a build missing a real, shipped feature. Restoring `aspace_list` during a later merge brought the
-true, feature-complete numbers to 2210 / 3480: still a genuine 24% (riscv64) and 16.5% (aarch64)
+true, feature-complete numbers to 2210 / 3480. Still a genuine 24% (riscv64) and 16.5% (aarch64)
 reduction from `main`'s actual pre-156 baseline (2914 / 4168), just not as large as the invalid
 figures the lost merge had produced. `bench/fastpath-{aarch64,riscv64}.txt` reflect the corrected,
 verified numbers.
@@ -47,7 +47,7 @@ elif abs(delta) > 0.001:
 ```
 
 A shrink never fails and never blocks. `--save` re-records the baseline, but nothing prompts anyone
-to run it after an improvement, so a real gain (this milestone's own extraction work, worth
+to run it after an improvement. A real gain (this milestone's own extraction work, worth
 hundreds of bytes) can land and sit unclaimed as slack in the recorded baseline indefinitely --
 exactly the "somebody remembers" failure mode AGENTS.md's ladder names as rung zero. Worse than
 cosmetic: a stale-loose baseline silently widens the tripwire's real tolerance. If `syscall_entry`
@@ -55,9 +55,9 @@ shrinks 20% and nobody re-saves, a later regression of +15% against the *current
 +15% against a number 20% too generous, and the gate still says "within bound."
 
 **The fix is symmetry, not a new mechanism**: treat a shrink past the same 5% tolerance as an
-equally reportable event as growth, requiring the same `--save` acknowledgment (unlike growth, a
+equally reportable event as growth, requiring the same `--save` acknowledgment. Unlike growth, a
 shrink needs no justification for *why*, just an explicit commit that locks in the tighter number,
-so the baseline never drifts stale by more than one tolerance band in either direction).
+so the baseline never drifts stale by more than one tolerance band in either direction.
 
 ## The finding
 
@@ -72,7 +72,7 @@ either `#[inline(never)]`.
 "a syscall traverses one path through the decoder, but the decoder's own bytes are on every syscall,
 and its other arms are not on this path at all" -- the intent already states the property this
 milestone restores). Because `invoke` is inlined, every method arm's compiled bytes count against
-that flat measurement today, hot or not: `Untyped::SPLIT`/`DESTROY`/`RETYPE_OBJ` (133 source lines),
+that flat measurement today, hot or not. `Untyped::SPLIT`/`DESTROY`/`RETYPE_OBJ` (133 source lines),
 `Irq::bind`/`enable` (144 lines), `Frame::MAP` (63 lines), `Aspace::MAP_INTO`/`CONFIGURE` and the
 rest, none of which run on an IPC round trip.
 
@@ -109,10 +109,10 @@ belong in the hot measurement either.
 ## What this milestone does, part two: symmetric ratcheting
 
 In `script/fastpath-footprint`'s Python comparison, change the one-sided `if delta > TOL: fail` into
-a check on `abs(delta) > TOL` for both directions, with distinct messages: growth keeps its existing
+a check on `abs(delta) > TOL` for both directions, with distinct messages. Growth keeps its existing
 "shrink it, or re-record with --save and say why"; a shrink past tolerance prints "this is smaller
 than the recorded baseline by more than the tolerance band -- re-record with --save to lock in the
-tighter bound" and also fails, on the same reasoning growth does: an inaccurate baseline in
+tighter bound" and also fails, on the same reasoning growth does. An inaccurate baseline in
 either direction is a gate that is no longer measuring what it claims to. No `--save`-side change
 needed; the flag already does the right thing once something calls it.
 
@@ -130,9 +130,9 @@ actually recovers. Once the symmetric check is in place and every extraction is 
 
 Whether `Endpoint`'s `REAP` (and any other genuinely-cold arm inside the 150-line block) is worth
 extracting on its own is a judgment call for whoever builds this, guided by the measured delta each
-extraction actually buys -- not every rare arm is large enough to be worth the diff. The exact
+extraction actually buys. Not every rare arm is large enough to be worth the diff. The exact
 tolerance for the shrink-side check (whether it should match growth's 5% exactly, or use a wider
-band to avoid nagging on noise) is also left to measurement: check how much run-to-run variance the
+band to avoid nagging on noise) is also left to measurement. Check how much run-to-run variance the
 un-padded build actually has before picking a number narrower than what the data supports.
 
 ## Prior art

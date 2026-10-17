@@ -116,7 +116,7 @@ On the host, `crates/machine_discovery/tests/x86_64_cpu_features.rs`: the decisi
 takes the `CPUID` words as an argument, so a part that does not exist can be handed to it and the
 refusal watched happening, in milliseconds and without an emulator. Nine tests, one per required
 feature cleared on its own (so a decode reading the wrong bit cannot pass by clearing everything at
-once), plus the two maximum-leaf cases, which are the rule x86 actually needs: `CPUID` has no way
+once), plus the two maximum-leaf cases. Those are the rule x86 actually needs: `CPUID` has no way
 to report "I do not implement that leaf" other than answering with some other leaf's bits.
 
 And on a real boot, which is the stronger test and turned out to be available: QEMU can hide a
@@ -173,7 +173,7 @@ rather than in a guess.
 
 - **Outstanding.** Promote the invariant-TSC row from `Gate::Warn` to `Gate::Refuse`. Checked
   2026-09-21 by running `-cpu max,invtsc=on` and reading QEMU's refusal, so the blocker is the
-  emulator and not the code; the change is one token in
+  emulator and not the code. The change is one token in
   `crates/machine_discovery/src/x86_64.rs`'s `TABLE`, and the host test that pins today's value
   fails on purpose when it moves.
 - **Recorded.** Per-core feature checks, for a hybrid part where the boot CPU does not speak for
@@ -187,9 +187,9 @@ because that write is itself the hazard and there is no console yet to explain a
 and the invariant TSC are checked in `isa::init` before their consumers. The decision takes the
 `CPUID` words as an argument, so the refusal path is exercised on the host in milliseconds although
 no machine here lacks any of the three, and it was also watched refusing a real boot with
-`NIFE_CPU=max,nx=off`. The invariant TSC turned out not to be gateable: QEMU's TCG declines to
+`NIFE_CPU=max,nx=off`. The invariant TSC turned out not to be gateable. QEMU's TCG declines to
 advertise the bit under any invocation, so the rate `arch::x86_64::timer` measures once at boot is
-a constant the machine has never promised, and the gate that cannot fire yet says so on its own
+a constant the machine has never promised. The gate that cannot fire yet says so on its own
 line every boot.
 
 ## Where this leaves milestone 161

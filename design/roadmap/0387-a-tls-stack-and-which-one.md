@@ -93,9 +93,9 @@ need TLS at all.** Signature verification is a smaller piece of the crypto surfa
 it has no certificate parsing and no trust store, and 198 will need it whatever the transport is.
 
 There is also a circularity that makes the TLS answer worse than it looks. A package manager that
-fetched over HTTPS would need a certificate trust store; a trust store must be updatable
+fetched over HTTPS would need a certificate trust store. A trust store must be updatable
 independently of the system, because authorities are compromised (DigiNotar, 2011) and roots expire
-(DST Root X3, 2021, which broke a large fraction of the internet); and the mechanism for updating
+(DST Root X3, 2021, which broke a large fraction of the internet). The mechanism for updating
 data independently of the system is the package manager. Shipping the roots inside the image
 resolves it and then freezes them until the next image.
 
@@ -122,7 +122,7 @@ Recorded rather than minted, because it has no consumer until this proposal does
 
 No consumer is blocked today. ~~198 has not chosen a format or a transport,~~ (Corrected
 2026-10-06: 198 has both, §197 (a package is one archive file) for the format and §196 (nife
-carries TLS) for HTTPS with `rustls`, so this section's premise for 198 is overtaken.) 99 is `NOT-STARTED`
+carries TLS) for HTTPS with `rustls`. This section's premise for 198 is overtaken.) 99 is `NOT-STARTED`
 and its local half needs no network at all, 174 says it can start without TLS, and 66 is the largest
 single item on the roadmap and gated elsewhere. A milestone minted now would sit `NOT-STARTED`
 behind four other things and teach nobody anything.
@@ -160,13 +160,14 @@ the same way because the vulnerability history of comparable parsers is dominate
 removes by construction. OpenSSL is the ecosystem answer, and it answers fatal risk 1 instead: real
 software links `libssl`, and giving nife TLS is a different claim from giving it the ability to run a
 program that expects OpenSSL. The third answer is the interesting one, since OpenSSL confined is a
-demonstration rather than a dependency: the most security-critical C library in the world, run where
-a compromise reaches nothing, is §14's thesis as a concrete object and §145's argument with a name
+demonstration rather than a dependency. The most security-critical C library in the world, run where
+a compromise reaches nothing, is §14 (the project's direction)'s thesis as a concrete object and
+§145 (compartmentalization at process cost)'s argument with a name
 everybody recognizes. The useful half nobody had written down is that client-side and server-side
-TLS are different milestones with different consumers: the client half has two (milestone 99's
-`clone`, milestone 174's build service) and is blocked on nothing, while the server half has one
+TLS are different milestones with different consumers. The client half has two (milestone 99's
+`clone`, milestone 174's build service) and is blocked on nothing. The server half has one
 (milestone 66) and waits on 66's own one-deep accept backlog. Milestone 198 was listed as a consumer
-and removed, because Debian fetches over plain HTTP and verifies a signed `Release` file, so a
+and removed, because Debian fetches over plain HTTP and verifies a signed `Release` file. A
 package manager needs signature verification, which it needs anyway, and a trust store it could only
 update through itself. A certificate trust store is recorded rather than minted here, with the
 observation that it should be a capability rather than the ambient `/etc/ssl/certs` every Unix

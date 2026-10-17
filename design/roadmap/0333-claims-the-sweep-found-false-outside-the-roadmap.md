@@ -13,12 +13,13 @@ Filed 2026-09-03 as an unnumbered proposal by the milestone 252 sweep;
 numbered 2026-09-19 by milestone 433. **Premise re-checked item by item on 2026-09-19: eight of the
 ten still stand, one is closed, and one could not be confirmed.** Still wrong today:
 `crates/capability/src/lib.rs:98` (the `ENUMERATE` rustdoc's "when `pmap` is built", and `crates/pmap`
-and `components/src/pmap.rs` both exist); `notes/crates-io-on-nife.md` rows 19 and 28 (against
-`filesystem_protocol`'s `GETMTIME`, `SETMTIME` and `SETMTIME_AT`, opcodes 20 to 22);
-`design/decisions/0102-frame-names-a-run.md` line 7 ("this decision is still unbuilt");
-`notes/live-replacement.md` line 261; `notes/register-of-measures.md` line 253;
-`kernel/src/arch/aarch64/timer.rs:185`; `components/src/session_reviver.rs` (eight surviving mentions
-of the deleted durable-session type); and milestone 142's duplicated paragraphs. Closed: the
+and `components/src/pmap.rs` both exist). `notes/crates-io-on-nife.md` rows 19 and 28 (against
+`filesystem_protocol`'s `GETMTIME`, `SETMTIME` and `SETMTIME_AT`, opcodes 20 to 22).
+`design/decisions/0102-frame-names-a-run.md` line 7 ("this decision is still unbuilt").
+`notes/live-replacement.md` line 261. `notes/register-of-measures.md` line 253.
+`kernel/src/arch/aarch64/timer.rs:185`. `components/src/session_reviver.rs` (eight surviving mentions
+of the deleted durable-session type). And milestone 142 (a text display good enough that people use
+it)'s duplicated paragraphs. Closed: the
 `crates/abi` start invocation, whose doc now says `START` spends all three argument registers rather
 than ignoring them. Unconfirmed: the display-name item, because milestone 126's block still
 carries it under "Fork: a process display name" with a recommendation rather than a ruling, so
@@ -81,10 +82,10 @@ roadmap.
 ## Index row
 
 Milestone 252 swept 22 `PARTIAL` blocks and corrected them, and the blocks were rarely the only
-place the wrong sentence lived: a stale claim copied into a rustdoc, a module header or a note stayed
+place the wrong sentence lived. A stale claim copied into a rustdoc, a module header or a note stayed
 wrong after the block was fixed, and nothing in the tree reads those. `script/roadmap --check` reads
 paths cited in a `## Follow-on` bullet and nothing else, so a claim in a rustdoc is invisible to every
-gate this project has, and these are the claims a reader meets first, because a reader in the code
+gate this project has. These are the claims a reader meets first, because a reader in the code
 does not open the roadmap. This is the list, verified again on 2026-09-19, so that fixing the roadmap
 does not leave the tree quietly disagreeing with it. It is a worklist rather than a mechanism, it
 starts rotting the day it is written, and it is not exhaustive: a claim in a file no `PARTIAL` block

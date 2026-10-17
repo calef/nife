@@ -30,11 +30,11 @@ have meant an `FXSAVE` area per thread and save/restore in the context-switch pa
 `kernel/src/arch/x86_64/` does none of today, and none of it was needed to compile `aes`. The
 refusal was correct on its own question and it said so precisely: "not owed for this blocker".
 
-What has happened since is calef's, reported on 2026-09-20. Milestone 442 (a crypto provider `rustls` can use on all three
-bare-metal targets) needs five force-soft build flags; a crate that detects AVX2 at runtime dies in ring 3 with `vector
-6 (invalid opcode)`; and the bitsliced cost the tree declined to measure is starting to have a
-workload. None of that was compared against this refusal, because a refusal had no home that
-anything reads, and calef reopened it by hand.
+What has happened since is calef's, reported on 2026-09-20. Milestone 442 (a crypto provider
+`rustls` can use on all three bare-metal targets) needs five force-soft build flags. A crate that
+detects AVX2 at runtime dies in ring 3 with `vector 6 (invalid opcode)`. The bitsliced cost the
+tree declined to measure is starting to have a workload. None of that was compared against this
+refusal, because a refusal had no home that anything reads, and calef reopened it by hand.
 
 ## Revisit
 
@@ -46,6 +46,6 @@ anything reads, and calef reopened it by hand.
 ## Index row
 
 The refusal that prompted the REFUSED status: an SSE-enabled x86_64 userspace target was declined in
-September on the narrow and correct ground that compiling `aes` did not need FP state, and the
-ground eroded over the following fortnight with nothing comparing the two. It is recorded here with
+September on the narrow and correct ground that compiling `aes` did not need FP state. The ground
+eroded over the following fortnight with nothing comparing the two. It is recorded here with
 its original reasoning intact and its condition stated.

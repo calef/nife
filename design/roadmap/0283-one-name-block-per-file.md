@@ -45,7 +45,7 @@ the file:
 > Does anything in this file read as a provenance header without being the one that was read?
 
 So `helpers/name_provenance.py` grows `headers()`, which finds every comment line whose content,
-after the marker and any leading markdown, begins `Name:`, and `strays()`, which returns the ones
+after the marker and any leading markdown, begins `Name:`. `strays()` returns the ones
 that are not the line `block()` parsed, each with a token saying why it could not have been. Empty
 is the only healthy answer. `script/names --check` phrases those for a contributor, names the file
 and line, shows the line, and fails; `script/lint` already calls `--check`, so it is wired by
@@ -53,7 +53,7 @@ existing.
 
 **The detection lives in the shared module, beside the parse it is defined against.** Milestone
 236's rule (three derivations were copied between scripts and nothing noticed when they drifted),
-and the sharper form of it here: a checker that carries its own copy of "what a header looks like"
+and the sharper form of it here. A checker that carries its own copy of "what a header looks like"
 would be a second definition of the thing it is checking, which is the same defect one level up.
 The one header spelling is now a single `_head(prefix)` used by both `block()` (to find it) and
 `strays()` (to say why a line is not it).
@@ -72,7 +72,7 @@ comment"*) does not fire.
 **A template is not a claim.** `script/names`' header documents the three spellings as
 `Name: ratified <YYYY-MM-DD> (<who>, <where>)` and two more like it. A line carrying an
 angle-bracket placeholder is showing the *form*, so it is dropped, and that is applied only to
-strays: the line `block()` actually read is never dropped by it, so a block that somehow did carry
+strays. The line `block()` actually read is never dropped by it, so a block that somehow did carry
 a placeholder still reports rather than vanishing. The alternative was rewriting `script/names`'
 own documentation to appease its own gate, which would have left the next person writing an example
 in a comment hitting the same wall with no escape they could see.
@@ -100,13 +100,13 @@ A third instance, `crates/measured_boot/src/lib.rs:297`:
 
 That is a real provenance record, written at the thing exactly as milestone 115 asks, for
 `PROGRAM_MEASUREMENTS` (the archive entry name `"program_measurements"`). It is not the crate's
-block, it is on `///` rather than `//!`, and it is for a name that is **not one of the four
+block, it is on `///` rather than `//!`. It is for a name that is **not one of the four
 surfaces**: a string two programs agree on, which `script/names` has never enumerated and cannot
 report on. Nothing was wrong with the record; it was wearing a spelling that now means something
 else.
 
 Reworded to say the same things in prose and to say why it does not wear the header spelling. The
-gap it stands for is a follow-on below, not a widening done here: the rule this milestone makes
+gap it stands for is a follow-on below, not a widening done here. The rule this milestone makes
 enforceable is *one block per file*, and a second kind of named thing in the same file is a scope
 question for calef rather than a lint to loosen.
 
@@ -114,7 +114,7 @@ question for calef rather than a lint to loosen.
 
 - `helpers/name_provenance.py`: `_head(prefix)` (the one header spelling, used by both readers),
   `headers()`, `stray_reason()`, `strays()`, and four `STRAY_*` tokens in the same shape as the
-  existing `NO_STATUS` / `NO_DATE` / `NO_CITATION`, so the judgment is shared and the wording stays
+  existing `NO_STATUS` / `NO_DATE` / `NO_CITATION`. The judgment is shared and the wording stays
   at the caller.
 - `script/names`: `stray_problems()`, wired into `--check` and therefore into `script/lint`, and
   reported before the "no `Name:` block" case rather than instead of it, because a file whose
@@ -123,8 +123,8 @@ question for calef rather than a lint to loosen.
 - design/naming.md's *What is checked, and what cannot be*, item 7.
 
 Verified in both directions. Five faults were injected into a scratch copy of a clean file
-(`crates/glob/src/lib.rs`) one at a time and the gate was watched to fire on each with the right
-reason: a stacked second block (`second`), a bolded header (`markup`), a two-space indented header
+(`crates/glob/src/lib.rs`) one at a time, and the gate was watched to fire on each with the right
+reason. A stacked second block (`second`), a bolded header (`markup`), a two-space indented header
 (`indent`), a `///` header in a `//!` file (`marker`), and a `### Name:` heading (`markup`). The
 same two shapes were run against the `#` surfaces (`script/citations`, `user/Cargo.toml`) and fire
 identically. Against `origin/main` it catches both real specimens, at the right lines, with the

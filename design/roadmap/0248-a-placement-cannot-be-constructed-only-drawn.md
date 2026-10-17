@@ -37,7 +37,9 @@ at spawn and nothing rebalances.
 
 **This is not thread affinity, and conflating the two would buy a syscall this project has not
 decided it wants.** A syscall surface is one of the expensive, irreversible categories (DECISIONS
-§10, §16, and AGENTS.md's *move fast on what can be undone*): every future program is written against
+§10 (process
+model: capability-based, microkernel), §16 (object revocation), and AGENTS.md's *move fast on what
+can be undone*). Every future program is written against
 it, and a placement primitive is exactly the kind of thing that looks obvious in the moment and
 constrains the scheduler forever.
 
@@ -99,7 +101,7 @@ What the experiment has to do differently, now that the variable has changed onc
   it.
 
 The honest reading of all this is that a drawn sample kept producing a plausible model and then
-overturning it, twice in one evening: a crossing-rate correlate died when a second slow boot
+overturning it, twice in one evening. A crossing-rate correlate died when a second slow boot
 disagreed, and the co-location count died when a 2-of-4 outran a 1-of-4. That is the argument for this
 milestone, restated by events. notes/soak.md carries both corrections.
 2026-09-03 run, so this is minutes per arrangement rather than an evening each.
@@ -122,7 +124,7 @@ mistaken for the finding.
   knowable by sampling boots.
 - Nothing here fixes the problem it measures. If co-location costs an order of magnitude, the
   remedy is scheduling policy the kernel does not have, and this block deliberately does not propose
-  one: the tree has no notion that two threads communicate, that one never yields, or that one is
+  one. The tree has no notion that two threads communicate, that one never yields, or that one is
   latency-sensitive, and choosing among those is a design fork rather than a follow-on.
 - **The lever must not leak into the shipped kernel.** Milestone 240 kept its census behind the soak
   feature and `script/fastpath-footprint` read the same 6,687 bytes over eight symbols afterwards;

@@ -118,7 +118,8 @@ citations gate.
 
 **The proof, which is the half this block said the sweep alone could not give.** Four burials were
 staged and each went red: a finished block with the section removed, a bullet naming a milestone number
-nothing has, beside a `Recorded.` pointing at a file that does not exist and a bare `Refused. Later.`, a block
+nothing has, beside a `Recorded.` pointing at a file that does not exist and a bare `Refused. Later.`.
+A block
 parked on the (then existing) exemption list after its `Built` date, and a block left on that list
 after it grew a section. The gate also found rot nobody staged: three roadmap blocks citing paths
 that renames had moved out from under them.
@@ -129,7 +130,7 @@ that renames had moved out from under them.
 
 **And 42 pieces of work that were named and never taken, across 32 finished milestones.** That is
 the number this block existed to produce and that nothing in the tree could see before. **38 of them
-are now proposal files, and 3 turned out to be already built**, which is only possible because of the half above: the morning's
+are now proposal files, and 3 turned out to be already built**, which is only possible because of the half above. The morning's
 design had them as prose, and would have forced them to be argued down to a handful that a
 maintainer could carry. Five are called out in notes/follow-on-work.md as worth promoting first, on
 a stated bar: a claim this project makes rests on it, or a record is now known to be wrong.
@@ -145,7 +146,7 @@ this gate buys and it is recorded below.
 **Two dispositions were added by the sweep rather than designed before it**, and that is the
 finding worth keeping. `Proposed.` (first spelled `Unclaimed.`) and `Done.` were each asked for by
 several lanes independently,
-on the same afternoon, having hit the same wall: work a block named honestly that nobody took, and
+on the same afternoon, having hit the same wall. Work a block named honestly that nobody took, and
 work a block named that two ordinary commits then finished. Neither fits the four words the gate
 shipped with. The lanes that would not write a comfortable lie **left those items out**, which is
 this milestone's own failure mode arriving through this milestone's own mechanism.

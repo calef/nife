@@ -8,40 +8,42 @@ Sorted by breaking changes in the last four weeks (2026W39 to 2026W42), then by 
 
 | crate | breaking, 4 weeks | additions, 4 weeks | breaking | additions | commits | crossing another division |
 |---|---:|---:|---:|---:|---:|---:|
-| `globally_unique_identifier_partition_table` | 124 | 4 | 151 | 219 | 39 | 30 (77%) |
-| `grant_plan` | 89 | 283 | 136 | 915 | 161 | 132 (82%) |
-| `elf` | 52 | 1 | 55 | 53 | 46 | 36 (78%) |
-| `line_editor` | 51 | 73 | 52 | 118 | 32 | 26 (81%) |
-| `package_archive` | 19 | 126 | 19 | 126 | 24 | 17 (71%) |
-| `socket_protocol` | 16 | 29 | 19 | 67 | 30 | 28 (93%) |
-| `login_protocol` | 13 | 68 | 14 | 83 | 35 | 34 (97%) |
-| `abi` | 11 | 71 | 41 | 169 | 108 | 102 (94%) |
-| `filesystem_protocol` | 10 | 58 | 43 | 458 | 110 | 101 (92%) |
-| `swap_protocol` | 10 | 34 | 12 | 124 | 44 | 43 (98%) |
-| `credential_protocol` | 8 | 6 | 35 | 70 | 33 | 30 (91%) |
-| `activation_set` | 8 | 71 | 8 | 71 | 22 | 20 (91%) |
-| `byte_sink_protocol` | 4 | 10 | 6 | 48 | 28 | 28 (100%) |
+| `filesystem_protocol` | 250 | 59 | 283 | 459 | 118 | 107 (91%) |
+| `grant_plan` | 104 | 344 | 151 | 976 | 171 | 139 (81%) |
+| `globally_unique_identifier_partition_table` | 64 | 5 | 91 | 281 | 39 | 30 (77%) |
+| `package_archive` | 19 | 129 | 19 | 129 | 24 | 17 (71%) |
+| `socket_protocol` | 16 | 32 | 19 | 70 | 32 | 30 (94%) |
+| `login_protocol` | 14 | 69 | 22 | 91 | 35 | 34 (97%) |
+| `abi` | 11 | 72 | 41 | 170 | 114 | 107 (94%) |
+| `line_editor` | 11 | 73 | 12 | 118 | 33 | 27 (82%) |
+| `swap_protocol` | 10 | 34 | 12 | 124 | 46 | 45 (98%) |
+| `credential_protocol` | 8 | 6 | 35 | 70 | 34 | 31 (91%) |
+| `activation_set` | 8 | 72 | 8 | 72 | 22 | 20 (91%) |
+| `byte_sink_protocol` | 4 | 10 | 6 | 48 | 29 | 29 (100%) |
 | `clock_protocol` | 4 | 4 | 5 | 54 | 28 | 26 (93%) |
-| `component_plan` | 3 | 14 | 3 | 126 | 31 | 25 (81%) |
+| `component_plan` | 3 | 14 | 3 | 126 | 32 | 26 (81%) |
 | `graphics_protocol` | 2 | 2 | 11 | 33 | 28 | 28 (100%) |
 | `nifefs` | 2 | 0 | 9 | 41 | 41 | 29 (71%) |
 | `entropy_protocol` | 2 | 3 | 3 | 18 | 23 | 21 (91%) |
-| `current_cpu_protocol` | 2 | 17 | 2 | 17 | 9 | 5 (56%) |
+| `current_cpu_protocol` | 2 | 17 | 2 | 17 | 12 | 6 (50%) |
 | `measured_boot` | 2 | 24 | 2 | 65 | 22 | 18 (82%) |
-| `supervision_protocol` | 1 | 10 | 22 | 70 | 51 | 46 (90%) |
-| `std_runtime_protocol` | 1 | 24 | 1 | 24 | 10 | 9 (90%) |
-| `compositor` | 0 | 2 | 4 | 94 | 31 | 24 (77%) |
+| `supervision_protocol` | 1 | 10 | 22 | 70 | 52 | 47 (90%) |
+| `compositor` | 1 | 4 | 11 | 99 | 32 | 25 (78%) |
+| `std_runtime_protocol` | 1 | 24 | 1 | 24 | 11 | 10 (91%) |
+| `elf` | 0 | 30 | 3 | 82 | 46 | 36 (78%) |
 | `counter_frequency_protocol` | 0 | 3 | 1 | 15 | 13 | 11 (85%) |
-| `environment_protocol` | 0 | 0 | 1 | 44 | 9 | 9 (100%) |
+| `environment_protocol` | 0 | 0 | 1 | 44 | 10 | 10 (100%) |
 | `user_mode_heap` | 0 | 0 | 1 | 11 | 0 | 0 |
+| `address_space_map` | 0 | 42 | 0 | 42 | 0 | 0 |
+| `allocation_cache` | 0 | 18 | 0 | 18 | 0 | 0 |
 | `argument_protocol` | 0 | 29 | 0 | 29 | 0 | 0 |
-| `boot_slot` | 0 | 52 | 0 | 52 | 12 | 8 (67%) |
-| `capability_witness_protocol` | 0 | 7 | 0 | 10 | 15 | 12 (80%) |
-| `manifest_note` | 0 | 58 | 0 | 58 | 17 | 11 (65%) |
+| `boot_slot` | 0 | 52 | 0 | 52 | 13 | 9 (69%) |
+| `capability_witness_protocol` | 0 | 7 | 0 | 10 | 16 | 13 (81%) |
+| `manifest_note` | 0 | 58 | 0 | 58 | 19 | 13 (68%) |
 
 ## What broke in 2026W42
 
-Read at `3ec07a0eb9ce` against the week before. Each line is one removed or changed public item, quoted as it stood that week; a crate rename is one line for the whole crate.
+Read at `6f7deccd121c` against the week before. Each line is one removed or changed public item, quoted as it stood that week; a crate rename is one line for the whole crate.
 
 > - `abi`: syscall renamed, number kept (method or encoding), now `interrupt::ACK` `irq::ACK`
 > - `abi`: syscall renamed, number kept (method or encoding), now `interrupt::WAIT` `irq::WAIT`
@@ -54,188 +56,250 @@ Read at `3ec07a0eb9ce` against the week before. Each line is one removed or chan
 > - `credential_protocol`: removed `fixture::GRAEME`
 > - `credential_protocol`: changed `fixture::PEOPLE`
 > - `credential_protocol`: changed `fixture::SMB_RESOURCE`
-> - `elf`: removed `Elf`
-> - `elf`: removed `Elf::entry`
-> - `elf`: removed `Elf::note`
-> - `elf`: removed `Elf::parse`
-> - `elf`: removed `Elf::segments`
-> - `elf`: removed `Error`
-> - `elf`: removed `Error: impl Clone`
-> - `elf`: removed `Error: impl Copy`
-> - `elf`: removed `Error: impl Debug`
-> - `elf`: removed `Error: impl Eq`
-> - `elf`: removed `Error: impl PartialEq`
-> - `elf`: removed `Error: impl StructuralPartialEq`
-> - `elf`: removed `Error::AddressOverflow`
-> - `elf`: removed `Error::BadMagic`
-> - `elf`: removed `Error::BadProgramHeaders`
-> - `elf`: removed `Error::BadVersion`
-> - `elf`: removed `Error::EntryNotExecutable`
-> - `elf`: removed `Error::NeedsRelocation`
-> - `elf`: removed `Error::Not64Bit`
-> - `elf`: removed `Error::NotExecutable`
-> - `elf`: removed `Error::NotLittleEndian`
-> - `elf`: removed `Error::SegmentOutOfBounds`
-> - `elf`: removed `Error::SegmentTruncated`
-> - `elf`: removed `Error::SegmentUnreachable`
-> - `elf`: removed `Error::SegmentsOverlap`
-> - `elf`: removed `Error::TooManyProgramHeaders`
-> - `elf`: removed `Error::TooSmall`
-> - `elf`: removed `Error::WritableAndExecutable`
-> - `elf`: removed `Error::WrongMachine`
-> - `elf`: removed `FOREIGN_MACHINES`
-> - `elf`: removed `KNOWN_MACHINES`
-> - `elf`: removed `NATIVE_MACHINE`
-> - `elf`: removed `PF_R`
-> - `elf`: removed `PF_W`
-> - `elf`: removed `PF_X`
-> - `elf`: removed `Segment`
-> - `elf`: removed `Segment: impl Clone`
-> - `elf`: removed `Segment: impl Copy`
-> - `elf`: removed `Segment: impl Debug`
-> - `elf`: removed `Segment: impl Eq`
-> - `elf`: removed `Segment: impl PartialEq`
-> - `elf`: removed `Segment: impl StructuralPartialEq`
-> - `elf`: removed `Segment::data`
-> - `elf`: removed `Segment::flags`
-> - `elf`: removed `Segment::is_executable`
-> - `elf`: removed `Segment::is_readable`
-> - `elf`: removed `Segment::is_writable`
-> - `elf`: removed `Segment::memsz`
-> - `elf`: removed `Segment::paddr`
-> - `elf`: removed `Segment::page_range`
-> - `elf`: removed `Segment::vaddr`
-> - `elf`: removed `machine_no_nife_build_accepts`
+> - `filesystem_protocol`: removed `fixture::DESCENT_REFUSED`
+> - `filesystem_protocol`: removed `fixture::MOTD`
+> - `filesystem_protocol`: removed `fixture::MOTD_NAME`
+> - `filesystem_protocol`: removed `fixture::READY`
+> - `filesystem_protocol`: removed `fixture::SCRATCH_INIT`
+> - `filesystem_protocol`: removed `fixture::SCRATCH_NAME`
+> - `filesystem_protocol`: removed `fixture::SHARED_ISOLATED`
+> - `filesystem_protocol`: removed `fixture::SHARED_SUBSTITUTED`
+> - `filesystem_protocol`: removed `fixture::SHARED_UNEXPECTED`
+> - `filesystem_protocol`: removed `fixture::SHARED_USURPER_BODY`
+> - `filesystem_protocol`: removed `fixture::SHARED_USURPER_NAME`
+> - `filesystem_protocol`: removed `fixture::SHARED_VICTIM_BODY`
+> - `filesystem_protocol`: removed `fixture::SHARED_VICTIM_NAME`
+> - `filesystem_protocol`: removed `fixture::SUCCESS`
+> - `filesystem_protocol`: removed `fixture::THROUGHPUT_NAME`
+> - `filesystem_protocol`: removed `fixture::VERDICT`
+> - `filesystem_protocol`: removed `fixture::WRITE_PATTERN`
+> - `filesystem_protocol`: removed `fixture::attrs::ATTRS_FAILED`
+> - `filesystem_protocol`: removed `fixture::attrs::EXPECTED`
+> - `filesystem_protocol`: removed `fixture::attrs::GONE_AFTER_REMOVE`
+> - `filesystem_protocol`: removed `fixture::attrs::GONE_AFTER_UNLINK`
+> - `filesystem_protocol`: removed `fixture::attrs::KIND`
+> - `filesystem_protocol`: removed `fixture::attrs::LISTED`
+> - `filesystem_protocol`: removed `fixture::attrs::NAME`
+> - `filesystem_protocol`: removed `fixture::attrs::OVERSIZE_REFUSED`
+> - `filesystem_protocol`: removed `fixture::attrs::PROBE`
+> - `filesystem_protocol`: removed `fixture::attrs::PROBE_MOVED`
+> - `filesystem_protocol`: removed `fixture::attrs::SET_AND_READ_BACK`
+> - `filesystem_protocol`: removed `fixture::attrs::STORE_UNLISTED`
+> - `filesystem_protocol`: removed `fixture::attrs::STORE_UNNAMEABLE`
+> - `filesystem_protocol`: removed `fixture::attrs::SURVIVED_RENAME`
+> - `filesystem_protocol`: removed `fixture::attrs::VALUE`
+> - `filesystem_protocol`: removed `fixture::blank::DATA`
+> - `filesystem_protocol`: removed `fixture::blank::DISK_BLOCKS`
+> - `filesystem_protocol`: removed `fixture::blank::ESP`
+> - `filesystem_protocol`: removed `fixture::blank::LBA`
+> - `filesystem_protocol`: removed `fixture::blank::LINUX`
+> - `filesystem_protocol`: removed `fixture::blank::MADE_BODY`
+> - `filesystem_protocol`: removed `fixture::blank::MADE_NAME`
+> - `filesystem_protocol`: removed `fixture::blank::NAMES`
+> - `filesystem_protocol`: removed `fixture::blank::PARTITIONS`
+> - `filesystem_protocol`: removed `fixture::crash::A`
+> - `filesystem_protocol`: removed `fixture::crash::B`
+> - `filesystem_protocol`: removed `fixture::crash::CUT`
+> - `filesystem_protocol`: removed `fixture::crash::INITIAL`
+> - `filesystem_protocol`: removed `fixture::crash::NAME`
+> - `filesystem_protocol`: removed `fixture::crash::SAW_A`
+> - `filesystem_protocol`: removed `fixture::crash::SAW_B`
+> - `filesystem_protocol`: removed `fixture::crash::SAW_NEITHER`
+> - `filesystem_protocol`: removed `fixture::dirscape::CREATED`
+> - `filesystem_protocol`: removed `fixture::dirscape::DESCENDED`
+> - `filesystem_protocol`: removed `fixture::dirscape::ENUMERATED`
+> - `filesystem_protocol`: removed `fixture::dirscape::ENUMERATED_A_STRANGER`
+> - `filesystem_protocol`: removed `fixture::dirscape::FORGED_HANDLE`
+> - `filesystem_protocol`: removed `fixture::dirscape::GRANTED_ACCESS_FAILED`
+> - `filesystem_protocol`: removed `fixture::dirscape::MADE_A_DIR`
+> - `filesystem_protocol`: removed `fixture::dirscape::OPENED_ITS_OWN`
+> - `filesystem_protocol`: removed `fixture::dirscape::REACHED_AN_UNMATCHED_NAME`
+> - `filesystem_protocol`: removed `fixture::dirscape::REACHED_PARENT`
+> - `filesystem_protocol`: removed `fixture::dirscape::REACHED_SIBLING`
+> - `filesystem_protocol`: removed `fixture::dirscape::READ_ATTRS`
+> - `filesystem_protocol`: removed `fixture::dirscape::RENAMED`
+> - `filesystem_protocol`: removed `fixture::dirscape::SET_AN_ATTR`
+> - `filesystem_protocol`: removed `fixture::dirscape::WALKED_UP`
+> - `filesystem_protocol`: removed `fixture::dirscape::WIDENED`
+> - `filesystem_protocol`: removed `fixture::dirscape::WROTE`
+> - `filesystem_protocol`: removed `fixture::durability::DURABLE`
+> - `filesystem_protocol`: removed `fixture::durability::NEVER_FLUSHED`
+> - `filesystem_protocol`: removed `fixture::durability::NOT_ADVANCING`
+> - `filesystem_protocol`: removed `fixture::durability::NO_DEVICE_FLUSH`
+> - `filesystem_protocol`: removed `fixture::durability::REFUSED`
+> - `filesystem_protocol`: removed `fixture::escape::CREATED`
+> - `filesystem_protocol`: removed `fixture::escape::FORGED_HANDLE`
+> - `filesystem_protocol`: removed `fixture::escape::GRANTED_ATTRS_FAILED`
+> - `filesystem_protocol`: removed `fixture::escape::GRANTED_READ_FAILED`
+> - `filesystem_protocol`: removed `fixture::escape::SECOND_FILE`
+> - `filesystem_protocol`: removed `fixture::escape::TRUNCATED`
+> - `filesystem_protocol`: removed `fixture::escape::WROTE`
+> - `filesystem_protocol`: removed `fixture::escape::WROTE_ATTR`
+> - `filesystem_protocol`: removed `fixture::globscape::AGREED`
+> - `filesystem_protocol`: removed `fixture::globscape::EXCLUDED_A_STRANGER`
+> - `filesystem_protocol`: removed `fixture::globscape::EXPANDED`
+> - `filesystem_protocol`: removed `fixture::globscape::GLOB_FAILED`
+> - `filesystem_protocol`: removed `fixture::globscape::NO_MATCH_REFUSED`
+> - `filesystem_protocol`: removed `fixture::globscape::PATTERN_IN_PATH_REFUSED`
+> - `filesystem_protocol`: removed `fixture::globscape::TEXT_UNTOUCHED`
+> - `filesystem_protocol`: removed `fixture::navscape::ABSOLUTE_CLAMPED_AT_ROOT`
+> - `filesystem_protocol`: removed `fixture::navscape::ABSOLUTE_IS_MY_ROOT`
+> - `filesystem_protocol`: removed `fixture::navscape::ABSOLUTE_REACHED_INNER`
+> - `filesystem_protocol`: removed `fixture::navscape::ABSOLUTE_REACHED_SECRET`
+> - `filesystem_protocol`: removed `fixture::navscape::BIND_ASCEND_REACHES_REAL_PARENT`
+> - `filesystem_protocol`: removed `fixture::navscape::BIND_REACHED_TARGET`
+> - `filesystem_protocol`: removed `fixture::navscape::BIND_STOPS_AT_TRUE_ROOT`
+> - `filesystem_protocol`: removed `fixture::navscape::CLAMPED_AT_ROOT`
+> - `filesystem_protocol`: removed `fixture::navscape::CREATED`
+> - `filesystem_protocol`: removed `fixture::navscape::DESCENDED`
+> - `filesystem_protocol`: removed `fixture::navscape::HOLDER_KEPT_READING`
+> - `filesystem_protocol`: removed `fixture::navscape::LISTED`
+> - `filesystem_protocol`: removed `fixture::navscape::MADE_DIR`
+> - `filesystem_protocol`: removed `fixture::navscape::NAME_GONE_AFTER_UNLINK`
+> - `filesystem_protocol`: removed `fixture::navscape::NAVIGATION_FAILED`
+> - `filesystem_protocol`: removed `fixture::navscape::PWD_IS_ROOT`
+> - `filesystem_protocol`: removed `fixture::navscape::REACHED_INNER`
+> - `filesystem_protocol`: removed `fixture::navscape::REACHED_SECRET`
+> - `filesystem_protocol`: removed `fixture::navscape::RETURNED`
+> - `filesystem_protocol`: removed `fixture::navscape::RMDIR_REFUSED_NON_EMPTY`
+> - `filesystem_protocol`: removed `fixture::navscape::RMDIR_REMOVED_EMPTY`
+> - `filesystem_protocol`: removed `fixture::navscape::SAW_INNER`
+> - `filesystem_protocol`: removed `fixture::navscape::SAW_SECRET`
+> - `filesystem_protocol`: removed `fixture::navscape::TOUCH_AT_REFUSED_WITHOUT_SETTIME`
+> - `filesystem_protocol`: removed `fixture::navscape::TOUCH_AT_ROUND_TRIPPED`
+> - `filesystem_protocol`: removed `fixture::navscape::TOUCH_CREATED`
+> - `filesystem_protocol`: removed `fixture::navscape::TOUCH_MTIME_ADVANCED`
+> - `filesystem_protocol`: removed `fixture::navscape::TOUCH_NOW_NEEDS_ONLY_WRITE`
+> - `filesystem_protocol`: removed `fixture::navscape::TOUCH_PRESERVED`
+> - `filesystem_protocol`: removed `fixture::navscape::UNLINKED`
+> - `filesystem_protocol`: removed `fixture::navscape::UNLINK_REFUSED_A_DIRECTORY`
+> - `filesystem_protocol`: removed `fixture::navscape::WALKED_UP`
+> - `filesystem_protocol`: removed `fixture::rm::OK`
+> - `filesystem_protocol`: removed `fixture::rm::status`
+> - `filesystem_protocol`: removed `fixture::throughput::BLOCKS`
+> - `filesystem_protocol`: removed `fixture::throughput::PAYLOAD_FILL`
+> - `filesystem_protocol`: removed `fixture::throughput::PHASES`
+> - `filesystem_protocol`: removed `fixture::throughput::RAND_READ`
+> - `filesystem_protocol`: removed `fixture::throughput::RAND_WRITE`
+> - `filesystem_protocol`: removed `fixture::throughput::RECORD`
+> - `filesystem_protocol`: removed `fixture::throughput::RECORD_READ`
+> - `filesystem_protocol`: removed `fixture::throughput::ROLE`
+> - `filesystem_protocol`: removed `fixture::throughput::SEQ_READ`
+> - `filesystem_protocol`: removed `fixture::throughput::SEQ_WRITE`
+> - `filesystem_protocol`: removed `fixture::throughput::TOTAL`
+> - `filesystem_protocol`: removed `fixture::throughput::UNIT`
+> - `filesystem_protocol`: removed `fixture::throughput::WARMUP`
+> - `filesystem_protocol`: removed `fixture::throughput::name`
+> - `filesystem_protocol`: removed `fixture::tree::ABS_INNER`
+> - `filesystem_protocol`: removed `fixture::tree::ABS_SECRET`
+> - `filesystem_protocol`: removed `fixture::tree::DEEPER`
+> - `filesystem_protocol`: removed `fixture::tree::GLOBMANY`
+> - `filesystem_protocol`: removed `fixture::tree::GLOBSET`
+> - `filesystem_protocol`: removed `fixture::tree::GLOB_BODY`
+> - `filesystem_protocol`: removed `fixture::tree::GLOB_DIR`
+> - `filesystem_protocol`: removed `fixture::tree::GLOB_INNER`
+> - `filesystem_protocol`: removed `fixture::tree::GLOB_MISS`
+> - `filesystem_protocol`: removed `fixture::tree::GLOB_NOMATCH`
+> - `filesystem_protocol`: removed `fixture::tree::GLOB_ONE`
+> - `filesystem_protocol`: removed `fixture::tree::GLOB_PATTERN`
+> - `filesystem_protocol`: removed `fixture::tree::GLOB_PLAIN`
+> - `filesystem_protocol`: removed `fixture::tree::GLOB_TWO`
+> - `filesystem_protocol`: removed `fixture::tree::INNER`
+> - `filesystem_protocol`: removed `fixture::tree::INNER_BODY`
+> - `filesystem_protocol`: removed `fixture::tree::LEAF`
+> - `filesystem_protocol`: removed `fixture::tree::LEAF_BODY`
+> - `filesystem_protocol`: removed `fixture::tree::MADE`
+> - `filesystem_protocol`: removed `fixture::tree::MADE_BODY`
+> - `filesystem_protocol`: removed `fixture::tree::MADE_DIR`
+> - `filesystem_protocol`: removed `fixture::tree::MANY_BODY`
+> - `filesystem_protocol`: removed `fixture::tree::MANY_FIRST_BATCH`
+> - `filesystem_protocol`: removed `fixture::tree::MANY_MISS`
+> - `filesystem_protocol`: removed `fixture::tree::MANY_NAMES`
+> - `filesystem_protocol`: removed `fixture::tree::MANY_PATTERN`
+> - `filesystem_protocol`: removed `fixture::tree::MANY_SECOND_BATCH`
+> - `filesystem_protocol`: removed `fixture::tree::MOVED`
+> - `filesystem_protocol`: removed `fixture::tree::NAV_BIND_ALIAS`
+> - `filesystem_protocol`: removed `fixture::tree::NAV_BIND_MARKER`
+> - `filesystem_protocol`: removed `fixture::tree::NAV_BIND_NESTED`
+> - `filesystem_protocol`: removed `fixture::tree::NAV_BODY`
+> - `filesystem_protocol`: removed `fixture::tree::NAV_DIR`
+> - `filesystem_protocol`: removed `fixture::tree::NAV_EMPTY`
+> - `filesystem_protocol`: removed `fixture::tree::NAV_GONE`
+> - `filesystem_protocol`: removed `fixture::tree::NAV_INSIDE`
+> - `filesystem_protocol`: removed `fixture::tree::NAV_KEPT`
+> - `filesystem_protocol`: removed `fixture::tree::NAV_TOUCH`
+> - `filesystem_protocol`: removed `fixture::tree::NAV_TOUCH_AT_RFC3339`
+> - `filesystem_protocol`: removed `fixture::tree::NAV_TOUCH_AT_UNIX`
+> - `filesystem_protocol`: removed `fixture::tree::NAV_TOUCH_BODY`
+> - `filesystem_protocol`: removed `fixture::tree::NAV_TOUCH_NO_SETTIME`
+> - `filesystem_protocol`: removed `fixture::tree::OTHER`
+> - `filesystem_protocol`: removed `fixture::tree::REDIR`
+> - `filesystem_protocol`: removed `fixture::tree::REDIR_BODY`
+> - `filesystem_protocol`: removed `fixture::tree::REDIR_ONE`
+> - `filesystem_protocol`: removed `fixture::tree::REDIR_TWO`
+> - `filesystem_protocol`: removed `fixture::tree::RMTREE`
+> - `filesystem_protocol`: removed `fixture::tree::RM_BODY`
+> - `filesystem_protocol`: removed `fixture::tree::RM_DOOMED`
+> - `filesystem_protocol`: removed `fixture::tree::RM_KEEP`
+> - `filesystem_protocol`: removed `fixture::tree::RM_KEEP_BODY`
+> - `filesystem_protocol`: removed `fixture::tree::RM_LEAF`
+> - `filesystem_protocol`: removed `fixture::tree::RM_MISSING`
+> - `filesystem_protocol`: removed `fixture::tree::RM_NESTED`
+> - `filesystem_protocol`: removed `fixture::tree::RM_ONE`
+> - `filesystem_protocol`: removed `fixture::tree::RM_SOLO`
+> - `filesystem_protocol`: removed `fixture::tree::RM_TWO`
+> - `filesystem_protocol`: removed `fixture::tree::ROOT_ENTRIES`
+> - `filesystem_protocol`: removed `fixture::tree::SECRET`
+> - `filesystem_protocol`: removed `fixture::tree::SECRET_BODY`
+> - `filesystem_protocol`: removed `fixture::tree::SUB`
+> - `filesystem_protocol`: removed `fixture::twodir::DOT_DOT_CROSSED_MOUNTS`
+> - `filesystem_protocol`: removed `fixture::twodir::GRANTED_ACCESS_FAILED`
+> - `filesystem_protocol`: removed `fixture::twodir::OPENED_A`
+> - `filesystem_protocol`: removed `fixture::twodir::OPENED_B`
+> - `filesystem_protocol`: removed `fixture::twodir::REACHED_A_VIA_B`
+> - `filesystem_protocol`: removed `fixture::twodir::REACHED_B_VIA_A`
+> - `filesystem_protocol`: removed `fixture::twotrees::BOUND_INTO_MOUNT`
+> - `filesystem_protocol`: removed `fixture::twotrees::CLIMBED_OUT`
+> - `filesystem_protocol`: removed `fixture::twotrees::HOME_IS_ROOT`
+> - `filesystem_protocol`: removed `fixture::twotrees::LISTED_MOUNT`
+> - `filesystem_protocol`: removed `fixture::twotrees::LISTED_ROOT`
+> - `filesystem_protocol`: removed `fixture::twotrees::MOUNT`
+> - `filesystem_protocol`: removed `fixture::twotrees::MOVED_INTO_MOUNT`
+> - `filesystem_protocol`: removed `fixture::twotrees::MOVED_ON_REFUSAL`
+> - `filesystem_protocol`: removed `fixture::twotrees::OPENED_RELATIVE_IN_MOUNT`
+> - `filesystem_protocol`: removed `fixture::twotrees::OPENED_ROOT_FROM_MOUNT`
+> - `filesystem_protocol`: removed `fixture::twotrees::PWD_STARTS_AT_ROOT`
+> - `filesystem_protocol`: removed `fixture::twotrees::REACHED_ACROSS`
+> - `filesystem_protocol`: removed `fixture::twotrees::REDIRECTED_FROM_MOUNT`
+> - `filesystem_protocol`: removed `fixture::twotrees::RM_IN_MOUNT_REFUSED`
+> - `filesystem_protocol`: removed `fixture::twotrees::ROOT_CLAMPED`
+> - `filesystem_protocol`: removed `fixture::twotrees::TWO_TREES_FAILED`
+> - `filesystem_protocol`: removed `fixture::twotrees::UP_FROM_MOUNT_IS_PARENT`
+> - `filesystem_protocol`: removed `fixture::walk::CHAIN`
+> - `filesystem_protocol`: removed `fixture::walk::DEPTH`
+> - `filesystem_protocol`: removed `fixture::walk::LEVEL`
+> - `filesystem_protocol`: removed `fixture::walk::LEVEL_FILE`
+> - `filesystem_protocol`: removed `fixture::walk::NARROW`
+> - `filesystem_protocol`: removed `fixture::walk::RG_MATCHES`
+> - `filesystem_protocol`: removed `fixture::walk::RG_NAMED`
+> - `filesystem_protocol`: removed `fixture::walk::RG_SEARCH`
+> - `filesystem_protocol`: removed `fixture::walk::ROOT`
+> - `filesystem_protocol`: removed `fixture::walk::SIZES`
+> - `filesystem_protocol`: removed `fixture::walk::SIZE_FILES`
+> - `filesystem_protocol`: removed `fixture::walk::SMALL_BODY`
+> - `filesystem_protocol`: removed `fixture::walk::WALK_BYTES`
+> - `filesystem_protocol`: removed `fixture::walk::WALK_COMPONENTS`
+> - `filesystem_protocol`: removed `fixture::walk::WALK_DIRS`
+> - `filesystem_protocol`: removed `fixture::walk::WALK_ENTRIES`
+> - `filesystem_protocol`: removed `fixture::walk::WALK_FILES`
+> - `filesystem_protocol`: removed `fixture::walk::WIDE`
+> - `filesystem_protocol`: removed `fixture::walk::WIDE_COUNT`
+> - `filesystem_protocol`: removed `fixture::walk::sized_byte`
+> - `filesystem_protocol`: removed `fixture::walk::wide_name`
 > - `filesystem_protocol`: changed `verb::file_grant::POLICY`
-> - `globally_unique_identifier_partition_table`: removed `BackupMismatch`
-> - `globally_unique_identifier_partition_table`: removed `BackupMismatch: impl Clone`
-> - `globally_unique_identifier_partition_table`: removed `BackupMismatch: impl Copy`
-> - `globally_unique_identifier_partition_table`: removed `BackupMismatch: impl Debug`
-> - `globally_unique_identifier_partition_table`: removed `BackupMismatch: impl Eq`
-> - `globally_unique_identifier_partition_table`: removed `BackupMismatch: impl PartialEq`
-> - `globally_unique_identifier_partition_table`: removed `BackupMismatch: impl StructuralPartialEq`
-> - `globally_unique_identifier_partition_table`: removed `BackupMismatch::AlternateLba`
-> - `globally_unique_identifier_partition_table`: removed `BackupMismatch::DiskGuid`
-> - `globally_unique_identifier_partition_table`: removed `BackupMismatch::EntryArrayCrc`
-> - `globally_unique_identifier_partition_table`: removed `BackupMismatch::EntryArrayLba`
-> - `globally_unique_identifier_partition_table`: removed `BackupMismatch::EntryCount`
-> - `globally_unique_identifier_partition_table`: removed `BackupMismatch::EntrySize`
-> - `globally_unique_identifier_partition_table`: removed `BackupMismatch::FirstUsableLba`
-> - `globally_unique_identifier_partition_table`: removed `BackupMismatch::LastUsableLba`
-> - `globally_unique_identifier_partition_table`: removed `BackupMismatch::MyLba`
-> - `globally_unique_identifier_partition_table`: removed `Error`
-> - `globally_unique_identifier_partition_table`: removed `Error: impl Clone`
-> - `globally_unique_identifier_partition_table`: removed `Error: impl Copy`
-> - `globally_unique_identifier_partition_table`: removed `Error: impl Debug`
-> - `globally_unique_identifier_partition_table`: removed `Error: impl Display`
-> - `globally_unique_identifier_partition_table`: removed `Error: impl Eq`
-> - `globally_unique_identifier_partition_table`: removed `Error: impl PartialEq`
-> - `globally_unique_identifier_partition_table`: removed `Error: impl StructuralPartialEq`
-> - `globally_unique_identifier_partition_table`: removed `Error::Backup`
-> - `globally_unique_identifier_partition_table`: removed `Error::BlockSize`
-> - `globally_unique_identifier_partition_table`: removed `Error::BlockTailNotZero`
-> - `globally_unique_identifier_partition_table`: removed `Error::DiskTooSmall`
-> - `globally_unique_identifier_partition_table`: removed `Error::EntryArrayCrc`
-> - `globally_unique_identifier_partition_table`: removed `Error::EntryArrayLen`
-> - `globally_unique_identifier_partition_table`: removed `Error::EntryArrayShape`
-> - `globally_unique_identifier_partition_table`: removed `Error::EntryCount`
-> - `globally_unique_identifier_partition_table`: removed `Error::EntrySize`
-> - `globally_unique_identifier_partition_table`: removed `Error::HeaderCrc`
-> - `globally_unique_identifier_partition_table`: removed `Error::HeaderSize`
-> - `globally_unique_identifier_partition_table`: removed `Error::Mbr`
-> - `globally_unique_identifier_partition_table`: removed `Error::NameTooLong`
-> - `globally_unique_identifier_partition_table`: removed `Error::NotPrimary`
-> - `globally_unique_identifier_partition_table`: removed `Error::PartitionOutsideUsable`
-> - `globally_unique_identifier_partition_table`: removed `Error::PartitionRange`
-> - `globally_unique_identifier_partition_table`: removed `Error::PartitionsOverlap`
-> - `globally_unique_identifier_partition_table`: removed `Error::ReservedNotZero`
-> - `globally_unique_identifier_partition_table`: removed `Error::Revision`
-> - `globally_unique_identifier_partition_table`: removed `Error::Signature`
-> - `globally_unique_identifier_partition_table`: removed `Error::TableOverlapsUsable`
-> - `globally_unique_identifier_partition_table`: removed `Error::TooManyPartitions`
-> - `globally_unique_identifier_partition_table`: removed `Error::UsableRange`
-> - `globally_unique_identifier_partition_table`: removed `GloballyUniqueIdentifierPartitionTable`
-> - `globally_unique_identifier_partition_table`: removed `GloballyUniqueIdentifierPartitionTable: impl Clone`
-> - `globally_unique_identifier_partition_table`: removed `GloballyUniqueIdentifierPartitionTable: impl Copy`
-> - `globally_unique_identifier_partition_table`: removed `GloballyUniqueIdentifierPartitionTable: impl Debug`
-> - `globally_unique_identifier_partition_table`: removed `GloballyUniqueIdentifierPartitionTable::backup_entry_lba`
-> - `globally_unique_identifier_partition_table`: removed `GloballyUniqueIdentifierPartitionTable::backup_header_lba`
-> - `globally_unique_identifier_partition_table`: removed `GloballyUniqueIdentifierPartitionTable::block_count`
-> - `globally_unique_identifier_partition_table`: removed `GloballyUniqueIdentifierPartitionTable::block_size`
-> - `globally_unique_identifier_partition_table`: removed `GloballyUniqueIdentifierPartitionTable::check_backup`
-> - `globally_unique_identifier_partition_table`: removed `GloballyUniqueIdentifierPartitionTable::check_protective_mbr`
-> - `globally_unique_identifier_partition_table`: removed `GloballyUniqueIdentifierPartitionTable::create`
-> - `globally_unique_identifier_partition_table`: removed `GloballyUniqueIdentifierPartitionTable::disk_guid`
-> - `globally_unique_identifier_partition_table`: removed `GloballyUniqueIdentifierPartitionTable::entry`
-> - `globally_unique_identifier_partition_table`: removed `GloballyUniqueIdentifierPartitionTable::entry_array`
-> - `globally_unique_identifier_partition_table`: removed `GloballyUniqueIdentifierPartitionTable::entry_array_blocks`
-> - `globally_unique_identifier_partition_table`: removed `GloballyUniqueIdentifierPartitionTable::entry_count`
-> - `globally_unique_identifier_partition_table`: removed `GloballyUniqueIdentifierPartitionTable::first_usable_lba`
-> - `globally_unique_identifier_partition_table`: removed `GloballyUniqueIdentifierPartitionTable::header`
-> - `globally_unique_identifier_partition_table`: removed `GloballyUniqueIdentifierPartitionTable::last_usable_lba`
-> - `globally_unique_identifier_partition_table`: removed `GloballyUniqueIdentifierPartitionTable::parse`
-> - `globally_unique_identifier_partition_table`: removed `GloballyUniqueIdentifierPartitionTable::partitions`
-> - `globally_unique_identifier_partition_table`: removed `GloballyUniqueIdentifierPartitionTable::primary_entry_lba`
-> - `globally_unique_identifier_partition_table`: removed `GloballyUniqueIdentifierPartitionTable::write_backup_header`
-> - `globally_unique_identifier_partition_table`: removed `GloballyUniqueIdentifierPartitionTable::write_primary_header`
-> - `globally_unique_identifier_partition_table`: removed `GloballyUniqueIdentifierPartitionTable::write_protective_mbr`
-> - `globally_unique_identifier_partition_table`: removed `MbrProblem`
-> - `globally_unique_identifier_partition_table`: removed `MbrProblem: impl Clone`
-> - `globally_unique_identifier_partition_table`: removed `MbrProblem: impl Copy`
-> - `globally_unique_identifier_partition_table`: removed `MbrProblem: impl Debug`
-> - `globally_unique_identifier_partition_table`: removed `MbrProblem: impl Eq`
-> - `globally_unique_identifier_partition_table`: removed `MbrProblem: impl PartialEq`
-> - `globally_unique_identifier_partition_table`: removed `MbrProblem: impl StructuralPartialEq`
-> - `globally_unique_identifier_partition_table`: removed `MbrProblem::ExtraRecord`
-> - `globally_unique_identifier_partition_table`: removed `MbrProblem::NoProtectiveRecord`
-> - `globally_unique_identifier_partition_table`: removed `MbrProblem::Signature`
-> - `globally_unique_identifier_partition_table`: removed `MbrProblem::SizeLba`
-> - `globally_unique_identifier_partition_table`: removed `MbrProblem::StartLba`
-> - `grant_plan`: removed `MAX_FILE_NAME`
-> - `grant_plan`: removed `file_name_fits`
-> - `grant_plan`: removed `parse_u64`
+> - `grant_plan`: changed `Manifest`
+> - `grant_plan`: changed `UNVOUCHED_MANIFEST`
 > - `grant_plan`: changed `spawnproto::activation_reply`
-> - `grant_plan`: removed `trim`
-> - `line_editor`: removed `Event`
-> - `line_editor`: removed `Event: impl Clone`
-> - `line_editor`: removed `Event: impl Copy`
-> - `line_editor`: removed `Event: impl Debug`
-> - `line_editor`: removed `Event: impl Eq`
-> - `line_editor`: removed `Event: impl PartialEq`
-> - `line_editor`: removed `Event: impl StructuralPartialEq`
-> - `line_editor`: removed `Event::Eof`
-> - `line_editor`: removed `Event::Interrupt`
-> - `line_editor`: removed `Event::Line`
-> - `line_editor`: removed `Event::None`
-> - `line_editor`: removed `Event::Tab`
-> - `line_editor`: removed `HIST`
-> - `line_editor`: removed `LINE_MAX`
-> - `line_editor`: removed `LineDisc`
-> - `line_editor`: removed `LineDisc: impl Default`
-> - `line_editor`: removed `LineDisc::abandon`
-> - `line_editor`: removed `LineDisc::feed`
-> - `line_editor`: removed `LineDisc::insert_text`
-> - `line_editor`: removed `LineDisc::line`
-> - `line_editor`: removed `LineDisc::new`
-> - `line_editor`: removed `LineDisc::pending`
-> - `line_editor`: removed `LineDisc::repaint`
-> - `line_editor`: removed `LineDisc::restore`
-> - `line_editor`: removed `LineDisc::resume_line`
-> - `line_editor`: removed `LineDisc::save`
-> - `line_editor`: removed `LineDisc::start_line`
-> - `line_editor`: removed `PROMPT_MAX`
-> - `line_editor`: removed `RAW_QUEUE_MAX`
-> - `line_editor`: removed `RawQueue`
-> - `line_editor`: removed `RawQueue: impl Default`
-> - `line_editor`: removed `RawQueue::is_empty`
-> - `line_editor`: removed `RawQueue::new`
-> - `line_editor`: removed `RawQueue::pop8`
-> - `line_editor`: removed `RawQueue::push`
-> - `line_editor`: removed `RawQueue::restore`
-> - `line_editor`: removed `RawQueue::save`
-> - `line_editor`: removed `Sink`
-> - `line_editor`: removed `Sink::put`
-> - `line_editor`: removed `expand_output`
 > - `nifefs`: changed `DIR_BLOCKS`
 > - `nifefs`: changed `MAX_FILES`
 > - `package_archive`: changed `Installable`

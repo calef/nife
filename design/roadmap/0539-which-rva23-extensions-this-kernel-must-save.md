@@ -46,7 +46,7 @@ at https://docs.riscv.org/reference/rva23/v1.0/index.html.
 offers and prints it, and the context switch saves what it was written to save. Nowhere does the
 tree state which RVA23 mandatory extensions carry architectural state, which of those this kernel
 preserves across a switch, and which it silently does not. That is exactly the shape
-DECISIONS §19 (architectural parity is a tenet) calls the bug: *a feature works on one ISA and silently not
+DECISIONS §19 (architectural parity is a tenet) calls the bug. *A feature works on one ISA and silently not
 another*, except here it is a feature that works on one core and silently not after a
 preemption.
 

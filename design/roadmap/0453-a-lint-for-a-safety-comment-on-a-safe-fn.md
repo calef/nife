@@ -23,8 +23,8 @@ From '112. The SAFETY comments that bind nobody', under `## Follow-on`:
 
 ## Why it is here rather than only there
 
-Neither of the unsafe lints can read a comment, so the check would have to be written by hand, and
-the shape it would fire on is not the shape that is wrong: a `SAFETY` note on a safe function is
+Neither of the unsafe lints can read a comment, so the check would have to be written by hand. The
+shape it would fire on is not the shape that is wrong. A `SAFETY` note on a safe function is
 sometimes a soundness obligation nobody holds and sometimes an ordinary caveat where "caller" means
 the calling thread or process.
 

@@ -20,7 +20,7 @@ below are the old ones: `steal_request` is `crates/work_steal_slot`, `wake_hands
 
 Milestone 136 built the mechanism for one crate and it works, so the pattern to
 copy is in the tree. The block declines to choose between copying it four times and generalizing
-it, and that choice is a lane's to make and recommend, not calef's: it is reversible, it is
+it. That choice is a lane's to make and recommend, not calef's: it is reversible, it is
 internal to `script/lint`, and nothing outside this repository acts on it.
 
 **In brief.** `steal_request`, `clock_protocol`, `wake_handshake` and `canary_gate` were each lifted
@@ -41,9 +41,8 @@ and today that bridge is an assumption in four places.
 
 It fails silently, which is the property that makes it worth a gate rather than a note. Nothing
 goes red. A crate keeps its harnesses, the suite keeps passing, and the searched surface quietly
-stops covering the caller. Compare the failure this tree already caught in the same family:
-milestone 136's own `BUGS` records that its warrant check is line order inside a function rather
-than dataflow, and that a body which called `claim_for_destroy`, discarded the result, and freed
+stops covering the caller. Compare the failure this tree already caught in the same family. Milestone 136 (one decision path, and a gate that keeps it that way)'s own `BUGS` records that its warrant check is line order inside a function rather
+than dataflow. It also records that a body which called `claim_for_destroy`, discarded the result, and freed
 pages some other way would pass. That is a known hole in a gate that exists. Four crates have no
 gate at all.
 
@@ -77,7 +76,7 @@ this takes inherits that hole and should say so where a reader meets it.
 ## Index row
 
 Four crates were lifted out of their callers so loom could search their concurrent transitions, and
-nothing checks that the callers still route through the lifted code, so a caller that grows a second
+nothing checks that the callers still route through the lifted code. So a caller that grows a second
 path around the searched surface keeps the proof's name without its coverage. Milestone 136 closed
 this for `crates/memory_regions` with a three-piece gate in `script/lint`; the other four
 (`work_steal_slot`, `clock_protocol`, `thread_wake_handshake`, `memory_corruption_canary_gate`) have

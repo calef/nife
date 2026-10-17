@@ -21,7 +21,7 @@ built, with the board powered off* below, and notes/soak.md's procedure, whose f
 `PARTIAL` rather than `IN-PROGRESS`, deliberately. Building the mechanism shipped; running the
 series is a bench session, with nothing a lane could pick up and no branch to name, which is what
 `IN-PROGRESS` is for. Milestone 218 (every boot of the VisionFive 2 needs a human) answered
-`NOT-STARTED` a day earlier, correctly, because it has one phase and none of it had happened; here a
+`NOT-STARTED` a day earlier, correctly, because it has one phase and none of it had happened. Here a
 real artifact exists, and saying otherwise would make the column lie in the other direction.
 
 In brief. On 2026-09-03 nine boots of radon produced a fifteenfold throughput range, and
@@ -64,7 +64,7 @@ stoppable without physical access.
 
 **radon was unpowered on the evening of 2026-09-03 and this lane could not touch it**, which is the
 same condition milestone 87's UEFI lane worked in and is why the deliverable is shaped the way that
-one's was: the mechanism, and a bench procedure detailed enough that the person who *can* reach the
+one's was. The mechanism, and a bench procedure detailed enough that the person who *can* reach the
 board spends their time on the machine rather than on reconstructing what to type.
 
 - `--features reboot_soak` (name provisional), on all three architectures since 2026-09-24. After a fixed window the soak calls
@@ -95,7 +95,7 @@ $ diff before.asm after.asm | grep -E '^[<>]' | grep -vc '\.llvm\.'
 ```
 
 The one edit that a `board` build without `reboot_soak` even compiles is `sbi_system_reset` taking
-its reset type as a parameter and returning `sbiret.error`; its existing caller passes the same
+its reset type as a parameter and returning `sbiret.error`. Its existing caller passes the same
 constant it always did, and the disassembly above is what says the compiler agrees.
 
 **What is not built, and the reason it is not**: a distribution. That is this milestone's stated
@@ -120,7 +120,7 @@ strongest-first in AGENTS.md's ladder because the ordering is the argument.
 4. Stopping disarms the reboot and leaves the soak running, rather than halting. This is the
    half of the design worth arguing for, because the obvious answer is to halt. `Stage::Soak` has
    already told `board_console` that silence after a soak starts is a hang, so a halting escape
-   would report itself as the exact failure this instrument exists to detect, and would throw the
+   would report itself as the exact failure this instrument exists to detect. It would throw the
    run away to get the board back. Disarming leaves the board in milestone 219's understood state,
    still beating, and costs nothing.
 
@@ -131,9 +131,9 @@ is exactly the escape a person had before milestone 218 removed the need for it.
 
 ### What was refused, and why
 
-A bounded reboot count. The obvious rung-one answer, and it cannot be built here: a cold reset
+A bounded reboot count. The obvious rung-one answer, and it cannot be built here. A cold reset
 takes the RAM, and the only persistent store on this path is the U-Boot environment in the SPI flash
-of the only board of its kind this project owns, which milestone 218 already refused to write to for
+of the only board of its kind this project owns. Milestone 218 already refused to write to it, for
 the same reason. What is bounded instead is the wall clock *per draw*, which is weaker and is stated
 as such: the board never wedges in the loop, it only stays in it.
 
@@ -174,7 +174,7 @@ hand-drawn ones: how often each clean-core count comes up, and whether three or 
 
 Not a kernel that reboots, which is the mechanism rather than the result. Nothing here has run on
 radon, so by this milestone's own test it is not finished, and the status says `HARDWARE` rather
-than `PARTIAL` for that reason: what remains is not a phase somebody could build, it is a bench
+than `PARTIAL` for that reason. What remains is not a phase somebody could build, it is a bench
 session. `script/board-console --tally` is what turns that session's log into the row this section
 asks for, and it prints the caveats beside it so a count of draws is not quoted as a probability.
 
@@ -197,7 +197,7 @@ prove for itself, done. The mechanism is not what failed.
 
 What it retires. This block refused a smart-plug series as *"a lane spent on a guess until the
 firmware has actually refused reset type 1"*. It has now effectively refused, so milestone 224
-(nothing can power-cycle radon, so a hung soak needs a person) is no longer a convenience: it is the
+(nothing can power-cycle radon, so a hung soak needs a person) is no longer a convenience. It is the
 only remaining route to an unattended series on this board, and the guess it was waiting on is spent.
 
 And the escape's own limitation showed up in use. `script/board-console` holds the port and

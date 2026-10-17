@@ -40,8 +40,8 @@ into the readiness report a maintainer uses to brief lanes.
   case for a gate line; it does not connect a `DECISION` gate to any file, because a gate line does
   not name one. Making it name one would be a real check and a real cost.
 - `IN-PROGRESS` is already the one status with a mechanical check (its branch must not have merged),
-  added for the same reason after all six were found false, and it is evidence that
-  this family of defect is worth gating where it can be.
+  added for the same reason after all six were found false. It is evidence that this family of
+  defect is worth gating where it can be.
 
 ## BUGS
 
@@ -56,10 +56,10 @@ into the readiness report a maintainer uses to brief lanes.
 Milestone 247 gated `BUILT` and `REMOVED`, milestone 252 gated `PARTIAL`, and the rest of the status
 vocabulary rots with nothing watching it. `design/roadmap/0075-cycle-counter-authority.md` is the
 proof: it reads `NOT-STARTED` with `Gate: DECISION` for a decision calef made on 2026-09-02 and a
-mechanism two milestones built the same week, three blocks cite it as a live blocker, and milestone
+mechanism two milestones built the same week. Three blocks cite it as a live blocker, and milestone
 74 carries `MILESTONE 75` in its own gate line, so the staleness propagates into the readiness report
 a maintainer briefs lanes from. Fixing 75 is a word and a paragraph and is worth doing on its own.
-The question behind it is whether a `NOT-STARTED` block can be checked at all: a `PARTIAL` block
+The question behind it is whether a `NOT-STARTED` block can be checked at all. A `PARTIAL` block
 enumerates work so a gate can demand the enumeration, while a `NOT-STARTED` block asserts that
 nothing has been done and the tree cannot see that. The one mechanical handle that exists is a
 `DECISION` gate whose decision file reads `DECIDED`, and making a gate line name that file is a real

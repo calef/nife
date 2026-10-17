@@ -4,7 +4,8 @@
 //!
 //! One syscall wrapper ([`invoke`]) and what every program builds on it: [`send`], [`receive`],
 //! [`call`] and [`exit`], plus the thin wrappers in `objects.rs` and `ipc.rs`, each discharging
-//! [`invoke`]'s own safety obligation once instead of at every call site. Opt-in modules carry what
+//! [`invoke`]'s own safety obligation once instead of at every call site. [`require`] is the one
+//! way a program says no: a failed check dies where the mistake was. Opt-in modules carry what
 //! only some programs need: [`heap`] (a program that never allocates links no allocator),
 //! [`mapped_window`], [`initial_ramdisk`] and [`virtio`]. Each is the §94 (what may live in a
 //! userspace library, and what must be per-binary) shape: one invariant that had been copied
@@ -40,6 +41,7 @@ pub mod entropy;
 pub mod heap;
 pub mod initial_ramdisk;
 pub mod mapped_window;
+pub mod socket_frame;
 pub mod virtio;
 
 mod clock;

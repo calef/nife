@@ -23,13 +23,14 @@ reversible, and no wire format, name or syscall is on the other side of it.
 Premise re-checked 2026-09-19, and half of it had stopped being true the day before it was
 filed. This block says the walk's parsing half "already lives in `crates/machine_discovery`, which
 carries no harnesses and appears in no `script/verify` row, so it is pure logic that nothing
-proves". Milestone 319 proved it on 2026-09-17: that crate now carries 21 Kani harnesses across
-`acpi.rs`, `framebuffer.rs`, `riscv64.rs` and `x86_64.rs` and has its own row in `script/verify`,
-and three of its first fifteen harnesses were false, one of them a panic on the x86 boot path.
+proves". Milestone 319 (the crate that parses firmware had no proofs) proved it on 2026-09-17. That
+crate now carries 21 Kani harnesses across
+`acpi.rs`, `framebuffer.rs`, `riscv64.rs` and `x86_64.rs` and has its own row in `script/verify`.
+Three of its first fifteen harnesses were false, one of them a panic on the x86 boot path.
 
 What survives is the volatile half, and it already has a block. Milestone 423, filed 2026-09-17
-by milestone 319's own lane, states the same remaining work with the post-319 framing: the seam this
-block calls most of the job is narrower than it looked, because what is left on the kernel side is
+by milestone 319's own lane, states the same remaining work with the post-319 framing. The seam this
+block calls most of the job is narrower than it looked. What is left on the kernel side is
 one bounded read against the direct map, and the open question is whether that accessor takes a
 bound and what it does when a firmware length exceeds it. Two blocks for one accessor would be two
 places for the work to rot, so this one is disposed of and 423 carries it.
@@ -40,7 +41,7 @@ that word is for. The number is spent either way, per milestone 433's own `BUGS`
 
 In brief. Milestone 304 put `kernel/src/arch/x86_64/` in front of the prover for the first time.
 Its strongest target went with it and is still unproved: `x86_64/machine.rs`'s ACPI walk, 836
-lines reasoning over firmware-supplied lengths, checksums and counts, which is the shape of input a
+lines reasoning over firmware-supplied lengths, checksums and counts. It is the shape of input a
 prover is for and the shape of input a machine will lie about.
 
 **Why it is not simply a harness**, which is what makes it a lane rather than an afternoon. The walk
@@ -60,9 +61,9 @@ open.
 
 Milestone 304 put `kernel/src/arch/x86_64/` in front of the prover for the first time and its
 strongest target went with it unproved: the ACPI walk, 836 lines reasoning over firmware-supplied
-lengths, checksums and counts, which is the shape of input a prover is for and the shape a machine
+lengths, checksums and counts. It is the shape of input a prover is for and the shape a machine
 will lie about. This block was filed on 2026-09-18 on the premise that the walk's parsing half in
-`crates/machine_discovery` carried no harnesses and no `script/verify` row, and that premise was one
+`crates/machine_discovery` carried no harnesses and no `script/verify` row. That premise was one
 day stale: milestone 319 proved that crate on 2026-09-17 with fifteen harnesses, three of them false
 as first written. What remains is the volatile half, one bounded read against the direct map, and
 milestone 423 (a checked direct-map reader for the x86 ACPI walk) states it with the narrower framing 319 made possible. Promoted and closed in one

@@ -44,8 +44,11 @@ fi
 # a workspace that did not build on x86_64, invisible to the one gate that would have caught it
 # because that gate runs on aarch64. Found by milestone 117's first stranger run.
 #
-# The "host pass excludes exactly the bare-metal crates" gate below derives this set rather than
-# trusting this line.
+# The exclusion list is DERIVED, not carried: helpers/host-excluded-crates.sh asks cargo's own
+# dependency graph which workspace members reach `user_mode_runtime`, and the host pass below
+# builds its `--exclude` flags from that. The "host pass excludes exactly the bare-metal crates"
+# gate below derives the set a second way, from `cargo metadata`, and fails when the derivation
+# and the metadata disagree, or when a consumer anywhere in the tree stops calling the derivation.
 # `--baselines`: only the icount-baseline-vs-pin check. `.githooks/pre-push` calls this beside
 # `--clippy` because the two are the cheap gates a push can break: code shape, and pin state.
 # Added 2026-09-30 after #1463's toolchain bump pushed past an unread lint with the floors
@@ -135,9 +138,25 @@ helpers/commit-msg-selftest.sh >/dev/null
 # The partition `--no-cargo` relies on, proved against fixtures (no tree, no cargo).
 helpers/lint-no-cargo-selftest.sh >/dev/null
 
+# The repeat half of milestone 422 (a cadence job whose healthy state is red) in
+# helpers/trunk-health.sh: the grouping thresholds, the log-frame strip and the watcher exclusions,
+# proved offline through a real `--once` pass against a stub `gh` and `git` and synthetic runs (no
+# network). helpers/trunk-health-repeat-selftest.sh says what each fixture pins and ends in the
+# ruled issue home, helpers/repeat_issue.py, whose pure parsing and planning have their own
+# --selftest beside it.
+helpers/trunk-health-repeat-selftest.sh >/dev/null
+python3 helpers/repeat_issue.py --selftest >/dev/null
+
 echo "==> clippy: host crates + xtask"
-cargo clippy --workspace --exclude kernel --exclude system_tests --exclude components --exclude fixtures --exclude user_mode_runtime \
-    --exclude swap_protocol --exclude virtio --exclude supervision_protocol --exclude system_initializer \
+# The derived half of the selection (helpers/host-excluded-crates.sh). `kernel` and `system_tests`
+# are excluded by judgment rather than the derivation: they are bare metal through `kernel`,
+# which the dependency-graph walk does not see.
+bare_crates=$(helpers/host-excluded-crates.sh) || exit 1
+bare_excludes=""
+for c in $bare_crates; do
+    bare_excludes="$bare_excludes --exclude $c"
+done
+cargo clippy --workspace --exclude kernel --exclude system_tests $bare_excludes \
     --all-targets -- -D warnings
 
 # The RedoxFS host tool (tools/redoxfs_host) is its own workspace, outside ours on purpose (it wraps
@@ -194,7 +213,8 @@ rustc --edition 2024 --crate-type proc-macro --crate-name kani_attributes \
     helpers/kani-lint-shim/kani_attributes.rs --out-dir "$shim"
 rustc --edition 2024 --crate-type lib --crate-name kani \
     helpers/kani-lint-shim/kani.rs --extern kani_attributes="$shim/$attrs" --out-dir "$shim"
-# Same package selection as the host pass above. `--all-targets` because a harness crate's
+# Same package selection as the host pass above, derived the same way
+# (helpers/host-excluded-crates.sh). `--all-targets` because a harness crate's
 # `cfg(test)` build compiles the harnesses too, and the two configurations are not the same
 # compilation.
 #
@@ -215,8 +235,12 @@ rustc --edition 2024 --crate-type lib --crate-name kani \
 # kernel's harnesses. What still covers them: `script/verify` builds them for real and gates rustc
 # lints through `RUSTFLAGS`, and `script/lint`'s aarch64 pass below compiles the same file without
 # the cfg. Keep kernel harnesses free of `unsafe` while this holds.
-cargo clippy --workspace --exclude kernel --exclude system_tests --exclude components --exclude fixtures --exclude user_mode_runtime \
-    --exclude swap_protocol --exclude virtio --exclude supervision_protocol --exclude system_initializer \
+bare_crates=$(helpers/host-excluded-crates.sh) || exit 1
+bare_excludes=""
+for c in $bare_crates; do
+    bare_excludes="$bare_excludes --exclude $c"
+done
+cargo clippy --workspace --exclude kernel --exclude system_tests $bare_excludes \
     --all-targets -- \
     --cfg kani --extern "kani=$shim/libkani.rlib" -L "$shim" -D warnings
 
@@ -396,6 +420,67 @@ done
 echo "==> clippy: kernel --features watchdog_probe (x86_64)"
 cargo clippy -p kernel --features watchdog_probe --target x86_64-unknown-none --all-targets -- \
     -D warnings -A dead_code -A clippy::reversed_empty_ranges
+
+# The UEFI loader's binaries, which nothing above compiles (milestone 508 (`script/lint` does not
+# build the UEFI binary, so lint-clean code can fail `script/test`)). The host pass lints
+# this crate's library and its tests, but the [[bin]] carries `required-features = ["uefi"]`, so
+# every pass above skips it exactly as `cargo build --workspace` does: a warning or an error in
+# the binary that boots xenon was invisible here and surfaced only in `script/test`'s x86_64 leg,
+# behind an emulator boot. Milestone 243 (a machine with no serial port has no way to say
+# anything)'s lane hit that in one direction, a loader edit that
+# passed this file and failed the UEFI build, which is the gap this stage closes.
+#
+# The tree produces one boot file per architecture, and `cargo xtask stick` writes all three. The
+# list is written out rather than derived (milestone 401's rule; a selector that matches nothing
+# passes by checking nothing), and each stanza prints its own line:
+#
+#   target                        boot file         how it is made
+#   x86_64-unknown-uefi           BOOTX64.EFI       PE/COFF from rustc
+#   aarch64-unknown-uefi          BOOTAA64.EFI      PE/COFF from rustc
+#   riscv64imac-unknown-none-elf  BOOTRISCV64.EFI   a static PIE, converted by crates/portable_executable
+#
+# riscv64 has no UEFI target in rustc at all (the comment beside rust-toolchain.toml's target
+# list says so), so its boot file compiles for the plain none-elf target and the stick turns the
+# ELF into a PE image. This stage checks that compile and deliberately takes none of the stick's
+# RUSTFLAGS: every one of them is a link argument (`-pie`, `--no-dynamic-linker`, `--entry`), and
+# a check build links nothing.
+#
+# `--features uefi` is what turns the bin on, and the loader's build script refuses to run without
+# a kernel to embed. So the three kernels the stick builds come first (the same three invocations,
+# so the artifacts are shared), and each stanza hands its own architecture's kernel over by
+# ABSOLUTE path: a build script's working directory is its package, not this tree, and the
+# generated `include_bytes!` is relative to the generated file. The archive variable stays unset,
+# which is the loader's legitimate tour build and keeps the measured-boot seal out of a lint
+# gate; `refuse_an_unsealed_pair` runs only when both paths are set, and the seal is `cargo xtask
+# uefi-image`'s own check.
+echo "==> uefi_loader: build the three kernels the boot files embed (see the note above)"
+cargo build -p kernel --target x86_64-unknown-none
+cargo build -p kernel --target aarch64-unknown-none-softfloat
+cargo build -p kernel --target riscv64imac-unknown-none-elf --features board
+
+echo "==> clippy: uefi_loader --features uefi (x86_64-unknown-uefi)"
+NIFE_UEFI_KERNEL="$PWD/target/x86_64-unknown-none/debug/kernel" \
+    cargo clippy -p uefi_loader --bin uefi_loader --features uefi \
+    --target x86_64-unknown-uefi -- -D warnings
+
+echo "==> clippy: uefi_loader --features uefi (aarch64-unknown-uefi)"
+NIFE_UEFI_KERNEL="$PWD/target/aarch64-unknown-none-softfloat/debug/kernel" \
+    cargo clippy -p uefi_loader --bin uefi_loader --features uefi \
+    --target aarch64-unknown-uefi -- -D warnings
+
+echo "==> clippy: uefi_loader --features uefi (riscv64imac-unknown-none-elf, the stick's PE payload)"
+NIFE_UEFI_KERNEL="$PWD/target/riscv64imac-unknown-none-elf/debug/kernel" \
+    cargo clippy -p uefi_loader --bin uefi_loader --features uefi \
+    --target riscv64imac-unknown-none-elf -- -D warnings
+
+# The fourth configuration of the same bin: `uefi,screen_hold`, which `cargo xtask uefi-boot`
+# builds for the screen gate and nothing else builds. The `screen_hold` code itself is
+# host-linted through the package's self dev-dependency, but only for the host; this is the
+# firmware-target build of it.
+echo "==> clippy: uefi_loader --features uefi,screen_hold (x86_64-unknown-uefi, uefi-boot's build)"
+NIFE_UEFI_KERNEL="$PWD/target/x86_64-unknown-none/debug/kernel" \
+    cargo clippy -p uefi_loader --bin uefi_loader --features uefi,screen_hold \
+    --target x86_64-unknown-uefi -- -D warnings
 
 # `--clippy`: stop after the last clippy pass. `.githooks/pre-push` called this so the clippy gate
 # had exactly one copy, here, until milestone 630 measured the rest of lint at about 29 s more and
@@ -602,6 +687,27 @@ if [ -n "$cfi_bad" ]; then
     exit 1
 fi
 echo "CFI: every hand-written .s file with an exported symbol carries call-frame information"
+
+# Every committed `.dtb` is what the `.dts` beside it compiles to. The device-tree fixtures
+# commit both halves of each pair, and a sweep can edit the text without reaching the binary
+# beside it: five blobs kept a name the tree had renamed away five weeks earlier, because nothing
+# read the property and nothing compared the bytes (milestone 491 (a committed .dtb is checked
+# against what its .dts compiles to)). The helper compiles each source with `dtc` and diffs
+# the DECOMPILED structure of the two blobs (`dtc -I dtb -O dts` on both sides), so one local
+# tool produced both texts and a `dtc` version difference cannot fail a contributor; a
+# difference that survives is a real drift.
+#
+# Where `dtc` is absent the check skips, and its own output says what that is worth: a skip is a
+# pass on a machine without the tool, and CI's lint job installs `dtc`, so the gate is real
+# where the merge queue runs. That split is the design, not a shortcut.
+#
+# It is a comparison, so it covers only the blobs that HAVE a source beside them. Bench images,
+# font atlases, the RedoxFS test image and the QEMU-dumped fixtures have no source to compare
+# against; the helper prints their count rather than passing over them in silence. An empty pair
+# set fails rather than passing (milestone 401 (a gate that selects the set it judges)).
+echo "==> every committed .dtb matches its .dts"
+python3 "$(dirname "$0")/../helpers/lint_dtb_matches_dts.py" --selftest >/dev/null
+python3 "$(dirname "$0")/../helpers/lint_dtb_matches_dts.py" || exit 1
 
 # The machine description prints on every boot (milestone 267).
 #
@@ -1274,31 +1380,36 @@ echo "==> fatal risks"
 # deliberate SUBSET of it. Two checks, because they fail in opposite directions: a script nobody
 # documented is invisible, and a README naming a script that no longer exists sends a new reader into
 # a wall. notes/scripts.md was missing five entries when this check was written, none of them noticed.
-# The host pass must exclude EXACTLY the crates that cannot compile for the host, and this derives
-# that set rather than trusting a list.
+# The host pass must exclude EXACTLY the crates that cannot compile for the host. One derivation
+# now feeds every consumer: helpers/host-excluded-crates.sh, run by this file's two clippy passes,
+# by `cargo xtask test`'s host and Miri passes (xtask/src/suite.rs), by script/coverage's run and
+# its floor, and by script/mutation's cargo-mutants call. Roadmap 393 collapsed four hand-written
+# copies of that list into the derivation, this gate keeps checking.
 #
 # The failure it prevents is the one that happened. `--exclude` removes a package from the test
 # selection, not from the dependency graph, so excluding `user_mode_runtime` while four workspace crates
 # depended on it unconditionally left it in the build. The host pass stopped compiling on x86_64 on
 # 2026-08-03 and stayed broken until 2026-08-14, invisible throughout because CI moved to an aarch64
-# runner the same day, where the EL0 assembly compiles by accident.
+# runner the same day, where the EL0 assembly compiles by accident. Milestone 244 (the largest
+# crate in the tree is proved by nothing a mutation can reach) then found the
+# repair covered two consumers, not four, and the two it missed are the two that publish a NUMBER:
+# coverage and mutation. The drift it caught in `.cargo/mutants.toml` scored `system_initializer`
+# 191 mutants and 0 caught. Nobody was wrong; a number was, and it was the kind of number a
+# stranger quotes.
 #
-# So: ask cargo which workspace members reach `user_mode_runtime`, and check that every consumer of that
-# knowledge excludes every one. A crate that takes a new `user_mode_runtime` dependency now fails here, naming
-# itself, instead of breaking a stranger's first build.
+# What the gate checks, now that the list exists in one place:
 #
-# **Four consumers, not two** (milestone 244). It used to check this file's clippy lines and xtask's
-# `test`, and the two it did not check are the two that report a NUMBER: `script/coverage`'s
-# exclusions and `.cargo/mutants.toml`'s. `.cargo/mutants.toml` says in its own head comment that its
-# list "deliberately mirrors script/coverage's exclusions" and asks the next person to "keep the two
-# lists in step", which is rung four of the ladder and drifted exactly as rung four does. It was out
-# of step by one crate, `system_initializer`, so the first published mutation report scored the
-# largest crate in the tree at 191 mutants and 0 caught. Nobody was wrong; a number was, and it was
-# the kind of number a stranger quotes.
+#  - The derivation, independently. This section asks `cargo metadata` for the same set and fails
+#    if helpers/host-excluded-crates.sh disagrees with it or comes back empty. A wrong or empty set
+#    must not be able to quietly empty every host pass at once: on CI's aarch64 runner the result
+#    would compile by accident, which is exactly how the 2026-08-03 break stayed invisible.
+#  - The wiring. Each consumer's text must still call the derivation. This reads for the call, not
+#    for the crates: the crates are the derivation's to know, and a hand list growing back anywhere
+#    is the 2026-08-03 failure wearing today's clothes.
 #
-# The check runs in one direction only. Every bare-metal crate must appear in all four places; a
-# place may exclude MORE than that (xtask is host tooling, virtio is a live-device driver) because
-# those exclusions carry their own recorded reasons and are judgement rather than physics.
+# The gate still runs in one direction only. A consumer may exclude MORE than the derivation names
+# (kernel here, xtask in coverage, the Miri-only set), because those exclusions carry their own
+# recorded reasons and are judgment rather than physics.
 echo "==> the host pass excludes exactly the bare-metal crates"
 python3 - <<'PYEOF' || exit 1
 import json, pathlib, subprocess, sys
@@ -1325,57 +1436,78 @@ def reaches_user_mode_runtime(pid, seen=None):
 bare = sorted(name_of[m] for m in members
               if name_of[m] == "user_mode_runtime" or reaches_user_mode_runtime(m))
 
-lint = open("script/lint").read()
-# Every xtask source, not `main.rs` alone: milestone 365 split that file into a module per
-# command, and the exclusion list moved to the module that runs the host pass. What this check
-# means is "the list exists somewhere in xtask", so read the directory rather than one file.
+emitter = "helpers/host-excluded-crates.sh"
+
+derived = subprocess.run([emitter], capture_output=True, text=True)
+if derived.returncode != 0:
+    sys.exit(f"lint: {emitter} failed, so every host pass would derive nothing:\n{derived.stderr}")
+emitted = sorted(set(derived.stdout.split()))
+if not emitted:
+    sys.exit(f"lint: {emitter} printed no crates. The host passes would exclude nothing, and the\n"
+             "bare-metal crates would compile by accident on CI's aarch64 runner, which is how the\n"
+             "2026-08-03 break stayed invisible for eleven days.")
+if emitted != bare:
+    sys.exit("lint: the shared host-exclusion derivation disagrees with cargo metadata:\n"
+             f"  {emitter}: {' '.join(emitted)}\n"
+             f"  cargo metadata:  {' '.join(bare)}")
+
+paths = subprocess.run([emitter, "paths"], capture_output=True, text=True)
+if paths.returncode != 0:
+    sys.exit(f"lint: {emitter} paths failed:\n{paths.stderr}")
+derived_paths = sorted(set(paths.stdout.split()))
+if len(derived_paths) != len(emitted) or any(
+        p.rsplit("/", 1)[-1] not in emitted for p in derived_paths):
+    sys.exit(f"lint: {emitter} paths disagrees with its own names: {' '.join(derived_paths)}")
+
+# The wiring checks. The lint marker is assembled rather than written whole so this check does not
+# count its own search string.
+missing = []
+clippy_marker = " ".join(["--exclude", "kernel", "--exclude", "system_tests", "$bare_excludes"])
+if open("script/lint").read().count(clippy_marker) != 2:
+    missing.append("script/lint: both --workspace clippy passes must build their --exclude flags\n"
+                   "  from helpers/host-excluded-crates.sh (the $bare_excludes marker is how this\n"
+                   "  gate sees the derivation being called)")
+coverage = open("script/coverage").read()
+if emitter not in coverage:
+    missing.append("script/coverage: its run exclusions and its floor must come from\n"
+                   f"  {emitter}, and the file no longer names it")
+if emitter not in open("script/mutation").read():
+    missing.append("script/mutation: it must pass the derived set to cargo mutants on the command\n"
+                   f"  line ({emitter}), and the file no longer names it")
+# Every xtask source, not one file: milestone 365 (`xtask/src/main.rs` is 6,785 lines with no
+# module structure) split xtask into a module per command, and the
+# host pass lives in the module that runs it. What this check means is "the derivation is called
+# somewhere in xtask", so read the directory rather than one file.
 xtask_src = sorted(pathlib.Path("xtask/src").glob("*.rs"))
 if not xtask_src:
     sys.exit("lint: xtask/src/*.rs matched no file, so the host-exclusion cross-check read an "
-             "empty xtask and would have reported every crate missing (or none). See milestone 401.")
+             "empty xtask and would have reported every consumer unwired (or wired). See "
+             "milestone 401.")
 xtask = "".join(p.read_text() for p in xtask_src)
-coverage = open("script/coverage").read()
-mutants = open(".cargo/mutants.toml").read()
-missing = []
-for c in bare:
-    if f"--exclude {c}" not in lint:
-        missing.append((c, "script/lint"))
-    if f'"{c}",' not in xtask:
-        missing.append((c, "xtask/src/"))
-    # script/coverage has two exclusion mechanisms and a crate needs only the one that fits it:
-    # `--exclude` on the run (which `cargo llvm-cov report` has no equivalent of) or the awk filter
-    # that drops the file from the report. `virtio` uses only the second and `kernel` only the
-    # first, both correctly, so this asks for either rather than both.
-    if f"--exclude {c}" not in coverage and f"/{c}/src/" not in coverage:
-        missing.append((c, "script/coverage"))
-    if f'"crates/{c}/**"' not in mutants and f'"{c}/**"' not in mutants:
-        missing.append((c, ".cargo/mutants.toml"))
+if emitter not in xtask:
+    missing.append("xtask/src/: the host and Miri passes must derive their --exclude flags from\n"
+                   f"  {emitter}, and no xtask source names it")
 
 if missing:
-    sys.stderr.write("lint: crates that cannot build for the host but are not excluded:\n")
-    for c, where in missing:
-        sys.stderr.write(f"  {c}  (missing from {where})\n")
+    sys.stderr.write("lint: the host-exclusion derivation is not wired to every consumer:\n")
+    for m in missing:
+        sys.stderr.write(f"  {m}\n")
     sys.stderr.write("""
-These reach `user_mode_runtime`, which is EL0 syscall `asm!` and compiles only for aarch64 or riscv64. A
-workspace member that reaches it cannot be built by a host `cargo test`, and `--exclude` on the
-package alone does NOT help: it removes the package from the test selection, not from the dependency
-graph, so cargo builds it anyway for whoever depends on it.
+Every crate that reaches `crates/user_mode_runtime` is excluded from the host passes because its
+`svc` and `ecall` are EL0 syscalls: a fault with no kernel under them. The set is derived once, by
+helpers/host-excluded-crates.sh, and this gate re-derives it from `cargo metadata` to keep the
+derivation honest. A consumer that stops calling the derivation grows a hand list back, and a hand
+list is how the exclusion set went wrong on 2026-08-03 and stayed wrong for eleven days.
 
-Either exclude it from the host pass in ALL FOUR places above, or do what redoxfs_server/Cargo.toml
-does and put `user_mode_runtime` behind an optional `el0` feature, which is the better fix when the crate has
-host logic worth testing. Milestone 244 measured that trade for the largest such crate
-(`system_initializer`) and recommended the exclusion, with the numbers, in its own block: the pure
-fraction there is about a fifth of the mutants and a fiftieth of the lines, and every pure function
-is a leaf helper of the boot sequence beside it.
-
-The last two matter for a reason the first two do not: they are what a published REPORT counts. A
-bare-metal crate left in `.cargo/mutants.toml` is scored zero-caught against a suite that could never
-have reached it, and a bare-metal crate left in `script/coverage` drags the coverage floor down by
-lines nothing can execute.
+If a crate has host logic worth testing, the better fix is what redoxfs_server/Cargo.toml does:
+put `user_mode_runtime` behind an optional `el0` feature. Milestone 244 measured that trade for
+the largest such crate (`system_initializer`) and recommended the exclusion, with the numbers, in
+its own block: the pure fraction there is about a fifth of the mutants and a fiftieth of the
+lines, and every pure function is a leaf helper of the boot sequence beside it.
 """)
     sys.exit(1)
 
-print(f"host pass: {len(bare)} bare-metal crates, every one excluded in all four places")
+print(f"host pass: {len(bare)} bare-metal crates, derived once ({emitter}), every consumer wired to it")
 PYEOF
 
 # The same failure one level down: a TARGET the host build never selects.
@@ -1453,12 +1585,20 @@ def glob_re(g):
 block = re.search(r"exclude_globs\s*=\s*\[(.*?)\n\]", mutants, re.S).group(1)
 excluded = [glob_re(g) for g in re.findall(r'^\s*"([^"]+)"', block, re.M)]
 
+# The derived host-excluded set is not in that file: script/mutation derives it from
+# helpers/host-excluded-crates.sh and passes it to cargo-mutants on the command line (roadmap 393),
+# so a whole crate named there is out of the population no matter what exclude_globs says.
+derived_dirs = subprocess.run(["helpers/host-excluded-crates.sh", "paths"],
+                              capture_output=True, text=True, check=True).stdout.split()
+
 def rel(path):
     return path[len(root) + 1:] if path.startswith(root + "/") else path
 
 missing = []
 gated = []
 for pkg in meta["packages"]:
+    pkg_dir = rel(pkg["manifest_path"])[:-len("/Cargo.toml")]
+    derived_excluded = pkg_dir in derived_dirs
     built = set()
     for target in pkg["targets"]:
         if not target.get("required-features"):
@@ -1471,7 +1611,7 @@ for pkg in meta["packages"]:
         for f in sorted(module_tree(target["src_path"]) - built):
             r = rel(f)
             gated.append(r)
-            if not any(g.match(r) for g in excluded):
+            if not derived_excluded and not any(g.match(r) for g in excluded):
                 missing.append((pkg["name"], target["name"], r,
                                 target["required-features"]))
 
@@ -1551,12 +1691,24 @@ root = subprocess.run(["git", "rev-parse", "--show-toplevel"],
 mutants = open(".cargo/mutants.toml").read()
 
 
+# The derived host-excluded set is not in that file: script/mutation derives it from
+# helpers/host-excluded-crates.sh and passes it to cargo-mutants on the command line (roadmap 393),
+# so a whole crate named there is out of the population no matter what exclude_globs says.
+derived_dirs = subprocess.run(["helpers/host-excluded-crates.sh", "paths"],
+                              capture_output=True, text=True, check=True).stdout.split()
+
+
 def excluded(pkg):
-    """True if no line of this package is scored: its directory is in exclude_globs."""
+    """True if no line of this package is scored: its directory is in exclude_globs, or the
+    package is one of the derived host-excluded crates script/mutation passes to cargo-mutants
+    on the command line (roadmap 393; the config is not the record for that set)."""
     path = pkg["manifest_path"]
     if path.startswith(root + "/"):
         path = path[len(root) + 1:]
-    return f'"{path[: -len("/Cargo.toml")]}/**"' in mutants
+    directory = path[: -len("/Cargo.toml")]
+    if f'"{directory}/**"' in mutants:
+        return True
+    return directory in derived_dirs
 
 
 missing = []
@@ -2088,6 +2240,48 @@ REGISTRY = {
     'harness-crates': (
         'how many workspace packages carry at least one Kani proof harness',
         lambda: len(_harness_hits()),
+    ),
+    # The per-crate harness counts notes/verification/core-harnesses.md marks. One entry per crate
+    # that appendix covers, added by milestone 427 (the documentation sweep the worklist already
+    # ranks) after five of its nine counts were found wrong: a count that rots silently in prose
+    # had already cost two sweeps their re-derivation. A lane landing a harness in one of these
+    # crates bumps the number beside the marker in the same commit, which is the forcing function
+    # the total `kani-harnesses` marker already exercises.
+    'capability-harnesses': (
+        'how many Kani proof harnesses crates/capability carries',
+        lambda: _harness_hits().get('capability', 0),
+    ),
+    'memory-regions-harnesses': (
+        'how many Kani proof harnesses crates/memory_regions carries',
+        lambda: _harness_hits().get('memory_regions', 0),
+    ),
+    'paging-harnesses': (
+        'how many Kani proof harnesses crates/paging carries',
+        lambda: _harness_hits().get('paging', 0),
+    ),
+    'page-frames-harnesses': (
+        'how many Kani proof harnesses crates/page_frames carries',
+        lambda: _harness_hits().get('page_frames', 0),
+    ),
+    'device-tree-blob-harnesses': (
+        'how many Kani proof harnesses crates/device_tree_blob carries',
+        lambda: _harness_hits().get('device_tree_blob', 0),
+    ),
+    'inter-process-communication-harnesses': (
+        'how many Kani proof harnesses crates/inter_process_communication carries',
+        lambda: _harness_hits().get('inter_process_communication', 0),
+    ),
+    'generational-table-harnesses': (
+        'how many Kani proof harnesses crates/generational_table carries',
+        lambda: _harness_hits().get('generational_table', 0),
+    ),
+    'intrusive-fifo-harnesses': (
+        'how many Kani proof harnesses crates/intrusive_fifo carries',
+        lambda: _harness_hits().get('intrusive_fifo', 0),
+    ),
+    'address-space-identifier-harnesses': (
+        'how many Kani proof harnesses crates/address_space_identifier carries',
+        lambda: _harness_hits().get('address_space_identifier', 0),
     ),
     'markdown-files': (
         'how many markdown files the tree carries outside target/ and vendor/, which is the corpus '
@@ -2959,6 +3153,18 @@ echo "==> workflow steps that swallow a failure"
 python3 "$(dirname "$0")/../helpers/workflow_swallows.py" --selftest
 python3 "$(dirname "$0")/../helpers/workflow_swallows.py"
 
+# 12c. **Every file under .github/workflows/ parses** (milestone 861 (every workflow file parses);
+#     helpers/workflow_parses.py, name provisional). A comment line that loses its `#` to a
+#     line-wrap slip passes every text gate here: the pin and swallow checks match their regexes
+#     and wave the rest through. GitHub does not wave it through; the file never starts a run, and
+#     for ci.yml and verify.yml that is every pull request waiting on a required check nothing can
+#     post. The parser is `ruby -ryaml`, which the runner image and this macOS both carry; the
+#     helper's header says what it cannot see. Fixtures first, because a green run looks the same
+#     as a parser that cannot fire.
+echo "==> every workflow file parses"
+python3 "$(dirname "$0")/../helpers/workflow_parses.py" --selftest
+python3 "$(dirname "$0")/../helpers/workflow_parses.py"
+
 # 13. **The kernel links no crate only its tests use, and no fixture unless a feature asks**
 #     (milestone 609 (the system tests leave the kernel crate)). The kernel crate used to link
 #     `ps`, `pgrep`, `pmap` and `network_time_protocol` as ordinary dependencies, for nothing but
@@ -3339,6 +3545,13 @@ python3 helpers/interface_stability.py --selftest >/dev/null
 # fixtures with no git and no network. The weekly mutation workflow is the only thing that runs the
 # real check, so a change to these rules is verified here, where it lands.
 python3 helpers/mutation_inflow.py --selftest >/dev/null
+# Milestone 924 (provisional): the diff gate (helpers/mutation_diff_gate.py), the rules a
+# per-pull-request survivor must meet to merge: equivalent or gap clears, killed never does (the
+# gate just watched the mutant live), a timeout is untriaged the same as a survivor, an
+# incomplete run is exit 2 and the cap always fails. Against fixtures, with no git and no cargo.
+# The gate workflow is the only thing that runs the real decision, so a change to these rules is
+# verified here, where it lands.
+python3 helpers/mutation_diff_gate.py --selftest >/dev/null
 
 # The architect-label diff rules, the live architect-ruled read, record-ruling and the hold-release
 # rerun are checked by script/lint-fleet since milestone 889, as are the merge-watcher,

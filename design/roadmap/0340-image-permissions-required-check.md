@@ -2,10 +2,10 @@
 status: NOT-STARTED
 raised: 2026-09-03
 milestone_dependencies: none
-decision_dependencies: unwritten
+decision_dependencies: none
 machine_requirements: none
 specific_machine: none
-needs_person: no
+needs_person: yes
 ---
 # 340. `script/image-permissions` reports and does not gate, because it is not in the ruleset
 
@@ -19,7 +19,8 @@ unflipped.
 The decision is [§97 (six gates run on every pull request and none of them can stop one)](../decisions/0097-advisory-checks.md). It is one checkbox in the repository's merge queue ruleset, and only
 calef can flip it: it is a GitHub setting rather than a file in this tree, so no lane and no pull
 request can carry the change. There is nothing to build and nothing to review; the whole item is an
-ask.
+ask, and the ask is a person at the settings page, which is what the frontmatter's `needs_person`
+carries. No decision waits: §97 ruled, and the checkbox is its unperformed half.
 
 **§97 is `DECIDED` and its ruleset edit is not performed**, which is what makes this a citation
 rather than a new fork. calef ratified it on 2026-08-25 (*"Ratify as written"*), it holds that four
@@ -44,7 +45,7 @@ of checks the merge queue requires, so a red run merges anyway.
 A check that reports and does not gate is the shape this project keeps writing down as a failure.
 It sits at rung two of AGENTS.md's ladder only if it fails loudly enough to stop something; as
 configured it is rung four, a note in a run log that somebody has to read. The defect it exists to
-catch is exactly the kind nobody reads a log for: `kernel/link-x86_64.ld` shipped a single `RWX`
+catch is exactly the kind nobody reads a log for. `kernel/link-x86_64.ld` shipped a single `RWX`
 segment for however long it did, and the tree found out because a lane deleting a duplicate ELF
 parser tripped over `Error::WritableAndExecutable`. That is the same discovery path the check was
 built to replace.
@@ -71,10 +72,10 @@ a red run is visible and merges anyway, so the gate reports rather than gates."*
 Milestone 208 built `script/image-permissions`, which refuses a kernel image carrying a
 writable-and-executable `PT_LOAD`. It runs in CI and its result is visible, and it is not on the
 merge queue's list of required checks, so a red run merges anyway. A check that reports and does not
-gate is rung two of AGENTS.md's ladder only if it fails loudly enough to stop something; as
-configured it is rung four, a note in a run log somebody has to read, and the defect it exists to
-catch is exactly the kind nobody reads a log for, since `kernel/link-x86_64.ld` shipped a single
-`RWX` segment through every other gate in the tree until a lane deleting a duplicate ELF parser
+gate is rung two of AGENTS.md's ladder only if it fails loudly enough to stop something. As
+configured it is rung four, a note in a run log somebody has to read. The defect it exists to
+catch is exactly the kind nobody reads a log for. `kernel/link-x86_64.ld` shipped a single
+`RWX` segment through every other gate in the tree, and a lane deleting a duplicate ELF parser
 tripped over `Error::WritableAndExecutable`. There is a second cost, which is what the green check
 now means to a reader who reasonably concludes W^X is enforced on the image. The whole item is an
 ask: it is a repository setting rather than a file, so no lane and no pull request can carry it. If

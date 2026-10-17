@@ -1,6 +1,6 @@
-//! `test_programs`: the program images and the bare spawn and reap that more than one topic file
-//! of the userspace suite uses. Each is `pub(super)`, so it reaches the other test modules under
-//! `user` and nothing outside `cfg(test)`.
+//! `test_programs`: the program images, the bare spawn and reap, and the one progenitor-shaped
+//! spawn, that more than one topic file of the userspace suite uses. Each is `pub(super)`, so it
+//! reaches the other test modules under `user` and nothing outside `cfg(test)`.
 //!
 //! **The in-kernel userspace suite, on both instruction sets** (milestone 19 (run a real
 //! workload)'s user-test port).
@@ -31,6 +31,7 @@
 //! userspace test file is split by topic).
 
 use super::*;
+use crate::cap::{Cap, Rights};
 use crate::sched;
 
 /// **The `image_self_checker` program's ELF bytes**: the loader's subject.
@@ -126,6 +127,161 @@ pub(super) fn reap_bare(tid: crate::thread::ThreadId) -> bool {
         return true;
     }
     wait_for(|| !sched::is_thread_present(tid))
+}
+
+/// **What a progenitor-shaped spawn leaves the test that started it.**
+///
+/// The report rendezvous and its region are not here: the caller made them (it may have carved
+/// more from the region than the report line, as `live_swap_tests` does) and keeps them.
+pub(super) struct Started {
+    /// The program's thread. Its space is bound to it and goes when it is reaped.
+    pub tid: crate::thread::ThreadId,
+    /// The budget region, slot 0's object, for `USAGE` reads and reclaim.
+    pub budget: u64,
+    /// The region the thread control block was retyped from.
+    pub thread_control_block_region: u64,
+}
+
+/// **One progenitor-shaped spawn for the system tests** (milestone 794 (one progenitor-shaped spawn
+/// for the system tests)).
+///
+/// Start `name` the way the kernel starts the progenitor: its ELF laid out in a hand-built space,
+/// a stack, the timebase page on x86_64 and riscv64, the whole initial ramdisk mapped read-only
+/// at [`INITIAL_RAMDISK_VA`], the budget's region capability in slot 0 and `report` in slot 1,
+/// configure, and start with the archive's length in `x1`. Returns once the program is running.
+/// A harness that spawns this way is proving the program's *choices* rather than a privileged
+/// shortcut, which is why every copy this replaces said "deliberately the same endowment
+/// `spawn_hello` gives" over its own body.
+///
+/// The four copies it replaced (`authority_tests::spawn_tree`, `c_seam_tests::spawn_confiner`,
+/// `live_swap_tests::spawn_swapper`, `process_composition_service::wire`) agreed line for line
+/// apart from the names inside their `.expect` messages, and every one of them carried the space
+/// budget's `log_pages_for(initial_ramdisk_pages)` term, so a change to that accounting was an
+/// edit to each. The kernel's own `spawn_hello` is still a sixth copy and is deliberately not
+/// folded here: it also measures the program and routes the boot interrupts, which no test
+/// harness wants. `timetable_tests::spawn_timetable_with` is the call site that stayed whole: its
+/// slots are its own four-slot contract (output, budget, child report, deaths), its archive is a
+/// narrowed copy it builds rather than the initial ramdisk, and its stack, extra mappings and
+/// start arguments are its own. A helper parameterized to cover all of that would be
+/// `spawn_timetable_with` wearing this one's name.
+///
+/// [`crate::user::run`] cannot serve these callers: its extra mapped pages arrive as a slice,
+/// and the archive is a few thousand pages the suite has no allocator to build a slice from.
+/// That is why the space is hand-built here, the same as at every site this replaces.
+///
+/// The parameters past `report_rights` exist for the two callers that hold more than the
+/// progenitor's floor. `further_caps` are inserted one apiece in the slots after 1, in order,
+/// each paired with the name its failure message should carry. `bound_notification` is bound to
+/// the thread between configure and start, because that is the only order with no race in it: a
+/// program that reached a wait before its notification was bound would park outside the
+/// bind-delivers-what-was-counted rule. The bind is the spawner's to make (a running thread holds
+/// no capability to its own TCB), the same hand `net_stack`'s wiring performs for its retransmit
+/// wait.
+///
+/// Name: provisional (milestone 794's lane, 2026-10-16 UTC).
+#[allow(clippy::too_many_arguments)] // the endowment's rights and the two beyond-the-floor extensions are each a real part of the shape
+pub(super) fn spawn_progenitor_shaped(
+    name: &str,
+    budget_pages: u64,
+    budget_rights: Rights,
+    report: sched::RendezvousId,
+    report_rights: Rights,
+    further_caps: &[(Cap, &str)],
+    bound_notification: Option<sched::NotificationId>,
+    x0: u64,
+) -> Started {
+    let (initial_ramdisk_start, initial_ramdisk_len) =
+        memory::initial_ramdisk_region().expect("no initial ramdisk region");
+    let initial_ramdisk_pages = initial_ramdisk_len.div_ceil(FRAME_SIZE);
+    let Some(bytes) = program(name) else {
+        panic!("no {name} program in the initial ramdisk");
+    };
+    let Ok(elf) = Elf::parse(bytes) else {
+        panic!("{name} is not loadable");
+    };
+
+    // The budget every hand-built space here counts: each segment's pages, a table share for the
+    // archive window, the window's log pages (`map_physical` records), the stack, and slack.
+    let content: u64 = elf
+        .segments()
+        .map(|seg| {
+            let (s, e) = seg.page_range(FRAME_SIZE);
+            (e - s) / FRAME_SIZE
+        })
+        .sum::<u64>()
+        + 1
+        + initial_ramdisk_pages / 512
+        + crate::revoke::log_pages_for(initial_ramdisk_pages)
+        + INIT_STACK_PAGES
+        + 8;
+    let mut space = AddressSpace::new(content).unwrap_or_else(|| panic!("no memory for {name}"));
+    map_segments(&mut space, &elf).unwrap_or_else(|e| panic!("could not lay out {name}: {e}"));
+    for k in 0..INIT_STACK_PAGES {
+        space
+            .map_new(USER_STACK_VA - k * FRAME_SIZE, Flags::user_data())
+            .unwrap_or_else(|e| panic!("could not map {name}'s stack: {e:?}"));
+    }
+    #[cfg(any(target_arch = "x86_64", target_arch = "riscv64"))]
+    map_timebase_page(&mut space)
+        .unwrap_or_else(|e| panic!("could not map {name}'s timebase page: {e:?}"));
+    // The ramdisk is reserved RAM the frame allocator does not own, so this maps rather than
+    // allocates, one read-only page at a time, exactly as `spawn_hello` maps it.
+    for i in 0..initial_ramdisk_pages {
+        space
+            .map_physical(
+                INITIAL_RAMDISK_VA + i * FRAME_SIZE,
+                initial_ramdisk_start + i * FRAME_SIZE,
+                Flags::user_rodata(),
+                crate::revoke::PageMapSource::NoCapability,
+            )
+            .unwrap_or_else(|e| panic!("could not map the initial ramdisk into {name}: {e:?}"));
+    }
+    let aspace = readopt_user_address_space(space)
+        .unwrap_or_else(|| panic!("could not register {name}'s space"));
+
+    let budget = crate::memory_region::create(budget_pages)
+        .unwrap_or_else(|| panic!("no budget for {name}"));
+    let thread_control_block_region =
+        crate::memory_region::create(2).expect("no region for a thread control block");
+    let tid = sched::create_thread_control_block(thread_control_block_region)
+        .unwrap_or_else(|| panic!("no thread control block for {name}"));
+    let slot = sched::thread_control_block_insert_cap(
+        tid,
+        crate::cap::memory_region_cap_rights(budget, budget_rights),
+        None,
+    )
+    .expect("insert the budget");
+    assert_eq!(slot, 0, "{name}'s budget must land in slot 0");
+    let slot = sched::thread_control_block_insert_cap(
+        tid,
+        crate::cap::rendezvous_cap(report, report_rights),
+        None,
+    )
+    .expect("insert the report endpoint");
+    assert_eq!(slot, 1, "{name}'s report endpoint must land in slot 1");
+    for (i, (capability, what)) in further_caps.iter().enumerate() {
+        let slot = sched::thread_control_block_insert_cap(tid, *capability, None)
+            .unwrap_or_else(|e| panic!("could not insert {name}'s {what}: {e:?}"));
+        assert_eq!(
+            slot,
+            (i + 2) as u64,
+            "{name}'s {what} must land in slot {}",
+            i + 2
+        );
+    }
+    sched::configure_thread_control_block(tid, elf.entry(), USER_STACK_TOP, aspace)
+        .unwrap_or_else(|e| panic!("could not configure {name}: {e:?}"));
+    if let Some(notification) = bound_notification {
+        sched::notification_bind(notification, tid)
+            .unwrap_or_else(|e| panic!("{name}'s notification would not bind: {e:?}"));
+    }
+    sched::start_thread_control_block(tid, [x0, initial_ramdisk_len, 0])
+        .unwrap_or_else(|e| panic!("could not start {name}: {e:?}"));
+    Started {
+        tid,
+        budget,
+        thread_control_block_region,
+    }
 }
 
 /// The `std_exerciser` std program's ELF bytes. The same binary the offline std test spawns; given

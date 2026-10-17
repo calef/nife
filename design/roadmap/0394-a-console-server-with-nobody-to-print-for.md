@@ -14,14 +14,15 @@ Filed 2026-09-13 as an unnumbered proposal, left behind by
 existed to print for it running; numbered 2026-09-19 by milestone 433's drain of the proposal pile.
 Premise re-read against the tree on 2026-09-19 and still true: the tour arm of
 `kernel/src/main.rs` still runs `user::initial_ramdisk().map(|_| user::console_service::start())` (line 1768
-now, 1676 when this was written), and `kernel/src/user/console_service.rs` still carries the
+now, 1676 when this was written). `kernel/src/user/console_service.rs` still carries the
 `#[expect(dead_code, reason = "no client since the narrator went; see milestone 267's block")]` on
 `Console`, whose own doc comment says the `expect` is this question made visible and should be
 deleted when the question is answered. *(Number provisional until the merge queue lands it.)*
 
 The decision is
-§179 (whether the tour boot keeps starting a console server that has no client), written up
-2026-09-19 by milestone 435's slice-c lane because this gate named no section and the ask lived only
+§179 (whether the tour boot keeps starting a console server that has no client). It was written up
+2026-09-19 by milestone 435 (forty-five milestones are gated on a decision nobody wrote
+down)'s slice-c lane because this gate named no section and the ask lived only
 in the prose below, addressed to one person. calef's, and specifically because the answer is not
 "delete it": this is infrastructure rather than a demonstration, and the lane that found it was told
 to report rather than decide. Nothing is blocked meanwhile; the boot is correct either way.
@@ -49,7 +50,7 @@ Not correctness, and saying so plainly matters because the cheap read is that th
 not. The server blocks in a rendezvous rather than spinning, so it burns no CPU; `no_leaked_threads`
 does not police it because the tour boot is not a test boot.
 
-What it does cost is real but small: one spawned process with its own address space, one zeroed
+What it does cost is real but small. One spawned process with its own address space, one zeroed
 frame for a shared page nobody writes, two rendezvous objects, and a second mapping of the UART's
 registers handed to a program that will never use them. That last one is the item worth a
 decision. This tree's whole argument is that authority is granted deliberately; a device mapping
@@ -91,19 +92,19 @@ a fork a lane should take on its own initiative on the strength of a `dead_code`
 
 On a tour boot the kernel still spawns `components/src/console.rs`, a real UART driver at EL0
 holding the PL011's registers, which blocks on `receive(REQUEST)` for ever because nothing in that boot
-holds a capability naming its endpoint: its only client was the narrator, deleted on 2026-09-13. The
+holds a capability naming its endpoint. Its only client was the narrator, deleted on 2026-09-13. The
 compiler agrees rather than a reader inferring it, since every field of `console_service::Console`
 is written by `start` and read by nobody, and the `#[expect(dead_code)]` on that struct is this
 question made visible in the code. It costs no correctness and no CPU, because the server blocks in
 a rendezvous, and saying that plainly matters, because the cheap read is that this is a leak. What
 it does cost is one process with its own address space, one zeroed frame nobody writes, two
 rendezvous objects, and a second mapping of the UART's registers handed to a program that will never
-use them, which is the item worth a decision: this tree's whole argument is that authority is
+use them. That is the item worth a decision. This tree's whole argument is that authority is
 granted deliberately, and a device mapping that exists because of a program deleted four days
-earlier is the opposite of deliberate. Three options, each with what it actually changes: leave it
-and accept that the exercise is worth very little, stop starting it on the tour boot (which deletes
+earlier is the opposite of deliberate. Three options, each with what it actually changes. Leave it,
+and accept that the exercise is worth very little. Stop starting it on the tour boot, which deletes
 a kernel module and one boot line and deletes no program, because `components/src/console.rs` has
-four consumers that have nothing to do with this path), or give it a client again, which is the
+four consumers that have nothing to do with this path. Or give it a client again, which is the
 option that says the server was infrastructure rather than scaffolding and wants somebody to say so
 out loud. It is an architect's because it is not the narrator, and because the second option touches
 the boot path where the three arms diverge.

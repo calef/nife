@@ -50,7 +50,7 @@ Three reasons, in the order this project ranks things.
    *server* will describe itself the way an ARM server does, and this kernel will not understand it.
 2. It is on the rented-capacity path. Milestone 88 (nife on rented silicon) and
    milestone 89 (Scaleway EM-RV1: a second RISC-V implementation, rented) are both gated on hardware
-   calef has to provide, and the RV1's TH1520 is a pre-RVA23 embedded part that boots from a device tree, so it
+   calef has to provide. And the RV1's TH1520 is a pre-RVA23 embedded part that boots from a device tree, so it
    does **not** exercise this. The machine that will is the one Asanović said the ecosystem still
    lacks (*"Need large-scale deployments, cloud instances to support devs"*, State of the Union
    slide 5), which means the port should be done *before* the box exists rather than in the hour it
@@ -65,7 +65,7 @@ Three reasons, in the order this project ranks things.
 Deliberately small, and it ends with a transcript rather than a design:
 
 - Boot `qemu-system-riscv64 -M virt` with ACPI on and read RSDP, RSDT/XSDT and MADT through the
-  existing x86_64 parsing, confirming what riscv64's ACPI actually offers (RINTC entries for harts,
+  existing x86_64 parsing. That confirms what riscv64's ACPI actually offers (RINTC entries for harts,
   where the IMSIC/APLIC live, whether PCIe ECAM comes from MCFG rather than from the DTB).
 - Decide the precedence rule and write it down: a machine may present **both** a DTB and ACPI, and
   the kernel has to say which it believes and why. That choice belongs in the block, not here.

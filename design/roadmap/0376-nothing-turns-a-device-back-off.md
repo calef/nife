@@ -2,10 +2,10 @@
 status: NOT-STARTED
 raised: 2026-09-04
 milestone_dependencies: none
-decision_dependencies: unwritten
-machine_requirements: none
-specific_machine: none
-needs_person: no
+decision_dependencies: 304
+machine_requirements: riscv64 silicon (the JH7110 STG domain is the measured thing)
+specific_machine: radon (the JH7110 board; the measurement is its power draw)
+needs_person: yes
 ---
 # 376. Nothing turns a device back off
 
@@ -15,11 +15,19 @@ promoted by milestone 433 on 2026-09-19. Checked against the tree that day and n
 `crates/jh7110_clock_and_reset` exposes `discover`, the offset and mask arithmetic, and the two
 read-back predicates (`clocks_running`, `was_already_up`), with no path that gates a clock or
 asserts a reset, and `kernel/src/drivers/jh7110_clock_and_reset.rs` still offers no teardown. The
-decision the gate names is unanswered: nothing in `design/decisions/` takes up who may turn a device
-off.
+gate is decided:
+[§304 (who may turn a device off)](../decisions/0304-who-may-turn-a-device-off.md), 2026-10-15:
+measure before building. This milestone's next work is the bench run, radon with the STG domain
+ungated and gated, the power difference recorded. What gets built, if anything, is considered
+against that number. The kernel-reclaim shape (per-job off
+[§40 (a supervisor's death is its subtree's death)](../decisions/0040-no-reaper-of-last-resort.md),
+refcounted per shared line, no new surface) is the named candidate. No capability variant
+appears without a driver that needs one.
 
-The mechanism is small; who is allowed to hold it is an architect's, because the
-answer decides whether a capability variant appears on the syscall surface (§10, §16).
+The mechanism is small; the authority question is ruled. No capability variant in the category
+[§10 (process model: capability-based, microkernel)](../decisions/0010-capability-microkernel.md)
+and [§16 (object revocation)](../decisions/0016-object-revocation.md) keep narrow, and nothing is
+built before the number.
 
 What the work is. `crates/jh7110_clock_and_reset` can enable a clock and release a reset. It cannot gate a
 clock or assert a reset, and `kernel/src/drivers/jh7110_clock_and_reset.rs` offers no teardown at all. So a
@@ -67,10 +75,13 @@ forever with nothing able to reclaim it. On a board with one TRNG that costs not
 the same SoC's USB, PCIe and DMA blocks it is the whole of device power management. The lane
 refused to just add the inverse, for a reason in the hardware: the JH7110's TRNG reset is documented
 as shared, the same line resets the PL080 DMA engine, so "turn my device off" is "reset a block my
-neighbor is using", and the refcounting Linux gets from its clock framework does not exist here.
+neighbor is using". The refcounting Linux gets from its clock framework does not exist here.
 Three questions make it calef's. Who may gate a clock, since a teardown a driver can ask for is a
 different question from a controller a driver can hold and the first may need no new syscall
 surface. What the unit of reclamation is, per-device with a refcount or per-job off §40's subtree
 death. And whether it is worth anything before somebody measures what an ungated STG domain costs
 radon, because a milestone justified by tidiness rather than a number is the tenet about
-implementation convenience running backwards.
+implementation convenience running backwards. §304 ruled the third question on 2026-10-15: measure
+first. The bench run is this milestone's next work and needs a person at the board; what gets
+built is considered against the number, and no capability variant appears without a driver that
+needs one.

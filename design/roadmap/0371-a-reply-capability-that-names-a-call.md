@@ -19,7 +19,7 @@ hazard is closed, and it is closed at rung two.
 
 No decision is owed. It changes `Object::Reply`'s payload, which is kernel-internal
 (the capability is minted by the kernel, never forged and never delegated, so no wire format and no
-user program agrees on its shape), and it wants a lane that can also state the new invariant as a
+user program agrees on its shape). It wants a lane that can also state the new invariant as a
 Kani property.
 
 **In brief.** `cap::reply_cap` mints `Object::Reply(tid)`: a generational thread name and
@@ -71,9 +71,10 @@ Nothing. Milestone 254 shipped the mitigation, and the property holds today.
 
 `cap::reply_cap` mints `Object::Reply(tid)`, a generational thread name and nothing else, so
 `sched::ipc_reply`'s guard can ask whether a thread is parked awaiting some reply and not whether it
-is awaiting this one. Milestone 254 closed the hazard with a sweep that deletes every
-`Object::Reply(caller)` in the machine before freeing a stranded caller, which is seL4's non-MCS
-answer and is correct today because the sweep runs at all four places a server can stop being able
+is awaiting this one. Milestone 254 (a caller stranded by a server that died is stranded forever,
+and nothing records that as intended) closed the hazard with a sweep that deletes every
+`Object::Reply(caller)` in the machine before freeing a stranded caller. That is seL4's non-MCS
+answer. It is correct today because the sweep runs at all four places a server can stop being able
 to answer. Nothing in the type system says so, and a fifth way to stop answering, added by somebody
 who has not read `strand_reply_caller`, reopens it silently. A call identity in the payload makes a
 stale capability name a call that is over, so the guard compares and refuses and no sweep has to be

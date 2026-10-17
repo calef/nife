@@ -22,14 +22,14 @@ hand-maintained) applied to `design/decisions/`, over files already in the tree.
 ## The shape, because it is the one already solved next door
 
 Hand-maintained, `design/roadmap/README.md` was the tree's worst merge conflict, structurally rather
-than by bad luck: every lane edits its own milestone's block, every milestone also needs a row in
+than by bad luck. Every lane edits its own milestone's block, every milestone also needs a row in
 one sorted table, so every lane in flight collided with every other lane in flight, always, in that
 one file. Eight conflicts in a single session on 2026-09-14. Milestone 294 derived the row from the
 block and the conflicts stopped.
 
 `design/decisions/README.md` is 194 rows of exactly that table and nothing derives it. Every lane
 that lands a decision edits the index by hand, and §194 names it in passing as one of the two
-"generated indexes" that conflict on every interleave, which is half true: the roadmap one is
+"generated indexes" that conflict on every interleave. That is half true: the roadmap one is
 generated and this one is not.
 
 ## What it would take
@@ -40,7 +40,7 @@ already parses all of them, and already checks that the row and the file agree, 
 that becomes unnecessary the moment one is derived from the other.
 
 So the work is the same three pieces 294 had, minus its hard part: there is no hand-written
-summary column to migrate, which was 294's whole expense (288 blocks, a median similarity of 0.07
+summary column to migrate. That was 294's whole expense (288 blocks, a median similarity of 0.07
 against the opening paragraph, so the column had to move verbatim rather than be derived).
 
 1. `script/decisions --write` renders the table between markers, `--index` prints it.
@@ -62,5 +62,5 @@ be its second customer rather than a second instance of it.
 ## Index row
 
 Hand-maintained, `design/roadmap/README.md` was the tree's worst merge conflict, structurally rather
-than by bad luck: every lane edits its own milestone's block, every milestone also needs a row in
+than by bad luck. Every lane edits its own milestone's block, every milestone also needs a row in
 one sorted table, so every lane in flight...

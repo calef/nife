@@ -1,3 +1,4 @@
+use super::test_programs::spawn_progenitor_shaped;
 use super::*;
 use crate::sched;
 
@@ -124,45 +125,6 @@ const MAX_REPORTS: usize = 42;
 /// thing this milestone is about: a device capability in slot 2, `WRITE|GRANT`, exactly as the progenitor gets one at boot. So
 /// what is under test is the operator's choices, not a privileged shortcut.
 fn spawn_swapper(role: u64) -> (sched::RendezvousId, u64, u64, u64) {
-    let (initial_ramdisk_start, initial_ramdisk_len) =
-        memory::initial_ramdisk_region().expect("no initial ramdisk region");
-    let initial_ramdisk_pages = initial_ramdisk_len.div_ceil(FRAME_SIZE);
-    let bytes = program("swapper").expect("no swapper program in the initial ramdisk");
-    let elf = Elf::parse(bytes).expect("swapper is not loadable");
-
-    let content: u64 = elf
-        .segments()
-        .map(|seg| {
-            let (s, e) = seg.page_range(FRAME_SIZE);
-            (e - s) / FRAME_SIZE
-        })
-        .sum::<u64>()
-        + 1
-        + initial_ramdisk_pages / 512
-        + crate::revoke::log_pages_for(initial_ramdisk_pages)
-        + INIT_STACK_PAGES
-        + 8;
-    let mut space = AddressSpace::new(content).expect("no memory for swapper");
-    map_segments(&mut space, &elf).expect("could not lay out swapper");
-    for k in 0..INIT_STACK_PAGES {
-        space
-            .map_new(USER_STACK_VA - k * FRAME_SIZE, Flags::user_data())
-            .expect("could not map swapper's stack");
-    }
-    #[cfg(any(target_arch = "x86_64", target_arch = "riscv64"))]
-    map_timebase_page(&mut space).expect("could not map swapper's timebase page");
-    for i in 0..initial_ramdisk_pages {
-        space
-            .map_physical(
-                INITIAL_RAMDISK_VA + i * FRAME_SIZE,
-                initial_ramdisk_start + i * FRAME_SIZE,
-                Flags::user_rodata(),
-                crate::revoke::PageMapSource::NoCapability,
-            )
-            .expect("could not map the initial ramdisk");
-    }
-    let aspace = readopt_user_address_space(space).expect("register the swapper aspace");
-
     // Carved from a region this run owns and reclaims, not from the kernel's own pool:
     // `sched::create_rendezvous` grows that pool in 32-page chunks it never frees, so every run
     // costs the suite a page for good and the ledger moves in +32 steps (the `BUGS` on
@@ -170,62 +132,44 @@ fn spawn_swapper(role: u64) -> (sched::RendezvousId, u64, u64, u64) {
     // claim) added a ninth run and crossed a chunk boundary, which is how this was found. Four
     // pages: the report rendezvous, and (milestone 800 (a non-Anthropic model attacks the
     // confinement claim), fourth pass) the notification and timer that make the operator's un-park
-    // of the plant bounded.
+    // of the plant bounded. The helper cannot make these, which is why the rendezvous arrives
+    // made: the notification and timer are carved from the same region the report line comes from.
     let report_region = crate::memory_region::create(4).expect("no region for the report endpoint");
     let report = sched::create_rendezvous_from(report_region).expect("no report rendezvous");
     let wake = sched::create_notification_from(report_region).expect("no notification for swapper");
     let retransmit = sched::create_timer_from(report_region).expect("no timer for swapper");
-    let budget = crate::memory_region::create(SWAPPER_BUDGET_PAGES).expect("no budget for swapper");
-    let thread_control_block_region = crate::memory_region::create(2).expect("no tcb region");
-    let tid = sched::create_thread_control_block(thread_control_block_region).expect("no tcb");
-    let s0 = sched::thread_control_block_insert_cap(
-        tid,
-        crate::cap::memory_region_root_cap(budget),
-        None,
+    let started = spawn_progenitor_shaped(
+        "swapper",
+        SWAPPER_BUDGET_PAGES,
+        crate::cap::Rights::ALL,
+        report,
+        crate::cap::Rights::WRITE.union(crate::cap::Rights::GRANT),
+        &[
+            (
+                crate::cap::device_frame_cap(
+                    UART_PHYS,
+                    crate::cap::Rights::WRITE.union(crate::cap::Rights::GRANT),
+                ),
+                "device capability",
+            ),
+            (
+                crate::cap::notification_cap(wake, crate::cap::Rights::ALL),
+                "notification",
+            ),
+            (
+                crate::cap::timer_cap(retransmit, crate::cap::Rights::ALL),
+                "timer",
+            ),
+        ],
+        Some(wake),
+        role,
+    );
+    (
+        report,
+        started.budget,
+        started.thread_control_block_region,
+        report_region,
     )
-    .expect("insert budget");
-    assert_eq!(s0, 0, "swapper's budget must land in slot 0");
-    let s1 = sched::thread_control_block_insert_cap(
-        tid,
-        crate::cap::rendezvous_cap(
-            report,
-            crate::cap::Rights::WRITE.union(crate::cap::Rights::GRANT),
-        ),
-        None,
-    )
-    .expect("insert report");
-    assert_eq!(s1, 1, "swapper's report rendezvous must land in slot 1");
-    let s2 = sched::thread_control_block_insert_cap(
-        tid,
-        crate::cap::device_frame_cap(
-            UART_PHYS,
-            crate::cap::Rights::WRITE.union(crate::cap::Rights::GRANT),
-        ),
-        None,
-    )
-    .expect("insert device");
-    assert_eq!(s2, 2, "swapper's device capability must land in slot 2");
-    let s3 = sched::thread_control_block_insert_cap(
-        tid,
-        crate::cap::notification_cap(wake, crate::cap::Rights::ALL),
-        None,
-    )
-    .expect("insert the bound notification");
-    assert_eq!(s3, 3, "swapper's notification must land in slot 3");
-    let s4 = sched::thread_control_block_insert_cap(
-        tid,
-        crate::cap::timer_cap(retransmit, crate::cap::Rights::ALL),
-        None,
-    )
-    .expect("insert the un-park timer");
-    assert_eq!(s4, 4, "swapper's timer must land in slot 4");
-    sched::configure_thread_control_block(tid, elf.entry(), USER_STACK_TOP, aspace)
-        .expect("configure");
-    // The bind is the spawner's to make (a running thread holds no capability to its own TCB), the
-    // same hand `net_stack`'s wiring performs for its retransmit wait.
-    sched::notification_bind(wake, tid).expect("bind the swapper's notification");
-    sched::start_thread_control_block(tid, [role, initial_ramdisk_len, 0]).expect("start");
-    (report, budget, thread_control_block_region, report_region)
 }
 
 /// **Run one swap system to its own verdict**, returning every report it made.

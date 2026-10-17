@@ -11,16 +11,17 @@ VisionFive 2 as a remote target and the gap becoming concrete the same hour.
 What was built. `script/board-console` (name provisional), over `cargo xtask board-console`
 and `crates/board_console` (both names provisional). It opens the port at 115200 8N1, tees every
 byte to a log file that is never optional, recognizes the runbook's boot sequence, and returns a
-different exit status for each way a session can end: reached the stage asked for, the board
-announced a failure, it spoke and then went quiet, the time ran out, the port would not open. That
+different exit status for each way a session can end. Reached the stage asked for, the board
+announced a failure, it spoke and then went quiet, the time ran out, or the port would not open.
+That
 five-way answer is the deliverable rather than a nicety, because a bench script's whole reason to
 exist is telling a hang from a refusal. See notes/board-console.md, which carries the runbook, the
 marker table with each marker's source, and the BUGS.
 
 Built with the board powered off, then checked against the board. The tool was written and
-tested with no hardware: fixtures fed one byte at a time for the recognizer, sources that block
-forever for the deadline, a FIFO standing in for a port to cover a failing `stty` and a source that
-speaks and then stops, and the real CH343 dongle for everything except the board, including that
+tested with no hardware. Fixtures fed one byte at a time for the recognizer, sources that block
+forever for the deadline, a FIFO standing in for a port to cover a failing `stty`, and a source that
+speaks and then stops. The real CH343 dongle covered everything except the board, including that
 `stty` on the already-open descriptor moves it from 9600 to 115200 and reverts on exit. Then
 calef powered the board on, on 2026-09-01, and captured a full boot and a full failure. Both are
 committed under `crates/board_console/tests/fixtures/captured/` as raw bytes off the wire, and
@@ -37,7 +38,7 @@ The first is a third outcome. From power-on, the extlinux path ends `Moving Imag
 `Device tree not found or missing FDT support` / `### ERROR ### Please RESET the board ###`,
 exactly the caveat notes/visionfive2.md records about U-Boot's fallback DTB addresses. That arrives
 after the image loads and before the kernel runs, so a recognizer that knew only the stages would
-have called the silence after it a hang, which is the worst available answer: it sends somebody
+have called the silence after it a hang, which is the worst available answer. It sends somebody
 hunting a multicore bug in a kernel that never started. Booted, hung, and refused-before-the-kernel
 are three outcomes, and the tool now exits 1 for the refusal and 2 for a hang.
 
@@ -67,7 +68,7 @@ payload captures a truncated one. So a tail may ratchet a stage and may not sett
 or capture text.
 
 Nothing gated this, which was the point when it was minted and is now a fact rather than a
-plan: no board was needed to build the thing that lets a lane use a board it cannot see, and none
+plan. No board was needed to build the thing that lets a lane use a board it cannot see, and none
 was available while it was built.
 
 In brief. `script/console` runs `cargo xtask shell`, which is QEMU. `script/board-image` builds
@@ -78,7 +79,7 @@ means "the board is on the desk" needs a person at a terminal emulator, reading 
 
 That is the binding constraint on the fatal risks rather than a convenience. Four of the five
 unrun entries in `design/fatal-risks/README.md` are hardware-gated, and risk 5 (it cannot be made reliable
-on multicore, and the bugs appear only on silicon) is the one this hurts most: its own decisive
+on multicore, and the bugs appear only on silicon) is the one this hurts most. Its own decisive
 experiment is *sustained* stress with the load-sensitive assertions live, and its text is honest
 that the class "produces a confidence rather than a verdict". Sustained is exactly what a person at
 a bench is worst at.
@@ -88,7 +89,7 @@ a bench is worst at.
 calef wired the rig on 2026-09-01. The UART is a WCH CH343 dongle, presenting as CDC-ACM, at
 `/dev/cu.usbmodem*` on the development Mac; it enumerates whether or not the board is powered.
 Board power is on a Kasa smart strip, and `~/.local/bin/vf2-power` on that machine drives it, with
-the outlet addressed by alias and no way for a caller to name a different one, because another
+the outlet addressed by alias and no way for a caller to name a different one. Another
 outlet on that strip feeds an external drive that must never be switched off.
 
 **The plug was not reachable from either machine when this was written** (discovery found nothing
@@ -140,10 +141,11 @@ invocation:
 
 ## Driving U-Boot: mostly answered elsewhere, and a small residue that is not
 
-This block proposed a milestone for making the console drive U-Boot. **Milestones 217 (the card
-carries a kernel and an archive from different builds, and the gate is the only thing that noticed)
-and 218 (every boot of the VisionFive 2 needs a human typing four commands into U-Boot) were minted
-the same day and take most of it**, so the proposal is withdrawn rather than left duplicating them.
+This block proposed a milestone for making the console drive U-Boot. **Milestones 217 and 218 were
+minted the same day and take most of it.** 217 (the card
+carries a kernel and an archive from different builds, and the gate is the only thing that noticed).
+218 (every boot of the VisionFive 2 needs a human typing four commands into U-Boot). The proposal is
+withdrawn rather than left duplicating them.
 218 is the better framing: a rig that works by typing at U-Boot's prompt is recreating in a script
 what the boot loader is supposed to do, and depends on catching a two-second window. Fix the boot
 path and nothing needs to type.
@@ -152,7 +154,7 @@ path and nothing needs to type.
 ever be able to write to the port at all?* 218 may remove the need entirely, in which case the
 answer is no and this stays a reader. If 218's routes all fail, something has to type, and then the
 question is whether it is this tool with an explicit mode or a second one. The argument for one tool
-is that the port can only be held once and a driver contains a reader; the argument for two is that
+is that the port can only be held once and a driver contains a reader. The argument for two is that
 a tool which writes to a board is a more dangerous object than one that reads, which is the
 reasoning this block already applies to power.
 
@@ -194,8 +196,8 @@ as built serves every read-only use, and 218 is the thing to do first either way
 - **Milestone 324.** Whether `script/board-console`
   should ever be able to write to the serial port at all, and if so whether that is this tool with
   an explicit mode or a second tool. It is an architect's call. Milestone 218 (a human typing four
-  commands into U-Boot) may remove the need by fixing autoboot, in which case the answer is no;
-  while it is open, a bench session facing a board that will not boot has no sanctioned way to type
+  commands into U-Boot) may remove the need by fixing autoboot. The answer is then no, and while it
+  is open a bench session facing a board that will not boot has no sanctioned way to type
   at it.
 - **Milestone 324.** Whether argon
   (aarch64) and xenon (x86_64) get this console with a board profile or a tool each. Same behavior,
@@ -211,7 +213,7 @@ way a session ends. Built with no hardware, then **checked against four real cap
 2026-09-01, all committed as raw bytes and asserted on: two successful boots, U-Boot refusing
 before the kernel ran, and the kernel halting at the measured-boot gate. The documentation was
 right about every marker it named and silent about two the board prints. **The captures broke two
-things reasoning had got wrong**: a refusal that prints the whole banner before halting was
+things reasoning had got wrong**. A refusal that prints the whole banner before halting was
 reported as a success (fixed by a settle window), and silence after the tour was reported as a
 hang when it is how a good boot ends in `wfi`. A genuine hang is the one outcome with no real
 sample. It reads and never writes; 217 and 218 took the driving question.

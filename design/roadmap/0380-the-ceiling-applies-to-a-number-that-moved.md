@@ -5,9 +5,10 @@ built: 2026-09-04
 ---
 # 380. DECISIONS §144's ceiling names two terms and milestone 188 changed both
 
-Filed as a proposal that day by the milestone 188 lane, and folded
-into the decision the same day by whoever held §144, which is exactly what it asked for and is why
-it was written as a proposal rather than as an edit. Promoted by milestone 433 on 2026-09-19, when
+Filed as a proposal that day by the milestone 188 (the IPC fastpath) lane, and folded
+into the decision the same day by whoever held §144. That is exactly what it asked for and is why
+it was written as a proposal rather than as an edit. Promoted by milestone 433 (drain the proposal
+pile to zero) on 2026-09-19, when
 `design/decisions/0144-fastpath-footprint-ceiling.md` was read against it. That section now states
 the ceiling as *"an absolute ceiling of 16 KiB, per architecture, on `script/fastpath-footprint`'s
 `total`"*, carries a paragraph headed "Amended 2026-09-04, the same day, because milestone 188
@@ -55,7 +56,7 @@ move the number.
 
 §144's `BUGS` already says the measurement is "an upper bound and a loose one" and that "the bytes an
 IPC actually touches are fewer and nobody knows by how much". Milestone 188 narrowed that by a
-measured amount on one architecture and widened what is counted on all three, and a decision whose
+measured amount on one architecture and widened what is counted on all three. A decision whose
 recorded headroom is 9 points optimistic on x86_64 is the kind of stale record this tree keeps
 finding by accident.
 
@@ -75,13 +76,14 @@ finding by accident.
   that on one architecture and widened what is counted on all three; it did not close it.
   `design/decisions/0144-fastpath-footprint-ceiling.md`.
 - **Refused.** Moving the 16 KiB number. Neither this block nor milestone 188 asked calef to, and
-  neither should be read as having done so: the ceiling's derivation from a 32 KB L1i is untouched
+  neither should be read as having done so. The ceiling's derivation from a 32 KB L1i is untouched
   by a correction to what is being summed, and only calef raises it.
 
 ## Index row
 
-DECISIONS §144 set a 16 KiB ceiling "on the sum of `ipc_fastpath` and `syscall_entry`" and milestone
-188 changed both terms the same day: the gate now reports two IPC shapes and keeps the worse of
+DECISIONS §144 (the fastpath footprint gate gets a delta and a ceiling, and the ceiling is 16 KiB)
+set a 16 KiB ceiling "on the sum of `ipc_fastpath` and `syscall_entry`" and milestone
+188 changed both terms the same day. The gate now reports two IPC shapes and keeps the worse of
 them, and aarch64's entry figure stopped counting fifteen exception-vector entries an `svc` never
 fetches. A lane may not amend `design/decisions/`, so the correction was written as a proposal and
 folded in by whoever held the section, on the day it was filed. The ceiling's subject is

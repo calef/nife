@@ -17,7 +17,7 @@ the steps are in notes/boot-stick.md.
 
 DECISIONS §157, amended twice on 2026-09-19: a trivial install starts from one downloaded program
 per host operating system (macOS, Linux, Windows) with the boot payload inside it, which writes a
-bootable stick when run; it is **not signed or notarized for now**; and from any machine it builds a
+bootable stick when run. It is **not signed or notarized for now**. From any machine it builds a
 boot for any other machine. The stick is for customers and for the lab alike.
 
 What exists now:
@@ -42,7 +42,7 @@ UEFI.
 **U1's premise on the boards is still recalled, not read**: that radon's and argon's U-Boot builds
 implement `bootefi` and hand over a device tree. The five-command check at each prompt answers it,
 and notes/boot-stick.md has the table of what each answer means. **argon cannot run the aarch64
-payload yet in any case**, because the aarch64 kernel is linked at QEMU `virt`'s RAM
+payload yet**, because the aarch64 kernel is linked at QEMU `virt`'s RAM
 (`0x4008_0000`) and argon's starts at `0x8000_0000`; that is milestone 127's port, for `booti` as
 much as for this. radon's RAM does contain the riscv64 kernel's `0x8020_0000`.
 
@@ -118,8 +118,8 @@ much as for this. radon's RAM does contain the riscv64 kernel's `0x8020_0000`.
 
 The first rung of §157's trivial install: `stick_maker`, one program per host with every
 architecture's boot file inside it, which finds removable disks by the removable-media bit (the
-development Mac's two USB backup disks are why that and not "USB"), copies onto a FAT32 stick without
-administrator rights or erases with the OS's own tool, and leaves a universal stick: `BOOTX64.EFI`,
+development Mac's two USB backup disks are why that and not "USB"). It copies onto a FAT32 stick without
+administrator rights or erases with the OS's own tool, and it leaves a universal stick: `BOOTX64.EFI`,
 `BOOTAA64.EFI` and `BOOTRISCV64.EFI` side by side, each firmware booting its own. The aarch64 and
 riscv64 loaders are new (riscv64 through an ELF-to-PE converter, since rustc has no riscv64 UEFI
 target), and the loader's build now refuses a kernel beside an archive it does not vouch for.

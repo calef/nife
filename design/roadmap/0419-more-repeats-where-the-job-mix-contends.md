@@ -33,14 +33,14 @@ closed, and it was closed by the person whose call it was.
 
 Premise re-checked 2026-09-19 and still true. *(That check predates commit `ab6ff0fa0` the
 same day; `REPEATS` has been 21 since, at `crates/job_mix/src/lib.rs:465`.)* `job_mix::REPEATS` is still `3`, one constant for
-the whole sweep, and milestone 168 is still `PARTIAL` for the reason this block names: its status
+the whole sweep, and milestone 168 is still `PARTIAL` for the reason this block names. Its status
 line says it does not turn `BUILT` until `tasks=4` has a number, and it still does not have one. The
 interim this block recommends, option 4, is what 168's block now does.
 
 In brief. Milestone 168's sweep reports the best of three repeats per sweep point. At
-`tasks=4` the underlying distribution is wide enough that the best of three is itself a coin flip:
-across five boots of an identical image the reported figure ranged from 766,361 to 991,671 jobs per
-minute, a 29.4% spread, while boot 3's three repeats *on their own* spanned 132,148 to 181,408
+`tasks=4` the underlying distribution is wide enough that the best of three is itself a coin flip.
+Across five boots of an identical image the reported figure ranged from 766,361 to 991,671 jobs per
+minute, a 29.4% spread. Boot 3's three repeats *on their own* spanned 132,148 to 181,408
 ticks, which contains the whole boot-to-boot range. The variance is within a boot, so power cycling
 does not reduce it.
 
@@ -79,7 +79,7 @@ rather than noise to be minimized away, and reporting only the best discards it.
 **Recommendation: 3, with 4 as the interim**, and the reason is the one this proposal opened with.
 The job mix exists to measure what contention costs; a report that keeps only the least-contended
 sample is answering a different question than the one §96 asked. But option 3 changes a line two
-programs read, so it is an architect's rather than a lane's, and until it is decided the honest
+programs read, so it is an architect's rather than a lane's. Until it is decided the honest
 thing is option 4, which is what the block of milestone 168 (a multi-tasking workload benchmark) now
 does.
 
@@ -104,12 +104,12 @@ not, until a number exists, and `tasks=4` does not yet have one.
 ## Index row
 
 Milestone 168's sweep reports the best of three repeats per sweep point, and at `tasks=4` the
-underlying distribution is wide enough that the best of three is itself a coin flip: five boots of
-an identical image ranged from 766,361 to 991,671 jobs per minute, a 29.4% spread, while one boot's
+underlying distribution is wide enough that the best of three is itself a coin flip. Five boots of
+an identical image ranged from 766,361 to 991,671 jobs per minute, a 29.4% spread. One boot's
 three repeats on their own spanned a range containing the whole boot-to-boot spread. The variance is
 within a boot, so power cycling does not reduce it. `tasks=4` is where `ECHO_SERVERS = 2` first
 produces contention with too few samples to average it, and `tasks=32` is already stable at 2.7% and
-would pay for repeats it does not need, so the obvious fix turns one constant into a table that
+would pay for repeats it does not need. So the obvious fix turns one constant into a table that
 `board_console`'s recognizer has to stop assuming is fixed. The recommendation is to report the
 spread rather than the best, because a benchmark whose subject is contention should not keep only
 the least-contended sample, and that changes a line two programs read, which makes it calef's.

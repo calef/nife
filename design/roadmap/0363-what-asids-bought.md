@@ -15,13 +15,13 @@ or in notes/address-space-identifiers.md carries a switch-cost number with taggi
 tagging off, so the payoff is still asserted rather than measured. **The board list in the gate below
 has narrowed to one, and the narrowing was measured rather than argued.** radon's own boot tour
 reports `satp.ASID 0 bits measured` (`bench/radon-2026-09-16/bench-134300.log`), which is precisely
-the case this file warned would measure no change at all, and xenon cannot show it either:
+the case this file warned would measure no change at all. Xenon cannot show it either:
 `kernel/src/arch/x86_64/mmu.rs` records that `CR4.PCIDE` is clear, so an x86_64 address space has
 nowhere to put its tag and `ttbr0_value` drops it. argon is the one machine of the three that can
 answer this.
 
 Of the second kind: the machines exist. QEMU cannot show this, because it does
-not model TLB refill cost, so a number from patagonia would be noise wearing a decimal point. It
+not model TLB refill cost. A number from patagonia would be noise wearing a decimal point. It
 needs argon, radon or xenon, and it needs somebody at one of them to flash an image and read a
 serial console. Waiting does not discharge it.
 
@@ -35,11 +35,11 @@ never had an input.
 
 The mechanism is in the kernel on every architecture and its justification is an argument. That is
 the shape this project explicitly refuses: measure, do not argue. A benchmark this system publishes
-about context switching is currently priced against a TLB behavior nobody has characterized, and
-the honest thing to say about ASIDs today is that they are standard practice, which is a reason to
+about context switching is currently priced against a TLB behavior nobody has characterized. The
+honest thing to say about ASIDs today is that they are standard practice, which is a reason to
 implement them and not evidence that they helped here.
 
-There is a specific reason the number could be surprising rather than confirmatory, and it is why
+There is a specific reason the number could be surprising rather than confirmatory. That is why
 this is worth a board's time. This kernel bounds concurrent address spaces at 160 and milestone 15
 refused the generation-and-rollover scheme because the exhaustion path is unreachable below 256
 tags. A system that never recycles a tag has a different TLB pressure profile from Linux, which
@@ -68,11 +68,11 @@ all. Whichever board is used, the report has to say which of these it was.
 
 Address space identifiers landed in July, the context switch stopped flushing the TLB, and no
 machine has measured what that changed. QEMU cannot show it, since it does not model TLB refill
-cost, so the number needs silicon and somebody at a serial console. The gate has narrowed since the
+cost. The number needs silicon and somebody at a serial console. The gate has narrowed since the
 proposal was written: radon measures `satp.ASID` at zero bits wide and so keeps flushing on every
-switch, and x86_64 runs with `CR4.PCIDE` clear and has nowhere to put a tag, which leaves argon as
+switch. x86_64 runs with `CR4.PCIDE` clear and has nowhere to put a tag, which leaves argon as
 the only board of the three that can answer it. The number could surprise rather than confirm, which
-is what makes it worth a board's time: this kernel bounds concurrent address spaces at 160 and never
+is what makes it worth a board's time. This kernel bounds concurrent address spaces at 160 and never
 recycles a tag, so its TLB pressure profile is not Linux's, and the win could be larger or smaller
 than the textbook figure. Either outcome is a result, and every comparison this project makes
 against Linux, macOS or seL4 on switch cost currently omits the term.
