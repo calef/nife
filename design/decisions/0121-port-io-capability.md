@@ -237,3 +237,18 @@ What this does not reopen. Option 3 (the I/O-port broker, a syscall per register
 refused on its measured ~337 ns-per-round-trip cost against single-digit-cycle `in`/`out`; nothing
 here revisits it. And the mapping-based capability for MMIO devices is unchanged: this adds a second
 kind of device capability for the one class that has no page, it does not replace the first.
+
+## A port range grants only with WRITE (calef, 2026-10-05)
+
+A `PortRange` capability opens I/O ports only when its rights include `WRITE`. calef's ruling of
+2026-10-05 16:33 UTC, quoted: "grant nothing without WRITE since we can't grant READ without write"
+([comment on #1687](https://github.com/nifeos/nife/pull/1687#issuecomment-5998739348)).
+
+The TSS I/O bitmap has one bit per port and cannot permit `in` without `out`, so a `READ`-only grant
+has no honest meaning. `thread_control_block_insert_from` (`kernel/src/sched/thread_control_block.rs`)
+grants only on `WRITE`; `component_plan` maps `Serve` to `READ`, so an observe-only view gets no port.
+
+Refused: a rights-free port range, which makes `READ` on it a statement a reader must disbelieve; and
+separate `in`-only and `out`-only kinds, which need every port access trapped. Milestone 768 (a
+read-only port range grants nothing) builds it, with
+`x86_port_tests::a_read_only_port_capability_must_not_grant_port_output` and a replayable falsification.
