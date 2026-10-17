@@ -41,12 +41,12 @@ request. The dependency is recorded on the blocked side only (§201 (one roadmap
 
 ## Alternatives refused
 
-- **Leave `allow-git` empty and publish first.** Publishing locks the name and every published
+- Leave `allow-git` empty and publish first. Publishing locks the name and every published
   version, and the cut is the part most likely to change. Irreversible, and the evidence the soak
   gathers does not exist yet.
-- **Allow any git source with a `rev`.** The check exists to notice a dependency quietly repointed
+- Allow any git source with a `rev`. The check exists to notice a dependency quietly repointed
   at a fork. An organization allow-list keeps that property; a blanket allow loses it.
-- **A local registry or vendored copy of each crate.** Vendoring is for code that needs a patch
+- A local registry or vendored copy of each crate. Vendoring is for code that needs a patch
   (§46, thin primitives or whole subsystems). A first-party crate that is the unit under test needs its own history and its own CI,
   which a vendored copy hides.
 
