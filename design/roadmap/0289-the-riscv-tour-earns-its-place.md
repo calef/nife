@@ -183,7 +183,7 @@ from the tree; these two bullets are the first thing it found.)*
 
 calef asked what `components/src/builder.rs` is for in a world that boots to swish. The answer is
 keep, and the premise was false: booting to swish describes aarch64 and
-riscv64's `--features shell`, not the default riscv64 build, which is what `script/board-image` puts on a card. `progenitor` has never run on RISC-V silicon; `boot_progenitor`'s riscv64 caller needs the PLIC, the NS16550 delegated and a UART source number that differs
+riscv64's `--features shell`, not the default riscv64 build, which is what `script/board-image` puts on a card. `progenitor` has never run on RISC-V silicon; `boot_progenitor` needs the PLIC, the NS16550 delegated and a UART source number that differs
 between QEMU (10) and the JH7110 (32), and `builder` needs a budget and a report endpoint and
 nothing else. `crates/board_console` parses its `init/build` line into `userspace_ran`, asserted
 by four host tests and two captured board fixtures, and `notes/board-console.md` calls it the only
