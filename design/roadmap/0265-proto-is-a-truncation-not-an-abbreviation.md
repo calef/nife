@@ -43,8 +43,8 @@ suffix. So this milestone grew by five names and the tree grew by none.
 | `mdns_config` | `multicast_dns_config` | 2026-09-13 |
 | `mdns_responder` | `multicast_dns_responder` | 2026-09-13 |
 
-The last two rows carry no `_proto` suffix and are here because they carry the same stem:
-renaming the protocol crate and leaving its config and its responder spelled the short way would
+The last two rows carry no `_proto` suffix and are here because they carry the same stem.
+Renaming the protocol crate and leaving its config and its responder spelled the short way would
 split one protocol across two spellings, which is the state this milestone exists to end.
 
 The third row was missing from this block and is the reason to enumerate rather than trust a
@@ -83,8 +83,8 @@ shown them.
 
 So the exemption now reads: a standard's own name stays whole where it names a format or a piece
 of hardware (`elf`, `pci`, `dtb`, `gpt`), and expands where it names a network protocol. That is a
-line drawn rather than derived, and a reader is owed the reason: `elf` and `pci` are what the thing
-*is* and have no useful longer form in a reader's head, where a protocol's expansion says what it
+line drawn rather than derived, and a reader is owed the reason. `elf` and `pci` are what the thing
+*is* and have no useful longer form in a reader's head. A protocol's expansion says what it
 *does* (network time, multicast DNS) to someone who has not met the acronym. DNS stops because it
 is the `pci` case one level down: domain name system teaches nothing a reader did not already
 have.

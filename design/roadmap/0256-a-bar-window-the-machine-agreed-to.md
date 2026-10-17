@@ -41,8 +41,8 @@ this does.
 **The panic is the lucky half and should not be mistaken for the risk.** `map_everything` refused
 because the window collided with a range the mapper had already claimed, so the machine stopped. Had
 xenon's RAM ended just below `0xc0000000` instead of at `0xc8940000`, nothing would have collided,
-`place_bars` would have relocated thirteen of fifteen functions on top of memory the allocator
-believes it owns, and the failure would have arrived later as corruption somewhere unrelated. The
+and `place_bars` would have relocated thirteen of fifteen functions on top of memory the allocator
+believes it owns. The failure would have arrived later as corruption somewhere unrelated. The
 proposal named that outcome a day before the boot: *"not a device that fails to enumerate, it is a
 device writing into RAM the allocator believes it owns."*
 
@@ -56,9 +56,8 @@ its evidence, and the evidence names the boundary it does not cross:
 
 On a 256 MiB machine `0xc000_0000` is empty. xenon has 16 GiB and its low DRAM runs to
 `0xc894_0000`, straight through the window. The constant was checked against the only machine that
-existed at the time and correct by luck anywhere else, which is the class this tree has now hit
-three times on one architecture: a constant that is right on emulated machines and has no firmware
-source. ECAM is the same class and is fine, because ACPI's MCFG names it and the kernel follows
+existed at the time and correct by luck anywhere else. That is the class this tree has now hit three
+times on one architecture: a constant that is right on emulated machines and has no firmware source. ECAM is the same class and is fine, because ACPI's MCFG names it and the kernel follows
 the table (`PCI_ECAM_PHYS says 0xb0000000` while xenon's MCFG says `0xf0000000`, and the kernel took
 the table's answer). The BAR window's equivalent lives in the PCI host bridge's `_CRS`, which is
 AML, which milestone 165 refused and this block does not reopen.
@@ -117,19 +116,19 @@ Two sources, exactly as the block asked, and one distinction the block did not a
 And the derived window steps over what the kernel already knows decodes in the hole, which is
 the part that turned out to matter most. `window_in_hole` takes the lowest aligned span that
 collides with none of the framebuffer, the ECAM aperture, both APICs, or VT-d's register file.
-xenon's framebuffer is at `0xd0000000`, byte for byte the floor of its hole, so a derivation that
+xenon's framebuffer is at `0xd0000000`, byte for byte the floor of its hole. A derivation that
 took the floor and asked nothing else would have put the first BAR it placed on top of the console
 the panic prints on. **That is not only a prediction about a machine nobody here can boot**: the
 same collision reproduces under OVMF on patagonia, and the boot line there says so.
 
 The asymmetry is handled here rather than deferred, because the measure needs it. The block
 left that to the lane, and the honest answer is that deriving the window alone does not move the
-census: xenon's thirteen misplaced functions would still have been thirteen, and `place_bars` would
+census. Xenon's thirteen misplaced functions would still have been thirteen, and `place_bars` would
 then have tried to move all of them into a 2 MiB window, exhausting it on the first BAR that wanted
 a megabyte. So `pci::place_bars` grew an adoption arm. A nonzero BAR that overlaps no RAM region
 is mapped device-typed where it stands (`mmu::map_page`, after the fine map exists) and left alone.
-Overlapping RAM is the one refusal and it is the whole safety argument: whether an address decodes
-to the bus is the machine's claim and it made it by writing the BAR, but a device window mapped over
+Overlapping RAM is the one refusal and it is the whole safety argument. Whether an address decodes
+to the bus is the machine's claim, and it made it by writing the BAR. But a device window mapped over
 memory is a device answering where the frame allocator allocates, which is what this milestone is
 about.
 
@@ -168,9 +167,9 @@ would otherwise have been argued:
   believed.
 
 Five test cases were added to `mmu.rs`'s `map_tests`, against the xenon fixture that was already
-there: both ends of the 17 GiB machine's hole, the window stepping over a framebuffer at the floor,
-an empty hole giving up its floor, a hole with no room answering `None` rather than squeezing, and
-the disagreement message naming both numbers. `script/test` passes on all three architectures;
+there: both ends of the 17 GiB machine's hole and the window stepping over a framebuffer at the
+floor. An empty hole gives up its floor, a hole with no room answers `None` rather than squeezing,
+and the disagreement message names both numbers. `script/test` passes on all three architectures;
 `script/lint` exits 0.
 
 ## BUGS
@@ -187,11 +186,11 @@ the disagreement message naming both numbers. `script/test` passes on all three 
   that cannot be contradicted. Said where the read happens, in `top_of_low_dram`'s own BUGS.
 - Only offset `0xbc` is read, the Core-era location. The older 82G33/Q35 chipsets put a 16-bit
   `TOLUD` at `0xb0` and this does not look there, deliberately: a register that is something else
-  on an older chipset would answer with a plausible address, and `None` is better than a number
+  on an older chipset would answer with a plausible address. `None` is better than a number
   nobody checked.
 - **A gap in the firmware map is still not a promise that nothing decodes there.** It is a promise
   that firmware did not call it RAM. `memory_mapped_io_window` subtracts the windows this kernel knows about
-  (the framebuffer, ECAM, both APICs, VT-d) and cannot subtract the ones it does not: the SPI flash,
+  (the framebuffer, ECAM, both APICs, VT-d). It cannot subtract the ones it does not: the SPI flash,
   the LPC decode ranges, and anything else in a real machine's hole that no table this kernel reads
   will name. A BAR the machine itself placed is stronger evidence than this derivation, which is
   why adoption exists, and the residual risk is confined to BARs the kernel has to place itself.
@@ -214,8 +213,8 @@ the disagreement message naming both numbers. `script/test` passes on all three 
 - **Done.** The assigned/unassigned asymmetry the block left to the lane's judgment. Built here
   rather than proposed as a second milestone, because the block's own measure (the census reaching
   zero) cannot be met without it: deriving the window moves no BAR that firmware already placed.
-- **Recorded.** Every limitation above sits in a `BUGS` section beside the thing it limits:
-  `top_of_low_dram`'s Intel-specificity and its offset at the register read, the map-gap caveat at
+- **Recorded.** Every limitation above sits in a `BUGS` section beside the thing it limits.
+  `top_of_low_dram`'s Intel-specificity and its offset sit at the register read, the map-gap caveat at
   `firmware_mmio_hole`, the first-page approximation at `bar_census`, the avoid list's cost at
   `window_in_hole`, and `PCI_BAR_MAPPED`'s fixed size at the constant.
 - **Recorded.** Confirming any of this on xenon is not work a lane can take: it needs calef at the
@@ -224,7 +223,7 @@ the disagreement message naming both numbers. `script/test` passes on all three 
   `notes/x86-uefi-boot.md` are where the next transcript goes.
 - **Milestone 325.** for the case
   `PCI_BAR_MAPPED` cannot serve: a machine whose unassigned BARs want more than 2 MiB, where the
-  answer is a window sized from what the bus asks for rather than a constant, and 2 MiB leaves so
+  answer is a window sized from what the bus asks for rather than a constant. And 2 MiB leaves so
   that a larger window is not a megabyte of page tables. Nothing forces it today, which is why it
   is a proposal and not a milestone.
 
@@ -233,9 +232,9 @@ the disagreement message naming both numbers. `script/test` passes on all three 
 milestone 165 predicted it on 2026-09-02 and xenon confirmed it on 2026-09-04: `PCI_BAR_PHYS` was
 q35's hole checked once at `-m 256M`, and a 16 GiB machine's RAM runs through it. The constant is
 gone: `mmu::memory_mapped_io_window` derives the window from the firmware map's first gap above
-low DRAM and from Intel's `TOLUD`, panics naming both numbers when they disagree, and steps over
-the windows this kernel already knows decode in the hole, which xenon's framebuffer at the hole's
-exact floor is why. `pci::place_bars` adopts a BAR firmware already placed instead of moving it,
+low DRAM and from Intel's `TOLUD`. It panics naming both numbers when they disagree, and steps over
+the windows this kernel already knows decode in the hole. Xenon's framebuffer at the hole's exact
+floor is why. `pci::place_bars` adopts a BAR firmware already placed instead of moving it,
 mapping it where it stands unless it overlaps RAM. The census's second number now counts only what
 can be neither used nor adopted, and reads 0 on every path measured (was 5 of 8 under PVH, 3
 of 6 under OVMF, 13 of 15 on xenon). QEMU models `TOLUD` nowhere, so absence is distinguished from

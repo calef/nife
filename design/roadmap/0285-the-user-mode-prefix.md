@@ -47,7 +47,7 @@ runtime", and `.cargo/mutants.toml` and `script/coverage` each said "EL0 syscall
 
 Milestone 63 ratified `user_heap` over `uheap` on 2026-08-01 partly on the ground that "`user_rt`
 already establishes `user_` as the prefix for it". The prefix was therefore on the record because
-this crate had established it, and this crate's name had never been argued for itself: milestone
+this crate had established it, and this crate's name had never been argued for itself. Milestone
 264 called it "a circle rather than a reason" in the crate's own provenance block, and milestone 63's
 table is where the circle is written down.
 
@@ -75,12 +75,12 @@ workspace, so `cargo build` at the root proves nothing about half of them:
 Seven more sites hide the same way, and they are listed with the reason each is invisible in
 [design/naming.md](../naming.md)'s new "a crate is compiler-checked only where a compiler is
 looking" table: `--exclude <crate>` arguments in `script/lint`, `script/coverage` and two lists in
-`xtask`, where cargo takes an unknown name in silence; `.cargo/mutants.toml`'s exclusion glob and
-`.cargo/mutants-baseline.txt`'s crate-keyed row; a `reaches_user_rt()` identifier inside
-`script/lint`'s embedded python; `helpers/build-ripgrep.sh`, which seds the linker script into a
-high-load variant by path; the module `xtask` generates into the patched-`std` overlay
+`xtask`, where cargo takes an unknown name in silence. `.cargo/mutants.toml`'s exclusion glob and
+`.cargo/mutants-baseline.txt`'s crate-keyed row. A `reaches_user_rt()` identifier inside
+`script/lint`'s embedded python. `helpers/build-ripgrep.sh`, which seds the linker script into a
+high-load variant by path. The module `xtask` generates into the patched-`std` overlay
 (`sys/alloc/nife/user_heap.rs`, declared `mod user_heap;`), which compiles only when the farm is
-rebuilt; and the `Cargo.lock` of each separate workspace.
+rebuilt. And the `Cargo.lock` of each separate workspace.
 
 That table is this milestone's real deliverable beside the names. The existing clause said
 renaming a crate is the easy case because `cargo check` finds every site missed, and it is too
@@ -89,7 +89,7 @@ generous by exactly the sites above.
 ## The enumeration
 
 At 32fccda8, `user_rt` was 818 occurrences in 223 files and `user_heap` 79 in 37, and the forms were
-not one string: 301 bare, 69 more as `user_rt::` in front of a brace or a type, then
+not one string: 301 bare, 69 more as `user_rt::` in front of a brace or a type. Then
 `::panic_handler` (82), `::mapped_window` (59), `::exit` (54), `::heap` (43), `::trap` (31), `::now`
 (23), `::cntfrq` (23), `::initrd` (22), `::map_page_frame` (18) and a long tail. Eight manifests
 declare one of the two as a dependency and a ninth names `dep:user_rt` in a feature
@@ -122,7 +122,7 @@ blind; the sets were listed, read, and then edited, which is what caught the rec
   are live intent pointing at a directory that no longer exists, and they are listed below rather
   than fixed, for the same reason. Four other blocks had to be touched despite that rule, because
   `script/roadmap --check` gates on a `## Follow-on` citation resolving to a real path and theirs
-  stopped resolving the moment the directory moved: 80, 228, 230 took a one-path edit, and 264's
+  stopped resolving the moment the directory moved. 80, 228, 230 took a one-path edit, and 264's
   entry, which is the one this milestone performed, became `**Milestone 285.**`.
 - The `user_mode_` prefix has exactly two members and no rule says what else joins it. Nothing
   in the tree currently needs a third, and inventing the rule before the third case would be
@@ -149,7 +149,7 @@ blind; the sets were listed, read, and then edited, which is what caught the rec
 ## Index row
 
 calef ratified `crates/user_rt` to `crates/user_mode_runtime` and `crates/user_heap` to `crates/user_mode_heap` on 2026-09-13, and ruled the prefix itself in the same breath, which is
-why both moved together. `rt` was an abbreviation with no owner outside this tree, the `cred_proto`/`credential_proto` case again; `user_` was the harder half, because `git grep -oiw`
+why both moved together. `rt` was an abbreviation with no owner outside this tree, the `cred_proto`/`credential_proto` case again. `user_` was the harder half, because `git grep -oiw`
 answers `a user` 291, `the user` 254, `users` 68 and `per-user` 19, so the prefix read as *a
 person* rather than as a privilege level. `user mode` is the architecture-neutral phrase (59
 uses) where `EL0` (1375), `U-mode` (252) and `ring 3` (123) are each one architecture's, so `el0_runtime` was refused under rule 5 for a crate that ships on three. Closes milestone 63's
@@ -157,7 +157,7 @@ circle: `user_heap` was ratified partly because "`user_rt` already establishes `
 prefix rested on a crate nobody had argued. 818 occurrences in 223 files plus 79 in 37, swept by
 enumeration; the `uheap` refusal record, a quoted commit subject and a milestone 68 quotation kept
 their spelling. Found that the "renaming a crate is compiler-checked" clause is too generous
-and wrote the eight sites it misses into design/naming.md: four `build.rs` linker-script paths, two
-of them in separate workspaces, plus `--exclude` arguments, two mutation-testing files, a derived
+and wrote the eight sites it misses into design/naming.md. Four `build.rs` linker-script paths, two
+of them in separate workspaces. Plus `--exclude` arguments, two mutation-testing files, a derived
 identifier in a gate's python, a shell script that seds the script by path, the generated module
 in the patched-`std` overlay, and each separate workspace's lockfile.

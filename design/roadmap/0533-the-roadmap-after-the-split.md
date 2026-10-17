@@ -23,7 +23,7 @@ not**: 3,148 `milestone N` sites in 288 Rust files follow it, and it is in a rea
 below, with no winner on the identifier. Blocked until answered: nothing today, and that is the
 point of raising it now rather than during the split.
 
-**Answered 2026-09-20 by DECISIONS §201 (one roadmap until a citation has to cross), which rules on all three asks: the citation identity is deferred under option E with two conditions, a cross-repository dependency is declared by the blocked side alone, and issues carry a stranger's bug and non-dependency coordination. This file stays as the priced analysis behind that ruling.**
+**Answered 2026-09-20 by DECISIONS §201 (one roadmap until a citation has to cross), which rules on all three asks. The citation identity is deferred under option E with two conditions, a cross-repository dependency is declared by the blocked side alone, and issues carry a stranger's bug and non-dependency coordination. This file stays as the priced analysis behind that ruling.**
 
 ## What is being asked, split into the three questions hiding in it
 
@@ -33,8 +33,8 @@ point of raising it now rather than during the split.
    independent release) arrives?
 
 They have different answers, so they are answered separately. The short version: **(1) yes, for the
-layer that gates read and the layer a newcomer reads; (2) yes, at exactly two things, neither of
-which is the roadmap; (3) the number breaks and the gloss does not, which is why the identifier is
+layer that gates read and the layer a newcomer reads. (2) yes, at exactly two things, neither of
+which is the roadmap. (3) the number breaks and the gloss does not, which is why the identifier is
 the only part worth deciding now.**
 
 ## The roadmap is three layers, and only one of them is in `design/roadmap/`
@@ -274,5 +274,5 @@ What stays painful once #999 lands, and the proposal's direct answer to calef's 
 ## Index row
 
 Answered 2026-09-20 by DECISIONS §201 (one roadmap until a citation has to cross), which rules on
-all three asks: the citation identity is deferred under option E with two conditions, a cross-
+all three asks. The citation identity is deferred under option E with two conditions, a cross-
 repository dependency is declared by the...

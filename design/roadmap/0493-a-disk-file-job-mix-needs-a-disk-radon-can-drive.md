@@ -17,7 +17,7 @@ proposal's own, unedited except for this paragraph: the argument is its author's
 not the moment to improve it. Written by milestone 168 (a multi-tasking workload benchmark)'s lane, which was asked to add AIM7's disk-
 file category as a second mix and found two blockers, neither of which is a job-mix change.
 
-The first blocker is a block driver for radon; the second is
+The first blocker is a block driver for radon. The second is
 a change to how the file service shares memory with its clients, which is a wire agreement between
 two programs and so is an architect's call rather than a lane's.
 

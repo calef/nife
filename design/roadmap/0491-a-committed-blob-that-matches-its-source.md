@@ -33,7 +33,7 @@ Seven further committed `.dtb` blobs, QEMU's own dumps, have no source beside th
 
 ## Why this is worth a check rather than a habit
 
-A committed artifact that nothing regenerates is a fact nobody re-reads, which is the shape this
+A committed artifact that nothing regenerates is a fact nobody re-reads. That is the shape this
 tree keeps finding: a `BUGS` entry nobody struck when the work landed, a baseline column six weeks
 stale being read as last week's census, a roadmap status that was wrong in both records. A blob is
 the worst member of that family because no reader can see it. A stale sentence at least shows up
@@ -70,10 +70,12 @@ If they want the stronger answer, this proposal is where the weaker one's cost i
 
 ## Follow-on
 
-- **Refused.** Rung one, compiling the blobs at build time. It would make the drift
-  unrepresentable, and it buys a build dependency on `dtc` for every contributor and every CI
-  leg. §46 (thin primitives or whole subsystems) makes that an architect's call. The weaker
-  check above stands until an architect says otherwise.
+- **Refused.** Rung one, compiling the blobs at build time. calef refused it on 2026-10-16
+  (UTC). The blobs are fixtures, and fixtures compiled at build time would vary with the local
+  `dtc`, which is not byte-stable across versions; the test input itself would stop being
+  stable unless `dtc` were pinned too. The dependency's cost would be paid by everyone who
+  builds the tree. The one incident on record is already closed at every push by the check
+  above. Reopens on a second drift incident, or on drift in the sourceless fixtures.
 
 ## Index row
 

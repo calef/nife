@@ -1,6 +1,7 @@
 ---
-status: NOT-STARTED
+status: BUILT
 raised: 2026-09-24
+built: 2026-10-16
 promoted_from: twelve-decision-gates-cite-only-ruled-sections
 milestone_dependencies: none
 decision_dependencies: none
@@ -16,35 +17,55 @@ fail until someone updates it). Its lane converted 27 `DECISION` gates to `DECIS
 not convert these twelve. Every section each one cites is `DECIDED` or `AMENDED`, so the new token
 would fail the day it was written. **Name provisional**: this file's stem is a lane's coinage.
 
-Each fix is prose in one roadmap block, reversible in AGENTS.md's sense. A block that
-turns out to hold a fork nobody has written up gets a `PROPOSED` section, and that one needs calef.
+Since this block was raised, §207 (the roadmap is a graph, and the block says so in fields a
+script can walk) moved the gate out of prose and into the frontmatter. The three dispositions read
+in today's fields. A gate nothing stops a start is `decision_dependencies: none`. A fork with a
+written-up section names its number. A wait that is not a section at all stays
+`unwritten`, with the paragraph saying what the wait is.
 
-## The twelve
+## What each block got
 
-| Block | Title |
+Read per block on 2026-10-15 by this milestone's lane. Five forks were written up as sections,
+numbers 300 to 304, provisional until the merge queue lands them, and calef ruled all five the
+same day, one decision at a time; the sections are `DECIDED` and their gates resolve. The other
+seven needed no new section, for the reasons in their rows.
+
+| Block | Outcome |
 |---|---|
-| 39 | Repository structure for a loosely-coupled OS, and the road to a distribution |
-| 48 | Job control: `jobs`, `wait`, `kill`, `fg`, `bg`, and a stopped state |
-| 137 | The share as a Mac file server, which is not the same workload as the backup target |
-| 172 | A capability-native subprocess primitive: what `cargo`'s "spawn a helper, wait, collect its output" needs, without fork/exec |
-| 188 | The IPC fastpath: the gate measures a shape userspace does not use, and three cheaper cuts come before a hand-written path |
-| 334 | Color and the pager: the spawn protocol's other two thirds |
-| 340 | `script/image-permissions` reports and does not gate, because it is not in the ruleset |
-| 356 | Retention declares the thread capability and says nothing about the region |
-| 376 | Nothing turns a device back off |
-| 388 | An acronym sweep the tree can do at once |
-| 391 | Kernel introspection over an endpoint, rather than one syscall per fact |
-| 417 | A usurper that reports instead of hanging, so row 26 can be falsified |
-
-## What each one needs
-
-Read the gate paragraph and the block, then do one of three things. If the ruling answered the
-block, set the gate to what still stops a start, which is often `NONE`. If the block waits on a fork
-nobody has written up, write it as a `PROPOSED` section and gate on `DECISION §N`. If the ruled
-section is context and the wait is on something else, say so in the paragraph, as block 39's
-already does, and leave `DECISION` bare.
+| 39 | Unchanged. [§151 (the goal of the repository split is independent release)](../decisions/0151-repository-goal-is-independent-release.md) ruled the goal and kept the order open, and the paragraph already says the block waits on that order. |
+| 48 | `decision_dependencies: 300`, resolved. The fork [§24 (interrupting the foreground)](../decisions/0024-interrupting-the-foreground.md) deferred is decided as [§300 (the paused state)](../decisions/0300-tcb-suspend-resume-the-paused-state.md): `ThreadControlBlock::SUSPEND`/`RESUME`, silent, on the TCB capability, resume at the PC. |
+| 137 | Stays `unwritten`. The only open choice is priced where §99 (where Apple's metadata lands) left it and has nowhere to land until an SMB server exists again; the real wait is the retirement ruling, which no field carries. |
+| 172 | `decision_dependencies: 301`, resolved. The wait-and-collect fork is decided as [§301 (exit status and output)](../decisions/0301-exit-status-and-output.md): the status word rides `SYS_EXIT` into the death message. |
+| 188 | Already carried `decision_dependencies: 95`, which the graph resolves; the prose still said the token stays `DECISION`, a sentence the frontmatter switch retired. It now says the E3 run on radon is the wait, carried by the machine and person fields. |
+| 334 | `decision_dependencies: 302`, resolved. The fork is decided as [§302 (the screen fact, and one line of input)](../decisions/0302-the-screen-fact-and-one-line-of-input.md): a `WRITE`-only terminal capability is the screen fact, a one-shot badge is one line of input. |
+| 340 | `none`, and `needs_person: yes`. §97 (six gates run on every pull request and none of them can stop one) is decided; what remains is a checkbox flip at a GitHub settings page, which is a person and an account, not a decision. |
+| 356 | `decision_dependencies: 303`, resolved. The fork is decided as [§303 (the region)](../decisions/0303-the-retention-declaration-says-nothing-about-the-region.md): the declaration stays the TCB's, building from a retained delegated region is forbidden, and the enforcement check is named. |
+| 376 | `decision_dependencies: 304`, resolved. The fork is decided as [§304 (who may turn a device off)](../decisions/0304-who-may-turn-a-device-off.md): measure first; what gets built is considered against the number, and the bench run is the next work. |
+| 388 | Yielded. Its own lane claimed the milestone the same day (#2211) and rewrites the block; this lane read the gate and changed nothing here. |
+| 391 | Stays `unwritten` deliberately: §149 (may the kernel answer on an endpoint) refused to settle the general case until a real consumer exists, and [milestone 269 (`machine` at the prompt)](0269-machine-as-a-program.md) is that consumer. 269 is now the block's `milestone_dependencies`, which the sequencing always said and no field carried. |
+| 417 | `none`. The premise moved: [milestone 106 (a wait that ends on either the interrupt or the deadline)](0106-deadline-wait.md) built `Timer::ARM` and §101 (notification objects)'s binding ends a blocked `RECEIVE_CAP` at a deadline, so the reporting usurper is buildable on surface that exists. The first-class receive stays unwritten until a second consumer asks, and the `try_receive_cap` naming is reported for calef. |
 
 ## Index row
 
-Twelve `DECISION` gates cite only ruled sections, so they cannot take milestone 591's checked
-`DECISION §N` form; each needs its block read to say what the gate is still waiting on.
+Twelve `DECISION` gates cited only ruled sections, so none could take the checked form and all
+twelve could go stale the way [milestone 198 (a package manager)](0198-package-manager.md) did.
+Read on 2026-10-15. Five forks became sections that gate their blocks by number, and all five were
+ruled the day they were raised. Two
+gates were answered outright: 340 to a person at a settings page, and 417 to `none`, because the
+timer's built mechanism dissolved the fork. Three stay bare on purpose, because their
+wait is real but is not a section. 188's fields were already right once the prose stopped
+describing a token the frontmatter switch retired. And 388's own lane claimed the milestone the
+same day, so this one read the gate and yielded the block.
+
+## Follow-on
+
+- **Milestone 356.** [Milestone 356 (retention declares the thread capability and says nothing
+  about the region)](0356-the-region-half-of-the-retention-declaration.md) carries the enforcement
+  the §303 ruling named. `build_child` will require the caller
+  to present the owning region, and the kernel will refuse when `build_ut`'s recorded parent is
+  not it. Until that block lands the check, the rule is stated and not enforced.
+- **Milestone 376.** [Milestone 376 (nothing turns a device back off)](0376-nothing-turns-a-device-back-off.md)
+  carries the bench run the §304 ruling ordered: radon with the STG domain ungated and
+  gated. The block has the machine and person fields that run needs.
+- **Done.** The `try_receive_cap` naming question in row 417 was reported to calef on this pull
+  request; it names no gate and stops nothing.

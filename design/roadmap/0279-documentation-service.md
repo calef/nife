@@ -44,7 +44,7 @@ pointed at the checkout rather than the image. A fourth consumer is a fourth cop
 
 A server holding the store and answering queries over an endpoint, with `apropos` as a thin client
 any shell can spawn. **The tree already has this shape for filesystems**, so this is applying a
-precedent rather than inventing one, and the capability argument survives intact: the store
+precedent rather than inventing one, and the capability argument survives intact. The store
 capability lives in exactly one place, and what crosses the endpoint is a term in and a list of
 names out. `doc`'s two slots do not change, and neither does the property that finding a page grants
 nothing.

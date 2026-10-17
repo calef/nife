@@ -27,7 +27,7 @@ line. The per-run rows, the machine's condition and the caveats are in
 ## Which record was wrong
 
 The bound was. `arch::x86_64::ap_boot`'s BUGS section bounded the "did not start" flake at a third
-or later secondary, and the tour's comment reasoned from it. The boundary was never real: the
+or later secondary, and the tour's comment reasoned from it. The boundary was never real. The
 defect was `cpu_start` re-reading the online count after the STARTUP IPIs, so a core that checked
 in during the settle delay was counted absent at any position, and the count is read once now
 (fixed 2026-09-19). That is the tree's own account, and the fix names the UEFI gate's one-in-three
@@ -60,9 +60,9 @@ never reached an architect: there was nothing left to decide.
 
 `cargo xtask uefi-boot` asserts `smp: 2 core(s) online` unconditionally at its own `-smp 2`. The
 one-in-three `cpu 1 did not start` sighting that raised this block was `cpu_start`'s count
-re-read, which reached two cores as well as three and was fixed on 2026-09-19; the dedicated
+re-read, which reached two cores as well as three and was fixed on 2026-09-19. The dedicated
 measurement is 0 of 42 boots across a 6.63 to 23.76 host-load gradient
-([notes/uefi-boot-two-core-rate.md](../../notes/uefi-boot-two-core-rate.md)), so the assertion
+([notes/uefi-boot-two-core-rate.md](../../notes/uefi-boot-two-core-rate.md)). The assertion
 stays exactly as it is and no architect ask was filed. The comments that still reasoned from the
 deleted "third or later" bound state the corrected record. The suite leg under OVMF (`uefi-test`)
 still boots one core, and two cores there is unmeasured since the fixes.

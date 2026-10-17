@@ -30,12 +30,12 @@ writing those invariants.
 ## Revisit
 
 - **Condition.** A specific property that needs a loop invariant, which is the refusal's own
-  wording. It is explicitly not work anybody owes: the block keeps Verus as something to revisit when
-  a property demands it rather than as a plan, and nothing in the proof suite has demanded one yet.
+  wording. It is explicitly not work anybody owes: the block keeps Verus as something to revisit
+  when a property demands it rather than as a plan. Nothing in the proof suite has demanded one yet.
 
 ## Index row
 
 The choice of bounded model checking over unbounded proof is the single largest decision in this
 tree's verification story, and it was recorded as a bullet in a block. The condition is a property
-rather than a preference, which is the right shape: bounded checking fails at a specific place and
+rather than a preference, which is the right shape. Bounded checking fails at a specific place and
 that place is the trigger.

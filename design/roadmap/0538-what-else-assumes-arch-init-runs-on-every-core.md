@@ -10,7 +10,7 @@ needs_person: no
 ---
 # 538. What else assumes `arch::init` runs on every core
 
-*(Number provisional until the merge queue lands it.)* Promoted from the proposal `what-else-assumes-arch-init-runs-on-every-core`, filed 2026-09-20, on calef's instruction of 2026-09-20 to give every proposal on `main` a number. The text below is the proposal's own, unedited except for this paragraph: the argument is its author's and promotion is not the moment to improve it. Found by milestone 447 (a thread's vector registers are its own),
+*(Number provisional until the merge queue lands it.)* Promoted from the proposal `what-else-assumes-arch-init-runs-on-every-core`, filed 2026-09-20, on calef's instruction of 2026-09-20 to give every proposal on `main` a number. The text below is the proposal's own, unedited except for this paragraph. The argument is its author's and promotion is not the moment to improve it. Found by milestone 447 (a thread's vector registers are its own),
 which hit the instance and named the class in its own report. The instance is fixed in that
 milestone; the class is not audited, and this is that audit.
 
@@ -25,8 +25,8 @@ passes through `arch::init` at all.
 
 Silent is the word that matters. OpenSBI hands the kernel a hart with `sstatus.FS` already open,
 so no thread ever took the first-use trap, so nothing faulted: two threads shared a register file
-and every test passed. The lane found it by reasoning about the boot path rather than by a failure,
-which is the kind of discovery that does not repeat reliably.
+and every test passed. The lane found it by reasoning about the boot path rather than by a failure.
+That is the kind of discovery that does not repeat reliably.
 
 ## What to audit
 
@@ -38,18 +38,19 @@ state, and does every core run this code?
 Three failure shapes to look for, because they are what makes this worth a lane rather than a grep:
 
 - Per-core state set on one core. The 447 shape exactly.
-- State that happens to be correct by inheritance, like `sstatus.FS` arriving open from firmware,
-  where the bug is invisible until the firmware changes or a second core boots differently.
+- State that happens to be correct by inheritance, like `sstatus.FS` arriving open from firmware.
+  The bug is invisible until the firmware changes or a second core boots differently.
 - Initialization that is per-core on one architecture and global on another, which reads as a
   portability question and is really a correctness one.
 
 ## What would make it stay fixed
 
 Open, and worth more than the audit. The name `arch::init` is a claim about when it runs, and on one
-architecture that claim is false; a reader meeting the name cannot tell. Whether the answer is a
+architecture that claim is false; a reader meeting the name cannot tell. It is exactly the sort of
+thing to decide with the audit's findings in hand rather than before them. The question is whether
+the answer is a
 rename (calef's), a comment at each call site, or a structural change that gives per-core bring-up
-its own hook, is exactly the sort of thing to decide with the audit's findings in hand rather than
-before them.
+its own hook.
 
 ## Index row
 

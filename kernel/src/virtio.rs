@@ -240,6 +240,12 @@ const REG_VERSION_RO: u64 = 0x004;
 const REG_DEVICE_ID_RO: u64 = 0x008;
 const REG_DEVICE_FEATURES: u64 = 0x010;
 const REG_INTERRUPT_STATUS: u64 = 0x060;
+/// The device-specific config area, in the mmio vocabulary (virtio spec 4.2.2: `config` at
+/// offset 0x100 of the register block). A blk device's capacity lives at its offset 0, which is
+/// what `blk::SIZE` reads in two 32-bit halves. On PCI the region is its own piece of a BAR,
+/// described by a `DEVICE_CFG` vendor capability, resolved at bring-up and carried in
+/// [`Transport::Pci::device_config`].
+const REG_DEVICE_CONFIG: u64 = 0x100;
 
 /// **The transport seam** (the PCIe workstream's P4; notes/pcie-transport-scope.md). Everything
 /// above this enum, the shadow ring, the validator, the queue layout contract, the userspace
@@ -283,6 +289,12 @@ pub enum Transport {
         /// write it is [`Transport::setup_queue`], which is also the only place the queue is
         /// already selected.
         msix_vector: u16,
+        /// The device-specific config region (a `DEVICE_CFG` vendor capability resolved to a
+        /// physical address by `pci::PciVirtioDevice`), when this function has one; `None` for
+        /// the device types that have none (net, rng, console). The mmio arm reads the same area
+        /// at [`REG_DEVICE_CONFIG`] inside its own register block, which is the translation this
+        /// field exists for: one offset in the shared vocabulary, two different places to read.
+        device_config: Option<u64>,
     },
 }
 
@@ -314,10 +326,11 @@ const PCI_QUEUE_DEVICE: u64 = 0x30;
 /// `unsafe fn`. These did not, and the difference is not that the obligation is weaker: it is that
 /// **the set of callers is closed and the compiler is what closes it.**
 ///
-/// `pread` and `pwrite` are private to this module. Every one of their twenty call sites is in the
+/// `pread` and `pwrite` are private to this module. Every one of their call sites is in the
 /// `impl Transport` block above, and each passes `common + <a constant offset under 0x40>`, `isr`,
-/// or `notify_addr[q]`: three fields of `Transport::Pci`, all resolved from a mapped BAR by
-/// `pci::PciVirtioDevice` and copied in one place, by `Transport::pci`. That is a module invariant,
+/// `notify_addr[q]`, or `device_config + <an offset the DEVICE_CFG cap's length bounds>`: four
+/// fields of `Transport::Pci`, all resolved from a mapped BAR by `pci::PciVirtioDevice` and copied
+/// in one place, by `Transport::pci`. That is a module invariant,
 /// and a module invariant is a real way to be sound. Converting would have put twenty `unsafe`
 /// blocks in one file, each restating the same sentence, which is the "discharged by ritual rather
 /// than by thought" failure the milestone was written to avoid; and it would not have made anything
@@ -335,7 +348,8 @@ const PCI_QUEUE_DEVICE: u64 = 0x30;
 /// ([`Transport::is_doorbell_ready`]). The mmio transport was never exposed, because it has one
 /// fixed notify register rather than a per-queue address to resolve.
 fn pread<T: Copy>(phys: u64) -> T {
-    // SAFETY: `phys` is a field of a `Transport::Pci`, plus at most a common-config offset. Those
+    // SAFETY: `phys` is a field of a `Transport::Pci`, plus at most a common-config offset or a
+    // device-config offset. Those
     // fields come from `pci.rs`'s BAR resolution and reach this module only through
     // `Transport::pci`; this fn is private, so that closed set of call sites is the whole
     // population. See the module invariant above, and the doorbell bug it did not used to cover.
@@ -347,9 +361,9 @@ fn pwrite<T: Copy>(phys: u64, v: T) {
 }
 
 impl Transport {
-    /// The PCI transport for an enumerated function (kernel/src/pci.rs). Five fields copied out of
+    /// The PCI transport for an enumerated function (kernel/src/pci.rs). Every field copied out of
     /// one struct, in one place, so a new field (milestone 29's `device_type` was the second) is not
-    /// a five-call-site edit and cannot be filled in differently at one of them.
+    /// a many-call-site edit and cannot be filled in differently at one of them.
     pub fn pci(d: &crate::pci::PciVirtioDevice) -> Transport {
         Transport::Pci {
             common: d.common,
@@ -359,6 +373,7 @@ impl Transport {
             notify_addr: [0; MAX_QUEUES],
             isr: d.isr,
             msix_vector: d.msix_vector,
+            device_config: d.device_config,
         }
     }
 
@@ -370,6 +385,7 @@ impl Transport {
                 common,
                 isr,
                 device_type,
+                device_config,
                 ..
             } => match off {
                 // pci has no magic/version/device-id registers: identity was proved from config
@@ -387,6 +403,15 @@ impl Transport {
                 REG_QUEUE_NUM_MAX => {
                     pwrite::<u16>(common + PCI_QUEUE_SEL, 0);
                     pread::<u16>(common + PCI_QUEUE_SIZE) as u32
+                }
+                // The device-specific config, in the 32-bit halves the vocabulary reads it in
+                // (today exactly two, `blk::SIZE`'s capacity at REG_DEVICE_CONFIG and +4). A
+                // function with no such region answers as the mmio arm would read a hole.
+                off if off == REG_DEVICE_CONFIG || off == REG_DEVICE_CONFIG + 4 => {
+                    match device_config {
+                        Some(config) => pread::<u32>(config + (off - REG_DEVICE_CONFIG)),
+                        None => 0,
+                    }
                 }
                 _ => 0,
             },

@@ -30,7 +30,7 @@ argument arrived with the name.
 
 An unrecorded name has no argument at all. `script/names <name>` prints what the history does and
 does not say, and for these it says nothing usable. Bringing calef a name with no argument is what
-AGENTS.md refuses in "a fork reaches calef with its questions already answered": his attention is
+AGENTS.md refuses in "a fork reaches calef with its questions already answered". His attention is
 the scarcest thing here, and spending it on lookups anybody could run is the failure that section
 exists to name.
 
@@ -85,9 +85,9 @@ mechanically checkable, which is unusual for a documentation milestone and worth
 ## What it found
 
 The counts, of the 60. 28 became `recorded`, 32 became `provisional`, and 5 of the 32 carry a
-proposed rename. The tree-wide table moved from 9 recorded to 37 and from 60 unrecorded to 0; the
-provisional tier grew from 31 to 63, which is the point rather than a side effect, since a
-provisional name is one calef can rule on in a read and an unrecorded one is not.
+proposed rename. The tree-wide table moved from 9 recorded to 37 and from 60 unrecorded to 0. The
+provisional tier grew from 31 to 63, which is the point rather than a side effect. A
+provisional name is one calef can rule on in a read, and an unrecorded one is not.
 
 The number that is honest rather than flattering: 10. Ten of the sixty had nothing in the tree
 justifying them beyond the date they appeared, so the case beside them is this lane's own reading and
@@ -134,7 +134,7 @@ about a different name and reaching for this one as evidence:
 
 So `script/names --refused` is also an index of implicit justifications, and it is currently read
 as only half of that. The refusals are the valuable half for the question "has this been proposed
-before"; they turn out to be the valuable half for "why is this called that" as well, because the
+before". They turn out to be the valuable half for "why is this called that" as well. The
 place a name gets argued hardest is the moment somebody wants it for something else.
 
 ### The third shape: the backlog is almost exactly "named before the mechanism existed"
@@ -165,14 +165,14 @@ this project still has; it is the sediment from before it had the habit, plus a 
 Five renames are proposed and none is performed, which is the split this block set out: milestone 63
 did the renaming and this writes down why the survivors survived. Each case lives in the provenance
 block beside the name it is about, which is milestone 115's mechanism and the reason none of these
-needs a file of its own; what is listed here is where to read it and what happens if calef says no.
+needs a file of its own. What is listed here is where to read it and what happens if calef says no.
 
 - **Done.** `crates/cred` is `crates/credentialer`, renamed 2026-09-08. This lane proposed
   `credential`; calef chose `credentialer`, which is better for a reason the proposal missed.
   AGENTS.md's naming section: *"a crate and a program may share a name, and it says something when
   they do: the crate is that program's logic, lifted out so it can be host-tested and Kani-reachable
   while the program keeps the IO."* This crate describes itself in exactly those terms and names
-  `components/src/credentialer.rs` as its service, so `credential` would have fixed the contraction while
+  `components/src/credentialer.rs` as its service. So `credential` would have fixed the contraction while
   creating a fourth shape the tree does not have: a crate named for the subject beside a program
   named for the actor, with nothing saying they are one thing lifted apart. `credential_proto` is
   untouched, because the wire is about credentials rather than about the servicer, the same shape as
@@ -200,7 +200,7 @@ needs a file of its own; what is listed here is where to read it and what happen
   the only run-together subcommand beside `shell-check`, `board-console`, `initrd-aarch64` and
   `std-src`, so the change is two strings. The reversible half of the naming rule, and cheap.
   It got neither hyphen nor rename. Put to calef on 2026-09-14, he asked what the thing does,
-  and the answer was nothing `--features shell` does not: the two features selected the same six
+  and the answer was nothing `--features shell` does not. The two features selected the same six
   `cfg` sites and a build of each carried the same 3,109 symbols at the same total size. He ruled it
   deleted, so the script, the subcommand and the feature are all gone and this bullet is closed by
   subtraction rather than by spelling. The header that carried this argument went with the script;
@@ -218,8 +218,8 @@ needs a file of its own; what is listed here is where to read it and what happen
   name that misleads a reader at the command line. This bullet keeps the old name because it is the
   record of why the name lost.
 - **Milestone 388.** The 2026-09-05 acronym test reaches at least seven of the sixty and this
-  milestone deliberately settled none of them, because design/naming.md already says the sweep is
-  its own milestone and one lane spelling one acronym out would leave a program disagreeing with a
+  milestone deliberately settled none of them. design/naming.md already says the sweep is
+  its own milestone, and one lane spelling one acronym out would leave a program disagreeing with a
   crate calef ratified. Each affected block asks the question and records the answer as open.
   Numbered on 2026-09-19 by milestone 433's drain of the pile.
 - **Milestone 386.** The 21-block sorting bug this milestone found was invisible to every gate,

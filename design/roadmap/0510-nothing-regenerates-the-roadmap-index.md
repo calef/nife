@@ -53,17 +53,17 @@ than the YAML. Three things have to be answered before it exists:
 2. **What else such a commit may touch, stated as a rule and not as a habit.** The narrow answer is
    the only safe one: this one file, between the two markers, and a refusal to push anything else.
 3. What happens when it collides. A merge lands while the regeneration is in flight, the push is
-   rejected, and the honest behavior is to give up and let the next merge do it, because the state
-   is idempotent and one stale rendering is what today already looks like.
+   rejected, and the honest behavior is to give up and let the next merge do it. The state
+   is idempotent, and one stale rendering is what today already looks like.
 
 The alternative that needs no bot, and why it is not recommended. Delete the file and print the
 index on demand. It costs a reader the browsable roadmap on GitHub, which is what the file is for,
 and it costs `script/metrics` its milestone-count series and `script/catch-up` its transitions from
-the day it lands forward, because both read blobs at revisions where no block-derived answer exists
-and none can be manufactured. That is a permanent loss of a record to avoid a recurring chore.
+the day it lands forward. Both read blobs at revisions where no block-derived answer exists, and
+none can be manufactured. That is a permanent loss of a record to avoid a recurring chore.
 
 And the cheap thing that is not this. A CI check on a pull request that *fails* when the index is
-stale would work and is the wrong shape: it makes the lane regenerate, which makes the lane edit the
+stale would work and is the wrong shape. It makes the lane regenerate, which makes the lane edit the
 one file milestone 294 removed it from, which is the hotspot coming straight back. That trade was
 already made and this proposal does not reopen it.
 

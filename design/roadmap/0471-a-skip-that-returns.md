@@ -24,7 +24,7 @@ From '214. A test that prints "skipping" and returns is counted as passed', unde
 ## Why it is here rather than only there
 
 This is rung one of AGENTS.md's ladder and the block says so: a return type that carries an absent
-fixture out of a helper with `?` makes the print-and-pass defect structurally impossible, where the
+fixture out of a helper with `?` makes the print-and-pass defect structurally impossible. The
 console check that shipped instead catches it at the moment it happens. It costs a return type
 change on every `#[test_case]` in the tree plus an `Ok(())` on the end of each.
 
@@ -37,6 +37,6 @@ change on every `#[test_case]` in the tree plus an `Ok(())` on the end of each.
 ## Index row
 
 A refusal of the stronger mechanism in favor of the cheaper one, made explicitly and with the trade
-priced: rung one costs an edit to every test in the tree, rung two catches the same defect at the
+priced. Rung one costs an edit to every test in the tree; rung two catches the same defect at the
 moment it happens. The condition is a recurrence, which is the honest trigger for buying a mechanism
 you declined once.

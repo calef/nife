@@ -15,7 +15,7 @@ counts below are this block's 2026-09-20 measurement; the corrections carry the 
 re-measure (86,528 lines, 15,966 in files calling `asm!`, eight harnesses).
 
 §216 answers the gate. Its reasoning: `design/fatal-risks/README.md` is an architect's file and risk
-2's text is theirs to amend; AGENTS.md puts the falsification list outside a lane's reach, and the
+2's text is theirs to amend. AGENTS.md puts the falsification list outside a lane's reach, and the
 edit to it by the lane for milestone 64 (enough `std` to run somebody else's crate) is recorded as
 an exception rather than a precedent. `notes/proof-retrospective.md` is an ordinary note and needs
 no decision, but the two say the same sentence and should be corrected together or the reader meets
@@ -60,10 +60,10 @@ The reach is now bounded by three things rather than by the crate, and this lane
 
 So the honest sentence is narrower and better: **DECISIONS §4 (kernel shape: monolithic, deferred,
 with two cheap rules) rule 1, architecture-specific code under `kernel/src/arch/`, has held the
-unreachable residue to under a fifth of the kernel, and it is exactly the fifth you would expect.**
-Both defects risk 2 leans on, the timer re-arm drift from milestone 6 (threads, the context switch,
-and preemption) and the VisionFive 2 undelivered wake, are still on the far side of it, so **the risk's
-color does not obviously change**; what changes is that the cause is two Rust constructs rather than
+unreachable residue to under a fifth of the kernel.** And it is exactly the fifth you would expect.
+Both defects risk 2 leans on are still on the far side of it, so **the risk's
+color does not obviously change**. They are the timer re-arm drift from milestone 6 (threads, the context switch,
+and preemption) and the VisionFive 2 undelivered wake. What changes is that the cause is two Rust constructs rather than
 a crate boundary, and that the fix is writing harnesses rather than moving a wall.
 
 `64,818` is also stale as a size. `kernel/src` is 81,413 lines today, 40,953 of them non-blank
@@ -72,7 +72,7 @@ non-comment.
 ## What is blocked until it is answered
 
 Nothing is blocked. This is a correctness problem in the record, and the reason it is worth a
-proposal rather than a passing mention is the one AGENTS.md states: a lane briefed from a stale
+proposal rather than a passing mention is the one AGENTS.md states. A lane briefed from a stale
 premise spends its budget discovering that, and this one did. The next lane sent at risk 2 will do
 the same.
 
