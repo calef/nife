@@ -18,7 +18,7 @@ heading carries the name calef ruled (2026-09-19).
 Both stated the same rule. `AGENTS.md` said standard terms *"should not be touched"* with a
 list; `design/naming.md` said *"Standard terms are already right and must not be touched"* with
 the same list. A change to that rule had to be edited in both places in one commit, and nothing
-would have caught a miss: no gate compares the two, and the note is the file a
+would have caught a miss. No gate compares the two, and the note is the file a
 lane reads *second*, so the contradiction would have been discovered by somebody acting on the wrong
 one.
 
@@ -30,18 +30,18 @@ one framing, which is the same defect wearing a second hat.
 
 The constitution keeps the tests a lane applies. Who names things, the `snake_case`/hyphen
 domain table, nouns rather than verbs, and now the acronym test. Short, imperative, and read every
-session, because `AGENTS.md` is the file an agent has in front of it and
+session. `AGENTS.md` is the file an agent has in front of it, and
 `design/naming.md` is a file it visits only when something sends it there. Moving a rule to a note
-demotes it to rung four of this file's own ladder, and naming is the most frequently applied rule
+demotes it to rung four of this file's own ladder. And naming is the most frequently applied rule
 in the project: every lane ships names.
 
 The note keeps the argument and the history. Most of those 132 lines are already that rather than
 rule: the two-tier convention calef rejected and why, the `wc` example that killed it, the evidence
-that a rule was needed at all, the three crates settled the day it was written, the count that was
+that a rule was needed at all. And the three crates settled the day it was written, and the count that was
 wrong because a grep matched only single-line includes. Every one of those is worth keeping and none
 of it is something a lane applies.
 
-Expect to reclaim roughly half the section, which is real budget in a file that has none, and the
+Expect to reclaim roughly half the section, which is real budget in a file that has none. The
 number should be reported rather than estimated when the work is done.
 
 Measured: 60 lines, from 137 to 77, which is 44% of the section and 5.7% of the whole file.
@@ -52,7 +52,7 @@ paragraph; the block's "132" counted the prose and not the blank lines between p
 
 Most of the reclaim was already-duplicated argument rather than argument being moved. The
 two-tier rejection, the `wc` example, the "0 of 57" measurement, the standard-terms guard rail and
-the `NAME_LEN` history were each written out in full in **both** files before this milestone, which
+the `NAME_LEN` history were each written out in full in **both** files before this milestone. That
 is the same defect the block was minted for, found four more times while fixing it once. Those
 paragraphs were deleted from `AGENTS.md` and not moved, because the note's versions are longer and
 better. What genuinely moved is the `dwarden`/`conx`/`cseam` evidence, the shared-module history,
@@ -74,7 +74,7 @@ three crates the noun rule settled, and the domain table's two arguments.
   things about the same subject. This milestone reduces the surface rather than closing it.
 - `AGENTS.md` is an architect's file. A lane may not edit it (milestone 118 (CLAUDE.md has a
   budget) records that a lane cannot even carry the budget marker there), so the note half is a
-  lane's and the constitution half is calef's, and the milestone is not done until both have
+  lane's and the constitution half is calef's. The milestone is not done until both have
   happened.
 - The naming section is not the only duplicated one. Nobody has checked whether the merge queue,
   the lane roles or the dependency rule are stated twice the same way; this block is scoped to the
@@ -111,7 +111,7 @@ three crates the noun rule settled, and the domain table's two arguments.
 
 `design/naming.md` is the one statement of the naming conventions, and `AGENTS.md` keeps a pointer
 and the authority (§155 (the naming conventions move out of the constitution)). The note opens by
-saying it is the rule rather than a second authority, and holds the `dwarden`/`conx` evidence, the
+saying it is the rule rather than a second authority. It holds the `dwarden`/`conx` evidence, the
 shared-module argument, the extension of milestone 160 (review the public function names across the
 kernel's dependency crates), the noun rule's three settled crates and the domain table's two
 arguments. No gate compares two statements of one rule, so the fix was to keep one.

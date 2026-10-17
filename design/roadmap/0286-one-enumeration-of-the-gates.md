@@ -70,7 +70,7 @@ intact. It is `local` and has no CI job, because GitHub's hosted macOS arm64 run
 machines with no nested virtualization.
 
 **Bootstrapping became explicit.** `script/ci-build` provisions on its no-argument path only, since
-that is the command a person runs on a cold checkout; a named check runs exactly what it names,
+that is the command a person runs on a cold checkout. A named check runs exactly what it names,
 because the caller naming one check is a CI job whose own steps installed what it needs. Without
 that split, `script/ci-build fmt` would apt-install QEMU onto the rustfmt runner. The `test` job
 gained an explicit `script/bootstrap` step, which is the shape the `bench` and `cpu matrix` jobs
@@ -96,7 +96,7 @@ now records that it asserted the opposite for a month.
 
 - A CI job can still run a script directly and bypass the table. Nothing gates that. The rung
   above would be a lint check that every `script/` invocation in `ci.yml` resolves to a table row,
-  and it is not built here: `script/ci-qemu` and `script/bootstrap` are provisioning rather than
+  and it is not built here. `script/ci-qemu` and `script/bootstrap` are provisioning rather than
   checks, so the check would need an exception list on its first day, and an exception list is the
   hand-maintained second copy this milestone deleted. Recorded rather than built, deliberately.
 - The table does not claim `verify.yml`. Kani (`script/verify`, about 47 minutes) and the
@@ -108,17 +108,17 @@ now records that it asserted the opposite for a month.
   provisional for that reason among others; the proposal carries the refusals.
 - The no-argument path runs `script/bootstrap` first, which `script/gates` did not. calef ruled
   on 2026-09-13 that this is correct and it is the shipped behavior: a machine that cannot
-  provision will fail the later rows anyway, and failing early is honest. The residue is real: on a
+  provision will fail the later rows anyway, and failing early is honest. The residue is real. On a
   warm machine bootstrap prints a few lines and exits, but on a machine missing QEMU it will
   `brew install` or `apt-get install`, which is a surprise the pre-push command did not previously
-  carry, and it runs BEFORE `fmt`, so a formatting slip costs provisioning plus twenty seconds.
-  Lazy provisioning was considered and is worth less than it looks: `lint` is the second row and
+  carry. And it runs BEFORE `fmt`, so a formatting slip costs provisioning plus twenty seconds.
+  Lazy provisioning was considered and is worth less than it looks. `lint` is the second row and
   needs three tools bootstrap installs, so the saving is one row wide and the cost is a second
   column saying which rows need it.
 - A machine whose bootstrap fails still gets nothing automatic, and that is accepted rather than
   solved. What changed is that it is no longer silent. Measured on this lane's own container, whose
-  packaged QEMU is 8.2.2 and lacks `riscv-iommu-pci`: `script/bootstrap` exits 1 having installed
-  nothing and broken nothing, and before that fix the developer was left holding one error about a
+  packaged QEMU is 8.2.2 and lacks `riscv-iommu-pci`. `script/bootstrap` exits 1 having installed
+  nothing and broken nothing. And before that fix the developer was left holding one error about a
   QEMU device with no statement anywhere that the whole tier had been skipped. Read that way it is a
   gate silently giving somebody nothing, which is what *a gate people skip is not a gate* names,
   arriving from the other side. The exit now says **NO CHECKS RAN** in those words, lists the
@@ -153,7 +153,7 @@ now records that it asserted the opposite for a month.
   now; in this block's `BUGS`, with the reason.
 - **Recorded.** Live references to the retired name in blocks a lane may not edit, handed to
   the integrator with file, line and replacement: `design/roadmap/0274-apple-silicon-isa-support.md`
-  (a `NOT-STARTED` block, so live intent) and
+  (a `NOT-STARTED` block, so live intent). And
   `design/roadmap/0341-instruments-nothing-runs.md`, whose `Gate:` line asked which instrument joins
   the retired script and was corrected when milestone 433 (drain the proposal pile to zero, and keep it there) numbered it on 2026-09-19. The other fifteen blocks are accounts
   and keep the old name, as did the four index rows, until the index was retired on 2026-09-21.

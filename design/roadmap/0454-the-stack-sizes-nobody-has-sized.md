@@ -35,9 +35,9 @@ From '90. A guard page under the per-CPU secondary stacks', under `## Follow-on`
 ## Why it is here rather than only there
 
 Two blocks refused a stack-size change in the same month, in opposite directions, and both were
-right to: one refused growing `STACK_PAGES` from 4 to 8 because growing the stack moves an illegible
-overflow further away instead of restoring the guard page that would make it a fault, and the other
-refused shrinking the 64 KiB per-CPU secondary stacks because a stack-depth regression and a guard
+right to. One refused growing `STACK_PAGES` from 4 to 8, because growing the stack moves an illegible
+overflow further away instead of restoring the guard page that would make it a fault. The other
+refused shrinking the 64 KiB per-CPU secondary stacks, because a stack-depth regression and a guard
 regression in one commit are indistinguishable. What neither did was set either number from
 evidence, and the evidence that exists points both ways: milestone 84 (stack high-water: measure kernel stack depth) put the secondaries at 12% of their
 stacks, 8.5 KiB of 64.

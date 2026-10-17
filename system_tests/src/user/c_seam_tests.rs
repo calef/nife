@@ -1,4 +1,4 @@
-use super::*;
+use super::test_programs::spawn_progenitor_shaped;
 use crate::sched;
 
 /// The report protocol, matching `crates/c_seam`. Userspace owns the definition; the test
@@ -40,72 +40,19 @@ const EXPECTED_REPORTS: usize = 4 * ATTEMPTS;
 /// (the archive read-only at `INITIAL_RAMDISK_VA`, an untyped in slot 0, a report endpoint in slot
 /// 1), so what is under test is the seam rather than a privileged shortcut.
 fn spawn_confiner() -> (sched::RendezvousId, u64) {
-    let (initial_ramdisk_start, initial_ramdisk_len) =
-        memory::initial_ramdisk_region().expect("no initial ramdisk region");
-    let initial_ramdisk_pages = initial_ramdisk_len.div_ceil(FRAME_SIZE);
-    let bytes = program("c_confiner").expect("no c_confiner program in the initial ramdisk");
-    let elf = Elf::parse(bytes).expect("c_confiner is not loadable");
-
-    let content: u64 = elf
-        .segments()
-        .map(|seg| {
-            let (s, e) = seg.page_range(FRAME_SIZE);
-            (e - s) / FRAME_SIZE
-        })
-        .sum::<u64>()
-        + 1
-        + initial_ramdisk_pages / 512
-        + crate::revoke::log_pages_for(initial_ramdisk_pages)
-        + INIT_STACK_PAGES
-        + 8;
-    let mut space = AddressSpace::new(content).expect("no memory for c_confiner");
-    map_segments(&mut space, &elf).expect("could not lay out c_confiner");
-    for k in 0..INIT_STACK_PAGES {
-        space
-            .map_new(USER_STACK_VA - k * FRAME_SIZE, Flags::user_data())
-            .expect("could not map c_confiner's stack");
-    }
-    #[cfg(any(target_arch = "x86_64", target_arch = "riscv64"))]
-    map_timebase_page(&mut space).expect("could not map c_confiner's timebase page");
-    for i in 0..initial_ramdisk_pages {
-        space
-            .map_physical(
-                INITIAL_RAMDISK_VA + i * FRAME_SIZE,
-                initial_ramdisk_start + i * FRAME_SIZE,
-                Flags::user_rodata(),
-                crate::revoke::PageMapSource::NoCapability,
-            )
-            .expect("could not map the initial ramdisk");
-    }
-    let aspace = readopt_user_address_space(space).expect("register the c_confiner aspace");
-
     // From a region the run owns and reclaims, as `live_swap_tests::spawn_swapper` does.
     let report_region = crate::memory_region::create(1).expect("no region for the report endpoint");
     let report = sched::create_rendezvous_from(report_region).expect("no report rendezvous");
-    let budget =
-        crate::memory_region::create(CONFINER_BUDGET_PAGES).expect("no budget for c_confiner");
-    let thread_control_block_region = crate::memory_region::create(2).expect("no tcb region");
-    let tid = sched::create_thread_control_block(thread_control_block_region).expect("no tcb");
-    let s0 = sched::thread_control_block_insert_cap(
-        tid,
-        crate::cap::memory_region_root_cap(budget),
+    spawn_progenitor_shaped(
+        "c_confiner",
+        CONFINER_BUDGET_PAGES,
+        crate::cap::Rights::ALL,
+        report,
+        crate::cap::Rights::WRITE.union(crate::cap::Rights::GRANT),
+        &[],
         None,
-    )
-    .expect("insert budget");
-    assert_eq!(s0, 0, "c_confiner's budget must land in slot 0");
-    let s1 = sched::thread_control_block_insert_cap(
-        tid,
-        crate::cap::rendezvous_cap(
-            report,
-            crate::cap::Rights::WRITE.union(crate::cap::Rights::GRANT),
-        ),
-        None,
-    )
-    .expect("insert report");
-    assert_eq!(s1, 1, "c_confiner's report endpoint must land in slot 1");
-    sched::configure_thread_control_block(tid, elf.entry(), USER_STACK_TOP, aspace)
-        .expect("configure");
-    sched::start_thread_control_block(tid, [0, initial_ramdisk_len, 0]).expect("start");
+        0,
+    );
     (report, report_region)
 }
 

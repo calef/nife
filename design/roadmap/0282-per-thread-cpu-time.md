@@ -45,9 +45,9 @@ number rather than a coarse one, and it would be dropped exactly when the machin
 slot index is already in the tid's low word, so an array keyed by slot needs no lock, no lookup and
 no ordering beyond relaxed. Two kilobytes of `.bss`, fixed.
 
-It is not on `cpu::PerCpu`, which milestone 527 (the `SURVEY` selector, and a thread's placement) made expensive (one `u64` there took
-`size_of::<PerCpu>()` from 128 to 136 and cost riscv64's IPC fastpath 5.4%), and it was never a
-candidate: the counter is per thread.
+It is not on `cpu::PerCpu`, which milestone 527 (the `SURVEY` selector, and a thread's placement)
+made expensive (one `u64` there took `size_of::<PerCpu>()` from 128 to 136 and cost riscv64's IPC
+fastpath 5.4%). It was never a candidate: the counter is per thread.
 
 ## §204's promise, measured
 
@@ -69,7 +69,7 @@ age is not `%CPU`, and a sampled estimate is not a measurement.
 Two things about the name are an architect's and neither blocks anything. The name `top` itself,
 which ships provisional. And the prior question of whether this is a program at all: milestone 281
 (`watch` holds exactly what `ps` holds) deleted `watch` on the rule that *two programs are two
-programs when they hold different authority*, and `top` holds `ps`'s three slots exactly. What
+programs when they hold different authority*. And `top` holds `ps`'s three slots exactly. What
 differs is the question asked rather than the endowment, and the argument is written out both ways
 in `crates/top`'s module docs. Folding it into `ps` as a flag is a day's work and stays available.
 

@@ -33,7 +33,7 @@ tool read both.
 `#[test_case]`, not only a `#[kani::proof]`) and a second verb to replay it with (`cargo xtask test
 --arch <a> --test <fn>`, not only `cargo kani --harness`). Nothing about §134 changes: the three
 states, the block's spelling and the patch path `<package>/falsifications/<module.path>.<fn>.patch`
-all carry over, and the evidence that they carry over cleanly is that milestone 202's existing patch
+all carry over. The evidence that they carry over cleanly is that milestone 202's existing patch
 filename already obeys the convention with no special case.
 
 Kernel tests are opt-in where harnesses are mandatory. `--check` fails a harness with no block,
@@ -78,8 +78,8 @@ own sentence, *"the page tables say U-mode could read the kernel's own memory."*
 
 Two things follow and both are larger than this row. A green confinement test is consistent with
 its assertion being *unable* to fail, which is `notes/confinement-claims.md`'s opening sentence
-arriving from a direction nobody had checked; the note says a passing test is consistent with the
-component never reaching the address, and this is a third world where the *test* never reaches the
+arriving from a direction nobody had checked. The note says a passing test is consistent with the
+component never reaching the address. This is a third world where the *test* never reaches the
 question. And nothing but a falsification could have found it: every gate in this tree was green
 throughout, for four weeks, because a vacuous assertion is a passing assertion.
 
@@ -157,7 +157,7 @@ the `U` bit, and S-mode access to a `U` page faults unless `sstatus.SUM` is set,
 sets only inside a test helper. A kernel that marked its own memory user-readable there would not be
 a kernel userspace can read; it would be a kernel that cannot read itself, dead before the first
 test. So RISC-V's twin is falsified at the software walk instead (`user_can_read` stops reading the
-`U` bit), which the test's own doc comment names as the thing under test on that ISA, and the record
+`U` bit), which the test's own doc comment names as the thing under test on that ISA. The record
 says so rather than implying parity it does not have.
 
 DECISIONS §19 (architectural parity is a tenet) makes parity a gate for the capability; this is a gap in the evidence, not in the
@@ -174,8 +174,8 @@ capability. It is recorded on row 21 and in `script/falsifications`' `BUGS`.
 | The same 48, on a tree where each patch forced a rebuild | about 22 min |
 
 The spread between the last two rows is the number to carry, and it is not the mechanism. A kernel falsification is cheap when the tree it reverts to is already built, and
-expensive when the patch touches a crate the kernel and the user programs both depend on, because
-then each apply and each revert costs the archive, the standard-library exerciser and five disk
+expensive when the patch touches a crate the kernel and the user programs both depend on. Then
+each apply and each revert costs the archive, the standard-library exerciser and five disk
 images. Milestone 210 measured QEMU start to `running N tests` at 0.50 s and a warm filtered run at
 8.6 s; the riscv64 row above is that number confirmed independently. So the boot was never the
 cost.
@@ -228,9 +228,9 @@ keeps comparing two derivations of one fact; that check fired on the first run h
   measured here as a 60-second lost-wakeup watchdog. It needs a non-blocking or timed `RECV_CAP`,
   which is the syscall surface and therefore calef's.
 - **Recorded.** In `script/falsifications`' own `BUGS`: a kernel record costs about a minute rather
-  than a second, so `--sweep` is no longer a thirty-second command; `--affected-since`, the per-PR
-  half, covers only the Kani records; a kernel record is swept on the one architecture its patch
-  names; and the sweep checks a red's shape rather than the assertion its prose predicts.
+  than a second, so `--sweep` is no longer a thirty-second command. `--affected-since`, the per-PR
+  half, covers only the Kani records. A kernel record is swept on the one architecture its patch
+  names. The sweep checks a red's shape rather than the assertion its prose predicts.
 - **Recorded.** In `notes/confinement-claims.md`'s `BUGS`, beside the table: a kernel row's evidence
   is re-checked far less often than a harness row's and on one architecture, so a **yes** there is a
   machine-replayable fact that nothing replays on a schedule.
@@ -245,7 +245,7 @@ keeps comparing two derivations of one fact; that check fired on the first run h
   `design/fatal-risks/README.md` risk 7 says "Six kernel confinement rows still have no mechanism at all",
   which is now false. A lane may not edit `design/` outside its own block and nothing gates that
   sentence (`script/fatal-risks` checks a cited milestone's status, and risk 7 cites neither 210 nor
-  this one), so the edit is the integrator's and is named in the pull request too.
+  this one). The edit is the integrator's and is named in the pull request too.
 
 ## Index row
 

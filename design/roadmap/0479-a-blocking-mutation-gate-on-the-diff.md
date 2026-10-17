@@ -41,7 +41,7 @@ workflow, no `script/ci-build` row, no ruleset entry.
 
   MET on 2026-09-21, and this is the first refusal in the tree whose condition has come true.
   Milestone 517 (what fraction of survivor growth arrives on lines a pull request touched) ran
-  exactly that experiment across the six weeks between the baseline and the census: 629 of 771
+  exactly that experiment across the six weeks between the baseline and the census. 629 of 771
   survivors sit on lines a merged pull request wrote, against 142 on older lines of which one
   is a genuine regression. Adoption would have meant 62 of 761 pull requests (8.1%) carrying
   untriaged survivors, median 6 each.

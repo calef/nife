@@ -52,7 +52,7 @@ two-core AP defect this tour does not touch."*
 
 So the record says the flake starts at three cores and the gate was written believing it. **It
 reaches two.** Either the bound in `ap_boot.rs` is wrong, or this is a second failure mode that
-happens to print the same line, and the difference matters: the recorded one is a secondary
+happens to print the same line, and the difference matters. The recorded one is a secondary
 brought up *beside an already-running one*, which cannot be what happened at `-smp 2`.
 
 ## What this costs today
@@ -84,8 +84,8 @@ running `script/test` on an x86_64 host.
 saw `smp: cpu 1 did not start (firmware returned -1)` once in three runs on one tree, one machine
 and one commit. `arch::x86_64::ap_boot`'s `BUGS` bounds that flake at three cores and above, and the
 comment beside `NIFE_SMP=2` reasons from the same bound, so either the bound is wrong or this is a
-second failure mode that prints the same line; the recorded one is a secondary brought up beside an
+second failure mode that prints the same line. The recorded one is a secondary brought up beside an
 already-running one, which cannot be what happens at two. Nothing in CI boots the x86_64 UEFI image,
 so only a lane running `script/test` on an x86_64 host ever meets it. The work is a rate first, then
 which record to correct, then what the gate should assert, and that last part is the one worth
-arguing: a gate known to fail one run in three and left that way is worse than either alternative.
+arguing. A gate known to fail one run in three and left that way is worse than either alternative.

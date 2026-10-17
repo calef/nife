@@ -15,13 +15,13 @@ found four survivors where that record accounts for 55.
 
 What this lane found on re-checking the proposal against the merged tree. The premise held
 for the arithmetic but not for the target: between 2026-09-19 (when the proposal was filed) and
-2026-09-23 (when it was built), risk 3 was rewritten twice more (milestones 517 and 518), and the
-specific `machine_discovery` paragraph quoted below is no longer in `design/fatal-risks/README.md`; it
+2026-09-23 (when it was built), risk 3 was rewritten twice more (milestones 517 and 518). The
+specific `machine_discovery` paragraph quoted below is no longer in `design/fatal-risks/README.md`. It
 was folded into a broader correction about the two censuses' timeout and rename conventions,
 which named the same shape of error ("a comparison across two records that were never made
 comparable") without the crate, the numbers, or the arithmetic that closes it. So the work was not
-a rewrite of a paragraph that no longer exists; it was restoring the specific case (with the exact
-numbers) to the paragraph that replaced it, and doing the part nobody had done yet: recording the
+a rewrite of a paragraph that no longer exists. It was restoring the specific case (with the exact
+numbers) to the paragraph that replaced it, and doing the part nobody had done yet. Recording the
 trap where `script/mutation --report`'s own output and `notes/mutation-testing.md`'s scope section
 meet a reader, so the next person reading that column does not have to rediscover this. See
 `design/fatal-risks/README.md`'s risk 3, the paragraph dated 2026-09-23; `script/mutation`'s `report()`
@@ -74,16 +74,16 @@ that says the date out loud.
   loud", the mechanical fix the proposal named as the alternative to a comment. It instead
   recorded the trap where a reader already stands when they run `--report`: in `script/mutation`'s
   own `report()` comments, beside the `(baseline missed)` header, and in
-  `notes/mutation-testing.md`'s `Scope and honest caveats` section (this file's `BUGS`-equivalent;
-  milestone 326 (nobody has been assigned to turn a mutation score upward) already cites it as
-  such). Rung three of AGENTS.md's ladder rather than rung two.
+  `notes/mutation-testing.md`'s `Scope and honest caveats` section (this file's `BUGS`-equivalent).
+  Milestone 326 (nobody has been assigned to turn a mutation score upward) already cites it as
+  such. Rung three of AGENTS.md's ladder rather than rung two.
   If the column keeps getting misread despite the comment, the mechanical fix is still there to
   build.
 
 ## Index row
 
 `design/fatal-risks/README.md` blamed milestone 319 (the crate that parses firmware)'s pull request for
-55 of `machine_discovery`'s survivors it did not write: 73 already existed, from `script/mutation
+55 of `machine_discovery`'s survivors it did not write. 73 already existed, from `script/mutation
 --report`'s `(baseline missed)` column reading as a two-day delta when it is always a fixed diff
 against the 2026-08-03 baseline. Risk 3's paragraph now carries the crate, the arithmetic and the
 date; `script/mutation` and `notes/mutation-testing.md` now name the trap where a reader of that

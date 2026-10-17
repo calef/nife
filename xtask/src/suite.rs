@@ -152,7 +152,7 @@ impl ArchLegs {
 /// ```text
 /// $ script/test --arch aarch64 --test frames_are_zeroed
 /// --- test filter: frames_are_zeroed (kernel legs only; the host crates have `cargo test`) ---
-/// --- kernel tests, aarch64 (QEMU) ---
+/// --- kernel tests, aarch64 (QEMU 11.1.2) ---
 /// running 1 of 312 tests (filter: frames_are_zeroed)
 /// test kernel::memory::tests::frames_are_zeroed ... ok
 /// test result: ok. 1 passed
@@ -217,18 +217,20 @@ pub(crate) fn test() -> bool {
     // this target and packs the same table RISC-V's archive uses, so the thirty
     // `cfg(initial_ramdisk)` test modules are in this binary; since milestone 164 (x86_64 userspace
     // can't build `aes`) it packs the FS server and `mkfs` too. What it still does not build is a
-    // `std` farm, and the runner still attaches no virtio-blk, so the tests wanting a filesystem
-    // `skip!()` for want of a DISK rather than of a server. The one exception
-    // is the NVMe image (decisions §86's x86_64/VT-d data point, milestone 161's VT-d having
-    // landed): `mknvmedisk` writes it here the same way the aarch64 and riscv64 legs do, since
-    // NIFE_NVME names this leg's image too (set unconditionally above) and the runner now attaches
-    // a controller behind it.
+    // `std` farm. The disk fixtures are the other two legs' five (the leg below builds them all
+    // since milestone 420 (x86_64 has one fixture of five and no NIC, GPU, keyboard or RNG), and
+    // the runner attaches each as one `virtio-blk-pci` function), plus the NVMe image, the
+    // x86_64/VT-d data point DECISIONS §86 (whether an NVMe driver can leave the kernel) asked
+    // for once milestone 161 (the x86_64 kernel port) had landed VT-d: `mknvmedisk` writes it
+    // here the same way the aarch64 and riscv64 legs do, since NIFE_NVME names this leg's image
+    // too (set unconditionally above) and the runner attaches a controller behind it.
     //
     // **`NIFE_INITIAL_RAMDISK` is set here rather than left to `cargo()`**, and it has to be: this
     // leg runs last, so whatever the aarch64 or riscv64 leg left in that variable is still there,
     // and an x86 kernel handed an aarch64 archive refuses every program in it with a `machine`
-    // error that names neither the archive nor the leg. `run` rather than `cargo` because that
-    // wrapper also exports `NIFE_DISK` and `NIFE_NET`, and this runner attaches neither.
+    // error that names neither the archive nor the leg. That wrapper's `NIFE_DISK` names the same
+    // path, and the boards' legs leave `NIFE_NET` behind in a full run; this leg sets both itself,
+    // below, so a single-architecture run describes its own machine.
     if legs.x86_64() && !x86_64_suite(filter.is_some()) {
         return false;
     }
@@ -619,7 +621,13 @@ fn attach_test_leg_devices() {
 /// **The aarch64 leg**: its images, then both test images, on the physical core under `--hvf`.
 fn aarch64_suite(hvf: bool, filtered: bool) -> bool {
     eprintln!();
-    eprintln!("--- kernel tests, aarch64 (QEMU) ---");
+    // The version rides in the banner (milestone 414 (a red post-run check does not say which
+    // emulator produced it)): a red line under this heading is interpreted by which emulator
+    // produced it, so the heading carries that fact.
+    eprintln!(
+        "--- kernel tests, aarch64 (QEMU {}) ---",
+        crate::host::qemu_version("aarch64")
+    );
     // The FS server (milestone 32 phase 2), for the aarch64 bare target, before `user()` so
     // initial_ramdisk_aarch64 packs it; then the RedoxFS test images the runner attaches as
     // extra mmio disks.
@@ -664,7 +672,10 @@ fn aarch64_suite(hvf: bool, filtered: bool) -> bool {
 /// **The riscv64 leg**: its own archive and fresh images, then both test images.
 fn riscv64_suite(filtered: bool) -> bool {
     eprintln!();
-    eprintln!("--- kernel tests, riscv64 (QEMU) ---");
+    eprintln!(
+        "--- kernel tests, riscv64 (QEMU {}) ---",
+        crate::host::qemu_version("riscv64")
+    );
     // The riscv userspace tests (parity C) load programs from the initial ramdisk and read the
     // disk, so build the riscv archive and point the runner at IT, not at the aarch64 archive
     // `cargo()` exports: the riscv ELF loader must never be handed aarch64 ELFs. The disk is
@@ -722,12 +733,19 @@ fn riscv64_suite(filtered: bool) -> bool {
 /// other machines: a PCIe root port, AMD-Vi, and real firmware.
 fn x86_64_suite(filtered: bool) -> bool {
     eprintln!();
-    eprintln!("--- kernel tests, x86_64 (QEMU q35) ---");
+    eprintln!(
+        "--- kernel tests, x86_64 (QEMU q35, {}) ---",
+        crate::host::qemu_version("x86_64")
+    );
     // The FS server for this target BEFORE the archive that packs it (milestone 164), the same
     // order the aarch64 and riscv64 legs use. `mkdisk` since milestone 215 (a PCI function's
     // interrupt on x86_64), because this runner attaches the sibling `-pci.img` as a
     // virtio-blk-pci function, and `mkredoxfs` since milestone 303, because it now attaches the
-    // `-redoxfs.img` sibling as a second one. The FS tests reach a real filesystem here.
+    // `-redoxfs.img` sibling as a second one. The FS tests reach a real filesystem here. Since
+    // milestone 420 (x86_64 has one fixture of five and no NIC, GPU, keyboard or RNG) the runner
+    // attaches the other three fixtures the same way (the crash disk as the third function, the
+    // GPT and blank disks as the fourth and fifth), so this leg builds them like the other two
+    // legs do.
     //
     // **It runs after the other two legs, and regenerates every image they wrote**, which is
     // the same freshness discipline the riscv64 leg's own `mkredoxfs` call documents: a leg
@@ -737,6 +755,9 @@ fn x86_64_suite(filtered: bool) -> bool {
         || !initial_ramdisk_x86()
         || !mkdisk()
         || !mkredoxfs()
+        || !mkredoxfs_crash()
+        || !mkgptdisk()
+        || !mkblankdisk()
         || !mknvmedisk()
     {
         return false;
@@ -747,16 +768,28 @@ fn x86_64_suite(filtered: bool) -> bool {
     // copies pipe bytes into a String and never touches the environment.
     unsafe { std::env::set_var("NIFE_INITIAL_RAMDISK", x86_initial_ramdisk_path()) };
     // **`NIFE_DISK` names the fixture set, not one disk**, exactly as it does on both other
-    // runners. This one derives the `-pci.img` and `-redoxfs.img` siblings from it and attaches
-    // those as the first and second virtio-blk-pci functions (milestones 215 and 303); `q35`
-    // has no virtio-mmio bus, so the image the variable itself names is not attached anywhere
-    // here.
+    // runners. This one derives the `-pci.img`, `-redoxfs.img`, `-redoxfs-crash.img`, `-gpt.img`
+    // and `-blank.img` siblings from it and attaches those as the first through fifth
+    // virtio-blk-pci functions (milestones 215, 303 and 420); `q35` has no virtio-mmio bus, so
+    // the image the variable itself names is not attached anywhere here.
     //
     // SAFETY: `set_var` became unsafe in edition 2024 because it races other threads. xtask is
     // single-threaded here: this runs on the main thread before the child that reads it is
     // spawned, and the only thread xtask ever starts (the transcript reader in
     // swish_check_leg) copies pipe bytes into a String and never touches the environment.
     unsafe { std::env::set_var("NIFE_DISK", disk_path()) };
+    // The e1000e NIC (milestone 494 (a driver for the network card a PC actually has)), on the
+    // riscv64 leg's terms: `attach_test_leg_devices` does
+    // not export NIFE_NET, so before milestone 420 only a full run had the NIC here (the value
+    // the riscv64 leg set leaked into this one), and an `--arch x86_64` run booted NIC-less and
+    // skipped its e1000e tests where the same tests run in the full suite. One machine per run,
+    // whichever legs it asked for.
+    //
+    // SAFETY: `set_var` became unsafe in edition 2024 because it races other threads. xtask is
+    // single-threaded here: this runs on the main thread before the child that reads it is
+    // spawned, and the only thread xtask ever starts (the transcript reader in
+    // swish_check_leg) copies pipe bytes into a String and never touches the environment.
+    unsafe { std::env::set_var("NIFE_NET", "1") };
     // The kernel's unit tests, then the system suite (milestone 609 (the system tests leave the
     // kernel crate)).
     if filtered {
@@ -860,7 +893,16 @@ fn x86_64_behind_a_root_port() -> bool {
 fn x86_64_on_amd_vi() -> bool {
     eprintln!();
     eprintln!("--- kernel and system tests, x86_64 with AMD-Vi in place of VT-d ---");
-    if !mkdisk() || !mkredoxfs() || !mknvmedisk() {
+    // Every fixture the runner attaches, for the freshness rule the leg above states: this
+    // machine's suite writes the blank disk (the write-half test runs here too), so starting
+    // from the VT-d leg's damage would be order-coupled.
+    if !mkdisk()
+        || !mkredoxfs()
+        || !mkredoxfs_crash()
+        || !mkgptdisk()
+        || !mkblankdisk()
+        || !mknvmedisk()
+    {
         return false;
     }
     // SAFETY: `set_var` became unsafe in edition 2024 because it races other threads. xtask
@@ -893,37 +935,37 @@ fn x86_64_on_amd_vi() -> bool {
 /// server and no disk it can find) gave it a RedoxFS disk), riscv64 when
 /// `--arch x86_64` was not asked for, aarch64 when it was the only leg.
 ///
-/// **The crash and blank images are aarch64's and riscv64's alone**, and that is why the x86_64
-/// arm below is separate rather than the guard simply going away. `helpers/qemu-runner-x86_64.sh`
-/// attaches two PCI functions, the nifefs image and the RedoxFS one; the crash disk of milestone 37
-/// (prove RedoxFS's crash consistency) and the GPT and blank disks of milestone 57 (partitioning and
-/// formatting a real drive) are not among them, so those two checks would open
-/// whatever a previous full run left and report a true statement about a stale file and a false
-/// one about this run. A check whose subject did not happen is worse than no check.
+/// **The crash and blank disks have an x86_64 shape now** (milestone 420): the runner attaches
+/// all five fixtures and the x86_64 leg writes the shared fixture and the blank disk, but no
+/// crash test runs on this ISA (the twins in `filesystem_tests` and `riscv_virtio_tests` are
+/// cfg-gated to their ISAs), so the crash check would open the pristine fixture and pass without
+/// witnessing anything. Until the crash test has an x86_64 arm, its host check runs only when
+/// the leg that ran last is one that runs the test. A check whose subject did not happen is
+/// worse than no check.
 fn images_after_the_run(legs: ArchLegs, filtered: bool) -> bool {
-    if !legs.aarch64() && !legs.riscv64() {
-        if filtered {
-            return true;
-        }
-        eprintln!();
-        eprintln!("--- redoxfs image consistency after the run (host tool) ---");
-        return redoxfs_check_after_run();
-    }
-    // **And not under a filter** (milestone 210), for the same reason the `--arch x86_64` guard
-    // above exists: these checks assert what the FS tests WROTE, so a run that did not select them
-    // would open a stale image and report "motd did not read back", which is a true statement about
-    // a leftover file and a false one about this run. A check whose subject did not happen is worse
-    // than no check.
+    // **Not under a filter** (milestone 210 (no kernel test can be run by name, so one
+    // falsification costs a whole suite)), for the same reason the `--arch x86_64` guard
+    // exists: these checks assert what the FS tests WROTE, so a run that did not select them
+    // would open a stale image and report "motd did not read back", which is a true statement
+    // about a leftover file and a false one about this run.
     if filtered {
         return true;
     }
     eprintln!();
     eprintln!("--- redoxfs image consistency after the run (host tool) ---");
-    // Both images: the shared fixture (the write persisted, the filesystem still parses) and the
-    // crash test's own disk (milestone 37: after a kill mid-transaction, `cut` is one payload whole).
-    // Three images: the shared fixture (the write persisted and the filesystem still parses), the
-    // crash test's own disk (milestone 37), and milestone 57's blank disk, where the guest wrote
-    // both the partition table and the filesystem inside it.
+    // The checks read the images of whichever leg ran LAST, each of which regenerates every
+    // fixture and then writes it. An x86_64 last leg leaves its own shared fixture and its own
+    // (now written) blank disk, but a pristine crash disk; on the other two ISAs all three
+    // checks have a subject. The shared fixture check runs either way: every leg's FS tests
+    // write it.
+    if legs.x86_64() {
+        return redoxfs_check_after_run() && blank_check_after_run();
+    }
+    // Both images: the shared fixture (the write persisted, the filesystem still parses), the
+    // crash test's own disk (milestone 37 (prove RedoxFS's crash consistency): after a kill
+    // mid-transaction, `cut` is one payload whole), and milestone 57
+    // (partitioning and formatting a real drive, and extended attributes)'s blank disk, where the
+    // guest wrote both the partition table and the filesystem inside it.
     redoxfs_check_after_run() && redoxfs_crash_check_after_run() && blank_check_after_run()
 }
 

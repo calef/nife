@@ -25,7 +25,7 @@ quietly because it named the wrong kind of wait for fifteen days. Nothing in thi
 to choose between options: the settings are named, the photographs that show them are cited, the
 `dnsmasq` lines are written and a gate (`script/netboot-rehearsal --check`) already parses them. A
 reader asking *what would change this* got "a decision" and the true answer is "an evening at the
-bench", which is exactly the conflation calef corrected on 2026-08-18 when milestones 16 and 53 sat
+bench". That is exactly the conflation calef corrected on 2026-08-18 when milestones 16 and 53 sat
 on the ready list after the VisionFive 2 arrived. `DECISION` and `HARDWARE` both keep a `PARTIAL`
 block off `script/roadmap --ready`, so nothing was mis-offered; what was wrong is what the gate
 told a reader.
@@ -37,7 +37,7 @@ from a script we write onto the card, so `192.168.8.216` is baked in and the hou
 to know anything.
 
 PXE is the opposite. The DHCP server has to advertise the next server and the boot filename, and
-that is the router. When 257's lane refused `dnsmasq`, it did so for exactly this reason, and its
+that is the router. When 257's lane refused `dnsmasq`, it did so for exactly this reason. Its
 own words are worth keeping because they are what made this look blocked: *"a second DHCP server on
 it is an outage for everyone in the building."*
 
@@ -115,17 +115,17 @@ the size not being a constant. The negative case (`--mac 02:00:00:00:00:01`) pro
 received` and no boot, which is what a house machine that is not xenon must see.
 
 `-netdev user` was refused rather than missed. QEMU's slirp has a DHCP server and a TFTP server
-built in, and pointing them at `target/esp` PXE-boots this image in one line; that was the first
+built in, and pointing them at `target/esp` PXE-boots this image in one line. That was the first
 thing tried and it worked, and it is what proved the payload boots at all. It proves nothing about
-our configuration or our server, because neither is in the path, and neither can be put there:
-slirp's NAT has no TFTP helper, and TFTP moves to a fresh server port after the first packet, so the
+our configuration or our server, because neither is in the path, and neither can be put there.
+Slirp's NAT has no TFTP helper, and TFTP moves to a fresh server port after the first packet, so the
 DATA reply is dropped by the very NAT that was meant to carry it.
 
 ### One defect found in `board-netboot`, and what it cost
 
 EDK2 asks for a file twice: once to learn its size, which it does by starting a read, taking `tsize`
 out of the option acknowledgement, and sending a TFTP ERROR to stop the transfer it just
-started; and once to fetch it. `board-netboot` did not understand ERROR. It retried its
+started. And once to fetch it. `board-netboot` did not understand ERROR. It retried its
 acknowledgement six times, held the client past its own timeout so the real request had to be sent
 again, and printed `FAILED` on the one transfer of a boot that was working perfectly.
 
@@ -137,7 +137,7 @@ coin's other face, and it would have been read at the bench as a broken server.
 
 `notes/x86-uefi-boot.md`, in the shape `notes/visionfive2.md`'s runbook has: the two firmware
 settings with their photograph numbers, the router edit in both UCI and raw-dnsmasq form, the two
-commands on patagonia, what the screen and the server terminal should each say in order, and a
+commands on patagonia. What the screen and the server terminal should each say in order, and a
 failure table keyed on what a person with a camera and no shell can actually see.
 
 It removes the co-location, which is the second reason to want it. First light is on record as
@@ -194,7 +194,7 @@ faster bench session, not an unattended one.**
 ## BUGS
 
 - Nothing here has run on xenon, and nothing here can tell you it will. What is proven is OVMF,
-  which is EDK2, which is the same codebase Dell's firmware is built from; xenon is at BIOS 1.27.0
+  which is EDK2, which is the same codebase Dell's firmware is built from. Xenon is at BIOS 1.27.0
   with an Intel I219-LM onboard NIC (the e1000e family) rather than QEMU's e1000, and the two
   firmware settings that make it try at all are described under Status below. The NIC's source is
   the PCI survey line in the 2026-10-04 photos, class `020000`, `00:1f.6 8086:15e3`, an Intel
@@ -207,7 +207,7 @@ faster bench session, not an unattended one.**
 - The `dhcp-boot` server address is patagonia's current lease, and a lease that moves makes xenon
   TFTP into nothing with no console to say so. patagonia is at `192.168.8.138` on Wi-Fi `en0` (MAC
   `10:9f:41:d4:8c:0e`), and the pin is in place, but it is bound to macOS's private Wi-Fi address
-  `9e:1a:a1:57:40:a6`, not the hardware MAC, and matches only while patagonia's Private Wi-Fi
+  `9e:1a:a1:57:40:a6`, not the hardware MAC. It matches only while patagonia's Private Wi-Fi
   Address for the home network is Fixed or Off. Set to Rotating, the reservation silently stops
   matching and `.138` can move again. That condition is met: calef confirmed on 2026-10-04 (UTC)
   that the setting is Fixed. Anyone changing it owes this line an edit.

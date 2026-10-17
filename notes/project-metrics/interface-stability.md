@@ -8,40 +8,42 @@ Sorted by breaking changes in the last four weeks (2026W39 to 2026W42), then by 
 
 | crate | breaking, 4 weeks | additions, 4 weeks | breaking | additions | commits | crossing another division |
 |---|---:|---:|---:|---:|---:|---:|
-| `filesystem_protocol` | 250 | 59 | 283 | 459 | 113 | 104 (92%) |
-| `globally_unique_identifier_partition_table` | 124 | 4 | 151 | 219 | 39 | 30 (77%) |
-| `grant_plan` | 89 | 283 | 136 | 915 | 161 | 132 (82%) |
-| `elf` | 52 | 1 | 55 | 53 | 46 | 36 (78%) |
-| `line_editor` | 51 | 73 | 52 | 118 | 33 | 27 (82%) |
-| `package_archive` | 19 | 126 | 19 | 126 | 24 | 17 (71%) |
-| `socket_protocol` | 16 | 29 | 19 | 67 | 31 | 29 (94%) |
-| `login_protocol` | 13 | 68 | 14 | 83 | 35 | 34 (97%) |
-| `abi` | 11 | 71 | 41 | 169 | 108 | 102 (94%) |
-| `swap_protocol` | 10 | 34 | 12 | 124 | 45 | 44 (98%) |
+| `filesystem_protocol` | 250 | 59 | 283 | 459 | 118 | 107 (91%) |
+| `grant_plan` | 104 | 344 | 151 | 976 | 171 | 139 (81%) |
+| `globally_unique_identifier_partition_table` | 64 | 5 | 91 | 281 | 39 | 30 (77%) |
+| `package_archive` | 19 | 129 | 19 | 129 | 24 | 17 (71%) |
+| `socket_protocol` | 16 | 32 | 19 | 70 | 32 | 30 (94%) |
+| `login_protocol` | 14 | 69 | 22 | 91 | 35 | 34 (97%) |
+| `abi` | 11 | 72 | 41 | 170 | 114 | 107 (94%) |
+| `line_editor` | 11 | 73 | 12 | 118 | 33 | 27 (82%) |
+| `swap_protocol` | 10 | 34 | 12 | 124 | 46 | 45 (98%) |
 | `credential_protocol` | 8 | 6 | 35 | 70 | 34 | 31 (91%) |
-| `activation_set` | 8 | 71 | 8 | 71 | 22 | 20 (91%) |
+| `activation_set` | 8 | 72 | 8 | 72 | 22 | 20 (91%) |
 | `byte_sink_protocol` | 4 | 10 | 6 | 48 | 29 | 29 (100%) |
 | `clock_protocol` | 4 | 4 | 5 | 54 | 28 | 26 (93%) |
-| `component_plan` | 3 | 14 | 3 | 126 | 31 | 25 (81%) |
+| `component_plan` | 3 | 14 | 3 | 126 | 32 | 26 (81%) |
 | `graphics_protocol` | 2 | 2 | 11 | 33 | 28 | 28 (100%) |
 | `nifefs` | 2 | 0 | 9 | 41 | 41 | 29 (71%) |
 | `entropy_protocol` | 2 | 3 | 3 | 18 | 23 | 21 (91%) |
-| `current_cpu_protocol` | 2 | 17 | 2 | 17 | 9 | 5 (56%) |
+| `current_cpu_protocol` | 2 | 17 | 2 | 17 | 12 | 6 (50%) |
 | `measured_boot` | 2 | 24 | 2 | 65 | 22 | 18 (82%) |
-| `supervision_protocol` | 1 | 10 | 22 | 70 | 51 | 46 (90%) |
-| `std_runtime_protocol` | 1 | 24 | 1 | 24 | 10 | 9 (90%) |
-| `compositor` | 0 | 2 | 4 | 94 | 31 | 24 (77%) |
+| `supervision_protocol` | 1 | 10 | 22 | 70 | 52 | 47 (90%) |
+| `compositor` | 1 | 4 | 11 | 99 | 32 | 25 (78%) |
+| `std_runtime_protocol` | 1 | 24 | 1 | 24 | 11 | 10 (91%) |
+| `elf` | 0 | 30 | 3 | 82 | 46 | 36 (78%) |
 | `counter_frequency_protocol` | 0 | 3 | 1 | 15 | 13 | 11 (85%) |
-| `environment_protocol` | 0 | 0 | 1 | 44 | 9 | 9 (100%) |
+| `environment_protocol` | 0 | 0 | 1 | 44 | 10 | 10 (100%) |
 | `user_mode_heap` | 0 | 0 | 1 | 11 | 0 | 0 |
+| `address_space_map` | 0 | 42 | 0 | 42 | 0 | 0 |
+| `allocation_cache` | 0 | 18 | 0 | 18 | 0 | 0 |
 | `argument_protocol` | 0 | 29 | 0 | 29 | 0 | 0 |
-| `boot_slot` | 0 | 52 | 0 | 52 | 12 | 8 (67%) |
-| `capability_witness_protocol` | 0 | 7 | 0 | 10 | 15 | 12 (80%) |
-| `manifest_note` | 0 | 58 | 0 | 58 | 17 | 11 (65%) |
+| `boot_slot` | 0 | 52 | 0 | 52 | 13 | 9 (69%) |
+| `capability_witness_protocol` | 0 | 7 | 0 | 10 | 16 | 13 (81%) |
+| `manifest_note` | 0 | 58 | 0 | 58 | 19 | 13 (68%) |
 
 ## What broke in 2026W42
 
-Read at `1d695c7395ae` against the week before. Each line is one removed or changed public item, quoted as it stood that week; a crate rename is one line for the whole crate.
+Read at `6f7deccd121c` against the week before. Each line is one removed or changed public item, quoted as it stood that week; a crate rename is one line for the whole crate.
 
 > - `abi`: syscall renamed, number kept (method or encoding), now `interrupt::ACK` `irq::ACK`
 > - `abi`: syscall renamed, number kept (method or encoding), now `interrupt::WAIT` `irq::WAIT`
@@ -54,58 +56,6 @@ Read at `1d695c7395ae` against the week before. Each line is one removed or chan
 > - `credential_protocol`: removed `fixture::GRAEME`
 > - `credential_protocol`: changed `fixture::PEOPLE`
 > - `credential_protocol`: changed `fixture::SMB_RESOURCE`
-> - `elf`: removed `Elf`
-> - `elf`: removed `Elf::entry`
-> - `elf`: removed `Elf::note`
-> - `elf`: removed `Elf::parse`
-> - `elf`: removed `Elf::segments`
-> - `elf`: removed `Error`
-> - `elf`: removed `Error: impl Clone`
-> - `elf`: removed `Error: impl Copy`
-> - `elf`: removed `Error: impl Debug`
-> - `elf`: removed `Error: impl Eq`
-> - `elf`: removed `Error: impl PartialEq`
-> - `elf`: removed `Error: impl StructuralPartialEq`
-> - `elf`: removed `Error::AddressOverflow`
-> - `elf`: removed `Error::BadMagic`
-> - `elf`: removed `Error::BadProgramHeaders`
-> - `elf`: removed `Error::BadVersion`
-> - `elf`: removed `Error::EntryNotExecutable`
-> - `elf`: removed `Error::NeedsRelocation`
-> - `elf`: removed `Error::Not64Bit`
-> - `elf`: removed `Error::NotExecutable`
-> - `elf`: removed `Error::NotLittleEndian`
-> - `elf`: removed `Error::SegmentOutOfBounds`
-> - `elf`: removed `Error::SegmentTruncated`
-> - `elf`: removed `Error::SegmentUnreachable`
-> - `elf`: removed `Error::SegmentsOverlap`
-> - `elf`: removed `Error::TooManyProgramHeaders`
-> - `elf`: removed `Error::TooSmall`
-> - `elf`: removed `Error::WritableAndExecutable`
-> - `elf`: removed `Error::WrongMachine`
-> - `elf`: removed `FOREIGN_MACHINES`
-> - `elf`: removed `KNOWN_MACHINES`
-> - `elf`: removed `NATIVE_MACHINE`
-> - `elf`: removed `PF_R`
-> - `elf`: removed `PF_W`
-> - `elf`: removed `PF_X`
-> - `elf`: removed `Segment`
-> - `elf`: removed `Segment: impl Clone`
-> - `elf`: removed `Segment: impl Copy`
-> - `elf`: removed `Segment: impl Debug`
-> - `elf`: removed `Segment: impl Eq`
-> - `elf`: removed `Segment: impl PartialEq`
-> - `elf`: removed `Segment: impl StructuralPartialEq`
-> - `elf`: removed `Segment::data`
-> - `elf`: removed `Segment::flags`
-> - `elf`: removed `Segment::is_executable`
-> - `elf`: removed `Segment::is_readable`
-> - `elf`: removed `Segment::is_writable`
-> - `elf`: removed `Segment::memsz`
-> - `elf`: removed `Segment::paddr`
-> - `elf`: removed `Segment::page_range`
-> - `elf`: removed `Segment::vaddr`
-> - `elf`: removed `machine_no_nife_build_accepts`
 > - `filesystem_protocol`: removed `fixture::DESCENT_REFUSED`
 > - `filesystem_protocol`: removed `fixture::MOTD`
 > - `filesystem_protocol`: removed `fixture::MOTD_NAME`
@@ -347,135 +297,9 @@ Read at `1d695c7395ae` against the week before. Each line is one removed or chan
 > - `filesystem_protocol`: removed `fixture::walk::sized_byte`
 > - `filesystem_protocol`: removed `fixture::walk::wide_name`
 > - `filesystem_protocol`: changed `verb::file_grant::POLICY`
-> - `globally_unique_identifier_partition_table`: removed `BackupMismatch`
-> - `globally_unique_identifier_partition_table`: removed `BackupMismatch: impl Clone`
-> - `globally_unique_identifier_partition_table`: removed `BackupMismatch: impl Copy`
-> - `globally_unique_identifier_partition_table`: removed `BackupMismatch: impl Debug`
-> - `globally_unique_identifier_partition_table`: removed `BackupMismatch: impl Eq`
-> - `globally_unique_identifier_partition_table`: removed `BackupMismatch: impl PartialEq`
-> - `globally_unique_identifier_partition_table`: removed `BackupMismatch: impl StructuralPartialEq`
-> - `globally_unique_identifier_partition_table`: removed `BackupMismatch::AlternateLba`
-> - `globally_unique_identifier_partition_table`: removed `BackupMismatch::DiskGuid`
-> - `globally_unique_identifier_partition_table`: removed `BackupMismatch::EntryArrayCrc`
-> - `globally_unique_identifier_partition_table`: removed `BackupMismatch::EntryArrayLba`
-> - `globally_unique_identifier_partition_table`: removed `BackupMismatch::EntryCount`
-> - `globally_unique_identifier_partition_table`: removed `BackupMismatch::EntrySize`
-> - `globally_unique_identifier_partition_table`: removed `BackupMismatch::FirstUsableLba`
-> - `globally_unique_identifier_partition_table`: removed `BackupMismatch::LastUsableLba`
-> - `globally_unique_identifier_partition_table`: removed `BackupMismatch::MyLba`
-> - `globally_unique_identifier_partition_table`: removed `Error`
-> - `globally_unique_identifier_partition_table`: removed `Error: impl Clone`
-> - `globally_unique_identifier_partition_table`: removed `Error: impl Copy`
-> - `globally_unique_identifier_partition_table`: removed `Error: impl Debug`
-> - `globally_unique_identifier_partition_table`: removed `Error: impl Display`
-> - `globally_unique_identifier_partition_table`: removed `Error: impl Eq`
-> - `globally_unique_identifier_partition_table`: removed `Error: impl PartialEq`
-> - `globally_unique_identifier_partition_table`: removed `Error: impl StructuralPartialEq`
-> - `globally_unique_identifier_partition_table`: removed `Error::Backup`
-> - `globally_unique_identifier_partition_table`: removed `Error::BlockSize`
-> - `globally_unique_identifier_partition_table`: removed `Error::BlockTailNotZero`
-> - `globally_unique_identifier_partition_table`: removed `Error::DiskTooSmall`
-> - `globally_unique_identifier_partition_table`: removed `Error::EntryArrayCrc`
-> - `globally_unique_identifier_partition_table`: removed `Error::EntryArrayLen`
-> - `globally_unique_identifier_partition_table`: removed `Error::EntryArrayShape`
-> - `globally_unique_identifier_partition_table`: removed `Error::EntryCount`
-> - `globally_unique_identifier_partition_table`: removed `Error::EntrySize`
-> - `globally_unique_identifier_partition_table`: removed `Error::HeaderCrc`
-> - `globally_unique_identifier_partition_table`: removed `Error::HeaderSize`
-> - `globally_unique_identifier_partition_table`: removed `Error::Mbr`
-> - `globally_unique_identifier_partition_table`: removed `Error::NameTooLong`
-> - `globally_unique_identifier_partition_table`: removed `Error::NotPrimary`
-> - `globally_unique_identifier_partition_table`: removed `Error::PartitionOutsideUsable`
-> - `globally_unique_identifier_partition_table`: removed `Error::PartitionRange`
-> - `globally_unique_identifier_partition_table`: removed `Error::PartitionsOverlap`
-> - `globally_unique_identifier_partition_table`: removed `Error::ReservedNotZero`
-> - `globally_unique_identifier_partition_table`: removed `Error::Revision`
-> - `globally_unique_identifier_partition_table`: removed `Error::Signature`
-> - `globally_unique_identifier_partition_table`: removed `Error::TableOverlapsUsable`
-> - `globally_unique_identifier_partition_table`: removed `Error::TooManyPartitions`
-> - `globally_unique_identifier_partition_table`: removed `Error::UsableRange`
-> - `globally_unique_identifier_partition_table`: removed `GloballyUniqueIdentifierPartitionTable`
-> - `globally_unique_identifier_partition_table`: removed `GloballyUniqueIdentifierPartitionTable: impl Clone`
-> - `globally_unique_identifier_partition_table`: removed `GloballyUniqueIdentifierPartitionTable: impl Copy`
-> - `globally_unique_identifier_partition_table`: removed `GloballyUniqueIdentifierPartitionTable: impl Debug`
-> - `globally_unique_identifier_partition_table`: removed `GloballyUniqueIdentifierPartitionTable::backup_entry_lba`
-> - `globally_unique_identifier_partition_table`: removed `GloballyUniqueIdentifierPartitionTable::backup_header_lba`
-> - `globally_unique_identifier_partition_table`: removed `GloballyUniqueIdentifierPartitionTable::block_count`
-> - `globally_unique_identifier_partition_table`: removed `GloballyUniqueIdentifierPartitionTable::block_size`
-> - `globally_unique_identifier_partition_table`: removed `GloballyUniqueIdentifierPartitionTable::check_backup`
-> - `globally_unique_identifier_partition_table`: removed `GloballyUniqueIdentifierPartitionTable::check_protective_mbr`
-> - `globally_unique_identifier_partition_table`: removed `GloballyUniqueIdentifierPartitionTable::create`
-> - `globally_unique_identifier_partition_table`: removed `GloballyUniqueIdentifierPartitionTable::disk_guid`
-> - `globally_unique_identifier_partition_table`: removed `GloballyUniqueIdentifierPartitionTable::entry`
-> - `globally_unique_identifier_partition_table`: removed `GloballyUniqueIdentifierPartitionTable::entry_array`
-> - `globally_unique_identifier_partition_table`: removed `GloballyUniqueIdentifierPartitionTable::entry_array_blocks`
-> - `globally_unique_identifier_partition_table`: removed `GloballyUniqueIdentifierPartitionTable::entry_count`
-> - `globally_unique_identifier_partition_table`: removed `GloballyUniqueIdentifierPartitionTable::first_usable_lba`
-> - `globally_unique_identifier_partition_table`: removed `GloballyUniqueIdentifierPartitionTable::header`
-> - `globally_unique_identifier_partition_table`: removed `GloballyUniqueIdentifierPartitionTable::last_usable_lba`
-> - `globally_unique_identifier_partition_table`: removed `GloballyUniqueIdentifierPartitionTable::parse`
-> - `globally_unique_identifier_partition_table`: removed `GloballyUniqueIdentifierPartitionTable::partitions`
-> - `globally_unique_identifier_partition_table`: removed `GloballyUniqueIdentifierPartitionTable::primary_entry_lba`
-> - `globally_unique_identifier_partition_table`: removed `GloballyUniqueIdentifierPartitionTable::write_backup_header`
-> - `globally_unique_identifier_partition_table`: removed `GloballyUniqueIdentifierPartitionTable::write_primary_header`
-> - `globally_unique_identifier_partition_table`: removed `GloballyUniqueIdentifierPartitionTable::write_protective_mbr`
-> - `globally_unique_identifier_partition_table`: removed `MbrProblem`
-> - `globally_unique_identifier_partition_table`: removed `MbrProblem: impl Clone`
-> - `globally_unique_identifier_partition_table`: removed `MbrProblem: impl Copy`
-> - `globally_unique_identifier_partition_table`: removed `MbrProblem: impl Debug`
-> - `globally_unique_identifier_partition_table`: removed `MbrProblem: impl Eq`
-> - `globally_unique_identifier_partition_table`: removed `MbrProblem: impl PartialEq`
-> - `globally_unique_identifier_partition_table`: removed `MbrProblem: impl StructuralPartialEq`
-> - `globally_unique_identifier_partition_table`: removed `MbrProblem::ExtraRecord`
-> - `globally_unique_identifier_partition_table`: removed `MbrProblem::NoProtectiveRecord`
-> - `globally_unique_identifier_partition_table`: removed `MbrProblem::Signature`
-> - `globally_unique_identifier_partition_table`: removed `MbrProblem::SizeLba`
-> - `globally_unique_identifier_partition_table`: removed `MbrProblem::StartLba`
-> - `grant_plan`: removed `MAX_FILE_NAME`
-> - `grant_plan`: removed `file_name_fits`
-> - `grant_plan`: removed `parse_u64`
+> - `grant_plan`: changed `Manifest`
+> - `grant_plan`: changed `UNVOUCHED_MANIFEST`
 > - `grant_plan`: changed `spawnproto::activation_reply`
-> - `grant_plan`: removed `trim`
-> - `line_editor`: removed `Event`
-> - `line_editor`: removed `Event: impl Clone`
-> - `line_editor`: removed `Event: impl Copy`
-> - `line_editor`: removed `Event: impl Debug`
-> - `line_editor`: removed `Event: impl Eq`
-> - `line_editor`: removed `Event: impl PartialEq`
-> - `line_editor`: removed `Event: impl StructuralPartialEq`
-> - `line_editor`: removed `Event::Eof`
-> - `line_editor`: removed `Event::Interrupt`
-> - `line_editor`: removed `Event::Line`
-> - `line_editor`: removed `Event::None`
-> - `line_editor`: removed `Event::Tab`
-> - `line_editor`: removed `HIST`
-> - `line_editor`: removed `LINE_MAX`
-> - `line_editor`: removed `LineDisc`
-> - `line_editor`: removed `LineDisc: impl Default`
-> - `line_editor`: removed `LineDisc::abandon`
-> - `line_editor`: removed `LineDisc::feed`
-> - `line_editor`: removed `LineDisc::insert_text`
-> - `line_editor`: removed `LineDisc::line`
-> - `line_editor`: removed `LineDisc::new`
-> - `line_editor`: removed `LineDisc::pending`
-> - `line_editor`: removed `LineDisc::repaint`
-> - `line_editor`: removed `LineDisc::restore`
-> - `line_editor`: removed `LineDisc::resume_line`
-> - `line_editor`: removed `LineDisc::save`
-> - `line_editor`: removed `LineDisc::start_line`
-> - `line_editor`: removed `PROMPT_MAX`
-> - `line_editor`: removed `RAW_QUEUE_MAX`
-> - `line_editor`: removed `RawQueue`
-> - `line_editor`: removed `RawQueue: impl Default`
-> - `line_editor`: removed `RawQueue::is_empty`
-> - `line_editor`: removed `RawQueue::new`
-> - `line_editor`: removed `RawQueue::pop8`
-> - `line_editor`: removed `RawQueue::push`
-> - `line_editor`: removed `RawQueue::restore`
-> - `line_editor`: removed `RawQueue::save`
-> - `line_editor`: removed `Sink`
-> - `line_editor`: removed `Sink::put`
-> - `line_editor`: removed `expand_output`
 > - `nifefs`: changed `DIR_BLOCKS`
 > - `nifefs`: changed `MAX_FILES`
 > - `package_archive`: changed `Installable`

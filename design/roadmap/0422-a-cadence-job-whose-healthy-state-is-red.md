@@ -47,21 +47,22 @@ And these four look identical to each other, which is the part that actually cos
 2026-09-07  audits: 7 on record, DUE: documentation, security   exit 1
 ```
 
-An audit was overdue every week for a month, the mechanism said so on schedule every time, and no
+An audit was overdue every week for a month. The mechanism said so on schedule every time, and no
 audit was run. Milestone 92 built this tripwire to stop auditing depending on somebody remembering
 to ask. The tripwire fired four times and auditing still depended on somebody remembering.
 
 ## Why `script/cadence-check` does not cover it
 
-Milestone 238's check asks when a workflow last succeeded, and reports one whose last success is
+Milestone 238 (two scheduled checks have never once succeeded)'s check asks when a workflow last
+succeeded. It reports one whose last success is
 more than fifteen days old. That is the right question for a job whose healthy state is green, and it
 is why the mutation and undefined-behavior workflows were caught.
 
 For `audit-cadence` it is the wrong question in both directions. A job that is *supposed* to be red
-has no green to be stale against, so a firing tripwire is indistinguishable from a dead one; and a
+has no green to be stale against, so a firing tripwire is indistinguishable from a dead one. And a
 job that has **never** succeeded is reported forever on a condition it can never clear, which
 generates exactly the standing alarm that teaches a reader to stop looking. It caught milestone 311's
-path bug by coincidence: this workflow had never succeeded, so it tripped the never-succeeded arm,
+path bug by coincidence. This workflow had never succeeded, so it tripped the never-succeeded arm,
 for a reason unrelated to the defect.
 
 ## What it reports
@@ -109,7 +110,7 @@ can hide among correct reds. A CHURN row has no issue and no close; it is a look
 ## What this does not propose
 
 Not making the job green when an audit is due. A cadence checker that cannot report "overdue" is
-decoration, and the workflow's own header and `design/audit-reports/README.md`'s `BUGS` both already
+decoration. The workflow's own header and `design/audit-reports/README.md`'s `BUGS` both already
 say that closing this by editing the index is the one thing that makes the mechanism a lie. The
 ambiguity is the cost of a correct design, and the fix is a second signal rather than a quieter
 first one.
@@ -128,10 +129,11 @@ first one.
 ## Index row
 
 `.github/workflows/audit-cadence.yml` reports that an audit is due by failing, which is deliberate
-and correct, and the consequence nobody priced is that red is ambiguous: a firing tripwire and a
+and correct, and the consequence nobody priced is that red is ambiguous. A firing tripwire and a
 `FileNotFoundError` are the same row in the Actions tab, and so are four consecutive weeks of the
 same true report. An audit was overdue every week for a month, the mechanism said so on schedule
-every time, and no audit ran, which is milestone 92's tripwire firing four times into a process that
+every time, and no audit ran. That is milestone 92 (security audits as a mechanism)'s tripwire
+firing four times into a process that
 still depended on somebody remembering. `script/cadence-check` cannot cover it, because a job whose
 healthy state is red has no green to be stale against and a job that never succeeded is reported for
 ever. `helpers/trunk-health.sh` now reports a repeat rather than a color: each scheduled workflow's

@@ -1,5 +1,5 @@
-use super::*;
-use crate::cap::{Rights, memory_region_lending_capability, rendezvous_cap};
+use super::test_programs::spawn_progenitor_shaped;
+use crate::cap::Rights;
 use crate::sched::RendezvousId;
 use crate::thread::ThreadId;
 
@@ -32,76 +32,30 @@ pub struct Witness {
 ///
 /// **Its endowment is the progenitor's shape**, which is `builder`'s: the archive read-only at
 /// `INITIAL_RAMDISK_VA` with its length in `x1`, a memory region in slot 0 and a report line in
-/// slot 1. The region is the spend-only `memory_region_cap` rather than the progenitor's delegable
-/// root, because the witness passes no memory on; the claim is about the floor, so it gets the
-/// narrower one.
+/// slot 1. The region is the **lending** budget, every right, and has been since milestone 824
+/// (a retype mints no right its budget lacks): the witness endows its child's slot 0 through
+/// `CAP_INSERT`, which gates on `GRANT`, so after 824 an endowing budget must carry `GRANT`
+/// itself, which is what `memory_region_lending_capability` mints. The report line is `WRITE`
+/// only, narrower than the progenitor's `WRITE|GRANT`, because the witness reports and never
+/// delegates the line.
 pub fn wire() -> Witness {
-    let (initial_ramdisk_start, initial_ramdisk_len) =
-        memory::initial_ramdisk_region().expect("no initial ramdisk region");
-    let initial_ramdisk_pages = initial_ramdisk_len.div_ceil(FRAME_SIZE);
-    let bytes = program("process_composition_witness")
-        .expect("no process_composition_witness in the archive");
-    let elf = Elf::parse(bytes).expect("process_composition_witness is not loadable");
-
-    // A hand-built space rather than `run`, because `run` maps its extra pages from a slice and the
-    // archive is a few thousand of them. The same arithmetic as `authority_tests::spawn_tree`.
-    let content: u64 = elf
-        .segments()
-        .map(|seg| {
-            let (s, e) = seg.page_range(FRAME_SIZE);
-            (e - s) / FRAME_SIZE
-        })
-        .sum::<u64>()
-        + 1
-        + initial_ramdisk_pages / 512
-        + crate::revoke::log_pages_for(initial_ramdisk_pages)
-        + INIT_STACK_PAGES
-        + 8;
-    let mut space = AddressSpace::new(content).expect("no memory for the witness");
-    map_segments(&mut space, &elf).expect("could not lay out the witness");
-    for k in 0..INIT_STACK_PAGES {
-        space
-            .map_new(USER_STACK_VA - k * FRAME_SIZE, Flags::user_data())
-            .expect("could not map the witness's stack");
-    }
-    #[cfg(any(target_arch = "x86_64", target_arch = "riscv64"))]
-    map_timebase_page(&mut space).expect("could not map the witness's timebase page");
-    for i in 0..initial_ramdisk_pages {
-        space
-            .map_physical(
-                INITIAL_RAMDISK_VA + i * FRAME_SIZE,
-                initial_ramdisk_start + i * FRAME_SIZE,
-                Flags::user_rodata(),
-                crate::revoke::PageMapSource::NoCapability,
-            )
-            .expect("could not map the initial ramdisk");
-    }
-    let aspace = readopt_user_address_space(space).expect("register the witness's space");
-
     let report_region = crate::memory_region::create(1).expect("no region for the report line");
     let report = crate::sched::create_rendezvous_from(report_region).expect("no report rendezvous");
-    let budget = crate::memory_region::create(BUDGET_PAGES).expect("no budget for the witness");
-    let thread_control_block_region = crate::memory_region::create(2).expect("no tcb region");
-    let tid = crate::sched::create_thread_control_block(thread_control_block_region)
-        .expect("no tcb for the witness");
-    for (want, cap, what) in [
-        (0, memory_region_lending_capability(budget), "the budget"),
-        (1, rendezvous_cap(report, Rights::WRITE), "the report line"),
-    ] {
-        let slot = crate::sched::thread_control_block_insert_cap(tid, cap, None)
-            .expect("insert a witness capability");
-        assert_eq!(slot, want, "the witness's {what} must land in slot {want}");
-    }
-    crate::sched::configure_thread_control_block(tid, elf.entry(), USER_STACK_TOP, aspace)
-        .expect("configure the witness");
-    crate::sched::start_thread_control_block(tid, [0, initial_ramdisk_len, 0])
-        .expect("start the witness");
-
+    let started = spawn_progenitor_shaped(
+        "process_composition_witness",
+        BUDGET_PAGES,
+        Rights::ALL,
+        report,
+        Rights::WRITE,
+        &[],
+        None,
+        0,
+    );
     Witness {
         report,
         report_region,
-        tid,
-        thread_control_block_region,
-        budget,
+        tid: started.tid,
+        thread_control_block_region: started.thread_control_block_region,
+        budget: started.budget,
     }
 }

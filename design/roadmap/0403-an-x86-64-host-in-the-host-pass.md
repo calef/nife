@@ -13,17 +13,17 @@ Filed 2026-09-14 as an unnumbered proposal, left open by milestone 288,
 which fixed four instances of "a test that states a fact about the author's laptop" in `crates/elf`
 and could not stop a fifth; numbered 2026-09-19 by milestone 433's drain of the proposal pile.
 Premise re-read against the tree on 2026-09-19 and still true, with one clarification worth
-having: every `runs-on:` in `.github/workflows/` is `ubuntu-24.04-arm` except one, and that one is
+having. Every `runs-on:` in `.github/workflows/` is `ubuntu-24.04-arm` except one, and that one is
 `verify.yml`'s `prove-kernel-x86_64`, which runs `script/verify --only kernel` because CBMC needs a
 goto-binary for the host it runs on. So **no host test pass has ever run on x86_64**, which is this
-block's claim, and the x86_64 runner image is already in use for a different job, which prices
+block's claim. The x86_64 runner image is already in use for a different job, which prices
 option 1 and option 2 a little lower than the proposal assumed.
 *(Number provisional until the merge queue lands it.)*
 
 The decision is
 §184 (host test pass), written up
 2026-09-19 by milestone 435's slice-c lane because this gate named no section. That section refuses
-option 1 on a measurement rather than restating the three: the x86_64 runner image is already in use
+option 1 on a measurement rather than restating the three. The x86_64 runner image is already in use
 by `verify.yml`, so option 1 and option 2 cost the same slot and option 2 buys a symmetric claim for
 it, which leaves the real question as 2 against 3.
 Whether to spend runner minutes on a second host is an architect's, because it is a
@@ -36,7 +36,7 @@ that follows it needs no further ruling.
 Every machine that has ever run this suite is aarch64: the development machine is Apple Silicon and
 CI is `ubuntu-24.04-arm`. Milestone 288 fixed the class where it could be made unrepresentable
 (`FOREIGN_MACHINES` is derived, a never-a-nife-machine number is checked in a `const`), but the
-residue is plain: **`b.e_machine = 183` still compiles on every host**, and so does any other literal
+residue is plain. **`b.e_machine = 183` still compiles on every host**, and so does any other literal
 standing in for a host-relative fact. Nothing in this repository would notice.
 
 The tree has now paid for this three times, in three different crates, each found by a stranger
@@ -82,17 +82,17 @@ cost, which is why this is a proposal with the numbers attached rather than a la
 
 Every machine that has ever run this suite is aarch64: the development machine is Apple Silicon and
 CI is `ubuntu-24.04-arm`. Milestone 288 made the class unrepresentable where it could
-(`FOREIGN_MACHINES` is derived, a never-a-nife-machine number is checked in a `const`) and the
+(`FOREIGN_MACHINES` is derived, a never-a-nife-machine number is checked in a `const`). The
 residue is plain, because a machine literal standing in for a host-relative fact still compiles on
 every host and nothing here would notice. The tree has paid for this three times in three crates,
-each found by a stranger rather than by a gate: `xtask`'s host pass stopped compiling on x86_64 and
-nobody noticed because CI moved to an arm runner the same day; `crates/elf` failed 20 of 25 host
+each found by a stranger rather than by a gate. `xtask`'s host pass stopped compiling on x86_64 and
+nobody noticed because CI moved to an arm runner the same day. `crates/elf` failed 20 of 25 host
 tests on x86_64 from milestone 161 to milestone 288, with two milestones filing it as a proposal
-before one closed it; and `fuzz/seeds/elf_parse/` seeded an empty corpus on x86_64 silently. Three
-shapes are priced and none is obviously right: a second CI job on `ubuntu-24.04` running only the
-host pass, which is the smallest thing that closes the class and costs a runner slot per pull
-request against a concurrency ceiling AGENTS.md already names; a matrix leg, same cost and a
-symmetric claim rather than a special case; or a periodic run, which is `script/stranger-test`'s
+before one closed it. `fuzz/seeds/elf_parse/` seeded an empty corpus on x86_64 silently. Three
+shapes are priced and none is obviously right. A second CI job on `ubuntu-24.04` running only the
+host pass is the smallest thing that closes the class and costs a runner slot per pull
+request against a concurrency ceiling AGENTS.md already names. A matrix leg: same cost and a
+symmetric claim rather than a special case. A periodic run is `script/stranger-test`'s
 existing posture and finds the fault a day late, which given three faults that went undetected for
 weeks would still have been an enormous improvement. A lint that greps for machine literals is
 deliberately not proposed. The expensive part is none of the edits: it is whether the project wants

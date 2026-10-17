@@ -182,6 +182,16 @@ fi
 #
 # Each is attached only when its variable names an image, exactly as on the PVH runner, so a plain
 # `helpers/qemu-uefi-x86_64.sh target/esp` is still the bare tour machine.
+#
+# BUGS
+#
+# - **The fixture set here is the two-disk one, and it stayed that way when the PVH runner got all
+#   five** (milestone 420 (x86_64 has one fixture of five and no NIC, GPU, keyboard or RNG)). The
+#   crash, GPT and blank disks and the RNG are the PVH runner's alone; under OVMF the tests that
+#   want them skip on their own lines, which is honest but means the firmware path proves none of
+#   them. (The NIC is not in that set: the e1000e below is unconditional, so the net tests do run
+#   here.) Extending this file is a `-device`-line-sized piece of follow-on work, undone by
+#   nothing except nobody having asked yet.
 DISK=""
 if [ -n "$NIFE_DISK" ]; then
     PCI_DISK="${NIFE_DISK%.img}-pci.img"

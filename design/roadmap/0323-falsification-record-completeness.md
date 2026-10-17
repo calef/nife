@@ -63,9 +63,9 @@ question that wants one.
 
    Closed 2026-09-23. Still true when re-checked: all four carried `Falsification: unfalsified`.
    Four patches now exist, one per harness (`crates/device_tree_blob/falsifications/`), each
-   falsified by hand before being recorded: `be32_is_total` and `be64_is_total` revert their
+   falsified by hand before being recorded. `be32_is_total` and `be64_is_total` revert their
    `checked_add` to a bare add, reopening the near-`usize::MAX` overflow panic the hardening
-   closed; `be32_reads_big_endian_when_in_bounds` swaps `from_be_bytes` for `from_le_bytes`;
+   closed. `be32_reads_big_endian_when_in_bounds` swaps `from_be_bytes` for `from_le_bytes`.
    `align4_rounds_up_to_a_multiple_of_four` floors instead of ceiling-rounds, which keeps the
    multiple-of-four property and breaks `a >= n`. `script/falsifications --sweep device_tree_blob`:
    4 swept, 0 survivors, 0 stale.
@@ -79,7 +79,7 @@ question that wants one.
    no extra setup was needed to replay. The record is
    `system_tests/falsifications/user.non_volatile_memory_express_tests.a_confined_el0_process_serves_the_block_interface_end_to_end.patch`.
    Its defect is in the code under test, which the two hand falsifications of milestone 318 (the NVMe
-   boot test on real geometry) were not: `Handoff::transfer_command` sends a filesystem block
+   boot test on real geometry) were not. `Handoff::transfer_command` sends a filesystem block
    number as an LBA (`let slba = block;`), the factor-of-8 confusion the test's block 37 exists to
    catch. Replayed on aarch64 with `cargo xtask test --arch aarch64 --test
    a_confined_el0_process_serves_the_block_interface_end_to_end`: red at
@@ -120,17 +120,17 @@ question that wants one.
    `notes/confinement-claims.md` asking exactly this. Found by milestone 307.
 
    Already closed, and stayed closed. calef ratified `Expected to fail:` on 2026-09-18 (see
-   `## What it is` above). Re-checked 2026-09-23 against the tree as it now stands: 73 of 74
+   `## What it is` above). Re-checked 2026-09-23 against the tree as it now stands. 73 of 74
    falsification patches carry the line (up from the 66 counted at ratification, as later lanes
-   added records); the 74th
+   added records). The 74th
    (`kernel/falsifications/user.shell_navigation_tests.two_shells_with_different_roots_cannot_name_each_others_files.patch`)
    carries the equivalent sentence in a different word order ("Expected to fail, and it does, at
-   ..."), which satisfies `script/falsifications --check`'s actual rule (a non-empty prose head)
+   ..."). That satisfies `script/falsifications --check`'s actual rule (a non-empty prose head)
    without literally opening `Expected to fail:`. Nothing to do.
 
 5. Prose that still describes the mechanism as it was before milestone 305 (the six kernel confinement rows get a falsification a machine can replay) built the kernel
    replay. The part as filed said six kernel claims had records nothing could replay. The sweep of milestone 247 (follow-on work named by a finished milestone goes nowhere, and this is the third time)
-   found it, from the block of milestone 210 (no kernel test can be run by name, so one falsification costs a whole suite). It was closed on 2026-09-16; what survives is rot around it, and it is a
+   found it. It came from the block of milestone 210 (no kernel test can be run by name, so one falsification costs a whole suite). It was closed on 2026-09-16; what survives is rot around it, and it is a
    lane's afternoon rather than a design question. Two instances are known and a sweep should look
    for more. The patch
    `components/falsifications/proofs.push_never_writes_past_the_buffer_it_was_given.patch` tells its
@@ -149,7 +149,8 @@ question that wants one.
    benchmark programs) moved `printenv` itself between packages (`user` to `components`), so even
    the *hand* instructions the old paragraph gave named the wrong package.
    `script/falsifications --sweep components`: 1 swept, 0 survivors, 0 stale. A grep for the exact
-   phrase turned up two more unstruck instances of the same shape, both now corrected: milestone
+   phrase turned up two more unstruck instances of the same shape, both now corrected. They are
+   milestone
    197's own `BUGS` entry (the one this part named as the example to grep for), and the matching
    entry in `notes/user-proofs.md`. A third, smaller staleness found in the same block: milestone
    197 said its falsification patch lived at `user/falsifications/`, true when written and stale
@@ -199,8 +200,8 @@ tell a stale premise from a live one. It is rung three, written where the next p
   row 21 is red on aarch64 and `x86_64`, and rows 22, 23, 24 and 30 are red on all three ISAs.
   A sweep of `system_tests` on 2026-10-03 reported 18 swept, 0 survivors.
 - **Done.** Part 4. `Expected to fail:` was ratified by calef on 2026-09-18, before the first lane
-  started, and held on re-check: 73 of 74 records carry the exact line, and the 74th carries the
-  same sentence in different words, which is what the gate (a non-empty prose head) asks for.
+  started. It held on re-check: 73 of 74 records carry the exact line, and the 74th carries the
+  same sentence in different words. That is what the gate (a non-empty prose head) asks for.
 - **Done.** Part 5. The named patch's stale "no script will apply it" paragraph is corrected in
   place, and a grep for its phrasing found two more unstruck instances: one in
   `design/roadmap/0197-user-and-xtask-proofs.md`, one in `notes/user-proofs.md`. A third, in the same
@@ -241,8 +242,8 @@ tell a stale premise from a live one. It is rung three, written where the next p
 `script/falsifications` is how this project distinguishes a test that can come back red from one
 that cannot, which `design/fatal-risks/README.md` risk 3 calls the difference between quality and the
 illusion of it. Five lanes each tripped over a different hole in it between 2026-09-03 and
-2026-09-17: two sets of harnesses with no record at all, a record that names one architecture for a
-portable claim, a record that does not say which assertion it expects, and six kernel claims nothing
+2026-09-17. Two sets of harnesses with no record at all. A record that names one architecture for a
+portable claim. A record that does not say which assertion it expects. And six kernel claims nothing
 could replay. The last two were filed as calef's and both turned out already answered by the tree,
 which is this block's second finding: a proposal's premise decays while it sits in the pile.
 Taken 2026-09-23: three of five closed. `device_tree_blob`'s four harnesses are falsified and

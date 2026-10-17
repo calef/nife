@@ -15,7 +15,7 @@ proposal `a-driver-for-the-network-card-a-pc-actually-has`, filed 2026-09-19, on
 of 2026-09-20 to give every proposal on `main` a number. The text below is the proposal's own,
 unedited except for this paragraph: the argument is its author's and promotion is not the moment to
 improve it. Written by milestone 198 (a package manager, and the trivial install)'s rungs lane (`milestone/198-rungs-to-a-trivial-install`) for
-rung 3 of the trivial install DECISIONS §157 (a trivial install is a web page,) defines: packages over the internet need a network
+rung 3 of the trivial install DECISIONS §157 (a trivial install is a web page,) defines. Packages over the internet need a network
 card, and the only one nife can drive is virtio-net, which no physical machine has.
 
 The driver is tested under QEMU. The bench half needs xenon powered, the same attended boot
@@ -34,7 +34,7 @@ evidence and the confinement finding: [notes/e1000e.md](../../notes/e1000e.md).
   ring fetch and no lease came.
 - Milestone 261 (the NVMe driver leaves the kernel)'s shape, which DECISIONS §86 (whether an NVMe
   driver can leave the kernel) authorized for NVMe, and no new syscall surface. The kernel
-  (`kernel/src/e1000e.rs`) resets the NIC, reads its MAC address and programs the ring bases; the
+  (`kernel/src/e1000e.rs`) resets the NIC, reads its MAC address and programs the ring bases. The
   process is handed BAR0's two queue pages and an 18-page confined DMA region, and is denied page 0
   and page 5 (reset, the receive filter, the MAC address, the PHY). It polls; no interrupt is
   granted. The spawn is `kernel/src/user/e1000e_service.rs`.
@@ -125,16 +125,16 @@ Two drivers in this tree are the analogues, and they differ in the way that matt
   device's registers and mediates it through a `Virtio` capability with the shadow-ring validator.
   None of that mediation exists for a non-virtio device.
 - The EL0 NVMe server (milestone 261, DECISIONS §86 option 2a) is the precedent for a real
-  device: the kernel keeps the admin plane, the process holds a page of BAR0 and a confined DMA
+  device. The kernel keeps the admin plane, the process holds a page of BAR0 and a confined DMA
   window, and on xenon VT-d is the confinement. It added no syscall surface.
 
 So the I219 driver takes 261's shape, and one difference is worth checking before the design is
 drawn. NVMe's specification put a page boundary exactly where the authority boundary belongs
 (controller registers below `0x1000`, doorbells above). For the `e1000e` family the ring base
 registers and the ring tail registers sit in the same 4 KiB page (recalled from the older 8254x
-datasheets, not read from the I219's), so the page split that let 261's server ring doorbells
+datasheets, not read from the I219's). So the page split that let 261's server ring doorbells
 without being able to repoint its rings may not exist here. If it does not, the driver can aim its
-rings anywhere inside its IOMMU domain, and VT-d is the whole of the confinement, which is
+rings anywhere inside its IOMMU domain, and VT-d is the whole of the confinement. That is
 milestone 261's own load-bearing unknown (whether xenon's DMAR scope covers the function) applied to
 a second device. Read the datasheet first.
 

@@ -72,7 +72,7 @@ it.
 
 - **Removed**: the program, its configuration document, both crates (and their workspace members and
   dependencies in `components` and `xtask`), both archive entries, xtask's multicast prober with its
-  DNS decoder and its term in both pass conditions (the TCG legs and `--hvf`), and
+  DNS decoder and its term in both pass conditions (the TCG legs and `--hvf`). And
   `multicast_dns_protocol`'s row in `script/verify` (three harnesses; the tree now carries 148 across
   25 packages).
 - **Also removed, and not on the list above**, because each existed only for the responder and its
@@ -81,7 +81,7 @@ it.
   nothing in the tree proves multicast receive or send now, recorded in notes/mdns.md and
   notes/net.md. Reversible: all three are at commit `0652c981`.
 - Kept, and still proved: the accept test moved from `start_shared_net_stack` (deleted, since it
-  had no second client left) to `start_net_stack` with the same listen and UDP bind grants, so the
+  had no second client left) to `start_net_stack` with the same listen and UDP bind grants. The
   inbound rounds and the UDP bind grant's refusal and exclusivity checks run unchanged. A UDP `RECV`'s
   source endpoint is still proved by the TFTP exchange.
 - **Records**: `notes/mdns.md` follows `notes/smb.md`'s precedent (kept in full under a past-tense

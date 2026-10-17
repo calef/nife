@@ -10,21 +10,21 @@ needs_person: no
 # 273. Port `ipc_thread_scaling` and `app_displacement` to x86_64, or record why not
 
 Not a design fork. These are two existing benchmark functions gated
-`#[cfg(any(target_arch = "aarch64", target_arch = "riscv64"))]` in `kernel/src/bench.rs`, and this
+`#[cfg(any(target_arch = "aarch64", target_arch = "riscv64"))]` in `kernel/src/bench.rs`. This
 is either extending the `cfg` to x86_64 or recording a reason the extension does not apply.
 
 ## What is excluded, and why this is different from the other three items
 
 `ipc_thread_scaling` (milestone 134's E1, IPC latency versus thread count) and `app_displacement`
 (E4, working-set eviction under concurrent IPC load) do not run on x86_64 at compile time, not
-as a runtime skip. Milestone 134 built both on 2026-08-22, when x86_64 was earlier in its port; no
+as a runtime skip. Milestone 134 (the register of measures) built both on 2026-08-22, when x86_64 was earlier in its port. No
 comment near either `#[cfg]` states a reason, which was checked directly (2026-09-10) rather than
 assumed.
 
 **This is the one item in the inventory where "why not" has not been established.** The other three
 each have a stated, checked cause. This may be an oversight from before x86_64 was a full `bench`
-target, or there may be a real reason (both call `real_single_hart_or_skip`, and if x86_64's
-core-pinning story differs that could be it) that simply was never written down.
+target. Or there may be a real reason (both call `real_single_hart_or_skip`, and if x86_64's
+core-pinning story differs that could be it) that was never written down.
 
 ## What this needs
 
@@ -44,8 +44,8 @@ core-pinning story differs that could be it) that simply was never written down.
 ## Follow-on
 
 - **Milestone 186.** If x86_64 was simply missed rather than deliberately excluded, this is a
-  twelfth instance of 186's own pattern (a parity gap that predates x86_64 fully joining the tree)
-  and should be named there once confirmed.
+  twelfth instance of 186's own pattern (a parity gap that predates x86_64 fully joining the tree).
+  It should be named there once confirmed.
 
 ## Index row
 

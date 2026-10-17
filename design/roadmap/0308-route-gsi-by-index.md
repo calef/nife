@@ -6,7 +6,7 @@ built: 2026-09-16
 # 308. A GSI reaches its vector by redirection index, not by its own number
 
 This changes a public function's signature and a vector-assignment policy four doc comments
-rested on, so it was calef's: he chose option 1 on 2026-09-16, route by index, over refusing a nonzero base (option 2) and correcting only the documentation (option 3).
+rested on, so it was calef's. He chose option 1 on 2026-09-16, route by index, over refusing a nonzero base (option 2) and correcting only the documentation (option 3).
 
 ## The defect, and why a cap that bounds the wrong quantity is worse than no cap
 
@@ -69,7 +69,7 @@ formality: `enable`'s own doc records milestone 161's bug surfacing as `gsi 34 i
 APIC's range` when what the caller said was 34, and the two numbers having been silently swapped is
 what made it slow to read.
 
-`main.rs`'s boot transcript moved its call to *after* `arch::irq::enable`, and takes the
+`main.rs`'s boot transcript moved its call to *after* `arch::irq::enable`. It takes the
 `Option` with an `expect` whose reason is that ordering: `enable` has just routed the same GSI and
 panics with a named reason if the part does not own it. The transcript's field is now the vector
 that was actually programmed rather than one computed alongside it.
@@ -117,8 +117,8 @@ and points at a patch that exists.
 
 The new test, `irq::tests::a_gsi_on_a_second_io_apic_routes_inside_the_band`, is the middle
 ground between a proof and a boot: the proposal's plausible part (base 200, 24 entries) written into
-the two atomics and put through the real functions on a real x86_64 boot, both ends of the range
-included so the guard is exercised rather than assumed. It is not evidence that a second IO APIC
+the two atomics and put through the real functions on a real x86_64 boot. Both ends of the range are
+included, so the guard is exercised rather than assumed. It is not evidence that a second IO APIC
 works. It is evidence that the arithmetic one would need is compiled, linked and running, which an
 `#[cfg(kani)]` harness on an aarch64 dev machine is not.
 
@@ -141,9 +141,9 @@ work rather than a line in this one.
 
 Option 2, refuse a nonzero base at boot, would have turned a silent misroute into a named
 refusal, which is cheaper and honest. It was refused because it makes the machine unbootable rather
-than degraded on hardware nobody here can test either answer against, and because option 1 is
-bit-for-bit identical on every machine that boots today, which makes it about as safe as a
-correctness fix gets. The two compose and option 2 remains available; it is not foreclosed.
+than degraded on hardware nobody here can test either answer against. It was also refused because
+option 1 is bit-for-bit identical on every machine that boots today, which makes it about as safe
+as a correctness fix gets. The two compose and option 2 remains available; it is not foreclosed.
 
 Option 3, correct the documentation and leave the code, is the state the tree was already in
 after milestone 304, so choosing it would have cost nothing and fixed nothing. The documentation
@@ -185,14 +185,15 @@ not wrong, and calef names public items. Proposed, not performed, and said out l
 `gsi_vector` added the GSI to `GSI_VECTOR_BASE`, and `MAX_REDIRECTION_ENTRIES`' own doc named that
 cap as the reason it could not wrap onto an exception vector. The cap bounds the entry count, not the
 GSI, so a second IO APIC based at global interrupt 200 with the 24 entries every real part has routed
-GSI 210 onto vector 2, the NMI: legal ACPI, found by proof in milestone 304, unreachable by any
+GSI 210 onto vector 2, the NMI. That is legal ACPI, found by proof in milestone 304 (only ever
+compiled one architecture), unreachable by any
 test in this tree. calef chose option 1 on 2026-09-16, so the vector is now the base plus the
 **redirection index**, which is bit-for-bit identical wherever `gsi_base` is zero and correct where it
 is not. `gsi_vector` loses its `const fn` (nothing used it in a const context, checked) and becomes
-fallible; both call sites refuse a `None` rather than substituting a vector, and `enable`'s new panic
+fallible. Both call sites refuse a `None` rather than substituting a vector, and `enable`'s new panic
 names the intid the caller passed as well as the GSI it resolved to, which the one it replaces could
 not. `an_owned_gsi_routes_inside_the_io_apic_band`'s `kani::assume(base == 0)` is gone with nothing
-in its place, and it gained the assertion that `is_device_vector` and `gsi_vector` agree: they
+in its place. It gained the assertion that `is_device_vector` and `gsi_vector` agree. They
 disagreed on a nonzero base, so the kernel routed a line as a device vector and then declined to count
 it as one. A replayable falsification is filed against a new x86_64 kernel test rather than the
 harness, because a Kani record would turn `--sweep kernel` red on every host but cordoba; restoring
