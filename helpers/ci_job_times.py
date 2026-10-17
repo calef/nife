@@ -2,12 +2,17 @@
 """Where CI's merge-group time goes, day by day, and a tracking issue for a job near its budget.
 
     python3 helpers/ci_job_times.py update [--since YYYY-MM-DD]   # the daily record
+    python3 helpers/ci_job_times.py update --repo <owner/name>     # the same record for one crate repository
     python3 helpers/ci_job_times.py sync [--dry-run]               # open, update or close issues
     python3 helpers/ci_job_times.py --selftest
 
 Milestone 808 (every gate accounts for its time), under §254 (a gate prints what each item cost, and
 a job near its budget warns rather than fails). Both run in `.github/workflows/metrics.yml` once a
-day, as `nife-smelter[bot]`.
+day, as `nife-smelter[bot]`. Milestone 887 (crate repositories share one CI template, adapted
+from nife's gates) added `--repo`: a crate repository has no merge group, so
+its record reads its pull-request runs of the two caller workflows and lands in a per-repository CSV
+beside this one, so a slow template job shows up in this tree's metrics rather than in nine places
+nobody watches.
 
 Name: provisional, minted 2026-10-07 (UTC) by milestone 808's lane, as are the CSV's name, the
 `near-budget` label and the chart `ci-jobs.svg`. A python helper under `helpers/`, outside
@@ -69,6 +74,10 @@ helpers/needs-maintainer.jq), as calef ruled on 2026-10-06 (UTC).
 
 # BUGS
 
+- `--repo` trusts the scaffold's caller filenames (ci.yml, proofs.yml). A caller that renames them
+  records a repository with no runs, which is a visible zero in the CSV, not a silent skip.
+- `--repo` skips the builds record entirely. A pull-request run's wall time says more about
+  GitHub's queueing than about the template's jobs, and nife's build charts read merge groups.
 - `sync` runs once a day, so an issue opens up to a day after the run that crossed. The drift it
   exists for is measured in weeks.
 - A matrix job's runs are judged by their slowest variant, since that is the pole that meets the
@@ -493,10 +502,16 @@ def gh(*args):
 RUNS_PAGE = 50
 
 
-def merge_group_runs(workflow, created=None, limit=None):
-    """Completed merge-group runs of `workflow`, newest first, not cancelled."""
+def merge_group_runs(workflow, created=None, limit=None, event="merge_group"):
+    """Completed runs of `workflow` for `event`, newest first, not cancelled.
+
+    A crate repository has no merge queue, so its `--repo` record reads `pull_request` runs of
+    its two caller workflows instead; the caller files' names (ci.yml, proofs.yml) are the
+    scaffold's, and a caller that renames them reads as a repository with no runs rather than as
+    a silent zero.
+    """
     out, page = [], 1
-    q = "event=merge_group&status=completed&per_page=%d" % RUNS_PAGE
+    q = "event=%s&status=completed&per_page=%d" % (event, RUNS_PAGE)
     if created:
         q += "&created=%s" % created
     while True:
@@ -531,6 +546,24 @@ def arg_value(argv, flag, default):
 
 
 def update(argv):
+    # Milestone 887: `--repo` points the same record at one crate repository, so a slow template
+    # job shows up in this tree's metrics rather than in nine places nobody watches. The runs are
+    # the caller's pull-request runs of its two caller workflows (there is no merge queue), the
+    # CSV is a per-repository file beside this one, and the builds record is skipped: a build's
+    # wall time is a merge-group idea, and a crate repository's pull-request wall time says more
+    # about queueing than about the template. `sync` stays nife-only: the near-budget issues live
+    # here, where the budgets and the reader are.
+    global REPO, CSV, BUILDS_CSV, RECORDED
+    event = "merge_group"
+    if "--repo" in argv:
+        REPO = arg_value(argv, "--repo", "")
+        if "/" not in REPO:
+            print("ci_job_times: --repo wants owner/name, got %r" % REPO, file=sys.stderr)
+            return 2
+        CSV = "notes/project-metrics/ci-job-times-%s.csv" % REPO.split("/")[1]
+        BUILDS_CSV = None
+        RECORDED = [".github/workflows/ci.yml", ".github/workflows/proofs.yml"]
+        event = "pull_request"
     today = datetime.datetime.now(datetime.timezone.utc).date()
     since = datetime.date.fromisoformat(
         arg_value(argv, "--since", (today - datetime.timedelta(days=DEFAULT_WINDOW_DAYS)).isoformat()))
@@ -541,7 +574,7 @@ def update(argv):
         runs = {}
         for workflow in RECORDED:
             name = os.path.basename(workflow)
-            listed = merge_group_runs(workflow, created=day.isoformat())
+            listed = merge_group_runs(workflow, created=day.isoformat(), event=event)
             # Eight at a time: a busy day is sixty runs per workflow, and one request at a time
             # made a 57-day backfill take hours.
             with concurrent.futures.ThreadPoolExecutor(max_workers=8) as pool:
@@ -552,12 +585,13 @@ def update(argv):
             with open(CSV, "w") as f:
                 f.write(to_csv(merge_days(existing, fresh)))
             print("ci_job_times: %s %s: %d run(s)" % (name, day, len(runs[name])), file=sys.stderr)
-        builds = build_rows(day.isoformat(), runs, patterns)
-        existing = from_csv(open(BUILDS_CSV).read()) if os.path.exists(BUILDS_CSV) else []
-        with open(BUILDS_CSV, "w") as f:
-            f.write(builds_to_csv(merge_build_days(existing, {day.isoformat()}, builds)))
-        print("ci_job_times: %s: %d green build(s)" % (day, sum(r["kind"] == "build" for r in builds)),
-              file=sys.stderr)
+        if BUILDS_CSV:
+            builds = build_rows(day.isoformat(), runs, patterns)
+            existing = from_csv(open(BUILDS_CSV).read()) if os.path.exists(BUILDS_CSV) else []
+            with open(BUILDS_CSV, "w") as f:
+                f.write(builds_to_csv(merge_build_days(existing, {day.isoformat()}, builds)))
+            print("ci_job_times: %s: %d green build(s)" % (day, sum(r["kind"] == "build" for r in builds)),
+                  file=sys.stderr)
         day += datetime.timedelta(days=1)
     return 0
 

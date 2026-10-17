@@ -2,6 +2,7 @@
 name = "system_log"
 version = "0.1.0"
 edition = "2024"
+publish = false     # the default; the allowlist lint holds the exception (crates/publish-allowlist.txt)
 license.workspace = true
 
 # The system log service's logic (milestone 613 (a system log service: the in-memory half), for

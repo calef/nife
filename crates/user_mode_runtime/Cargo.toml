@@ -2,6 +2,7 @@
 name = "user_mode_runtime"
 version = "0.1.0"
 edition = "2024"
+publish = false     # the default; the allowlist lint holds the exception (crates/publish-allowlist.txt)
 license.workspace = true
 
 # aarch64-only inline asm, so no host test/bench/doctest targets: `--all-targets` on the bare-metal

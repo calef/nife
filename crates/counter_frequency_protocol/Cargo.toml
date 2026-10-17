@@ -2,6 +2,7 @@
 name = "counter_frequency_protocol"
 version = "0.1.0"
 edition = "2024"
+publish = false     # the default; the allowlist lint holds the exception (crates/publish-allowlist.txt)
 license.workspace = true
 
 # The x86_64 timebase page (milestone 161's cntfrq follow-up, DECISIONS §121's calibration path):

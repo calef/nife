@@ -2,6 +2,7 @@
 name = "calendar"
 version = "0.1.0"
 edition = "2024"
+publish = false     # the default; the allowlist lint holds the exception (crates/publish-allowlist.txt)
 license.workspace = true
 
 # Milestone 51's calendar arithmetic: Unix seconds <-> civil date, weekday, day of year, a small

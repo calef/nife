@@ -2,6 +2,7 @@
 name = "documentation"
 version = "0.1.0"
 edition = "2024"
+publish = false     # the default; the allowlist lint holds the exception (crates/publish-allowlist.txt)
 license.workspace = true
 
 # Milestone 40's pure logic, and only the logic: markdown bytes in, styled terminal bytes out, plus

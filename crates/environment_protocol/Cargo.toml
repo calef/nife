@@ -2,6 +2,7 @@
 name = "environment_protocol"
 version = "0.1.0"
 edition = "2024"
+publish = false     # the default; the allowlist lint holds the exception (crates/publish-allowlist.txt)
 license.workspace = true
 
 # The inert-configuration contract (milestone 47's environment-variable fork, DECISIONS §111): the

@@ -3,6 +3,7 @@ name = "number_writer"
 version = "0.1.0"
 edition = "2024"
 license.workspace = true
+publish = false     # the default; the allowlist lint holds the exception (crates/publish-allowlist.txt)
 
 [lints]
 workspace = true

@@ -2,6 +2,7 @@
 name = "current_cpu_protocol"
 version = "0.1.0"
 edition = "2024"
+publish = false     # the default; the allowlist lint holds the exception (crates/publish-allowlist.txt)
 license.workspace = true
 
 # A thread's own CPU, as a page rather than a crossing (calef's 2026-09-21 ruling on how

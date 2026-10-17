@@ -2,6 +2,7 @@
 name = "extensible_host_controller_interface"
 version = "0.1.0"
 edition = "2024"
+publish = false     # the default; the allowlist lint holds the exception (crates/publish-allowlist.txt)
 license.workspace = true
 
 # no_std for the kernel and the driver, std for host tests, like every DECISIONS §7 (testing: host-testable crates, from commit one) pure-logic

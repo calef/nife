@@ -2,6 +2,7 @@
 name = "boot_slot"
 version = "0.1.0"
 edition = "2024"
+publish = false     # the default; the allowlist lint holds the exception (crates/publish-allowlist.txt)
 license.workspace = true
 
 # The two-slot boot state an installed machine keeps in its own GPT attribute bits, and the policy

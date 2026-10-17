@@ -2,6 +2,7 @@
 name = "e1000e"
 version = "0.1.0"
 edition = "2024"
+publish = false     # the default; the allowlist lint holds the exception (crates/publish-allowlist.txt)
 license.workspace = true
 
 # no_std for the kernel and for `net_stack`, std for host tests, like every pure-logic crate under §7 (the testing harness). It

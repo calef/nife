@@ -1,5 +1,5 @@
 ---
-status: NOT-STARTED
+status: PARTIAL
 raised: 2026-10-11
 milestone_dependencies: none
 decision_dependencies: none
@@ -19,9 +19,11 @@ for nife will be adapted for these crate repos as well."* Approving this block's
 
 857's Fork 1 already ruled the shape on 2026-10-07: one repository per crate under `nifeos`. Its
 words: *"Every crate repository uses one shared CI template (Kani, lint, release) through reusable
-workflows."* Fork 4 ruled the proof job (`kani-github-action`, plus a job that applies each
-falsification patch and expects Kani to fail) and that the release refuses to publish unless it is
-green. Fork 6 ruled trusted publishing from a `nifeos` workflow. Until this block, no milestone
+workflows."*
+
+Fork 4 ruled the proof job (`kani-github-action`), plus a job that applies each falsification
+patch and expects Kani to fail. It also ruled that the release refuses to publish unless the
+proofs are green. Fork 6 ruled trusted publishing from a `nifeos` workflow. Until this block, no milestone
 built any of it, and every per-crate block from 813 to 821 said so in its `BUGS`.
 
 ## What this builds
@@ -63,9 +65,9 @@ difference. A setting changed by hand in the web interface is then a red run, no
   Kani, falsification replay, coverage, `crate-standalone`, supply chain and the architect hold.
   calef agreed to keep `needs-architect` as a required hold, so a semver-breaking API change waits
   for him: *"We should keep the needs-architect hold on the crates."* A hold nobody can trigger
-  holds nothing, so the template's label workflow adds the label itself on two rules: a dependency
-  new to the crate's graph, and a breaking change that `cargo-semver-checks` reports against the
-  last published version.
+  holds nothing. The template's label workflow therefore adds the label itself, on two rules: a
+  dependency new to the crate's graph, and a breaking change that `cargo-semver-checks` reports
+  against the last published version.
 - A tag ruleset on `v*`: only the release workflow creates one, and none is updated or deleted.
 - A `crates-io` environment with calef as required reviewer, and the trusted publisher bound to
   it. Fork 6's approval is then enforced by GitHub rather than remembered.
@@ -107,7 +109,7 @@ QEMU, roadmap or merge queue, so that is the test each row applies.
 | rustdoc broken links | keep | A published crate's docs are its manual on docs.rs |
 | cargo-machete | keep | An unused dependency is a cost every downstream user pays |
 | host tests (`cargo test`) | keep | No QEMU leg; the crates are pure logic |
-| coverage, 80% per file | keep | Same floor, same tool (cargo-llvm-cov) |
+| coverage, 85% per file | keep | Same floor, same tool (cargo-llvm-cov); the block's 80 predates the raise to 85 |
 | fuzz (cargo-fuzz) | keep | For crates that parse bytes; nightly, so weekly rather than on the publish path |
 | Miri, weekly | keep | Same job, nightly |
 | mutation (cargo-mutants), weekly | keep | A report, as in nife |
@@ -159,27 +161,77 @@ copied. The workflows themselves are written, since none publishes a falsificati
 
 ## Exit
 
-A throwaway crate repository, made for the test and deleted after, calls every reusable workflow
-from one template release. Each row marked keep, adapt or new is red on a commit made to break it
-and green on the commit after. A call at an older template release fails the lag check. A pull request that breaks the public
-API, or adds a dependency, gets `needs-architect` from the label workflow and stays red until a
-recorded ruling swaps it. The apply
-script configures the test repository from the settings file, and the drift check goes red when one
-setting is then changed by hand. The
-`release` workflow refuses a tag whose proof job is red, and publishes nothing without calef's
-environment approval. In nife, the allowlist lint fails a crate that drops `publish = false`
-without being on the list, and `helpers/ci_job_times.py` reads the test repository's runs.
+A throwaway crate repository, `nifeos/crate-workflows-test`, calls every reusable workflow from
+releases v1 to v3. Built 2026-10-16 (UTC). It was made for the test. Deleting it wants a
+`delete_repo` scope the lane's token lacks, so it stands until calef removes it. The template's
+own selftest is green on every job: check, proofs, and weekly against `sample/`, plus the release gate's refusal. The throwaway
+repository's pull requests show the rows red on a commit made to break them and green on the
+commit after: fmt, tests, coverage, standalone and the falsification replay on one pair. Another
+pair shows the lag check naming a pin behind the newest release, and the supply-chain refusal of a
+floating action. A pull request held by `needs-architect` took a recorded ruling, which swapped
+the label for `architect-ruled` and turned the hold green. The false positive behind it was a
+defect in the label workflow's rule 2, fixed in v2. The apply script configures the test
+repository from the settings file and reports what it cannot do. It sets the features, the merge
+behavior, the security toggles, the Actions permissions, the `crates-io` environment with calef as
+required reviewer, the `crates-io` team, the labels, and the `main` ruleset with the nine required
+checks. The drift check reads the
+settings back. It went red naming a setting changed by hand, and back to its one known finding
+(the refused tags ruleset) when the setting was restored. The release gate passed on a green
+commit and created no tag under `dry-run`. The publish job then sat in the `crates-io`
+environment waiting on a person, which is the "publishes nothing without calef's environment
+approval" row. In nife, the allowlist lint fails a crate that drops `publish = false` without
+being on the list, and `helpers/ci_job_times.py` reads a crate repository by argument.
 
 ## BUGS
 
 - The table is a reading of nife's gates on 2026-10-11, not a ruling. A gate added to nife
   after that date is not in it, and nothing yet makes adding one ask "and the template?".
-- The template's own repository name, workflow names and release cadence are provisional.
-- `needs_person` is `yes` because the crates.io team, the trusted publisher and the approval
-  environment each need calef's accounts.
-- Some settings above may need an organization plan the `nifeos` organization does not have, such
-  as rulesets on a private repository. The crate repositories are public, which is the case GitHub
-  serves free; the apply script reports any setting the API refuses rather than skipping it.
+- The template's repository name (`crate-workflows`), workflow names and release cadence are
+  provisional. The `crates-io` team slug and the required-check names (`ci / fmt`, ...) are
+  provisional with them; the check names are measured against what GitHub shows for
+  cross-repository reusable workflow calls and match.
+- `needs_person` is `yes`. The crates.io trusted publisher needs calef's crates.io account, and
+  the org-level setup (the Actions allowlist, the app's installation permission, the tag ruleset,
+  the `SETTINGS_TOKEN` secret) needs org administration, which the lane's token does not carry.
+  The `crates-io` team and the approval environment turned out to be creatable with calef's
+  existing token, contrary to what this block first assumed.
+- A push-triggered cross-repository reusable workflow call start-fails on GitHub with an empty
+  error (crate-workflows-test runs 38914536439 and 38914537601, same file green on
+  pull_request), so the gating callers trigger on pull_request only. A release dispatches at a
+  merge commit, whose runs exist from the pull request event, so nothing is lost.
+- The semver half of the labeler never fired against a real baseline: the test crate is
+  unpublished, so `cargo-semver-checks` has nothing to compare. It is exercised only to the
+  no-baseline path. The first published crate is the test.
+- The settings-drift check's security rows and its ruleset read want an administration-scoped
+  token; with the caller's `GITHUB_TOKEN` they report what was unreadable rather than passing
+  silently.
+- The weekly `stranger cadence` job fails until `docs/stranger-test.md` records a first run;
+  the stranger ritual itself is a person's, as in nife.
+
+## Follow-on
+
+- **Outstanding.** A real crates.io publish end to end: the trusted publisher bound on calef's
+  crates.io account, a tag made by the release workflow, and the publish itself. Checked by the
+  dry-run rehearsal, which reached the environment's approval gate and stopped there by design.
+- **Outstanding.** The labeler's semver rule firing against a published baseline. The test crate
+  is unpublished, so only the no-baseline path has run; the false positive it produced is fixed in
+  v2. Checked by the throwaway repository's pull requests, which never saw a baseline to compare
+  against. The first published crate (milestones 813 to 821) is the test.
+- **Outstanding.** The organization setup the template cannot do to itself, each with its
+  consequence while undone, from `nifeos/crate-workflows`' README. It covers the Actions
+  allowlist (SHA-pinned only, verified creators, `kani-github-action` named), the `nife-smelter`
+  app's installation permission, the `SETTINGS_TOKEN` organization secret the settings-drift reads
+  authenticate with, the organization-level tag ruleset, and the fork pull request approval
+  policy. The tag ruleset cannot live in a repository: the rulesets API refuses `ref_name` on
+  push-target rulesets, measured. The approval policy cannot be read by a non-admin token either,
+  so it is set once in the org's Actions settings. None of these can bite while no crate
+  repository exists. The first adoption is the deadline. Checked live on the throwaway
+  repository, which runs its weekly jobs against exactly this gap.
+- **Outstanding.** calef's naming pass over the names this milestone shipped provisionally: the
+  repository `crate-workflows`, the workflow names, the `crates-io` team slug, and the
+  required-check names. GitHub redirects a repository rename, and the required-check names are
+  fixed per ruleset at adoption, so renaming after the first crate repositories exist costs one
+  ruleset update each.
 
 ## Index row
 

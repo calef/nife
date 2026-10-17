@@ -1,0 +1,7 @@
+# The publish allowlist. Milestone 887 (crate repositories share one CI template, adapted from
+# nife's gates), from 857's Fork 3: one crate name per line. A crate not on this list carries
+# `publish = false`, and the allowlist lint fails any manifest that drops that line without being
+# named here. An entry means the crate has left for its own repository, its release workflow is
+# the only thing that publishes it, and calef has ruled it onto the list. `script/metrics` reads
+# this file for its crate-release stage column through helpers/crate_release.py; this lint is
+# what keeps the file honest while the crates are here.
