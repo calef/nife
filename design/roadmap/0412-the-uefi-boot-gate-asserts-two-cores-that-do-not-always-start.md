@@ -1,6 +1,7 @@
 ---
-status: NOT-STARTED
+status: BUILT
 raised: 2026-09-14
+built: 2026-10-16
 promoted_from: the-uefi-boot-gate-asserts-two-cores-that-do-not-always-start
 milestone_dependencies: none
 decision_dependencies: none
@@ -11,81 +12,57 @@ needs_person: no
 # 412. `script/test`'s UEFI leg asserts two cores online, and the second one does not always start
 
 Promoted from the proposal
-`the-uefi-boot-gate-asserts-two-cores-that-do-not-always-start`, filed 2026-09-14 by milestone 294's
-lane. *(Number provisional until the merge queue lands it.)*
+`the-uefi-boot-gate-asserts-two-cores-that-do-not-always-start`, filed 2026-09-14.
+*(Number provisional until the merge queue lands it.)*
 
-Nothing is owed and nothing is missing. It is a measurement and a decision about a
-gate's assertion, both of which a lane can do today.
+## The gate, and its measured rate
 
-Premise re-checked 2026-09-19 and still true, with evidence that arrived after it was filed.
-`xtask/src/main.rs` still sets `NIFE_SMP=2` for the UEFI tour and still asserts
-`smp: 2 core(s) online` unconditionally, and `ap_boot.rs`'s "third or later" bound is untouched:
-milestone 316 fixed that module's `BUGS` #3 (`boot_cpu_id` answering the wrong question) and left #1
-open. 316 also supplies a second sample this block should reconcile rather than ignore: 26
-two-core boots, eight of them under OVMF, with zero `cpu 1 did not start` lines. 316's own `BUGS`
-says that is incidental evidence about a different failure mode and not the dedicated
-`cargo xtask uefi-boot` measurement step 1 asks for, which is why this stays work rather than
-becoming an answer.
+`cargo xtask uefi-boot` still asserts `smp: 2 core(s) online` unconditionally, at the `NIFE_SMP=2`
+its own runner comment explains. The assertion stays. The dedicated measurement this block asked
+for found zero failures in 42 boots on 2026-10-16, across a 6.63 to 23.76 host-load gradient:
+every boot brought both cores online under real firmware, and none printed the `did not start`
+line. The per-run rows, the machine's condition and the caveats are in
+[notes/uefi-boot-two-core-rate.md](../../notes/uefi-boot-two-core-rate.md).
 
-**Found by milestone 294's lane, which had no business being anywhere near it.** That lane changed
-markdown, `script/roadmap` and one comment in `script/lint`, and nothing `cargo xtask` builds. Its
-first `script/test` failed:
+## Which record was wrong
 
-```
-  smp: init-sipi-sipi via the local apic, trampoline at 0x8000
-  smp: cpu 1 did not start (firmware returned -1)
-  smp: 1 core(s) online
-  ...
-uefi-boot: the boot transcript is missing "smp: 2 core(s) online"
-```
+The bound was. `arch::x86_64::ap_boot`'s BUGS section bounded the "did not start" flake at a third
+or later secondary, and the tour's comment reasoned from it. The boundary was never real. The
+defect was `cpu_start` re-reading the online count after the STARTUP IPIs, so a core that checked
+in during the settle delay was counted absent at any position, and the count is read once now
+(fixed 2026-09-19). That is the tree's own account, and the fix names the UEFI gate's one-in-three
+as this defect reaching two cores. Four comments that still reasoned from the deleted bound are
+corrected in this milestone's commit: the `NIFE_SMP=2` comment and the `uefi-test` leg's comment,
+both in `xtask/src/uefi.rs`; `xtask/src/swish_check/boot.rs`'s; and the pointer to the deleted
+BUGS section in `helpers/qemu-runner-x86_64.sh`.
 
-The next two runs passed, on the same tree, same machine, same commit: one failure in three.
+## What the gate asserts, and why it is untouched
 
-## Why this is not already the recorded bug
+Two cores online is the boot-path proof that the trampoline page the loader asks for by name was
+usable under real firmware, which is what the assertion's own comment says it is for. The block
+weighed weakening or retrying the assertion against a gate known to fail one run in three. With
+the defect fixed and the rate at zero at this sample size, the trade buys nothing, and the fork
+never reached an architect: there was nothing left to decide.
 
-`kernel/src/arch/x86_64/ap_boot.rs`'s module BUGS section records exactly this class and bounds it
-away from here: *"A third or later secondary, brought up while an earlier one is already online and
-running, fails intermittently and non-deterministically ... At `-smp 3` and above, exactly one
-secondary typically fails."* `xtask/src/main.rs` sets `NIFE_SMP=2` for the UEFI tour, and the
-comment beside it reasons from the same bound: *"The suite below stays at one core, because the
-two-core AP defect this tour does not touch."*
+## Follow-on
 
-So the record says the flake starts at three cores and the gate was written believing it. **It
-reaches two.** Either the bound in `ap_boot.rs` is wrong, or this is a second failure mode that
-happens to print the same line, and the difference matters. The recorded one is a secondary
-brought up *beside an already-running one*, which cannot be what happened at `-smp 2`.
-
-## What this costs today
-
-`uefi-boot` asserts `smp: 2 core(s) online` unconditionally, so the gate fails on a defect the tree
-has already recorded as intermittent and not root-caused. A lane that hits it reads a red gate it
-did not cause, and the cheapest available conclusion is that the flake is somebody else's problem
-and the run should be repeated, which is how a gate stops being read.
-
-Note that **no pull request check catches this**: `.github/workflows/ci.yml` runs every job on
-`ubuntu-24.04-arm`, and nothing there boots the x86_64 UEFI image. It is only ever seen by a lane
-running `script/test` on an x86_64 host.
-
-## What a lane should do
-
-1. Measure it. Boot `cargo xtask uefi-boot` enough times to put a rate on it at `-smp 2`, which
-   one lane's three runs cannot. One in three is a sample, not a number.
-2. Decide which record is wrong, and correct that one: either `ap_boot.rs`'s "third or later"
-   bound, or `xtask/src/main.rs`'s comment that the tour does not touch the two-core defect.
-3. Then decide what the gate should assert, which is the part worth arguing rather than
-   assuming. Asserting two cores is what makes the assertion worth having (it proves the
-   trampoline page the loader asked for was usable, which is what its own comment says). Retrying
-   the boot, or asserting one core, both weaken it. A gate that fails one time in three is worse
-   than either, and a gate that is *known* to fail one time in three and stays that way is worst.
+- **Recorded.** The suite under OVMF still boots one core (`uefi-test` keeps the runner's default),
+  and the whole suite at two cores there is unmeasured since the fixes. It is carried where a
+  reader meets it, in the `uefi-test` leg's own comment in `xtask/src/uefi.rs`, and in
+  [notes/uefi-boot-two-core-rate.md](../../notes/uefi-boot-two-core-rate.md)'s BUGS.
+- **Recorded.** An idle-machine batch of the rate, and an induced-load leg (one spinner per core),
+  are both still unmeasured. This window never dropped below a 1-minute load of 6.63 and refused
+  the load recipe on the tree's own rule. The same note's BUGS carries both.
+- **Recorded.** xenon has still not been asked to bring all four cores online; `smp: 4 core(s)
+  online` there would settle the silicon question `ap_boot`'s module doc carries.
 
 ## Index row
 
-`cargo xtask uefi-boot` asserts `smp: 2 core(s) online` unconditionally, and milestone 294's lane
-saw `smp: cpu 1 did not start (firmware returned -1)` once in three runs on one tree, one machine
-and one commit. `arch::x86_64::ap_boot`'s `BUGS` bounds that flake at three cores and above, and the
-comment beside `NIFE_SMP=2` reasons from the same bound, so either the bound is wrong or this is a
-second failure mode that prints the same line. The recorded one is a secondary brought up beside an
-already-running one, which cannot be what happens at two. Nothing in CI boots the x86_64 UEFI image,
-so only a lane running `script/test` on an x86_64 host ever meets it. The work is a rate first, then
-which record to correct, then what the gate should assert, and that last part is the one worth
-arguing. A gate known to fail one run in three and left that way is worse than either alternative.
+`cargo xtask uefi-boot` asserts `smp: 2 core(s) online` unconditionally at its own `-smp 2`. The
+one-in-three `cpu 1 did not start` sighting that raised this block was `cpu_start`'s count
+re-read, which reached two cores as well as three and was fixed on 2026-09-19. The dedicated
+measurement is 0 of 42 boots across a 6.63 to 23.76 host-load gradient
+([notes/uefi-boot-two-core-rate.md](../../notes/uefi-boot-two-core-rate.md)). The assertion
+stays exactly as it is and no architect ask was filed. The comments that still reasoned from the
+deleted "third or later" bound state the corrected record. The suite leg under OVMF (`uefi-test`)
+still boots one core, and two cores there is unmeasured since the fixes.
