@@ -12,7 +12,7 @@ needs_person: no
 
 **PARTIAL, 2026-10-10 (UTC).** Items 1 to 5 and item 8's digest check are built, and pass
 `script/swish-check` on aarch64, riscv64 and x86_64 under QEMU. `update` and the index copy are
-built (milestone 801 (packages over the internet)). Left: `list --upgradable`, item 7
+built (milestone 801 (packages over the internet)). Left: `list -u`, item 7
 (`add-repository`) and item 8's index half. The program is
 [notes/packages/jig.md](../../notes/packages/jig.md).
 
@@ -45,15 +45,22 @@ His wording is the intent.
 | Install a package from the index | `jig install <name>` (apt's) | yes; `jig` fetches |
 | Install a local package, an archive already on the system | `jig install <path>` (apt's verb); a word with a `/` is a file (§219 (how the shell names an installed program to the spawner)) | yes |
 | Add another index | `jig add-repository <url>` (nife's; apt has no verb) | no, item 7 |
-| List what is outdated | `jig list --upgradable` (apt's, as ruled) | no, item 6 |
+| List what is outdated | `jig list -u` (the short flag apt also accepts) | no, item 6 |
 | Update the local copy of the index | `jig update` (apt's) | yes (801) |
 | Remove a program | `jig remove <program>` (apt's) | yes |
 | Roll back a generation | `jig rollback` (nife's; apt has none) | yes |
 
 `update` refreshes the index and installs nothing: apt(8), FreeBSD's pkg-update(8) and Homebrew's
 manpage, read 2026-10-10 (UTC), agree. apt's `upgrade` is not built here; it is the spelling the
-#1805 amendment below will use. apt(8) spells the flag `--upgradeable`; the ruling's `--upgradable`
-is held until calef says which.
+#1805 amendment below will use.
+
+The outdated flag is `-u` alone (ruled 2026-10-17 UTC). Asked whether it was `--upgradable` or
+`--upgradeable`, calef asked *"What if we just did -u?"*, then answered *"Yes"* to: *"`-u` only,
+with a refusal that names `-u` when someone types `--upgradable` or `--upgradeable`."* Measured
+2026-10-17 in apt's source (Debian/apt `apt-private/private-cmndline.cc:356-357`): apt accepts both
+long spellings and `-u`, and `apt update` prints `apt list --upgradable`
+(`apt-private/private-update.cc:159-160`). `-u` is ratified under "We abbreviate on the command
+line."
 
 *calef, 2026-10-07 (UTC), on #1805: `jig` must update base packages; only the slot reboots. See §159 (only a new kernel needs a reboot).*
 
@@ -79,8 +86,8 @@ reversible.
 | Capability | Verbs that use it | How it is granted | Exists today? |
 |---|---|---|---|
 | A client view of the network stack (`NETWORK_SLOT`; slots 2 and 3 for a `std` program) | `install <name>`, `update` | `Manifest::network` | yes (milestone 590 (the booted system starts its network stack)); for a `std` program at the prompt, since this block |
-| The index directory, read and write | `list`, `list --upgradable`, `update`, `add-repository`, `install <name>` | `Manifest::indexes`, a directory grant on `activation/indexes`, owner's console only | yes (801) |
-| `activation/`, read only | `list --upgradable` | a directory grant | as above |
+| The index directory, read and write | `list`, `list -u`, `update`, `add-repository`, `install <name>` | `Manifest::indexes`, a directory grant on `activation/indexes`, owner's console only | yes (801) |
+| `activation/`, read only | `list -u` | a directory grant | as above |
 | The file a line names | `install <path>` | `ArgSpec::Words` designation (§170 (how a foreign program is told what to do)) | yes |
 | A request to the installer | `install`, `remove`, `rollback` | `Manifest::installer`, below | yes, since this block (§270) |
 | The image's catalog, read only | `list`, `install <name>` | `Manifest::catalog` | yes, since this block |
@@ -104,7 +111,7 @@ directory, `remove` needs only the installer, and `update` needs the network and
 |---|---|---|
 | V1. One program holding the union | Every line holds the network, the index, `activation/` and the installer | Refused. `jig list` would carry authority it never uses: 281's own counterfactual, where `ps` would always carry a clock it rarely needs |
 | V2. One program, granted by verb | The manifest maps each verb to its grants, and the planner reads the first word | Recommended |
-| V3. Split by authority | A reader (`list`, `list --upgradable`), an index keeper (`update`, `add-repository`) and an installer client (`install`, `remove`, `rollback`) | Refused by calef's ruling |
+| V3. Split by authority | A reader (`list`, `list -u`), an index keeper (`update`, `add-repository`) and an installer client (`install`, `remove`, `rollback`) | Refused by calef's ruling |
 
 V2 has a precedent: `rm -r` hands over more than `rm` through `subtree_flag`, and a verb table is
 that idea keyed by a word. V1 was cheaper, so V2 was not about effort. Fork 2, the table's encoding
@@ -181,7 +188,7 @@ meets a program, not a builtin.
    `http_response` exception in `packages/init.package.toml`.
 4. Grants by verb (V2), or V1 with a `BUGS` line if V2 is refused.
 5. `list`, reading the image's catalog until an index exists, and saying so.
-6. `update` and `list --upgradable` over the LAN fixture source, plain HTTP, as rung 3a, with
+6. `update` and `list -u` over the LAN fixture source, plain HTTP, as rung 3a, with
    `jig` writing the index copy through `package_index`.
 7. `add-repository`, once the details of many indexes are settled.
 8. Before installing, `jig` checks three things. The archive's digest matches the index (§250 (an
@@ -220,14 +227,12 @@ the installer. The progenitor's stack went from twelve pages to fourteen, measur
 
 ## Follow-on
 
-- **Outstanding.** `list --upgradable`, which must read `activation/`; the index store grant does
+- **Outstanding.** `list -u`, which must read `activation/`; the index store grant does
   not reach it.
 - **Outstanding.** Item 7, `add-repository`, waiting on the many-indexes details below. Checked
   2026-10-10: none of the four is ruled.
 - **Outstanding.** Item 8's index half, the needs against metadata and manifests. Checked
   2026-10-10: the catalog carries digests only, so there is nothing to compare until item 6.
-- **Outstanding.** `--upgradable` (the ruling) or `--upgradeable` (apt(8) as read 2026-10-10). Only
-  item 6's spelling waits on it.
 - **Milestone 892.** Milestone 892 (a std program at the prompt holds the network):
   `design/roadmap/0892-a-std-program-at-the-prompt-holds-the-network-and-a-resolver.md`. Item 2 is
   built here for `jig`; 1, 3 and 4 remain, and `jig` needs them to resolve `basalt.nifeos.org` for
@@ -252,7 +257,7 @@ the installer. The progenitor's stack went from twelve pages to fourteen, measur
 | The verb table's encoding (plan fork 2) | the lane's, approved 2026-10-10 on #1903 with calef's change: sorted (verb, grants) pairs, variable length, at most 256 | nothing |
 | Verb spellings (plan fork 4) | ruled 2026-10-10, calef: "Lets use apt's verbs."; `add-repository`, same day | nothing |
 | 801's items 1 and 2 here (plan fork 5) | moot: 801 built them; `jig` adopts them at item 6 | nothing |
-| `--upgradable` or apt's documented `--upgradeable` | open, found by the lane 2026-10-10 | item 6's spelling only |
+| The outdated flag | ruled 2026-10-17, calef: "Yes"; `-u` only, `--upgradable` and `--upgradeable` refused with a message naming `-u` | nothing |
 | How a manifest names a fixed directory | decided by 801's lane 2026-10-12, reversible: `Manifest::indexes` | nothing |
 
 ## BUGS
@@ -273,4 +278,4 @@ The package client was a shell builtin, and the progenitor fetched packages, so 
 process parsed HTTP. It is now one program, `jig`, with apt's verbs where apt has one, an installer
 endpoint only the owner's console grants (§270), and grants chosen by verb. It fetches, so
 `Activation::Fetch` and `init`'s `http_response` exception are gone. `update` and the index copy
-are left.
+are built (milestone 801); `list -u`, `add-repository` and item 8's index half are left.
