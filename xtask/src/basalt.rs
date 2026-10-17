@@ -36,13 +36,8 @@
 //! workflow does with the one it just built, nothing is fetched: that repository's packages are
 //! accepted under its own index and their programs taken from it.
 //!
-//! **Without a network** a local run says what it could not fetch and succeeds, and every line and
-//! test of basalt's programs skips and says why. In CI (`CI` set) a failed fetch fails the row.
-//!
-//! **Bumping the pin.** When basalt republishes and nife should take the new build, the lane that
-//! wants it writes the published basalt commit and its Release tag into `xtask/basalt-pin` and lets
-//! CI judge them. The tag is `rolling-<UTC date of the commit>-<first seven characters of the
-//! commit>`, as basalt's `packages` workflow names it, and a test holds the file to that shape.
+//! **Without a network** a local run says what it could not fetch, succeeds, and skips every line
+//! and test of basalt's programs. In CI (`CI` set) a failed fetch fails the row.
 
 use std::path::{Path, PathBuf};
 
