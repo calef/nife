@@ -93,7 +93,7 @@ Covered:
 ```
 
 What it pulls aside, leaving it provisional. `alto`, `tenor`, `greeting`, `hello`, `noteless`,
-`outlaw`, `chatty` and `flaky`. None names a role in its test: `alto` and `tenor` are two voices of a
-duet, `greeting`, `hello` and `noteless` say what they print, and `outlaw`, `chatty` and `flaky` carry
+`outlaw`, `chatty` and `flaky`. None names a role in its test. `alto` and `tenor` are two voices of a
+duet, and `greeting`, `hello` and `noteless` say what they print. `outlaw`, `chatty` and `flaky` carry
 rulings of their own that no rename has applied (`kernel_test_subject`, `swap_boundary_witness` and
 `first_attempt_crasher`).
