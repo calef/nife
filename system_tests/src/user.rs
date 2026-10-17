@@ -48,6 +48,8 @@ pub(crate) const X86_FIXTURES_REQUIRED: bool =
 /// Skip with `reason` unless the runner was told to attach what is missing, in which case the
 /// absence fails by name. Like `skip!`, it returns from its caller, so it must be called directly
 /// inside a `#[test_case]`.
+// Index exception (2026-10-16): textual macro scope reaches only modules declared after it, so
+// the tests that share this skip-or-fail rule need it in their parent.
 macro_rules! skip_unless_required {
     ($required:expr, $reason:expr) => {
         assert!(
