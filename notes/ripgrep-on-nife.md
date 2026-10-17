@@ -41,7 +41,7 @@ argv is built from a line typed as it would be at the prompt, by `grant_plan::ar
 since milestone 206 (a program image has under 896 KiB) moved the ceiling to 496 MiB.
 
 `rg` reaches that archive only after `cargo xtask basalt-fetch`, which takes the program member of
-basalt's published package, accepted under the digest `xtask/basalt-pins.index` pins (milestone
+basalt's published package, accepted under the digest basalt's recipe records at the commit `xtask/basalt-pin` pins (milestone
 810 (`ripgrep` is packaged in basalt and installed with `jig`)). CI's `rg-threads` and
 `swish-check` rows run it. It is never part of the base image: calef ruled on 2026-10-07 (UTC) that
 `rg` is installed with `jig` from a package in nifeos/basalt, and `swish-check` types `jig install
