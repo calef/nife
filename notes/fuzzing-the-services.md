@@ -93,9 +93,9 @@ anything that varies from run to run. Run ids: 39044362921, 39044296578, 3904226
 38994366541, 38993833063, 38976866787, 38976812950, 38975708023, 38973117762, 38970563790,
 38969976716, 38934238212, 38934234595, 38932206821.
 
-What this does not say: the 29 runs are all from the last day and ran on whatever runners GitHub
-assigned, so a slower runner pool on another day is not covered; and the figure is the job with ten
-targets, not with the three alone. One more target adds one minute.
+What this does not say: the 29 runs span about 17 hours, on whatever runners GitHub assigned. A slower
+runner pool on another day is not covered. The figure is for ten targets, not for the three alone.
+One more target adds one minute.
 
 ## What the other handlers need
 
