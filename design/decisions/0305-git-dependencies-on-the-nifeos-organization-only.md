@@ -30,7 +30,7 @@ and review checks it.
 
 This is the same rule basalt applies to its pins and the workspace's cross-repository rule applies
 to a bump: land in the repository that owns the code first, then bump the pin in a separate pull
-request. The dependency is recorded on the blocked side only (§201, one roadmap until a citation has to cross, and the blocked side declares the dependency).
+request. The dependency is recorded on the blocked side only (§201 (one roadmap until a citation has to cross, and the blocked side declares the dependency)).
 
 ## What this does not allow
 

@@ -188,7 +188,7 @@ skip = [
 # Where code is allowed to come from. This is the check that would notice a dependency quietly
 # repointed at somebody's fork, which is the shape most real supply-chain attacks on a small project
 # would take. Everything here is crates.io, an in-tree path, or a git repository in the nifeos
-# organization pinned by `rev` to a commit that has landed on its main (DECISIONS §305). A git
+# organization pinned by `rev` to a commit that has landed on its main (DECISIONS §305 (git dependencies are allowed on `nifeos/*` only, pinned to a landed commit)). A git
 # dependency anywhere else stays refused.
 unknown-registry = "deny"
 unknown-git = "deny"
