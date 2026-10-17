@@ -18,7 +18,7 @@ same day he changed one of nife's own: *"Change add-index to add-repository."*
 | `install <path>` | install a package file already on the system; a word with a `/` is a file | apt's verb | 2026-10-10 |
 | `remove <package>` | a new generation without every row the package installed; a program's name is not the object (calef, 2026-10-14: "jig remove should work on packages, not programs.") | apt's | 2026-10-10, object 2026-10-14 |
 | `update` | refresh the local copy of the index, installing nothing | apt's | 2026-10-10 |
-| `list --upgradable` | what is outdated, against the index copy; not an `outdated` verb | apt's, as ruled | 2026-10-10 |
+| `list -u` | what is outdated, against the index copy; not an `outdated` verb. `--upgradable` and `--upgradeable` are refused with a message naming `-u` | apt's short flag | 2026-10-17 |
 | `rollback` | the generation below the live one becomes live | nife's: apt has no rollback | 2026-10-10 |
 | `add-repository <url>` | add another index | nife's, after Ubuntu's separate `add-apt-repository` tool | 2026-10-10 |
 
@@ -43,9 +43,7 @@ rollback; Nix's `nix-env --rollback`
 ([manual](https://nix.dev/manual/nix/stable/command-ref/nix-env/rollback)) "switches to the
 'previous' generation", which is the shape `jig rollback` has.
 
-Two things the reading found that the ruling's wording did not say. apt(8) spells the flag
-`--upgradeable`, with an `e`; the ruling's `--upgradable` is held as written until calef says which
-(nothing is built on it yet). And apt(8) documents no `apt install ./file.deb` form: apt-get(8) says
+The reading found that apt(8) documents no `apt install ./file.deb` form: apt-get(8) says
 "Each package is a package name, not a fully qualified filename". `jig install <path>` keeps the
 verb and takes a path by the prompt's own rule for a word with a `/` (§219 (how the shell names an
 installed program to the spawner)), not by apt's.
