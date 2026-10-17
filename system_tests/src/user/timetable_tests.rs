@@ -1,3 +1,4 @@
+use super::test_programs::{lay_out_program, segment_pages};
 use super::*;
 use crate::cap::{Rights, memory_region_root_cap, page_frame_cap, rendezvous_cap};
 use crate::sched::RendezvousId;
@@ -233,13 +234,7 @@ fn spawn_timetable_with(
     let bytes = program("timetable").expect("no timetable program in the initial ramdisk");
     let elf = Elf::parse(bytes).expect("timetable is not loadable");
 
-    let content: u64 = elf
-        .segments()
-        .map(|seg| {
-            let (s, e) = seg.page_range(FRAME_SIZE);
-            (e - s) / FRAME_SIZE
-        })
-        .sum::<u64>()
+    let content: u64 = segment_pages(&elf)
         + 1
         // The archive is **copied** into fresh pages rather than shared with the initial ramdisk's,
         // so it costs the address space a page each rather than only the tables reaching them. That
@@ -251,14 +246,7 @@ fn spawn_timetable_with(
         + TIMETABLE_STACK_PAGES
         + 9; // one more than before: the registration page, when there is one
     let mut space = AddressSpace::new(content).expect("no memory for the timetable");
-    map_segments(&mut space, &elf).expect("could not lay out the timetable");
-    for k in 0..TIMETABLE_STACK_PAGES {
-        space
-            .map_new(USER_STACK_VA - k * FRAME_SIZE, Flags::user_data())
-            .expect("could not map the timetable's stack");
-    }
-    #[cfg(any(target_arch = "x86_64", target_arch = "riscv64"))]
-    map_timebase_page(&mut space).expect("could not map the timetable's timebase page");
+    lay_out_program(&mut space, &elf, TIMETABLE_STACK_PAGES, "the timetable");
     map_the_archive(&mut space, archive, archive_pages);
     let page = registration.then(|| {
         space
