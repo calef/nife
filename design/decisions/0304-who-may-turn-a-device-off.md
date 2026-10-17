@@ -1,7 +1,7 @@
 ---
 status: DECIDED
 raised: 2026-10-15
-decided: 2026-10-15
+decided: 2026-10-16
 ratified_by: calef
 ---
 
