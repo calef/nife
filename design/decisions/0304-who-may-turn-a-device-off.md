@@ -31,7 +31,7 @@ Two things the ruling does settle:
   consumer that does not exist. No driver in this tree power-manages a device the kernel's
   controller did not enable. That is surface in the category
   [§10 (process model: capability-based, microkernel)](0010-capability-microkernel.md) and
-  [§16 (object revocation)](0016-object-revocation.md) exist to keep narrow. Not decided; it waits for the measurement.
+  [§16 (object revocation)](0016-object-revocation.md) exist to keep narrow. It waits for its consumer.
 - **The unit question stays open, with its lean recorded.** Per-device with a refcount, or per-job
   off [§40 (a supervisor's death is its subtree's death)](0040-no-reaper-of-last-resort.md)'s
   subtree death. Decided when something is built. The lean is per-job. The reason is the one
