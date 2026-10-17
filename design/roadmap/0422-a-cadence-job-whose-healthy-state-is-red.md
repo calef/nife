@@ -95,7 +95,7 @@ audit-cadence                    5 of last 6 failed       REPEAT: design/audit-r
 ```
 
 Five of the six runs ended in `script/audits`' own epilogue, identical for six weeks, and the
-sixth, on 2026-09-14, ended in a `FileNotFoundError` that fell out of the group on its own: the
+sixth, on 2026-09-14, ended in a `FileNotFoundError` that fell out of the group on its own. These are the
 two rows the Actions tab renders identically, separated by the only witness that saw both.
 
 ## Where the report lives, and what closes it
@@ -140,5 +140,5 @@ ever. `helpers/trunk-health.sh` now reports a repeat rather than a color: each s
 last six runs grouped by the failing step's final line. A REPEAT row fires when one line took three
 or more, a CHURN row when the failures disagree; an offline selftest proves both against the real
 audit-cadence history. The repeat's home is an issue per workflow, deduped by workflow name, whose
-body updates as the line drifts and whose close is the audit lane's report pull request saying
+body updates as the line drifts. Its close is the audit lane's report pull request saying
 `Closes #N`, routed by the audit-cadence step summary that hands the lane out.
