@@ -18,14 +18,14 @@ to do, and what each would cost. `--features job_mix` is how the number is taken
 
 Five of them, and they are not one question wearing five hats. Two are the
 syscall surface (a thread's placement, a `START` return value), one is the spawn manifest, one is
-the shell's authority model as `crates/grant_plan` states it in its own words, and one is an ABI
+the shell's authority model as `crates/grant_plan` states it in its own words. One is an ABI
 fact about what a process may know about its machine. Any single one left unanswered leaves an
 instrument that either cannot be built or produces a number its own page says is not quotable.
 
 ## What provoked it
 
 Moved on 2026-10-12 (UTC) into [`what-provoked-it.md`](0523-the-job-mix-supervisor-in-userspace/what-provoked-it.md)
-under §212 (a prose budget): why a job-mix card read `NOT SEALED`, measured, and why that finding is
+under §212 (a prose budget): why a job-mix card read `NOT SEALED`, measured. Why that finding is
 separate from this milestone and became milestone 563 (a seal check that reads bytes cannot see a
 check that was dropped).
 
@@ -75,7 +75,7 @@ shell-spawned program does, and that is the shape of what follows.
 ### Blocker one: process construction is the authority the shell deliberately withholds
 
 `crates/grant_plan/src/lib.rs:358-360` states it as design intent, not as an omission: *"spawning by
-name is the shell's own capability and is granted to nothing the shell spawns"*, echoed in
+name is the shell's own capability and is granted to nothing the shell spawns"*. It is echoed in
 milestone 126 (the `procps` package: who else is running, and who is allowed to ask)
 and milestone 281 (`watch` holds exactly what `ps` holds, so it is nothing). Of the thirteen programs the shell can run
 (`least_authority_demo`, `memory_grant_depleter`, `interrupt_heeder`, `interrupt_ignorer`, `date`,
@@ -163,8 +163,8 @@ Three options, and all three are an architect's:
   caller that compares it to zero.
 - B. A fourth word from `SURVEY`. Fits an existing method and a supervision endpoint is already
   the thing that names a domain's threads. `crates/grant_plan/src/lib.rs:350-352` already reserves
-  the idea of a fourth `SURVEY` word for scheduled CPU *time* (milestone 282 (a thread's CPU time, and the `top` it makes possible), DECISIONS §150 (how does a thread's CPU time reach userspace?)), so
-  this would want to be decided alongside that rather than ahead of it.
+  the idea of a fourth `SURVEY` word for scheduled CPU *time* (milestone 282 (a thread's CPU time, and the `top` it makes possible), DECISIONS §150 (how does a thread's CPU time reach userspace?)).
+  This would want to be decided alongside that rather than ahead of it.
 - C. An EL0-readable core id, written by the context switch into a register the way milestone
   229 (a thread reading the CPU's cycle counter from user mode) writes its grant. No syscall number
   at all, and the same mechanism shape this tree already chose once. It is nonetheless an ABI
@@ -190,7 +190,7 @@ So a userspace supervisor on the one board this milestone's number is taken on w
 failure mode this tree fears most: a number that looks right.
 
 The obvious fix is the timebase page `counter_frequency_protocol` already defines, extended from
-x86_64 to riscv64. It does not work here, and the reason is already on the roadmap: milestone 167
+x86_64 to riscv64. It does not work here, and the reason is already on the roadmap. Milestone 167
 (handing a computed page to a userspace-built child: closing the x86_64 timebase page's delegation
 gap) records that a process built by `build_child_space` gets a zeroed placeholder, because
 nothing mints a capability naming the kernel's frame. A shell-spawned supervisor is built exactly
@@ -216,15 +216,15 @@ the subject. The honest framing is that the number would go down and mean more, 
 move is free.
 
 It is a third instrument, and the Results table would need a third row shape. The 2026-09-16
-radon curve is already incomparable with anything taken after 2026-09-19 (the mix went from five job
+radon curve is already incomparable with anything taken after 2026-09-19. The mix went from five job
 kinds to seven and the statistic from best-of-3 to median-of-21, and `notes/job-mix.md`'s own table
-says the field names changed on purpose so an old parser finds nothing). A userspace supervisor
+says the field names changed on purpose so an old parser finds nothing. A userspace supervisor
 would break comparability a second time and in a different place: same mix, same statistic, same
 field names, different timed window. That is the dangerous kind, because nothing in the line
 would look different. Whoever builds this owes the Results table a column saying which supervisor
-produced a row, and owes the printed lines something a script can tell apart, on the same reasoning
-milestone 324 (the bench console cannot speak to any of the three boards) already
-applied to the markers.
+produced a row, and owes the printed lines something a script can tell apart. Milestone 324
+(the bench console cannot speak to any of the three boards) already applied the same reasoning
+to the markers.
 
 ## The kernel feature stays, and that is a finding rather than a deferral
 
@@ -276,12 +276,12 @@ an hour on a tool that cries wolf.
 
 Investigated and stopped at a fork rather than built. Moving `kernel/src/job_mix.rs` (382 lines) to a
 userspace program would delete the special build whose diverted tour drops measured boot and makes
-`sealed_pair` misreport a matched card as `NOT SEALED`, and would measure the supervisor's own
+`sealed_pair` misreport a matched card as `NOT SEALED`. It would measure the supervisor's own
 scheduling, which DECISIONS §96 says is the subject. The brief's premise that it needs milestone
 229's cycle-counter grant is false: the clock is the ambient generic counter and userspace already
-reads it with the same instruction. Five real blockers, each needing calef: a shell-spawned program
+reads it with the same instruction. Five real blockers, each needing calef. A shell-spawned program
 is denied process construction by `grant_plan`'s stated intent, never receives the initrd, tops out
-at a 64-page memory grant against a need of ~3,000, cannot learn where its threads were placed (so
-milestone 240's census dies, and three options for fixing that are priced here), and on riscv64
-cannot learn the counter frequency, which would make radon's `jpm_median` silently 2.5x high and is
+at a 64-page memory grant against a need of ~3,000. It cannot learn where its threads were placed (so
+milestone 240's census dies, and three options for fixing that are priced here). On riscv64
+it cannot learn the counter frequency, which would make radon's `jpm_median` silently 2.5x high and is
 itself gated on milestone 167.

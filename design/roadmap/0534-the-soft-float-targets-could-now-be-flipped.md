@@ -28,8 +28,8 @@ architectures, so the feature strings are a choice.
 
 Taking that choice is not a lane's. Turning `+soft-float` off changes the calling convention for
 every userspace binary and every `std` crate built against it, which is an ABI two programs agree
-on; `AGENTS.md`'s *move fast on what can be undone* tenet puts that squarely in the irreversible
-category, and §22 (Rust `std` on the native ABI, the Hermit way) picked the current
+on. `AGENTS.md`'s *move fast on what can be undone* tenet puts that squarely in the irreversible
+category. And §22 (Rust `std` on the native ABI, the Hermit way) picked the current
 one on purpose when it specified nife's target JSON as "softfloat, and `singlethread = true`".
 
 ## What it would take

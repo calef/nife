@@ -284,6 +284,7 @@ fn a_pci_queue_has_no_doorbell_until_it_is_set_up() {
         notify_addr: [0; MAX_QUEUES],
         isr: 0x4010_2000,
         msix_vector: pci::VIRTIO_MSIX_NO_VECTOR,
+        device_config: None,
     };
     assert!(
         !t.is_doorbell_ready(0),

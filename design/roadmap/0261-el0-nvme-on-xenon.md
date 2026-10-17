@@ -35,8 +35,8 @@ they are option 4's questions, not 2a's.
 > that confines without one.
 
 That is no longer true, and nobody had established it when §86 was written. xenon has VT-d and an
-NVMe behind it. `notes/xenon-firmware.md` records the machine's own setup UI: a `Micron 2450 NVMe
-256GB` on M.2 PCIe SSD-0 with SATA in AHCI rather than RAID, *"so the NVMe is a plain PCIe function
+NVMe behind it. `notes/xenon-firmware.md` records the machine's own setup UI. A `Micron 2450 NVMe
+256GB` sits on M.2 PCIe SSD-0 with SATA in AHCI rather than RAID, *"so the NVMe is a plain PCIe function
 rather than hidden behind Intel RST"*, on a machine milestone 87 (bare) selected partly for VT-d. The tour
 has already reported `vt-d: drhd 0xfed90000 up, translation enabled (gsts.tes confirmed)` under OVMF.
 
@@ -49,7 +49,7 @@ machine's problem.
 ## What calef has to do, and it is one thing
 
 Wipe xenon's internal NVMe. The disk currently holds a Windows installation, and a disk this
-project must not write to is not a disk it can drive, which is what has actually been standing
+project must not write to is not a disk it can drive. That is what has been standing
 between this tree and risk 6's decisive experiment rather than any missing hardware.
 
 - The machine's own firmware does it: Setup, Maintenance, Data Wipe, `Wipe on Next Boot`
@@ -69,7 +69,7 @@ Done 2026-09-17, per `design/fatal-risks/README.md` risk 6. Corrected 2026-09-24
 
 An EL0 NVMe server under §86's option 2a, against QEMU's NVMe, which the runner already attaches.
 `crates/non_volatile_memory_express` exists (716 lines, host-tested, 25 Kani sites) and `kernel/src/non_volatile_memory_express.rs` is the
-in-kernel driver milestone 53 built; the work is moving the queue mechanics out to a confined process
+in-kernel driver milestone 53 (the board's own peripherals) built. The work is moving the queue mechanics out to a confined process
 that is handed a doorbell page and a DMA window and nothing else.
 
 The name is an architect's and a lane should ship a provisional one and say so; `nvme_server` is
@@ -94,7 +94,7 @@ EL0 gets the data path" is one page mapped and another not.
 
 What the server holds, and it is the complete list, because a capability system has no ambient
 environment: the request endpoint (RECEIVE, `filesystem_protocol::blk`), a readiness endpoint (WRITE,
-one message), one page of BAR0 device-typed (the doorbell page at `bar0 + 0x1000`), and the
+one message), one page of BAR0 device-typed (the doorbell page at `bar0 + 0x1000`). And the
 **data plane's pages** of one confined DMA region (the two I/O rings and sixteen pages of transfer
 buffer).
 
@@ -106,7 +106,7 @@ buffer).
   kernel allocated the region and mints every mapping into it.
 - Every admin command. Creating a queue is what names the physical address a ring lives at; this
   process never issues one, so where its rings live is the kernel's statement and not its own.
-- An `Irq` capability. It polls. That is one authority fewer than `entropy.rs` holds, and §86's
+- An `Irq` capability. It polls. That is one authority fewer than `entropy.rs` holds. §86's
   own interrupt finding (this tree runs `intel-iommu` with no `intremap=on` and `gic-version=2` with
   no ITS, so nothing would confine an interrupt a userspace driver aimed) is the reason not to reach
   for MSI-X casually.
@@ -120,13 +120,13 @@ buffer).
   is page 3 of the region rather than page 0.
 - **The initrd, a budget, a filesystem, a network, a clock.**
 
-**The test** is `kernel/src/user/non_volatile_memory_express_tests.rs`, one case, green on aarch64, riscv64 and x86_64: a
+**The test** is `kernel/src/user/non_volatile_memory_express_tests.rs`, one case, green on aarch64, riscv64 and x86_64. A
 client holding one endpoint gets the disk's size, persists two neighboring blocks under different
-patterns, reads each one back byte for byte, is refused a block outside the namespace, gets a flush
+patterns, reads each one back byte for byte. It is refused a block outside the namespace, gets a flush
 count that moves, and is refused an opcode the server has no verb for. **The second pattern is what
 proves a write landed where it said and not everywhere**: an earlier draft read the neighbor and
-expected zeros, which is a claim about the disk's prior contents and true only of a freshly made
-image, so milestone 318 replaced it with a claim the test itself establishes. Every assertion is
+expected zeros. That is a claim about the disk's prior contents, and true only of a freshly made
+image. Milestone 318 (the NVMe boot test on real geometry) replaced it with a claim the test itself establishes. Every assertion is
 written against the geometry the boot was handed rather than against a constant, so the same case
 proves the same things on QEMU's 8 MiB image and on xenon's 256 GB namespace. It asserts the IOMMU
 was active,
@@ -136,13 +136,13 @@ is the *whole* of what stops a compromised server reaching memory it was not giv
 **The prover found a bug that only a real controller could have, and it is the best argument in
 this milestone for keeping the logic in the crate.** A harness asserting that an accepted handoff's
 doorbell offsets stay inside the one page of BAR0 the server is mapped failed in under a second, on
-`CAP.DSTRD = 15`: doorbell N sits at `0x1000 + N * (4 << DSTRD)`, so a wide stride scales the
+`CAP.DSTRD = 15`. Doorbell N sits at `0x1000 + N * (4 << DSTRD)`, so a wide stride scales the
 doorbell *file*, and queue 1's submission tail lands a quarter of a megabyte past the window. QEMU
 reports 0 and every hardware implementation §86 cites is expected to, so **no amount of testing on
-any machine this project owns could have found it**, and on a controller that did report a wide
+any machine this project owns could have found it**. On a controller that did report a wide
 stride it would have presented as a panic inside the disk driver rather than as a diagnosis. It is
 now `non_volatile_memory_express::MAX_DSTRD`, refused in two places: `Handoff::unpack`, so the data plane cannot be built
-around it, and the kernel's own bring-up, so such a controller fails loudly at EL1 naming itself
+around it. And the kernel's own bring-up, so such a controller fails loudly at EL1 naming itself
 rather than starting a process that cannot address its own doorbells.
 
 **What `crates/non_volatile_memory_express` gained**, because the rule is that logic stays where the prover reaches it:
@@ -166,7 +166,7 @@ and the fix.
 Three boots, transcribed in `bench/xenon-2026-10-04/` from calef's photographs. Main (milestone
 594 in) tore the screen as the VT-d units came up. The image from before milestone 594 passed
 preflight 1, the catch-all unit `0xfed91000` owning the NVMe at 01:00.0, then failed bring-up with
-`CompletionTimeout`. A diagnostic image found why: the catch-all unit does not snoop the CPU caches
+`CompletionTimeout`. A diagnostic image found why. The catch-all unit does not snoop the CPU caches
 (`ECAP.C` = 0) and the kernel never wrote its VT-d tables back, so the controller's first admin
 fetch faulted on a root entry the unit read as absent. The fix is in
 `kernel/src/arch/x86_64/iommu.rs` (`Unit::publish`); the reading, and why QEMU could not show it,
@@ -183,7 +183,7 @@ bench note's Results have the spread and the caveats.
 its DMA**, photographed, since xenon has no serial console this project can read.
 
 Under QEMU the same driver working is the prerequisite and not the proof: milestone 16b already
-proved IOMMU-backed isolation against emulated silicon, and risk 6's open clause is specifically
+proved IOMMU-backed isolation against emulated silicon, and risk 6's open clause is
 about a real device at real speed.
 
 ## BUGS
@@ -201,11 +201,11 @@ about a real device at real speed.
   netboot work was meant to fix. Unchanged, and it is now the main cost of the remaining step,
   because the software side no longer needs iterating.
 - `crates/non_volatile_memory_express`'s Kani harnesses cover queue mechanics, not confinement, and that is still true
-  of the three this milestone added: they prove the handoff round-trips, that the doorbell offsets
+  of the three this milestone added. They prove the handoff round-trips, that the doorbell offsets
   an accepted handoff produces stay inside the one page mapped, and that no block outside the
   namespace becomes a command. The first two are *about* the confinement's arithmetic rather than
   about the confinement, which is a hardware claim no prover reaches. **The confinement claim's own
-  test is now the escape test**: a confined EL0 server aims a PRP outside its region and the IOMMU
+  test is now the escape test**. A confined EL0 server aims a PRP outside its region and the IOMMU
   refuses it, with a replayable falsification that widens the domain and turns the test red
   (`a_confined_el0_server_cannot_dma_outside_its_region`, done 2026-10-04, in `## Follow-on`). What
   earlier stood here, the `confined_by_iommu` assertion alone, was the decorative case milestone 202

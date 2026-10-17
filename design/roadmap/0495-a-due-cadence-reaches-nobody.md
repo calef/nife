@@ -90,13 +90,10 @@ index row, each produced their `DUE: unknown` row.
 
 ## Follow-on
 
-- **Recorded.** `script/audits` counts the ABI surface from `crates/abi/src/lib.rs` alone, and the
-  crate split into per-object modules. Measured 2026-10-15: the trigger reads 6 constants against
-  baselines of 68 to 76 and prints `+-62`. The split moved the constants verbatim into
-  `memory_region.rs`, `interrupt.rs` and some twenty siblings, and told no script. That is the
-  failure mode the script's own header records for the `user/` split. Until the count is told, its
-  delta is wrong in both directions, and a real change of a constant or two reads as noise. The
-  reader meets the count in `script/audits`' `current()`.
+- **Done.** The ABI-surface count walks all of `crates/abi/src`, not `lib.rs` alone. This lane
+  measured the 6-against-68 break from its base on 2026-10-15. The rider on milestone 427 (the
+  documentation sweep the worklist already ranks) found the same drop from its baseline row and
+  fixed `current()` the same day. The trigger now reads the crate's real surface.
 - **Done.** The cadence stream cannot empty on a pass that could not ask. `helpers/trunk-health.sh`
   captures the `script/cadence-check --quiet` call and prints a `cannot ask` row when it exits
   nonzero with no rows, in the DUE section's row shape. The `prev_cadence` compare therefore reads

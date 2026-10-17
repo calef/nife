@@ -73,8 +73,8 @@ exist.** Every external customer is therefore blocked on milestone 198 (the pack
 DECISIONS §157 (a trivial install is a web page, a USB drive and packages).
 
 **So the ranking function is not idling through neglect.** It is waiting on a gate calef already
-closed, and writing that down converts a gap into a gate: a reader who finds the customer path empty
-now finds the reason beside it, and `design/fatal-risks/README.md` doing the ranking meanwhile is the
+closed, and writing that down converts a gap into a gate. A reader who finds the customer path empty
+now finds the reason beside it. And `design/fatal-risks/README.md` doing the ranking meanwhile is the
 designed behavior rather than a drift.
 
 The candidate that came closest was refused for the reason that matters. A measurement appliance
@@ -82,7 +82,7 @@ scores well on every stated criterion: adequate within a milestone or two, failu
 somebody notices when the numbers stop, and it exercises isolation, drivers and real hardware rather
 than avoiding them. It fails the distinction principle 1 exists to draw. calef's own correction
 is that he is the first customer and not the audience, which separates *the architect runs it* from
-*a customer runs it*; an appliance serving this project is the architect again in a different hat,
+*a customer runs it*. An appliance serving this project is the architect again in a different hat,
 and naming it would let the ranking resume without resolving what made it vacant.
 
 What this makes of the package manager. If no customer can be named until it exists, then the

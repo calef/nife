@@ -32,8 +32,9 @@ adjusting.
 ## Revisit
 
 - **Condition.** A machine reporting a non-zero first bus in its MCFG. Every machine seen so far
-  reports 0 and none is required to, which is the refusal's own wording, and because the value is
-  checked rather than assumed the bell rings as a loud bring-up failure rather than as a wrong answer.
+  reports 0 and none is required to, which is the refusal's own wording. Because the value is
+  checked rather than assumed, the bell rings as a loud bring-up failure rather than as a wrong
+  answer.
 
 ## Index row
 

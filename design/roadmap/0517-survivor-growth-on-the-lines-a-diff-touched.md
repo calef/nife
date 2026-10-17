@@ -51,13 +51,13 @@ census's own number, at head `e25f519a`.
 So the measurement is two steps and no census:
 
 1. Blame every survivor line at the census commit. A survivor whose line's last touch is inside
-   the window is a line some pull request in the window wrote; one whose last touch predates
+   the window is a line some pull request in the window wrote. One whose last touch predates
    2026-08-03 is a line no in-window diff contained, so no diff-scoped check running in the window
    could ever have seen it.
 2. Replay `cargo mutants --in-diff` against the pull requests blame names, to find out whether
    the proxy tells the truth. It is a proxy in a specific direction: blame reports the *last* touch,
    so a rename or a lint fix that rewrites a line re-blames a survivor that is much older than the
-   commit it now points at, and the gate at that commit would not have reported it.
+   commit it now points at. The gate at that commit would not have reported it.
 
 ## The fraction
 
@@ -142,7 +142,7 @@ be inflow, with the corpus rate as a lagging indicator.
 The measurement supports the inflow framing, and it says how strongly. Over six weeks the tree
 gained 629 survivors on lines pull requests wrote and one on a line nobody touched. Decay of
 old code is real and it is running about three orders of magnitude behind inflow, so inflow is not
-merely most of the problem, it is nearly all of it, and a condition written about it is a condition
+merely most of the problem, it is nearly all of it. A condition written about it is a condition
 written about the thing that is happening.
 
 That one is still why the condition needs a second clause. An inflow-only condition cannot see
@@ -163,7 +163,7 @@ Proposed wording, two clauses, and the second is what makes the first safe:
 Why (a) rather than "the gate is on". A condition that requires a blocking gate makes the fatal
 risk hostage to a decision milestone 479 refused on evidence that has not changed. The measurement
 is available without the gate: the replay costs four seconds on a documentation change and under two
-minutes on the largest crate landing in six weeks, and it can run after the merge, weekly, over the
+minutes on the largest crate landing in six weeks. And it can run after the merge, weekly, over the
 window since the last census, which is exactly what this lane did for six weeks in an afternoon.
 
 Why (b) is a floor and not a target. A percentage target can be met by excluding awkward crates,
@@ -177,7 +177,7 @@ not arrive less tested" is a promise about roughly one pull request in twelve.
 
 And it does not carry the kernel, which is the caveat that has to travel with it. The kernel pricing above
 prices that; until the scaffolding half is built, any inflow condition is a claim about the host
-crates only, and risk 3's text should say so where the reader meets the verdict rather than in a
+crates only. Risk 3's text should say so where the reader meets the verdict rather than in a
 follow-on.
 
 ## What could not be replayed, and what was not attempted
@@ -217,7 +217,7 @@ follow-on.
 ## BUGS
 
 - Blame is a proxy and it was checked on 31% of the population. 197 of 629, all confirmed. The
-  residual risk is a commit that rewrote a line cosmetically *and* was not sampled; the two sampled
+  residual risk is a commit that rewrote a line cosmetically *and* was not sampled. The two sampled
   cosmetic commits both confirmed, so the correction is small, but it is not zero and the fraction
   should be read as "about 82%" rather than to the tenth.
 - The cut is a day, not an instant. The baseline run is dated 2026-08-03 with no hour, so any
@@ -243,14 +243,14 @@ Milestone 438 ended at the measurement that refused a diff-scoped gate and named
 what share of the mutation corpus's survivor growth arrives on lines a pull request touched. It is
 81.6%. Of the 771 survivors in the 2026-09-14 census, 629 sit on lines last touched inside the
 window that opened at the 2026-08-03 baseline, blamed to 80 commits in 62 pull requests out of 761
-merged; all 142 on older lines were checked against a mutation run of the tree as it stood on
+merged. All 142 on older lines were checked against a mutation run of the tree as it stood on
 2026-08-03, and 141 were already survivors then. The exception is `compositor`'s
 `replace * with + in Rect::area`, caught in August and surviving now on a line nobody edited. The blame proxy was validated by replaying `cargo mutants --in-diff` against six
 commits: 197 attributed survivors, 197 reported, including two lint-only commits picked because they
 should have broken it. Neither the census nor a deeper clone was needed, because the weekly
 workflow's artifacts carry the per-survivor list the tree does not. Putting `kernel/**` and
 `components/**` in the corpus is mechanically possible and costs about 500 hours of runner time per
-census across three architectures, against 52 minutes today, so a kernel census is refused on price
+census across three architectures, against 52 minutes today. So a kernel census is refused on price
 and a kernel diff-scoped check is the affordable half. The proposed green condition is inflow plus a
 trailing clause, because one regression on an untouched line in six weeks is small enough to make
 inflow the right primary term and not small enough to leave unwatched.

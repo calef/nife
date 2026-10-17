@@ -251,5 +251,5 @@ called the rung unreachable on `x86_64`.
 calef, 2026-09-09. Parity is the demonstrator's claim (§19) and three boot arms had quietly
 diverged: `machine.rs` on one architecture, `self_test` on two, a `Stage::Tour` marker reachable
 on one. Every architecture now describes its machine, runs the same five self-tests behind one
-verdict line, and hands over to a `swish` prompt rather than halting; `script/boot-check` reads the
+verdict line, and hands over to a `swish` prompt rather than halting. `script/boot-check` reads the
 whole ladder with the same recognizer a bench run uses, and `--inject` proves it can come back red.

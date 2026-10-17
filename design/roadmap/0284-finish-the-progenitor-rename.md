@@ -67,7 +67,7 @@ under `design/` and so is not a lane's either.
   Three cases: `components/src/builder.rs`'s self-description (quoted in two name-provenance blocks
   and in `script/names`' own header, now dated with *"then"*), the panic message `no building budget
   for init` (quoted in `notes/progenitor-and-loading.md` with a date, and in
-  `kernel/src/user/disk_service.rs` with one already), and the serial line `init : measured, built,
+  `kernel/src/user/disk_service.rs` with one already). And the serial line `init : measured, built,
   started` in `kernel/src/sched.rs`.
 - A file a developer may not edit does not change. Counted above, not touched.
 - An identifier does not change, because a name is an architect's. New here, and it is the line
@@ -149,8 +149,8 @@ Refusals, because they are the valuable half:
   `hello` at role 20 is neither.
 - `LOADER_*` is refused: it names one of the three things the role does (parse, build, endow) and
   the roles that delegate a UART or an interrupt are not loading anything interesting.
-- `BUILDER_*` is refused: `builder` is already a program in this tree with its own argument, and
-  a role constant that shares that name would make two things claim one word, which is the exact
+- `BUILDER_*` is refused: `builder` is already a program in this tree with its own argument. A
+  role constant that shares that name would make two things claim one word, which is the exact
   refusal that cost `system_builder` its crate twice.
 - **Leaving them** is a live option and costs nothing mechanical. What it costs is that milestone
   266's title is not true of this file, and a newcomer reading `INIT => init(dma_phys)` beside
@@ -206,17 +206,17 @@ them, deliberately, so that a rename moves one set of words and not two.
   `kernel/src/user/tests.rs` duplicates, with `PARENT_*` recommended and three alternatives refused.
   Held out of this milestone because a name is an architect's. Numbered on 2026-09-19 by milestone
   433's drain of the pile and `SUPERSEDED` in the same act by milestone 405 (the nine `INIT` roles),
-  which turns these six parents into programs with their own names; 399 keeps the refusals and 405
+  which turns these six parents into programs with their own names. 399 keeps the refusals and 405
   carries them forward.
 
 ## Index row
 
 Milestone 266 (one progenitor, on all three architectures) renamed the first process and published
-the rule that a present-tense claim about the system changes because it is now false; it applied
+the rule that a present-tense claim about the system changes because it is now false. It applied
 that to three claims out of the 748 it counted. 1,751 whole-word `init` remained where a lane may
 edit, hundreds of them live sentences about a process that has not been called that since
 2026-09-08. 775 changed across 98 files, 976 left and each class named: the verb `fn init` (correct
 and untouched), records, quotations, captured transcripts, `fixtures/src/hello.rs`'s six role
-constants (calef's, proposed with `PARENT_*` recommended and four refusals) and 471 in files a lane
+constants (calef's, proposed with `PARENT_*` recommended and four refusals). And 471 in files a lane
 may not edit. Three claims were wrong about more than the name. calef's refusal of a
 `system_initializer` rename now sits in that crate's own `Name:` block.

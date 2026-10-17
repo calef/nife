@@ -14,7 +14,7 @@ These held the same authority, from the same named constants, and one was a loop
 argued for a flag. Following it one step further argued for neither.
 
 There was never a gate on this one. calef decided the shape when he raised it and decided it again
-when he cut it; what was still his at build time was the flag's spelling and the fate of
+when he cut it. What was still his at build time was the flag's spelling and the fate of
 `crates/watch`, and the cut answered both by removing the things they named.
 
 ## The measurement that decides it, which outlives the conclusion
@@ -68,10 +68,10 @@ milestone that makes a good one possible.
 
 ## It was never in `watch`'s family
 
-Upstream `watch` re-runs an arbitrary command. This one never could, and never would have: re-running
+Upstream `watch` re-runs an arbitrary command. This one never could, and never would have. Re-running
 a named command needs a program to hold authority to spawn another program by name, which in this
 system is the shell's own capability (`grant_plan::spawnproto`) and is granted to nothing the shell
-spawns (an interruptible child is built with no capabilities in its cspace at all). So it redrew
+spawns. An interruptible child is built with no capabilities in its cspace at all. So it redrew
 the one thing it could already reach without that: the supervision domain it was spawned into, which
 is `ps`'s listing.
 
@@ -130,7 +130,7 @@ the flag.
 - Nothing in an automated run types `ps` or `pgrep` any more, and one thing used to. The scripted
   swish-check session in `xtask/src/main.rs` typed `watch 3` and `caps watch 3`, and those lines went
   with the program. `ps` and `pgrep` were already reachable only from an interactive prompt, which
-  `crates/ps`'s `BUGS` records; this does not widen that gap but it does remove the one neighboring
+  `crates/ps`'s `BUGS` records. This does not widen that gap, but it does remove the one neighboring
   line that would have caught a regression in the domain grant at a real prompt.
 - `design/roadmap/0158-kernel-object-rename-build.md` is `BUILT` and keeps the old names: it is an
   account.

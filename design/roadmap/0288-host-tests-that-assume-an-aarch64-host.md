@@ -84,7 +84,7 @@ than on the first stranger who tries to fuzz there.
 
 `crates/elf` is where this bites first because it is the one crate whose logic is *about* machine
 identity, but a `#[cfg(target_arch)]` constant paired with a hardcoded literal is a pattern rather
-than an incident, so the whole host pass was run on this x86_64 box with `--no-fail-fast`:
+than an incident. So the whole host pass was run on this x86_64 box with `--no-fail-fast`:
 
 ```
 cargo test --workspace --no-fail-fast --exclude kernel --exclude components --exclude fixtures \
@@ -102,10 +102,10 @@ defines it.
 
 That is a result worth stating plainly rather than leaving as a gap: the answer to "where else" is
 nowhere else the host pass can reach. The other three host facts a test could accidentally
-assume were swept for too, and the answer is better than expected rather than merely empty:
-`target_pointer_width` and `target_endian` appear nowhere in this tree's Rust at all, and the one
+assume were swept for too, and the answer is better than expected rather than merely empty.
+`target_pointer_width` and `target_endian` appear nowhere in this tree's Rust at all. The one
 `PAGE_SIZE` in a host-tested crate (`crates/paging`) is a plain `4096` with no `cfg(target_arch)`
-near it, because page size here is a *parameter* threaded through the API (`Segment::page_range`
+near it. Page size here is a *parameter* threaded through the API (`Segment::page_range`
 takes it, and `elf`'s fuzz target deliberately drives both 4 KiB and 16 KiB) rather than a fact read
 off the host. The machine number was the only host fact any of this code had baked in.
 
@@ -139,8 +139,8 @@ set: the pass now *reaches* the kernel legs, which on this machine it had never 
 `script/test` still exits 1, on the aarch64 kernel leg, at
 `a_keystroke_from_a_virtio_keyboard_becomes_a_terminal_byte`, whose own failure message names the
 cause: *"the host's `sendkey a` is not reaching the device (is the monitor socket attached?)"*. That
-is host-side QEMU interaction in a headless sandbox, and this lane changed no code the kernel runs:
-outside `#[cfg(test)]` the whole diff is three removed `allow(dead_code)` attributes and three
+is host-side QEMU interaction in a headless sandbox, and this lane changed no code the kernel runs.
+Outside `#[cfg(test)]` the whole diff is three removed `allow(dead_code)` attributes and three
 additive `const` items, and `grep` finds no caller of any of the three outside `crates/elf`'s own
 tests.
 
@@ -193,7 +193,7 @@ cuts both ways here, and the honest statement is that the aarch64 and riscv64 ho
   lane. `the_fuzz_seed_is_a_valid_executable` only ever runs against the seed for the host running
   it, so on this box the riscv64 seed is asserted to exist and nothing more. The evidence that it is
   good is that it is byte-identical to the aarch64 seed, which *is* parsed and validated on every
-  aarch64 run, except at the single byte the generator varies: `cmp` puts the only difference at
+  aarch64 run, except at the single byte the generator varies. `cmp` puts the only difference at
   offset 18, in all three directions. That is stronger than an argument and weaker than a run.
 - Nothing checks the committed seed bytes against the generator that claims to produce them.
   Recorded in `fuzz/seeds/README.md`'s own `BUGS`, where a reader meets the directory.

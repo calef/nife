@@ -26,7 +26,7 @@ evening', under `## Follow-on`:
 
 A power cycle is what the nine control boots were, so a power-cycled series is the better experiment
 than one driven by SRST. It was refused because it is a lane spent on a guess: the hypothesis it
-would test is that the firmware refuses reset type 1, and nobody has seen it do that.
+would test is that the firmware refuses reset type 1. Nobody has seen it do that.
 
 ## Revisit
 
@@ -37,5 +37,5 @@ would test is that the firmware refuses reset type 1, and nobody has seen it do 
 ## Index row
 
 The better experiment, refused because the observation that would justify it has not been made and
-the board time is real. Its condition names the file the triggering observation would land in, which
+the board time is real. Its condition names the file the triggering observation would land in. That
 is the most checkable shape a revisit condition takes in this tree.

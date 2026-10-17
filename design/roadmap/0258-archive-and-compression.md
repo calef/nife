@@ -28,7 +28,7 @@ part 2's fork rather than choosing it.
 
 Every git object is zlib-compressed, and so are packfiles, so `git` cannot read its own object
 database without inflate. The emphasized clause is false for the compressor: there is no
-compression code anywhere in this tree, in any form, and nothing is building any. Checked
+compression code anywhere in this tree, and nothing is building any. Checked
 2026-09-05 across `crates/`, `kernel/src/` and `user/src/`; the only greps that matched were a
 comment about load inflating a median and `crates/globally_unique_identifier_partition_table`'s note naming the zlib CRC-32 polynomial.
 
@@ -62,11 +62,11 @@ optimization later rather than a prerequisite now. It also states the case for t
 instead, and neither is chosen here.
 
 Refused, in writing, so nobody re-derives it: `bzip2` (no consumer, displaced everywhere that
-had a choice), `xz`/LZMA (no consumer, and §146 records the 2024 xz-utils backdoor as a cost that
-belongs in a dependency decision), and `7z` (no consumer, inherits the LZMA argument).
+had a choice), and `xz`/LZMA (no consumer, and §146 records the 2024 xz-utils backdoor as a cost that
+belongs in a dependency decision). And `7z` (no consumer, inherits the LZMA argument).
 
 Deferred against a consumer: `zstd` (take it if 198 picks it; FSE and ANS entropy coding is a
-genuine subsystem this project would gain nothing from owning) and `zip` (a container plus DEFLATE
+genuine subsystem this project would gain nothing from owning). And `zip` (a container plus DEFLATE
 plus CRC-32, and this tree already has the CRC-32, so it is close to free once inflate exists).
 
 ## The part that is more interesting than plumbing

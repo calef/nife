@@ -15,7 +15,7 @@ proposal `the-boards-screen-under-uefi`, filed 2026-09-19, on calef's instructio
 give every proposal on `main` a number. The text below is the proposal's own, unedited except for
 this paragraph: the argument is its author's and promotion is not the moment to improve it. Found by
 milestone 243's lane while closing that block's two Outstanding items, and filed because milestone
-441 changed the premise underneath it while the lane was running: `uefi_loader` gained aarch64
+441 changed the premise underneath it while the lane was running. `uefi_loader` gained aarch64
 and riscv64 boot files, so on those architectures there is now a firmware stage that has already lit
 a display.
 
@@ -23,9 +23,9 @@ Everything is in this tree; the only outside dependency is a machine to try it o
 and QEMU with the board firmwares is enough to start.
 
 In brief. Milestone 243 (a machine with no serial port) gave aarch64 and riscv64 a screen
-through QEMU's `ramfb`, which is what `virt` can present when nothing lit a display: the guest
+through QEMU's `ramfb`, which is what `virt` can present when nothing lit a display. The guest
 supplies 1.9 MB of `.bss` and tells the emulator where it is. That was the right answer for a board
-booted from `-kernel` and it is the wrong one for a board booted from a stick, because a UEFI
+booted from `-kernel` and it is the wrong one for a board booted from a stick. A UEFI
 firmware on those architectures has a
 `EFI_GRAPHICS_OUTPUT_PROTOCOL` exactly as an x86 one does, with a real aperture behind it.
 
@@ -86,8 +86,8 @@ puts in the expensive column, so it should not be invented by a lane in passing.
 ## Index row
 
 `uefi_loader` gained aarch64 and riscv64 boot files in milestone 441 (the program that makes the
-stick), so the boards now have a firmware stage that has lit a display: it could paint milestone
-243's handoff banner there too, and it could hand the kernel a real aperture by synthesizing the
+stick), so the boards now have a firmware stage that has lit a display. It could paint milestone
+243's handoff banner there too. And it could hand the kernel a real aperture by synthesizing the
 `simple-framebuffer` node milestone 157 will read from U-Boot, retiring the `ramfb`'s 1.9 MB of
 `.bss`. The second half is a wire format between two boot stages and wants a decision rather than a
 lane.

@@ -25,7 +25,7 @@ Follow-on`:
 ## Why it is here rather than only there
 
 The block said measure before deciding, it was measured on 2026-08-03, and the verdict was build
-nothing: the lockstep is not the bottleneck, the sixteen-byte register-only sink message is, and a
+nothing. The lockstep is not the bottleneck, the sixteen-byte register-only sink message is, and a
 buffer costs roughly double for decoupling rather than for bandwidth. `notes/pipes.md` carries the
 numbers and one honest caveat that matters more than the numbers.
 

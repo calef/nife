@@ -77,7 +77,7 @@ disposition column is what this milestone did.
 **`components/src/block_driver.rs` already was the virtio driver.** Same seven role numbers, same
 dispatch, same `crates/virtio` behind it, and RISC-V and `x86_64` had been using it since parity C.
 aarch64 reached the identical code through `hello` only because `initrd_aarch64`'s table never
-packed `block_driver`, and the cost of that was a `cfg` fork every caller had to be routed around:
+packed `block_driver`. The cost of that was a `cfg` fork every caller had to be routed around:
 `fs_service::blk_server_image` and `ripgrep_tests::block_server_image` each carried three arms whose
 entire content was "which binary carries this role on this board".
 
@@ -106,8 +106,8 @@ syscall method to set it.
 Every split program ignores `x0`. A one-job program has no role selector, so the role numbers
 simply stop existing for these fourteen rather than being renumbered. `hello`'s remaining nine keep
 theirs unchanged, gaps and all: a role number is a word the kernel puts in `x0`, so it is a value
-the kernel's wiring and that file agree on, and
-[the progenitor's grant order](0301-one-grant-order-for-the-progenitor.md) recorded six
+the kernel's wiring and that file agree on.
+[The progenitor's grant order](0301-one-grant-order-for-the-progenitor.md) recorded six
 `spawn_progenitor` tests that name them. Renumbering would be an edit to a wire value bought with
 tidiness.
 
@@ -117,26 +117,26 @@ tidiness.
 sentence is what the split made false.
 
 `capability_demo_proto` holds the three words two compilation units must now agree on:
-`PAGE_FRAME_SENTINEL` (producer and consumer), `USED_WORD` (the delegation receiver and
+`PAGE_FRAME_SENTINEL` (producer and consumer), and `USED_WORD` (the delegation receiver and
 `kernel/src/user/delegation_service.rs`, which had its own copy with a "must match" comment beside
-it), and `CYCLE_COUNTER_WORD` (the reader and the kernel test, likewise duplicated).
+it). `CYCLE_COUNTER_WORD` (the reader and the kernel test, likewise duplicated).
 
 `loaded_image_check` holds the self-check and its `.rodata`/`.data`/`.bss` markers, which two
 fixtures need. It takes its `fail` as a `fn() -> !` parameter rather than calling `user_rt`, and
-that is worth a sentence: a crate that reaches `user_rt` reaches EL0 syscall `asm!` and compiles for
+that is worth a sentence. A crate that reaches `user_rt` reaches EL0 syscall `asm!` and compiles for
 aarch64 or riscv64 only, which `script/lint` catches and which would have put this crate in four
 separate host-pass exclusion lists to buy one function call. As a parameter it costs the two callers
 one argument, stays host-buildable, and carries two host tests.
 
-Keeping it in one program and dropping it from the other was considered and refused:
-the printing client's self-check is load-bearing to
+Keeping it in one program and dropping it from the other was considered and refused.
+The printing client's self-check is load-bearing to
 `a_user_client_moves_data_through_shared_memory`, which asserts on the *absence of a fault* as well
-as on the bytes, and after a split no other test covers that binary's own image.
+as on the bytes. And after a split no other test covers that binary's own image.
 
 Refused: passing the sentinel in `arg1` instead of sharing a constant, which would have removed
 the agreement rather than relocating it, since the spawner could hand the same word to both halves.
 It loses because it moves a fixture's own invariant into the kernel's wiring, where a reader of
-either program can no longer see what value is expected or why; and because AGENTS.md rule 7 is
+either program can no longer see what value is expected or why. It also loses because AGENTS.md rule 7 is
 written as an absolute, not as a preference to be traded against.
 
 ## The archive grew, and the directory ceiling was in the way
@@ -198,8 +198,8 @@ See the proposal below.
   instruction. `user_rt` is the obvious home; the decision is the public function name, which is
   calef's, so the block carries a `DECISION` gate.
 - **Recorded.** `fixtures/src/hello.rs`'s own `BUGS` carries the two limitations a reader of that
-  file meets: the name still does not describe the contents (nine roles of userspace process
-  construction, which `hello` describes no better than it described thirty-one), and a caller that
+  file meets. The name still does not describe the contents (nine roles of userspace process
+  construction, which `hello` describes no better than it described thirty-one). And a caller that
   asks for a role it does not have now gets a trap rather than a message, which is deliberate and
   is still a spawner waiting on its watchdog.
 - **Done.** The Kani cost of the `DIR_BLOCKS` raise, which this lane could not measure, was
@@ -213,4 +213,4 @@ See the proposal below.
 
 ## Index row
 
-calef, 2026-09-14: *"31 role binary is not the right shape. If there is anything left then we can consider a name for what remains"*. Twenty-two of thirty-one roles gone. Seven deleted outright: `components/src/block_driver.rs` was already the identical virtio driver over the identical `crates/virtio`, used by the other two boards since parity C, and aarch64 reached the same code through `hello` only because its archive table never packed it; packing it collapsed three `cfg` forks to one line each and corrected 24 test comments. **Fourteen split into programs**, all names provisional, plus two crates (`capability_demo_proto`, `loaded_image_check`) because rule 7 admits no `#[path]` module for what a split pair must agree on. **Nine `INIT`/child roles kept**, proposed as a follow-on: splitting them changes `spawn_progenitor`'s role-to-entry choice, which is the boot path milestone 268 (every architecture boots the same way) was rebuilding beside this lane. The principle the tree had enacted five times and never written down is now stated where a reader meets the last multiplexer: a program does one thing, and a role is an exception that has to say why. `hello`'s own block claimed the problem closed by 266, which had moved one role out of thirty-two. `nifefs::DIR_BLOCKS` 6 -> 10 (ceiling 76 -> 127) because both archives crossed `MAX_FILES` on the same commit.
+calef, 2026-09-14: *"31 role binary is not the right shape. If there is anything left then we can consider a name for what remains"*. Twenty-two of thirty-one roles gone. Seven deleted outright: `components/src/block_driver.rs` was already the identical virtio driver over the identical `crates/virtio`, used by the other two boards since parity C, and aarch64 reached the same code through `hello` only because its archive table never packed it. Packing it collapsed three `cfg` forks to one line each and corrected 24 test comments. **Fourteen split into programs**, all names provisional, plus two crates (`capability_demo_proto`, `loaded_image_check`) because rule 7 admits no `#[path]` module for what a split pair must agree on. **Nine `INIT`/child roles kept**, proposed as a follow-on: splitting them changes `spawn_progenitor`'s role-to-entry choice, which is the boot path milestone 268 (every architecture boots the same way) was rebuilding beside this lane. The principle the tree had enacted five times and never written down is now stated where a reader meets the last multiplexer: a program does one thing, and a role is an exception that has to say why. `hello`'s own block claimed the problem closed by 266, which had moved one role out of thirty-two. `nifefs::DIR_BLOCKS` 6 -> 10 (ceiling 76 -> 127) because both archives crossed `MAX_FILES` on the same commit.

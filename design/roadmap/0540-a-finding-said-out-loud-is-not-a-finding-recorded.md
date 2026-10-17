@@ -76,8 +76,8 @@ loop or nothing.
 ## What cannot be mechanized, said first
 
 Nothing can read the conversation. No gate can know that a maintainer said something to calef
-and did not write it down, and a lint that hunted for finding-shaped English in reports and pull
-request bodies would be `git grep -w TODO`'s 82% false-positive rate wearing a different hat: a
+and did not write it down. A lint that hunted for finding-shaped English in reports and pull
+request bodies would be `git grep -w TODO`'s 82% false-positive rate wearing a different hat. A
 report *discussing* a limitation reads exactly like one *reporting* a new one. That was measured
 here (notes/untracked-work-sweep.md) and the conclusion has not changed.
 
@@ -100,7 +100,7 @@ a finding with no path after it. That converts a memory problem into a proofread
 reader is already there.
 
 It is the same inversion the tree applies elsewhere: `script/citations` does not check that a gloss
-exists, it checks the ones that are written, and the discipline is to write the gloss while the
+exists, it checks the ones that are written. The discipline is to write the gloss while the
 target is open rather than to remember later.
 
 ### One inbox, which already exists
