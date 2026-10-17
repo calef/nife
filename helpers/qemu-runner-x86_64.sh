@@ -405,7 +405,7 @@ fi
 # `NIFE_ALLOW_REBOOT=1` drops it, for the one run that wants a reset to reset: milestone 249 (the boot lottery is sampled by a person walking to the board)'s
 # `script/soak-test --reboot --arch x86_64`, whose proof is a second boot. That run bounds itself
 # and fails on a panic line, so a triple-fault loop costs it a timeout rather than a blank terminal.
-# A virtio-gpu when NIFE_GPU is set (milestone 29), the twin of the other two runners' block: modern
+# A virtio-gpu when NIFE_GPU is set (milestone 29 (a display terminal)), the twin of the other two runners' block: modern
 # (disable-legacy=on) and behind the IOMMU (iommu_platform=on), because a GPU's backing addresses
 # ride in a device-level command payload that the transport's shadow-ring validator never sees, so
 # the IOMMU is the only thing that bounds them.

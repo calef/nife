@@ -65,7 +65,7 @@ milestone's deliverable:
   `a_backing_outside_the_grant_is_refused_by_the_iommu` and the compositor test run instead of
   skipping. Both halves were seen red: with the VGA still attached all three scanout checks
   failed, and with no referee the keyboard test failed with its "never typed anything" sentence.
-  Milestone 161's userspace console, input and `keyboard_driver` path needed no x86_64 work; the
+  Milestone 161 (the x86_64 kernel port)'s userspace console, input and `keyboard_driver` path needed no x86_64 work; the
   drivers are arch-neutral virtio-pci clients. A `--test` filter now runs the system image beside
   the referee on every ISA (verdict dropped), because a filter that selected the keyboard test
   failed it for want of a keystroke.

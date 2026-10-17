@@ -481,7 +481,8 @@ pub(crate) fn cargo_test_with_scanout_check(arch: &str, test_args: &[&str]) -> b
 /// **The same run without the inbound prober**, for a machine with no host-forwarded listener.
 ///
 /// x86_64's `q35` has no virtio-mmio NIC, and the two programs that listen on the forwarded port
-/// (milestone 107, milestone 64) reach it through that NIC, so `helpers/qemu-runner-x86_64.sh`
+/// (milestone 107 (the socket contract learns to accept), milestone 64 (enough `std` to run
+/// somebody else's crate)) reach it through that NIC, so `helpers/qemu-runner-x86_64.sh`
 /// carries no `hostfwd`. A prober there would fail every run for want of a guest to connect to,
 /// which would make its verdict noise. The scanout referee is wanted all the same: it grades the
 /// three pictures and presses the key the keyboard test waits for.
