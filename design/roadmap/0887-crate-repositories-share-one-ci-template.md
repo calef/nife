@@ -161,22 +161,23 @@ copied. The workflows themselves are written, since none publishes a falsificati
 
 ## Exit
 
-A throwaway crate repository, `nifeos/crate-workflows-test`, calls every reusable workflow from
-releases v1 to v3. Built 2026-10-16 (UTC). It was made for the test. Deleting it wants a
-`delete_repo` scope the lane's token lacks, so it stands until calef removes it. The template's
-own selftest is green on every job: check, proofs, and weekly against `sample/`, plus the release gate's refusal. The throwaway
-repository's pull requests show the rows red on a commit made to break them and green on the
+A crate repository, `nifeos/crate-workflows-test`, calls every reusable workflow from releases v1
+and v2. Built 2026-10-16 (UTC). The same day, calef ruled that it
+stands as the template's release canary, adopting every new release before a crate depends on
+one. Its adoption of v4 is open and blocked by a GitHub resolution failure measured in the
+template's README; the ritual's first green run is the unblock test. The template's
+own selftest is green on every job: check, proofs, and weekly against `sample/`, plus the release gate's refusal. The canary's
+earlier pull requests show the rows red on a commit made to break them and green on the
 commit after: fmt, tests, coverage, standalone and the falsification replay on one pair. Another
 pair shows the lag check naming a pin behind the newest release, and the supply-chain refusal of a
 floating action. A pull request held by `needs-architect` took a recorded ruling, which swapped
 the label for `architect-ruled` and turned the hold green. The false positive behind it was a
-defect in the label workflow's rule 2, fixed in v2. The apply script configures the test
-repository from the settings file and reports what it cannot do. It sets the features, the merge
-behavior, the security toggles, the Actions permissions, the `crates-io` environment with calef as
-required reviewer, the `crates-io` team, the labels, and the `main` ruleset with the nine required
-checks. The drift check reads the
-settings back. It went red naming a setting changed by hand, and back to its one known finding
-(the refused tags ruleset) when the setting was restored. The release gate passed on a green
+defect in the label workflow's rule 2, fixed in v2. The apply script configures the canary
+from the settings file and reports what it cannot do. It sets the features, the security toggles,
+the Actions permissions, the `crates-io` environment with calef as required reviewer, the team,
+the labels, and the `main` ruleset with the nine required checks. The drift check reads the
+settings back. It went red naming a hand-changed setting, and back to its one known finding (the
+refused tags ruleset) on restore. The release gate passed on a green
 commit and created no tag under `dry-run`. The publish job then sat in the `crates-io`
 environment waiting on a person, which is the "publishes nothing without calef's environment
 approval" row. In nife, the allowlist lint fails a crate that drops `publish = false` without
@@ -212,11 +213,18 @@ being on the list, and `helpers/ci_job_times.py` reads a crate repository by arg
 
 - **Outstanding.** A real crates.io publish end to end: the trusted publisher bound on calef's
   crates.io account, a tag made by the release workflow, and the publish itself. Checked by the
-  dry-run rehearsal, which reached the environment's approval gate and stopped there by design.
+  dry-run rehearsal, which stopped at the environment's approval gate by design.
 - **Outstanding.** The labeler's semver rule firing against a published baseline. The test crate
   is unpublished, so only the no-baseline path has run; the false positive it produced is fixed in
-  v2. Checked by the throwaway repository's pull requests, which never saw a baseline to compare
-  against. The first published crate (milestones 813 to 821) is the test.
+  v2. Checked by the canary's pull requests, which never saw a baseline. The first published crate (milestones 813 to 821) is the test.
+- **Outstanding.** A driver for the canary's release ritual. After each template release, a pull
+  request on `nifeos/crate-workflows-test` moves every caller's pin to the new release's commit.
+  When `nife-smelter` holds write there, a template-side workflow can open it instead; until then
+  it is by hand.
+- **Outstanding.** The unblock of the canary's first ritual run. GitHub refuses full-name
+  resolution of the callees whose graphs use third-party actions, measured 2026-10-16 and
+  recorded with the probe matrix in the template's README. Checked by the open adoption pull
+  request going green unchanged.
 - **Outstanding.** The organization setup the template cannot do to itself, each with its
   consequence while undone, from `nifeos/crate-workflows`' README. It covers the Actions
   allowlist (SHA-pinned only, verified creators, `kani-github-action` named), the `nife-smelter`
@@ -224,12 +232,12 @@ being on the list, and `helpers/ci_job_times.py` reads a crate repository by arg
   authenticate with, the organization-level tag ruleset, and the fork pull request approval
   policy. The tag ruleset cannot live in a repository: the rulesets API refuses `ref_name` on
   push-target rulesets, measured. The approval policy cannot be read by a non-admin token either,
-  so it is set once in the org's Actions settings. None of these can bite while no crate
-  repository exists. The first adoption is the deadline. Checked live on the throwaway
-  repository, which runs its weekly jobs against exactly this gap.
+  so it is set once in the org's Actions settings. None can bite while no crate repository exists; the first
+  adoption is the deadline. Checked live on the canary, which runs
+  its weekly jobs against exactly this gap.
 - **Outstanding.** calef's naming pass over the names this milestone shipped provisionally: the
-  repository `crate-workflows`, the workflow names, the `crates-io` team slug, and the
-  required-check names. GitHub redirects a repository rename, and the required-check names are
+  repository `crate-workflows`, the canary repository's name, the workflow names, the `crates-io`
+  team slug, and the required-check names. GitHub redirects renames, and required-check names are
   fixed per ruleset at adoption, so renaming after the first crate repositories exist costs one
   ruleset update each.
 
