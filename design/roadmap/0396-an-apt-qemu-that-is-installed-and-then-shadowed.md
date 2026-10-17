@@ -11,11 +11,11 @@ needs_person: no
 
 Filed 2026-09-13 as an unnumbered proposal by milestone 287, which found it
 while making `script/bootstrap` finish on a stock Linux box and did not take it because the evidence
-stops short of the claim; numbered 2026-09-19 by milestone 433's drain of the proposal pile.
+stops short of the claim. Milestone 433 (drain the proposal pile to zero) numbered it 2026-09-19.
 **`script/bootstrap` was re-read on 2026-09-19 and the premise is intact.** Its Linux branch still
 runs `sudo apt-get install -y qemu-system-arm qemu-system-misc qemu-system-x86 ipxe-qemu ovmf`
-(line 78), and it still sources `helpers/qemu-path.sh` at line 18 before any `command -v` probe and
-again at line 198 after `script/ci-qemu` builds the pinned QEMU, so the three emulator packages are
+(line 78). It still sources `helpers/qemu-path.sh` at line 18 before any `command -v` probe and
+again at line 198 after `script/ci-qemu` builds the pinned QEMU. The three emulator packages are
 still shadowed for the life of the checkout. The only change to the file since this was written is a
 documentation path, in `9dc04b0` on 2026-09-18. *(Number provisional until the merge queue lands
 it.)*
@@ -48,7 +48,7 @@ edk2-aarch64-code.fd    edk2-i386-vars.fd edk2-riscv-code.fd (and nine more edk2
 
 So QEMU ships both of them itself, into the prefix, and `helpers/qemu-uefi-x86_64.sh` already
 searches `<prefix>/share/qemu/edk2-x86_64-code.fd` first, ahead of the `/usr/share/OVMF` entries,
-for a reason its own header records: CI builds QEMU into a cached prefix, so no absolute path in a
+for a reason its own header records. CI builds QEMU into a cached prefix, so no absolute path in a
 list can ever name the firmware.
 
 ## Why milestone 287 did not do it
@@ -76,7 +76,7 @@ shown.
 4. `script/test` green on all three ISAs, which is where `-device virtio-blk-device` loads
    `efi-virtio.rom`.
 
-If all four pass, drop the five packages from `script/bootstrap`'s Linux branch and let
+If all four pass, drop the five packages from `script/bootstrap`'s Linux branch. Let
 `script/ci-qemu` be the only emulator source on Linux, with the bootstrap comment rewritten to say
 why (it currently explains at length why the firmware packages are needed on Debian, and that
 paragraph is the thing being falsified).
@@ -94,12 +94,13 @@ does not. Priced accordingly.
 
 On a cold Linux clone `script/bootstrap` installs five apt packages and then, minutes later on the
 same run, builds QEMU 11.0.2 from source because no Ubuntu release ships one with
-`riscv-iommu-pci`; from that moment `helpers/qemu-path.sh` puts the built prefix ahead of `/usr/bin`
+`riscv-iommu-pci`. From that moment `helpers/qemu-path.sh` puts the built prefix ahead of `/usr/bin`
 on `PATH`, so the three emulator packages are a few hundred megabytes downloaded to be overridden
 for the life of the checkout. The two firmware packages were the reason to be careful and are
 probably redundant too: the prefix QEMU's own `make install` lays down `efi-virtio.rom` and thirteen
 `edk2-*` firmware images, and `helpers/qemu-uefi-x86_64.sh` already searches the prefix ahead of
-`/usr/share/OVMF`. Milestone 287 did not act on that, and the restraint is the point: the prefix
+`/usr/share/OVMF`. Milestone 287 (`script/bootstrap` installs a working QEMU on Linux, instead of
+printing how to) did not act on that, and the restraint is the point. The prefix
 containing the files is not the same claim as the gates passing without the packages, and removing
 one on that evidence would be the shape 287 exists to correct. So the work is four runs on a Linux
 box with `ipxe-qemu` and `ovmf` purged: `cargo xtask uefi-image` and `uefi-boot`,

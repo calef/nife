@@ -25,30 +25,30 @@ The
 five the 2026-09-05 rule deratified by name moved under §154 in the week that decision landed:
 `asid` is `address_space_identifier` (#949), `gpt` is
 `globally_unique_identifier_partition_table` (#955), `dtb` is `device_tree_blob` (#963), `ipc` is
-`inter_process_communication` (#965), and the `dma` family followed on 2026-09-24 (#1229), when
+`inter_process_communication` (#965). The `dma` family followed on 2026-09-24 (#1229), when
 calef ruled that the crate and its eleven kernel and driver identifiers expand in one change.
 
 Each renamed crate's provenance block carries its ruling, its refusals, and a census that
-classifies every survivor line. The classes that keep an acronym are recorded there, not here:
-the blob rather than the crate (`let dtb`, `crate::DTB`), UEFI's own vocabulary (`GPT`, the GPT
+classifies every survivor line. The classes that keep an acronym are recorded there, not here.
+They are: the blob rather than the crate (`let dtb`, `crate::DTB`), UEFI's own vocabulary (`GPT`, the GPT
 header), the hardware field's manual spelling (`satp.ASID`, `asid_bits()`), IPC the concept
 (`ipc_send`, the bench files), `dma` alone, and ACPI's `dmar`. This lane re-ran the token census
 on 2026-10-15 and found no live identifier outside those classes. Two `ipc` module names minted
 provisional by the 2026-10-12 file splits sit inside the IPC-concept clause and are on
 `script/names`'s worklist, which is where a provisional name belongs.
 
-With the sweep done, what remains is the ratification of the two public kernel functions the
-renames deliberately did not touch. `kernel/src/user/entropy_service.rs` still exports
-`jh7110_trng_device` and `jh7110_crg_window`, so the file reads `jh7110_entropy::discover` inside
+With the sweep done, what remains is the ratification of the two public kernel functions. The
+renames deliberately did not touch them. `kernel/src/user/entropy_service.rs` still exports
+`jh7110_trng_device` and `jh7110_crg_window`. So the file reads `jh7110_entropy::discover` inside
 a function called `jh7110_trng_device`, and `jh7110_clock_and_reset::Found` inside one called
-`jh7110_crg_window`. They are a genuinely harder case than the crates were, and that is why the
+`jh7110_crg_window`. They are a genuinely harder case than the crates were. That is why the
 2026-09-13 renames left them: unlike a crate name, each of these names the **hardware block**,
 whose device-tree spelling is the vendor's (`starfive,jh7110-trng`, and mainline's driver file is
-`jh7110-trng.c`) and whose boot-log wording throughout the tree is "JH7110 TRNG", so the
+`jh7110-trng.c`). Its boot-log wording throughout the tree is "JH7110 TRNG". So the
 "abbreviation we receive rather than author" clause in design/naming.md may cover them where it
 did not cover the crate. Both now carry `Name: recorded` blocks citing this milestone, so they
 wait on `script/names`'s worklist instead of invisibly. An unratified name is a worklist item and
-never a blocker (AGENTS.md): ratification happens on the name ratification queue, and blocks no
+never a blocker (AGENTS.md). Ratification happens on the name ratification queue, and blocks no
 pull request (calef, 2026-10-15).
 
 ## Why it cannot be done a name at a time
@@ -61,11 +61,11 @@ Milestone 264 found the second reason, which is smaller and sharper. **Several o
 in matched pairs that a partial sweep would break.** The program `ntp` and the crate `ntp_proto` were
 one word twice, and calef ratified the crate on 2026-08-23. Spelling out the program alone leaves the
 pair disagreeing; spelling out the crate alone overturns a ratification as a side effect of tidying a
-program. The same holds for `jh7110_trng`, which is a crate and the program built from it, a pairing
+program. The same holds for `jh7110_trng`, which is a crate and the program built from it. It is a pairing
 AGENTS.md describes as deliberate and worth seeing.
 
 **That prediction was tested and held.** The `jh7110_trng` pair was ruled and performed as one
-object both times, crate and program together, and the second ruling turned on the pair: bare
+object both times, crate and program together. The second ruling turned on the pair: bare
 `jh7110_entropy_driver` was refused precisely because the crate is not a driver, which is a refusal
 only visible if you are holding both halves at once. See `crates/jh7110_entropy/src/lib.rs`'s
 provenance block.
@@ -89,14 +89,14 @@ accepts.
 ## What settling it needs
 
 Settled for the four names in the table, including the nested case (`mdns`), where the rule's own
-asymmetry argument ran out: spelling out the outer acronym exposes an inner one, so the expansion
+asymmetry argument ran out. Spelling out the outer acronym exposes an inner one, so the expansion
 does not reach a word the newcomer knows either way. calef drew a line rather than applying the
-rule harder, and the reasoning is in milestone 265's block and in
+rule harder. The reasoning is in milestone 265's block and in
 `crates/multicast_dns_protocol/src/lib.rs`'s provenance (that crate and its two siblings were
 retired on 2026-09-15 by milestone 298; the provenance is at commit `0652c981`).
 
-Settled for the five deratified names, each by a maintainer lane whose pull request and whose
-crate's provenance block carry the ruling and the survivor census.
+Settled for the five deratified names, each by a maintainer lane. Its pull request and its crate's
+provenance block carry the ruling and the survivor census.
 
 Settled as far as a lane reaches for the two functions: they are `recorded` on the worklist, and
 their ratification is the name ratification queue's, which blocks no pull request.
@@ -123,16 +123,18 @@ their ratification is the name ratification queue's, which blocks no pull reques
 An acronym is spelled out unless its expansion teaches nothing (calef, 2026-09-05), and the rule
 deratified five names in the sentence that set it. It cannot be applied a name at a time for two
 reasons: `ipc` is load-bearing across the tree, and several of these names exist in matched pairs a
-partial sweep would break, since spelling out a program alone leaves it disagreeing with its crate
-and spelling out the crate alone overturns a ratification as a side effect of tidying a program.
+partial sweep would break. Spelling out a program alone leaves it disagreeing with its crate, and
+spelling out the crate alone overturns a ratification as a side effect of tidying a program.
 That prediction was tested and held, on the `jh7110_trng` pair, where bare `jh7110_entropy_driver`
 was refused precisely because the crate is not a driver, a refusal visible only while holding both
-halves. The four names milestone 264 surfaced were all ruled by calef on 2026-09-13 and performed by
-milestones 265, 290 and 298, including the nested case, where he drew a line rather than applying
-the rule harder: DNS stays whole because it is the `pci` case one level down. The five deratified
+halves. The four names milestone 264 (sixty names git history cannot justify, and the research that
+would let calef rule on them)
+surfaced were all ruled by calef on 2026-09-13 and performed by
+milestones 265, 290 and 298. The nested case is where he drew a line rather than applying
+the rule harder. DNS stays whole because it is the `pci` case one level down. The five deratified
 names moved under §154 the week it was decided (#949, #955, #963, #965, #1229), each crate's
 provenance block carrying the ruling and the survivor census. The larger half's last two names are
 the public kernel functions `jh7110_trng_device` and `jh7110_crg_window`, which survived the
 2026-09-13 crate renames because each names a hardware block whose device-tree spelling is the
-vendor's; both are `recorded` on the name ratification queue, which ratifies names and blocks no
+vendor's. Both are `recorded` on the name ratification queue, which ratifies names and blocks no
 pull request (calef, 2026-10-15).

@@ -15,7 +15,7 @@ reads `arch::timer::now()` and still prints one tick count per row, so every row
 is a `rdtime` tick and on the JH7110 that is still a 250 ns quantum. What has arrived since is the
 denominator rather than the resolution: `kernel/src/bench.rs`'s `cycles_per_tick` probe reads real
 cycles on all three architectures now (milestone 74's riscv64 half, milestone 309's x86_64 half) and
-radon printed `cycles_per_tick 250.00` on 2026-09-16, which converts a tick but does not subdivide
+radon printed `cycles_per_tick 250.00` on 2026-09-16. That converts a tick but does not subdivide
 one. The rows this file names still have no cycle column.
 
 Milestone 74's riscv64 half landed 2026-09-04
@@ -39,9 +39,9 @@ wired into `kernel/src/bench.rs`'s rows. Wiring them turns E3's comparison from 
 
 `bench::timed` reads `arch::timer::now()`. The proposal is a second, additive reading: keep the tick
 column exactly as it is, so every recorded baseline stays comparable, and print a cycle column
-beside it when the counter is available and the build asked for it (`cycle_counter_grant`, which
-already exists for this reason and already costs a measured 136 bytes on the aarch64 fastpath
-closure).
+beside it when the counter is available and the build asked for it. The `cycle_counter_grant`,
+which already exists for this reason, already costs a measured 136 bytes on the aarch64 fastpath
+closure.
 
 The rows that want it are the ones a bench session actually reads:
 `ipc_rtt`, `ipc_rtt_el0`, `call_reply`, and E1's `ipc_scale_*`.
@@ -60,7 +60,7 @@ sharpening a ruler nobody needed.
 
 Cycles say *whether* a round trip got slower. They do not say the instruction cache is why. That is
 M6 (instruction-cache misses per IPC) in milestone 134's tier B, and nothing in this tree reads a
-cache-miss counter on any architecture; whether the U74's PMU counts what M6 wants is unverified,
+cache-miss counter on any architecture. Whether the U74's PMU counts what M6 wants is unverified,
 and that block's own BUGS warns that real PMUs do not implement every architected event.
 
 ## Where it came from
@@ -71,14 +71,14 @@ notes/footprint-perturbation.md, "What milestone 74's riscv64 half adds, and wha
 
 Every row a bench card prints is a `rdtime` tick count, and on the JH7110 the timebase is 4 MHz, so
 one tick is 250 ns. An IPC round trip on this class of core is single-digit microseconds and E3's
-whole question is whether a 1.86x footprint change moves it by a few percent, which is a handful of
+whole question is whether a 1.86x footprint change moves it by a few percent. That is a handful of
 ticks measured with a ruler whose smallest mark is a large fraction of the effect. The SBI PMU
 counter exists and milestone 229's per-thread grant is the authority DECISIONS §139 decided; neither
 is wired into a bench row. The proposal is additive: keep the tick column exactly as it is so every
 recorded baseline stays comparable, and print a cycle column beside it when the counter is available
 and the build asked for it. It is a change to a published measurement format that
 `script/bench --check` compares against `bench/baseline-*.txt`, which is why it is a decision about a
-recorded artifact rather than an addition to one, and it is worth doing after a bench session rather
+recorded artifact rather than an addition to one. It is worth doing after a bench session rather
 than before, because the session says whether the quantum or the boot-to-boot spread was the binding
 problem. Cycles still say whether a round trip got slower and not that the instruction cache is why,
 which is milestone 134's tier B.

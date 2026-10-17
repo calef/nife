@@ -64,7 +64,7 @@ three that are. `notes/name-resolution.md` has the whole account and the proposa
 - An end-to-end test on aarch64 and riscv64: six names asked over TCP through `net_stack` of
   `helpers/name-server-peer`, two resolved and four lies refused, then a connection to the resolved
   address. Deleting the owner check fails it with `0xe14f`, the poisoned case.
-- The premise of putting the resolver in `net_stack` was read in `smoltcp`'s source: its DNS
+- The premise of putting the resolver in `net_stack` was read in `smoltcp`'s source. Its DNS
   transaction id and source port come from a generator `net_stack` seeds with `now()`, it has no
   TCP fallback, and it follows a CNAME only when the CNAME comes first.
 
@@ -170,18 +170,18 @@ Kani-proven not to loop or overrun, is in `crates/multicast_dns_protocol` at com
 
 `components/Cargo.toml` builds `smoltcp` 0.14 without `socket-dns`, and nothing else in the tree
 turns a hostname into an address, so a program cannot reach a host by name even with a perfect HTTP
-implementation behind it, and the nameserver DHCP already hands us is thrown away. The work is worth
+implementation behind it. The nameserver DHCP already hands us is thrown away. The work is worth
 its own block because the interesting question is not the resolver, it is who holds it. On Unix name
 resolution is ambient: `/etc/resolv.conf` is readable by everyone, `getaddrinfo` is in libc, and a
 program that should only ever talk to one host can silently look up any other, with a packet capture
 as the first sign. Here it should be a grant, which makes three things true that are not true on
-Unix: a client granted a resolver that answers for one domain cannot be induced to look up anything
-else whatever injection it carries, the resolver is itself a confined network client rather than a
-library linked into everyone, and a program with no grant and a literal address still works. That is
+Unix. A client granted a resolver that answers for one domain cannot be induced to look up anything
+else whatever injection it carries. The resolver is itself a confined network client rather than a
+library linked into everyone. A program with no grant and a literal address still works. That is
 the same observation as the trust-store half of milestone 387's TLS fork, and a small concrete
 instance of §145's argument. What it takes: enable `socket-dns`, decide whether the resolver lives
-inside `net_stack` or as its own confined program holding a socket grant (the second is more in
-keeping with the tree and more expensive, so it is argued rather than assumed), decide the
+inside `net_stack` or as its own confined program holding a socket grant. The second is more in
+keeping with the tree and more expensive, so it is argued rather than assumed. Decide the
 capability's shape, which is the real design work, and read the nameserver DHCP already receives. It
 has a consumer now, milestone 801 (packages over the internet), whose package client fetches the
 distribution's index by host name. Built 2026-10-06: the resolver is its own confined program, and

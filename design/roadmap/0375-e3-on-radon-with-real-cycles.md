@@ -7,9 +7,9 @@ built: 2026-09-04
 
 Filed as a proposal that morning by the milestone 188 lane (phases 1
 to 3), and answered the same evening by the `maintainer/e3-on-radon` session, before anybody read
-the file. Promoted by milestone 433 on 2026-09-19, when the record was checked: six boots on radon,
+the file. Promoted by milestone 433 (drain the proposal pile to zero) on 2026-09-19, when the record was checked: six boots on radon,
 interleaved unpadded and padded, one card written six times, every boot printing
-`bench: cntfrq 4000000` and `bench: cycles_per_tick 250.00`, which is milestone 74's riscv64 PMU
+`bench: cntfrq 4000000` and `bench: cycles_per_tick 250.00`. That is milestone 74 (cycle counters)'s riscv64 PMU
 reading real cycles on the machine this asked for. The capture, the procedure and the result are
 notes/footprint-perturbation.md.
 
@@ -34,7 +34,8 @@ is `design/roadmap/0374-cycles-per-ipc-on-the-bench-card.md`.
 
 That lane also found something this proposal assumed away. The padding was reachable only from
 `ipc_send`, so measured on riscv64 it moved `ipc_send_recv` to 2.10x and `ipc_call_reply` to
-1.00x: E3 was padding the shape nothing in this tree runs, which is the shape milestone 188 phase 1
+1.00x. E3 was padding the shape nothing in this tree runs, which is the shape milestone 188 (the IPC
+fastpath) phase 1
 had just established as the one that matters. `ipc_call` calls `maybe_pad` too now, and both shapes
 pad to roughly 1.85x.
 
@@ -60,8 +61,8 @@ is the same experiment with an instrument that can answer.
 It is the measurement that decides milestone 188 phase 4, a hand-written IPC fastpath, which is
 a standing verification obligation and a permanent maintenance cost. That block's own recommendation
 is to wait for exactly this. Phases 1 to 3 established that the cheap methods leave the shape the
-system runs 48 to 103% over the 4 KiB target, so the arithmetic case for phase 4 is as strong as it
-will get and the empirical case does not exist.
+system runs 48 to 103% over the 4 KiB target. So the arithmetic case for phase 4 is as strong as it
+will get, and the empirical case does not exist.
 
 Two outcomes, both useful. If a 2x padded fastpath costs nothing measurable in cycles on a 32 KB
 L1i, fatal risk 4 gets its best evidence yet and phase 4 should be refused in writing. If it
@@ -95,7 +96,7 @@ owns E3; `design/roadmap/0132-the-fastpath-footprint.md` owns the gate.
 - **Milestone 374.** Cycles per IPC on the bench rows themselves. The session read
   `cycles_per_tick 250.00`, which converts a tick and does not subdivide one, so E3's verdict is
   still quantized at 250 ns: `design/roadmap/0374-cycles-per-ipc-on-the-bench-card.md`.
-- **Recorded.** This is not the full Liedtke experiment and the block says so where it reports: a
+- **Recorded.** This is not the full Liedtke experiment and the block says so where it reports. A
   cycle count says whether the round trip got slower and never attributes the cost to
   instruction-cache displacement, nor says anything about the application's working set. That wants
   cache-miss events across a workload, which is milestone 134's tier B, and nothing in this tree
@@ -107,12 +108,13 @@ owns E3; `design/roadmap/0132-the-fastpath-footprint.md` owns the gate.
 
 ## Index row
 
-Filed and answered on the same day, before anyone read the file. Milestone 134's E3 pads the IPC
-fastpath to roughly 1.85x and asks what that costs, and until this session it had only ever run
+Filed and answered on the same day, before anyone read the file. Milestone 134 (the register of
+measures)'s E3 pads the IPC
+fastpath to roughly 1.85x and asks what that costs. Until this session it had only ever run
 under icount, which models no cache, on a development host whose L1i is several times a board's.
 The `maintainer/e3-on-radon` session ran it on a SiFive U74 with the 32 KB L1i that DECISIONS §144's
 ceiling was derived from, six interleaved boots, one card written six times, with milestone 74's SBI
 PMU counter reading real cycles. E3 separated cleanly in all three rows and one has the wrong sign,
-the padded build being 3.01% faster on a padding that never executes, so the experiment is
-confounded by code layout and milestone 370 is what it now needs. The two experiments riding along,
+the padded build being 3.01% faster on a padding that never executes. The experiment is
+confounded by code layout, and milestone 370 (a layout control) is what it now needs. The two experiments riding along,
 E1 and E4, produced the more decisive results of the evening.

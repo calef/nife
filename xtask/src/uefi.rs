@@ -419,8 +419,13 @@ fn start_uefi_screen_boot(sock: &str) -> Option<std::process::Child> {
         // one still delivers device interrupts to the boot core's id. The tour's `device irq` line
         // is that answer.
         //
-        // The suite below stays at one core, because the two-core AP defect this tour does not
-        // touch (`ap_boot`'s BUGS #3) fails one of its tests about half the time.
+        // The suite leg (`uefi-test`) keeps the runner's one-core default, and the split is a
+        // measured boundary rather than a dodge: the two defects that once made two cores flake
+        // are fixed (milestone 316's `boot_cpu_id` record, and `cpu_start`'s count re-read after
+        // the STARTUP IPIs, fixed 2026-09-19), the tour above gates the second core on every
+        // boot (`smp: 2 core(s) online` below; zero misses across the dedicated measurement,
+        // notes/uefi-boot-two-core-rate.md), and the whole suite at two cores under OVMF has not
+        // been measured since those fixes, so that default stands until it is.
         .env("NIFE_SMP", "2")
         // **The bare firmware machine, whether or not a suite leg ran first.** `test()` sets
         // `NIFE_DISK` and `NIFE_NVME` in this process for the PVH leg, and a child inherits them,
@@ -917,11 +922,14 @@ fn uefi_test_image(package: &str) -> bool {
         // reach an MSI-X table a bus walk found" and "the driver can reach one it put there" were
         // the same sentence.
         //
-        // **One core here, two in the tour above**, and the split is a known defect rather than a
-        // preference: `every_secondary_runs_scheduled_work` fails about half the time at two cores
-        // on this architecture (`arch::x86_64::ap_boot`'s BUGS #3), which is why the PVH runner
-        // defaults to one as well. The tour does not run that test, so it is where the second core
-        // is gated.
+        // **One core here, two in the tour above.** The defect this split used to name is gone:
+        // `every_secondary_runs_scheduled_work`'s half-the-time failure at two cores was
+        // `boot_cpu_id` answering "which core am I" where every caller wanted "which core
+        // booted", fixed by milestone 316 (which core booted), and the PVH runner has defaulted
+        // to two since 2026-09-23, per DECISIONS §153 (how a two-core x86_64 test earns its
+        // place), closed by milestone 315 (a port revoke that reaches every core). This leg
+        // keeps the runner's one-core default because the whole suite at two cores under OVMF is
+        // unmeasured since those fixes; the tour is where the second core is gated.
         //
         // `NIFE_DISK` and `NIFE_NVME` are already set by `test()` for the PVH leg that ran just
         // above, so this inherits them; they are named here only for a bare `cargo xtask uefi-test`.
