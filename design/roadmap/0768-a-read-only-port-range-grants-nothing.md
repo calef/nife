@@ -1,6 +1,7 @@
 ---
-status: PARTIAL
+status: BUILT
 raised: 2026-10-05
+built: 2026-10-17
 promoted_from: a-read-only-port-range-still-drives-the-hardware
 milestone_dependencies: none
 decision_dependencies: 121
@@ -48,12 +49,10 @@ exists to avoid).
 - [x] `x86_port_tests::a_read_only_port_capability_must_not_grant_port_output` passes by default
   (it was opt-in and red), with a replayable falsification.
 - [x] Claim 33 in `notes/confinement-claims.md`.
-- [ ] The ruling recorded in `design/decisions/` as an amendment to §121 (what a device capability is when the device has no page: x86 port I/O).
-  The integrator mints it at merge, so this lane did not touch that directory.
+- [x] The ruling recorded in `design/decisions/` as an amendment to §121 (what a device capability is when the device has no page: x86 port I/O).
 
 ## Follow-on
 
-- **Outstanding.** The §121 amendment recording the ruling, owed by the integrator at merge
-  (checked: `design/decisions/` untouched by this lane).
+- **Done.** The §121 amendment recording the ruling: `design/decisions/0121-port-io-capability.md`, section "A port range grants only with WRITE".
 - **Recorded.** A thread handed two port ranges keeps only the last, in `kernel/src/sched.rs`
   beside `thread_control_block_insert_from`.
