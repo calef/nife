@@ -70,8 +70,27 @@ fn the_disk_surveyor_reads_a_table_gptfdisk_wrote() {
         // silently and be counted as a pass (milestone 214,
         // design/roadmap/0214-print-and-return-skips.md); the silent form is the same defect with
         // the line left out.
-        crate::testing::skip!("no GPT disk attached (this boot did not build the GPT image)");
+        skip_unless_required!(
+            X86_FIXTURES_REQUIRED,
+            "no GPT disk attached (this boot did not build the GPT image)"
+        );
     };
+    // **On the PVH x86_64 leg the roster is exactly the five fixtures, no more and no fewer**
+    // (milestone 420 (x86_64 has one fixture of five and no NIC, GPU, keyboard or RNG)). The runner
+    // attaches the crash, GPT and blank disks softly (`[ -f img ]`), and the assertions below hold
+    // for any count from zero to five, so a runner that lost those lines used to pass this test
+    // with a skip (measured 2026-10-16: GPT and blank removed, "0 passed, 1 skipped", exit 0).
+    // Removing only the GPT disk slid the blank one into ordinal 3 and went red by accident, on a
+    // protective-MBR panic that names neither disk. This names them.
+    if X86_FIXTURES_REQUIRED {
+        assert_eq!(
+            w.devices, 5,
+            "the x86_64 roster names {} block functions; the runner owes five (nifefs=0, \
+             redoxfs=1, crash=2, gpt=3, blank=4). A fixture is missing from \
+             helpers/qemu-runner-x86_64.sh, and ordinals above the missing one have slid down",
+            w.devices,
+        );
+    }
     // Past device bring-up, so a hang below is a hang in a read rather than in the driver.
     let [ready, ..] = crate::sched::ipc_receive(w.ready);
     assert_eq!(ready, filesystem_protocol::READY);
@@ -119,6 +138,15 @@ fn the_disk_surveyor_reads_a_table_gptfdisk_wrote() {
     // rather than by trusting the number the program sent back.
     let here = Roster::read(w.roster()).expect("the kernel wrote a roster it cannot read");
     assert_eq!(here.len(), w.devices);
+    if X86_FIXTURES_REQUIRED {
+        for (i, d) in here.iter().enumerate() {
+            assert_eq!(
+                (d.transport, d.ordinal as usize),
+                (TRANSPORT_PCI, i),
+                "roster entry {i} is not PCI function {i}: the five fixtures ride in ordinal order"
+            );
+        }
+    }
     assert_eq!(here.count_on(TRANSPORT_MMIO) as u64, mmio);
     assert_eq!(here.count_on(TRANSPORT_PCI) as u64, pci);
 
@@ -327,7 +355,10 @@ fn the_write_half_needs_a_disk_and_an_entropy_rendezvous_and_holds_nothing_else(
     let Some(disk) = disk_service::blank_disk(fs_service::blk_server_image()) else {
         // No fifth mmio block device: this boot did not build the blank image. A fact about the
         // machine, not a failure (milestone 145: reported as skipped rather than a silent "ok").
-        crate::testing::skip!("no blank-disk fixture attached (this boot did not build one)");
+        skip_unless_required!(
+            X86_FIXTURES_REQUIRED,
+            "no blank-disk fixture attached (this boot did not build one)"
+        );
     };
     if let Some(ready) = disk.blk_ready {
         // Past device bring-up, so a hang below is a hang in a write rather than in the driver.
@@ -335,17 +366,25 @@ fn the_write_half_needs_a_disk_and_an_entropy_rendezvous_and_holds_nothing_else(
         assert_eq!(word, filesystem_protocol::READY);
     }
     let Some(entropy) = entropy_rendezvous() else {
-        crate::testing::skip!(
+        skip_unless_required!(
+            X86_RNG_ATTACHED,
             "no virtio-rng device on the bus this fixture asks for (NIFE_RNG not set?)"
         );
     };
     let maker = program("mkfs").expect("no mkfs program in the initial ramdisk");
+    partition_phase(&disk, entropy);
+    mkfs_phase(maker, &disk, entropy);
+}
+
+/// Steps 1 to 3 of the write half: the partitioner refuses without entropy, leaves the disk
+/// untouched, then succeeds with it and the table reads back.
+fn partition_phase(disk: &disk_service::BlankDisk, entropy: crate::sched::RendezvousId) {
     use filesystem_fixture::blank;
 
     // 1. The partitioner, with the disk and NO entropy rendezvous. It must refuse, and it must refuse
     //    before writing anything, which is why the program draws all four ids first and lays out
     //    the table second.
-    let report = disk_service::start_partitioner(partitioner_image(), &disk, ROLE_PARTITION, None);
+    let report = disk_service::start_partitioner(partitioner_image(), disk, ROLE_PARTITION, None);
     let [verdict, ..] = crate::sched::ipc_receive(report);
     assert_eq!(
         verdict, P_NO_ENTROPY,
@@ -355,7 +394,7 @@ fn the_write_half_needs_a_disk_and_an_entropy_rendezvous_and_holds_nothing_else(
 
     // 2. And the disk still has no table on it, which is what makes step 1 mean something: "it
     //    reported a refusal" and "it wrote nothing" are different claims.
-    let report = disk_service::start_partitioner(partitioner_image(), &disk, ROLE_VERIFY, None);
+    let report = disk_service::start_partitioner(partitioner_image(), disk, ROLE_VERIFY, None);
     let [flags, partitions, ..] = crate::sched::ipc_receive(report);
     assert_eq!(
         (flags, partitions),
@@ -365,7 +404,7 @@ fn the_write_half_needs_a_disk_and_an_entropy_rendezvous_and_holds_nothing_else(
 
     // 3. The same binary, the same role, the same disk, one capability more.
     let report =
-        disk_service::start_partitioner(partitioner_image(), &disk, ROLE_PARTITION, Some(entropy));
+        disk_service::start_partitioner(partitioner_image(), disk, ROLE_PARTITION, Some(entropy));
     let [verdict, written, step, ..] = crate::sched::ipc_receive(report);
     assert_eq!(
         verdict, R_PARTITIONED,
@@ -375,7 +414,7 @@ fn the_write_half_needs_a_disk_and_an_entropy_rendezvous_and_holds_nothing_else(
 
     // And the table is really there, read back by a process that cannot write: both copies, their
     // CRCs, the protective MBR, the names, and three distinct version-4 GUIDs.
-    let report = disk_service::start_partitioner(partitioner_image(), &disk, ROLE_VERIFY, None);
+    let report = disk_service::start_partitioner(partitioner_image(), disk, ROLE_VERIFY, None);
     let [flags, partitions, data_lba, ..] = crate::sched::ipc_receive(report);
     for (bit, what) in [
         (PF_MBR, "LBA 0 holds a protective MBR covering the disk"),
@@ -396,10 +435,20 @@ fn the_write_half_needs_a_disk_and_an_entropy_rendezvous_and_holds_nothing_else(
         blank::DATA.0,
         "the data partition starts where it was placed",
     );
+}
+
+/// Steps 4 to 8 of the write half: `mkfs` refuses without entropy or without a disk, neither
+/// refusal creates anything, and with both it makes a filesystem another process can open.
+fn mkfs_phase(
+    maker: &'static [u8],
+    disk: &disk_service::BlankDisk,
+    entropy: crate::sched::RendezvousId,
+) {
+    use filesystem_fixture::blank;
 
     // 4. `mkfs` with the disk and no entropy. The same refusal one layer up: a filesystem's uuid has
     //    the GPT's problem, and the engine now takes it as an argument for exactly this reason.
-    let report = disk_service::start_maker(maker, &disk, ROLE_MAKE, None, true);
+    let report = disk_service::start_maker(maker, disk, ROLE_MAKE, None, true);
     let [verdict, ..] = crate::sched::ipc_receive(report);
     assert_eq!(
         verdict, M_NO_ENTROPY,
@@ -407,7 +456,7 @@ fn the_write_half_needs_a_disk_and_an_entropy_rendezvous_and_holds_nothing_else(
     );
 
     // 5. And with entropy and no disk: nothing to read a table off, nothing to write to.
-    let report = disk_service::start_maker(maker, &disk, ROLE_MAKE, Some(entropy), false);
+    let report = disk_service::start_maker(maker, disk, ROLE_MAKE, Some(entropy), false);
     let [verdict, ..] = crate::sched::ipc_receive(report);
     assert_eq!(
         verdict, M_NO_DISK,
@@ -416,7 +465,7 @@ fn the_write_half_needs_a_disk_and_an_entropy_rendezvous_and_holds_nothing_else(
 
     // 6. Neither refusal created anything. A partition that has been *described* is not a partition
     //    that has been *formatted*, and this is where that difference is read off the platter.
-    let report = disk_service::start_maker(maker, &disk, ROLE_CHECK, None, true);
+    let report = disk_service::start_maker(maker, disk, ROLE_CHECK, None, true);
     let [verdict, ..] = crate::sched::ipc_receive(report);
     assert_eq!(
         verdict, R_NO_FS,
@@ -424,7 +473,7 @@ fn the_write_half_needs_a_disk_and_an_entropy_rendezvous_and_holds_nothing_else(
     );
 
     // 7. Both capabilities, and they are the whole authority needed to create a filesystem.
-    let report = disk_service::start_maker(maker, &disk, ROLE_MAKE, Some(entropy), true);
+    let report = disk_service::start_maker(maker, disk, ROLE_MAKE, Some(entropy), true);
     let [verdict, blocks, first, ..] = crate::sched::ipc_receive(report);
     assert_eq!(
         verdict, R_MADE,
@@ -442,7 +491,7 @@ fn the_write_half_needs_a_disk_and_an_entropy_rendezvous_and_holds_nothing_else(
     // 8. And it is a filesystem a *different* process can open, holding the file that run wrote.
     //    The host tool reads the same image from outside the guest after the run, which is the half
     //    a cache cannot fake (`cargo xtask test`'s blank-image check).
-    let report = disk_service::start_maker(maker, &disk, ROLE_CHECK, None, true);
+    let report = disk_service::start_maker(maker, disk, ROLE_CHECK, None, true);
     let [verdict, n, ..] = crate::sched::ipc_receive(report);
     assert_eq!(
         verdict, R_FOUND,

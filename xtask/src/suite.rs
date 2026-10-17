@@ -792,6 +792,18 @@ fn x86_64_suite(filtered: bool) -> bool {
     // spawned, and the only thread xtask ever starts (the transcript reader in
     // swish_check_leg) copies pipe bytes into a String and never touches the environment.
     unsafe { std::env::set_var("NIFE_NET", "1") };
+    // **This leg's runner owes all five block fixtures, and the system suite is told so**
+    // (milestone 420). The runner attaches the crash, GPT and blank disks softly because a bench or
+    // a boot-check has none, so a runner that lost those lines boots a smaller machine and every
+    // test that wants them skips green. `system_tests/build.rs` bakes this in and the roster test
+    // fails by name when it is set and a fixture is missing. Name provisional. `uefi_test` unsets
+    // it: the OVMF runner attaches the nifefs disk alone.
+    //
+    // SAFETY: `set_var` became unsafe in edition 2024 because it races other threads. xtask is
+    // single-threaded here: this runs on the main thread before the child that reads it is
+    // spawned, and the only thread xtask ever starts (the transcript reader in
+    // swish_check_leg) copies pipe bytes into a String and never touches the environment.
+    unsafe { std::env::set_var("NIFE_X86_FIXTURES_REQUIRED", "1") };
     // The kernel's unit tests, then the system suite (milestone 609 (the system tests leave the
     // kernel crate)).
     if filtered {

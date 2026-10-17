@@ -82,7 +82,10 @@ fn a_client_obtains_unpredictable_bytes_from_a_virtio_rng_over_mmio() {
 #[test_case]
 fn a_client_obtains_unpredictable_bytes_from_a_virtio_rng_over_pcie() {
     let Some(w) = start(Bus::Pci) else {
-        crate::testing::skip!("no virtio-rng device on the pcie bus (NIFE_RNG not set?)");
+        skip_unless_required!(
+            X86_RNG_ATTACHED,
+            "no virtio-rng device on the pcie bus (NIFE_RNG not set?)"
+        );
     };
     assert!(
         w.confined_by_iommu,
@@ -165,7 +168,10 @@ fn two_entropy_services_on_two_devices_do_not_produce_the_same_bytes() {
         crate::testing::skip!("no virtio-rng device on the mmio bus (NIFE_RNG not set?)");
     };
     let Some(pci) = start(Bus::Pci) else {
-        crate::testing::skip!("no virtio-rng device on the pcie bus (NIFE_RNG not set?)");
+        skip_unless_required!(
+            X86_RNG_ATTACHED,
+            "no virtio-rng device on the pcie bus (NIFE_RNG not set?)"
+        );
     };
     let a = draw(&mmio);
     let b = draw(&pci);

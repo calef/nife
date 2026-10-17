@@ -30,6 +30,38 @@ use crate::arch::sync_icache;
 #[allow(unused_imports)]
 use crate::memory;
 
+/// **Whether the x86_64 runner was told to attach a device** (milestone 420 (x86_64 has one fixture
+/// of five and no NIC, GPU, keyboard or RNG)), baked in by `build.rs` because the guest cannot read
+/// the host's environment. `cargo xtask test` exports `NIFE_RNG` and `NIFE_NET` on every x86_64 leg,
+/// so a device missing there is a runner that lost a `-device` line. A bare `cargo test` exports
+/// neither, and the skip stays the honest answer. Other architectures have their own devices and
+/// their own skips, so these are false off x86_64.
+pub(crate) const X86_RNG_ATTACHED: bool =
+    cfg!(target_arch = "x86_64") && !env!("NIFE_RNG_ATTACHED").is_empty();
+pub(crate) const X86_NIC_ATTACHED: bool =
+    cfg!(target_arch = "x86_64") && !env!("NIFE_NIC_ATTACHED").is_empty();
+/// True only on the PVH leg, whose runner attaches all five block fixtures (the OVMF leg attaches
+/// one and unsets the variable, so its smaller set is not graded against five).
+pub(crate) const X86_FIXTURES_REQUIRED: bool =
+    cfg!(target_arch = "x86_64") && !env!("NIFE_X86_FIXTURES_REQUIRED").is_empty();
+
+/// Skip with `reason` unless the runner was told to attach what is missing, in which case the
+/// absence fails by name. Like `skip!`, it returns from its caller, so it must be called directly
+/// inside a `#[test_case]`.
+// Index exception (2026-10-16): textual macro scope reaches only modules declared after it, so
+// the tests that share this skip-or-fail rule need it in their parent.
+macro_rules! skip_unless_required {
+    ($required:expr, $reason:expr) => {
+        assert!(
+            !$required,
+            "{}: the x86_64 runner was told to attach it, so this is a missing `-device` line in \
+             helpers/qemu-runner-x86_64.sh, not a fact about the machine",
+            $reason,
+        );
+        crate::testing::skip!($reason);
+    };
+}
+
 /// **Reading a real disk's partition table, and the difference between listing and holding**
 /// (milestone 57).
 ///

@@ -48,6 +48,25 @@ fn main() {
         "cargo::rustc-env=NIFE_SPEEDTEST1_REQUIRED={}",
         std::env::var("NIFE_SPEEDTEST1_REQUIRED").unwrap_or_default()
     );
+    // **Which x86_64 devices the runner was told to attach** (milestone 420 (x86_64 has one fixture
+    // of five and no NIC, GPU, keyboard or RNG)), so a test that finds one absent can tell a
+    // machine fact from a runner that lost a `-device` line. The guest cannot read the host's
+    // environment; this is the only way the runner's variables reach it. `cargo xtask test` sets
+    // `NIFE_RNG` and `NIFE_NET` on every x86_64 leg, so there the absence is a failure; a bare
+    // `cargo test` leaves them unset and the skip stays. Names provisional.
+    for (host, baked) in [
+        ("NIFE_RNG", "NIFE_RNG_ATTACHED"),
+        ("NIFE_NET", "NIFE_NIC_ATTACHED"),
+        // Set only by the PVH x86_64 leg, which attaches all five block fixtures; the OVMF leg
+        // attaches the nifefs disk alone and unsets it (`xtask/src/uefi.rs`, `uefi_test`).
+        ("NIFE_X86_FIXTURES_REQUIRED", "NIFE_X86_FIXTURES_REQUIRED"),
+    ] {
+        println!("cargo::rerun-if-env-changed={host}");
+        println!(
+            "cargo::rustc-env={baked}={}",
+            std::env::var(host).unwrap_or_default()
+        );
+    }
     println!("cargo::rustc-check-cfg=cfg(initial_ramdisk)");
     if matches!(arch.as_str(), "aarch64" | "riscv64" | "x86_64") {
         println!("cargo::rustc-cfg=initial_ramdisk");
