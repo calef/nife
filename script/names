@@ -153,6 +153,7 @@ root, mode = sys.argv[1], sys.argv[2]
 sys.dont_write_bytecode = True
 sys.path.insert(0, os.path.join(root, "helpers"))
 import name_provenance                                                      # noqa: E402
+import name_rules                                                           # noqa: E402
 
 # The three surfaces that are a directory listing, each with the file that holds its header. The
 # fourth kind, `package`, is discovered instead: see `packages()` below, which is what covers
@@ -509,6 +510,31 @@ for kind, name, path, prefix in items():
     records.append({"kind": kind, "name": name, "path": os.path.relpath(path, root),
                     "status": status, "date": date, "refused": refused, "text": text})
 
+# **Names a rule covers are ratified, and cite the rule** (calef, 2026-10-17 UTC). The rulings page
+# is `design/naming/convention-rulings.md`; `helpers/name_rules.py` says what each rule covers and
+# what it pulls aside. Applied after the blocks are read, so a covered name's own block still
+# prints beside the rule, and a pulled-aside name keeps the status its block claims.
+def rule_coverage():
+    rules_path = os.path.join(root, name_rules.RULES_DOC)
+    if not os.path.exists(rules_path):
+        problems.append(f"{name_rules.RULES_DOC} does not exist, and the names it ratifies by rule "
+                        f"are counted from it")
+        return
+    rules = name_rules.parse_rules(open(rules_path, errors="replace").read())
+    try:
+        import house_style                                                  # noqa: E402
+        british = house_style.EXTRA_BRITISH
+    except ImportError:
+        british = []
+    read = lambda rel: open(os.path.join(root, rel), errors="replace").read()
+    _pulled, bad = name_rules.apply(records, rules,
+                                    tracked("design/*.md", "notes/*.md", "briefs/*.md"),
+                                    read, british)
+    problems.extend(bad)
+
+
+rule_coverage()
+
 by_kind = {}
 for r in records:
     by_kind.setdefault(r["kind"], []).append(r)
@@ -701,6 +727,8 @@ if mode and not mode.startswith("-"):
         sys.exit(1)
     for r in hits:
         print(f"{r['kind']} {r['name']}  ({r['path']})")
+        if r.get("rule"):
+            print(f"  ratified {r['date']} by rule ({r['rule']})")
         print(f"  {r['text']}\n")
     for bad, r in refused_hits:
         print(f"REFUSED for {r['kind']} {r['name']}  ({r['path']})")

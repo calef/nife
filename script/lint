@@ -2937,6 +2937,7 @@ fi
 #    question underneath both: does anything in this file read as a provenance header without being
 #    the one that was read. It names the line and which of four things is wrong with it.
 "$(dirname "$0")/names" --check
+python3 helpers/name_rules.py --selftest
 
 echo "naming: no -d names, no daemons, contract crates spelled one way,"
 echo "        no #[path] module shared by two binaries, docs lowercase and hyphenated,"
