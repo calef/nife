@@ -1,5 +1,6 @@
 ---
 status: BUILT
+built: 2026-10-17
 raised: 2026-09-15
 promoted_from: the-two-loader-names-the-tree-still-carries
 milestone_dependencies: none
@@ -82,7 +83,7 @@ Reuse: none exists (a prose sweep of two dead names; nothing to take or adapt).
 
 ## Follow-on
 
-- **Outstanding.** Nothing. Outside `design/` and the generated census, the two names leave exactly
+- **Recorded.** Nothing is open. Outside `design/` and the generated census, the two names leave exactly
   the two deliberate keeps (`script/lint`'s parity note and `boot_progenitor`'s provenance clause),
   each carrying its successor and milestone.
 
