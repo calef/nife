@@ -1,6 +1,7 @@
 ---
-status: PARTIAL
+status: BUILT
 raised: 2026-10-03
+built: 2026-10-17
 milestone_dependencies: none
 decision_dependencies: none
 machine_requirements: none
@@ -58,7 +59,4 @@ outcome in `notes/compositor-claim-25.md`.
 - **Recorded.** A client spawned into a reused window slot would see the previous occupant's pixels:
   `notes/compositor-claim-25.md`, BUGS. Read from the code and not run; nothing respawns a
   client today.
-- **Outstanding.** `design/fatal-risks/README.md` and `the-confinement-claims.md` still say row 11 is
-  proved on x86_64 only; they change to all three once PR #1534 (W^X on aarch64 and riscv64) merges. Not done
-  here because #1534 had not merged.
 - **Recorded.** Claim 25's falsifications are recorded on aarch64 only: `notes/compositor-claim-25.md`.
