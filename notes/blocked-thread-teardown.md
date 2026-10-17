@@ -80,7 +80,7 @@ whether it can be done.
 This is a live correctness bug that no current code path can reach, and the first proposal that
 wakes a reply-parked caller reaches it.
 
-`cap::reply_cap` mints `Object::Reply(tid)`. The payload is a generational `Tid` and nothing else:
+`cap::reply_cap` mints `Object::Reply(tid)`. The payload is a generational `ThreadId` and nothing else:
 there is no call sequence number, no endpoint, no nonce. `generational_table` bumps a slot's generation when the
 *thread* is removed, not per call.
 

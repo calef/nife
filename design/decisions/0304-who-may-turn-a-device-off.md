@@ -7,14 +7,11 @@ ratified_by: calef
 
 # 304. Who may turn a device off, and what the unit of reclamation is
 
-Raised 2026-10-15 by the lane for milestone 652 (twelve `DECISION` gates cite only sections that
-are already ruled). Milestone 376 (nothing turns a device back off) was filed by
+Raised by [milestone 652 (twelve `DECISION` gates cite only sections that are already ruled)](../roadmap/0652-twelve-decision-gates-cite-only-ruled-sections.md). Milestone 376 (nothing turns a device back off) was filed by
 [milestone 220 (this kernel drives no clock or reset controller)](../roadmap/0220-jh7110-clock-and-reset.md)'s
 lane. That lane wrote the first code in this tree that turns a device on, and deliberately did not
 write its inverse. A driver process that exits, faults or is revoked leaves its device clocked and
-running forever, and nothing in the system can reclaim that. Ruled the same day, the last of five
-asked one at a time. The ruling: measure first, and decide what to build when the number exists.
-*(Section number provisional until the merge queue lands it.)*
+running forever, and nothing in the system can reclaim that.
 
 ## The decision
 
@@ -34,8 +31,7 @@ Two things the ruling does settle:
   consumer that does not exist. No driver in this tree power-manages a device the kernel's
   controller did not enable. That is surface in the category
   [§10 (process model: capability-based, microkernel)](0010-capability-microkernel.md) and
-  [§16 (object revocation)](0016-object-revocation.md) exist to keep narrow. It waits for its
-  consumer, whatever the measurement says.
+  [§16 (object revocation)](0016-object-revocation.md) exist to keep narrow. Not decided; it waits for the measurement.
 - **The unit question stays open, with its lean recorded.** Per-device with a refcount, or per-job
   off [§40 (a supervisor's death is its subtree's death)](0040-no-reaper-of-last-resort.md)'s
   subtree death. Decided when something is built. The lean is per-job. The reason is the one
@@ -80,7 +76,7 @@ where the capability spends irrevocable surface on nobody.
 
 | | shape | what it costs |
 |---|---|---|
-| **A** | A driver may ask: a capability variant on the syscall surface for gating and asserting. | Declined absent a consumer: new surface in the category §10 and §16 keep narrow, granted against a window that reaches devices the holder has no business resetting. |
+| **A** | A driver may ask: a capability variant on the syscall surface for gating and asserting. | Not decided; waits for the measurement. New surface in the category §10 and §16 keep narrow, granted against a window that reaches devices the holder has no business resetting. |
 | **B** | The kernel reclaims at job death: a spawned job's enables are recorded where they are made, and the kernel undoes exactly that job's enables, refcounted per shared line, when its subtree dies. | The candidate, not a commitment. Bookkeeping in the kernel's controller path and a refcount, and no new surface at all; the driver never learns that power management happened. |
 | **C** | Measure before building: radon runs with the STG domain ungated and gated, and the number decides whether anything downstream of this question is worth a milestone. Chosen. | A bench session and a person at the board, and the honest possibility that the answer is "not yet worth it", which is a real answer. |
 

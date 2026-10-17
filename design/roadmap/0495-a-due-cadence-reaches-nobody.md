@@ -90,10 +90,6 @@ index row, each produced their `DUE: unknown` row.
 
 ## Follow-on
 
-- **Done.** The ABI-surface count walks all of `crates/abi/src`, not `lib.rs` alone. This lane
-  measured the 6-against-68 break from its base on 2026-10-15. The rider on milestone 427 (the
-  documentation sweep the worklist already ranks) found the same drop from its baseline row and
-  fixed `current()` the same day. The trigger now reads the crate's real surface.
 - **Done.** The cadence stream cannot empty on a pass that could not ask. `helpers/trunk-health.sh`
   captures the `script/cadence-check --quiet` call and prints a `cannot ask` row when it exits
   nonzero with no rows, in the DUE section's row shape. The `prev_cadence` compare therefore reads

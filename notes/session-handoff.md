@@ -62,7 +62,7 @@ available. Re-point new agents at it.
 
 ## Decision trail (this session)
 
-DECISIONS §24 (two-tier, shell-held), with `Tcb::SUSPEND` deferred and its triggers
+DECISIONS §24 (two-tier, shell-held), with `ThreadControlBlock::SUSPEND` deferred and its triggers
 recorded; §25 (socket identity); §26 (the fault endpoint) and its five sub-decisions, §27 (FS
 service), §28 (SMP placement) + amendment, §16 amendment (SPLIT rights inheritance). Milestone
 35 added. Read those sections for the reasoning; each records the fork and why.

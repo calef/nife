@@ -7,17 +7,13 @@ ratified_by: calef
 
 # 302. The screen fact and one line of input: the spawn protocol's other two thirds
 
-Raised 2026-10-15 by the lane for milestone 652 (twelve `DECISION` gates cite only sections that
-are already ruled). Milestone 334 (color and the pager: the spawn protocol's other two thirds) has
+Raised by [milestone 652 (twelve `DECISION` gates cite only sections that are already ruled)](../roadmap/0652-twelve-decision-gates-cite-only-ruled-sections.md). Milestone 334 (color and the pager: the spawn protocol's other two thirds) has
 waited on this fork since
 [milestone 40 (documentation as a system service)](../roadmap/0040-documentation-service.md)'s block named
 it. [§106 (the terminal_sink_caretaker narrowing)](0106-tail-output-narrowing.md) took the spawn protocol's narrowing for a tail stage's *primary output*.
 It did not extend
 it to telling a stage that it ends at a real screen, or to granting one line of input without
 granting the keyboard. Both widen a protocol two programs agree on, so both are an architect's.
-Ruled the day it was proposed, one decision at a time with the prior art read first; what the
-proposal considered besides the ruling is in the commit that recorded it.
-*(Section number provisional until the merge queue lands it.)*
 
 ## The decision
 

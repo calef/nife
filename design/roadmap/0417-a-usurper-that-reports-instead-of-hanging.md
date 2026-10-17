@@ -15,7 +15,6 @@ filed 2026-09-16 by milestone 305, which wrote the honest defect for
 `notes/confinement-claims.md`'s row 26 and could not use the result. *(Number provisional until the
 merge queue lands it.)*
 
-Written 2026-09-16 as gated on the syscall surface, and the premise moved after that check.
 [milestone 106 (a wait that ends on either the interrupt or the deadline)](0106-deadline-wait.md)
 built `Timer::ARM`, and [§101 (notification objects)](../decisions/0101-notification-objects.md)'s
 binding ends a blocked `RECEIVE_CAP` at the deadline it signals.
