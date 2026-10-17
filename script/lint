@@ -1408,9 +1408,10 @@ echo "==> fatal risks"
 #    if helpers/host-excluded-crates.sh disagrees with it or comes back empty. A wrong or empty set
 #    must not be able to quietly empty every host pass at once: on CI's aarch64 runner the result
 #    would compile by accident, which is exactly how the 2026-08-03 break stayed invisible.
-#  - The wiring. Each consumer's text must still call the derivation. This reads for the call, not
-#    for the crates: the crates are the derivation's to know, and a hand list growing back anywhere
-#    is the 2026-08-03 failure wearing today's clothes.
+#  - The wiring (helpers/host_exclusion_wiring.py). Each consumer's CODE, comments stripped, must
+#    still call the derivation, and a repo-wide ban fails on any `--exclude` of a derived crate
+#    outside the helper. A name in a comment is not a call; before this, replacing the call with a
+#    hand list and leaving the comment passed, and one clippy pass kept its hand list.
 #
 # The gate still runs in one direction only. A consumer may exclude MORE than the derivation names
 # (kernel here, xtask in coverage, the Miri-only set), because those exclusions carry their own
@@ -1464,56 +1465,14 @@ if len(derived_paths) != len(emitted) or any(
         p.rsplit("/", 1)[-1] not in emitted for p in derived_paths):
     sys.exit(f"lint: {emitter} paths disagrees with its own names: {' '.join(derived_paths)}")
 
-# The wiring checks. The lint marker is assembled rather than written whole so this check does not
-# count its own search string.
-missing = []
-clippy_marker = " ".join(["--exclude", "kernel", "--exclude", "system_tests", "$bare_excludes"])
-if open("script/lint").read().count(clippy_marker) != 2:
-    missing.append("script/lint: both --workspace clippy passes must build their --exclude flags\n"
-                   "  from helpers/host-excluded-crates.sh (the $bare_excludes marker is how this\n"
-                   "  gate sees the derivation being called)")
-coverage = open("script/coverage").read()
-if emitter not in coverage:
-    missing.append("script/coverage: its run exclusions and its floor must come from\n"
-                   f"  {emitter}, and the file no longer names it")
-if emitter not in open("script/mutation").read():
-    missing.append("script/mutation: it must pass the derived set to cargo mutants on the command\n"
-                   f"  line ({emitter}), and the file no longer names it")
-# Every xtask source, not one file: milestone 365 (`xtask/src/main.rs` is 6,785 lines with no
-# module structure) split xtask into a module per command, and the
-# host pass lives in the module that runs it. What this check means is "the derivation is called
-# somewhere in xtask", so read the directory rather than one file.
-xtask_src = sorted(pathlib.Path("xtask/src").glob("*.rs"))
-if not xtask_src:
-    sys.exit("lint: xtask/src/*.rs matched no file, so the host-exclusion cross-check read an "
-             "empty xtask and would have reported every consumer unwired (or wired). See "
-             "milestone 401.")
-xtask = "".join(p.read_text() for p in xtask_src)
-if emitter not in xtask:
-    missing.append("xtask/src/: the host and Miri passes must derive their --exclude flags from\n"
-                   f"  {emitter}, and no xtask source names it")
-
-if missing:
-    sys.stderr.write("lint: the host-exclusion derivation is not wired to every consumer:\n")
-    for m in missing:
-        sys.stderr.write(f"  {m}\n")
-    sys.stderr.write("""
-Every crate that reaches `crates/user_mode_runtime` is excluded from the host passes because its
-`svc` and `ecall` are EL0 syscalls: a fault with no kernel under them. The set is derived once, by
-helpers/host-excluded-crates.sh, and this gate re-derives it from `cargo metadata` to keep the
-derivation honest. A consumer that stops calling the derivation grows a hand list back, and a hand
-list is how the exclusion set went wrong on 2026-08-03 and stayed wrong for eleven days.
-
-If a crate has host logic worth testing, the better fix is what redoxfs_server/Cargo.toml does:
-put `user_mode_runtime` behind an optional `el0` feature. Milestone 244 measured that trade for
-the largest such crate (`system_initializer`) and recommended the exclusion, with the numbers, in
-its own block: the pure fraction there is about a fifth of the mutants and a fiftieth of the
-lines, and every pure function is a leaf helper of the boot sequence beside it.
-""")
-    sys.exit(1)
-
-print(f"host pass: {len(bare)} bare-metal crates, derived once ({emitter}), every consumer wired to it")
+print(f"host pass: {len(bare)} bare-metal crates, derived once ({emitter})")
 PYEOF
+# The wiring half: each consumer must CALL the derivation (comments do not count), and no hand copy
+# of the set may exist anywhere. A hand list growing back is the 2026-08-03 failure wearing today's
+# clothes; if a crate has host logic worth testing, the better fix is what redoxfs_server/Cargo.toml
+# does (`user_mode_runtime` behind an optional `el0` feature; milestone 244 measured the trade).
+python3 helpers/host_exclusion_wiring.py --selftest
+python3 helpers/host_exclusion_wiring.py --check
 
 # The same failure one level down: a TARGET the host build never selects.
 #
@@ -3389,10 +3348,16 @@ echo "==> the lint ratchet (clippy at -W, one more pass per configuration)"
 lint_ratchet_dir="$(mktemp -d "${TMPDIR:-/tmp}/lint-ratchet.XXXXXX")"
 mkdir -p "$lint_ratchet_dir/redoxfs_server" "$lint_ratchet_dir/tools/redoxfs_host" "$lint_ratchet_dir/fuzz"
 lint_ratchet_flags="$(python3 helpers/lint_ratchet.py --flags)"
+# The host pass's exclusions are derived (helpers/host-excluded-crates.sh), as in the two passes
+# above; `components` and `fixtures` are this pass's own judgment, named after the derived flags.
+bare_crates=$(helpers/host-excluded-crates.sh) || exit 1
+bare_excludes=""
+for c in $bare_crates; do
+    bare_excludes="$bare_excludes --exclude $c"
+done
 # shellcheck disable=SC2086
-cargo clippy --message-format=json --workspace --exclude kernel --exclude system_tests \
-    --exclude components --exclude fixtures --exclude user_mode_runtime --exclude swap_protocol \
-    --exclude virtio --exclude supervision_protocol --exclude system_initializer --all-targets \
+cargo clippy --message-format=json --workspace --exclude kernel --exclude system_tests $bare_excludes \
+    --exclude components --exclude fixtures --all-targets \
     -- $lint_ratchet_flags > "$lint_ratchet_dir/host.json" 2>/dev/null
 # shellcheck disable=SC2086
 cargo clippy --message-format=json -p kernel -p components -p fixtures -p user_mode_runtime \
