@@ -119,9 +119,11 @@ fi
 
 # `q35`, `-cpu max` and `isa-debug-exit` are deliberately the same as
 # helpers/qemu-runner-x86_64.sh's, so a difference between the two boots is the FIRMWARE and not the
-# machine. One core by default for the same reason the PVH runner takes it (two x86_64 AP-bring-up
-# defects are open; see arch::x86_64::ap_boot's BUGS), NOT because UEFI has anything to do with it:
-# milestone 195 brought two cores up under OVMF, and `cargo xtask uefi-test` runs at NIFE_SMP=2.
+# machine. One core by default (the PVH runner defaults to two), NOT because UEFI has anything to
+# do with it: the two AP-bring-up defects that once made two cores flake are fixed, and the whole
+# suite at two cores under OVMF is unmeasured since. `cargo xtask uefi-boot` is where the second
+# core is gated (it sets NIFE_SMP=2 and asserts `smp: 2 core(s) online`); `uefi-test` keeps this
+# default.
 #
 # THE MEMORY SIZE IS THE ONE THING THAT IS NOT THE PVH RUNNER'S, and it is a bound rather than a
 # preference. Firmware places its ACPI tables just under the top of RAM, so the memory size decides
