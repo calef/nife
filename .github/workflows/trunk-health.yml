@@ -102,6 +102,10 @@ jobs:
         run: |
           out=$(helpers/trunk-health.sh --once)
           printf '%s\n' "$out"
+          # Hand the REPEAT rows to the issue sync below, before this step can exit on a red
+          # trunk: a repeating failure and a red trunk are independent findings. CHURN and every
+          # other row stay out here; repeat_issue.py re-checks the shape of what it reads.
+          printf '%s\n' "$out" | grep ' REPEAT: ' > repeat-rows.txt || true
           case "$out" in
           *"main is RED"*)
             echo "::error::main is red and nobody is assigned to it"
@@ -119,6 +123,36 @@ jobs:
             echo "::warning::a scheduled workflow has stopped producing results (script/cadence-check)"
             ;;
           esac
+          # A repeating failure is the other standing condition this script reports, and it warns
+          # here rather than failing for the same reason a dead cadence does: failing every five
+          # minutes would drown the red-trunk signal this job exists to carry. The row names the
+          # workflow, the repeated line and the span of dates; helpers/trunk-health.sh's repeat
+          # section carries the thresholds, and the step below gives the finding its home (one
+          # open issue per workflow, milestone 422 (a cadence job whose healthy state is red)).
+          case "$out" in
+          *REPEAT:*|*CHURN:*)
+            echo "::warning::a scheduled workflow keeps failing the same way (repeat check, helpers/trunk-health.sh)"
+            ;;
+          esac
+
+      # **One issue per distinct repeat, the home ruled for it** (milestone 422 (a cadence job
+      # whose healthy state is red, and nothing that notices it repeating), provisional). The
+      # one-pass step above hands this the REPEAT rows; dedupe is by workflow name, the body
+      # updates when the failing line or span drifts, and CHURN opens nothing. The close is the
+      # audit lane's report pull request saying `Closes #N`, routed by audit-cadence.yml's step
+      # summary; nothing here closes an issue. `always()` because a red trunk and a repeating
+      # failure are independent findings, and continue-on-error for the reason the stopped-watcher
+      # step below gives: a reporting failure must not turn the watcher red.
+      - name: report a repeating failure
+        if: always()
+        continue-on-error: true  # outcome: exception, a reporting failure must not turn the watcher red; it warns
+        env:
+          GH_TOKEN: ${{ steps.token.outputs.token }}
+          WATCHER_FALLBACK_TOKEN: ${{ github.token }}
+        run: |
+          test -f repeat-rows.txt || exit 0
+          python3 helpers/repeat_issue.py sync < repeat-rows.txt ||
+            echo "::warning::repeat_issue.py sync failed; a repeating failure may be unreported"
 
       # **Reports a stopped merge watcher** (milestone 723 (a stopped merge watcher is reported within
       # three of its own intervals), provisional). Each of the two watchers runs this, so a stopped
