@@ -98,8 +98,8 @@ It holds no DMA page, no `Virtio` transport, no budget, no report endpoint, and 
 capability naming any other process. It cannot print, cannot spawn, and cannot read what anyone
 else typed. This is `components/src/input.rs`'s documented authority.
 
-The honest comparison with option B, since risk 6 is what this is evidence for: a UART is a
-memory-mapped register file with an interrupt, and confining one proves considerably less than
+The honest comparison with option B, since risk 6 is what this is evidence for. A UART is a
+memory-mapped register file with an interrupt. Confining one proves considerably less than
 confining a bus that enumerates whatever a stranger plugs in. An xHCI driver needs DMA, and on a
 board with no IOMMU (`notes/verification.md` on the JH7110) that is the whole question. Option A
 is not evidence about xHCI. It is evidence that the *seam* holds: a real, non-virtio input source
@@ -178,7 +178,7 @@ fatal-risk list that months of driver work is a reasonable thing to spend.
   operating system that cannot accept a keyboard is limited in a way no scope note repairs, and this
   block should not be read as saying otherwise.
 - Option A has never been run on a board, and that is where the unglamorous problems live. The
-  wiring exists and comes up in QEMU, so "zero new drivers" is more than a reading of the code, but
+  wiring exists and comes up in QEMU, so "zero new drivers" is more than a reading of the code. But
   nobody has displayed a terminal on a *board's* framebuffer while taking keystrokes over that
   board's UART, and nobody can until milestone 157 lands.
 
@@ -210,6 +210,6 @@ QEMU device none of the three boards has, and the roadmap has nothing for `usb`,
 on hardware; option B (xHCI plus USB core plus HID, on three architectures, months) follows. Done
 means a keyboard plugged into the machine and the OS on its own monitor, so A reaches PARTIAL and
 cannot close this. The one cheap shortcut is closed: the OptiPlex has no PS/2 port. Option A's
-wiring is built: the keystroke source is one choice made when a `graphical_terminal` session
-launches (milestone 632), a virtio keyboard when the boot has one and the boot's UART read raw when
-it does not, and option B is a third arm of that choice. The board half waits on milestone 157 (real display output on the board).
+wiring is built. The keystroke source is one choice made when a `graphical_terminal` session
+launches (milestone 632): a virtio keyboard when the boot has one, and the boot's UART read raw when
+it does not. Option B is a third arm of that choice. The board half waits on milestone 157 (real display output on the board).

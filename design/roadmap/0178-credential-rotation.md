@@ -34,49 +34,49 @@ is not offered: this runs once, before the seal, and 'put twice, second wins' is
 in it (which of two concurrent provisioners won?) that a store with no update path simply does not
 have."** `credential_protocol::provision::SEAL`'s own doc is blunter still: after it, "the store
 cannot be changed by anything short of restarting the service." Both are considered, not
-accidental: the sealed store is what lets `credentialer.rs` promise a client that a stored secret
+accidental. The sealed store is what lets `credentialer.rs` promise a client that a stored secret
 is exactly what an operator vouched for at boot, with nothing able to move it later.
 
 So this is not "add an update path to `Store::put`." Provisioning's trust model is capability
-held: whoever holds `WRITE` on the provision endpoint may write any record, because the whole
+held. Whoever holds `WRITE` on the provision endpoint may write any record. The whole
 system trusts the operator who wired that endpoint at boot. A self-service password change needs a
-different trust model entirely: identity proven, the same shape login itself already uses,
-where holding a capability proves nothing and presenting the current secret proves everything. Only
-that second model actually avoids `Store::put`'s own named race (concurrent writers), because a
-change gated on proving the *old* secret can only ever be initiated by whoever already is that
-identity, one at a time, by construction.
+different trust model entirely: identity proven, the same shape login itself already uses.
+Holding a capability proves nothing; presenting the current secret proves everything. Only
+that second model actually avoids `Store::put`'s own named race (concurrent writers). A change
+gated on proving the *old* secret can only ever be initiated by whoever already is that identity.
+One at a time, by construction.
 
 ## The design question this needs answered, and why it is an architect's
 
 Where the rotation verb lives, and it is a wire change to `credential_protocol` two programs (whichever
-client calls it, and `credentialer.rs`) must agree on, which the *move fast on what can be undone*
-tenet puts in the irreversible column. Options, not decided here:
+client calls it, and `credentialer.rs`) must agree on. The *move fast on what can be undone*
+tenet puts it in the irreversible column. Options, not decided here:
 
 - **A new op on the verify endpoint** (`credential_protocol::verify`), the endpoint a real login flow
-  already reaches: extend it with a `ROTATE` opcode carrying the current secret and the new one in
+  already reaches. Extend it with a `ROTATE` opcode carrying the current secret and the new one in
   one request, verified and replaced atomically. Reuses the trust boundary a client already crosses
-  to log in at all, and needs no new capability wired to anyone beyond what login-boot-wiring
+  to log in at all. It needs no new capability wired to anyone beyond what login-boot-wiring
   (milestone 49's own remaining piece) already grants a logged-in session.
 - **A dedicated rotation endpoint**, held separately from both provision and verify, minted and
   handed out its own way. More machinery, and a third capability shape to reason about for a
   service whose two-endpoint design (`notes/credentials.md`) is otherwise deliberately minimal.
-- Reuse provisioning's own shape, scoped to one record: reopen a single identity's slot for a
+- Reuse provisioning's own shape, scoped to one record. Reopen a single identity's slot for a
   bounded window rather than the whole store. Closest to what `Store::put`'s comment already refuses
   and for the same reason (a second, harder-to-see version of "which of two concurrent writers
-  won"); likely the wrong shape, named for completeness rather than as a real candidate.
+  won"). Likely the wrong shape, named for completeness rather than as a real candidate.
 
-No recommendation forced here: this is exactly the shape of fork this project's own convention asks
-be brought to calef with the options priced rather than guessed at, and the first two above are
+No recommendation forced here. This is exactly the shape of fork this project's own convention asks
+be brought to calef with the options priced rather than guessed at. The first two above are
 close enough in cost that the choice should be his rather than a lane's.
 
 ## What this unblocks
 
-Completes the boot-generated-password decision (§120's amendment, this milestone's own trigger):
-today a person can only ever read whatever the boot printed; this is what lets them replace it with
+Completes the boot-generated-password decision (§120's amendment, this milestone's own trigger).
+Today a person can only ever read whatever the boot printed. This is what lets them replace it with
 something they chose and can remember. Also the natural home for a operator resetting *another*
-identity's password (the provisioning-endpoint path, already capability-shaped for that case) versus
-a user changing their own (this milestone's actual gap): worth keeping the two paths conceptually
-separate even though both eventually touch the same store.
+identity's password (the provisioning-endpoint path, already capability-shaped for that case),
+versus a user changing their own (this milestone's actual gap). Worth keeping the two paths
+conceptually separate even though both eventually touch the same store.
 
 ## Prior art
 

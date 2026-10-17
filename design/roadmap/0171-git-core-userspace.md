@@ -15,7 +15,7 @@ tractability rather than proposed as one undertaking; this is the piece that nee
 
 Software-only. Informed by [milestone 169](0169-kilo-editor.md) (`kilo`, the first
 real C program against [DECISIONS §31](../decisions/0031-foreign-language-seam.md)'s seam) but not
-hard-gated on it: git core needs the identical seam pattern kilo proves, not the terminal
+hard-gated on it. Git core needs the identical seam pattern kilo proves, not the terminal
 raw-input primitive kilo exists to build, so the two can proceed in parallel.
 
 ## What "git core" means here, precisely
@@ -30,9 +30,9 @@ normally static-linkable, with no hard threading requirement for these operation
 
 This milestone is exactly that surface: the plumbing and the porcelain built directly on it,
 scoped to local, single-repository, no-subprocess operation. Not in scope: anything that shells out
-by design (hooks, external merge drivers), and anything that needs the network (`clone`/`fetch`/
+by design (hooks, external merge drivers). Also anything that needs the network (`clone`/`fetch`/
 `push` over a wire protocol, which is a separate milestone's problem, likely shared with
-[milestone 174](0174-nife-thin-dev-client.md)'s remote-build work once that exists).
+[milestone 174 (a thin development client)](0174-nife-thin-dev-client.md)'s remote-build work once that exists).
 
 ## What it needs
 
@@ -55,8 +55,8 @@ thin-development-client path, the nearer-term alternative to full local self-hos
 
 Indirectly: git is the second real, non-editor C program to prove the §31 seam holds for something
 with real users depending on correctness (a corrupted object database is a worse failure than a
-cosmetic editor bug), which is evidence worth having before larger C/C++ ports
-([milestone 172](0172-capability-native-subprocess.md), 173) are attempted.
+cosmetic editor bug). That is evidence worth having before larger C/C++ ports
+([milestone 172 (a capability-native subprocess primitive)](0172-capability-native-subprocess.md), 173) are attempted.
 
 ## What this does not decide
 

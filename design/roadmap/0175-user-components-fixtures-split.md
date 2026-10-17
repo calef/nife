@@ -8,9 +8,9 @@ built: 2026-09-13
 When should nife development split into different repositories? [Milestone 39
 (repository)](0039-repository-structure.md)'s own analysis already answered the bigger question
 (monorepo now, distribution as a separate manifest repo later, gated on milestone 23 (a
-capability-routed component OS) forcing it, and 23's residual piece was declined for want of a
+capability-routed component OS) forcing it). 23's residual piece was declined for want of a
 customer rather than forcing anything, the same shape as [DECISIONS §105 (`std::thread::spawn` stays
-declined)](../decisions/0105-thread-spawn-decline-for-now.md)): not yet, by the tree's own stated
+declined)](../decisions/0105-thread-spawn-decline-for-now.md). The answer was not yet, by the tree's own stated
 trigger ("when a component is first built outside this tree, or a binary is first distributed to
 someone who cannot rebuild it"), which has not happened. This milestone is 39's own "cheap first
 move, which commits to none of the four options", scoped against the strain as it is now.
@@ -20,9 +20,9 @@ move, which commits to none of the four options", scoped against the strain as i
 Milestone 39 measured `user/` on 2026-07-30 (28 `[[bin]]` targets, 9,324 lines) and
 `design/what-a-distribution-packages.md` re-measured it four days later (48 targets, 16,309 lines),
 already close to doubled. Measured again now: 65 `[[bin]]` targets, 25,277 lines. The strain 39
-named has not stopped: `user/` is still one crate doing two incompatible jobs, a collection of
+named has not stopped. `user/` is still one crate doing two incompatible jobs, a collection of
 programs and a shared library (`net_transport` and others still live as modules beside the programs
-that consume them), so no component can depend on part of it without every other program rebuilding
+that consume them). So no component can depend on part of it without every other program rebuilding
 when any shared module changes.
 
 ## What "components" and "fixtures" means, per milestone 39's own naming argument
@@ -30,16 +30,16 @@ when any shared module changes.
 Not "daemons": a Unix daemon is defined by what it detaches from (no controlling terminal, inherited
 ambient authority, a pid file), and nife deliberately has none of those
 ([DECISIONS §10](../decisions/0010-capability-microkernel.md)). Milestone 39's vocabulary, already
-argued for and not re-litigated here: a component is the shippable unit (a binary plus its
+argued for and not re-litigated here. A component is the shippable unit (a binary plus its
 manifest), a service is what it offers over a contract. "Server" stays a fine role word inside a
 component; "daemon" does not appear.
 
-This milestone does not pre-classify all 65 programs, deliberately: milestone 39 named
+This milestone does not pre-classify all 65 programs, deliberately. Milestone 39 named
 illustrative examples on a tree less than half this size (`net_stack`, `display`, `compositor`,
 `line_editor` as components; `heeder`, `spinner`, `flaky`, `allocator_exerciser`, `worker`,
-`builder`, `coremark`, `os_primitives_benchmarker` as fixtures), and a fresh, correct classification
+`builder`, `coremark`, `os_primitives_benchmarker` as fixtures). A fresh, correct classification
 of the current 65 is real work for whoever builds this, not something to guess at from names in a
-minting doc. A third category may turn out to be real and worth naming: several current programs
+minting doc. A third category may turn out to be real and worth naming. Several current programs
 are neither long-running services nor test-only fixtures but interactive, user-invoked tools
 (`wc`, `rm`, `date`, `ps`, `pgrep`, `watch`, among others) closer to what a Unix `/bin` holds.
 Whoever builds this should check whether milestone 39's two-way split still fits the tree or whether
@@ -67,7 +67,7 @@ despite it. `interrupt_ignorer` costs the borrowed word and buys a pair that par
 
 `worker` was added to this list on the same day, and it settles a classification this milestone
 would otherwise have had to guess. Its own provenance left the name open because the answer
-depended on whether the file is a fixture or the canonical minimal program, and three records
+depended on whether the file is a fixture or the canonical minimal program. Three records
 (`design/naming.md`, milestones 39 and 175) had it in a fixture list by repetition rather than by
 ruling. calef ruled it the canonical minimal program, so it goes to `components/` rather than
 `fixtures/`, and the name says what it demonstrates. `demo_square` was considered and refused: the
@@ -91,9 +91,9 @@ program, because nobody uses the word otherwise. So `heeder` sweeps mechanically
 read by hand, every occurrence, before anything is edited.
 
 Three further traps, all learned the hard way this week and recorded in `AGENTS.md`'s naming section
-and `design/naming.md`: the program's name is a string literal in `crates/grant_plan`'s command
+and `design/naming.md`. The program's name is a string literal in `crates/grant_plan`'s command
 table, `xtask`'s archive tuples and `kernel/src/user/tests.rs`'s `program("spinner")`, where no
-compiler reads it; a path citation must resolve whatever the citing record's status; and a
+compiler reads it. A path citation must resolve whatever the citing record's status. A
 `Name:` provenance block ends at the next empty comment line.
 
 ## What it needs
@@ -109,7 +109,7 @@ compiler reads it; a path citation must resolve whatever the citing record's sta
   of change that silently drops an entry when it collides with unrelated work landing at the same
   time.
 - Re-checking `crates/` against milestone 39's own three-audience split (kernel proof crates, wire
-  contracts, userspace runtime) is explicitly out of scope here: 39 named it as a separate strain,
+  contracts, userspace runtime) is explicitly out of scope here. 39 named it as a separate strain,
   and folding it into this milestone would undo the "one thing at a time" discipline the split is
   supposed to buy.
 
@@ -147,7 +147,7 @@ The three the lane had to decide for itself, and how each went:
   *"what is left here is the demo catalogue the name always described."* `fixtures/`.
 - **`swapper`.** Reached only from `live_swap_tests`, which by the rule above decides nothing. It is
   *the operator*, the program a person runs to replace a component under a talking client, so it is
-  a tool rather than a fixture; the stand-in servers it swaps (`rust_swappable`, `c_swappable`) and
+  a tool rather than a fixture. The stand-in servers it swaps (`rust_swappable`, `c_swappable`) and
   the client that does not notice (`chatty`) are fixtures. `components/`, and milestone 23's demo is
   therefore split across the two directories on purpose.
 
@@ -178,7 +178,7 @@ the English word holds `kernel/src/soak.rs`, `crates/soak_page`, `kernel/src/smp
 `kernel/src/bench.rs`, `crates/board_console`'s soak census, `kernel/src/testing.rs` and half a dozen
 notes. Every occurrence of both was read. Records that narrate the past keep the old name (milestone
 39's 2026-07-30 measurement, 264's worklist, the dated findings in 47 and 51, the board sessions in
-`notes/visionfive2.md`, the milestone-10 note in `notes/shell.md`); documentation describing the
+`notes/visionfive2.md`, the milestone-10 note in `notes/shell.md`). Documentation describing the
 tree as it is now takes the new one.
 
 **860 path citations were repointed** across `design/`, `notes/`, `kernel/` and `crates/`. Fifteen
@@ -187,9 +187,9 @@ thirteen more) were left dangling exactly as they already were: repointing a cit
 never moved because it no longer exists would invent a fact. `design/` prose keeps `user/` wherever
 it narrates the past, which turned out to be every occurrence but one.
 
-**Verified without QEMU**, which this milestone can afford in a way most cannot: all three initrds
+**Verified without QEMU**, which this milestone can afford in a way most cannot. All three initrds
 build and pack (a missing program fails that loudly, which is the check the block asks for),
-`cargo build -p kernel` is green on aarch64, and `script/lint` passes including the four derived
+`cargo build -p kernel` is green on aarch64. `script/lint` passes including the four derived
 checks that read the program directories: `script/names`' surfaces, the `-d`-suffix name sweep, rule
 7's `#[path]`-consumer counter, and the bare-metal host-pass exclusion in all four of its places.
 The boot leg is CI's.
@@ -198,8 +198,8 @@ The boot leg is CI's.
 
 - **Milestone 395.** The third category this block asked whoever built it to check for. It is
   real: sixteen of the forty-nine components were tools a person invokes rather than services, ten
-  of them already typeable at the prompt through `grant_plan::Prog`; on 2026-09-19 that is fifteen
-  and nine, because milestone 281 cut `watch` and `doc` was ratified as `mdr`. It was not taken
+  of them already typeable at the prompt through `grant_plan::Prog`. On 2026-09-19 that is fifteen
+  and nine, because milestone 281 (watch holds what ps holds) cut `watch` and `doc` was ratified as `mdr`. It was not taken
   because a top-level package directory is a name and names are an architect's, and because the
   two-way split is coarse rather than wrong: 39's own definition of a component is the shippable
   unit, which `wc` is. 395 carries the list, the cost (about an hour, measured by doing the same
@@ -218,8 +218,8 @@ The boot leg is CI's.
   other occurrence of the retired names in `design/` is a dated narrative and correctly keeps them.
   Neither is load-bearing; both are one line for whoever next has the standing to make the edit.
 - **Recorded.** This lane made two edits under `design/` outside its own block, both of them
-  citations that would otherwise resolve to nothing: the old program paths in every block that
-  cites one (which `script/roadmap --check` enforces, and which is what made it notice), and
+  citations that would otherwise resolve to nothing. The old program paths in every block that
+  cites one (which `script/roadmap --check` enforces, and which is what made it notice). And
   one table cell in `design/roadmap/0266-init-is-an-action-and-the-thing-is-a-process.md` naming
   `hello`'s `init_worker` role, whose constant this milestone renamed. Repointing a citation is
   neither minting nor deciding, but it is worth saying out loud that it happened rather than leaving
@@ -238,10 +238,10 @@ The boot leg is CI's.
 ## Why it matters
 
 Directly: ends the crate-is-both-a-program-collection-and-a-library problem 39 named, so a component
-can express "I need this dependency but not that one" without handing it to all 65 siblings, and
-milestone 39's own §10/§46 packaging observations (the manifest and measured-boot hash are already
-three quarters of a package format) get a real home to grow into if `basalt` ever moves past being a
-placeholder.
+can express "I need this dependency but not that one" without handing it to all 65 siblings.
+Milestone 39's own §10 (capability-based, microkernel)/§46 (thin primitives or whole subsystems)
+packaging observations get a real home to grow into if `basalt` ever moves past being a
+placeholder. The manifest and measured-boot hash are already three quarters of a package format.
 
 Indirectly: it is evidence for re-reading milestone 39's bigger recommendation (repo split, gated on
 milestone 23) against current numbers, which its own text asks for, without executing that
@@ -250,8 +250,8 @@ recommendation itself.
 ## What this does not decide
 
 Whether nife ever splits into multiple repositories (milestone 39's own question, still correctly
-gated and still correctly undecided); the exact directory name for the third category if one turns
-out to be real (`tools/`, `bin/`, or something else); and whether `net_transport` and any other
+gated and still correctly undecided). The exact directory name for the third category if one turns
+out to be real (`tools/`, `bin/`, or something else). And whether `net_transport` and any other
 still-module shared code gets lifted into its own crate as part of this move or left for a follow-on,
 matching how `virtio`/`socket_proto`/`supervision_proto` were each lifted separately under Rule 7.
 

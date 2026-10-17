@@ -70,17 +70,17 @@ when this was written; xenon first booted nife on bare metal on 2026-09-04, unde
 (the x86_64 bare-metal machine). That runner's own header says what is not attached: "no virtio disks, no NIC, no GPU, no RNG", with
 NVMe wired as the exception. x86_64 also had no interactive boot at all until milestone 182
 (x86_64's own interactive-boot entry point) was built on 2026-09-19. So the suite does reach the
-trap path, the MMU, the timer and the interrupt controller on every run, and a reader should not
-imagine this code is unexecuted; what it does not reach is the device and userspace surface the
+trap path, the MMU, the timer and the interrupt controller on every run. A reader should not
+imagine this code is unexecuted. What it does not reach is the device and userspace surface the
 other two runners cover. The narrower claim is the true one: on aarch64 a mistake has more ways to
 become a failing test than it does here.
 
 **The caveat, stated so this is not manufactured urgency.** By exposure, this is the *least* urgent
 of the three architecture trees, for the same reason it is the least reviewed: nobody is running it.
-The argument above is not "x86_64 is on fire"; it is that the compensating control this tree relies
+The argument above is not "x86_64 is on fire". It is that the compensating control this tree relies
 on for its least-verified code has been applied to two of the three architectures and to neither of
-them recently, the gap is invisible to every gate we run (see below), and the cost of closing it is
-known because the same read has been done once already at a comparable size.
+them recently. The gap is invisible to every gate we run (see below). The cost of closing it is
+known, because the same read has been done once already at a comparable size.
 
 ## What makes it tractable
 
@@ -127,15 +127,15 @@ have taken a lock already.
 Pass 3: address space, bring-up, and the rest (3,334 lines). `mmu.rs` (1,295), `machine.rs`
 (618), `boot.s` (457), `iommu.rs` (368), `rtc.rs` (197), `ap_boot.rs` (183), `isa.rs` (156),
 `semihosting.rs` (60). Last because the original pass cleared the analogous code on both ISAs by a
-structural argument that is cheap to re-check: `boot.s` and the MMU-enable sequences run on a core
-with no trap vector installed and interrupts masked, so they are uninterruptible by construction
+structural argument that is cheap to re-check. `boot.s` and the MMU-enable sequences run on a core
+with no trap vector installed and interrupts masked. They are uninterruptible by construction
 rather than by care. If that argument holds on x86_64 the pass is short; `ap_boot.rs` and
 `machine.rs` have no analogue in the note and are where it is most likely not to.
 
 One finding's disposition must be re-argued rather than inherited. Finding 2 (riscv64's
 `trap_entry` parking a user-controlled value in `sscratch` across the faultable frame stores) was
-left documented, on a cost argument: hardening it costs a store and a load on the hottest path in
-the kernel to guard a case behind a kernel-stack overflow that is already fatal. Option 2 in that
+left documented, on a cost argument. Hardening it costs a store and a load on the hottest path in
+the kernel, to guard a case behind a kernel-stack overflow that is already fatal. Option 2 in that
 note is "a separate per-hart trap stack, entered when `SPP = 0`", and x86_64 has that in
 hardware: `segments.rs` builds a TSS with seven IST slots, and an IST vector switches stacks
 unconditionally. So the same question reaches x86_64 with the expensive half already paid, and the
@@ -211,7 +211,7 @@ The rest, specific to this pass:
 
 Whether the two ISAs that were read stay read. Re-reading their growth since 2026-07-29 (*The
 scale, measured*) is a second body of work with its own size. It is left to the cadence milestone to
-make visible rather than folded in: a mechanism that can see an unaudited architecture
+make visible rather than folded in. A mechanism that can see an unaudited architecture
 should be able to see an audited one that moved, and building it once is cheaper than reading twice.
 
 How the cadence learns about architectures. The three questions in
@@ -242,9 +242,9 @@ rather than recalled and this lane did not read it.
 ## What this unblocks
 
 Nothing depends on it, which is the honest answer and part of why it went unnoticed. What it changes
-is the confidence attached to every x86_64 claim the project makes: milestones 182 (x86_64's own
-interactive-boot entry point) and 184 (extend the `std` port to x86_64) and the end of milestone
-161, all BUILT since, were built on this layer, and each of them inherits an unread TCB. DECISIONS
+is the confidence attached to every x86_64 claim the project makes. Milestones 182 (x86_64's own
+interactive-boot entry point), 184 (extend the `std` port to x86_64) and the end of milestone
+161, all BUILT since, were built on this layer. Each of them inherits an unread TCB. DECISIONS
 §19 (architectural parity is a tenet) makes x86_64 a first-class target; this is the compensating
 control that parity implies and that the other two targets have already had.
 

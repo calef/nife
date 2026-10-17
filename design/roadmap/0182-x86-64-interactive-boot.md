@@ -9,7 +9,7 @@ Built. A default x86_64 boot reaches a `swish` prompt through its own interactiv
 and `script/swish-check --arch x86_64` types at it (below, "The third leg"). x86's console is a
 userspace driver holding a port-range capability, from milestone 299 (the x86 port-range
 capability), under
-[DECISIONS §149 (may the kernel answer on an endpoint, where §121 leaves no userspace holder?)](../decisions/0149-kernel-served-console-endpoint.md);
+[DECISIONS §149 (may the kernel answer on an endpoint, where §121 leaves no userspace holder?)](../decisions/0149-kernel-served-console-endpoint.md).
 DECISIONS §121 (what a device capability is when the device has no page) is `AMENDED` to match.
 
 The entry point needs a real ELF-loading boot path, not wiring, so it is its own milestone rather
@@ -20,8 +20,9 @@ cannot read a monitor.
 ## What this needs
 
 1. A real ELF-loading boot entry, matching `spawn_init`/`boot_progenitor`'s shape: parse the
-   initrd archive, measure and verify `init` against the boot's own measurement table (DECISIONS
-   §104's discipline, the same check the other two architectures' entries already make), build its
+   initrd archive. Measure and verify `init` against the boot's own measurement table (DECISIONS
+   §104 (font and palette)'s discipline, the same check the other two architectures' entries already
+   make). Build its
    address space, grant it the boot's own capability set, and dispatch it to ring 3. Built.
 2. The x86_64-specific capability grants the other two boots each hand-assemble for their own
    architecture. Built; the console is COM1's `PortRange`, per §149.
@@ -101,14 +102,14 @@ leg selecting the runner (not committed):
 | whole leg, warm target directory | 90 s | 341 s |
 
 So the UEFI leg costs about four minutes more per run, and the cause is known rather than
-guessed: under firmware the kernel hands the screen to a userspace terminal (milestone 400), and
-the console server writes every byte to COM1 and then waits for the terminal to draw it before
-acknowledging the write (`components/src/console.rs`, milestone 400's BUGS). Under TCG that draw
+guessed. Under firmware the kernel hands the screen to a userspace terminal (milestone 400 (the
+shell on the firmware's screen)). The console server writes every byte to COM1 and then waits for
+the terminal to draw it before acknowledging the write (`components/src/console.rs`, milestone 400's BUGS). Under TCG that draw
 is a CPU copy through an emulated framebuffer, once per write.
 
-Why UEFI anyway. It is the one a customer boots, and it carries four things PVH does not: the
-loader, the firmware's memory map and ACPI tables (2 GiB of RAM, tables above 1 GiB where a real
-machine puts them), OVMF's placement of the PCI functions' BARs, and the screen tee. A shell
+Why UEFI anyway. It is the one a customer boots, and it carries four things PVH does not. The loader.
+The firmware's memory map and ACPI tables (2 GiB of RAM, tables above 1 GiB where a real
+machine puts them). OVMF's placement of the PCI functions' BARs. And the screen tee. A shell
 regression on any of those passes a PVH leg. The four minutes are also a finding rather than
 overhead: they are what milestone 400's "the serial console now waits for the screen" costs, now
 measured at the prompt instead of described. Would UEFI still win if both cost the same? Yes; this
@@ -129,7 +130,7 @@ rather than raised by feel (every leg now prints its line count, total and three
 That CI runner was 1.5x to 1.8x slower than patagonia on this leg, so the x86_64 bound is 90 s
 (`SWISH_CHECK_X86_LINE_SECS`): 3.6x the slowest local line, 2x that line at CI's worst ratio. The
 cost is the screen path, milestone 400's console waiting for each write to be painted and copied
-into an uncacheable aperture, as debug builds under TCG; the other two legs run the same shell
+into an uncacheable aperture, as debug builds under TCG. The other two legs run the same shell
 over TCG in under a second a line. A real PC pays that copy in native stores (milliseconds per
 scroll, not measured on silicon). Recorded in 400's BUGS, where the blocking design is.
 
@@ -190,7 +191,7 @@ QEMU at least.
 
 Whether x86_64's own boot path needs anything architecture-specific beyond the ELF-loading
 mechanism itself (interrupt routing, device discovery specifics already covered by milestone
-176's own work) is not assessed here; check that milestone's own text and `kernel/src/arch/x86_64/`
+176 (the discovery seam's wide half)'s own work) is not assessed here. Check that milestone's own text and `kernel/src/arch/x86_64/`
 before assuming parity with aarch64/riscv64 on every point.
 
 ## What this unblocks
@@ -203,7 +204,7 @@ does not build.
 ## BUGS
 
 - The x86_64 leg is about forty times slower per line than the other two, because the console
-  waits for the screen (above), and so it carries a 90 s per-line bound where they carry 30 s: a
+  waits for the screen (above), and so it carries a 90 s per-line bound where they carry 30 s. A
   real hang on that leg is reported a minute later. A wedged screen terminal would stall this leg's serial transcript as well, which is
   milestone 400's BUGS entry, not a new one.
 - `x86_hand_over` still watches for ten seconds before its summary, and on this path the summary
@@ -232,7 +233,7 @@ does not build.
 
 ## Index row
 
-x86_64's interactive boot: the kernel hands over to the progenitor through the shared
-`boot_progenitor`, the console is a userspace driver on a port-range capability (milestone 299), and
+x86_64's interactive boot. The kernel hands over to the progenitor through the shared
+`boot_progenitor`. The console is a userspace driver on a port-range capability (milestone 299).
 `script/swish-check`'s third leg boots the customer's UEFI image under OVMF and types the shared
 script at the prompt, 60 of 64 lines, the four `uuid` lines omitted for want of an entropy device.

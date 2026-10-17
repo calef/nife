@@ -15,7 +15,7 @@ number, a status and a condition that would change it.
 From "161. The x86_64 kernel port: bring up the HAL's third architecture", under `## Follow-on`:
 
 > Item 2's other half, PCI interrupt routing over INTx, was deliberately not taken by milestone
-> 215: ACPI's `_PRT` is AML and this tree will not grow an interpreter, and hardcoding q35's
+> 215: ACPI's `_PRT` is AML and this tree will not grow an interpreter. Hardcoding q35's
 > swizzle would pass every gate here and might still fail on xenon.
 >
 > -- design/roadmap/0161-x86-64-kernel-port.md

@@ -12,14 +12,14 @@ needs_person: no
 The third of four self-hosting milestones, and the big one. It is sized by research rather than
 guessed at: the blocker is not what it first looks like.
 
-[Milestone 172](0172-capability-native-subprocess.md)'s capability-native
-subprocess primitive is a hard prerequisite, not a convenience: `cargo` spawns `rustc` once per
+[Milestone 172 (a capability-native subprocess primitive)](0172-capability-native-subprocess.md)'s capability-native
+subprocess primitive is a hard prerequisite, not a convenience. `cargo` spawns `rustc` once per
 compilation unit as its whole build model (verified via `rustc_driver`'s own use inside `clippy` and
 `miri`, which still spawn a driver process per crate through
-`RUSTC_WRAPPER`/`RUSTC_WORKSPACE_WRAPPER` rather than linking the compiler in-process), and `rustc`
-spawns the system linker even in its "self-contained," bundled-`rust-lld` mode (checked against
+`RUSTC_WRAPPER`/`RUSTC_WORKSPACE_WRAPPER` rather than linking the compiler in-process). `rustc`
+spawns the system linker even in its "self-contained," bundled-`rust-lld` mode. (Checked against
 rust-lang/rust's own linker-flavor work: the bundled linker still runs as a separate spawned
-process, there is no shipped in-process linking path today). Neither has a supported bypass.
+process, there is no shipped in-process linking path today.) Neither has a supported bypass.
 
 ## The blocker is not the one it looks like
 
@@ -68,8 +68,8 @@ alternative that reaches "daily driver" sooner without this milestone's full sco
 ## What this does not decide
 
 Whether [milestone 172](0172-capability-native-subprocess.md)'s primitive, once built, is sufficient
-as-is or needs extension once real `cargo`/`rustc` invocation patterns are tried against it; whether
-LLVM is ported whole or some minimal subset targeted first; and the actual multi-year-or-shorter
+as-is or needs extension once real `cargo`/`rustc` invocation patterns are tried against it.
+Whether LLVM is ported whole or some minimal subset targeted first. And the actual multi-year-or-shorter
 timeline, which this block deliberately does not estimate given how little of milestone 172 exists
 yet to measure against.
 

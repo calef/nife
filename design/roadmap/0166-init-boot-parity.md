@@ -36,10 +36,10 @@ There were two boot-loader functions doing the same job differently:
 - `kernel::user::spawn_progenitor` (aarch64): loaded the `progenitor` archive entry, built its
   address space through the `sched::spawn` closure model, granted the boot capability set from
   inside the spawned thread, and returned a `Holding`. The **same function** also re-entered `hello`
-  at milestone 19d's test roles, and that sharing was the whole problem: to keep the test roles' slot
-  numbers stable, aarch64's boot progenitor was handed two capabilities the interactive system never
-  used, a report endpoint at slot 1 and the 19d.2b test interrupt at slot 3, which is why its slot
-  layout was not riscv64's.
+  at milestone 19d (a real workload)'s test roles. That sharing was the whole problem. To keep
+  the test roles' slot numbers stable, aarch64's boot progenitor was handed two capabilities the
+  interactive system never used, a report endpoint at slot 1 and the 19d.2b test interrupt at slot 3.
+  That is why its slot layout was not riscv64's.
 - `kernel::user::riscv_shell_boot` (riscv64 and, since milestone 182/299, x86_64): loaded the same
   `progenitor` entry through the TCB-builder model (`create_thread_control_block` +
   `thread_control_block_insert_cap` from the parent), granted a boot-only capability set at fixed
@@ -86,7 +86,7 @@ unchanged; the six `spawn_hello` tests reach `hello`'s roles exactly as before.
   function's own definition in `kernel/src/user.rs`.
 - **Done.** `boot_progenitor`'s name was provisional when the loader merged; calef ratified it on
   2026-09-15, and the refusal is recorded at its definition in `kernel/src/user.rs`.
-- **Recorded.** `BootEndowment.for_test_roles` is now dead data: no boot path fills it, so
+- **Recorded.** `BootEndowment.for_test_roles` is now dead data. No boot path fills it, so
   `crates/system_initializer` could drop the field and the slot-deletion it drives. Recorded in this
   block's "What it touched" section; retiring it is a change to `system_initializer`'s logic, out of
   this milestone's scope.
@@ -98,7 +98,7 @@ closure that also served the 19d test roles, and so carried two capabilities the
 never used) and riscv64/x86_64's `riscv_shell_boot` (the TCB-builder, boot-only). Milestone 166
 merged the boot halves into one `boot_progenitor` used by all three architectures, `#[cfg]`-gating
 only the two genuine hardware differences (the x86 `PortRange` console vs the others' UART page, and
-GIC vs PLIC vs APIC arming); the slot layout is now identical everywhere and
+GIC vs PLIC vs APIC arming). The slot layout is now identical everywhere and
 `components/src/progenitor.rs`'s two cap tables became one. `spawn_hello` stays as the
 19d/19e test-role `hello` spawner, fixtures untouched; that is `spawn_progenitor` renamed, which
 calef ratified on 2026-09-15 once the boot half it was named for had moved out.

@@ -70,7 +70,17 @@ This section does not say who wins. That is a claim that leaves the machine, and
 
 ## What this is for
 
-DECISIONS §96 asks whether nife should stay a process kernel (what it is today: every thread gets its own kernel stack) or move to an event kernel (one stack per core, explicit continuations), the model seL4, OKL4 and NOVA all eventually adopted. §96 found three of the four inputs to that question already settled by measurement (memory savings are negligible at this project's scale; stack-shrinking is closed off, no slack remains; the verification argument doesn't transfer, since Kani never reaches `kernel/src` here). The fourth input, performance, is the one live, unmeasurable argument: the paper §96 cites (Warton, on Pistachio) found event kernels roughly tied with process kernels on micro-benchmarks but 20% better on a real multi-tasking workload (AIM7). Every instrument this project currently owns (`ipc_rtt`, `ipc_rtt_el0`, the icount tripwire, milestone 132 (fast path's)'s footprint gate) is a micro-benchmark, and would show approximately nothing for this question.
+DECISIONS §96 asks whether nife should stay a process kernel (what it is today: every thread gets
+its own kernel stack) or move to an event kernel (one stack per core, explicit continuations).
+That is the model seL4, OKL4 and NOVA all eventually adopted. §96 found three of the four inputs
+to that question already settled by measurement (memory savings are negligible at this project's
+scale; stack-shrinking is closed off, no slack remains; the verification argument doesn't transfer,
+since Kani never reaches `kernel/src` here). The fourth input, performance, is the one live,
+unmeasurable argument: the paper §96 cites (Warton, on Pistachio) found event kernels roughly tied
+with process kernels on micro-benchmarks but 20% better on a real multi-tasking workload (AIM7).
+Every instrument this project currently owns (`ipc_rtt`, `ipc_rtt_el0`, the icount tripwire,
+milestone 132 (fast path's)'s footprint gate) is a micro-benchmark, and would show approximately
+nothing for this question.
 
 This milestone is that missing instrument, and nothing else. It does not decide §96; it produces the number §96 needs to decide itself.
 
@@ -83,15 +93,15 @@ a kernel feature printing to the serial console.
 
 - `crates/job_mix`, the workload's definition, host-tested. What AIM7 is, read on
   2026-09-04 from the benchmark's own README and from the ACM TOCS 2016 retrospective rather than
-  guessed at; which four of its methodological properties are kept (heterogeneity, per-task random
-  order, a task-count sweep, a throughput metric) and which of its 53 Unix-shaped jobs are
+  guessed at. Which four of its methodological properties are kept (heterogeneity, per-task random
+  order, a task-count sweep, a throughput metric), and which of its 53 Unix-shaped jobs are
   deliberately not. Five jobs stand in for its categories.
 - `fixtures/src/job_mix_task.rs`, one EL0 task. Processes rather than kernel threads, which is the one
   place this differs from milestone 134's E1 on purpose: §96 asks what a process kernel costs a
   *workload*, and a workload is processes.
 - `kernel/src/job_mix.rs` (`--features job_mix`), the supervisor. It builds the pool once, releases
   a subrun's worth of tasks, owns the wall clock, and prints the placement census before the first
-  number, because milestone 240 (soak reports) found placement decides throughput on radon by up to fifteenfold
+  number. Milestone 240 (soak reports) found placement decides throughput on radon by up to fifteenfold,
   and a figure without its arrangement is a draw rather than a result.
 - `script/job-mix` (QEMU rehearsal) and `script/board-image --job-mix` (the card).
   `notes/job-mix.md` is the bench procedure, with a table mapping every observable outcome to what it
@@ -105,13 +115,19 @@ The 20% figure's provenance, and why Warton's own claim is weaker, is in `notes/
 
 ## What it needs
 
-- A real multi-tasking workload, not a single-operation timing. The cited paper's own instrument is AIM7 (see `notes/l4-lessons.md`'s citation for the exact numbers this project has already quoted from it: *"20% performance advantage on a multi-tasking workload (AIM7)"*); whoever builds this should read the paper's own methodology rather than guess at AIM7's shape from the name, and decide whether to port something AIM7-equivalent or design a workload that exercises the same property (many threads, contended scheduling, real context-switch pressure) in a way that fits this project's own capability model.
+- A real multi-tasking workload, not a single-operation timing. The cited paper's own instrument is
+  AIM7 (see `notes/l4-lessons.md`'s citation for the exact numbers this project has already quoted
+  from it: *"20% performance advantage on a multi-tasking workload (AIM7)"*). Whoever builds this
+  should read the paper's own methodology rather than guess at AIM7's shape from the name. They then
+  decide whether to port something AIM7-equivalent or design a workload that exercises the same
+  property (many threads, contended scheduling, real context-switch pressure) in a way that fits
+  this project's own capability model.
 - Real hardware, per the gate above: this specific difference does not show up under QEMU TCG or Apple's HVF, the same reason `sel4bench` (milestone 25) is deferred to real silicon.
 - A place to run it that has real PMU access, matching what milestone 25's own `sel4bench` piece already needs from milestone 127's machine, so the two pieces of hardware-gated work should likely be sequenced together rather than treated as unrelated.
 
 ## Why it matters, beyond §96
 
-Milestone 25's cross-OS comparison has the same hole, and this milestone closes it too rather than duplicating it. Checked directly: milestone 25 is explicitly a set of EL0-measured *primitive* benchmarks (single syscall, single context switch, single IPC round trip, single map, single spawn) compared against lmbench and `sel4bench`; every one of them a micro-benchmark in the same sense §96 means the word. Milestone 25's own remaining piece (`sel4bench`) is single-operation PMU timing, not a multi-tasking workload. So neither milestone currently has an instrument that could show what a real multi-tasking difference looks like, and building one here serves both.
+Milestone 25's cross-OS comparison has the same hole, and this milestone closes it too rather than duplicating it. Checked directly: milestone 25 is explicitly a set of EL0-measured *primitive* benchmarks (single syscall, single context switch, single IPC round trip, single map, single spawn) compared against lmbench and `sel4bench`. Every one of them is a micro-benchmark in the same sense §96 means the word. Milestone 25's own remaining piece (`sel4bench`) is single-operation PMU timing, not a multi-tasking workload. So neither milestone currently has an instrument that could show what a real multi-tasking difference looks like, and building one here serves both.
 
 ## What this does not decide
 
@@ -183,7 +199,7 @@ reports the spread rather than the best) records the line format, ratified by ca
   that would say. radon fit 32 on 2026-10-04 and printed none; above that is unmeasured.
 - **Milestone 324.** `crates/board_console` has no recogniser for this run, so an operator tells a
   finished sweep from a wedged one by reading the log, with the reason it
-  was deliberately not written blind: the outcome table in `notes/job-mix.md` becomes evidence after
+  was deliberately not written blind. The outcome table in `notes/job-mix.md` becomes evidence after
   the first bench evening and a guess before it.
 - **Milestone 493.** The disk-file mix, blocked on a disk radon can drive and on a file-service
   channel per client (a wire format, so calef's).

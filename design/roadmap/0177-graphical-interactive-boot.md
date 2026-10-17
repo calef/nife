@@ -13,7 +13,7 @@ roadmap's own framing, and finding no milestone owns the gap this surfaced. **Pi
 merged 2026-08-27** (`milestone/177-boot-wiring-build`): the kernel-side graphical stack, the direct
 `kbd` -> `line_editor` grant (option A, decided), `line_editor`'s `display_terminal` output adapter,
 and device attachment. **The prompt reached the screen on 2026-09-19** (`milestone/177-second-flush`),
-once the hang that had stopped it for three weeks was root-caused: not the GPU driver's interrupt
+once the hang that had stopped it for three weeks was root-caused. Not the GPU driver's interrupt
 handling, as recorded at the time, but the boot never receiving two drivers' one-time status
 reports, so each sat in a blocking `SEND` (see "The second flush, root-caused" below).
 `script/swish-check --graphical` and `--graphical-serial` are green on aarch64 and riscv64 and run
@@ -22,7 +22,7 @@ in CI. **Piece 5 (x86_64's entry point) split off as its own milestone**,
 path, not wiring.
 
 The input-routing fork was `Gate: DECISION` (2026-08-27, an investigation lane found piece 1's own plan
-does not fit and piece 2 cannot be built until the input-routing fork below is answered); decided
+does not fit and piece 2 cannot be built until the input-routing fork below is answered). Decided
 the same day, calef: **Option A**, a direct `kbd` -> `line_editor` grant, fixed at spawn, no
 compositor in this path. See "The investigation, 2026-08-27" below for the full reasoning and the
 two options not taken.
@@ -79,10 +79,10 @@ either board, let alone both together. The lane found this by writing the grant 
 watching it try to `grant_at` a slot past 16, then reverted it (`kernel/src/user.rs` is unaffected
 by this milestone as of this writing).
 
-The fix is mechanical: build the graphical stack **kernel-side**, called from `spawn_init`/
+The fix is mechanical. Build the graphical stack **kernel-side**, called from `spawn_init`/
 `riscv_shell_boot` before init exists, the same shape `fs_service::root_directory` already uses for
-the filesystem pair (the block server and FS server are built kernel-side; init receives only two
-capabilities, `fs_ep`/`fs_page`, regardless of how many processes or pages sit behind them).
+the filesystem pair. (The block server and FS server are built kernel-side; init receives only two
+capabilities, `fs_ep`/`fs_page`, regardless of how many processes or pages sit behind them.)
 Kernel-side spawning maps physical pages directly and is not bound by any one process's
 sixteen-slot table, so it sidesteps the wall entirely. The kernel-side wiring functions already
 exist and are proven under test (`kernel/src/user/display_service.rs`, `compositor_service.rs`,
@@ -100,8 +100,8 @@ the graphical stack. Two problems:
    endpoint. `line_editor` needs a code change (or a second output path) to print through
    `display_terminal` instead of `console`.
 2. Input, the harder one. `kbd.rs` (the only proven virtio-keyboard driver) speaks only the
-   compositor's ring-and-doorbell protocol. This is not an accident of what has been built so far;
-   it is DECISIONS §33's own security property, stated in `kbd.rs`'s own module doc: the driver
+   compositor's ring-and-doorbell protocol. This is not an accident of what has been built so far.
+   It is DECISIONS §33's own security property, stated in `kbd.rs`'s own module doc. The driver
    "cannot name a client at all," and holds no client's endpoint, precisely so a compromised or
    buggy keyboard driver cannot forge a keystroke to a client it was never meant to reach. Focus is
    entirely the compositor's decision. `display_terminal`'s own `OP_BYTES` handler, when it is the
@@ -126,8 +126,8 @@ Three shapes, priced. Decided 2026-08-27, calef: A.
 - A. Give `kbd` a second delivery mode: `CALL` `line_editor`'s endpoint directly, fixed at
   spawn, for the boot's own single-terminal case, the same shape `display_terminal`'s own
   `MODE_DISPLAY`/`MODE_WINDOW` split already uses. Not a security exception to DECISIONS §33 (the compositor's authority is memory, not messages),
-  on the reasoning above: it is this codebase's own standing pattern (`AGENTS.md` rule 2, "a driver
-  takes what it needs, passed in") applied consistently, and it is *narrower* authority than the
+  on the reasoning above. It is this codebase's own standing pattern (`AGENTS.md` rule 2, "a driver
+  takes what it needs, passed in") applied consistently. And it is *narrower* authority than the
   compositor-mediated model, not looser, because `kbd` would hold exactly one fixed capability
   instead of "whichever client the compositor currently focuses." Cheapest change, and the one that
   matches what this journey's scope actually needs.
@@ -139,7 +139,7 @@ Three shapes, priced. Decided 2026-08-27, calef: A.
   a system DECISIONS §33 already found has exactly one blocking wait point per process.
 - C. Have `display_terminal` relay (already the compositor's focused client, already receives
   `OP_BYTES`; forward to `line_editor` instead of only feeding its own renderer). Raised in the same
-  conversation as an alternative to A/B; the reframing above rules it out, since C keeps
+  conversation as an alternative to A/B. The reframing above rules it out, since C keeps
   the compositor load-bearing for input in exactly the case that does not need multiplexing at all,
   the pattern the reframing names as the thing to be wary of.
 
@@ -155,7 +155,7 @@ independent of pieces 1-2. Checked against
 [DECISIONS §121](../decisions/0121-port-io-capability.md) (ratified permanently 2026-08-25) and
 found false: x86_64's UART console is permanently kernel-resident, a closed question rather
 than an unbuilt feature ("this is not an interim stance to be revisited on a schedule"). x86_64 has
-no working userspace console at all, on either side of this milestone; its only possible route to
+no working userspace console at all, on either side of this milestone. Its only possible route to
 an interactive shell is through the graphical stack, which means piece 3 depends on finding 2's
 fork being answered the same way pieces 1-2 do, not independent of it.
 
@@ -165,12 +165,12 @@ Pieces 1-2, both on aarch64 and riscv64: `kernel::user::boot_graphical_terminal`
 mirroring `fs_service::root_directory`'s pattern, per finding 1), the direct `kbd` -> `line_editor`
 grant (`MODE_DIRECT`, option A, decided), `line_editor`'s `MODE_DISPLAY` output adapter, and
 `crates/system_initializer::boot()` branching on whether the graphical grants are present. A real,
-reproducible capability-table-exhaustion bug was found and fixed along the way (the new grants
+reproducible capability-table-exhaustion bug was found and fixed along the way. (The new grants
 inflated `boot()`'s resting baseline enough to push the *entropy* build past the sixteen-slot wall;
 fixed by freeing `uart_dev`/`uart_irq` at the top of `boot()` on a graphical boot, since they are
-dead weight there). `script/swish-check --graphical` (a new leg, verifying via decoded screendump
-since there is no UART to pipe a transcript from) does not yet reach a working prompt: a second
-`FLUSH` through the real boot's own driver instance hangs, diagnosed as likely a pre-existing
+dead weight there.) `script/swish-check --graphical` (a new leg, verifying via decoded screendump
+since there is no UART to pipe a transcript from) does not yet reach a working prompt. A second
+`FLUSH` through the real boot's own driver instance hangs. It is diagnosed as likely a pre-existing
 characteristic of `components/src/gpu_driver.rs`'s completion-IRQ handling rather than something this
 milestone's wiring introduced, and recorded in `notes/framebuffer-contract.md`'s own BUGS section
 rather than held on. (That diagnosis was wrong; see "The second flush, root-caused" below.) The existing plain-console boot is unaffected and re-verified working on both
@@ -179,11 +179,12 @@ architectures throughout.
 ## What this does not decide
 
 Whether the swap is unconditional (the graphical stack becomes the only interactive boot) or a
-runtime choice (both paths coexist, selected by a flag); which of milestone 55's storage or
-milestone 49's login pieces this should sequence before or after; and whether `line_editor` itself
+runtime choice (both paths coexist, selected by a flag). Which of milestone 55 (time machine)'s
+storage or milestone 49 (users, login, attribution)'s login pieces this should sequence before
+or after. And whether `line_editor` itself
 needs any change to run as a `display_terminal` client rather than a `console` client, or already
-does (checked in milestone 29's own text as a client of the framebuffer contract, not re-verified
-against the real boot path here).
+does. (Checked in milestone 29 (a display terminal)'s own text as a client of the framebuffer contract, not re-verified
+against the real boot path here.)
 
 ## What this unblocks
 
@@ -191,13 +192,13 @@ The graphical half of the login-to-`kilo` user story ([DECISIONS
 §131](../decisions/0131-hold-at-rung-two.md)'s "kick-ass terminal, something I'll love working
 with"), now that the display-driver hang above is resolved (2026-09-19). Independent of [milestone
 169](0169-kilo-editor.md) (`kilo`'s raw-keystroke primitive sits at the `DECISIONS §21`
-line-discipline contract level, which both `console` and `display_terminal` already speak
-identically) and of milestone 49's login-boot-wiring piece (unblocked 2026-08-26, DECISIONS §120
-amended to grant the stopgap; the piece itself is a separate, ongoing build). x86_64's own route to
+(terminal, userspace) line-discipline contract level, which both `console` and `display_terminal` already speak
+identically). Also independent of milestone 49's login-boot-wiring piece (unblocked 2026-08-26, DECISIONS
+§120 (virtio-rng stopgap) amended to grant the stopgap; the piece itself is a separate, ongoing build). x86_64's own route to
 an interactive shell, split off as [milestone 182](0182-x86-64-interactive-boot.md), still depends
 on the input-routing fork this milestone already answered (option A), the same dependency the
-investigation found before the split: x86_64 has no fallback UART path at all (DECISIONS §121,
-permanently kernel-resident), so its only possible route is through the graphical stack this
+investigation found before the split. x86_64 has no fallback UART path at all (DECISIONS
+§121 (device capability, no page), permanently kernel-resident), so its only possible route is through the graphical stack this
 milestone builds.
 ## The second flush, root-caused (2026-09-19)
 
@@ -213,7 +214,7 @@ received. The terminal's first flush is its blank grid, painted *before* it send
 parked in that `SEND`, and the terminal's second `FLUSH` queued behind it for ever. A kernel thread
 dumping every thread twenty seconds into the boot showed the driver `Blocked` as a `Sender` on its
 report endpoint and the terminal awaiting a `Reply` on the display endpoint, each endpoint with one
-sender and no receiver; receiving on the report endpoint returned `FLUSHED`, and ten seconds later
+sender and no receiver. Receiving on the report endpoint returned `FLUSHED`, and ten seconds later
 the driver was back in `RECV` and the terminal's flush had been served.
 `notes/framebuffer-contract.md`'s BUGS has the dump verbatim. `framebuffer_driver` works because it
 sends no `FLUSHED`, not because it has no interrupt.
@@ -226,7 +227,7 @@ The fix, at each cause. The boot receives `FLUSHED` after `TERM_UP` and asserts 
 `keyboard_service::start_direct` receives `KEYBOARD_UP` itself and no longer returns the endpoint, so
 no caller can drop it (rung one: there is nothing left to forget). The GPU side stays at rung three,
 on purpose and marked as a foot gun at `display_service::start_terminal`, at `FLUSHED`'s own
-definition and at the driver's `send`: the three test spawners read the digest `FLUSHED` carries, so
+definition and at the driver's `send`. The three test spawners read the digest `FLUSHED` carries, so
 the wiring function cannot swallow it for them. No wire change, no new barrier, no driver change.
 
 What the leg proves, and its cost. `script/ci-build`'s `swish-check-graphical` row runs
@@ -251,7 +252,7 @@ keep their names, retargeted from "the boot brings up the stack" to "the launch 
   returns; root-caused and fixed above.
 - **Done.** (2026-09-19) `script/swish-check --graphical` reaches and types at a working prompt on
   aarch64 and riscv64, and runs in `script/ci-build` and CI as `swish-check-graphical`.
-- **Done.** Whether the swap is unconditional or a runtime choice is settled by what was built:
+- **Done.** Whether the swap is unconditional or a runtime choice is settled by what was built.
   `crates/system_initializer` branches on whether the display-terminal endpoint was granted, and
   the kernel's graphical boot returns nothing when the bus has no GPU, so both paths coexist and
   device presence picks.
@@ -266,7 +267,7 @@ keep their names, retargeted from "the boot brings up the stack" to "the launch 
 
 ## Index row
 
-The real interactive boot brings up the graphical terminal stack whenever a GPU is attached:
+The real interactive boot brings up the graphical terminal stack whenever a GPU is attached.
 `gpu_driver`, `display_terminal`, and a keystroke source (a virtio keyboard in `MODE_DIRECT`, or the
 board's UART) wired kernel-side straight to `line_editor`, with no compositor in the path. A prompt
 reaches the screen and a typed key echoes on aarch64 and riscv64, proven in CI by
