@@ -70,9 +70,9 @@ Lane `milestone/907-hackbench-is-packaged-in-basalt`, with nifeos/basalt#21.
   two things kernel.org needed. A source names the `file` it is saved as, since cgit puts the tag
   in a query (`?h=v2.11`). And the fetch sends a named User-Agent, since kernel.org answers
   Python's default with 403 (items 2 to 4). The aarch64 package measured 278,523 bytes. The first
-  published Release is `rolling-2026-10-14-80d9b38`, and `xtask/basalt-pins.index` pins its lines.
+  published Release is `rolling-2026-10-14-80d9b38`, and `xtask/basalt-pin` names a basalt commit whose recipe records its digests.
 - Item 5's finding: both, as for ioping. `cargo xtask basalt-fetch` takes the three hackbench
-  lines in `xtask/basalt-pins.index`, and the archive carries the package's `bin/hackbench`.
+  lines from the recipe `xtask/basalt-pin` names, and the archive carries the package's `bin/hackbench`.
   `unmodified_hackbench_threads_over_pipes` and `..._over_socket_pairs` run it with every
   assertion unchanged. CI's `rg-threads` rows boot the suite filtered to `unmodified_` with
   `NIFE_HACKBENCH_REQUIRED=1`, which covers ioping's test in the same boot.

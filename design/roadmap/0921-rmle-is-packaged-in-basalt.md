@@ -49,8 +49,8 @@ Lane `milestone/921-rmle-is-packaged-in-basalt`, with nifeos/basalt#24.
   package, and the build runs `cargo build --release --locked -p components --bin rmle` at the
   pinned commit for each bare-metal target, strips symbols, and packs with `cargo xtask package`
   (items 1 and 2). The aarch64 package measured 99,108 bytes. The first published Release is
-  `rolling-2026-10-14-0f4fc9d`, and `xtask/basalt-pins.index` pins its three lines.
-- `xtask/basalt-pins.index` pins rmle's three lines, and `script/swish-check` types `jig install
+  `rolling-2026-10-14-0f4fc9d`, and `xtask/basalt-pin` names a basalt commit whose recipe records its digests.
+- `xtask/basalt-pin` names the basalt commit whose recipe records rmle's digests, and `script/swish-check` types `jig install
   rmle` (item 3). The line is not followed by `rmle`, which no prompt line can start.
 - `rmle_tests` still builds rmle from source (item 4).
 
