@@ -1,0 +1,35 @@
+#!/bin/sh
+# script/kani-install: install the stock Kani that .kani-version pins, then run `cargo kani setup`.
+#
+# Every stock-Kani install in the tree goes through here (verify.yml, kani-reach.yml,
+# falsifications.yml, script/verify), so the prover cannot move because a release landed on
+# crates.io while nife did not (milestone 795 (pin stock Kani to a version, bumped deliberately like the nightly)). `script/lint` fails on any other
+# `cargo install ... kani-verifier` outside this file and `script/kani-bump`.
+#
+# An installed cargo-kani at any other version is replaced, loudly, never kept: a proof run on a
+# Kani nobody pinned is the failure this exists to stop. The riscv64 row builds its own patched
+# 0.67.0 (script/verify-riscv64, notes/kernel-proofs/riscv64-with-a-patched-kani.md) and never
+# comes through here; that version skew is recorded there and in the milestone block.
+#
+# Name: provisional (milestone 795); no architect has ratified it.
+
+set -e
+cd "$(dirname "$0")/.."
+
+pin="$(tr -d '[:space:]' <.kani-version)"
+case "$pin" in
+[0-9]*.[0-9]*.[0-9]*) ;;
+*)
+	echo "script/kani-install: .kani-version must hold one exact version like 0.68.0, found '$pin'" >&2
+	exit 1
+	;;
+esac
+
+have="$(cargo kani --version 2>/dev/null | awk '{print $2}' || true)"
+if [ "$have" = "$pin" ]; then
+	exit 0
+fi
+
+echo "==> installing Kani $pin (pinned in .kani-version; found '${have:-none}')"
+cargo install --locked kani-verifier --version "=$pin" --force
+cargo kani setup

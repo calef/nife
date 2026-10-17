@@ -78,9 +78,10 @@ logic of `iommu.rs`, and pure functions inside asm-bearing files, such as compos
   `crate::arch`.
 - The patch costs a rebase and a rename whenever the Kani pin moves, until a Kani release carries
   riscv64 target support (model-checking/kani#2402).
-- The other Kani jobs install whatever `kani-verifier` crates.io serves, with no version. So this row
-  can run a different Kani from its siblings, and the tree pins Kani in exactly one place: this
-  patch's file name.
+- The other Kani jobs install the stock version pinned in `.kani-version` (`script/kani-install`), so
+  this row runs a different Kani from its siblings: the patch's file name pins 0.67.0 here while
+  the stock pin is whatever `.kani-version` says. The skew ends when a released Kani carries
+  `--target` (kani#4913).
 - A build made with `KANI_TARGET` set has a riscv64-only sysroot, because Kani's sysroot has one slot
   for `std`. That is why the script builds into its own prefix rather than `~/.kani`.
 - `script/falsifications --sweep` runs stock Kani for the host. It cannot replay a riscv64-only

@@ -585,3 +585,85 @@ jobs:
           if [ "$BUILD" = "success" ]; then
             gh pr merge "$branch" --auto --merge || echo "::warning::could not arm the pull request"
           fi
+
+  # **Propose a Kani pin bump daily; never apply one** (milestone 795 (pin stock Kani to a version, bumped deliberately like the nightly)). The same three steps as the
+  # nightly, for the other input to the proofs that used to move by itself: this job runs
+  # `script/kani-bump`, which changes `.kani-version` and nothing else, and opens the pull request;
+  # `verify` on that pull request is the proof run on the new Kani; the default is to merge
+  # (calef, 2026-09-24), held with `needs-architect` and a `## What I need from you` comment only
+  # when a proof or falsification result changed, which is a red `verify`. Its own branch and
+  # pull request, so a Kani bump and a nightly bump never wait on each other. The riscv64 row builds
+  # its own patched 0.67.0 and is not part of this pin.
+  propose-kani:
+    name: propose a Kani pin bump
+    if: ${{ github.ref == 'refs/heads/main' }}
+    environment: automation
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    env:
+      AUTOMATION_APP_ID: ${{ secrets.AUTOMATION_APP_ID }}
+    steps:
+      # Same identity ladder as `propose` (its comments say why): the App's installation token so the
+      # pull request triggers CI, else the ephemeral `github.token`, which does not.
+      - name: Mint an installation token for the automation App
+        id: app-token
+        if: env.AUTOMATION_APP_ID != ''
+        uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3
+        with:
+          app-id: ${{ secrets.AUTOMATION_APP_ID }}
+          private-key: ${{ secrets.AUTOMATION_APP_KEY }}
+          permission-contents: write
+          permission-pull-requests: write
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          token: ${{ steps.app-token.outputs.token || github.token }}
+      - name: Raise .kani-version and open or update the pull request
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token || github.token }}
+          APP_TOKEN: ${{ steps.app-token.outputs.token }}
+        run: |
+          set -e
+          result="$(script/kani-bump)"
+          if [ "$result" = unchanged ]; then
+            echo "Kani is already at the newest stable version; nothing to propose."
+            exit 0
+          fi
+          set -- $result
+          old="$2"; new="$3"
+          branch="toolchain/kani-bump"
+          if [ -n "$APP_TOKEN" ]; then
+            lane="**Lane:** $branch, opened by a scheduled workflow under the project's own automation identity."
+          else
+            lane="**Lane:** $branch, opened by a scheduled workflow; calef's account is the author GitHub shows."
+          fi
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git checkout -b "$branch"
+          git add .kani-version
+          git commit -m "toolchain: bump the pinned Kani to $new
+
+          Proposed automatically by script/kani-bump. Only .kani-version changes; this pull
+          request's own verify run is the proof on the new version."
+          title="toolchain: bump the pinned Kani to $new"
+          body="$lane
+
+          Raises \`.kani-version\` from \`$old\` to \`$new\` and changes nothing else (milestone 795,
+          pin stock Kani to a version bumped deliberately). The proof is this pull request's own
+          \`verify\` run on the new Kani; the proposing job proves nothing.
+
+          **The default is to merge** (calef, 2026-09-24). Hold it with \`needs-architect\` and a
+          \`## What I need from you\` comment only when a Kani proof or falsification result changed
+          (a red \`verify\` or \`falsifications\`), and record any harness whose result or time moved.
+
+          The riscv64 row is not on this pin: it builds a patched 0.67.0 until upstream kani#4913
+          ships (notes/kernel-proofs/riscv64-with-a-patched-kani.md).
+
+          This branch is force-pushed daily, so it always proposes the newest stable release."
+          git push --force origin "$branch"
+          existing="$(gh pr list --head "$branch" --state open --json number --jq '.[].number')"
+          if [ -z "$existing" ]; then
+            gh pr create --head "$branch" --base main --title "$title" --body "$body"
+          else
+            gh pr edit "$existing" --title "$title" --body "$body"
+          fi
+          gh pr merge "$branch" --auto --merge || echo "::warning::could not arm the pull request"

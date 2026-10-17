@@ -1,0 +1,39 @@
+#!/bin/sh
+# script/kani-bump [VERSION]: raise the pinned stock Kani in .kani-version, and nothing else.
+#
+# .kani-version pins the Kani every stock proof runs on (milestone 795 (pin stock Kani to a version, bumped deliberately like the nightly)), so the prover moves by a
+# commit like the nightly does (script/toolchain-bump). With no argument it asks crates.io for the
+# newest stable kani-verifier. It never installs or proves anything: the proof is the pull request
+# it becomes, where `verify` runs the whole suite on the new pin and a changed result goes red.
+# The `toolchain bump` workflow's `propose-kani` job runs this and opens that pull request.
+#
+# Prints `unchanged` or `bumped OLD NEW` on stdout. Exit 0 either way; non-zero only when crates.io
+# cannot be read or the version is malformed, so a network failure is loud, not "nothing to do".
+#
+# The riscv64 row is not touched: it builds a patched 0.67.0 (script/verify-riscv64).
+#
+# Name: provisional (milestone 795); no architect has ratified it.
+
+set -e
+cd "$(dirname "$0")/.."
+
+old="$(tr -d '[:space:]' <.kani-version)"
+new="${1:-}"
+if [ -z "$new" ]; then
+	new="$(curl -fsS -A 'nifeos-kani-bump (https://github.com/nifeos/nife)' \
+		https://crates.io/api/v1/crates/kani-verifier |
+		python3 -c 'import json,sys; print(json.load(sys.stdin)["crate"]["max_stable_version"])')"
+fi
+case "$new" in
+[0-9]*.[0-9]*.[0-9]*) ;;
+*)
+	echo "script/kani-bump: '$new' is not an exact version like 0.68.0" >&2
+	exit 1
+	;;
+esac
+if [ "$old" = "$new" ]; then
+	echo unchanged
+	exit 0
+fi
+printf '%s\n' "$new" >.kani-version
+echo "bumped $old $new"

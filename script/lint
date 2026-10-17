@@ -4243,7 +4243,7 @@ vstub="$(mktemp -d)"
 cat >"$vstub/cargo" <<'STUB'
 #!/bin/sh
 # Stub: `cargo kani --version` succeeds; any other call is recorded.
-[ "$1" = kani ] && [ "$2" = "--version" ] && exit 0
+[ "$1" = kani ] && [ "$2" = "--version" ] && { echo "cargo-kani $(cat .kani-version)"; exit 0; }
 printf '%s\n' "$*" >>"$VERIFY_STUB_LOG"
 STUB
 chmod +x "$vstub/cargo"
@@ -4256,3 +4256,27 @@ if ! grep -q '^kani -p capability .*--harness lint_probe_harness' "$vstub/log" 2
 fi
 rm -rf "$vstub"
 echo "script/verify: extra arguments reach cargo kani"
+
+# Every stock Kani install goes through script/kani-install, which reads .kani-version (milestone
+# 795). An unpinned `cargo install ... kani-verifier` anywhere else would let the prover move
+# without a commit; `script/kani-bump` is the one other place that names the crate, to raise the pin.
+echo "==> every kani-verifier install reads .kani-version"
+kani_pin="$(tr -d '[:space:]' <.kani-version)"
+case "$kani_pin" in
+[0-9]*.[0-9]*.[0-9]*) ;;
+*)
+    echo "lint: .kani-version must hold one exact version like 0.68.0, found '$kani_pin'" >&2
+    exit 1
+    ;;
+esac
+kani_stray="$(git grep -n 'cargo install[^#]*kani-verifier' -- ':!script/kani-install' ':!script/kani-bump' ':!design' ':!notes' ':!script/lint' | grep -v '^[^:]*:[0-9]*:[[:space:]]*#' || true)"
+if [ -n "$kani_stray" ]; then
+    echo "lint: a Kani install bypasses script/kani-install (and so .kani-version):" >&2
+    echo "$kani_stray" | sed 's/^/  /' >&2
+    exit 1
+fi
+if ! grep -q -- '--version "=\$pin"' script/kani-install; then
+    echo "lint: script/kani-install no longer installs the exact pinned version" >&2
+    exit 1
+fi
+echo "Kani: pinned at $kani_pin, one install path"
