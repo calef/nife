@@ -372,12 +372,19 @@ fn the_write_half_needs_a_disk_and_an_entropy_rendezvous_and_holds_nothing_else(
         );
     };
     let maker = program("mkfs").expect("no mkfs program in the initial ramdisk");
+    partition_phase(&disk, entropy);
+    mkfs_phase(maker, &disk, entropy);
+}
+
+/// Steps 1 to 3 of the write half: the partitioner refuses without entropy, leaves the disk
+/// untouched, then succeeds with it and the table reads back.
+fn partition_phase(disk: &disk_service::BlankDisk, entropy: crate::sched::RendezvousId) {
     use filesystem_fixture::blank;
 
     // 1. The partitioner, with the disk and NO entropy rendezvous. It must refuse, and it must refuse
     //    before writing anything, which is why the program draws all four ids first and lays out
     //    the table second.
-    let report = disk_service::start_partitioner(partitioner_image(), &disk, ROLE_PARTITION, None);
+    let report = disk_service::start_partitioner(partitioner_image(), disk, ROLE_PARTITION, None);
     let [verdict, ..] = crate::sched::ipc_receive(report);
     assert_eq!(
         verdict, P_NO_ENTROPY,
@@ -387,7 +394,7 @@ fn the_write_half_needs_a_disk_and_an_entropy_rendezvous_and_holds_nothing_else(
 
     // 2. And the disk still has no table on it, which is what makes step 1 mean something: "it
     //    reported a refusal" and "it wrote nothing" are different claims.
-    let report = disk_service::start_partitioner(partitioner_image(), &disk, ROLE_VERIFY, None);
+    let report = disk_service::start_partitioner(partitioner_image(), disk, ROLE_VERIFY, None);
     let [flags, partitions, ..] = crate::sched::ipc_receive(report);
     assert_eq!(
         (flags, partitions),
@@ -397,7 +404,7 @@ fn the_write_half_needs_a_disk_and_an_entropy_rendezvous_and_holds_nothing_else(
 
     // 3. The same binary, the same role, the same disk, one capability more.
     let report =
-        disk_service::start_partitioner(partitioner_image(), &disk, ROLE_PARTITION, Some(entropy));
+        disk_service::start_partitioner(partitioner_image(), disk, ROLE_PARTITION, Some(entropy));
     let [verdict, written, step, ..] = crate::sched::ipc_receive(report);
     assert_eq!(
         verdict, R_PARTITIONED,
@@ -407,7 +414,7 @@ fn the_write_half_needs_a_disk_and_an_entropy_rendezvous_and_holds_nothing_else(
 
     // And the table is really there, read back by a process that cannot write: both copies, their
     // CRCs, the protective MBR, the names, and three distinct version-4 GUIDs.
-    let report = disk_service::start_partitioner(partitioner_image(), &disk, ROLE_VERIFY, None);
+    let report = disk_service::start_partitioner(partitioner_image(), disk, ROLE_VERIFY, None);
     let [flags, partitions, data_lba, ..] = crate::sched::ipc_receive(report);
     for (bit, what) in [
         (PF_MBR, "LBA 0 holds a protective MBR covering the disk"),
@@ -428,10 +435,20 @@ fn the_write_half_needs_a_disk_and_an_entropy_rendezvous_and_holds_nothing_else(
         blank::DATA.0,
         "the data partition starts where it was placed",
     );
+}
+
+/// Steps 4 to 8 of the write half: `mkfs` refuses without entropy or without a disk, neither
+/// refusal creates anything, and with both it makes a filesystem another process can open.
+fn mkfs_phase(
+    maker: &'static [u8],
+    disk: &disk_service::BlankDisk,
+    entropy: crate::sched::RendezvousId,
+) {
+    use filesystem_fixture::blank;
 
     // 4. `mkfs` with the disk and no entropy. The same refusal one layer up: a filesystem's uuid has
     //    the GPT's problem, and the engine now takes it as an argument for exactly this reason.
-    let report = disk_service::start_maker(maker, &disk, ROLE_MAKE, None, true);
+    let report = disk_service::start_maker(maker, disk, ROLE_MAKE, None, true);
     let [verdict, ..] = crate::sched::ipc_receive(report);
     assert_eq!(
         verdict, M_NO_ENTROPY,
@@ -439,7 +456,7 @@ fn the_write_half_needs_a_disk_and_an_entropy_rendezvous_and_holds_nothing_else(
     );
 
     // 5. And with entropy and no disk: nothing to read a table off, nothing to write to.
-    let report = disk_service::start_maker(maker, &disk, ROLE_MAKE, Some(entropy), false);
+    let report = disk_service::start_maker(maker, disk, ROLE_MAKE, Some(entropy), false);
     let [verdict, ..] = crate::sched::ipc_receive(report);
     assert_eq!(
         verdict, M_NO_DISK,
@@ -448,7 +465,7 @@ fn the_write_half_needs_a_disk_and_an_entropy_rendezvous_and_holds_nothing_else(
 
     // 6. Neither refusal created anything. A partition that has been *described* is not a partition
     //    that has been *formatted*, and this is where that difference is read off the platter.
-    let report = disk_service::start_maker(maker, &disk, ROLE_CHECK, None, true);
+    let report = disk_service::start_maker(maker, disk, ROLE_CHECK, None, true);
     let [verdict, ..] = crate::sched::ipc_receive(report);
     assert_eq!(
         verdict, R_NO_FS,
@@ -456,7 +473,7 @@ fn the_write_half_needs_a_disk_and_an_entropy_rendezvous_and_holds_nothing_else(
     );
 
     // 7. Both capabilities, and they are the whole authority needed to create a filesystem.
-    let report = disk_service::start_maker(maker, &disk, ROLE_MAKE, Some(entropy), true);
+    let report = disk_service::start_maker(maker, disk, ROLE_MAKE, Some(entropy), true);
     let [verdict, blocks, first, ..] = crate::sched::ipc_receive(report);
     assert_eq!(
         verdict, R_MADE,
@@ -474,7 +491,7 @@ fn the_write_half_needs_a_disk_and_an_entropy_rendezvous_and_holds_nothing_else(
     // 8. And it is a filesystem a *different* process can open, holding the file that run wrote.
     //    The host tool reads the same image from outside the guest after the run, which is the half
     //    a cache cannot fake (`cargo xtask test`'s blank-image check).
-    let report = disk_service::start_maker(maker, &disk, ROLE_CHECK, None, true);
+    let report = disk_service::start_maker(maker, disk, ROLE_CHECK, None, true);
     let [verdict, n, ..] = crate::sched::ipc_receive(report);
     assert_eq!(
         verdict, R_FOUND,
