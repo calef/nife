@@ -23,12 +23,12 @@ The proposal, put to calef in the maintainer session of 2026-10-17 (UTC), and hi
 
 calef: "Ratified."
 
-**What it covers.** A directory under `design/`, `notes/` or `briefs/` beside a document of its own
-stem (`notes/stack/` beside `notes/stack.md`, the siting default of §212 (a prose budget)), and each
+What it covers. A directory under `design/`, `notes/` or `briefs/` beside a document of its own
+stem (`notes/stack/` beside `notes/stack.md`, the siting default of §212 (a prose budget)). Also each
 document inside it whose stem is made of the words of one heading of that parent. Measured on
 2026-10-17: 103 such directories holding 507 documents, 164 of which follow the rule.
 
-**What it pulls aside, leaving it provisional.**
+What it pulls aside, leaving it provisional.
 
 - A stem that matches no heading of its parent. The check is mechanical (`_matches_heading`): every
   word of the stem, articles aside, must be a word of one heading. A stem with a word no heading
@@ -44,7 +44,7 @@ Not covered: `design/fatal-risks`, `notes/coes`
 Those two are records directories (calef, 2026-09-29 and #1921), which §212 separates from appendix
 directories, so their names and the nine fatal-risks evidence appendices stay provisional.
 
-**When the parent is renamed.** The directory follows its parent's stem and each file follows the
+When the parent is renamed. The directory follows its parent's stem and each file follows the
 heading it came from, so the rename moves them together and no second ruling is needed.
 
 ## Rule 2: a test fixture program is named for its role in its test, as a noun phrase
@@ -59,7 +59,7 @@ The proposal and his reply:
 
 calef: "Yes"
 
-**What it covers.** The 24 programs under `fixtures/src/` listed below. The list is explicit because
+What it covers. The 24 programs under `fixtures/src/` listed below. The list is explicit because
 "names a role" is a judgement a pattern would guess at. A new fixture is covered by adding a bullet
 here in the commit that adds it, and until then it is provisional like any other new name.
 
@@ -90,7 +90,7 @@ Covered:
 - `sink_transcript_writer`
 - `unreachable_network_witness`
 
-**What it pulls aside, leaving it provisional.** `alto`, `tenor`, `greeting`, `hello`, `noteless`,
+What it pulls aside, leaving it provisional. `alto`, `tenor`, `greeting`, `hello`, `noteless`,
 `outlaw`, `chatty` and `flaky`. None names a role in its test: `alto` and `tenor` are two voices of a
 duet, `greeting`, `hello` and `noteless` say what they print, and `outlaw`, `chatty` and `flaky` carry
 rulings of their own that no rename has applied (`kernel_test_subject`, `swap_boundary_witness` and
