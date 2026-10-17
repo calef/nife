@@ -8,42 +8,42 @@ Sorted by breaking changes in the last four weeks (2026W39 to 2026W42), then by 
 
 | crate | breaking, 4 weeks | additions, 4 weeks | breaking | additions | commits | crossing another division |
 |---|---:|---:|---:|---:|---:|---:|
-| `filesystem_protocol` | 250 | 59 | 283 | 459 | 118 | 107 (91%) |
-| `grant_plan` | 104 | 344 | 151 | 976 | 171 | 139 (81%) |
-| `globally_unique_identifier_partition_table` | 64 | 5 | 91 | 281 | 39 | 30 (77%) |
-| `package_archive` | 19 | 129 | 19 | 129 | 24 | 17 (71%) |
-| `socket_protocol` | 16 | 32 | 19 | 70 | 32 | 30 (94%) |
-| `login_protocol` | 14 | 69 | 22 | 91 | 35 | 34 (97%) |
-| `abi` | 11 | 72 | 41 | 170 | 114 | 107 (94%) |
-| `line_editor` | 11 | 73 | 12 | 118 | 33 | 27 (82%) |
-| `swap_protocol` | 10 | 34 | 12 | 124 | 46 | 45 (98%) |
-| `credential_protocol` | 8 | 6 | 35 | 70 | 34 | 31 (91%) |
-| `activation_set` | 8 | 72 | 8 | 72 | 22 | 20 (91%) |
-| `byte_sink_protocol` | 4 | 10 | 6 | 48 | 29 | 29 (100%) |
-| `clock_protocol` | 4 | 4 | 5 | 54 | 28 | 26 (93%) |
-| `component_plan` | 3 | 14 | 3 | 126 | 32 | 26 (81%) |
-| `graphics_protocol` | 2 | 2 | 11 | 33 | 28 | 28 (100%) |
-| `nifefs` | 2 | 0 | 9 | 41 | 41 | 29 (71%) |
-| `entropy_protocol` | 2 | 3 | 3 | 18 | 23 | 21 (91%) |
-| `current_cpu_protocol` | 2 | 17 | 2 | 17 | 12 | 6 (50%) |
-| `measured_boot` | 2 | 24 | 2 | 65 | 22 | 18 (82%) |
-| `supervision_protocol` | 1 | 10 | 22 | 70 | 52 | 47 (90%) |
-| `compositor` | 1 | 4 | 11 | 99 | 32 | 25 (78%) |
-| `std_runtime_protocol` | 1 | 24 | 1 | 24 | 11 | 10 (91%) |
-| `elf` | 0 | 30 | 3 | 82 | 46 | 36 (78%) |
-| `counter_frequency_protocol` | 0 | 3 | 1 | 15 | 13 | 11 (85%) |
-| `environment_protocol` | 0 | 0 | 1 | 44 | 10 | 10 (100%) |
+| `filesystem_protocol` | 250 | 59 | 283 | 459 | 120 | 109 (91%) |
+| `grant_plan` | 104 | 344 | 151 | 976 | 173 | 141 (82%) |
+| `globally_unique_identifier_partition_table` | 64 | 5 | 91 | 281 | 41 | 32 (78%) |
+| `package_archive` | 19 | 129 | 19 | 129 | 26 | 19 (73%) |
+| `socket_protocol` | 16 | 32 | 19 | 70 | 34 | 32 (94%) |
+| `login_protocol` | 14 | 69 | 22 | 91 | 37 | 36 (97%) |
+| `abi` | 11 | 72 | 41 | 170 | 116 | 109 (94%) |
+| `line_editor` | 11 | 73 | 12 | 118 | 35 | 29 (83%) |
+| `swap_protocol` | 10 | 34 | 12 | 124 | 48 | 47 (98%) |
+| `credential_protocol` | 8 | 6 | 35 | 70 | 36 | 33 (92%) |
+| `activation_set` | 8 | 72 | 8 | 72 | 24 | 22 (92%) |
+| `byte_sink_protocol` | 4 | 10 | 6 | 48 | 31 | 31 (100%) |
+| `clock_protocol` | 4 | 4 | 5 | 54 | 30 | 28 (93%) |
+| `component_plan` | 3 | 14 | 3 | 126 | 34 | 28 (82%) |
+| `graphics_protocol` | 2 | 2 | 11 | 33 | 30 | 30 (100%) |
+| `nifefs` | 2 | 0 | 9 | 41 | 43 | 31 (72%) |
+| `entropy_protocol` | 2 | 3 | 3 | 18 | 25 | 23 (92%) |
+| `current_cpu_protocol` | 2 | 17 | 2 | 17 | 14 | 8 (57%) |
+| `measured_boot` | 2 | 24 | 2 | 65 | 24 | 20 (83%) |
+| `supervision_protocol` | 1 | 10 | 22 | 70 | 54 | 49 (91%) |
+| `compositor` | 1 | 4 | 11 | 99 | 34 | 27 (79%) |
+| `std_runtime_protocol` | 1 | 24 | 1 | 24 | 13 | 12 (92%) |
+| `elf` | 0 | 30 | 3 | 82 | 48 | 38 (79%) |
+| `counter_frequency_protocol` | 0 | 3 | 1 | 15 | 15 | 13 (87%) |
+| `environment_protocol` | 0 | 0 | 1 | 44 | 12 | 12 (100%) |
 | `user_mode_heap` | 0 | 0 | 1 | 11 | 0 | 0 |
 | `address_space_map` | 0 | 42 | 0 | 42 | 0 | 0 |
 | `allocation_cache` | 0 | 18 | 0 | 18 | 0 | 0 |
 | `argument_protocol` | 0 | 29 | 0 | 29 | 0 | 0 |
-| `boot_slot` | 0 | 52 | 0 | 52 | 13 | 9 (69%) |
-| `capability_witness_protocol` | 0 | 7 | 0 | 10 | 16 | 13 (81%) |
-| `manifest_note` | 0 | 58 | 0 | 58 | 19 | 13 (68%) |
+| `boot_slot` | 0 | 52 | 0 | 52 | 15 | 11 (73%) |
+| `capability_witness_protocol` | 0 | 7 | 0 | 10 | 18 | 15 (83%) |
+| `manifest_note` | 0 | 58 | 0 | 58 | 21 | 15 (71%) |
 
 ## What broke in 2026W42
 
-Read at `6f7deccd121c` against the week before. Each line is one removed or changed public item, quoted as it stood that week; a crate rename is one line for the whole crate.
+Read at `e6611156377d` against the week before. Each line is one removed or changed public item, quoted as it stood that week; a crate rename is one line for the whole crate.
 
 > - `abi`: syscall renamed, number kept (method or encoding), now `interrupt::ACK` `irq::ACK`
 > - `abi`: syscall renamed, number kept (method or encoding), now `interrupt::WAIT` `irq::WAIT`
