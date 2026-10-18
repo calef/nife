@@ -99,7 +99,7 @@ durable session. It is read at boot by whatever process performs re-derivation.
 
 - *Format*: reuse `crates/timetable::parse` byte-for-byte. Zero new parsing code. The crate is
   already `no_std` and host-tested. Its own doc already states the reason calendar syntax is
-  deliberately excluded (§123 (boot-time re-derivation)-adjacent: same crate, same restraint). A
+  deliberately excluded (§123-adjacent: same crate, same restraint). A
   schedule registered at runtime is exactly the same two words a compile-time `timetable.conf` line
   is. So the parser does not need to learn a second dialect.
 - *Location*: `<identity's own subtree>/schedule` (exact path a detail for whoever builds it), using
@@ -113,8 +113,8 @@ durable session. It is read at boot by whatever process performs re-derivation.
   8 lines. No new capability, no new server: the FS server already answers these verbs.
 - *Read-at-boot path*: `fs::OPENDIR` + `fs::OPEN` + `fs::READ` under whatever capability boot-time
   re-derivation is granted (§123's subject). This decision only assumes *some* read capability into
-  the identity's subtree exists to grant. That is the same dependency §123 names in the other
-  direction.
+  the identity's subtree exists to grant. That is the same dependency §123 (boot-time re-derivation)
+  names in the other direction.
 - *Cost, measured against the alternative*: this is the parser this tree already has, tested and
   proven. The filesystem is one this tree already writes to and reads back from across reboots. The
   only genuinely new code is the two IPC call sites (write it, read it). Each is a page of client
