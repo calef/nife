@@ -8,7 +8,9 @@
 //!
 //! Name: provisional (milestone 842, 2026-10-11), as are its sibling modules' names.
 
-use crate::{Command, MAX_FLAGS, Refusal, TouchOperands, parse_u64, split_first_word, trim, word};
+use crate::{
+    Command, MAX_SHORT_OPTIONS, Refusal, TouchOperands, parse_u64, split_first_word, trim, word,
+};
 
 /// Split a command line into whitespace-separated tokens, writing them into `out` and returning
 /// the filled prefix. A tiny `no_std` tokenizer: no allocation, bounded by `out.len()`. Tokens
@@ -43,7 +45,7 @@ pub fn tokenize<'a, 'b>(line: &'a [u8], out: &'b mut [&'a [u8]]) -> &'b [&'a [u8
 }
 
 /// **Assemble the argv of a program that hears words** (milestone 205 (how a foreign program is
-/// told what to do), DECISIONS §170; see [`ArgSpec::Words`](crate::ArgSpec::Words)), onto `page`, and return how many
+/// told what to do), DECISIONS §170; see [`ProgramArgumentDeclaration::Words`](crate::ProgramArgumentDeclaration::Words)), onto `page`, and return how many
 /// words it carries.
 ///
 /// `line` is one command: the program's name and its words, with no operator on it. Every word is
@@ -124,7 +126,7 @@ pub const BUILTINS: &[&[u8]] = &[
 /// rest of the line verbatim (so `echo   two  spaces` prints its spaces); everything else works on
 /// tokens.
 ///
-/// Builtins win over programs, which is why [`Prog::from_name`](crate::Prog::from_name) must never learn a name that is
+/// Builtins win over programs, which is why [`Program::from_name`](crate::Program::from_name) must never learn a name that is
 /// also a builtin. A handful of reserved words is the whole cost of a shell where every command is
 /// typed the same way.
 ///
@@ -214,7 +216,7 @@ pub fn parse(line: &[u8]) -> Command<'_> {
         // **`rm` is deliberately not here.** It was a builtin in the commands lane and is a program
         // now (milestone 47's rmdir lane): a builtin runs with the shell's whole endowment, and a
         // destructive loop should take an explicit attenuated grant instead. Since builtins are
-        // matched first, deleting the line is the entire change at this level; `Prog::from_name`
+        // matched first, deleting the line is the entire change at this level; `Program::from_name`
         // picks the word up.
         // Not a builtin, so it is a program invocation, and the whole line (name included) is the
         // grant expression. Whether the program exists is `plan`'s question, not the parser's.
@@ -349,7 +351,7 @@ pub fn parse_run(line: &[u8]) -> ParsedInvocation<'_> {
     let mut positional_tokens = [&b""[..]; MAX_POSITIONALS];
     let mut quoted_positionals = [false; MAX_POSITIONALS];
     let mut positional_count = 0;
-    let mut short_options = [0u8; MAX_FLAGS];
+    let mut short_options = [0u8; MAX_SHORT_OPTIONS];
     let mut short_option_count = 0;
     let mut unexpected = None;
     let mut misquoted = None;
@@ -372,7 +374,7 @@ pub fn parse_run(line: &[u8]) -> ParsedInvocation<'_> {
         };
         if !quoted && t == b"--mem" {
             // The next token is the page count. A missing or non-numeric value leaves memory_grant None,
-            // which the plan turns into MemRequired for a program that needs it.
+            // which the plan turns into MemoryGrantRequired for a program that needs it.
             if i + 1 < toks.len() {
                 // Unquoted first, so `--mem "16"` is the same grant as `--mem 16`. Quoting decides
                 // what a word is and this one has to be a number either way.
@@ -394,7 +396,7 @@ pub fn parse_run(line: &[u8]) -> ParsedInvocation<'_> {
             // of that job worth keeping.
             let letters = &t[1..];
             let short = !letters.is_empty() && letters.iter().all(u8::is_ascii_alphabetic);
-            if short && short_option_count + letters.len() <= MAX_FLAGS {
+            if short && short_option_count + letters.len() <= MAX_SHORT_OPTIONS {
                 for &c in letters {
                     short_options[short_option_count] = c;
                     short_option_count += 1;
@@ -449,7 +451,7 @@ pub struct ParsedInvocation<'a> {
     /// The program name as typed (may not resolve).
     pub program: &'a [u8],
     /// **The whole invocation as it was typed**, which is what a program that hears words is given
-    /// ([`ArgSpec::Words`], milestone 205). Everything else here is a classification of it, and a
+    /// ([`ProgramArgumentDeclaration::Words`], milestone 205). Everything else here is a classification of it, and a
     /// classification is exactly what §170 (how a foreign program is told what to do) said such a
     /// program must not get.
     line: &'a [u8],
@@ -463,7 +465,7 @@ pub struct ParsedInvocation<'a> {
     /// knowing the program, because **an option letter is not authority**: what it may do is widen a
     /// grant, and that is decided in [`plan_against`] against the manifest, at the prompt, before
     /// anything is spawned. A letter no manifest declares is [`Refusal::NoSuchOption`] there.
-    short_options: [u8; MAX_FLAGS],
+    short_options: [u8; MAX_SHORT_OPTIONS],
     short_option_count: usize,
     /// Which of [`positionals`](ParsedInvocation::positionals) were quoted, in the same order. A quoted word
     /// is **never a pattern**, whatever bytes are in it, which is the one authority-visible thing

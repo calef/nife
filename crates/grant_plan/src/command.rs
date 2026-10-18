@@ -9,7 +9,7 @@
 //! Name: provisional (milestone 842, 2026-10-11), as are its sibling modules' names.
 
 use crate::expand::{Name, NameSet};
-use crate::{ParsedInvocation, Prog, line, nav};
+use crate::{ParsedInvocation, Program, line, nav};
 
 /// A parsed command line. The shell dispatches on this; only [`Command::Run`] carries a grant
 /// expression that must be planned against a manifest.
@@ -75,7 +75,7 @@ pub enum Command<'a> {
     /// `touch <path>` or `touch -t <RFC-3339-instant> <path>`: create an empty file if the name is
     /// not there (a no-op if it already is), then bump its modification time. Bare `touch` sets it
     /// to now; `-t` asserts a caller-chosen instant (DECISIONS §112: the ability to *lie about
-    /// history*). **A builtin, in [`Mkdir`](Command::Mkdir)'s category rather than [`Prog::Rm`]'s**:
+    /// history*). **A builtin, in [`Mkdir`](Command::Mkdir)'s category rather than [`Program::Rm`]'s**:
     /// even the `-t` half takes no more than this shell's own directory capability
     /// (`filesystem_contract::dir::WRITE` for the bare form, `dir::WRITE | dir::SETTIME` for `-t`),
     /// which `mkdir` and the create half already established as the model, so there is nothing to
@@ -106,7 +106,7 @@ pub enum Command<'a> {
     /// `apropos <term>`: **name the installed pages that mention a word** (milestone 40 phase 2).
     /// The operand is one word, folded the way the host builder folded the text it indexed.
     ///
-    /// **A builtin, in [`Ls`](Command::Ls)'s category rather than [`Prog::Rm`]'s**, and the
+    /// **A builtin, in [`Ls`](Command::Ls)'s category rather than [`Program::Rm`]'s**, and the
     /// argument is the one that milestone's own note reached: search *is* enumeration, the shell
     /// already holds enumeration over what it can see, and a searching *program* would have to be
     /// handed a capability to the whole documentation store in order to read every shard in it.
@@ -173,7 +173,9 @@ pub struct TouchOperands<'a> {
 /// The most short-option letters one invocation may carry (`rm -rfv` is three). A ceiling rather
 /// than a limit anybody meets, and past it the line is [`Refusal::Unexpected`](crate::Refusal::Unexpected) rather than quietly
 /// short of an option the user typed.
-pub const MAX_FLAGS: usize = 8;
+///
+/// Name: ratified 2026-10-18 (calef: "Yes").
+pub const MAX_SHORT_OPTIONS: usize = 8;
 
 /// What a valid `run` resolves to: exactly the authority to hand the child, and nothing else.
 /// Reading this is reading the whole endowment, which is §14's "one literal tells you a process's
@@ -186,7 +188,7 @@ pub const MAX_FLAGS: usize = 8;
 /// is planned, nothing that happens afterwards can change what it means.
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub struct Endowment {
-    pub prog: Prog,
+    pub program: Program,
     /// The integer argument to start it with (0 when the program takes none).
     pub program_argument: u64,
     /// Pages of untyped to split from the shell's own budget and grant (0 = none).
@@ -201,10 +203,12 @@ pub struct Endowment {
     /// for a set of one, `components/src/fs_nameset_caretaker.rs` for the set a pattern matched.
     pub directory: Option<DirectoryGrant>,
     /// **The short options that were on the line**, as a bitmask: bit `i` is set when the manifest's
-    /// `flags[i]` was typed. Numbered by position in the manifest rather than by letter, so nothing
+    /// `short_options[i]` was typed. Numbered by position in the manifest rather than by letter, so nothing
     /// here has to know what any option means; the program and the manifest agree on the order, and
     /// a host test pins them (`grant_plan::rmopt`).
-    pub flags: u64,
+    ///
+    /// Name: ratified 2026-10-18 (calef: "Yes").
+    pub short_options: u64,
     /// **What goes in the child's output slot** (milestone 50): the shell's own result endpoint,
     /// the pipe to the next stage, or a file sink. Reading this line is reading everything `>` and
     /// `|` did, and it is one field because they are one mechanism.
@@ -222,14 +226,14 @@ pub struct Endowment {
     /// the per-job interrupt channel and runs the escalation policy while the job is foreground.
     pub interruptible: bool,
     /// **Whether this stage may write before it has read to the end** (mirrors
-    /// [`InputSpec::Required::writes_while_reading`](crate::InputSpec::Required::writes_while_reading); `false` for a program that reads nothing,
+    /// [`InputDeclaration::Required::writes_while_reading`](crate::InputDeclaration::Required::writes_while_reading); `false` for a program that reads nothing,
     /// which cannot be fed and so cannot be the thing that blocks).
     ///
     /// It is carried on the endowment rather than looked up from `prog.manifest()` because
     /// [`check_chain`](crate::check_chain) asks about a **whole planned line** and because [`plan_against_with`](crate::plan_against_with) can be
     /// given an explicit manifest. That is what keeps the check live, tested logic rather than a
     /// branch nothing reaches: no shipped program declares `true` yet, and the host tests plan one
-    /// that does, exactly as `FileSpec::Required` is exercised.
+    /// that does, exactly as `FileGrantDeclaration::Required` is exercised.
     pub writes_while_reading: bool,
 }
 
@@ -318,11 +322,11 @@ pub struct DirectoryGrant {
     pub subtree: bool,
 }
 
-/// **`rm`'s options**, by the bit they occupy in [`Endowment::flags`], which is their position in
-/// [`Prog::Rm`]'s manifest. Named here so the shell, the program and the tests share one definition
+/// **`rm`'s options**, by the bit they occupy in [`Endowment::short_options`], which is their position in
+/// [`Program::Rm`]'s manifest. Named here so the shell, the program and the tests share one definition
 /// rather than three copies of an ordering; `rm_options_are_numbered_by_their_position` pins them.
 pub mod rmopt {
-    /// `-r`: recurse. It is also `rm`'s `subtree_flag`, so typing it visibly widens the grant.
+    /// `-r`: recurse. It is also `rm`'s `subtree_option`, so typing it visibly widens the grant.
     pub const RECURSIVE: u64 = 1 << 0;
     /// `-f`: ignore a name that is not there, and do not let its absence change the exit status.
     /// It is **not** "ignore errors": a removal that fails for any other reason still reports.

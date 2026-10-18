@@ -1,12 +1,12 @@
 //! **Authorities by verb** (milestone 809 (the package client becomes a program), its option V2): a
 //! program's manifest narrowed by the word a line gives after its name, so one program holds, per
 //! line, only what that verb needs. `jig list` reads the catalog; `jig install` also holds the
-//! installer and the network. [`crate::Prog::verbs`] holds each program's table, and
+//! installer and the network. [`crate::Program::verbs`] holds each program's table, and
 //! `capability_manifest_note`'s verb record is the same list as bytes.
 //!
 //! Name: provisional (milestone 809), as are the module, the types and the bit positions.
 
-use crate::{IndexStore, Manifest, each_word};
+use crate::{IndexStoreDeclaration, Manifest, each_word};
 
 /// **The authorities a verb table may hand out**, as bits (milestone 809 (the package client
 /// becomes a program), option V2). Each names one of [`Manifest`]'s fields the progenitor endows
@@ -25,7 +25,7 @@ impl ManifestAuthorities {
     pub const NONE: ManifestAuthorities = ManifestAuthorities(0);
     /// [`Manifest::clock`].
     pub const CLOCK: ManifestAuthorities = ManifestAuthorities(1 << 0);
-    /// [`Manifest::config`].
+    /// [`Manifest::configuration`].
     pub const CONFIGURATION: ManifestAuthorities = ManifestAuthorities(1 << 1);
     /// [`Manifest::entropy`].
     pub const ENTROPY: ManifestAuthorities = ManifestAuthorities(1 << 2);
@@ -77,7 +77,7 @@ impl ManifestAuthorities {
 
 /// **One verb and what it is granted** (milestone 809, option V2): `jig list` reads the catalog and
 /// nothing else; `jig install` also holds the installer and the network. A list of these pairs is
-/// the whole of a verb table, in a program's row ([`Prog::verbs`](crate::Prog::verbs)) or in its note (`capability_manifest_note`'s
+/// the whole of a verb table, in a program's row ([`Program::verbs`](crate::Program::verbs)) or in its note (`capability_manifest_note`'s
 /// verb record, which is the same list as bytes). Name: provisional.
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub struct VerbGrant {
@@ -152,7 +152,7 @@ pub fn narrow_by_verb(m: &Manifest, verbs: &[VerbGrant], verb: Option<&[u8]>) ->
         .map_or(ManifestAuthorities::NONE, |v| v.authorities);
     Manifest {
         clock: m.clock && g.contains(ManifestAuthorities::CLOCK),
-        config: m.config && g.contains(ManifestAuthorities::CONFIGURATION),
+        configuration: m.configuration && g.contains(ManifestAuthorities::CONFIGURATION),
         entropy: m.entropy && g.contains(ManifestAuthorities::ENTROPY),
         network: m.network && g.contains(ManifestAuthorities::NETWORK),
         domain: m.domain && g.contains(ManifestAuthorities::DOMAIN),
@@ -161,19 +161,19 @@ pub fn narrow_by_verb(m: &Manifest, verbs: &[VerbGrant], verb: Option<&[u8]>) ->
         installer: m.installer && g.contains(ManifestAuthorities::INSTALLER),
         catalog: m.catalog && g.contains(ManifestAuthorities::CATALOG),
         indexes: match m.indexes {
-            IndexStore::ReadWrite
+            IndexStoreDeclaration::ReadWrite
                 if g.contains(
                     ManifestAuthorities::INDEXES.union(ManifestAuthorities::INDEXES_WRITE),
                 ) =>
             {
-                IndexStore::ReadWrite
+                IndexStoreDeclaration::ReadWrite
             }
-            IndexStore::ReadWrite | IndexStore::ReadOnly
+            IndexStoreDeclaration::ReadWrite | IndexStoreDeclaration::ReadOnly
                 if g.contains(ManifestAuthorities::INDEXES) =>
             {
-                IndexStore::ReadOnly
+                IndexStoreDeclaration::ReadOnly
             }
-            _ => IndexStore::Forbidden,
+            _ => IndexStoreDeclaration::Forbidden,
         },
         ..*m
     }
@@ -209,7 +209,7 @@ pub fn verb_of_page(page: &[u8]) -> Option<&[u8]> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{Prog, StartupContract, argv, image_can_carry};
+    use crate::{Program, StartupContract, argv, image_can_carry};
 
     /// **A verb narrows and never widens** (milestone 809, option V2). `jig list` holds the catalog
     /// alone, `jig remove` the installer alone, `jig install` all three, and a word that is no verb
@@ -218,10 +218,10 @@ mod tests {
     /// progenitor, so a shell that read the unnarrowed manifest could not send it a page.
     #[test]
     fn a_verb_narrows_and_never_widens() {
-        let jig = Prog::Jig.manifest();
+        let jig = Program::Jig.manifest();
         let as_typed = |line: &[u8]| {
             let mut buf = [0u8; MAX_VERB];
-            narrow_by_verb(&jig, Prog::Jig.verbs(), verb_of(line, &mut buf))
+            narrow_by_verb(&jig, Program::Jig.verbs(), verb_of(line, &mut buf))
         };
         let list = as_typed(b"jig list");
         assert!(list.catalog && !list.installer && !list.network);
@@ -231,23 +231,26 @@ mod tests {
         assert!(remove.installer && !remove.catalog && !remove.network);
         // Milestone 801: only `update` writes the index store; `list` and `install` read it, and
         // `remove` holds none of it.
-        assert_eq!(as_typed(b"jig update").indexes, IndexStore::ReadWrite);
+        assert_eq!(
+            as_typed(b"jig update").indexes,
+            IndexStoreDeclaration::ReadWrite
+        );
         assert!(!as_typed(b"jig update").installer);
-        assert_eq!(list.indexes, IndexStore::ReadOnly);
-        assert_eq!(install.indexes, IndexStore::ReadOnly);
-        assert_eq!(remove.indexes, IndexStore::Forbidden);
+        assert_eq!(list.indexes, IndexStoreDeclaration::ReadOnly);
+        assert_eq!(install.indexes, IndexStoreDeclaration::ReadOnly);
+        assert_eq!(remove.indexes, IndexStoreDeclaration::Forbidden);
         // The progenitor's reading of the page the shell assembles agrees with the shell's.
         let mut page = [0u8; program_argument_contract::PAGE_BYTES];
         argv(b"jig 'install' greeting", &mut page).unwrap();
         assert_eq!(verb_of_page(&page), Some(&b"install"[..]));
         let nothing = as_typed(b"jig upgrade");
         assert!(!nothing.installer && !nothing.catalog && !nothing.network);
-        assert_eq!(nothing.indexes, IndexStore::Forbidden);
+        assert_eq!(nothing.indexes, IndexStoreDeclaration::Forbidden);
         assert_eq!(as_typed(b"jig"), nothing);
         // Everything else about the manifest is untouched.
-        assert_eq!(list.arg, jig.arg);
+        assert_eq!(list.program_argument, jig.program_argument);
         assert_eq!(list.startup, jig.startup);
-        for &p in Prog::ALL {
+        for &p in Program::ALL {
             let m = p.manifest();
             for v in p.verbs() {
                 assert!(v.verb.len() <= MAX_VERB, "{}", v.verb);
@@ -256,7 +259,7 @@ mod tests {
                 let narrowed = narrow_by_verb(&m, p.verbs(), Some(v.verb.as_bytes()));
                 let kept = [
                     (narrowed.clock, ManifestAuthorities::CLOCK),
-                    (narrowed.config, ManifestAuthorities::CONFIGURATION),
+                    (narrowed.configuration, ManifestAuthorities::CONFIGURATION),
                     (narrowed.entropy, ManifestAuthorities::ENTROPY),
                     (narrowed.network, ManifestAuthorities::NETWORK),
                     (narrowed.domain, ManifestAuthorities::DOMAIN),
@@ -265,11 +268,11 @@ mod tests {
                     (narrowed.installer, ManifestAuthorities::INSTALLER),
                     (narrowed.catalog, ManifestAuthorities::CATALOG),
                     (
-                        narrowed.indexes != IndexStore::Forbidden,
+                        narrowed.indexes != IndexStoreDeclaration::Forbidden,
                         ManifestAuthorities::INDEXES,
                     ),
                     (
-                        narrowed.indexes == IndexStore::ReadWrite,
+                        narrowed.indexes == IndexStoreDeclaration::ReadWrite,
                         ManifestAuthorities::INDEXES_WRITE,
                     ),
                 ]
@@ -296,7 +299,7 @@ mod tests {
     fn each_field_is_narrowed_by_its_own_bit() {
         let all = Manifest {
             clock: true,
-            config: true,
+            configuration: true,
             entropy: true,
             network: true,
             domain: true,
@@ -304,8 +307,8 @@ mod tests {
             share: true,
             installer: true,
             catalog: true,
-            indexes: IndexStore::ReadWrite,
-            ..Prog::Jig.manifest()
+            indexes: IndexStoreDeclaration::ReadWrite,
+            ..Program::Jig.manifest()
         };
         let one = |verb: &'static str, authorities| VerbGrant { verb, authorities };
         let table = [
@@ -328,7 +331,7 @@ mod tests {
             let n = narrow_by_verb(&all, &table, Some(v.verb.as_bytes()));
             let held = [
                 n.clock,
-                n.config,
+                n.configuration,
                 n.entropy,
                 n.network,
                 n.domain,
@@ -336,8 +339,8 @@ mod tests {
                 n.share,
                 n.installer,
                 n.catalog,
-                n.indexes != IndexStore::Forbidden,
-                n.indexes == IndexStore::ReadWrite,
+                n.indexes != IndexStoreDeclaration::Forbidden,
+                n.indexes == IndexStoreDeclaration::ReadWrite,
             ];
             let bits = held
                 .iter()
@@ -373,20 +376,20 @@ mod tests {
     /// either would be planned and not delivered; and no image may declare them.
     #[test]
     fn only_jig_holds_the_installer_and_the_catalog() {
-        for &p in Prog::ALL {
+        for &p in Program::ALL {
             let m = p.manifest();
-            assert_eq!(m.installer, p == Prog::Jig, "{}", p.name());
+            assert_eq!(m.installer, p == Program::Jig, "{}", p.name());
             assert_eq!(
-                m.indexes != IndexStore::Forbidden,
-                p == Prog::Jig,
+                m.indexes != IndexStoreDeclaration::Forbidden,
+                p == Program::Jig,
                 "{}",
                 p.name()
             );
-            if m.installer || m.catalog || m.indexes != IndexStore::Forbidden {
+            if m.installer || m.catalog || m.indexes != IndexStoreDeclaration::Forbidden {
                 assert_eq!(m.startup, StartupContract::Std, "{}", p.name());
             }
         }
-        let jig = Prog::Jig.manifest();
+        let jig = Program::Jig.manifest();
         assert!(!image_can_carry(&jig));
         assert!(!image_can_carry(&Manifest {
             installer: false,
@@ -402,7 +405,7 @@ mod tests {
         assert!(image_can_carry(&Manifest {
             installer: false,
             catalog: false,
-            indexes: IndexStore::Forbidden,
+            indexes: IndexStoreDeclaration::Forbidden,
             network: false,
             ..jig
         }));

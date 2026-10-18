@@ -7,7 +7,8 @@
 //! ratchet; the root re-exports every item at its old path.
 
 use crate::{
-    ArgSpec, DirSpec, FileSpec, IndexStore, InputSpec, Manifest, MemSpec, OutputSpec, Prog,
+    DirectoryGrantDeclaration, FileGrantDeclaration, IndexStoreDeclaration, InputDeclaration,
+    Manifest, MemoryGrantDeclaration, OutputDeclaration, Program, ProgramArgumentDeclaration,
     StartupContract, UNVOUCHED_MANIFEST, UNVOUCHED_STD_MANIFEST,
 };
 
@@ -22,20 +23,20 @@ use crate::{
 /// more carries a note ([`image_manifest`]).
 ///
 /// Name: provisional (milestone 597, 2026-09-26).
-pub const NO_NOTE_MANIFEST: Manifest = Prog::Uptime.manifest();
+pub const NO_NOTE_MANIFEST: Manifest = Program::Uptime.manifest();
 
-/// **The row an image's [`Endowment`](crate::Endowment) is filed under**, because an endowment names a `Prog` and
+/// **The row an image's [`Endowment`](crate::Endowment) is filed under**, because an endowment names a `Program` and
 /// a file's bytes have none.
 ///
 /// An exception, and a foot gun: nothing about an image may be decided from this row. Every
 /// decision is made from the manifest [`image_manifest`] returns, which is what the shell binds
 /// the line against and what the progenitor endows from. A reader who calls
-/// `e.prog.manifest()` on an image's endowment gets `uptime`'s manifest, which is the wrong one
+/// `e.program.manifest()` on an image's endowment gets `uptime`'s manifest, which is the wrong one
 /// whenever the program carries a note. The fix is an endowment that holds its manifest rather
 /// than its row; that is wider than this milestone, and `spawnproto`'s BUGS records it.
 ///
 /// Name: provisional (milestone 597, 2026-09-26).
-pub const IMAGE_ROW: Prog = Prog::Uptime;
+pub const IMAGE_ROW: Program = Program::Uptime;
 
 /// **Why a file's bytes are not run with the manifest they carry.** Provisional names.
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
@@ -63,18 +64,18 @@ pub enum ImageRefusal {
 /// needs. `spawnproto`'s BUGS carries each.
 ///
 /// **A `std` image is carried when it hears words, and only then** (milestone 205 (how a foreign
-/// program is told what to do)): `StartupContract::Std` and [`ArgSpec::Words`] go together or not at all.
+/// program is told what to do)): `StartupContract::Std` and [`ProgramArgumentDeclaration::Words`] go together or not at all.
 /// The progenitor sizes an image's region before its frames arrive, so before it can read the note,
-/// and the one thing the request tells it is whether an argv follows (`spawnproto::ARGS_BIT`). Tying
+/// and the one thing the request tells it is whether an argv follows (`spawnproto::PROGRAM_ARGUMENTS_BIT`). Tying
 /// the two makes that bit the region's size: [`image_hears_words`]. A `std` image also declares no
 /// memory grant, domain or network, which is what the `std` layout can hold.
 pub fn image_can_carry(m: &Manifest) -> bool {
     let std = m.startup == StartupContract::Std;
-    matches!(m.output, OutputSpec::Bytes | OutputSpec::Words)
-        && m.file == FileSpec::Forbidden
-        && m.dir == DirSpec::Forbidden
-        && m.input == InputSpec::Forbidden
-        && m.flags.letters().is_empty()
+    matches!(m.output, OutputDeclaration::Bytes | OutputDeclaration::Words)
+        && m.file == FileGrantDeclaration::Forbidden
+        && m.directory == DirectoryGrantDeclaration::Forbidden
+        && m.input == InputDeclaration::Forbidden
+        && m.short_options.letters().is_empty()
         && !m.interruptible
         // Milestone 805: the reboot object is endowed to the one program in this table that
         // declares it, never to installed bytes, whatever their note asks.
@@ -87,21 +88,21 @@ pub fn image_can_carry(m: &Manifest) -> bool {
         && !m.catalog
         // Milestone 801 (packages over the internet): the index store is the owner's console's to
         // grant, as the installer is.
-        && m.indexes == IndexStore::Forbidden
-        && std == (m.arg.hears_words())
+        && m.indexes == IndexStoreDeclaration::Forbidden
+        && std == (m.program_argument.hears_words())
         && (!std
-            || (m.output == OutputSpec::Bytes
-                && m.mem == MemSpec::Forbidden
+            || (m.output == OutputDeclaration::Bytes
+                && m.memory_grant == MemoryGrantDeclaration::Forbidden
                 && !m.domain
                 && !m.network))
 }
 
 /// **Whether an image is sent its line as an argv**, which for an image is also whether it is built
 /// in the `std` layout ([`image_can_carry`] ties the two). The shell asks it of the note it read and
-/// sets `spawnproto::ARGS_BIT`; the progenitor sizes the region from that bit and then checks its
+/// sets `spawnproto::PROGRAM_ARGUMENTS_BIT`; the progenitor sizes the region from that bit and then checks its
 /// own reading of the note agrees ([`image_request_fits`]). Name: provisional.
 pub const fn image_hears_words(m: &Manifest) -> bool {
-    m.arg.hears_words()
+    m.program_argument.hears_words()
 }
 
 /// **The manifest a file's bytes are bound and endowed with** (milestone 597, provisional), given
@@ -130,7 +131,7 @@ pub fn image_manifest(declared: Option<Manifest>, vouched: bool) -> Result<Manif
         return Ok(UNVOUCHED_STD_MANIFEST);
     }
     let u = UNVOUCHED_MANIFEST;
-    if declared.arg != u.arg || declared.mem != u.mem {
+    if declared.program_argument != u.program_argument || declared.memory_grant != u.memory_grant {
         return Err(ImageRefusal::ExceedsVouch);
     }
     Ok(u)
@@ -141,17 +142,17 @@ pub fn image_manifest(declared: Option<Manifest>, vouched: bool) -> Result<Manif
 /// file changed in between (or a shell that lies) can send an argument or a `--mem` grant the
 /// endowed manifest forbids. That is refused rather than half-honored.
 ///
-/// `words` is whether the request carried an argv (`spawnproto::ARGS_BIT`), which sized the
+/// `words` is whether the request carried an argv (`spawnproto::PROGRAM_ARGUMENTS_BIT`), which sized the
 /// region: it must agree with [`image_hears_words`] of the manifest, or a `std` program would be
 /// built in a native job's forty pages.
 pub fn image_request_fits(m: &Manifest, arg: u64, mem_pages: u64, words: bool) -> bool {
     if words != image_hears_words(m) {
         return false;
     }
-    let arg_ok = m.arg == ArgSpec::Required || arg == 0;
-    let mem_ok = match m.mem {
-        MemSpec::Forbidden => mem_pages == 0,
-        MemSpec::Required { min, max } => mem_pages >= min && mem_pages <= max,
+    let arg_ok = m.program_argument == ProgramArgumentDeclaration::Required || arg == 0;
+    let mem_ok = match m.memory_grant {
+        MemoryGrantDeclaration::Forbidden => mem_pages == 0,
+        MemoryGrantDeclaration::Required { min, max } => mem_pages >= min && mem_pages <= max,
     };
     arg_ok && mem_ok
 }

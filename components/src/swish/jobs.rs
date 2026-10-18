@@ -74,7 +74,7 @@ pub(super) fn spawn_interruptible(e: Endowment) {
         return;
     };
     print(b"  running ");
-    print(h.prog.name().as_bytes());
+    print(h.program.name().as_bytes());
     print(b" in the foreground. ^C interrupts it.\n");
     watch_to_the_end(h);
 }
@@ -147,7 +147,7 @@ fn start_supervised(e: Endowment, foreground: bool) -> Option<Held> {
     // progenitor maps it). We keep our own copies: the untyped to tear the job down, the frame to
     // signal it and read it.
     let (w0, w1, w2) = spawnproto::request(
-        e.prog.id(),
+        e.program.id(),
         e.program_argument,
         e.memory_grant_pages,
         spawnproto::Wiring {
@@ -155,21 +155,21 @@ fn start_supervised(e: Endowment, foreground: bool) -> Option<Held> {
             sink: false,
             source: false,
             // A supervised job reports through the shared frame, not through a stream, and neither
-            // demonstrator declares a second one. `OutputSpec::Silent` and a diagnostic rendezvous
+            // demonstrator declares a second one. `OutputDeclaration::Silent` and a diagnostic rendezvous
             // would be a contradiction the manifest can already refuse.
             diagnostics: false,
             // Neither demonstrator declares a directory either, and a supervised job is built out of
             // *this shell's* untyped rather than the progenitor's pool, so there is no region a caretaker
             // could share with it (DECISIONS §92).
-            dir: false,
-            dir2: false,
+            directory_grant: false,
+            second_directory_grant: false,
             // A supervised job's completion signal is already the shared job frame's `DONE` flag,
             // not `result_ep`, so there is nothing here for DECISIONS §106's narrowing to replace.
             screen: false,
             image: false,
             run_unvouched: false,
             // No `std` manifest is interruptible, so no supervised job hears words.
-            args: false,
+            program_arguments: false,
             nameset: false,
             // An interruptible child is built with no capabilities at all (it reports through the
             // job frame), so there is nowhere to put the machine page.
@@ -206,7 +206,7 @@ fn start_supervised(e: Endowment, foreground: bool) -> Option<Held> {
         jf,
         job_ut,
         job_fr,
-        prog: e.prog,
+        program: e.program,
         started: 0,
     })
 }
@@ -387,7 +387,7 @@ pub(super) struct Held {
     jf: MappedWindow,
     job_ut: u64,
     job_fr: u64,
-    prog: grant_plan::Prog,
+    program: grant_plan::Program,
     /// When it went into the background, counted in jobs started, so `fg` with no operand takes
     /// the newest. Zero for a job that never left the foreground.
     started: u64,
@@ -482,7 +482,7 @@ fn spawn_background(jobs: &mut Jobs, e: Endowment) {
     print(b"  [");
     print_num(i as u64 + 1);
     print(b"] ");
-    print(h.prog.name().as_bytes());
+    print(h.program.name().as_bytes());
     print(b" running in the background\n");
 }
 
@@ -504,7 +504,7 @@ fn print_job(n: usize, h: &Held) {
     print(b"  [");
     print_num(n as u64);
     print(b"] ");
-    print(h.prog.name().as_bytes());
+    print(h.program.name().as_bytes());
 }
 
 /// `jobs`: every background job, running or done. A done job is reported once and collected.
@@ -617,7 +617,7 @@ pub(super) fn foreground(jobs: &mut Jobs, tail: &[u8]) {
     leave_raw();
     CONSUMED.store(intr_count(), core::sync::atomic::Ordering::Relaxed);
     print(b"  running ");
-    print(h.prog.name().as_bytes());
+    print(h.program.name().as_bytes());
     print(b" in the foreground. ^C interrupts it.\n");
     watch_to_the_end(h);
 }

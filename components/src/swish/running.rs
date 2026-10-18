@@ -21,7 +21,7 @@ const ARGV_VA: u64 = IMAGE_WINDOW;
 const SET_VA: u64 = ARGV_VA + line::MAX_STAGES as u64 * spawnproto::IMAGE_PAGE;
 
 /// **One line's argv, written and waiting to be sent**: the one-page region it was carved from and
-/// the frame in it. The frame travels to the progenitor narrowed to `READ` (`spawnproto::ARGS_BIT`)
+/// the frame in it. The frame travels to the progenitor narrowed to `READ` (`spawnproto::PROGRAM_ARGUMENTS_BIT`)
 /// and the progenitor copies it before the child runs, so the region goes back as soon as the
 /// child has answered.
 #[derive(Clone, Copy)]
@@ -275,8 +275,8 @@ pub(super) fn run_image(nav: &mut Nav, spec: ParsedInvocation) {
         spawnproto::Wiring {
             image: true,
             run_unvouched: holds_run_unvouched,
-            args: argv.is_some(),
-            dir: set_grant.is_some(),
+            program_arguments: argv.is_some(),
+            directory_grant: set_grant.is_some(),
             nameset: set_grant.is_some_and(|w| w.set.is_some()),
             ..spawnproto::Wiring::default()
         },
@@ -289,7 +289,7 @@ pub(super) fn run_image(nav: &mut Nav, spec: ParsedInvocation) {
     }
     let read_ok = send_frames(t.slot, handle, pages, staging);
     nav.close_in(t, handle);
-    // The argv's frame follows the image's, before every other capability (`spawnproto::ARGS_BIT`).
+    // The argv's frame follows the image's, before every other capability (`spawnproto::PROGRAM_ARGUMENTS_BIT`).
     if let Some(a) = argv {
         user_mode_runtime::send_capability(SPAWN, a.frame, abi::rights::READ, 0);
         cap_delete(a.frame);
@@ -326,7 +326,7 @@ pub(super) fn run_image(nav: &mut Nav, spec: ParsedInvocation) {
 /// [`run_image`]'s answer: the image's output or its one word, then whether the bytes sent were
 /// the whole file.
 fn report_image_answer(e: Endowment, m: &grant_plan::Manifest, read_ok: bool) {
-    // The output's shape is the manifest's, never `e.prog`'s: an image's row is a stand-in
+    // The output's shape is the manifest's, never `e.program`'s: an image's row is a stand-in
     // (`grant_plan::IMAGE_ROW`).
     if m.output.is_byte_stream() {
         drain_text();
@@ -388,8 +388,8 @@ fn plan_image(nav: &mut Nav, spec: ParsedInvocation) -> Option<PlannedImage> {
     // **Expanded, or designated, once the note says which** (milestone 205): bytes that hear words
     // have their words designated rather than their patterns expanded, and only the note says
     // whether these do.
-    let expanded = match m.arg {
-        grant_plan::ArgSpec::Words(grant) => {
+    let expanded = match m.program_argument {
+        grant_plan::ProgramArgumentDeclaration::Words(grant) => {
             swish::designation(spec.line(), grant, &mut |token| nav.expand(token))
         }
         _ => expansion(nav, &spec),
@@ -477,24 +477,26 @@ fn carve_image_grants(
     };
     // **And what its words designated** (milestone 205's designation half), on a page carved
     // after the argv's and still below staging.
-    let set_grant = match (e.directory, m.arg) {
-        (Some(g), grant_plan::ArgSpec::Words(grant)) => match words_grant(&g, grant, 0) {
-            Ok(w) => Some(w),
-            Err(why) => {
-                nav.close_in(t, handle);
-                if let Some(a) = argv {
-                    release_argv(a, true);
-                }
-                match why {
-                    Some(sentence) => {
-                        refused();
-                        print(sentence);
+    let set_grant = match (e.directory, m.program_argument) {
+        (Some(g), grant_plan::ProgramArgumentDeclaration::Words(grant)) => {
+            match words_grant(&g, grant, 0) {
+                Ok(w) => Some(w),
+                Err(why) => {
+                    nav.close_in(t, handle);
+                    if let Some(a) = argv {
+                        release_argv(a, true);
                     }
-                    None => out_of_budget(),
+                    match why {
+                        Some(sentence) => {
+                            refused();
+                            print(sentence);
+                        }
+                        None => out_of_budget(),
+                    }
+                    return None;
                 }
-                return None;
             }
-        },
+        }
         _ => None,
     };
     let Some(staging) = memory_region_split(pages) else {
@@ -936,7 +938,7 @@ pub(super) fn spawn(e: Endowment, argv: Option<Argv>) {
     }
 
     // **The argv's one frame, after the data and before every other capability**
-    // (`spawnproto::ARGS_BIT`), `READ` only: the progenitor copies it and can neither write it nor
+    // (`spawnproto::PROGRAM_ARGUMENTS_BIT`), `READ` only: the progenitor copies it and can neither write it nor
     // pass it on. The slot goes now; the region waits for the child's answer.
     if let Some(a) = argv {
         user_mode_runtime::send_capability(SPAWN, a.frame, abi::rights::READ, 0);
@@ -962,7 +964,7 @@ pub(super) fn spawn(e: Endowment, argv: Option<Argv>) {
     // One reader, one word: a real program's answer, or the progenitor's spawn-failed sentinel. A program
     // whose manifest says it writes **bytes** is the exception: its answer is a stream, so it is
     // drained by a reader that knows the sink contract's framing.
-    if e.prog.manifest().output.is_byte_stream() {
+    if e.program.manifest().output.is_byte_stream() {
         drain_text();
     } else {
         let answer = receive(RESULT).0;
@@ -1000,26 +1002,28 @@ fn spawn_dir_grant(
     // **A program that hears words is granted what they designated** (milestone 205), as a name
     // set or the whole directory, through `words_grant` rather than `rm`'s `dir_grant`.
     let mut set_grant = None;
-    let dir_words = match (e.directory, e.prog.manifest().arg) {
+    let dir_words = match (e.directory, e.program.manifest().program_argument) {
         (None, _) => None,
-        (Some(g), grant_plan::ArgSpec::Words(grant)) => match words_grant(&g, grant, 0) {
-            Ok(w) => {
-                set_grant = Some(w);
-                Some(w.words)
-            }
-            Err(why) => {
-                match why {
-                    Some(sentence) => {
-                        refused();
-                        print(sentence);
-                    }
-                    None => out_of_budget(),
+        (Some(g), grant_plan::ProgramArgumentDeclaration::Words(grant)) => {
+            match words_grant(&g, grant, 0) {
+                Ok(w) => {
+                    set_grant = Some(w);
+                    Some(w.words)
                 }
-                release_unsent_argv(argv);
-                return None;
+                Err(why) => {
+                    match why {
+                        Some(sentence) => {
+                            refused();
+                            print(sentence);
+                        }
+                        None => out_of_budget(),
+                    }
+                    release_unsent_argv(argv);
+                    return None;
+                }
             }
-        },
-        (Some(g), _) => match dir_grant(&g, e.flags) {
+        }
+        (Some(g), _) => match dir_grant(&g, e.short_options) {
             Ok(words) => Some(words),
             Err(sentence) => {
                 refused();
@@ -1041,7 +1045,7 @@ fn plain_request(e: &Endowment, args: bool, dir: bool, nameset: bool) -> (u64, u
     // declares a second stream gets the terminal's own sink, which the progenitor endows from the manifest the
     // way it endows the clock. `2>` makes a line non-plain and goes down [`pipeline`].
     spawnproto::request(
-        e.prog.id(),
+        e.program.id(),
         e.program_argument,
         e.memory_grant_pages,
         spawnproto::Wiring {
@@ -1049,21 +1053,21 @@ fn plain_request(e: &Endowment, args: bool, dir: bool, nameset: bool) -> (u64, u
             sink: false,
             source: false,
             diagnostics: false,
-            dir,
+            directory_grant: dir,
             // **Always false from this shell**: no manifest declares two directory operands, so
             // nothing here constructs a two-directory grant for a spawned program; see
-            // `spawnproto::DIR2_BIT`'s own doc and notes/two-trees.md's BUGS.
-            dir2: false,
+            // `spawnproto::SECOND_DIRECTORY_GRANT_BIT`'s own doc and notes/two-trees.md's BUGS.
+            second_directory_grant: false,
             // **Also always false here** (DECISIONS §106), and for the same shape of reason as
             // `diagnostics`: a program only reaches this path (no file operand, no pipe, no
             // redirection at all) when `plan` put nothing in its source slot, and every program
-            // that declares `writes_while_reading` also declares `InputSpec::Required`, which
+            // that declares `writes_while_reading` also declares `InputDeclaration::Required`, which
             // sends it down [`run`]'s other arm (`Source::File`) instead. So this bit would never
             // have anything to narrow.
             screen: false,
             image: false,
             run_unvouched: false,
-            args,
+            program_arguments: args,
             nameset,
             machine: machine_wiring(e),
             // **"This is a graphical terminal launch", and nothing follows it** (milestone 715
@@ -1071,9 +1075,9 @@ fn plain_request(e: &Endowment, args: bool, dir: bool, nameset: bool) -> (u64, u
             // none, so the bit is the whole request, and a boot with no display answers
             // `spawnproto::SPAWN_NO_DISPLAY`. Set only on a plain line, which is the only line
             // `graphical_terminal`'s manifest can reach this path on (`Words` output refuses `>`
-            // and a pipe's left, `InputSpec::Forbidden` its right). `keyboard` is never set: the
+            // and a pipe's left, `InputDeclaration::Forbidden` its right). `keyboard` is never set: the
             // spawn service decides the arm from what the boot granted.
-            graphics: e.prog == grant_plan::Prog::GraphicalTerminal,
+            graphics: e.program == grant_plan::Program::GraphicalTerminal,
             keyboard: false,
         },
     )
@@ -1357,11 +1361,13 @@ pub(super) fn run(nav: &mut Nav, cmd: &[u8], spec: ParsedInvocation) {
             // **A program that hears words gets the line as its argv** (milestone 205,
             // DECISIONS §170 (how a foreign program is told what to do)). Assembled here, where a refusal can still name the program, and
             // before anything is sent, so a line that does not fit spawns nothing.
-            _ if endow.prog.manifest().arg.hears_words() => match assemble_argv(spec.line(), 0) {
-                Ok(a) => spawn(endow, Some(a)),
-                Err(Some(r)) => refuse(spec, r),
-                Err(None) => out_of_budget(),
-            },
+            _ if endow.program.manifest().program_argument.hears_words() => {
+                match assemble_argv(spec.line(), 0) {
+                    Ok(a) => spawn(endow, Some(a)),
+                    Err(Some(r)) => refuse(spec, r),
+                    Err(None) => out_of_budget(),
+                }
+            }
             _ => spawn(endow, None),
         },
     }

@@ -9,7 +9,7 @@ use crate::*;
 #[test]
 fn the_unvouched_manifest_allows_the_two_pages_and_nothing_of_the_progenitors() {
     let m = UNVOUCHED_MANIFEST;
-    assert!(m.clock && m.config, "the ruling allows both pages");
+    assert!(m.clock && m.configuration, "the ruling allows both pages");
     assert!(!m.domain, "never the process domain");
     assert!(!m.entropy, "never entropy");
     assert!(!m.network, "never the network");
@@ -17,12 +17,20 @@ fn the_unvouched_manifest_allows_the_two_pages_and_nothing_of_the_progenitors() 
     assert!(!m.sync, "never a sync");
     let bound = NO_NOTE_MANIFEST;
     assert_eq!(
-        (m.arg, m.mem, m.file, m.dir, m.input, m.output, m.startup),
         (
-            bound.arg,
-            bound.mem,
+            m.program_argument,
+            m.memory_grant,
+            m.file,
+            m.directory,
+            m.input,
+            m.output,
+            m.startup
+        ),
+        (
+            bound.program_argument,
+            bound.memory_grant,
             bound.file,
-            bound.dir,
+            bound.directory,
             bound.input,
             bound.output,
             bound.startup
@@ -39,11 +47,11 @@ fn the_unvouched_manifest_allows_the_two_pages_and_nothing_of_the_progenitors() 
 #[test]
 fn only_reboot_declares_reboot_and_no_image_can() {
     for sync in [false, true] {
-        let mut declarers = Prog::ALL.iter().filter(|p| {
+        let mut declarers = Program::ALL.iter().filter(|p| {
             let m = p.manifest();
             if sync { m.sync } else { m.reboot }
         });
-        assert_eq!(declarers.next(), Some(&Prog::Reboot));
+        assert_eq!(declarers.next(), Some(&Program::Reboot));
         assert_eq!(
             declarers.next(),
             None,
@@ -90,7 +98,7 @@ fn an_image_is_endowed_from_its_note_only_when_vouched() {
     );
     assert_eq!(image_manifest(None, false), Ok(UNVOUCHED_MANIFEST));
 
-    let asks_an_argument = Prog::LeastAuthorityDemo.manifest();
+    let asks_an_argument = Program::LeastAuthorityDemo.manifest();
     assert_eq!(
         image_manifest(Some(asks_an_argument), true),
         Ok(asks_an_argument)
@@ -101,7 +109,7 @@ fn an_image_is_endowed_from_its_note_only_when_vouched() {
         "a note that asks more than its vouch allows is refused"
     );
     let asks_memory = Manifest {
-        mem: MemSpec::Required { min: 1, max: 4 },
+        memory_grant: MemoryGrantDeclaration::Required { min: 1, max: 4 },
         ..NO_NOTE_MANIFEST
     };
     assert_eq!(
@@ -113,7 +121,7 @@ fn an_image_is_endowed_from_its_note_only_when_vouched() {
 /// Every shape the image wire cannot carry is refused before the verdict matters.
 #[test]
 fn an_image_manifest_the_request_cannot_carry_is_refused_vouched_or_not() {
-    for p in [Prog::Wc, Prog::Rm, Prog::Uuid, Prog::Date] {
+    for p in [Program::Wc, Program::Rm, Program::Uuid, Program::Date] {
         let m = p.manifest();
         if image_can_carry(&m) {
             continue;
@@ -129,21 +137,24 @@ fn an_image_manifest_the_request_cannot_carry_is_refused_vouched_or_not() {
             Err(ImageRefusal::NotCarried)
         );
     }
-    assert!(!image_can_carry(&Prog::Wc.manifest()), "wc reads an input");
     assert!(
-        !image_can_carry(&Prog::Rm.manifest()),
+        !image_can_carry(&Program::Wc.manifest()),
+        "wc reads an input"
+    );
+    assert!(
+        !image_can_carry(&Program::Rm.manifest()),
         "rm takes a directory and options"
     );
     assert!(
-        !image_can_carry(&Prog::Uuid.manifest()),
+        !image_can_carry(&Program::Uuid.manifest()),
         "uuid is a std program"
     );
     assert!(
-        !image_can_carry(&Prog::Date.manifest()),
+        !image_can_carry(&Program::Date.manifest()),
         "date declares a second stream"
     );
     assert!(
-        image_can_carry(&Prog::LeastAuthorityDemo.manifest()),
+        image_can_carry(&Program::LeastAuthorityDemo.manifest()),
         "an argument and a word in a register"
     );
 }
@@ -161,7 +172,7 @@ fn an_image_request_that_does_not_fit_its_manifest_is_refused() {
         "memory the manifest forbids"
     );
     let mem = Manifest {
-        mem: MemSpec::Required { min: 2, max: 4 },
+        memory_grant: MemoryGrantDeclaration::Required { min: 2, max: 4 },
         ..none
     };
     assert!(image_request_fits(&mem, 0, 2, false));
@@ -171,7 +182,7 @@ fn an_image_request_that_does_not_fit_its_manifest_is_refused() {
         "required memory not sent"
     );
     assert!(image_request_fits(
-        &Prog::LeastAuthorityDemo.manifest(),
+        &Program::LeastAuthorityDemo.manifest(),
         7,
         0,
         false
@@ -188,7 +199,7 @@ fn an_image_request_that_does_not_fit_its_manifest_is_refused() {
 /// gets the unvouched grants in the `std` layout whatever its note asks.
 #[test]
 fn a_std_image_is_carried_when_it_hears_words_and_unvouched_gets_two_pages() {
-    let ex = Prog::StdExerciser.manifest();
+    let ex = Program::StdExerciser.manifest();
     assert!(image_can_carry(&ex));
     assert!(image_hears_words(&ex));
     assert_eq!(image_manifest(Some(ex), true), Ok(ex));
@@ -198,7 +209,7 @@ fn a_std_image_is_carried_when_it_hears_words_and_unvouched_gets_two_pages() {
     assert_eq!(image_manifest(Some(ex), false), Ok(UNVOUCHED_STD_MANIFEST));
     assert_eq!(
         Manifest {
-            arg: ArgSpec::Forbidden,
+            program_argument: ProgramArgumentDeclaration::Forbidden,
             startup: StartupContract::Native,
             ..UNVOUCHED_STD_MANIFEST
         },
@@ -206,11 +217,11 @@ fn a_std_image_is_carried_when_it_hears_words_and_unvouched_gets_two_pages() {
     );
     // Either half without the other is not carried.
     assert!(!image_can_carry(&Manifest {
-        arg: ArgSpec::Forbidden,
+        program_argument: ProgramArgumentDeclaration::Forbidden,
         ..ex
     }));
     assert!(!image_can_carry(&Manifest {
-        arg: ArgSpec::Words(WordGrant::ReadOnly),
+        program_argument: ProgramArgumentDeclaration::Words(WordGrant::ReadOnly),
         ..NO_NOTE_MANIFEST
     }));
 }
@@ -222,16 +233,16 @@ fn a_std_image_is_carried_when_it_hears_words_and_unvouched_gets_two_pages() {
 #[test]
 fn a_std_image_is_refused_for_each_thing_its_layout_cannot_hold() {
     let ok = Manifest {
-        output: OutputSpec::Bytes,
+        output: OutputDeclaration::Bytes,
         ..UNVOUCHED_STD_MANIFEST
     };
     assert!(image_can_carry(&ok), "the baseline must be carriable");
     assert!(!image_can_carry(&Manifest {
-        output: OutputSpec::Words,
+        output: OutputDeclaration::Words,
         ..ok
     }));
     assert!(!image_can_carry(&Manifest {
-        mem: Prog::MemoryGrantDepleter.manifest().mem,
+        memory_grant: Program::MemoryGrantDepleter.manifest().memory_grant,
         ..ok
     }));
     assert!(!image_can_carry(&Manifest { domain: true, ..ok }));

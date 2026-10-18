@@ -2810,7 +2810,6 @@ crates/grant_plan/src/command.rs::Endowment
 crates/grant_plan/src/command.rs::FORCE
 crates/grant_plan/src/command.rs::FileGrant
 crates/grant_plan/src/command.rs::Holdings
-crates/grant_plan/src/command.rs::MAX_FLAGS
 crates/grant_plan/src/command.rs::RECURSIVE
 crates/grant_plan/src/command.rs::VERBOSE
 crates/grant_plan/src/command.rs::anchor
@@ -2916,19 +2915,11 @@ crates/grant_plan/src/line.rs::source_for
 crates/grant_plan/src/line.rs::split
 crates/grant_plan/src/line.rs::stage_count
 crates/grant_plan/src/line.rs::stages
-crates/grant_plan/src/manifest.rs::ArgSpec
 crates/grant_plan/src/manifest.rs::DIAGNOSTICS_SLOT
 crates/grant_plan/src/manifest.rs::DOMAIN_SLOT
-crates/grant_plan/src/manifest.rs::DirSpec
 crates/grant_plan/src/manifest.rs::ENTROPY_SLOT
-crates/grant_plan/src/manifest.rs::FileSpec
-crates/grant_plan/src/manifest.rs::InputSpec
-crates/grant_plan/src/manifest.rs::MAX_DECLARED_FLAGS
 crates/grant_plan/src/manifest.rs::Manifest
-crates/grant_plan/src/manifest.rs::MemSpec
 crates/grant_plan/src/manifest.rs::NETWORK_SLOT
-crates/grant_plan/src/manifest.rs::NO_FLAGS
-crates/grant_plan/src/manifest.rs::OutputSpec
 crates/grant_plan/src/manifest.rs::UNVOUCHED_STD_MANIFEST
 crates/grant_plan/src/manifest.rs::diagnostics_slot
 crates/grant_plan/src/manifest.rs::hears_words
@@ -3010,10 +3001,6 @@ crates/grant_plan/src/planning/tests/designation.rs
 crates/grant_plan/src/planning/tests/operands.rs
 crates/grant_plan/src/planning/tests/streams.rs
 crates/grant_plan/src/program/catalog.rs::ALL
-crates/grant_plan/src/program/catalog.rs::PROG_COUNT
-crates/grant_plan/src/program/catalog.rs::Prog
-crates/grant_plan/src/program/catalog.rs::Prog
-crates/grant_plan/src/program/catalog.rs::Prog
 crates/grant_plan/src/program/catalog.rs::from_id
 crates/grant_plan/src/program/catalog.rs::from_name
 crates/grant_plan/src/program/catalog.rs::id
@@ -3042,7 +3029,6 @@ crates/grant_plan/src/spawnproto.rs::Wiring
 crates/grant_plan/src/spawnproto.rs::activation
 crates/grant_plan/src/spawnproto.rs::activation_reply
 crates/grant_plan/src/spawnproto.rs::activation_request
-crates/grant_plan/src/spawnproto.rs::arg
 crates/grant_plan/src/spawnproto.rs::from_word
 crates/grant_plan/src/spawnproto.rs::holder_from_words
 crates/grant_plan/src/spawnproto.rs::holder_words
@@ -3052,7 +3038,6 @@ crates/grant_plan/src/spawnproto.rs::installer_badge
 crates/grant_plan/src/spawnproto.rs::installer_label
 crates/grant_plan/src/spawnproto.rs::installer_serves
 crates/grant_plan/src/spawnproto.rs::is_interruptible
-crates/grant_plan/src/spawnproto.rs::mem_pages
 crates/grant_plan/src/spawnproto.rs::prog_id
 crates/grant_plan/src/spawnproto.rs::reaped
 crates/grant_plan/src/spawnproto.rs::request

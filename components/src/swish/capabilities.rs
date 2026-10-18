@@ -43,11 +43,13 @@ pub(super) fn caps(nav: &mut Nav, tail: &[u8]) {
         NO_CLOCK => None,
         slot => Some(slot),
     };
-    // SAFETY: the progenitor maps the page at `SHELL_CONFIG_VA` read-only in the same build that
+    // SAFETY: the progenitor maps the page at `SHELL_CONFIGURATION_VIRTUAL_ADDRESS` read-only in the same build that
     // places its capability, and never unmaps it; [`HOLDS_CONFIG`] is that capability's presence.
     let config = HOLDS_CONFIG
         .load(core::sync::atomic::Ordering::Relaxed)
-        .then(|| unsafe { environment_contract::ConfigPage::new(grant_plan::SHELL_CONFIG_VA) });
+        .then(|| unsafe {
+            environment_contract::ConfigPage::new(grant_plan::SHELL_CONFIGURATION_VIRTUAL_ADDRESS)
+        });
     swish::write_capabilities(
         tail,
         SH_BUDGET_PAGES,
@@ -115,8 +117,8 @@ fn caps_image(nav: &mut Nav, spec: ParsedInvocation) {
     // **Expanded, or designated, once the note says which** (milestone 205): bytes that hear words
     // have their words designated rather than their patterns expanded, and only the note says
     // whether these do.
-    let expanded = match m.arg {
-        grant_plan::ArgSpec::Words(grant) => {
+    let expanded = match m.program_argument {
+        grant_plan::ProgramArgumentDeclaration::Words(grant) => {
             swish::designation(spec.line(), grant, &mut |token| nav.expand(token))
         }
         _ => expansion(nav, &spec),
@@ -283,7 +285,7 @@ pub(super) fn with_live_table<R>(nav: &Nav, f: impl FnOnce(&str, u32) -> Option<
 /// program), B2), from the image's programs and the live table, refined by the nearest version set
 /// when it names the program (milestone 614, ruling 4). See `swish::bare`.
 pub(super) fn bare(nav: &Nav, word: &[u8]) -> swish::bare::Bare {
-    let image = grant_plan::Prog::from_name(word).is_some();
+    let image = grant_plan::Program::from_name(word).is_some();
     with_live_table(nav, |text, _| {
         // The set is consulted only for a name the table answers at all: it selects among
         // installed versions, so for anything else it can only change nothing, and the reads are
