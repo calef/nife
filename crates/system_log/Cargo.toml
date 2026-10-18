@@ -14,5 +14,5 @@ license.workspace = true
 workspace = true
 
 [dependencies]
-byte_sink_protocol = { version = "0.1.0", path = "../byte_sink_protocol" }
-system_log_protocol = { version = "0.1.0", path = "../system_log_protocol" }
+byte_sink_contract = { version = "0.1.0", path = "../byte_sink_contract" }
+system_log_contract = { version = "0.1.0", path = "../system_log_contract" }

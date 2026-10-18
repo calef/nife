@@ -245,7 +245,7 @@ is at `PAGE_VA - k * 4096`
 magic, the current core, and an allowance word: the online core count when the page was built
 (§269 fork 7). A freed slot is reused with a rebuilt page.
 
-The `std` contract (`crates/std_runtime_protocol`) fixes three slots after the resolver at 9:
+The `std` contract (`crates/std_runtime_contract`) fixes three slots after the resolver at 9:
 `PROCESS_SLOT` 10 (the program's process, `BIND`), `THREAD_SLOT` 11 (its first thread, `WRITE`, for
 `SET_THREAD_POINTER` on itself), and `SPACE_SLOT` 12 (its space, `READ`, for futexes). Without slot
 10 a spawn answers `Unsupported`; without 12 the locks yield instead of sleeping.

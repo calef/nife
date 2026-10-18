@@ -1,7 +1,7 @@
 //! **A client of the name resolver, and nothing more** (milestone 384 (in a capability system the
 //! resolver is a grant)).
 //!
-//! It asks the resolver about every name in `name_resolution_protocol::fixture::CASES`, in order,
+//! It asks the resolver about every name in `domain_name_resolution_contract::fixture::CASES`, in order,
 //! and reports each reply as it gets it; the kernel's test judges them
 //! (`system_tests/src/user/name_resolver_tests.rs`). Then, given a network, it connects to the
 //! address the first name resolved to and checks an echo comes back: a name it did not know the
@@ -24,7 +24,7 @@
 //!
 //! One message per case, `(case index, the reply's outcome word, the first address)`, then
 //! `(CASES.len(), echo verdict, 0)`. The address is packed big-endian, as
-//! `name_resolution_protocol::endowment::server` packs one.
+//! `domain_name_resolution_contract::endowment::server` packs one.
 //!
 //! Name: provisional 2026-10-06 (UTC), milestone 384's lane, on the `*_test_client` pattern
 //! (`fs_test_client`, `login_test_client`).
@@ -34,14 +34,14 @@
 #![no_main]
 
 use abi::rights;
-use name_resolution_protocol::fixture::{
+use domain_name_resolution_contract::fixture::{
     CASES, ECHO_FAILED, ECHO_NO_ADDRESS, ECHO_OK, ECHO_SKIPPED, WITH_NETWORK,
 };
-use name_resolution_protocol::{
+use domain_name_resolution_contract::{
     OFF_ADDRESSES, OFF_NAME, OPERATION_ATTACH_PAGE_FRAME, OPERATION_RESOLVE, Outcome, endowment,
     request, status,
 };
-use socket_protocol as socket;
+use socket_contract as socket;
 use user_mode_runtime::mapped_window::{MappedWindow, PAGE};
 use user_mode_runtime::{
     call, call_receiving, cap_delete, exit, map_page_frame, retype_into_page_frame, send,

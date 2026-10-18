@@ -16,7 +16,7 @@ badge) records them. Fork 2 and Fork 3 below keep the options and the reasoning.
 | `accept` fuzzed with a property, not only for panics | `fuzz/fuzz_targets/domain_name_system_reply.rs` | 5.2 million runs in 120 s clean; deleting the owner check was caught |
 | A name resolved end to end through `net_stack`, with lies refused, then connected to | `components/src/socket_test_client.rs`, `helpers/name-server-peer` | green on aarch64 and riscv64; the same deleted check fails it with `0xe14f` |
 | The resolver, §248's confined program: a `Stack` endpoint, an entropy endpoint, and a zone grant per client badge, judged before anything is sent | `components/src/domain_name_resolver.rs` | the gate below |
-| What the resolver, its clients and its spawner agree on, and the grant table | `crates/name_resolution_protocol` | 11 host tests |
+| What the resolver, its clients and its spawner agree on, and the grant table | `crates/domain_name_resolution_contract` | 11 host tests |
 | A granted client resolves inside its zone and is denied outside it; an ungranted one is denied everything | `system_tests/src/user/name_resolver_tests.rs`, `fixtures/src/name_resolver_test_client.rs` | green on aarch64, riscv64 and x86_64 over the `e1000e`; deleting the zone check fails it on `example.com` |
 
 `Query::accept` believes an address only after the reply is a response with our transaction id, is
@@ -119,7 +119,7 @@ DNSSEC validation or DNS over TLS is wanted. Those are crypto-adjacent and won b
 
 | Option | Shape | Cost, measured or read |
 |---|---|---|
-| R1. Inside `net_stack` | Enable `smoltcp`'s `socket-dns`; add a resolve verb to `socket_protocol` | 711 lines of `smoltcp/src/socket/dns.rs` plus 792 of `src/wire/dns.rs`, read 2026-10-04 |
+| R1. Inside `net_stack` | Enable `smoltcp`'s `socket-dns`; add a resolve verb to `socket_contract` | 711 lines of `smoltcp/src/socket/dns.rs` plus 792 of `src/wire/dns.rs`, read 2026-10-04 |
 | R2. Its own confined program | A resolver holding a `Stack` endpoint and an entropy endpoint, serving clients over an endpoint, using `domain_name_system` | A program, its spawn wiring and its protocol (Fork 3) |
 | R3. A library in each client | Every client links the crate and holds a `Stack` endpoint | Nothing new to build |
 
@@ -188,12 +188,12 @@ client's code does not, because it never sees the grant.
 
 ### Fork 3. The client protocol
 
-**Built as P1, in `crates/name_resolution_protocol`, and ratified on 2026-10-06 (UTC):** calef,
+**Built as P1, in `crates/domain_name_resolution_contract`, and ratified on 2026-10-06 (UTC):** calef,
 *"Yes on Fork 3"*, recorded in §252.
 
 - P1. The socket contract's shape: the client attaches a page, writes the name, calls a resolve verb,
   and reads up to eight addresses, a TTL and a status word from the page. One round trip.
-- P2. Plan 9's shape over `filesystem_protocol`: the resolver serves a file the client writes a name
+- P2. Plan 9's shape over `filesystem_contract`: the resolver serves a file the client writes a name
   to and reads answers from. No new protocol, and a grant is a directory capability, at the price
   of a file server's machinery for one exchange.
 - P3. Names in message words. A name is up to 255 bytes, so it does not fit, which is why P1 and P2
@@ -206,7 +206,7 @@ resolver and its one client, the test client.
 ### A smaller piece: the nameserver from DHCP
 
 Built after the Fork 1 ruling. `net_stack`'s lease report carries the first DNS server the lease
-named in its second word, which was zero, laid out in `socket_protocol::lease` (provisional). The
+named in its second word, which was zero, laid out in `socket_contract::lease` (provisional). The
 spawner that starts a resolver hands that address on as its endowment.
 
 ### What is left, and whose it is

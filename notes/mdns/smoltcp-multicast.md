@@ -29,7 +29,7 @@ note), the shapes the sizing proposed:
    state, so the join is unconditional; what is granted per client is the port.
 3. Socket surface. The three gaps, closed:
    - `OPERATION_BIND_UDP` (name provisional) binds a fixed UDP port, checked against a UDP bind
-     grant the spawn site packs with `socket_protocol::udp_bind_grant` into the high half of the
+     grant the spawn site packs with `socket_contract::udp_bind_grant` into the high half of the
      same spawn word milestone 107's listen grant occupies. The halves are independent
      authorities; the zero word still grants nothing anywhere. The reply vocabulary is `LISTEN`'s
      three outcomes, which are properties of claiming a port, not of TCP.

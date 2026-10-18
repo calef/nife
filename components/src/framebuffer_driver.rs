@@ -1,7 +1,7 @@
 //! **The framebuffer driver: a screen the firmware already set up, served behind the framebuffer
 //! contract** (the shell on the firmware screen; milestone 198's rung 1b).
 //!
-//! `gpu_driver` serves [`graphics_protocol`] by programming a virtio-gpu device. A PC has none, but
+//! `gpu_driver` serves [`graphics_contract`] by programming a virtio-gpu device. A PC has none, but
 //! its firmware leaves a linear framebuffer running when it hands over (UEFI's
 //! `EFI_GRAPHICS_OUTPUT_PROTOCOL`, whose aperture outlives `ExitBootServices`). This driver serves
 //! the **same contract** over that screen, so `display_terminal` cannot tell the two apart. On the
@@ -58,7 +58,7 @@
 #![allow(missing_docs)]
 #![no_main]
 
-use graphics_protocol as gfx;
+use graphics_contract as gfx;
 use screen_console::Aperture;
 use user_mode_runtime::mapped_window::MappedWindow;
 use user_mode_runtime::{exit, receive_request, reply, send};

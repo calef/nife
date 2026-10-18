@@ -16,5 +16,5 @@ abi = { version = "0.1.0", path = "../abi" }
 # directory out of a block-0 buffer, and when the entry layout changed on 2026-08-01 its hardcoded
 # stride was the only place in the tree that had to be found by hand.
 nifefs = { version = "0.1.0", path = "../nifefs" }
-filesystem_protocol = { version = "0.1.0", path = "../filesystem_protocol" }
+filesystem_contract = { version = "0.1.0", path = "../filesystem_contract" }
 user_mode_runtime = { version = "0.1.0", path = "../user_mode_runtime" }

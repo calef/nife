@@ -7,7 +7,7 @@
 //!
 //! The two pieces of the dispatch that are IO and not decoding are reached through [`ServeEdges`],
 //! so the binary supplies the block-IPC versions and the host supplies its own: the device flush
-//! behind [`filesystem_protocol::fs::SYNC`], and the crash injector's count of `WRITE` requests
+//! behind [`filesystem_contract::fs::SYNC`], and the crash injector's count of `WRITE` requests
 //! from milestone 37 (prove RedoxFS's crash consistency).
 //!
 //! Names: `handle`, `ServeEdges` and this module's are provisional, minted by the fuzz lane
@@ -29,7 +29,7 @@
 //! `REMOVEXATTR`) take bytes in a separate namespace checked by `xattr::is_valid_name`, not a path
 //! name; `get_xattr_request` copies its name for the same reason.
 
-use filesystem_protocol::{blk, fs, operation, reply_err, xattr};
+use filesystem_contract::{blk, fs, operation, reply_err, xattr};
 use redoxfs::Disk;
 use syscall::error::{EINVAL, EPERM, Error, Result};
 
@@ -106,7 +106,7 @@ impl<D: Disk> Server<D> {
         // one page every client has always mapped: a `READDIR` that filled 64 KiB would be written
         // into a single-page client's unmapped second page. `READ` and `WRITE` are the two verbs
         // whose length the CLIENT chooses, so they are the two that may use the whole channel, and
-        // a client asking for one page still gets exactly one page. See `filesystem_protocol::fs::TRANSFER_PAGES`.
+        // a client asking for one page still gets exactly one page. See `filesystem_contract::fs::TRANSFER_PAGES`.
         let len = fs::req_len(w0).min(BLOCK);
         let bulk_len = fs::req_len(w0).min(fs::TRANSFER_MAX);
         let offset = w1;
@@ -271,7 +271,7 @@ impl<D: Disk> Server<D> {
             // in the core's verbs keeps them free of the wire's layout, which is the same boundary
             // the errno mapping below sits on.
             fs::STATFS => self.statfs(handle).and_then(|(block, total, free)| {
-                filesystem_protocol::statfs::encode(&mut window[..BLOCK], block, total, free)
+                filesystem_contract::statfs::encode(&mut window[..BLOCK], block, total, free)
                     .map(|n| n as i64)
                     .ok_or(Error::new(EINVAL))
             }),

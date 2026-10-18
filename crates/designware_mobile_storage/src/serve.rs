@@ -1,7 +1,7 @@
 //! **What the kernel and the EL0 block server agree on**: where the server's two windows sit, the
 //! part of the card it may serve, and the three spawn words that say so.
 //!
-//! The server (`components/src/designware_mobile_storage.rs`) answers `filesystem_protocol::blk`,
+//! The server (`components/src/designware_mobile_storage.rs`) answers `filesystem_contract::blk`,
 //! the four verbs the virtio and NVMe block servers answer, so the FS server cannot tell which
 //! disk it has. Its blocks are 4096 bytes; the card's are 512. A request names blocks **inside a
 //! window** the kernel chose at spawn, never a card address, and [`Window::translate`] is the one
@@ -11,7 +11,7 @@
 //! and the 53 block: it is a fact two programs (whatever writes the card and the kernel that reads
 //! it) must agree on, which makes it an architect's call.
 
-use filesystem_protocol::blk;
+use filesystem_contract::blk;
 
 /// Where the server finds the controller's first page, mapped device-typed.
 pub const REGISTER_VA: u64 = address_space_map::pair_page(0x0060_0000);

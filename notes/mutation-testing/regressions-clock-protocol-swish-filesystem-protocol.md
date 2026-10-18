@@ -1,4 +1,4 @@
-# The 2026-09-14 regressions: `clock_protocol`, `swish`, `filesystem_protocol`
+# The 2026-09-14 regressions: `clock_contract`, `swish`, `filesystem_contract`
 
 The second half of milestone 326 (nobody has been assigned to turn a mutation score upward)'s
 triage of the crates that regressed at the 2026-09-14 census. It verifies three of the per-crate
@@ -6,7 +6,7 @@ figures that [notes/mutation-testing.md](../mutation-testing.md) summarizes. The
 the method and the loom exclusion, is
 [regressions-capability-to-dtb](regressions-capability-to-dtb.md).
 
-### `clock_protocol`: 6 survivors, 3 were the loom model, 3 are equivalent and none is a gap
+### `clock_contract`: 6 survivors, 3 were the loom model, 3 are equivalent and none is a gap
 
 Before: 54 caught, 6 missed, 7 timeouts, 5 unviable (91.0% of viable). After: 54 caught, 3 missed
 (95.3%). Nothing was killed and no test was written, and that is the correct outcome. Three
@@ -27,7 +27,7 @@ compiles. The suite did not get better.
   [the recurring patterns](baseline-2026-08-03.md#patterns-that-recur-named-once). It is recorded
   equivalent-under-harness rather than excluded, so it stays visible.
   The gate that owns it kills it, and that was measured. With the mutation applied,
-  `script/interleaving-check -p clock_protocol` fails four of its harnesses:
+  `script/interleaving-check -p clock_contract` fails four of its harnesses:
   `a_reader_never_sees_half_a_publish`, `a_racing_reader_sees_an_unrecognised_page_or_a_whole_one`,
   `the_generation_a_reader_sees_matches_the_pair_it_read` and
   `two_writers_serialise_rather_than_corrupt_the_page`. A host test cannot carry a concurrency
@@ -39,7 +39,7 @@ compiles. The suite did not get better.
 
 The 7 timeouts are the seqlock's retry loops, the `dtb` cursor family one level up. They are
 `s & 1 != 0` under `==`, `&` under `|` and `^`, and the reader's sequence comparison. Each turns a
-bounded retry into one that never exits. The baseline's `clock_protocol` row recorded 7 hangs of 9
+bounded retry into one that never exits. The baseline's `clock_contract` row recorded 7 hangs of 9
 survivors for the same reason.
 
 ### `swish`: 20 survivors, 16 killed, 4 equivalent
@@ -97,11 +97,11 @@ equivalent instead.
   assertions added beside `is_plain`. This third one cannot be, because it is what the function
   already does.
 
-The 11 timeouts are hangs, the same loop-control family as `dtb` and `clock_protocol`. They are
+The 11 timeouts are hangs, the same loop-control family as `dtb` and `clock_contract`. They are
 `echo`'s word cursor under `-=` and `*=`, `write_found`'s digit loop under `>=`, `pad`'s
 `left -= take` under `/=`, and `split`'s segment cursor under `*=`. Each stops the loop advancing.
 
-### `filesystem_protocol`: 59 survivors, 19 killed, 38 equivalent, 2 recorded gaps
+### `filesystem_contract`: 59 survivors, 19 killed, 38 equivalent, 2 recorded gaps
 
 Before: 529 caught, 59 missed, 10 timeouts, 47 unviable (90.1% of viable). After: 548 caught, 40
 missed (93.3%). The baseline already found this crate dominated by equivalents (36 of 46 under its

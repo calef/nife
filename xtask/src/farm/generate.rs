@@ -14,7 +14,7 @@ use super::*;
 /// Remove `# Examples` sections from the doc comments of a file about to be copied into the patched
 /// std sysroot.
 ///
-/// A doctest in one of these crates says `use entropy_protocol::...`, and in the copy there is no such
+/// A doctest in one of these crates says `use entropy_contract::...`, and in the copy there is no such
 /// crate: the file arrives as `sys/pal/nife/entropyproto.rs`, an inner module of `std`. So the
 /// example is *false* in its destination, in the specific way milestone 68 cares about, which is
 /// that it teaches a reader of the PAL something that is not true of the code they are reading.
@@ -84,13 +84,13 @@ pub(super) fn std_generate_modules() -> bool {
         // The net_stack socket-contract wire format, verbatim, so the net PAL cannot drift from the
         // server it talks to (same discipline as the ABI and heap crates above).
         (
-            root.join("crates/socket_protocol/src/lib.rs"),
+            root.join("crates/socket_contract/src/lib.rs"),
             farm_std_src().join("sys/pal/nife/netproto.rs"),
         ),
         // The FS-service wire protocol (DECISIONS §27), so `std::fs`'s PAL cannot drift from the
         // server it opens files through. Same discipline as the three above.
         (
-            root.join("crates/filesystem_protocol/src/lib.rs"),
+            root.join("crates/filesystem_contract/src/lib.rs"),
             farm_std_src().join("sys/pal/nife/fsproto.rs"),
         ),
         // The wall-clock contract (DECISIONS §43), so the time PAL reads the clock page with the
@@ -98,27 +98,27 @@ pub(super) fn std_generate_modules() -> bool {
         // the four above; this one matters more than most, because a drift here would be a torn
         // read of a timestamp rather than a compile error.
         (
-            root.join("crates/clock_protocol/src/lib.rs"),
+            root.join("crates/clock_contract/src/lib.rs"),
             farm_std_src().join("sys/pal/nife/clockproto.rs"),
         ),
         // The entropy contract (DECISIONS §44), so the random PAL packs its requests and reads its
         // replies exactly the way the entropy service serves them. Same discipline as the five
         // above; a drift here would be a program reading the wrong bytes as a key.
         (
-            root.join("crates/entropy_protocol/src/lib.rs"),
+            root.join("crates/entropy_contract/src/lib.rs"),
             farm_std_src().join("sys/pal/nife/entropyproto.rs"),
         ),
         // The inert-configuration contract (milestone 47's environment-variable fork, DECISIONS
         // §111), so `sys/env`'s seeding reads the config page with the same layout and the same
         // validated domains whoever assembles a page uses. Same discipline as the six above.
         (
-            root.join("crates/environment_protocol/src/lib.rs"),
+            root.join("crates/environment_contract/src/lib.rs"),
             farm_std_src().join("sys/pal/nife/envproto.rs"),
         ),
         // The argument page (milestone 205 (how a foreign program is told what to do), DECISIONS
         // §170), so `sys/args` reads the argv with the layout the shell assembles it in.
         (
-            root.join("crates/argument_protocol/src/lib.rs"),
+            root.join("crates/program_argument_contract/src/lib.rs"),
             farm_std_src().join("sys/pal/nife/argproto.rs"),
         ),
         // The byte-sink contract (milestone 50), so `println!`'s framing and the classification of
@@ -126,7 +126,7 @@ pub(super) fn std_generate_modules() -> bool {
         // Same discipline as the six above, and the one that would hurt most to get wrong: a drift
         // in `GONE` would be a program that keeps printing into a pipe whose reader has exited.
         (
-            root.join("crates/byte_sink_protocol/src/lib.rs"),
+            root.join("crates/byte_sink_contract/src/lib.rs"),
             farm_std_src().join("sys/pal/nife/sinkproto.rs"),
         ),
         // The std runtime contract (milestone 595 (provisional)): the eight fixed slots and the three
@@ -134,7 +134,7 @@ pub(super) fn std_generate_modules() -> bool {
         // these numbers, so a drift here would be a program reading its heap budget out of the
         // slot its stdout went in.
         (
-            root.join("crates/std_runtime_protocol/src/lib.rs"),
+            root.join("crates/std_runtime_contract/src/lib.rs"),
             farm_std_src().join("sys/pal/nife/runtimeproto.rs"),
         ),
         // The name resolver's client wire (milestone 384 (in a capability system the resolver is a
@@ -142,7 +142,7 @@ pub(super) fn std_generate_modules() -> bool {
         // rest of that crate needs `domain_name_system`, which the PAL cannot name. Milestone 801
         // (packages over the internet).
         (
-            root.join("crates/name_resolution_protocol/src/wire.rs"),
+            root.join("crates/domain_name_resolution_contract/src/wire.rs"),
             farm_std_src().join("sys/pal/nife/resolveproto.rs"),
         ),
         // The timebase page (milestone 184), so `rt::cntfrq` reads the machine's rate at the
@@ -150,7 +150,7 @@ pub(super) fn std_generate_modules() -> bool {
         // compiled only on x86_64 and riscv64 (`sys/pal/nife/mod.rs` gates the module), because the
         // farm is one source tree for all three targets and aarch64 reads a register instead.
         (
-            root.join("crates/counter_frequency_protocol/src/lib.rs"),
+            root.join("crates/counter_frequency_contract/src/lib.rs"),
             farm_std_src().join("sys/pal/nife/counterfreqproto.rs"),
         ),
         // The current-CPU page (milestone 812): a thread's allowance, which is
@@ -162,7 +162,7 @@ pub(super) fn std_generate_modules() -> bool {
             farm_std_src().join("sys/pal/nife/addressmap.rs"),
         ),
         (
-            root.join("crates/current_cpu_protocol/src/lib.rs"),
+            root.join("crates/current_cpu_contract/src/lib.rs"),
             farm_std_src().join("sys/pal/nife/currentcpuproto.rs"),
         ),
     ];

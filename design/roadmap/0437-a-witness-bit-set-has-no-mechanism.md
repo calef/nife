@@ -13,7 +13,7 @@ Filed 2026-09-19 by milestone 326's lane while triaging the 2026-09-14
 mutation census. It is not that milestone's work: 326 fixed the two lists it found broken, which is
 rung four again.
 
-Everything it needs is in `crates/filesystem_protocol` and a `macro_rules!`.
+Everything it needs is in `crates/filesystem_contract` and a `macro_rules!`.
 
 It is the last proposal this tree will ever carry, by about four hours. The lane wrote it under
 `design/roadmap/proposals/` because it branched before calef abolished that directory the same
@@ -50,7 +50,7 @@ five of its six bits could each be zero, two of them the structural finding
 ## What to build
 
 A declaration macro, so the list cannot be separate from the constants. Something of this shape,
-in `crates/filesystem_protocol`:
+in `crates/filesystem_contract`:
 
 ```rust
 witness_bits! {
@@ -79,14 +79,14 @@ derivation.
   shared with another", which is the failure that has actually happened.
 - **It does not reach the other crates.** `crates/swish` and the kernel's own test vocabularies have
   bit sets of the same shape; whether the macro should live somewhere both can reach is a question
-  for whoever takes this, and putting it in `filesystem_protocol` first is the cheaper start.
+  for whoever takes this, and putting it in `filesystem_contract` first is the cheaper start.
 - A macro is a thing to read, and AGENTS.md's elegance tenet refuses machinery for tidiness. The
   argument for this one is that it *removes* a thing to remember rather than adding an abstraction:
   six hand-maintained lists become zero.
 
 ## Prior art in this tree
 
-`crates/filesystem_protocol`'s `verb::TABLE` already does the stronger version of this for opcodes:
+`crates/filesystem_contract`'s `verb::TABLE` already does the stronger version of this for opcodes:
 two `const _: () = { .. }` blocks assert at compile time that the table is complete and in opcode
 order, so a verb added to `fs` without a row fails the build. The bit sets are the same problem with
 no such block, and the reason is only that they are constants rather than a table.

@@ -28,7 +28,7 @@
 //! # The thing that draws is not the thing that talks to the hardware
 //!
 //! This process never draws a pixel. It owns the device and the transport, and it serves a
-//! contract ([`graphics_protocol`], notes/framebuffer-contract.md) to a client that owns the pixels and no
+//! contract ([`graphics_contract`], notes/framebuffer-contract.md) to a client that owns the pixels and no
 //! device at all. That split is the whole point of the increment: rung two's compositor takes the
 //! client's place unchanged, and the security story is that a hostile client can draw nonsense and
 //! nothing more.
@@ -65,7 +65,7 @@
 #![allow(missing_docs)]
 #![no_main]
 
-use graphics_protocol as gfx;
+use graphics_contract as gfx;
 use user_mode_runtime::mapped_window::MappedWindow;
 use user_mode_runtime::virtio::virtio_ring_barrier;
 use user_mode_runtime::{

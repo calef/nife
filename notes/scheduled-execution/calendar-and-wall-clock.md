@@ -23,10 +23,10 @@ counter, which needs no capability. The housekeeping milestone 55 (Time Machine)
   one that does not gets `every 1s date`'s refusal for every calendar line. No new authority is
   needed and none is invented.
 - A step is visible. The clock page publishes wall time as an offset from the monotonic counter,
-  with a `generation` that counts publications (`crates/clock_protocol`). A timetable can hold
+  with a `generation` that counts publications (`crates/clock_contract`). A timetable can hold
   each calendar entry as a monotonic deadline and recompute it whenever the generation moves.
 - Steps are bounded. An accepted NTP proposal moves a clock that knows the time at most an hour
-  forward or a second back (`clock_protocol::policy`). An operator's `SET` is unbounded.
+  forward or a second back (`clock_contract::policy`). An operator's `SET` is unbounded.
 - There are no time zones with rules. `crates/calendar` supports a fixed UTC offset and refuses
   tzdata on purpose. Every date in this tree is UTC by rule. So daylight saving cannot arise unless
   somebody ships tzdata, and that is a separate decision the calendar crate already declined.

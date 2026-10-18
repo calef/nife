@@ -17,7 +17,7 @@ suite's `login_tests` on three ISAs. Nothing sends `SCHEDULE` to the real boot's
 
 A lane would give `swish-check` (or the boot check) a client. It logs in, registers a one-line
 schedule, and asserts the timetable ran it on the real boot's grant sizes. Then a change to
-`login`'s budget (`login_protocol::durable::BUDGET_PAGES`) that the kernel suite's harness hides
+`login`'s budget (`login_contract::durable::BUDGET_PAGES`) that the kernel suite's harness hides
 fails a gate. A cheaper first step is to measure whether the harness and the real boot differ in
 any way that matters. If they do not, refuse this with that measurement.
 

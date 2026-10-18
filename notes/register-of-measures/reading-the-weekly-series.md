@@ -172,7 +172,7 @@ The biggest mover is `merged_pull_requests`: 17 to 108, all verified against `gi
 `helpers/rust_source.py` was not touched in this window, but its hand-maintained crate tables were.
 Four `crates/` directories landed in those two days that none of `KERNEL_ONLY_CRATES`,
 `USERSPACE_ONLY_CRATES`, `SHARED_CRATES` or `BOOT_CHAIN_CRATES` know about yet: `boot_slot`,
-`current_cpu_protocol`, `file_allocation_table` and `top`. `current_cpu_protocol` carries the unsafe
+`current_cpu_contract`, `file_allocation_table` and `top`. `current_cpu_contract` carries the unsafe
 blocks; the other three carry none. "The same unsafe blocks, by trust boundary" in
 [unsafe-series.md](unsafe-series.md) already names this limitation of a table read once and baked
 in. `unsafe_trust_boot_chain` also moved, 37 to 62, and that is real growth in

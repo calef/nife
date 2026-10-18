@@ -13,7 +13,7 @@
 //! 6. and receives the child's answer, the input squared, on the rendezvous it minted.
 //!
 //! The kernel allocates nothing on the way: every object is retyped from the region it was handed.
-//! The verdict is one word, a bit per step (`capability_witness_protocol::process_composition`).
+//! The verdict is one word, a bit per step (`capability_witness_contract::process_composition`).
 //! Reading the archive is not a third capability: the kernel maps it read-only at
 //! `user_mode_runtime::initial_ramdisk::INITIAL_RAMDISK_VA`, naming no kernel object.
 //!
@@ -34,7 +34,7 @@
 #![allow(missing_docs)]
 #![no_main]
 
-use capability_witness_protocol::process_composition::{
+use capability_witness_contract::process_composition::{
     CHILD_ANSWERED, CHILD_FOUND, DOUBLE_MAP_REFUSED, FRAME_MAPPED, SPACE_BUILT, STARTED,
 };
 use supervision_protocol::{

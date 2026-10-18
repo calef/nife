@@ -458,12 +458,12 @@ fn a_pattern_is_resolved_where_the_shell_was_standing() {
 /// pinned here rather than shared.
 #[test]
 fn the_set_bound_matches_the_contract_that_carries_the_set() {
-    assert_eq!(MAX_NAMES, filesystem_protocol::nameset::MAX_NAMES);
-    assert_eq!(expand::MAX_NAME, filesystem_protocol::grant::MAX_NAME);
+    assert_eq!(MAX_NAMES, filesystem_contract::nameset::MAX_NAMES);
+    assert_eq!(expand::MAX_NAME, filesystem_contract::grant::MAX_NAME);
     // And the widest set this crate can plan must fit the buffer that contract sizes for it.
     let widest: [(&[u8], bool); MAX_NAMES] = [(b"sixteen-bytes!!!", false); MAX_NAMES];
-    let mut buf = [0u8; filesystem_protocol::nameset::BYTES];
-    assert!(filesystem_protocol::nameset::encode(&widest, &mut buf).is_some());
+    let mut buf = [0u8; filesystem_contract::nameset::BYTES];
+    assert!(filesystem_contract::nameset::encode(&widest, &mut buf).is_some());
 }
 
 /// **A program that hears words places no positional grant** (milestone 205, DECISIONS §170).

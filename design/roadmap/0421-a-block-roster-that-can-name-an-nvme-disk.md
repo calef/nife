@@ -63,7 +63,7 @@ different. With the driver in the kernel there is no endpoint to name, and with 
 there is.
 
 Milestone 261 answered it. A process owns the controller's data plane, it serves
-`filesystem_protocol::blk` on a request endpoint, and that endpoint is exactly the shape the roster's
+`filesystem_contract::blk` on a request endpoint, and that endpoint is exactly the shape the roster's
 virtio entries already point at. So the wire shape is decidable now and was not before.
 
 ## Why milestone 261's lane did not take it
@@ -97,7 +97,7 @@ without holding any of them. It has a transport kind for virtio and none for NVM
 process is the one the roster cannot see. §86 listed this as blocked on who owns the controller,
 because a roster entry for a kernel-resident driver and one for a confined EL0 server differ in what
 a holder may then ask for. Milestone 261 answered it by putting the data plane in a process that
-serves `filesystem_protocol::blk` on a request endpoint, which is the shape the virtio entries
+serves `filesystem_contract::blk` on a request endpoint, which is the shape the virtio entries
 already point at. What it settles is whether the roster's shape is about block devices or about
 virtio, since milestone 57's claim that listing and holding are different powers has only ever been
 exercised against one transport. The transport kind's spelling is a wire value two programs read and

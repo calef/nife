@@ -20,7 +20,7 @@ history goes to the commit message and git, and no refusal narrative is transpla
 document.
 
 This worth's rows:
-`crates/jh7110_clock_and_reset/src/lib.rs:2` (184), `crates/current_cpu_protocol/src/lib.rs:1`
+`crates/jh7110_clock_and_reset/src/lib.rs:2` (184), `crates/current_cpu_contract/src/lib.rs:1`
 (183), `components/src/login.rs:1` (178), then `crates/jh7110_entropy/src/lib.rs:2` and
 `crates/board_console/src/lib.rs:1` (176 each). A worth takes the worst handful that is not a
 gated example, and every shrink is banked. The method, the
@@ -39,7 +39,7 @@ documents):
 - `crates/jh7110_clock_and_reset/src/lib.rs:2` 184 to 103: a hundred lines of quoted device
   trees and C code replaced by the facts, the agreement and the rebasing arithmetic; the fenced
   listings are in the removal commit's diff and the linked sources.
-- `crates/current_cpu_protocol/src/lib.rs:1` 183 to 176: the 2026-09-21 ruling is now cited as
+- `crates/current_cpu_contract/src/lib.rs:1` 183 to 176: the 2026-09-21 ruling is now cited as
   §204 (how userspace asks where a thread runs), which landed long after the doc called it
   unlanded, and the refusal list went to git.
 - `components/src/login.rs:1` 178 to 177: the two history appendices milestone 860 created under
@@ -53,7 +53,7 @@ documents):
 ## Follow-on
 
 - **Milestone 865.** Milestone 865 (the comment-block sweep's worth five). Next worst: `components/src/timetable.rs:1` (191), `components/src/login.rs:1`
-  (177), `crates/current_cpu_protocol/src/lib.rs:1` (176), `components/src/system_installer.rs:1`
+  (177), `crates/current_cpu_contract/src/lib.rs:1` (176), `components/src/system_installer.rs:1`
   (175), `crates/board_console/src/lib.rs:1` (173).
 
 ## Index row

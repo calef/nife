@@ -31,13 +31,13 @@ What has to be decided before building, and it is an architect's:
 
 - Page or method. Linux answers with a page: `perf_event_mmap_page` carries `cap_user_rdpmc` and
   `pmc_width`. This tree already maps a read-only timebase page into every x86_64 and riscv64
-  process (`crates/counter_frequency_protocol`), which a field could extend on those two, but not on
+  process (`crates/counter_frequency_contract`), which a field could extend on those two, but not on
   aarch64, which maps none. A method is a new number on the syscall surface.
 - Whether milestone 75 (who may read the cycle counter, and by what authority) lands first. Today
   no manifest field grants the counter and no method sets the grant, so the only granted thread is
   the kernel test's. Asking "may I" matters once a real program can be granted.
 
-Reuse: `counter_frequency_protocol`'s page and its parent-fills-child propagation through
+Reuse: `counter_frequency_contract`'s page and its parent-fills-child propagation through
 `supervision_protocol::build_child_space` were considered as the carrier and are the cheapest
 route for riscv64 and x86_64; the choice is the architect's because it widens an ambient page.
 

@@ -211,7 +211,7 @@ impl Aperture {
     ///
     /// Returns `false`, having written nothing, when the rectangle is empty or leaves the covered
     /// part: **refused rather than clamped**, the same stance the framebuffer contract takes
-    /// (`graphics_protocol::rect_in_surface`), because a clamp would absorb a client's coordinate
+    /// (`graphics_contract::rect_in_surface`), because a clamp would absorb a client's coordinate
     /// bug silently.
     pub fn copy(
         &self,

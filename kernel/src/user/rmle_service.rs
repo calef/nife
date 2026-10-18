@@ -15,7 +15,7 @@ const RMLE_STACK_PAGES: usize = 4;
 /// The file channel's width, straight from the contract `rmle`'s FS calls speak, so this wiring
 /// cannot disagree with the program on the other end. `fs_service::FILE_PAGES` is the same value
 /// but private to that module; this is the source it is itself defined from.
-const FILE_PAGES: usize = filesystem_protocol::fs::TRANSFER_PAGES;
+const FILE_PAGES: usize = filesystem_contract::fs::TRANSFER_PAGES;
 
 /// A fresh, zeroed frame, for `rmle`'s own extra stack pages. The zeroing and its soundness
 /// argument now live once in [`crate::memory::alloc_zeroed`] (milestone 139 round 8); what stays
@@ -48,7 +48,7 @@ pub struct Wiring {
 }
 
 /// Spawn `rmle` against `dir_name` (a directory already in the test fixture tree, granted with
-/// [`filesystem_protocol::dir::ALL`]) and `file_name` (the file inside it `rmle` edits, created if
+/// [`filesystem_contract::dir::ALL`]) and `file_name` (the file inside it `rmle` edits, created if
 /// absent). `None` if there is no RedoxFS disk attached to this run.
 ///
 /// **Returns a [`Holding`] alongside the wiring, and a caller must release it.** The fake console
@@ -77,7 +77,7 @@ pub fn start(dir_name: &'static str, file_name: &str) -> Option<(Wiring, Holding
         fs_service::fs_server_image()?,
         program("fs_subtree_caretaker").expect("no fs_subtree_caretaker in the initial ramdisk"),
         dir_name,
-        filesystem_protocol::dir::ALL,
+        filesystem_contract::dir::ALL,
     )?;
 
     let report = spawn_rmle(image, file_name, term, term_out_phys, dir_ep, file_shared);
@@ -192,11 +192,11 @@ fn spawn_rmle(
     file_shared: u64,
 ) -> RendezvousId {
     assert!(
-        filesystem_protocol::grant::fits(file_name.as_bytes()),
+        filesystem_contract::grant::fits(file_name.as_bytes()),
         "rmle's target name rides in two argument words; this one does not fit",
     );
-    let (lo, hi) = filesystem_protocol::grant::pack_name(file_name.as_bytes());
-    let spec = filesystem_protocol::grant::spec(file_name.len(), 0);
+    let (lo, hi) = filesystem_contract::grant::pack_name(file_name.as_bytes());
+    let spec = filesystem_contract::grant::spec(file_name.len(), 0);
 
     let report = sched::create_rendezvous();
     sched::spawn(move || {

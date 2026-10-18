@@ -38,7 +38,7 @@ built, `coremark` included.
 
 ### The fix and the test
 
-The fix widened a `cfg`. `x86_64` had already built the mechanism (`counter_frequency_protocol`, a
+The fix widened a `cfg`. `x86_64` had already built the mechanism (`counter_frequency_contract`, a
 page the kernel fills and maps read-only into every process), and riscv64 now uses it. An unknown
 rate refuses rather than falling back. The test is what would have caught this in July:
 `system_tests/src/user/counter_frequency_tests.rs` asserts that what a userspace program reports equals
@@ -97,7 +97,7 @@ named the mechanism.
   They quote deterministic ticks under `-icount`, and `bench/baseline-*.txt` holds ticks.
 - `coremark`'s self-reported rate on x86 read the stored number, so any x86 CoreMark score computed
   from it carried the same error. No such score is published (see the riscv64 section above).
-- `Instant`, `uptime` and the shell's `time` on x86 all read it through `counter_frequency_protocol`'s
+- `Instant`, `uptime` and the shell's `time` on x86 all read it through `counter_frequency_contract`'s
   page. Every process's sense of elapsed time was off by that boot's error.
 - Nothing went red, which is why it lasted. `kernel::user::wait_for` takes `now()` plus two seconds,
   so an inflated rate makes a timeout longer in real time, never shorter. The defect could only fail

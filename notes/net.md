@@ -13,7 +13,7 @@ contract below, decided in §25 (socket identity) and built as phase B.
 
 The §25 contract, so a process other than net_stack can open sockets. net_stack, after DHCP, serves requests
 on a `Stack` endpoint; a client holds `WRITE` on it plus its own untyped budget. Files:
-`crates/socket_protocol/src/lib.rs` (the wire format), the serve loop in `components/src/net_stack.rs`, and the client in
+`crates/socket_contract/src/lib.rs` (the wire format), the serve loop in `components/src/net_stack.rs`, and the client in
 `components/src/socket_test_client.rs` (a module of the net_stack binary, dispatched by the entry role, see the archive
 note below).
 
@@ -73,8 +73,8 @@ Everything above is the guest as a client. The TCP gate connects out to a slirp 
 UDP gate sends a request, DHCP is a client protocol. nife could reach the network and could not
 be reached, and the contract had no listen verb to fix that with.
 
-Milestone 107 adds `LISTEN` and `ACCEPT` (`crates/socket_protocol`, opcodes 9 and 10, **names
-provisional**), the smoltcp side in `components/src/net_stack.rs`, and a gate in which a **host process
+Milestone 107 (the socket contract learns to accept) adds `LISTEN` and `ACCEPT` (`crates/socket_contract`, opcodes 9 and 10, **names
+provisional**). It also adds the smoltcp side in `components/src/net_stack.rs`, and a gate in which a **host process
 connects into the guest** and gets an answer the guest composed. Two design questions came with the
 verbs, and neither was copied from POSIX.
 
@@ -83,7 +83,7 @@ verbs, and neither was copied from POSIX.
 #### Spawn side
 
 Whoever wires the pair decides the inbound authority, and the client never asks for
-it. `socket_protocol::listen_grant(lo, hi)` packs an inclusive range into the one word `arg2` carries:
+it. `socket_contract::listen_grant(lo, hi)` packs an inclusive range into the one word `arg2` carries:
 
 ```rust
 // A stack whose client may listen on 7778 and nothing else.
@@ -91,12 +91,12 @@ let report = virtio_service::start_net_stack(
     image,
     NET_TEST_TCP_ACCEPT,                                    // which exchange the client drives
     false,                                                  // mmio, not PCIe
-    socket_protocol::listen_grant(NET_LISTEN_PORT, NET_LISTEN_PORT),
+    socket_contract::listen_grant(NET_LISTEN_PORT, NET_LISTEN_PORT),
 )?;
 
 // A stack that serves nobody inbound, which is every other net test in the tree.
 let report = virtio_service::start_net_stack(image, NET_TEST_TCP_ECHO, false,
-                                             socket_protocol::NO_LISTEN_GRANT)?;
+                                             socket_contract::NO_LISTEN_GRANT)?;
 ```
 
 #### Client side
@@ -174,7 +174,7 @@ needed to use the contract.
 - `virtio::MAX_DEVICES` never reuses a slot, and a dead net service's DMA page and shadow ring are
   not returned. See [memory-and-reclamation.md](net/memory-and-reclamation.md).
 - No artifact says which components may serve inbound ports, where a static seL4 system description
-  would. Nothing in `crates/socket_protocol` is machine-checked. See
+  would. Nothing in `crates/socket_contract` is machine-checked. See
   [prior-art-and-the-contract.md](net/prior-art-and-the-contract.md).
 
 ### BUGS: the check fails intermittently, and the mechanism is still not identified
@@ -197,7 +197,7 @@ written, in [the-inbound-check.md](net/the-inbound-check.md).*
 - **Inbound UDP is built, and it is a grant of its own** (the mDNS stack half of milestone 55 (Time
   Machine: SMB3 with Apple's extensions, and mDNS)). `BIND_UDP` claims a fixed UDP port the way
   `LISTEN` claims a TCP one. It is checked against a UDP bind grant the spawn site packs into the
-  high half of the same spawn word the listen grant rides in (`socket_protocol::udp_bind_grant`; the
+  high half of the same spawn word the listen grant rides in (`socket_contract::udp_bind_grant`; the
   halves are independent
   authorities, and the zero word still grants nothing anywhere). It answers with `LISTEN`'s own
   vocabulary because the three outcomes are properties of claiming a port, not of TCP. A UDP

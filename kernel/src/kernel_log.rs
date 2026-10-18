@@ -4,7 +4,7 @@
 //! shape is calef's ruling F of 2026-10-03 UTC, recorded in `notes/kernel-ring-drain.md`).
 //!
 //! Every line the kernel prints becomes one F3 record in a ring of frames (the layout is
-//! `system_log_protocol::kernel_ring`, shared with the log service). What changes is whether the
+//! `system_log_contract::kernel_ring`, shared with the log service). What changes is whether the
 //! kernel also writes the line to the UART itself:
 //!
 //! - **No drainer yet** (all of boot, and every boot that never starts one): yes, byte by byte as
@@ -41,9 +41,9 @@
 
 use core::sync::atomic::{AtomicBool, AtomicPtr, AtomicU64, Ordering};
 
-use system_log_protocol::kernel_ring::{self, Cursor, DETACHED, Read, Ring};
-use system_log_protocol::record::{TEXT_MAX, flags};
-use system_log_protocol::severity;
+use system_log_contract::kernel_ring::{self, Cursor, DETACHED, Read, Ring};
+use system_log_contract::record::{TEXT_MAX, flags};
+use system_log_contract::severity;
 
 /// How long the oldest unread line may wait before the kernel decides its drainer has stopped.
 /// Fifty ticks: long enough that a busy service is not mistaken for a dead one, short enough that

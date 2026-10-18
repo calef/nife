@@ -5,7 +5,7 @@
 //! The kernel plays the spawner: it starts `net_stack` over the `e1000e` NIC, starts
 //! `domain_name_resolver` as a client of that stack, grants one badge the zone `nife.test`, and spawns
 //! `name_resolver_test_client` holding nothing of the resolver but that badged capability. The
-//! client asks about every name in `name_resolution_protocol::fixture::CASES` and reports each
+//! client asks about every name in `domain_name_resolution_contract::fixture::CASES` and reports each
 //! reply, and this file judges them. The name server is the runners' `helpers/name-server-peer` at
 //! 10.0.2.9:53, over TCP, because slirp forwards nothing else to a host process.
 //!
@@ -17,8 +17,8 @@
 //! exchange is the same `Query` bytes and the same `accept`, and that is proved on the host in
 //! `crates/domain_name_system`; a UDP name server a test owned would have to bind a host port.
 
-use name_resolution_protocol::fixture::{self, CASES};
-use name_resolution_protocol::{
+use domain_name_resolution_contract::fixture::{self, CASES};
+use domain_name_resolution_contract::{
     GRANTS_MAX, Outcome, endowment, forget_message, grant_messages, status,
 };
 
@@ -76,7 +76,7 @@ pub(super) fn entropy() -> Option<RendezvousId> {
             if let Some(report) = w.wait_for_ready() {
                 assert_eq!(
                     report[0],
-                    entropy_protocol::READY,
+                    entropy_contract::READY,
                     "the entropy service did not come up (it reported {:#x})",
                     report[0],
                 );
@@ -252,7 +252,7 @@ fn a_granted_client_resolves_inside_its_zone_and_nothing_outside_it() {
     };
     let mut w = match e1000e_service::start_net_server(
         image("net_stack"),
-        socket_protocol::NO_LISTEN_GRANT,
+        socket_contract::NO_LISTEN_GRANT,
     ) {
         Ok(w) => w,
         Err(e1000e_service::Absent::NoController) => {
@@ -266,7 +266,7 @@ fn a_granted_client_resolves_inside_its_zone_and_nothing_outside_it() {
     // against. Which server to ask is the spawner's decision either way.
     let [_lease, nameserver, ..] = crate::sched::ipc_receive(w.report);
     assert_eq!(
-        socket_protocol::lease::word_ipv4(nameserver),
+        socket_contract::lease::word_ipv4(nameserver),
         Some([10, 0, 2, 3]),
         "the lease did not name slirp's name server, so a spawner would have nothing to hand on",
     );
@@ -282,7 +282,7 @@ fn a_granted_client_resolves_inside_its_zone_and_nothing_outside_it() {
         assert_eq!(
             (got.status, got.detail),
             (case.status, case.detail),
-            "{}: the resolver answered status {} detail {} (name_resolution_protocol::status)",
+            "{}: the resolver answered status {} detail {} (domain_name_resolution_contract::status)",
             case.name,
             got.status,
             got.detail,
@@ -347,7 +347,7 @@ fn a_forgotten_badge_is_denied_and_its_window_serves_the_next_client() {
     };
     let mut w = match e1000e_service::start_net_server(
         image("net_stack"),
-        socket_protocol::NO_LISTEN_GRANT,
+        socket_contract::NO_LISTEN_GRANT,
     ) {
         Ok(w) => w,
         Err(e1000e_service::Absent::NoController) => {
@@ -491,7 +491,7 @@ fn std_resolve_prints(
 /// was below the old one. CI logs carry no ports, so that is inferred, not read: starting every
 /// stack at the same port failed 9 of 10 runs (riscv64 and aarch64), each in one of these two
 /// shapes, and a capture showed the dropped SYNs. Ports now follow the boot clock;
-/// `socket_protocol::ephemeral` has the capture, the fix and what it still does not cover.
+/// `socket_contract::ephemeral` has the capture, the fix and what it still does not cover.
 ///
 /// Falsification: replayable `system_tests/falsifications/user.name_resolver_tests.a_std_program_resolves_its_granted_zone_and_nothing_without_a_grant.patch`
 #[test_case]
@@ -504,7 +504,7 @@ fn a_std_program_resolves_its_granted_zone_and_nothing_without_a_grant() {
     };
     let mut w = match e1000e_service::start_net_server(
         image("net_stack"),
-        socket_protocol::NO_LISTEN_GRANT,
+        socket_contract::NO_LISTEN_GRANT,
     ) {
         Ok(w) => w,
         Err(e1000e_service::Absent::NoController) => {

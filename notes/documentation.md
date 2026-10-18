@@ -16,7 +16,7 @@ feature question.
 
 `crates/documentation` is a streaming renderer: bytes in, styled terminal bytes out, no allocator,
 no document held anywhere. That shape is not an optimization, it is what the program's capabilities
-already are. `mdr` receives its input as `byte_sink_protocol` messages of sixteen bytes each and
+already are. `mdr` receives its input as `byte_sink_contract` messages of sixteen bytes each and
 writes its output the same way. A renderer that needed the whole document would need somewhere to
 put it, and somewhere to put it is a memory grant the program can otherwise do without. The test
 `framing_does_not_matter` pins it: one byte at a time and the whole document at once produce
@@ -45,7 +45,7 @@ three defects the corpus test found are in
 ### Two rendering decisions worth knowing
 
 `_` is never emphasis. CommonMark reads `__rust_alloc` as an opened strong span. This repository
-writes `snake_case` identifiers in running prose constantly (`filesystem_protocol`, `line_editor`,
+writes `snake_case` identifiers in running prose constantly (`filesystem_contract`, `line_editor`,
 `c_seam`), so honoring the spec here would misrender far more than it would style. Only `*` and ``
 open emphasis, and a closer must not be preceded by a space.
 

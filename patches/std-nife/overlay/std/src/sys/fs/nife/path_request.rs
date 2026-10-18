@@ -2,7 +2,7 @@
 //!
 //! A server since milestone 606 (a directory walk costs what it does on Linux) resolves a relative
 //! path in one `OPEN` or `OPENDIR`, with exactly the rights the hop-by-hop walk would get
-//! (`filesystem_protocol::fs::OPEN` has the rule). One that predates it answers `EINVAL` to any
+//! (`filesystem_contract::fs::OPEN` has the rule). One that predates it answers `EINVAL` to any
 //! name with a `/`. So the PAL sends the path, and on `EINVAL` walks it hop by hop instead; if the
 //! walk then succeeds, the `EINVAL` was the server's age rather than the name, and every later
 //! request walks without asking again. An `EINVAL` the walk repeats was the name's, and says
@@ -55,7 +55,7 @@ pub(super) fn joined(path: &Path) -> String {
 
 /// The [`dir`] rights an `OPEN` needs on the directory holding the name.
 ///
-/// `filesystem_protocol::verb::TABLE` records `OPEN` as the contract's one "any of" row (`READ` *or* `WRITE`
+/// `filesystem_contract::verb::TABLE` records `OPEN` as the contract's one "any of" row (`READ` *or* `WRITE`
 /// will do), so this is the one place a caller has to say which, and it says it from the options it
 /// was handed. Asking for both when the caller only reads would refuse a read through a read-only
 /// grant, which is the over-asking trap one level down from the one [`descend`] describes.
@@ -73,7 +73,7 @@ pub(super) fn open_rights(opts: &OpenOptions) -> u64 {
 }
 
 /// `OPEN` the last name in `path`. Returns the server's handle and the size its reply carried (0
-/// when it carried none; `filesystem_protocol::fs::OPEN` says why 0 means "not given").
+/// when it carried none; `filesystem_contract::fs::OPEN` says why 0 means "not given").
 ///
 /// Since ruling A of milestone 606 (a directory walk costs what it does on Linux) a multi-name
 /// path is one `OPEN` with the rights each step asks for in the second word, and a server that

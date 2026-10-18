@@ -339,7 +339,7 @@ fn spawn_to_reap_repeats_without_leaking() {
 #[cfg(initial_ramdisk)]
 #[test_case]
 fn a_process_composed_from_two_capabilities_runs_in_the_space_it_built() {
-    use capability_witness_protocol::process_composition as bits;
+    use capability_witness_contract::process_composition as bits;
     let witness = process_composition_service::wire();
     let report = witness.report;
     // Each predicate is asked once per pass and its first `true` is the answer: the reclaim below

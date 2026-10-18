@@ -13,7 +13,7 @@
 //! the file. Chosen to sort beside `login_tests`, as above; the pull request records no other name
 //! considered.
 
-use credential_protocol::fixture::{ALICE, BOB, WRONG};
+use credential_contract::fixture::{ALICE, BOB, WRONG};
 use login_service as ls;
 
 use super::login_tests::{DURABLE_UT_PAGES, free_terminal, redoxfs_server_image, wired};
@@ -89,7 +89,7 @@ fn a_login_session_with_pending_work_refuses_logout_until_the_work_is_gone() {
     let a = sched::ipc_receive(w.audit);
     assert_eq!(
         a[0],
-        login_protocol::ATTRIBUTED,
+        login_contract::ATTRIBUTED,
         "no attribution record followed the login",
     );
     free_terminal(&w);
@@ -132,7 +132,7 @@ fn a_users_schedule_outlives_their_login_and_ends_when_they_empty_it() {
         let a = sched::ipc_receive(w.audit);
         assert_eq!(
             a[0],
-            login_protocol::ATTRIBUTED,
+            login_contract::ATTRIBUTED,
             "no attribution record followed a login"
         );
         free_terminal(&w);
@@ -214,7 +214,7 @@ fn a_users_schedule_outlives_their_login_and_ends_when_they_empty_it() {
 ///
 /// `alice` opens a schedule and detaches, so a `user_timetable_keeper` and a timetable are running on her
 /// budget. The owner's console then does what `user suspend alice` does: it lists `alice` in
-/// `login_protocol::SUSPENDED_LIST` and sends `SUSPEND` on the front door. `login` answers that it
+/// `login_contract::SUSPENDED_LIST` and sends `SUSPEND` on the front door. `login` answers that it
 /// ended one durable session, and a correct password for `alice` is refused `SUSPENDED`, not
 /// `DENIED`, while her stored schedule and her manifest line stay. `user resume alice` empties the
 /// list, and the stored schedule comes back at her next login, as the ruling says; emptying it then
@@ -224,7 +224,7 @@ fn a_users_schedule_outlives_their_login_and_ends_when_they_empty_it() {
 /// # BUGS
 ///
 /// **Its first login was refused `DENIED` once on the HVF leg**, with the right password and before
-/// any suspension: `alice was not authenticated`, left 2 (`login_protocol::DENIED`), right 1. One of
+/// any suspension: `alice was not authenticated`, left 2 (`login_contract::DENIED`), right 1. One of
 /// ten full `script/test --hvf` runs on 2026-10-12 (UTC), at a 1-minute load of 3.4, found by
 /// milestone 514 (the HVF std listener hangs in some full runs)'s verification runs and not
 /// investigated there. The suspended list is emptied at the top of this test, so a list left by an
@@ -237,7 +237,7 @@ fn suspending_a_user_ends_their_schedule_and_refuses_them_until_resumed() {
     let Some(w) = wired() else {
         crate::testing::skip!("no virtio-rng device or no RedoxFS disk attached");
     };
-    fs_service::set_root_list(login_protocol::SUSPENDED_LIST, None);
+    fs_service::set_root_list(login_contract::SUSPENDED_LIST, None);
     free_terminal(&w);
     let cli =
         program("login_test_client").expect("no login_test_client program in the initial ramdisk");
@@ -247,7 +247,7 @@ fn suspending_a_user_ends_their_schedule_and_refuses_them_until_resumed() {
             let a = sched::ipc_receive(w.audit);
             assert_eq!(
                 a[0],
-                login_protocol::ATTRIBUTED,
+                login_contract::ATTRIBUTED,
                 "no attribution record followed a login"
             );
             free_terminal(&w);
@@ -288,7 +288,7 @@ fn suspending_a_user_ends_their_schedule_and_refuses_them_until_resumed() {
     // `user resume alice`. The stored schedule comes back at this login: `login` opens a fresh
     // session and stages the stored document as sequence 1, so the page carries a reply before the
     // client has asked anything. The client then empties it, writing the empty store first.
-    fs_service::set_root_list(login_protocol::SUSPENDED_LIST, None);
+    fs_service::set_root_list(login_contract::SUSPENDED_LIST, None);
     let back = session(ls::EMPTY_SCHEDULE);
     assert_eq!(
         back[0],
@@ -324,12 +324,12 @@ fn suspending_a_user_ends_their_schedule_and_refuses_them_until_resumed() {
 /// durable session.
 fn suspend_alice(w: &ls::Wiring) {
     // `user suspend alice`, as the owner's console does it.
-    fs_service::set_root_list(login_protocol::SUSPENDED_LIST, Some(b"alice\n"));
-    sched::ipc_send(w.request, [login_protocol::suspend_word(), 0, 0]);
+    fs_service::set_root_list(login_contract::SUSPENDED_LIST, Some(b"alice\n"));
+    sched::ipc_send(w.request, [login_contract::suspend_word(), 0, 0]);
     let applied = sched::ipc_receive(w.result);
     assert_eq!(
         applied[0],
-        login_protocol::APPLIED,
+        login_contract::APPLIED,
         "SUSPEND was not answered APPLIED"
     );
     assert_eq!(applied[1], 1, "SUSPEND did not end alice's durable session");
@@ -363,7 +363,7 @@ fn the_stored_schedule_came_back_and_was_emptied(back: [u64; 5]) {
 fn manifest_lists(identity: &[u8]) -> bool {
     let mut buf = [0u8; 512];
     fs_service::read_root_file(schedule_store::MANIFEST_FILE_NAME, &mut buf)
-        .is_some_and(|n| login_protocol::lists(&buf[..n], identity))
+        .is_some_and(|n| login_contract::lists(&buf[..n], identity))
 }
 
 /// The construction budget the start-up test's own `login` is given: `login.rs`'s `OWN_UT_PAGES`
@@ -420,7 +420,7 @@ fn a_durable_session_is_re_derived_at_start_up_unless_suspended() {
     fs_service::set_home_file(b"alice", stored, Some(doc));
     fs_service::set_home_file(b"bob", stored, Some(doc));
     fs_service::set_root_list(schedule_store::MANIFEST_FILE_NAME, Some(b"alice\nbob\n"));
-    fs_service::set_root_list(login_protocol::SUSPENDED_LIST, Some(b"alice\n"));
+    fs_service::set_root_list(login_contract::SUSPENDED_LIST, Some(b"alice\n"));
 
     let w = ls::start(
         program("login").expect("no login program in the initial ramdisk"),
@@ -434,27 +434,27 @@ fn a_durable_session_is_re_derived_at_start_up_unless_suspended() {
     // The first word on the front door is received only once the start-up pass is over, so every
     // exchange below sees what it left.
     let suspend = || {
-        sched::ipc_send(w.request, [login_protocol::suspend_word(), 0, 0]);
+        sched::ipc_send(w.request, [login_contract::suspend_word(), 0, 0]);
         let r = sched::ipc_receive(w.result);
         assert_eq!(
             r[0],
-            login_protocol::APPLIED,
+            login_contract::APPLIED,
             "SUSPEND was not answered APPLIED"
         );
         r[1]
     };
-    // What the start-up pass's own `rederive` skipped and why (`login_protocol::REDERIVE_SKIPS`),
+    // What the start-up pass's own `rederive` skipped and why (`login_contract::REDERIVE_SKIPS`),
     // read back for a failing assertion below to print: the "skipped, not failed" contract used to
     // leave no reason anywhere a failure could show.
     let rederive_skips = || {
-        sched::ipc_send(w.request, [login_protocol::rederive_skips_word(), 0, 0]);
+        sched::ipc_send(w.request, [login_contract::rederive_skips_word(), 0, 0]);
         let r = sched::ipc_receive(w.result);
         assert_eq!(
             r[0],
-            login_protocol::SKIP_COUNTS,
+            login_contract::SKIP_COUNTS,
             "REDERIVE_SKIPS was not answered SKIP_COUNTS"
         );
-        login_protocol::durable::unpack_skip_counts(r[1])
+        login_contract::durable::unpack_skip_counts(r[1])
     };
 
     assert_eq!(
@@ -472,13 +472,13 @@ fn a_durable_session_is_re_derived_at_start_up_unless_suspended() {
         "a wrong secret for an identity with a re-derived session was not DENIED",
     );
 
-    fs_service::set_root_list(login_protocol::SUSPENDED_LIST, Some(b"bob\n"));
+    fs_service::set_root_list(login_contract::SUSPENDED_LIST, Some(b"bob\n"));
     let ended = suspend();
     // Read before the failure, not only on it: querying costs one exchange and the value must
     // exist by the time `assert_eq!` might format it.
     let skips = rederive_skips();
 
-    fs_service::set_root_list(login_protocol::SUSPENDED_LIST, None);
+    fs_service::set_root_list(login_contract::SUSPENDED_LIST, None);
     fs_service::set_root_list(schedule_store::MANIFEST_FILE_NAME, None);
     fs_service::set_home_file(b"alice", stored, None);
     fs_service::set_home_file(b"bob", stored, None);

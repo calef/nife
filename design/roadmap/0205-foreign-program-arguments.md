@@ -42,7 +42,7 @@ build. Everything milestone 121 (`ripgrep` on nife) still owes is behind that ha
 Clause 1, the transport, on all three architectures. A `std` program run from the prompt hears the
 line's words through `std::env::args()`, and nothing it hears is authority.
 
-- `crates/argument_protocol` (provisional) is the page: a magic, a count, a total, then each word
+- `crates/program_argument_contract` (provisional) is the page: a magic, a count, a total, then each word
   as a length and its bytes. A page that does not parse whole reads as no arguments.
 - `std_runtime_protocol` gains slot 8 and `ARGS_PAGE` (`0x1400_0000`), and the `std` PAL's
   `sys/args/nife.rs` reads the page from there, zero-copy. `cargo xtask std-src` generates the

@@ -21,7 +21,7 @@ use super::*;
 ///
 /// The cost is stated rather than hidden: a huge directory is a `Vec` of every name in it, and the
 /// snapshot is from `read_dir` time, so an entry removed before the caller reaches it opens as
-/// `NotFound`. That is the ordinary readdir caveat (`filesystem_protocol::fs::READDIR` records the same one
+/// `NotFound`. That is the ordinary readdir caveat (`filesystem_contract::fs::READDIR` records the same one
 /// for its cursor) rather than something this choice introduced.
 pub struct ReadDir {
     /// The path the caller passed, so `DirEntry::path()` can rebuild what they would expect.

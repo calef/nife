@@ -193,7 +193,7 @@ pub fn verb_of<'o>(line: &[u8], out: &'o mut [u8; MAX_VERB]) -> Option<&'o [u8]>
 /// reading of the page [`argv`](crate::argv) assembled from the line, which is what the progenitor holds; `None`
 /// for a page that does not parse, has one word, or whose second is longer than [`MAX_VERB`].
 pub fn verb_of_page(page: &[u8]) -> Option<&[u8]> {
-    argument_protocol::ArgPage::parse(page)
+    program_argument_contract::ArgPage::parse(page)
         .iter()
         .nth(1)
         .filter(|w| w.len() <= MAX_VERB)
@@ -230,7 +230,7 @@ mod tests {
         assert_eq!(install.indexes, IndexStore::ReadOnly);
         assert_eq!(remove.indexes, IndexStore::Forbidden);
         // The progenitor's reading of the page the shell assembles agrees with the shell's.
-        let mut page = [0u8; argument_protocol::PAGE_BYTES];
+        let mut page = [0u8; program_argument_contract::PAGE_BYTES];
         argv(b"jig 'install' greeting", &mut page).unwrap();
         assert_eq!(verb_of_page(&page), Some(&b"install"[..]));
         let nothing = as_typed(b"jig upgrade");

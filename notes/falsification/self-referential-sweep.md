@@ -25,7 +25,7 @@ proof is not evidence about a proof.
 | `component_plan::a_plan_never_grants_a_right_the_declaration_did_not_ask_for` | `Direction::rights`, which `plan` fills the word from | `Use` routed `READ`, so a client can receive on its server's rendezvous |
 | `component_plan::the_device_split_partitions_the_mappings` | `PageKind::mode`, which `plan` fills the word from | device registers mapped `MAP_RW` |
 | `component_plan::dependents_finds_exactly_the_non_target_instances_that_declared_it` | `str_eq`, which `dependents` decides membership with | `str_eq` true for strings of different lengths |
-| `credential_protocol::no_request_word_makes_the_parse_read_outside_the_page` | `id_len`, which `read` slices with | the identity length read from the wrong four bits of the request word |
+| `credential_contract::no_request_word_makes_the_parse_read_outside_the_page` | `id_len`, which `read` slices with | the identity length read from the wrong four bits of the request word |
 | `direct_memory_access_validator::an_accepted_descriptor_is_confined` | `Desc::is_indirect`, which `check_descriptor` guards on | the indirect flag tested against the wrong bit, so an indirect table reaches the device |
 | `jh7110_entropy::ready_requires_rand_rdy_and_carries_the_words_untouched` | `assemble`, which `interpret` calls | entropy laid out big-endian |
 | `network_time_protocol::accepting_is_total_and_a_sample_is_coherent` | `Interval::is_negative`, which `accept` guards on | the predicate never true, so a negative delay is accepted |
@@ -41,7 +41,7 @@ the ratio it prints is not the tree's) landed between the two and widened the de
 merged figure rather than either branch's.
 
 **Three more were rewritten and are recorded as *not* findings**, which is the half worth being
-strict about. `filesystem_protocol`'s two attenuation harnesses state their property through
+strict about. `filesystem_contract`'s two attenuation harnesses state their property through
 `allows`, and `capability::a_deleted_capability_stays_deleted` states it through `get`. Each
 looks like the class and is not: the sweep tried to exhibit a defect their original phrasing
 misses and could not. `attenuate` does not call `allows`, and a widening `attenuate` shows up on

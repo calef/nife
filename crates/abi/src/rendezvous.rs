@@ -7,7 +7,7 @@
 /// Two refusals a sender must tell apart, and the ABI does (milestone 50): [`crate::Error::NoSuchSlot`]
 /// means the slot is empty, and [`crate::Error::Gone`] means the endpoint this capability names has
 /// been destroyed, including while this thread was blocked inside the send. See
-/// `crates/byte_sink_protocol`.
+/// `crates/byte_sink_contract`.
 pub const SEND: u64 = 0;
 
 /// `invoke(cap, RECEIVE, _, _, _)` -> w0, with w1 in x1 and w2 in x2. **Blocks until a message

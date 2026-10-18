@@ -14,7 +14,7 @@ The display driver's DMA region moved to this. So did the painting client's and 
 surface grant, and the compositor's screen (plus a capture client's read-only mirror of it). That is
 what makes the grown scanout fit a sixteen-slot capability table at all. It was 900 page frames at
 the 1280x720 this was first built and measured against. It is 311 frames at the 924x344 the scanout
-was retargeted to on 2026-08-27, and `crates/graphics_protocol/src/lib.rs`'s `WIDTH` has the
+was retargeted to on 2026-08-27, and `crates/graphics_contract/src/lib.rs`'s `WIDTH` has the
 reasoning. At one capability per page neither size would have fit.
 
 `display_service::DRIVER_SLOT_DMA`'s `const` assertion (below, and the error it used to produce) is
@@ -131,7 +131,7 @@ and costs a second L3, still inside the eight-page budget.
 ## One more arithmetic trap in the chosen size
 
 800 x 600 x 4 is 1,920,000 bytes, which is 468.75 pages. So the surface does not fill whole page
-frames, and `graphics_protocol`'s build-time assertion that it must
+frames, and `graphics_contract`'s build-time assertion that it must
 (`SURFACE_BYTES.is_multiple_of(4096)`) fails. With an 800-pixel width, the height must be a multiple
 of 32 for the surface to be a whole number of page frames. 608 is the nearest, giving 475 page
 frames exactly and a 100x43 grid. The alternative is to grant `div_ceil` page frames and let the

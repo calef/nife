@@ -93,7 +93,7 @@ pub extern "C" fn _start(_a0: u64, _a1: u64, _a2: u64) -> ! {
             // SAFETY: granted only alongside a read-only mapping of the same frame at `PAGE_VA`,
             // which lives as long as this process (`system_initializer`'s spawn service).
             unsafe {
-                machine_statistics_protocol::Snapshot::read(machine_statistics_protocol::PAGE_VA)
+                machine_statistics_contract::Snapshot::read(machine_statistics_contract::PAGE_VA)
             }
         } else {
             None
@@ -101,7 +101,7 @@ pub extern "C" fn _start(_a0: u64, _a1: u64, _a2: u64) -> ! {
         top::write_machine_line(machine.as_ref(), &mut |bytes| write_on(REPORT, bytes));
     }
     found.write_report(&mut |bytes| write_on(REPORT, bytes));
-    send(REPORT, byte_sink_protocol::eof(), 0, 0);
+    send(REPORT, byte_sink_contract::eof(), 0, 0);
     exit();
 }
 
@@ -120,7 +120,7 @@ fn diag_slot() -> u64 {
 /// the first, so a `top` that exited without this would leave the prompt blocked.
 fn diag_end() {
     if HAS_DIAG.load(Ordering::Relaxed) {
-        send(DIAG_SLOT, byte_sink_protocol::eof(), 0, 0);
+        send(DIAG_SLOT, byte_sink_contract::eof(), 0, 0);
     }
 }
 
@@ -129,7 +129,7 @@ fn diag_end() {
 fn write_on(slot: u64, bytes: &[u8]) {
     let mut rest = bytes;
     while !rest.is_empty() {
-        let (w0, w1, w2, n) = byte_sink_protocol::pack(rest);
+        let (w0, w1, w2, n) = byte_sink_contract::pack(rest);
         send(slot, w0, w1, w2);
         rest = &rest[n..];
     }

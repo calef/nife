@@ -20,11 +20,11 @@ pub(super) const FILE_VA_CLIENT: u64 = 0x0000_0000_0060_0000; // client's file p
 
 /// A std program's half of the same agreement (notes/abi.md section 4, notes/std.md): the slot the PAL
 /// looks for the FS-service endpoint in, and the VA it expects the shared file page at. Read from
-/// `std_runtime_protocol`, which the std PAL has generated into it, so the two cannot drift. A std
+/// `std_runtime_contract`, which the std PAL has generated into it, so the two cannot drift. A std
 /// program's slot layout differs from the hand-written client's because std already owes slots 0
 /// and 1 to its heap and its stdout, and 2 and 3 to `std::net`.
-pub(super) const FS_DIR_SLOT: u64 = std_runtime_protocol::FS_DIR_SLOT;
-pub(super) const FS_PAGE_STD: u64 = std_runtime_protocol::FS_PAGE;
+pub(super) const FS_DIR_SLOT: u64 = std_runtime_contract::FS_DIR_SLOT;
+pub(super) const FS_PAGE_STD: u64 = std_runtime_contract::FS_PAGE;
 
 /// A fresh, zeroed frame, returned by physical address. Zeroed so no stale RAM is ever visible
 /// across a share, and (for the DMA frame) so the device never reads a stale descriptor.
@@ -36,11 +36,11 @@ pub(super) fn page_frame() -> u64 {
 
 /// **How many pages the file channel spans**, straight from the contract, so this wiring cannot
 /// disagree with the two programs that speak it.
-pub(super) const FILE_PAGES: usize = filesystem_protocol::fs::TRANSFER_PAGES;
+pub(super) const FILE_PAGES: usize = filesystem_contract::fs::TRANSFER_PAGES;
 
 /// **How many pages the blk channel spans** (milestone 138 step 4), straight from the contract, the
 /// same reason [`FILE_PAGES`] is.
-pub(super) const BLK_PAGES: usize = filesystem_protocol::blk::TRANSFER_BLOCKS;
+pub(super) const BLK_PAGES: usize = filesystem_contract::blk::TRANSFER_BLOCKS;
 
 /// **The file channel: [`FILE_PAGES`] fresh, zeroed, physically contiguous frames**, returned by
 /// the base physical address (milestone 138 step 3).
@@ -78,13 +78,13 @@ pub(super) fn file_channel() -> u64 {
 ///
 /// **`pages` is how much of the channel this party maps**, and it is a parameter rather than always
 /// [`FILE_PAGES`] because a client is entitled to map less: a client that only ever moves one page
-/// needs one page, and `filesystem_protocol::fs::TRANSFER_PAGES` says so. The FS server is the one party that
+/// needs one page, and `filesystem_contract::fs::TRANSFER_PAGES` says so. The FS server is the one party that
 /// must map all of it.
 ///
 /// Visible to the rest of `user` because its callers are wired somewhere else entirely
 /// (`virtio_service`, since it is a client of the net stack rather than of this module) and shares
 /// the same channel with the same FS server. Two spellings of "map every page of it" is exactly the
-/// drift the foot gun at `filesystem_protocol::fs::TRANSFER_PAGES` punishes, so there is one.
+/// drift the foot gun at `filesystem_contract::fs::TRANSFER_PAGES` punishes, so there is one.
 pub(in crate::user) fn map_channel(
     maps: &mut [Mapping],
     va: u64,

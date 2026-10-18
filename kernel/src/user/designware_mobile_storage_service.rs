@@ -14,7 +14,7 @@
 
 use designware_mobile_storage::jh7110::Slot;
 use designware_mobile_storage::serve::{Handoff, REGISTER_VA, TRANSFER_VA, Window};
-use filesystem_protocol::blk;
+use filesystem_contract::blk;
 
 use super::*;
 use crate::cap::{Rights, rendezvous_cap};
@@ -28,7 +28,7 @@ pub const PROVEN_ON_SILICON: bool = false;
 /// A running server: where a client sends, where readiness arrives, and the physical base of the
 /// transfer region a client maps.
 pub struct Wiring {
-    /// Requests, `filesystem_protocol::blk`.
+    /// Requests, `filesystem_contract::blk`.
     pub request: RendezvousId,
     /// One message when the server is up, or which step stopped it.
     pub ready: RendezvousId,

@@ -183,7 +183,7 @@ the gate untouched.
 Most of that move is in the tree, under a different rule and without a `runtime/` directory.
 `components/` holds the services and `fixtures/` the test programs, and rule 7 (crates, not
 `#[path]` modules) lifted `suptree`, `virtio` and `socket_proto` out as
-`crates/supervision_protocol`, `crates/virtio` and `crates/socket_protocol`. The network transports
+`crates/supervision_protocol`, `crates/virtio` and `crates/socket_contract`. The network transports
 are still `#[path]` modules of `net_stack` in `components/`. A reader costing this proposal should
 cost it as that smaller thing.
 

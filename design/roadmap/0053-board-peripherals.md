@@ -107,7 +107,7 @@ notes/designware-mobile-storage.md has the evidence, the safety argument and the
   table, times an 8 MiB read, then reads it again through the EL0 block server. Read-only unless
   built with `NIFE_STORAGE_BENCH_WRITE=scratch`, and even then it writes only the sectors before
   the first partition, and restores them.
-- `components/src/designware_mobile_storage.rs`: `filesystem_protocol::blk` at EL0 over one
+- `components/src/designware_mobile_storage.rs`: `filesystem_contract::blk` at EL0 over one
   register page and a window of the card, the virtio and NVMe servers' shape. The booted system
   does not start it (`PROVEN_ON_SILICON`).
 - The CPU moves every byte through the FIFO, so the first silicon read tests the controller and

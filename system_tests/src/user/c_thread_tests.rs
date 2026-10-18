@@ -63,12 +63,12 @@ fn run_hackbench(line: &str, out: &mut [u8]) -> usize {
         out,
         &super::std_threads_tests::Setup {
             maps: &[
-                (std_runtime_protocol::ARGS_PAGE, args, false),
-                (std_runtime_protocol::CLOCK_PAGE, clock_page, false),
+                (std_runtime_contract::ARGS_PAGE, args, false),
+                (std_runtime_contract::CLOCK_PAGE, clock_page, false),
             ],
             read_pages: &[
-                (std_runtime_protocol::ARGS_SLOT, args),
-                (std_runtime_protocol::CLOCK_SLOT, clock_page),
+                (std_runtime_contract::ARGS_SLOT, args),
+                (std_runtime_contract::CLOCK_SLOT, clock_page),
             ],
             heap_pages: HEAP_PAGES,
             ..Default::default()
@@ -107,7 +107,7 @@ pub(super) fn run_in_grant(
         fs_service::fs_server_image()?,
         program("fs_subtree_caretaker")?,
         c_program_fixture::ROOT,
-        filesystem_protocol::dir::ALL,
+        filesystem_contract::dir::ALL,
     )?;
     let region =
         crate::memory_region::create(clock_service::REGION_PAGES).expect("no region for a clock");
@@ -135,14 +135,14 @@ pub(super) fn run_in_grant(
         out,
         &super::std_threads_tests::Setup {
             maps: &[
-                (std_runtime_protocol::FS_PAGE, file_page, true),
-                (std_runtime_protocol::ARGS_PAGE, args, false),
-                (std_runtime_protocol::CLOCK_PAGE, clock.page_phys, false),
+                (std_runtime_contract::FS_PAGE, file_page, true),
+                (std_runtime_contract::ARGS_PAGE, args, false),
+                (std_runtime_contract::CLOCK_PAGE, clock.page_phys, false),
             ],
-            endpoints: &[(std_runtime_protocol::FS_DIR_SLOT, dir_ep)],
+            endpoints: &[(std_runtime_contract::FS_DIR_SLOT, dir_ep)],
             read_pages: &[
-                (std_runtime_protocol::ARGS_SLOT, args),
-                (std_runtime_protocol::CLOCK_SLOT, clock.page_phys),
+                (std_runtime_contract::ARGS_SLOT, args),
+                (std_runtime_contract::CLOCK_SLOT, clock.page_phys),
             ],
             report: Some(report),
             heap_pages,

@@ -59,7 +59,7 @@ seams are `notes/packages/over-the-internet.md`.
   and admits fetched bytes through `package_archive::installable_as` with the entry as a one-line
   catalog, the installer's own check. The encoding is a stand-in until item 2 is ruled.
 - Item 3. A std program's `ToSocketAddrs` asks the resolver badge at
-  `std_runtime_protocol::RESOLVER_SLOT` (9, provisional), keeping each refusal's reason.
+  `std_runtime_contract::RESOLVER_SLOT` (9, provisional), keeping each refusal's reason.
   `a_std_program_resolves_its_granted_zone_and_nothing_without_a_grant` gates it on all three
   architectures in CI, falsified once.
 - Items 4 to 8 (2026-10-10). `package_fetch_exerciser` (provisional) finds the image's first
@@ -230,7 +230,7 @@ exists. aarch64 silicon waits on an aarch64 board.
 - **Milestone 855.** Whether a gate builds the TLS graph, which is whether item 4's test runs in CI.
 - **Milestone 858.** The TUF client and verifier, items 4 and 5 of its work list, replace
   `Index::parse` once item 2's questions are ruled.
-- **Done.** The std farm's stamp now covers `byte_sink_protocol`, found while adding the resolver's
+- **Done.** The std farm's stamp now covers `byte_sink_contract`, found while adding the resolver's
   wire to the PAL.
 - **Done.** A fresh `net_stack` starts its ephemeral ports at a counter-derived point, not 49152.
   A resolver's first `CONNECT` failed three runs in four after another stack's test had used the

@@ -2,7 +2,7 @@
 //! (milestone 152 (durable delegation), §222 (who holds a user's schedule)).
 //!
 //! `login` builds one of these when an authenticated identity asks for its schedule
-//! (`login_protocol::SCHEDULE`). It is built out of a region split from that user's own session
+//! (`login_contract::SCHEDULE`). It is built out of a region split from that user's own session
 //! budget, and so is the timetable it builds. Both are live descendants of the budget, which is
 //! what keeps the session alive once the client leaves: DECISIONS §16 (object revocation) refuses
 //! `MemoryRegion::DESTROY` on a parent with a live child.
@@ -24,10 +24,10 @@
 //!    `login`'s region, so `login` can read why the timetable stopped.
 //!
 
-//! # Capability contract (`login_protocol::user_timetable_keeper`)
+//! # Capability contract (`login_contract::user_timetable_keeper`)
 //!
 //! - slot [`READY`]: `WRITE`. One readiness word or a failure word, and, at the end,
-//!   `login_protocol::user_timetable_keeper::STOPPED`.
+//!   `login_contract::user_timetable_keeper::STOPPED`.
 //! - slot [`BUDGET`]: `WRITE | GRANT`. The timetable, its jobs, and both endpoints are built from
 //!   it; `GRANT` because the timetable is handed a split of it.
 //! - slot [`PAGE`]: `WRITE`. The registration page, retyped by `login` from this process's own
@@ -37,7 +37,7 @@
 //! - slot [`STORE_PAGE`]: `WRITE`. The page the caretakers stage through, mapped into the timetable
 //!   and never here.
 //! - `a0`: the length of `timetable`'s image, copied in at
-//!   `login_protocol::user_timetable_keeper::TIMETABLE_VA`.
+//!   `login_contract::user_timetable_keeper::TIMETABLE_VA`.
 //!
 //! # BUGS
 //!
@@ -60,7 +60,7 @@
 #![allow(missing_docs)]
 #![no_main]
 
-use login_protocol::user_timetable_keeper as contract;
+use login_contract::user_timetable_keeper as contract;
 use supervision_protocol::{
     ChildEndowment, Retention, build_child, memory_region_destroy, memory_region_split,
     retype_obj_from as retype_obj, start_child,
@@ -103,7 +103,7 @@ const JOB_BUDGET_PAGES: u64 = 128;
 // What this process splits must fit what `login` gives it, with the two endpoints' pages beside.
 const _: () = assert!(
     TIMETABLE_REGION_PAGES + JOB_BUDGET_PAGES
-        < login_protocol::durable::USER_TIMETABLE_KEEPER_BUDGET_PAGES
+        < login_contract::durable::USER_TIMETABLE_KEEPER_BUDGET_PAGES
 );
 
 /// How many times to retry a reap or a destroy that finds something still standing on its region.
@@ -113,7 +113,7 @@ const ATTEMPTS: usize = 1024;
 #[unsafe(no_mangle)]
 pub extern "C" fn _start(image_len: u64, _a1: u64, _a2: u64) -> ! {
     // SAFETY: `login` copies `image_len` bytes to `TIMETABLE_VA` before this process runs
-    // (`login_protocol::user_timetable_keeper`'s contract), and nothing writes them afterwards.
+    // (`login_contract::user_timetable_keeper`'s contract), and nothing writes them afterwards.
     let image = unsafe {
         core::slice::from_raw_parts(contract::TIMETABLE_VA as *const u8, image_len as usize)
     };

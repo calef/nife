@@ -132,7 +132,7 @@ exhaust a runner's memory:
 Milestone 326 (turn a mutation score upward) then triaged the 2026-09-14 census. Parts 1 and 2 took
 the crates that regressed from the baseline
 ([capability to dtb](mutation-testing/regressions-capability-to-dtb.md),
-[clock_protocol, swish, filesystem_protocol](mutation-testing/regressions-clock-protocol-swish-filesystem-protocol.md),
+[clock_contract, swish, filesystem_contract](mutation-testing/regressions-clock-protocol-swish-filesystem-protocol.md),
 [machine_discovery](mutation-testing/machine-discovery.md)). Part 3 took the worst of the crates
 new since the baseline ([new-crate-backlog](mutation-testing/new-crate-backlog.md) and the four
 appendices after it). Most survivors were missing tests, not bugs. Of the real wrong-accepts, `gpt`'s at the baseline is the one to read first: it accepted a table whose last
@@ -188,7 +188,7 @@ These recur across the appendices.
 This is the note's `BUGS` section.
 
 - **Scope is the main workspace's host crates**, minus the exclusions above. The bare-metal crates
-  cannot compile for the host. `supervision_protocol`, `swap_protocol` and `virtio` compile but
+  cannot compile for the host. `supervision_protocol`, `hot_swap_contract` and `virtio` compile but
   cannot run a line without a kernel. `xtask` is the build system, whose tests are the gates it
   runs.
 - `redoxfs_server` and `tools/redoxfs_host` are not mutated. Each is its own workspace, kept apart
@@ -260,7 +260,7 @@ architect's.
 | [a-memory-bound-per-mutant](mutation-testing/a-memory-bound-per-mutant.md) | why a whole run can finish | 2026-09-12 |
 | [documentation](mutation-testing/documentation.md) | the feature-gated third of a suite | 2026-09-13 |
 | [regressions-capability-to-dtb](mutation-testing/regressions-capability-to-dtb.md) | milestone 326 parts 1 and 2 | 2026-09-19: `capability`, `memory_regions`, `elf`, `timetable`, `dtb` |
-| [regressions-clock-protocol-swish-filesystem-protocol](mutation-testing/regressions-clock-protocol-swish-filesystem-protocol.md) | the same | 2026-09-19: `clock_protocol`, `swish`, `filesystem_protocol` |
+| [regressions-clock-protocol-swish-filesystem-protocol](mutation-testing/regressions-clock-protocol-swish-filesystem-protocol.md) | the same | 2026-09-19: `clock_contract`, `swish`, `filesystem_contract` |
 | [machine-discovery](mutation-testing/machine-discovery.md) | 77 survivors: 58 killed, 11 equivalent, 8 gaps | 2026-09-19 `### machine_discovery`; 2026-09-20 re-derivation |
 | [new-crate-backlog](mutation-testing/new-crate-backlog.md) | milestone 326 part 3, and a loop that waits | 2026-09-20: `work_steal_slot`, `memory_corruption_canary_gate`, `soak_page`, `schedule_store` |
 | [job-mix-and-jh7110-entropy](mutation-testing/job-mix-and-jh7110-entropy.md) | the same | 2026-09-20: `job_mix`, `jh7110_entropy` |
@@ -269,7 +269,7 @@ architect's.
 | [clock-and-reset-nvme-screen-console](mutation-testing/clock-and-reset-nvme-screen-console.md) | the same, and what part 3 left | 2026-09-21: `jh7110_clock_and_reset`, `non_volatile_memory_express`, `screen_console` |
 | [census-2026-09-21-triage](mutation-testing/census-2026-09-21-triage.md) | the 2026-09-21 census's 771, classified; 164 killed | 2026-09-24: `portable_executable`, `stick_maker`, `uefi_loader`, `paging` |
 | [census-2026-10-03-triage](mutation-testing/census-2026-10-03-triage.md) | the 2026-10-03 census's 1,004, crate by crate (milestone 637 (triage the crates the 2026-09-21 mutation census measured for the first time)) | 2026-10-03: `component_plan` onward |
-| [census-2026-10-03-triage-part-2](mutation-testing/census-2026-10-03-triage-part-2.md) | the same, continued | 2026-10-03: `documentation`, `filesystem_protocol`, `timetable`, `video_terminal`, `machine_discovery` |
+| [census-2026-10-03-triage-part-2](mutation-testing/census-2026-10-03-triage-part-2.md) | the same, continued | 2026-10-03: `documentation`, `filesystem_contract`, `timetable`, `video_terminal`, `machine_discovery` |
 | [census-2026-10-03-triage-part-3](mutation-testing/census-2026-10-03-triage-part-3.md) | the same, continued | 2026-10-03: `grant_plan` onward |
 | [census-2026-10-03-triage-part-4](mutation-testing/census-2026-10-03-triage-part-4.md) | the same, continued | 2026-10-03: `swish`, `line_editor`, `package_archive`, `pci`, `manifest_note` |
 | [census-2026-10-03-triage-part-5](mutation-testing/census-2026-10-03-triage-part-5.md) | the same, finished: the last 201 | 2026-10-07: 39 crates, from `abi` to `stick_maker` |

@@ -11,7 +11,7 @@
 use super::*;
 
 /// One request on the FS service. Returns the reply's first word as a count/handle, or an
-/// `io::Error`. The wire convention is `filesystem_protocol`'s: non-negative is a result, negative is a
+/// `io::Error`. The wire convention is `filesystem_contract`'s: non-negative is a result, negative is a
 /// negated errno ([`fsproto::reply_errno`]).
 pub(super) fn request(w0: u64, w1: u64) -> io::Result<u64> {
     let (r0, _) = rt::call(FS, w0, w1);

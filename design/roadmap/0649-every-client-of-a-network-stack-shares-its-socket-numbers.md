@@ -16,7 +16,7 @@ Raised by milestone 590 (the booted system starts its network
 stack), whose number is provisional, which gave programs at the prompt a `WRITE` view of one
 `net_stack` endpoint and had to say in `caps` what that view does not narrow.
 
-The fix changes `crates/socket_protocol`, which two programs agree on, so it is
+The fix changes `crates/socket_contract`, which two programs agree on, so it is
 a wire format and calef's call.
 
 ## The finding

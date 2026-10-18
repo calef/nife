@@ -22,7 +22,7 @@ principle.
 ## Why the graph cannot live where the roadmap's own wording suggests
 
 The natural first reading is "a `CapNeed` should say which contract satisfies it." That does not
-survive contact with a manifest already in this tree. `swap_protocol::CLIENT` declares one `Use`
+survive contact with a manifest already in this tree. `hot_swap_contract::CLIENT` declares one `Use`
 need named `service`. The supervisor routes that name to a console (or backend) instance on the
 direct channel and to `broker`'s front endpoint on the queued one, per
 `notes/component-manifest.md`'s own rule (the name is the component's and the object is the
@@ -52,8 +52,8 @@ What does need warning is a component that would otherwise stop serving its own 
 dependency is down, because it cannot afford to let its one serving thread sit inside a blocked
 `CALL`. `broker` is exactly this: single-threaded, pass-through, and it would stop answering
 producers for the whole down window if it just called through and blocked. That is the edge
-`depends_on` exists to name, and it explains why `swap_protocol::CLIENT.depends_on` is empty while
-`swap_protocol::BROKER.depends_on` is `&["backend"]`.
+`depends_on` exists to name, and it explains why `hot_swap_contract::CLIENT.depends_on` is empty while
+`hot_swap_contract::BROKER.depends_on` is `&["backend"]`.
 
 The falsifiable rule, stated once so a future contract author can apply it without re-deriving it:
 
@@ -97,7 +97,7 @@ Both are asserted in `system_tests/src/user/live_swap_tests.rs` via `RPT_DEPENDE
 Read what a contract's dependency looks like, without running anything.
 
 ```sh
-grep -A12 'pub const BROKER' crates/swap_protocol/src/lib.rs
+grep -A12 'pub const BROKER' crates/hot_swap_contract/src/lib.rs
 ```
 
 Ask who must be told before a contract is swapped, given the components a supervisor is
@@ -107,8 +107,8 @@ currently running:
 use component_plan::{dependents, LiveInstance};
 
 let live = [
-    LiveInstance { id: 1, reqs: &swap_protocol::BACKEND },
-    LiveInstance { id: 2, reqs: &swap_protocol::BROKER },
+    LiveInstance { id: 1, reqs: &hot_swap_contract::BACKEND },
+    LiveInstance { id: 2, reqs: &hot_swap_contract::BROKER },
 ];
 let order = dependents("backend", &live)?;
 for id in order.quiesce_order() {

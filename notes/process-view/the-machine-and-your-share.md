@@ -54,7 +54,7 @@ so a number that moves at rebase needs no second ratification; the table holds w
 |---|---|---|
 | the method | `abi::memory_region::USAGE = 5` | |
 | its records | `abi::usage` 0 to 6 | |
-| the page's name and layout | `machine_statistics_protocol`, magic `MACHSTA1`, a 64-byte header, one line per core | |
+| the page's name and layout | `machine_statistics_contract`, magic `MACHSTA1`, a 64-byte header, one line per core | |
 | where a child sees it | `0x005F_F000`, a pair page | the address-space map of milestone 206 (a program image has under 896 KiB) keeps images and stacks away from it; nothing collides with it |
 | the progenitor's boot slot | 23 | the GPU and keyboard of milestone 600 (the graphical terminal stack is built in userspace) hold 17 to 22; the table has 32 slots (calef) so a slot free on every boot exists |
 | the session's slot | 20 | `grant_plan::SHELL_CONFIG_SLOT` holds 21 (milestone 47 (navigation and naming)) |

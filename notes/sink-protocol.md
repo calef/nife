@@ -1,6 +1,6 @@
 # The sink protocol: one way to write bytes somewhere
 
-*Milestone 50, the protocol lane. `crates/byte_sink_protocol`, `fixtures/src/sink.rs`, the std PAL's
+*Milestone 50, the protocol lane. `crates/byte_sink_contract`, `fixtures/src/sink.rs`, the std PAL's
 `sys/stdio/nife.rs`, and `abi::Error::Gone`.*
 
 ## The problem, which was not the one anybody expected
@@ -17,7 +17,7 @@ What blocked it was that we had four different protocols for "write these bytes 
 |---|---|
 | std `println!` | SEND, register-only, 16 bytes per message, `w0` = length, `w1`\|`w2` = bytes |
 | `line_editor` | CALL, shared page, `OPERATION_WRITE`, `r0` = bytes consumed |
-| `filesystem_protocol` | CALL, handle plus offset plus shared page, `WRITE` |
+| `filesystem_contract` | CALL, handle plus offset plus shared page, `WRITE` |
 | console server | shared page, SEND the length, ACK on a second endpoint |
 
 A child cannot be indifferent to what is in its output slot until those are one protocol, and that
@@ -60,7 +60,7 @@ destroys its receiving end and the writer's next SEND fails. That collapses "the
 writer learns that the sink is over and not why. It is the right trade for a byte stream, whose only
 available response to any of the three is to stop, and it is the trade Unix makes as well: a writer
 gets `EPIPE` and never the reader's reason. A destination whose failures a client must tell apart is
-not a sink, it is a service, and it should be a CALL protocol like `filesystem_protocol`.
+not a sink, it is a service, and it should be a CALL protocol like `filesystem_contract`.
 
 Types. This carries bytes. Typed pipelines are a separate and larger fork, recorded as one in
 design/roadmap/0050-pipes-and-redirection.md, and nothing in this framing is a step toward one.
@@ -145,7 +145,7 @@ already answered by who holds what.
 Three programs in `fixtures/`, and the sink among them is the `fs_file_caretaker` shape: something
 that speaks the sink contract to its client and the underlying protocol to whatever is behind it.
 
-- `file_sink`: holds a `filesystem_protocol` endpoint and a shared page, creates or opens one name,
+- `file_sink`: holds a `filesystem_contract` endpoint and a shared page, creates or opens one name,
   and appends every message's bytes at a running offset. `OPERATION_EOF` closes the handle and
   reports the total. Its client holds an endpoint to this process and nothing that names the FS
   server, so it cannot seek, truncate, re-read or stat, which is milestone 50's "grants strictly
@@ -266,7 +266,7 @@ each case.
   0` decision paying out immediately: its hand-rolled framing is bit for bit a `BYTES` message. It
   announced no end of stream, because nothing yet read its output as a stream. `|` has since landed
   and it does: every exit path in `components/src/date.rs` goes through an `end()` that sends
-  `byte_sink_protocol::eof()` first, because a reader downstream of a `|` has no other way to learn
+  `byte_sink_contract::eof()` first, because a reader downstream of a `|` has no other way to learn
   the producer is finished. See notes/pipes.md.
 - **No buffering, and it is now measured rather than argued.** A pipe built from this contract is
   full lockstep, where Unix's 64 KB buffer lets a producer run ahead. `bench: sink_throughput`

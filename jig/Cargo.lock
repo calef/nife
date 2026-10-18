@@ -46,10 +46,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "argument_protocol"
-version = "0.1.0"
-
-[[package]]
 name = "autocfg"
 version = "1.5.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -134,7 +130,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c2459377285ad874054d797f3ccebf984978aa39129f6eafde5cdc8315b612f8"
 
 [[package]]
-name = "counter_frequency_protocol"
+name = "counter_frequency_contract"
 version = "0.1.0"
 
 [[package]]
@@ -197,7 +193,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "current_cpu_protocol"
+name = "current_cpu_contract"
 version = "0.1.0"
 dependencies = [
  "address_space_map",
@@ -318,7 +314,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "entropy_protocol"
+name = "entropy_contract"
 version = "0.1.0"
 
 [[package]]
@@ -338,7 +334,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "28dea519a9695b9977216879a3ebfddf92f1c08c05d984f8996aecd6ecdc811d"
 
 [[package]]
-name = "filesystem_protocol"
+name = "filesystem_contract"
 version = "0.1.0"
 
 [[package]]
@@ -398,8 +394,8 @@ version = "0.1.0"
 name = "grant_plan"
 version = "0.1.0"
 dependencies = [
- "argument_protocol",
  "glob",
+ "program_argument_contract",
 ]
 
 [[package]]
@@ -460,7 +456,7 @@ dependencies = [
  "abi",
  "address_space_map",
  "entropy_backend",
- "filesystem_protocol",
+ "filesystem_contract",
  "grant_plan",
  "http_response",
  "manifest_note",
@@ -468,8 +464,8 @@ dependencies = [
  "package_index",
  "pinned_tls_client",
  "sha2",
- "socket_protocol",
- "std_runtime_protocol",
+ "socket_contract",
+ "std_runtime_contract",
  "user_mode_runtime",
 ]
 
@@ -686,6 +682,10 @@ dependencies = [
 ]
 
 [[package]]
+name = "program_argument_contract"
+version = "0.1.0"
+
+[[package]]
 name = "quote"
 version = "1.0.47"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -869,7 +869,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ba467056f1b547ed52077911161fc86985becbc60e8e1857c8a144dab0def891"
 
 [[package]]
-name = "socket_protocol"
+name = "socket_contract"
 version = "0.1.0"
 
 [[package]]
@@ -889,7 +889,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "std_runtime_protocol"
+name = "std_runtime_contract"
 version = "0.1.0"
 
 [[package]]
@@ -947,10 +947,10 @@ version = "0.1.0"
 dependencies = [
  "abi",
  "address_space_map",
- "counter_frequency_protocol",
- "current_cpu_protocol",
- "entropy_protocol",
- "socket_protocol",
+ "counter_frequency_contract",
+ "current_cpu_contract",
+ "entropy_contract",
+ "socket_contract",
  "user_mode_heap",
 ]
 

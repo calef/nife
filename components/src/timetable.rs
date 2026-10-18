@@ -53,7 +53,7 @@ use user_mode_runtime::{cap_delete, exit, monotonic_nanos, reap, receive_fault, 
 /// The document. Compiled in; see `BUGS`.
 const CONFIG: &str = include_str!("../timetable.conf");
 
-/// The output endpoint: the plan, and the summary. `byte_sink_protocol` bytes. Unused with a
+/// The output endpoint: the plan, and the summary. `byte_sink_contract` bytes. Unused with a
 /// registration page; see [`PAGE`].
 const OUT: u64 = contract::OUT_SLOT;
 /// The budget every instance is made of, and what pays this loader's scratch mappings.
@@ -533,7 +533,7 @@ fn load_current(p: &Installed) -> Option<(elf::Elf<'static>, grant_plan::Manifes
 /// mapped at `timetable::contract::STORE_PAGE_VA`. Every call is a blocking `CALL`, so the page is
 /// this process's between them.
 mod store {
-    use filesystem_protocol::{PAGE, dir, fs};
+    use filesystem_contract::{PAGE, dir, fs};
     use installed_programs::{CURRENT, generation_name, lookup, parse_current};
     use timetable::contract;
     use user_mode_runtime::call;
@@ -936,16 +936,16 @@ fn clock_map(clock: bool) -> &'static [(u64, u64, u64)] {
 fn wall_reading() -> Option<timetable::WallReading> {
     // SAFETY: the spawn site maps the clock page read-only at `contract::CLOCK_VA` whenever it
     // places the capability in `contract::CLOCK_SLOT`, which `_start` probed before calling this.
-    let page = unsafe { clock_protocol::ClockPage::new(contract::CLOCK_VA) };
+    let page = unsafe { clock_contract::ClockPage::new(contract::CLOCK_VA) };
     let r = page.read();
-    if !clock_protocol::state::is_known(r.state) {
+    if !clock_contract::state::is_known(r.state) {
         return None;
     }
-    let wall = clock_protocol::wall_nanos(r.offset_nanos, monotonic_nanos());
+    let wall = clock_contract::wall_nanos(r.offset_nanos, monotonic_nanos());
     Some(timetable::WallReading {
-        minute: (wall / (60 * clock_protocol::NANOS_PER_SEC)) as i64,
+        minute: (wall / (60 * clock_contract::NANOS_PER_SEC)) as i64,
         generation: r.generation,
-        set: r.state == clock_protocol::state::SET,
+        set: r.state == clock_contract::state::SET,
     })
 }
 
@@ -1002,7 +1002,7 @@ fn collect(exits: &mut u64, faults: &mut u64) {
     user_mode_runtime::trap()
 }
 
-/// Write bytes down the output endpoint, `byte_sink_protocol`-framed. Nothing, with a registration
+/// Write bytes down the output endpoint, `byte_sink_contract`-framed. Nothing, with a registration
 /// page: see [`PAGE`].
 fn say(bytes: &[u8]) {
     if PAGE.load(core::sync::atomic::Ordering::Relaxed) != 0 {
@@ -1010,7 +1010,7 @@ fn say(bytes: &[u8]) {
     }
     let mut rest = bytes;
     while !rest.is_empty() {
-        let (w0, w1, w2, n) = byte_sink_protocol::pack(rest);
+        let (w0, w1, w2, n) = byte_sink_contract::pack(rest);
         send(OUT, w0, w1, w2);
         rest = &rest[n..];
     }
@@ -1038,7 +1038,7 @@ fn say_num(v: u64) {
 
 /// End the stream, report the verdict, and stop.
 ///
-/// The `byte_sink_protocol` end-of-stream comes first so a reader draining text sees a stream that ended
+/// The `byte_sink_contract` end-of-stream comes first so a reader draining text sees a stream that ended
 /// rather than one that stopped, and the verdict word after it so a spawn site reading one word
 /// still learns how this went.
 ///
@@ -1058,7 +1058,7 @@ fn done(code: u64) -> ! {
         );
         exit();
     }
-    send(OUT, byte_sink_protocol::eof(), 0, 0);
+    send(OUT, byte_sink_contract::eof(), 0, 0);
     send(OUT, code, 0, 0);
     exit();
 }

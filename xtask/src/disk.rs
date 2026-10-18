@@ -285,7 +285,7 @@ pub(crate) const INSTALLED_UNVOUCHED: &str = "installed/unvouched";
 /// carries its manifest in an ELF note), provisional): `least_authority_demo`, stripped. Unvouched
 /// bytes may hold only what the D2 ruling names, and an argument is a designation the line would
 /// have to make, so `script/swish-check` types it with one and the progenitor must refuse it. Not
-/// named after the program because a name is at most 16 bytes (`filesystem_protocol`'s
+/// named after the program because a name is at most 16 bytes (`filesystem_contract`'s
 /// `MAX_NAME`), which `least_authority_demo` is not; CI found that on the first run.
 pub(crate) const INSTALLED_ASKS_AN_ARGUMENT: &str = "installed/asks-an-arg";
 

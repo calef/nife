@@ -22,7 +22,7 @@ At boot the kernel allocates the ring as a run of frames and grants the progenit
 capabilities, which it passes to the log service:
 
 - the ring, read-only: a header (the next sequence number, the count of records overwritten, the
-  count of lines that fell back to the UART), then F3 records (`system_log_protocol::record`);
+  count of lines that fell back to the UART), then F3 records (`system_log_contract::record`);
 - one cursor page, read-write: the service writes the sequence number it has consumed up to;
 - a notification the kernel signals when it appends a record.
 
@@ -66,7 +66,7 @@ whether it is being drained, from the time of the last `READ`.
 It does F, twice. The machine statistics page (§225 (`free` sees the machine and your share),
 `kernel/src/machine_statistics.rs`) is a frame the kernel writes and grants to the progenitor
 read-only at boot (slot 23). It goes without a seqlock on purpose, because its counters need no
-consistent snapshot. The ring does need one, and the clock page's `clock_protocol` is the tree's
+consistent snapshot. The ring does need one, and the clock page's `clock_contract` is the tree's
 seqlock reader. The kernel already wakes userspace without a new method by signaling a
 notification: an armed timer's expiry does it from the tick (`signal_locked` in
 `sched::expire_timers`). `sched::signal_notification_from_interrupt` is the any-context form,
@@ -109,7 +109,7 @@ context switch about 29 ns, measured 2026-08-04). They are derived, not measured
 
 | | per record | per batch | kernel memory | progenitor slots | new surface |
 |---|---|---|---|---|---|
-| F | one copy in userspace, no trap | one notification wait (about 56 ns) | 4 ring pages + 1 cursor page | 3 (24 to 26 of 32) | 3 boot grants, 1 layout in `system_log_protocol` |
+| F | one copy in userspace, no trap | one notification wait (about 56 ns) | 4 ring pages + 1 cursor page | 3 (24 to 26 of 32) | 3 boot grants, 1 layout in `system_log_contract` |
 | R, registers | 4 calls median, 11 worst (about 108 ns median) | the same wait | 4 ring pages | 1 | 1 object type, `READ`, a wake-up |
 | R, buffer | 1 call (about 27 ns plus the copy) | the same wait | 4 ring pages | 1 | the above, plus the first user-pointer write since milestone 8 |
 

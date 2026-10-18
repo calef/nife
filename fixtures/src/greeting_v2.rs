@@ -19,7 +19,7 @@
 //!
 //! # What this program holds
 //!
-//! Slot 0, its output: the sink contract (`crates/byte_sink_protocol`). No manifest note, so a
+//! Slot 0, its output: the sink contract (`crates/byte_sink_contract`). No manifest note, so a
 //! vouched copy is endowed as `grant_plan::NO_NOTE_MANIFEST`, its output alone.
 //!
 //! # BUGS
@@ -49,11 +49,11 @@ const LINE: &[u8] = b"hello from the second copy of the package\n";
 pub extern "C" fn _start(_a0: u64, _a1: u64, _a2: u64) -> ! {
     let mut rest = LINE;
     while !rest.is_empty() {
-        let (w0, w1, w2, n) = byte_sink_protocol::pack(rest);
+        let (w0, w1, w2, n) = byte_sink_contract::pack(rest);
         send(OUT, w0, w1, w2);
         rest = &rest[n..];
     }
-    send(OUT, byte_sink_protocol::eof(), 0, 0);
+    send(OUT, byte_sink_contract::eof(), 0, 0);
     exit();
 }
 

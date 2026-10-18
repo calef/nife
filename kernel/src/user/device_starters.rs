@@ -51,7 +51,7 @@ pub(super) fn boot_usb_keyboard() -> Option<usb_keyboard_service::Wiring> {
 /// machine with no clock looks like (milestone 51's wiring; `boot_progenitor`).
 ///
 /// The grant is **unconditional**, and that is the design rather than an oversight. A zeroed page
-/// reads as `clock_protocol::state::UNKNOWN` (`a_zeroed_page_reads_as_unknown`), so a boot with no
+/// reads as `clock_contract::state::UNKNOWN` (`a_zeroed_page_reads_as_unknown`), so a boot with no
 /// `clock` program in its initial ramdisk hands the progenitor a page that honestly says "the
 /// machine has no clock it believes" instead of no page at all. That keeps the slot numbering the
 /// same on every boot, which matters more than it sounds: the progenitor's capability table is read
@@ -163,7 +163,7 @@ pub(super) fn boot_virtio_rng_device() -> Option<VirtioBootGrant> {
 /// endpoint.
 ///
 /// **A refusal, not weaker bytes.** No instruction, or a first draw of all zeros
-/// (`entropy_protocol::readiness`), and this returns `None` with a sentence saying so. There is no
+/// (`entropy_contract::readiness`), and this returns `None` with a sentence saying so. There is no
 /// fallback to `RDRAND`/`RNDR` (DRBG output, which `entropy.rs`'s header refuses) and no software
 /// generator. The bytes served are the instruction's own, unmixed and not health-tested after the
 /// first draw: option A of DECISIONS §137 (a hardware TRNG with no published health-test claim),
@@ -184,7 +184,7 @@ pub(super) fn boot_instruction_entropy() -> Option<crate::sched::RendezvousId> {
         return None;
     };
     if let Some(report) = w.wait_for_ready()
-        && report[0] != entropy_protocol::READY
+        && report[0] != entropy_contract::READY
     {
         crate::println!(
             "  entropy     : REFUSED. The seed instruction's first draw was all zeros ({:#x}), so \
@@ -308,7 +308,7 @@ pub(super) fn boot_designware_network()
         return None;
     }
     let image = program("net_stack")?;
-    match designware_ethernet_service::start_net_server(image, socket_protocol::NO_LISTEN_GRANT) {
+    match designware_ethernet_service::start_net_server(image, socket_contract::NO_LISTEN_GRANT) {
         Ok(w) => {
             crate::println!(
                 "  network     : the JH7110's Ethernet port, link up; the kernel started net_stack \
@@ -364,7 +364,7 @@ fn boot_virtio_mmio_device(d: crate::virtio::VirtioMmioDevice) -> Option<VirtioB
 /// environment-variable fork, DECISIONS §111; `boot_progenitor`).
 /// [`boot_clock_page`]'s twin, minus the service: nothing here runs, so there is nothing to spawn
 /// and nothing to wait for a report from. The page is assembled once, into a frame nothing else
-/// can see, and only then handed to the progenitor; see `environment_protocol`'s own docs for why that
+/// can see, and only then handed to the progenitor; see `environment_contract`'s own docs for why that
 /// ordering needs no seqlock.
 ///
 /// The grant is **unconditional**, [`boot_clock_page`]'s own reason: a fixed slot on every boot,
@@ -377,13 +377,13 @@ fn boot_virtio_mmio_device(d: crate::virtio::VirtioMmioDevice) -> Option<VirtioB
 /// (the "inheritance with visibility" shape design/roadmap/0047-navigation-and-naming/environment.md names);
 /// this is the fixed default until one exists.
 pub(super) fn boot_config_page() -> u64 {
-    let bytes = environment_protocol::PageBuilder::new()
+    let bytes = environment_contract::PageBuilder::new()
         .tz("UTC")
-        .expect("UTC is not a recognized environment_protocol::domain::KNOWN_TZ member")
+        .expect("UTC is not a recognized environment_contract::domain::KNOWN_TZ member")
         .lang("C")
-        .expect("C is not a recognized environment_protocol::domain::KNOWN_LANG member")
+        .expect("C is not a recognized environment_contract::domain::KNOWN_LANG member")
         .term("dumb")
-        .expect("dumb is not a recognized environment_protocol::domain::KNOWN_TERM member")
+        .expect("dumb is not a recognized environment_contract::domain::KNOWN_TERM member")
         .build();
     // Zeroed before the assembled bytes are written, so nothing left behind by a previous
     // occupant of this physical page is visible through the reserved tail past `PAGE_BYTES`
@@ -465,7 +465,7 @@ pub(super) fn boot_screen_terminal() -> Option<display_service::TerminalWiring> 
     let [tag, geometry, ..] = crate::sched::ipc_receive(w.driver_report);
     assert_eq!(
         tag,
-        graphics_protocol::status::UP,
+        graphics_contract::status::UP,
         "the framebuffer driver did not come up ({tag:#x})",
     );
     let [tag, cells, ..] = crate::sched::ipc_receive(w.term_report);

@@ -523,8 +523,8 @@ def reached(i, col, kind, s, stripped, states, reds):
 # soak) are not product code and are left out of both populations. Keep in step with script/coverage.
 UNMEASURED = [
     "kernel/src", "components/src", "crates/user_mode_runtime", "crates/supervision_protocol",
-    "crates/swap_protocol", "crates/system_initializer", "crates/boot_ladder",
-    "crates/capability_witness_protocol", "redoxfs_server", "cryptography_provider", "entropy_backend",
+    "crates/hot_swap_contract", "crates/system_initializer", "crates/boot_ladder",
+    "crates/capability_witness_contract", "redoxfs_server", "cryptography_provider", "entropy_backend",
 ]
 NOT_PRODUCT = ("components/src/socket_test_client.rs", "kernel/src/soak.rs")
 RESULT_KINDS = ("question", "err_return", "err_value", "err_arm", "refusal", "status_arm")

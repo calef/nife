@@ -1,7 +1,7 @@
 //! **A thread reading the CPU's cycle counter from user mode**, milestone 229.
 //!
 //! Reads the counter twice through `user_mode_runtime::cycle_reading` and reports
-//! [`capability_witness_protocol::CYCLE_COUNTER_WORD`], the difference of the two reads, and what
+//! [`capability_witness_contract::CYCLE_COUNTER_WORD`], the difference of the two reads, and what
 //! they count (an `abi::cycle_counter::CycleMeaning`, as its word). Until milestone 353 (the aarch64 half of 74) this program
 //! held its own raw read, so that milestone 74 (cycle counters) would design the shared function rather than inherit
 //! one from a test vehicle; calef's ruling B4 (2026-10-07 UTC) designed it, and this is now its
@@ -55,7 +55,7 @@ pub extern "C" fn _start(_arg0: u64, _arg1: u64, _arg2: u64) -> ! {
     let second = cycle_reading();
     send(
         REPORT,
-        capability_witness_protocol::CYCLE_COUNTER_WORD,
+        capability_witness_contract::CYCLE_COUNTER_WORD,
         second.count.wrapping_sub(first.count),
         second.meaning.to_word(),
     );

@@ -27,8 +27,8 @@ pub enum Handled {
 ///
 /// ```
 /// use system_log::{Log, Handled};
-/// use system_log_protocol::{control, read};
-/// use byte_sink_protocol::pack;
+/// use system_log_contract::{control, read};
+/// use byte_sink_contract::pack;
 ///
 /// let mut log = Log::new();
 /// for (badge, program) in [(1u32, &b"alpha"[..]), (2, &b"beta"[..])] {
@@ -100,7 +100,7 @@ impl Log {
             self.control(w0, w1, w2);
             return Handled::Nothing;
         }
-        let operation = w0 >> byte_sink_protocol::OPERATION_SHIFT;
+        let operation = w0 >> byte_sink_contract::OPERATION_SHIFT;
         if operation == read::OPERATION_READ {
             return match self.registry.get(badge).and_then(|e| e.reader) {
                 Some(r) => Handled::Read {
@@ -110,14 +110,14 @@ impl Log {
                 None => Handled::Refused,
             };
         }
-        if byte_sink_protocol::kind(w0) != byte_sink_protocol::KIND_TEXT {
+        if byte_sink_contract::kind(w0) != byte_sink_contract::KIND_TEXT {
             self.refused += 1;
             return Handled::Nothing;
         }
         let mut bytes = [0u8; INLINE_MAX];
         match unpack(w0, w1, w2, &mut bytes) {
             Msg::Bytes(n) => {
-                let level = byte_sink_protocol::severity(w0);
+                let level = byte_sink_contract::severity(w0);
                 // Split the borrow: the assembler emits while the store takes the line.
                 let Log {
                     assembler,
