@@ -145,6 +145,9 @@ fn a_process_spends_memory_region_and_the_kernel_never_allocates() {
 /// `sched::tests::an_interrupt_becomes_a_message`. See notes/interrupts.md.
 ///
 /// Name: provisional (milestone 405 (the nine `INIT` roles)), named for the builder it drives.
+///
+/// Falsification: unfalsified. Renamed by milestone 405 (the nine `INIT` roles), which ran it green
+/// on all three architectures but did not break the code it guards to watch it go red.
 #[cfg(target_arch = "aarch64")]
 #[test_case]
 fn the_interrupt_child_builder_delegates_an_interrupt_to_its_child() {
@@ -182,6 +185,9 @@ fn the_interrupt_child_builder_delegates_an_interrupt_to_its_child() {
 /// delegated. This is the shape the real boot path (19d.2c) uses.
 ///
 /// Name: provisional (milestone 405), named for the builder it drives.
+///
+/// Falsification: unfalsified. Renamed by milestone 405 (the nine `INIT` roles), which ran it green
+/// on all three architectures but did not break the code it guards to watch it go red.
 #[test_case]
 fn the_console_server_builder_brings_up_a_console_that_prints_for_it() {
     if crate::user::machine_has_no_device_page_for_the_console() {
@@ -227,6 +233,9 @@ fn the_console_server_builder_brings_up_a_console_that_prints_for_it() {
 /// version of the same claim (device MMIO, a DMA region, and an interrupt, all delegated).
 ///
 /// Name: provisional (milestone 405), named for the builder it drives.
+///
+/// Falsification: unfalsified. Renamed by milestone 405 (the nine `INIT` roles), which ran it green
+/// on all three architectures but did not break the code it guards to watch it go red.
 #[cfg(target_arch = "aarch64")]
 #[test_case]
 fn the_device_child_builder_builds_a_driver_that_reads_real_hardware() {
@@ -263,6 +272,9 @@ fn the_device_child_builder_builds_a_driver_that_reads_real_hardware() {
 /// did not load.
 ///
 /// Name: provisional (milestone 405), named for the builder it drives.
+///
+/// Falsification: unfalsified. Renamed by milestone 405 (the nine `INIT` roles), which ran it green
+/// on all three architectures but did not break the code it guards to watch it go red.
 #[test_case]
 fn the_report_child_builder_parses_an_elf_and_builds_a_running_child() {
     let report_region =
@@ -295,6 +307,9 @@ fn the_report_child_builder_parses_an_elf_and_builds_a_running_child() {
 /// real spawn service runs on: a workload parameterized by data, not just identity.
 ///
 /// Name: provisional (milestone 405), named for the builder it drives.
+///
+/// Falsification: unfalsified. Renamed by milestone 405 (the nine `INIT` roles), which ran it green
+/// on all three architectures but did not break the code it guards to watch it go red.
 #[test_case]
 fn the_least_authority_demo_builder_passes_its_demo_an_argument() {
     let input = capability_witness_contract::LEAST_AUTHORITY_DEMO_INPUT;

@@ -194,6 +194,9 @@ fn el0_cycle_counter_is_known_to_run() -> bool {
 /// property a cross-OS comparison will rest on.
 ///
 /// Name: provisional (milestone 405 (the nine `INIT` roles)), named for the builder it drives.
+///
+/// Falsification: unfalsified. Renamed by milestone 405 (the nine `INIT` roles), which ran it green
+/// on all three architectures but did not break the code it guards to watch it go red.
 #[test_case]
 fn the_coremark_builder_runs_the_workload_and_it_checks_out() {
     let report_region =

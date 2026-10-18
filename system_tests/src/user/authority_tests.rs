@@ -154,6 +154,9 @@ fn the_root_supervisor_drops_its_construction_authority_and_cannot_build_again()
 /// and a third would put the suite over `SUITE_PAGE_FRAME_BUDGET`, which CI measured on 2026-10-05.
 /// Dropping the label fails this in `run_tree` (stage 23), not at an assertion below, so the kernel
 /// claim's falsification lives in `supervision_tests::a_supervisor_tells_two_dead_children_apart_by_label`.
+///
+/// Falsification: unfalsified. Renamed by milestone 405 (the nine `INIT` roles), which ran it green
+/// on all three architectures but did not break the code it guards to watch it go red.
 #[test_case]
 fn a_dead_sub_server_is_restarted_by_its_supervisor_not_by_the_root() {
     let msgs = run_tree();
