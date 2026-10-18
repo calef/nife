@@ -287,7 +287,7 @@ def _selftest():
         "pub fn has_mem() -> bool { true }",                      # 12: `mem` is spelled out
         "pub fn pending() -> bool { true }",                      # 13: not a question shape
         "pub fn contains() -> bool { true }",                     # 14: a finite verb
-        "pub fn colour() {}",                                     # 15: British
+        "pub fn tint() {}",                                       # 15: the injected spelling list flags it
         "/// Name: local by rule, 2026-10-18 (§310).",
         "pub fn by_rule() {}",                                    # 17: local, blocked
         "/// Kept doc.",
@@ -298,16 +298,16 @@ def _selftest():
     app = ("use lib_a::{called, Seen};\n// lib_a::kept in a comment is not a read\n"
            "fn main() { called(); let s: Seen; lib_a::make().poked(); \"lib_a::documented\"; }\n")
     sources = {"lib_a/src/lib.rs": lib, "app/src/main.rs": app}
-    british = {"colour": "colour"}
+    british = {"tint": "tint"}
     qualify, fail, cross, problems = survey(sources, manifests, {"refusedname"}, british)
     names = lambda group: sorted(i["name"] for i in group)
     assert names(qualify) == ["Hidden", "contains", "documented", "hushed", "kept"], names(qualify)
     assert names(cross) == ["Seen", "called", "poked", "quiet"], names(cross)
-    assert names(fail) == ["colour", "has_mem", "pending"], names(fail)
+    assert names(fail) == ["has_mem", "pending", "tint"], names(fail)
     reasons = {i["name"]: i["failures"] for i in fail}
     assert reasons["has_mem"][0].startswith("spelled out"), reasons
     assert reasons["pending"][0].startswith("question shape"), reasons
-    assert reasons["colour"][0].startswith("spelling"), reasons
+    assert reasons["tint"][0].startswith("spelling"), reasons
     assert problems == [], problems
 
     # Direction one: a local-by-rule name another package starts reading fails, naming the reader.
