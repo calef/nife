@@ -150,13 +150,13 @@ dedicated "schedule store" service, mirroring the credentialer's provision/serve
 
 ## The recommendation
 
-**Option 1.** Reuse `crates/timetable::parse`'s document format unchanged. Store one file per
-identity inside that identity's own subtree (milestone 117 (the stranger test)'s existing per-user
-scoping). Write and read it through ordinary `filesystem_proto` verbs. Do so under capabilities that
-the writer (a live session registering a job) and the reader (boot-time re-derivation, §123) already
-need to hold for other reasons. This is the cheapest of the three by a wide margin because it is not
-really a new mechanism. It is gluing two already-built, already-proven pieces (the parser and the
-filesystem) together with two IPC call sites.
+**Option 1.** Reuse `crates/timetable::parse`'s document format unchanged. Store one file per identity
+inside that identity's own subtree (milestone 117's existing per-user scoping), and write/read it
+through ordinary `filesystem_proto` verbs. The capabilities are ones the writer (a live session
+registering a job) and the reader (boot-time re-derivation, §123) already need to hold for other
+reasons. This is the cheapest of the three by a wide margin because it is not really a new
+mechanism. It is gluing two already-built, already-proven pieces (the parser and the filesystem)
+together with two IPC call sites.
 
 ## How reversible is this, and who has already acted on it
 
