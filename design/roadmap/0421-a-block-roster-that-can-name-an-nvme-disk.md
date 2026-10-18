@@ -18,7 +18,7 @@ confined process (milestone 261).
 
 ## What is built
 
-- **The kinds**, as §193 (what a block-roster entry calls an NVMe disk) rules.
+- The kinds, as §193 (what a block-roster entry calls an NVMe disk) rules.
   `TRANSPORT_VIRTIO_MEMORY_MAPPED_IO = 0`, `TRANSPORT_VIRTIO_PCI = 1` and
   `TRANSPORT_NON_VOLATILE_MEMORY_EXPRESS = 2`, in `crates/block_roster`. An entry is 8 bytes for
   every kind: an ordinal and a kind. A host test pins the three wire values as literals.
@@ -46,14 +46,16 @@ Milestone 57's claim is that listing the disks and holding one are different pow
 for two kinds of disk behind two drivers, one in the kernel's virtio path and one a confined EL0
 server. The roster's shape is about block devices, not about virtio.
 
-## What it does not do
+## Follow-on
 
-- No program is handed the NVMe endpoint because the roster lists it. Which program holds which
-  device is decided at wiring time (§86, milestone 57), and the FS server's default disk is still
-  virtio-blk.
-- An NVMe ordinal counts controllers. That identifies a disk only while each controller has one
-  namespace, which is every controller this tree drives. §193 names a controller with two
-  namespaces as the measurement that would make an entry need to say which.
+- **Recorded.** No program is handed the NVMe endpoint because the roster lists it, and the FS
+  server's default disk is still virtio-blk. Which program holds which device is decided at wiring
+  time (§86, milestone 57). `notes/non-volatile-memory-express.md`'s `BUGS` says so beside the
+  driver.
+- **Decision.** An NVMe ordinal counts controllers, which identifies a disk only while each
+  controller has one namespace, as every controller this tree drives does.
+  `design/decisions/0193-nvme-in-the-block-roster.md` names a controller with two namespaces as the
+  measurement that would make an entry say which.
 
 ## Index row
 
