@@ -101,7 +101,8 @@
 # next reader starts where this one stopped.
 #
 #   script/names              the table, by kind
-#   script/names --unratified the worklist: what still wants an architect, in the order to work it
+#   script/names --unratified the worklist: what still wants an architect, in the order to work it;
+#                             items and modules another Cargo package reaches come first
 #   script/names --refused    every refused name, and what holds the refusal
 #   script/names --unrecorded the names nobody wrote a reason for
 #   script/names <name>       one name: its provenance, or the entry that refused it
@@ -154,6 +155,7 @@ sys.dont_write_bytecode = True
 sys.path.insert(0, os.path.join(root, "helpers"))
 import name_provenance                                                      # noqa: E402
 import name_rules                                                           # noqa: E402
+import name_crossings                                                       # noqa: E402
 
 # The three surfaces that are a directory listing, each with the file that holds its header. The
 # fourth kind, `package`, is discovered instead: see `packages()` below, which is what covers
@@ -247,6 +249,23 @@ def packages():
     return sorted(out, key=lambda row: row[1])
 
 
+BINS = {}
+
+
+def is_binary(directory, entry):
+    """Whether a file in `components/src/` or `fixtures/src/` is a `[[bin]]` of its manifest.
+
+    A program is a `[[bin]]` (calef's tiering, 2026-10-17). A file another program includes through
+    `mod` or `#[path]` is a module of that program, and `net_stack.rs` includes nine that this
+    script once ranked with the programs a person types at the prompt.
+    """
+    manifest = os.path.join(os.path.dirname(directory), "Cargo.toml")
+    if manifest not in BINS:
+        BINS[manifest] = name_crossings.bin_paths(open(manifest).read())
+    rel = entry if entry.endswith(".rs") else entry + "/main.rs"
+    return name_crossings.is_program(rel, BINS[manifest])
+
+
 def items():
     """Every crate, program, script/ entry point and Cargo package, with the file carrying its block."""
     out = []
@@ -267,9 +286,22 @@ def items():
                 if os.path.isdir(os.path.join(directory, entry)):
                     continue
                 name = entry
-            out.append((kind, name, path_of(name), prefix))
+            shown = kind
+            if kind == "program" and not is_binary(directory, entry):
+                shown = "module"
+            out.append((shown, name, path_of(name), prefix))
     out.extend(packages())
     return out
+
+
+def includer(kind, name, path):
+    """For a program-directory file that is not a `[[bin]]`, the program that includes it."""
+    if kind != "module":
+        return None
+    directory = os.path.dirname(path)
+    sources = {os.path.splitext(e)[0]: open(os.path.join(directory, e), errors="replace").read()
+               for e in os.listdir(directory) if e.endswith(".rs")}
+    return name_crossings.includer_of(name, sources)
 
 
 def block(path, prefix):
@@ -373,7 +405,7 @@ def tracked(*patterns):
 
 
 SURFACE_FILES = {os.path.relpath(path, root) for kind, _n, path, _p in items()
-                 if kind in ("crate", "program")}
+                 if kind in ("crate", "program", "module")}
 RECORD_STEM = re.compile(r"^\d")
 
 # An exception to §75's README-per-directory rule, and a narrow one (2026-10-06, UTC). Each entry
@@ -508,7 +540,8 @@ for kind, name, path, prefix in items():
                         f"because the claim IS that the reasoning is somewhere else")
         continue
     records.append({"kind": kind, "name": name, "path": os.path.relpath(path, root),
-                    "status": status, "date": date, "refused": refused, "text": text})
+                    "status": status, "date": date, "refused": refused, "text": text,
+                    "owner": includer(kind, name, path)})
 
 # **Names a rule covers are ratified, and cite the rule** (calef, 2026-10-17 UTC). The rulings page
 # is `design/naming/convention-rulings.md`; `helpers/name_rules.py` says what each rule covers and
@@ -661,9 +694,43 @@ if mode == "--unrecorded":
           f"See --unratified for these plus the {len(recorded)} that are argued but unsigned.")
     sys.exit(0)
 
+def rank_crossings():
+    """Set `r["crossing"]` on every item and module: the defining package and who reaches it.
+
+    Run for `--unratified` only: it reads every tracked Rust file (about 2 s), and a single-name
+    lookup should not pay for a ranking it does not print. `helpers/name_crossings.py` says what
+    counts as crossing and what the measure gets wrong.
+    """
+    cands, by_key = [], {}
+    for r in records:
+        if r["kind"] not in ("item", "module") or r["status"] == "ratified":
+            continue
+        file, _, line = r["path"].partition(":")
+        key = (r["kind"], r["name"], r["path"])
+        by_key[key] = r
+        cands.append((key, r["name"], file, r["what"] if r["kind"] == "item" else "module",
+                      int(line) if line else 1))
+    manifests = {os.path.dirname(p): open(os.path.join(root, p)).read()
+                 for p in tracked("*Cargo.toml") if not p.startswith("vendor/")}
+    sources = {p: open(os.path.join(root, p), errors="replace").read()
+               for p in tracked("*.rs") if not p.startswith(("vendor/", "patches/"))}
+    for r in records:
+        r["crossing"] = None
+    for key, hit in name_crossings.crossings(cands, manifests, sources).items():
+        by_key[key]["crossing"] = hit
+
+
 if mode == "--unratified":
+    rank_crossings()
+
+    def group(r):
+        """0 and the defining package for a crossing name, 1 for an internal one; others 0."""
+        if r["kind"] not in ("item", "module"):
+            return 0, ""
+        return (0, r["crossing"][0]) if r["crossing"] else (1, "")
+
     todo = sorted(worklist,
-                  key=lambda r: (EXPOSURE[r["kind"]], KINDS.index(r["kind"]),
+                  key=lambda r: (EXPOSURE[r["kind"]], group(r), KINDS.index(r["kind"]),
                                  URGENCY[r["status"]],
                                  r["path"] if r["kind"] == "document" else r["name"]))
     if not todo:
@@ -671,7 +738,8 @@ if mode == "--unratified":
         sys.exit(0)
     print(f"UNRATIFIED ({len(todo)} of {len(records)}), in the order worth working through\n")
     print("Exposure first: a program is typed at the prompt, a crate is what a newcomer greps,")
-    print("an item or module is read in a `use` line, a directory or document is what a reader")
+    print("an item or module is read in a `use` line (one another package reaches first), a")
+    print("directory or document is what a reader")
     print("opens, and a script/ entry point is typed by whoever works on the tree. Within a tier,")
     print("a name nobody can justify comes before one whose reasoning merely lacks a signature.\n")
     # design/naming.md is the authority for the conventions a ratification is judged against
@@ -681,12 +749,29 @@ if mode == "--unratified":
     print("The conventions a name is judged against are design/naming.md, which is the rule.\n")
     tier = None
     for r in todo:
-        if (r["kind"], r["status"]) != tier:
-            tier = (r["kind"], r["status"])
-            print(f"  {PLURAL.get(r['kind'], r['kind'] + 's')}, {r['status']}")
+        if (r["kind"], r["status"], group(r)) != tier:
+            tier = (r["kind"], r["status"], group(r))
+            where = ""
+            if r["kind"] in ("item", "module"):
+                where = (f", crossing from {tier[2][1]}" if tier[2][0] == 0
+                         else ", internal to one package")
+            print(f"  {PLURAL.get(r['kind'], r['kind'] + 's')}, {r['status']}{where}")
         label = f"{r['name']} ({r['what']})" if r["kind"] == "item" else r["name"]
-        print(f"    {label:<40} {r['path']}")
-    print(f"\n{len(provisional)} provisional (the author expects a change), "
+        if r.get("owner"):
+            label = f"{r['name']} (of {r['owner']})"
+        seen = ""
+        if r.get("crossing"):
+            users = r["crossing"][1]
+            seen = "  <- " + ", ".join(users[:3]) + (f" +{len(users) - 3}" if len(users) > 3 else "")
+        print(f"    {label:<40} {r['path']}{seen}")
+    inner = [r for r in todo if r["kind"] in ("item", "module")]
+    cross = [r for r in inner if r["crossing"]]
+    print(f"\nitems and modules: {len(cross)} cross a package boundary "
+          f"({sum(r['kind'] == 'item' for r in cross)} items, "
+          f"{sum(r['kind'] == 'module' for r in cross)} modules), {len(inner) - len(cross)} are "
+          f"internal. Crossing names are reviewed first (calef, 2026-10-17); internal ones "
+          f"still need ratifying.")
+    print(f"{len(provisional)} provisional (the author expects a change), "
           f"{len(unrecorded)} unrecorded (research, then a ruling), "
           f"{len(recorded)} recorded (a ruling only).")
     print("script/names <name> prints what the history does and does not say about one of them.")
