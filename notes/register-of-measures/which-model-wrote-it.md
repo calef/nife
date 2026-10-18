@@ -54,10 +54,11 @@ merge bucket is a throughput count. 95 merge commits do carry a trailer, from an
 conflict. The merge bucket still wins, because what the commit records is a landing, not a piece of
 writing.
 
-A claim is the empty commit a lane makes when it opens its draft (§90). It carries no work, so it
-is kept out of every model's count whatever its trailer says. `script/claim` signs it `Claude Code`
-unless told otherwise, and some lanes sign it with their model, so the test is the empty tree and
-not the name. The few CI re-triggers, which are also empty, count here too.
+A claim is the empty commit a lane makes when it opens its draft, under §90 (the claim is a draft
+pull request). It carries no work, so it is kept out of every model's count whatever its trailer
+says. `script/claim` signs it `Claude Code` unless told otherwise, and some lanes sign it with
+their model, so the test is the empty tree and not the name. The few CI re-triggers, which are also
+empty, count here too.
 
 Merges carry a commit count and no line count. A merge's diff against its first parent is the whole
 of what landed on the branch. Every line of it is already counted on that branch's own commits, so

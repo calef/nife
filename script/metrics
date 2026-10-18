@@ -831,7 +831,7 @@ def models_by_week(rev):
       than a residue. 95 merge commits do carry a trailer, from an agent resolving a conflict, and
       the bucket still wins: the commit records a landing, not a piece of writing.
     - `claim`, next, for a commit whose tree is its parent's tree: it changes nothing. That is what
-      makes a commit a claim (§90, the claim is a draft pull request): `script/claim` commits
+      makes a commit a claim under §90 (the claim is a draft pull request): `script/claim` commits
       `--allow-empty` so the draft survives its base landing, and signs it with whatever
       `NIFE_CLAIM_MODEL` names, `Claude Code` by default. So neither the trailer nor the `claim:`
       subject is the test. Ten non-empty commits have a `claim:` subject and are real work on
