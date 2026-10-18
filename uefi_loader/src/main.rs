@@ -28,10 +28,10 @@
 
 //! # BUGS
 //!
-//! - **Secure Boot must be off.** This image is unsigned, and by calef's ruling on milestone 500
-//!   nothing signs it: a stranger turns Secure Boot off by `notes/turning-secure-boot-off.md`.
-//!   Under QEMU it is the difference between `edk2-x86_64-code.fd` and
-//!   `edk2-x86_64-secure-code.fd`.
+//! - **Secure Boot must be off.** This image is unsigned, and by calef's ruling on milestone 500 (a
+//!   stick that boots with Secure Boot on, or a page that says how to turn it off) nothing signs it:
+//!   a stranger turns Secure Boot off by `notes/turning-secure-boot-off.md`. Under QEMU it is the
+//!   difference between `edk2-x86_64-code.fd` and `edk2-x86_64-secure-code.fd`.
 //! - **The kernel is embedded rather than loaded from the filesystem.** One file on the stick
 //!   instead of three, and no `SimpleFileSystem` protocol to speak, at the cost of rebuilding this
 //!   loader whenever the kernel changes. `cargo xtask uefi-image` and `cargo xtask stick` do both

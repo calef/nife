@@ -33,8 +33,9 @@ it). A boot key would be a second long-lived key and the first one other people'
 instruction, written to be carried onto it as it stands. It leads with the BitLocker recovery key,
 then how to reach the firmware settings, then the steps for Dell, HP, Lenovo, ASUS and Acer. Each
 step cites the vendor page it was read from on 2026-10-18 (UTC), and each it could not confirm is
-marked. Rung 4 (milestone 802, publishing the page) needs this note. Rungs 1 to 3 on xenon do not:
-xenon's Secure Boot is already off.
+marked. Rung 4 of milestone 802 (the trivial install that makes a second customer possible),
+publishing the page, needs this note. Rungs 1 to 3 on xenon do not: xenon's Secure Boot is already
+off.
 
 `stick_maker`'s closing line and the stick's `NIFE.TXT` say "turn Secure Boot off" and no more,
 because the page is where a stranger reads how.
@@ -67,9 +68,10 @@ for owners who want Secure Boot kept on, and it composes with K1 on the same pag
 
 ## What the tree does in the analogous case
 
-The measured-boot chain (milestone 104, DECISIONS §26) chose a hash over a signature for K2's
-reason: *"today they are built by one command in one tree in one sequence, so the hash is strictly
-better"*, and key custody was the objection §26 left standing.
+The measured-boot chain (milestone 104 (the measurement continues past init), DECISIONS §26 (the
+fault endpoint)) chose a hash over a signature for K2's reason: *"today they are built by one
+command in one tree in one sequence, so the hash is strictly better"*, and key custody was the
+objection §26 left standing.
 
 ## Scope note (architectural parity)
 

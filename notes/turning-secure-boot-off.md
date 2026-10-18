@@ -1,11 +1,12 @@
 # Turning Secure Boot off, before booting the nife stick on a PC
 
-This is the first instruction of the trivial-install page (milestone 802, rung 4), written so the
-page can carry it as it stands. Milestone 500 (a stick that boots with Secure Boot on, or a page
-that says how to turn it off) holds the ruling behind it: nife does not sign its boot file, so a
-stranger turns Secure Boot off. Everything a vendor's menu is said to contain below cites the
-vendor page it was read from, and the [sources](#sources) list gives the date each was read. What
-was not confirmed is marked where a reader meets it.
+This is the first instruction of the trivial-install page (milestone 802 (the trivial install that
+makes a second customer possible), rung 4), written so the page can carry it as it stands. Milestone
+500 (a stick that boots with Secure Boot on, or a page that says how to turn it off) holds the
+ruling behind it: nife does not sign its boot file, so a stranger turns Secure Boot off. Everything
+a vendor's menu is said to contain below cites the vendor page it was read from, and the
+[sources](#sources) list gives the date each was read. What was not confirmed is marked where a
+reader meets it.
 
 **Why this step exists.** Secure Boot is a firmware setting that lets a PC start only boot files
 signed by a key the firmware trusts. Most PCs sold with Windows ship with it on (HP states this for
