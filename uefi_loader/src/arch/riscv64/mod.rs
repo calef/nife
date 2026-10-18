@@ -35,7 +35,7 @@ unsafe extern "C" {
 /// **The ceiling on everything the kernel reads before its own page tables are up.** The boot table
 /// in `kernel/src/arch/riscv64/mmu.rs` identity-maps gigapages 0, 1 and 2, so the last byte it
 /// reaches is `0xbfff_ffff`.
-pub const ALLOCATION_CEILING: u64 = 0xbfff_ffff;
+pub(crate) const ALLOCATION_CEILING: u64 = 0xbfff_ffff;
 
 /// The firmware's device tree and the boot hart, found before anything moves.
 pub struct Found {
