@@ -54,7 +54,7 @@
 //! | 32 | 1 | `config` | 0 or 1 |
 //! | 33 | 1 | `entropy` | 0 or 1 |
 //! | 34 | 1 | `network` | 0 or 1 |
-//! | 35 | 1 | `runtime` | 0 native, 1 std |
+//! | 35 | 1 | `startup` | 0 native, 1 std |
 //! | 36 | 1 | option count | at most `grant_plan::MAX_DECLARED_FLAGS` (16) |
 //! | 37 | 16 | option letters | the first *count* are the letters in bit order, the rest 0 |
 //! | 53 | 1 | `machine` | 0 or 1 (milestone 126, the machine statistics page) |
@@ -72,7 +72,7 @@
 
 use grant_plan::{
     ArgSpec, DIAGNOSTICS_SLOT, DirSpec, FileSpec, Flags, IndexStore, InputSpec, MAX_DECLARED_FLAGS,
-    Manifest, MemSpec, OutputSpec, Runtime, WordGrant,
+    Manifest, MemSpec, OutputSpec, StartupContract, WordGrant,
 };
 
 /// **The note's owner string**, without its NUL: the project's name, lowercase as
@@ -276,9 +276,9 @@ pub const fn encode(m: &Manifest) -> [u8; DESCRIPTOR_LEN] {
     out[NETWORK] = m.network as u8;
     out[MACHINE] = m.machine as u8;
     out[SHARE] = m.share as u8;
-    out[RUNTIME] = match m.runtime {
-        Runtime::Native => 0,
-        Runtime::Std => 1,
+    out[RUNTIME] = match m.startup {
+        StartupContract::Native => 0,
+        StartupContract::Std => 1,
     };
     out[FLAG_COUNT] = letters.len() as u8;
     let mut i = 0;
@@ -357,7 +357,7 @@ pub fn decode(d: &[u8]) -> Result<Manifest, Error> {
     let dir = decode_dir(d, letters)?;
     let output = decode_output(d)?;
     let input = decode_input(d)?;
-    let runtime = decode_runtime(d)?;
+    let startup = decode_runtime(d)?;
     zero(d, TAIL, DESCRIPTOR_LEN - TAIL)?;
     Ok(Manifest {
         arg,
@@ -382,7 +382,7 @@ pub fn decode(d: &[u8]) -> Result<Manifest, Error> {
         installer: false,
         catalog: false,
         indexes: IndexStore::Forbidden,
-        runtime,
+        startup,
     })
 }
 
@@ -471,11 +471,11 @@ fn decode_input(d: &[u8]) -> Result<InputSpec, Error> {
     })
 }
 
-/// The `runtime` field.
-fn decode_runtime(d: &[u8]) -> Result<Runtime, Error> {
+/// The `startup` field.
+fn decode_runtime(d: &[u8]) -> Result<StartupContract, Error> {
     Ok(match d[RUNTIME] {
-        0 => Runtime::Native,
-        1 => Runtime::Std,
+        0 => StartupContract::Native,
+        1 => StartupContract::Std,
         _ => return Err(Error::BadField(RUNTIME)),
     })
 }
