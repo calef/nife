@@ -37,7 +37,7 @@
 //! Name: ratified 2026-10-17 (calef, a program-naming session), replacing `name_resolver`: he
 //! proposed "`domain_name_resolver`" and confirmed it over `domain_name_system_resolver`. Refused
 //! `name_resolver` ("name" is ambiguous: `bare::resolve` resolves program names, `grant_plan::nav`
-//! paths), `domain_name_system_resolver`, `dns_resolver` (§154) and `resolver` (capabilities too).
+//! paths), `domain_name_system_resolver`, `dns_resolver` (§154 (the acronym test)), `resolver`.
 
 #![no_std]
 // Program entry points, not the crates/ library surface milestone 68 (code-quality gates: one lint
