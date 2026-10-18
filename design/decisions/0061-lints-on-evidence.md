@@ -56,9 +56,9 @@ of re-running it.
 The corollary matters more than the rule. Nothing goes in that table "to see what it finds", because
 `script/lint` runs `-D warnings`: adding a lint is a commitment to fix every existing violation
 first. That is the same ratchet discipline §38 (a suppression is scoped) applies to dead code. It is
-why the two lints milestone 68 could not finish (`undocumented_unsafe_blocks`, 228 sites;
-`missing_docs`) are absent from the table rather than present with a pile of `#[allow]`s underneath
-them.
+why the two lints milestone 68 (code-quality gates) could not finish (`undocumented_unsafe_blocks`,
+228 sites; `missing_docs`) are absent from the table rather than present with a pile of `#[allow]`s
+underneath them.
 
 ## BUGS
 

@@ -24,7 +24,7 @@ check. A handle is a server-minted token, validated against the session's table 
 forging one is meaningless. Open-by-path exists only inside the server. None of this adds a syscall.
 The kernel routes these words the way it routes any IPC (§10 (process model), §12 (Call/Reply IPC))
 and never reads an opcode. So adding a method is a change to `fs_proto` and the note, not to the
-surface (the §16 discipline).
+surface (the §16 (object revocation) discipline).
 
 The error boundary is mapped exactly once. RedoxFS's error type (`syscall::error::Error`) rides
 unmapped through the sans-IO core and the `Disk` impl; the serve loop is the single site that turns

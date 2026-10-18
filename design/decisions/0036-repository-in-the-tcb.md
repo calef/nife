@@ -24,9 +24,9 @@ confinement. In scope: capability forgery or widening, MMU escape, DMA escape, I
 syscall argument that panics or corrupts the kernel, TOCTOU across the shared pages every service
 contract uses. The scope also covers the foreign-language and vendored seams (§27 (the filesystem
 service), §31 (the foreign-language seam)). Out of scope: that a demonstrator under QEMU is not a
-production system, that a hardening feature on the roadmap (design/roadmap/README.md) is missing,
-and anything that requires already being init, which §14 already names as the privileged unverified
-component.
+production system, and that a hardening feature on the roadmap (design/roadmap/README.md) is
+missing. So is anything that requires already being init, which §14 (the project's direction)
+already names as the privileged unverified component.
 
 The distinction that carries the weight is "a missing feature is a roadmap item; a defence that
 is *claimed* and does not work is a vulnerability." That is the honest version, and it is also the
