@@ -1,0 +1,26 @@
+Falsifies `system_tests::user::suspension_tests::a_suspended_user_thread_stands_still_and_resumes_with_its_registers`.
+
+Architecture: aarch64, riscv64, x86_64
+
+The defect: `ThreadControlBlock::SUSPEND` forgets its `WRITE` check, so any capability naming a TCB
+can stop the thread, a read-only one included. DECISIONS §300 (the paused state, a TCB verb,
+silent) makes the TCB capability the whole authority, and the authority is `WRITE` on it, as for
+every other method on the object.
+
+Expected to fail: "method 4 obeyed a TCB capability without WRITE". Nothing here is
+architecture-specific, so one patch serves every leg.
+
+diff --git a/kernel/src/syscall/thread_control_block.rs b/kernel/src/syscall/thread_control_block.rs
+index 42610962c..0a138c599 100644
+--- a/kernel/src/syscall/thread_control_block.rs
++++ b/kernel/src/syscall/thread_control_block.rs
+@@ -59,9 +59,6 @@ pub(super) fn thread_control_block_invoke(
+         // §300 (the paused state, a TCB verb, silent): the TCB capability is the whole
+         // authority, WRITE as for every method here.
+         abi::thread_control_block::SUSPEND => {
+-            if !rights.allows(Rights::WRITE) {
+-                return Err(Error::NotPermitted);
+-            }
+             sched::suspend_thread_control_block(tid)?;
+             Ok(0)
+         }

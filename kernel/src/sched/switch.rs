@@ -170,12 +170,20 @@ pub(super) fn missing_token() -> ! {
 /// a queue returned, and so does this, once.
 #[inline(always)]
 pub(super) fn hold_token(token: Unqueued<Thread>) -> ThreadId {
+    hold_token_reading_order(token).0
+}
+
+/// [`hold_token`], also answering whether the thread carries a suspension order
+/// (`Thread::suspend_requested`), read through the pointer already in hand. For the pick, where a
+/// second table lookup per switch cost bytes on every IPC closure.
+#[inline(always)]
+pub(super) fn hold_token_reading_order(token: Unqueued<Thread>) -> (ThreadId, bool) {
     // SAFETY: a token's thread is live for as long as the token exists (`Threads::mint_token`'s
     // first obligation), `IPC_TABLES` (held by every caller) serializes access to every `Thread`,
     // and no other reference to this one is live: the caller has just taken it off a queue.
     let t = unsafe { &mut *token.as_ptr() };
     t.own_token = Some(token);
-    t.id
+    (t.id, t.suspend_requested)
 }
 
 /// Install the incoming thread's cycle-counter grant on the core about to run it, immediately after
@@ -286,12 +294,16 @@ pub fn schedule() {
         // The *test* stays here, on the hot path, because it is two loads and a compare. The
         // *body* is out of line (milestone 188 phase 3): converting a killed thread and freeing its
         // callers is a teardown, so its bytes have no business in the kernel's hottest function.
-        if sched.threads.get(current).is_some_and(|t| {
-            t.killed
-                && (t.handshake.state == State::Running
-                    || (t.handshake.state == State::Blocked && !t.handshake.wake_pending))
-        }) {
-            finish_killed_current(sched, current);
+        //
+        // **And a suspension order** (DECISIONS §300 (the paused state, a TCB verb, silent)), for a
+        // current thread still `Running`: it parks before the pick, so the pick neither requeues it
+        // nor keeps it. One test of the two flags here, and which order applies in the cold body.
+        if sched
+            .threads
+            .get(current)
+            .is_some_and(|t| t.killed || t.suspend_requested)
+        {
+            carry_out_orders(sched, current);
         }
 
         // The pick: this core's queue, the idle thread when it is empty, and the outgoing thread
@@ -443,6 +455,23 @@ pub(super) fn finish_killed_current(sched: &mut IpcTables, current: ThreadId) {
     }
     strand_callers_of(sched, current);
     process::on_killed(sched, current); // a supervised member reports its process's end
+}
+
+/// **Carry out a kill or a suspension order on the current thread**, `schedule`'s check, out of
+/// line for [`finish_killed_current`]'s reason. The kill wins, so a doomed thread dies rather than
+/// stopping. Caller holds `IPC_TABLES` and found one of the two flags set.
+#[cold]
+#[inline(never)]
+pub(super) fn carry_out_orders(sched: &mut IpcTables, current: ThreadId) {
+    let Some(t) = sched.threads.get(current) else {
+        return;
+    };
+    let running = t.handshake.state == State::Running;
+    if t.killed && (running || (t.handshake.state == State::Blocked && !t.handshake.wake_pending)) {
+        finish_killed_current(sched, current);
+    } else if t.suspend_requested && running {
+        suspension::park_suspended_current(sched, current);
+    }
 }
 
 /// **The running thread came off its own run queue, which cannot legally happen.** [`schedule`]'s
