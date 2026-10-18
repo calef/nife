@@ -2,7 +2,7 @@
 
 *Milestone 23's third residual, and the one §32 named and declined: a component that stops answering
 without dying. The swap itself is DECISIONS §41 and notes/live-replacement.md. `crates/hot_swap_contract`, `components/src/swapper.rs`'s
-`ROLE_HUNG`, and `a_component_that_stops_answering_without_dying_is_invisible_to_its_supervisor` in
+`ROLE_HUNG`, and `a_supervisor_notices_a_hung_component_and_reclaims_it` in
 `system_tests/src/user/live_swap_tests.rs`.*
 
 Case (c) and question 3's stranded caller are partly resolved in the kernel. Milestone 133 (ending
@@ -10,8 +10,8 @@ a permanently blocked thread, and deciding who may), ruled by calef on 2026-09-0
 holder's `DESTROY` finish a `Blocked` resident in place. Milestone 254 (a caller stranded by a
 server that died) wakes its stranded callers with `abi::Error::Gone`.
 Only a holder of the supervision endpoint alone still cannot end a child (133's refused proposal B).
-The two halves are tested apart, not together; milestone 23 (a capability-routed component OS with
-live replacement) records that task. notes/blocked-thread-teardown.md has the decision.
+The hung test runs the two together: the operator destroys the hung incumbent's region, and the
+caller it stranded gets `Gone`. notes/blocked-thread-teardown.md has the decision.
 
 ## The problem
 
@@ -96,44 +96,37 @@ three properties and the naming reasons are in
 
 ### 2. What counts as hung?
 
-Not elapsed time. Unserved work. The bound belongs to the supervisor, not to the manifest and not
-to the client, and the reason is that a bound denominated in time can convict a healthy component of
-being slow while a bound denominated in progress cannot.
+At a swap, a quiesce unanswered within the supervisor's bound. `swapper`'s operator asks for the
+drain with a deadline (milestone 106 (a wait that ends on either the interrupt or the deadline)'s
+timed wait) and treats no answer as a hang. A `CALL` takes no deadline, so a stand-in makes the call
+and the deadline is on its forwarded answer. The bound is `QUIESCE_BOUND_MS`, 250 ms, about forty
+times the slowest healthy answer measured on three ISAs.
 
-Of the three candidate owners, the manifest is attractive and wrong. A contract cannot know the
-machine, and a deadline is a service-level claim rather than authority. The client is the party
-harmed, but it cannot act, and with no timed `CALL` it has no moment at which to notice. The
-supervisor's bound, denominated in progress, is milestone 62 (tests)'s argument one level out: *"a
-bound expressed in something other than the property under test."*
+The bound belongs to the supervisor, not to the manifest and not to the client. A contract cannot
+know the machine, and a client that is parked inside its `CALL` cannot act. It is denominated in
+time, which can convict a healthy component of being slow. It is acceptable here because the
+quiesce is owed work of known size, waiting behind only the requests already queued, and because it
+is asked only by a supervisor about to replace the component anyway.
 
-Concretely: a component publishes a monotone progress counter in a page its supervisor owns, and §41
-already has that page (`hot_swap_contract::LOG_VA`). A verdict is *work is owed and the counter has not
-moved across k observations*. No clock is consulted, and k is the supervisor's. Two costs come with
-it. The counter's granularity is the false-positive rate. Separating k observations needs a wait,
-and there is no timed wait anywhere in the kernel, which is milestone 106 (wait)'s fork. This lane did
-not settle it.
+Outside a swap the better denomination is progress: a monotone counter in a page the supervisor
+owns (§41 already has `hot_swap_contract::LOG_VA`), and a verdict of *work is owed and the counter
+has not moved across k observations*. That is milestone 62 (tests)'s argument one level out, *"a
+bound expressed in something other than the property under test."* It is not built.
 
-The argument owner by owner, what is missing, and a citation corrected in milestone 106's block
-are in
-[`hung-component/what-counts-as-hung.md`](hung-component/what-counts-as-hung.md).
+The argument owner by owner, the progress counter's costs, and where the built bound departs from
+it are in [`hung-component/what-counts-as-hung.md`](hung-component/what-counts-as-hung.md).
 
 ### 3. What happens to the client that is already blocked?
 
-`abi::Error::Gone` does not cover it. Nothing but the server can wake a caller whose server hangs
-mid-`CALL`, and when this note was written its memory was unreclaimable for the life of the machine.
+Nothing but the server can answer a caller whose server hangs mid-`CALL`: the one-shot `Reply`
+capability is minted without `GRANT` and lives in the hung component's table, so the operator cannot
+answer for it. What the operator can do is end the server. Destroying the hung component's region
+finishes it in place (milestone 133), and the reclaim answers every caller it held a `Reply` for
+with `abi::Error::Gone` (milestone 254). The hung test runs exactly that, and the client asks the
+replacement again. A server that is hung and alive, and that nobody ends, still strands its caller.
 
-The reason, from the code: a reply-parked caller is woken by `sched::ipc_reply` and nothing else,
-and the abort machinery that produces `Gone` walks endpoint wait queues the caller has already left.
-`Gone` means *"the capability names an object that no longer exists"*, and a hung server's endpoint
-exists. The operator cannot answer for the component either, because the one-shot `Reply` capability
-is minted without `GRANT` and lives in the hung component's table. Freeing a stranded caller requires
-the cooperation of the component whose lack of cooperation is the definition of the hang. The test
-demonstrates that inversion with a wedge that cooperates on request.
-
-Since then (the correction at the top), milestones 254 and 133 together free a stranded caller
-whose server dies or is ended, argued and not run. A server that is hung and alive still strands its
-caller. The path, the operator's position and the
-test's evidence are in [`hung-component/stranded-caller.md`](hung-component/stranded-caller.md).
+The path through the code, the operator's position and the test's evidence are in
+[`hung-component/stranded-caller.md`](hung-component/stranded-caller.md).
 
 ### 4. Is killing even the right response?
 
@@ -146,56 +139,48 @@ test is the argument. Milestone 23's four steps against a hung incumbent:
   1 BUILT    unchanged. Lay the replacement out, endow it with everything but the device, do not
              configure or start it.
   2 DRAINED  UNAVAILABLE, and unnecessary. OPERATION_QUIESCE needs the incumbent to answer, which is the
-             one thing it does not do. But quiescing exists to make the incumbent stop receiving,
-             and a hung component has already stopped receiving. **The step that needs its
-             cooperation is the step the hang makes redundant.**
+             one thing it does not do, and its going unanswered within the bound is how the hang is
+             noticed. Quiescing exists to make the incumbent stop receiving, and a hung component
+             has already stopped. **The step that needs its cooperation is the step the hang makes
+             redundant.**
   3 REVOKED  unchanged. DeviceFrame::REVOKE take-back (§41) is GRANT-gated on the operator's own device
              capability and asks the holder for nothing. It works on a live, wedged, wholly
              uncooperative holder exactly as on a quiesced one.
   4 STARTED  unchanged. The replacement parks in RECEIVE_CAP on the stable rendezvous and picks up
              whatever queued behind the silence, because the stable name is the rendezvous object and
              the kernel's sender queue is the buffer (§41).
-  5 REAPED   UNAVAILABLE. There is no corpse. Rendezvous::REAP answers StillAlive.
+  5 REAPED   UNAVAILABLE. There is no corpse. Rendezvous::REAP answers StillAlive. In its place,
+             DESTROY on the incumbent's region, which the operator kept at build: it finishes the
+             incumbent where it sits (milestone 133) and answers its stranded caller Gone.
 ```
 
 So a supervisor recovers the service with no authority it did not already hold, and §32's
 `Rendezvous::REAP` was never in the path. What §32 is right about is step 5: reclaiming a hung
-component's memory needs more than a supervisor holds. The sentence conflates restarting a
+component's memory needs more than the supervision endpoint, namely the region capability, which a
+supervisor that builds its children holds if it keeps it. The sentence conflates restarting a
 service with reclaiming a region.
 
-The limit: recovery costs a fresh region while the old one stays spoken for, so a supervisor survives as many hangs as it has spare budget and no
-more. That makes the reclamation question a capacity question rather than a tidiness one, which is
-the strongest argument for deciding it.
-
-Not sufficient, when written, for the terminal case: case (c)'s armed kill was never spent, so
-construction authority would have bought nothing. Milestone 133 has since closed that.
+Reclaiming matters for capacity, not tidiness: without it every hang costs a region for the life of
+the machine, and a supervisor survives as many hangs as it has spare budget. With it, the
+replacement's region is spoken for only until the `DESTROY` returns the old one.
 
 Restarting is what the machinery already does. §40's rule is that there is no reaper of last
 resort, and live replacement is a restart with a stable name in front of it, so a hung component's
 replacement is the four steps minus the one that needed cooperation. That response is built.
 
-## What this lane built, and what it deliberately did not
+## What is built, and what is not
 
-Built: the case, demonstrated on both ISAs. `swapper`'s `ROLE_HUNG` runs the direct channel's system
-against an incumbent that swallows one request and stops answering. It asserts four results, each
-about program order and none about elapsed time:
-
-1. The domain does not report a hang. `SURVEY` reads every member `BLOCKED`, which is what a healthy
-   idle system reads.
-2. `Rendezvous::REAP` answers `StillAlive` for every member of the domain.
-3. The service is restored with no new authority, and the drain step is asserted absent.
-4. The stranded caller is freed only by the component that stranded it, after the service is back.
-
-The wedge is a `CALL` whose reply the operator keeps, so the blocked state is provable rather than
-raced; the detail is in
+Built: the case, on all three ISAs. `swapper`'s `ROLE_HUNG` (`ROLE_HUNG_WITHOUT_DEVICE` on `x86_64`)
+runs the direct channel's system against an incumbent that swallows one request and stops answering,
+silently. The test asserts six results. The operator notices by its bounded quiesce, the domain
+reads as idle, and every reap is refused. The service is restored with no new authority, the
+incumbent's region comes back while it is still hung, and its stranded caller sees `Gone`. The
+results, the silent wedge and the quiesce's stand-in are in
 [`hung-component/the-wedge-test.md`](hung-component/the-wedge-test.md).
 
-Not built: a watchdog program, deliberately. Both halves of one are behind decisions calef has not
-made: the detection threshold needs milestone 106's
-timed wait (or a yield-spin that is the flaky assertion this project is currently removing), and the
-terminal action needs §32's new decision. A program shipped with a made-up threshold would be policy
-nobody ruled on, wearing a name nobody ratified. What is shipped instead is the case, the taxonomy,
-and the two asks.
+Not built: a watchdog program. Detection exists only inside a swap, where the supervisor's own
+quiesce is the question; a watch over a running component wants the progress bound of question 2
+and the `liveness_watch` shape of question 1, an architect's name.
 
 Not built: any kernel-surface change. No new syscall, method or rights bit, and no change to
 `SURVEY` or `REAP`. The obvious extension is a decision: see `BUGS`.
@@ -209,11 +194,11 @@ declaration:
 grep -B4 -A30 'pub const SURVEY' crates/abi/src/lib.rs
 ```
 
-Run the case, on both architectures.
+Run the case on one architecture, or all three.
 
 ```sh
-script/test 2>&1 | grep -i 'stops answering'
-script/cpu-matrix                     # the riscv64 leg
+script/test --arch riscv64 --test a_supervisor_notices_a_hung_component
+script/test 2>&1 | grep -i 'notices_a_hung'
 ```
 
 Watch a domain from a program that cannot touch it, endow that program with one right, and restore a
@@ -222,12 +207,10 @@ service under a hung component: the Rust for each, with `ps`'s precedent quoted 
 
 ## BUGS
 
-**Detection is not demonstrated, only its impossibility with what exists.** The wedge announces
-itself, and the note says so at every site: `hot_swap_contract::NOTE_WEDGED`'s doc comment, the test's
-header, and this file. What is under test is what a supervisor can do about a hang it already knows
-about. A run in which something noticed a hang on its own is not in this tree and cannot be until
-milestone 106's fork is decided, because every available notifier is a deadline and there is nothing
-to wait on.
+**Detection exists only at a swap.** The operator notices a hang when its own quiesce goes
+unanswered within `QUIESCE_BOUND_MS`. Nothing watches a component between swaps, and
+`terminal_supervisor`'s quiesce of `line_editor` has no bound (milestone 23 (a capability-routed
+component OS with live replacement)'s block records why).
 
 **`SURVEY` does not say what a thread is blocked *on*, so no wait-for graph is possible.** It is
 the extension that would turn detection from a heuristic into a decision procedure. A cycle in
@@ -245,8 +228,8 @@ the correction at the top), and struck here 2026-10-08.
 the page from the invoker too (§13, §41, and the asymmetry is deliberate). So an operator cannot
 un-share a writable page from a component it no longer trusts without losing its own view of it. A
 hung component that later wakes can therefore still scribble on the supervisor's witness page. The
-test does not hit this because its wedge writes nothing after waking, which is a property of the
-fixture and not of the mechanism. See notes/shared-page-audit.md.
+test does not hit this because the hung incumbent is destroyed and never runs again. A supervisor
+that replaces a hung holder without destroying it is exposed. See notes/shared-page-audit.md.
 
 **The queue rung does not protect against a hang, and it looks as though it should.** `broker`'s own
 comment is honest about the reason: it "does not probe the backend and cannot: liveness is exactly the
@@ -264,8 +247,9 @@ between requests and a spinner is never `BLOCKED`. It is not tested here, becaus
 It is the easiest of the three to detect and the easiest to kill; a lane that gets a bound it may use
 should take it first.
 
-**Every name in this residual is provisional.** `wedge`, `WEDGE_SEQ`, `WEDGE_RELEASED`, `NOTE_WEDGED`,
-`NOTE_RELEASE`, `ROLE_HUNG`, `RPT_SURVEY`, `RPT_UNCOLLECTABLE`, `RPT_WEDGED`, `survey_counts`, and the
+**Every name in this residual is provisional.** `wedge`, `WEDGE_SEQ`, `ROLE_HUNG`,
+`ROLE_HUNG_WITHOUT_DEVICE`, `ROLE_QUIESCER`, `NOTE_QUIESCE_ANSWERED`, `WAS_GONE`, `RPT_SURVEY`,
+`RPT_UNCOLLECTABLE`, `RPT_UNANSWERED`, `RPT_RECLAIMED`, `survey_counts`, `QUIESCE_BOUND_MS`, and the
 proposed `liveness_watch`. `wedge` is at least the word this tree already uses for the condition
 (§26's "alive but wedged", milestone 62's "a wedged one"). `caretaker` and `undertaker` were
 unavailable: both are spent on capability-narrowing programs.
@@ -282,7 +266,7 @@ State handoff is still the crux, and a hang makes it harder: a hung component ca
 anything. Dependency-aware orchestration has since been built (notes/dependency-orchestration.md),
 and its quiescence step is the one a hang makes unavailable, so each edge still needs a
 non-cooperative fallback, which is not built. See
-[`hung-component/milestone-23-residuals.md`](hung-component/milestone-23-residuals.md).
+[`hung-component/what-is-left-of-milestone-23.md`](hung-component/what-is-left-of-milestone-23.md).
 
 ## See also
 
@@ -296,8 +280,7 @@ non-cooperative fallback, which is not built. See
   why a deadline is not a manifest field; notes/process-view.md for `SURVEY` and `ENUMERATE`
 - notes/deadlock.md for the four Coffman conditions and why detection means killing somebody;
   notes/supervision.md, notes/teardown.md, notes/sink-protocol.md (`abi::Error::Gone`)
-- design/roadmap/0106-deadline-wait.md and design/roadmap/0051-wall-clock-time.md for the timed-wait fork
-  and its three candidate shapes, which five consumers now want.
+- design/roadmap/0106-deadline-wait.md for the timed wait the operator's bounded quiesce uses.
 - design/roadmap/0062-time-sensitive-tests/the-problem.md for the progress-versus-duration argument this note
   borrows, and 78 for the assertions it is currently removing
 - Prior art: MINIX 3's reincarnation server (which does poll, with a per-service timeout an

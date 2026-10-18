@@ -45,7 +45,9 @@ use user_mode_runtime::{cap_delete, invoke};
 
 /// init dropped its construction authority. `w1` = 1 if using the dropped budget then failed,
 /// `w2` = the negated error code (1 = `NoSuchSlot`: the slot is empty, there is nothing to name).
-pub const REPORT_INIT_DROPPED: u64 = 1;
+///
+/// Name: ratified 2026-10-18 (calef: "Progenitors numbers are ratified."), replacing `REPORT_INIT_DROPPED`.
+pub const REPORT_CONSTRUCTION_AUTHORITY_DROPPED: u64 = 1;
 /// A sub-server instance ran. `w1` = which attempt it is (0 = the original, 1+ = a restart).
 pub const REPORT_SERVER_RAN: u64 = 2;
 /// The sub-server's supervisor saw one of its children die. `w1` = the child's label (one of
@@ -149,7 +151,7 @@ pub const CHILD_STACK_PAGES: u64 = 4;
 /// **Why this size.** Big enough to hold every page one builder can have built and not yet
 /// reaped, which is what must fit at once; small enough that its page tables are a budget a
 /// builder can state ([`SCRATCH_TABLE_PAGES`]). The progenitor checks both at compile time against
-/// its own numbers (`system_initializer::INIT_OWN_PAGES` and `JOBS_BUDGET_PAGES`).
+/// its own numbers (`system_initializer::PROGENITOR_RESERVED_PAGES` and `JOBS_BUDGET_PAGES`).
 ///
 /// Name: provisional (milestone 604, 2026-09-26).
 pub const SCRATCH_WINDOW: address_space_map::Band = address_space_map::Band {
@@ -440,7 +442,7 @@ pub enum Retention {
     /// given.
     ///
     /// The reason is a required part of the variant rather than a comment beside it, which is
-    /// milestone 50's `InputSpec::Required` shape: a spawn path cannot keep a capability without
+    /// milestone 50 (pipes and redirection)'s `InputDeclaration::Required` shape: a spawn path cannot keep a capability without
     /// saying why, because the variant will not build. Every one of the five sites that kept theirs
     /// before §142 was written had no reason at all, and all five turned out to be
     /// [`Nothing`](Retention::Nothing) once anybody asked.

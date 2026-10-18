@@ -26,7 +26,7 @@ use super::*;
 ///
 /// **Out of line on purpose.** `spawn_service`'s frame is on the stack under every activation, and
 /// an install of `uptime` runs `package_archive`'s parser beneath it; in a debug build that path
-/// sat within about 400 bytes of the progenitor's 32 KiB stack (kernel `INIT_STACK_PAGES`) until
+/// sat within about 400 bytes of the progenitor's 32 KiB stack (kernel `PROGENITOR_STACK_PAGES`) until
 /// these locals were moved here. CI found it on 2026-09-27 as a data abort one word below the
 /// stack's lowest page.
 #[inline(never)]
@@ -39,8 +39,8 @@ pub(super) fn build_grant(
     set_seen: Option<u64>,
     manifest: Option<grant_plan::Manifest>,
 ) -> Option<u64> {
-    let words = match manifest.map(|m| m.arg) {
-        Some(grant_plan::ArgSpec::Words(g)) => {
+    let words = match manifest.map(|m| m.program_argument) {
+        Some(grant_plan::ProgramArgumentDeclaration::Words(g)) => {
             use filesystem_contract::grant as gr;
             let rights = gr::spec_rights(care_words.2) & g.rights();
             (
@@ -51,7 +51,7 @@ pub(super) fn build_grant(
         }
         _ => care_words,
     };
-    let hears_words = manifest.is_some_and(|m| m.arg.hears_words());
+    let hears_words = manifest.is_some_and(|m| m.program_argument.hears_words());
     match set_seen {
         None => care
             .subtree
@@ -983,8 +983,9 @@ pub(super) fn render_ipv4(addr: u32, out: &mut [u8]) -> usize {
 /// as it always did.
 ///
 /// No swap endpoint is passed: the trigger (milestone 198 (a package manager, and the trivial
-/// install)'s installer activating a new build) is not built, so nothing on this boot asks the
-/// supervisor to swap. `terminal_supervisor`'s `BUGS`.
+/// install)'s installer activating a new build) is ruled by §308 (the installer asks the terminal
+/// to swap) and not built, so nothing on this boot asks the supervisor to swap. Milestone 694 (the
+/// installer asks the terminal to swap) builds it; `terminal_supervisor`'s `BUGS`.
 /// `ut` is where the loader's own scratch tables come from; `budget` is the region the
 /// supervisor's map budget is split from. The same region at boot (the root, before the giveaway),
 /// two different ones inside a `graphical_terminal` session (milestone 632 (provisional): `own_ut` for the

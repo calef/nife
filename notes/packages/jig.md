@@ -62,7 +62,7 @@ and the root cannot be narrowed to one name.
 | slot | what | from |
 |---|---|---|
 | 2, 3 | the network stack, and its own region for each socket's page | `Manifest::network` |
-| 8 | its words | `ArgSpec::Words` |
+| 8 | its words | `ProgramArgumentDeclaration::Words` |
 | 15 | the installer endpoint, `WRITE` | `Manifest::installer`, §270 (a package manager holds an installer endpoint, not the spawn endpoint) |
 | 16 | the endpoint its answers come back on, `READ` | the same |
 | 17, and a page | a copy of the image's catalog | `Manifest::catalog` |
@@ -77,7 +77,7 @@ basalt can name another index without rebuilding `jig`.
 
 **Each line holds what its verb needs and no more** (option V2, milestone 281 (`watch` holds
 exactly what `ps` holds)'s test): `list` the catalog alone, `remove` and `rollback` the installer
-alone, `install` all three. `grant_plan::narrow_by_verb` decides it from `grant_plan::Prog::verbs`.
+alone, `install` all three. `grant_plan::narrow_by_verb` decides it from `grant_plan::Program::verbs`.
 The shell narrows for `caps` and the progenitor for the endowment, each reading the line's second
 word. The progenitor reads it off the argv page and refuses the spawn if the child's copy says
 otherwise.
@@ -105,7 +105,7 @@ region one package larger, from the progenitor's image pool (`grant_plan::named_
   now), and `http_response`, with `init`'s package exception for it.
 - Into the installed-programs table: a manager column (`installed_programs::Entry::manager`). A row from before it
   reads as `-`.
-- Into the progenitor's stack: two pages, to fourteen (`kernel::user::INIT_STACK_PAGES` has the
+- Into the progenitor's stack: two pages, to fourteen (`kernel::user::PROGENITOR_STACK_PAGES` has the
   measurements).
 
 ## BUGS

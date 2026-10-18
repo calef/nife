@@ -17,7 +17,7 @@ pub(crate) fn shown(f: impl FnOnce(&mut dyn FnMut(&[u8]))) -> String {
     String::from_utf8(buf).expect("the shell writes ASCII")
 }
 
-pub(crate) fn spec_of(line: &[u8]) -> RunSpec<'_> {
+pub(crate) fn spec_of(line: &[u8]) -> ParsedInvocation<'_> {
     match grant_plan::parse(line) {
         Command::Run(spec) => spec,
         other => panic!("expected an invocation, parsed {other:?}"),
@@ -33,14 +33,14 @@ pub(crate) fn listing(names: &[&'static [u8]]) -> NameSet {
     set
 }
 
-pub(crate) fn endowment(prog: Prog) -> Endowment {
+pub(crate) fn endowment(prog: Program) -> Endowment {
     Endowment {
-        prog,
-        arg: 0,
-        mem_pages: 0,
+        program: prog,
+        program_argument: 0,
+        memory_grant_pages: 0,
         file: None,
-        dir: None,
-        flags: 0,
+        directory: None,
+        short_options: 0,
         sink: line::Sink::Report,
         source: line::Source::None,
         diagnostics: match prog.manifest().output.diagnostics_slot() {

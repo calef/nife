@@ -94,8 +94,8 @@ has the transcript and the BUGS.
 - The store is a directory grant the owner's console alone makes, at the `std` layout's directory
   slot, on a line that names no directory of its own; the sources page comes with it (slot 18).
 
-The status is PARTIAL rather than BUILT: the exit criterion is xenon's installed system, and
-`basalt.nifeos.org` has no host. The TUF client is 858's.
+The status is PARTIAL rather than BUILT: the exit criterion is xenon's installed system, which
+has not run it. The TUF client is 858's.
 
 ## What is calef's
 
@@ -109,9 +109,11 @@ there, with options, under `needs-architect` (`notes/packages/the-index-format.m
 - C. How `jig` reaches a GitHub Release asset, whose download starts at `github.com` (Sectigo, not
   X1) and redirects. Ruled 2026-10-12 (UTC) on #2048, below.
 
-Not rulings but calef's hands: DNS and a host for `basalt.nifeos.org`, and the exit criterion on
-xenon. `nifeos.org` has a zone (Netlify DNS) with no record for `basalt` (2026-10-13 UTC).
-basalt's README lists the steps.
+Not a ruling but calef's hands: the exit criterion on xenon. The host is built:
+`basalt.nifeos.org` is a CNAME to `nifeos.github.io`, and
+`https://basalt.nifeos.org/rolling/metadata/stand-in-index` answers 200, listing every package
+against one Release (checked 2026-10-18 UTC, `rolling-2026-10-18-7a6a6b5`). On xenon the run waits
+on the I219 being admitted at boot, which takes milestone 494's bench boot first.
 
 One fork was decided rather than asked, because it is reversible and in-tree: how a manifest
 names a fixed directory (809's open fork). `Manifest::indexes`, granted like the installer, puts
@@ -170,7 +172,8 @@ location's root fetched from the off-root host, and two redirects allowed fetche
   amendments those rulings make. Q3 amends §220 (signed builds: a vendor signs, a developer
   self-signs, and trusting a key is scoped) and §195 (a reviewed recipe vouches for a package).
   The backup address may amend §250's own wording (question A).
-- Not a ruling but calef's hands: DNS and a host for `basalt.nifeos.org`. That is `needs_person`.
+- Not a ruling but calef's hands: the run on xenon. That is `needs_person`. It waits on xenon's
+  I219, which the kernel refuses until milestone 494's bench boot proves it.
 
 Reuse: the package client, digest check and installer of milestone 198 are this milestone's
 base. The §46 (thin primitives or whole subsystems) survey of index formats is
@@ -252,4 +255,5 @@ the resolver (384), the TLS client (501) and xenon's network card (494). Built u
 2026-10-09 and 2026-10-10: the index split from where the bytes live, a std program resolving
 through its grant, and the whole fetch over pinned TLS. That fetch follows calef's five rulings on
 the index: HTTPS locations with a fallback, a backup address, the channel layout, the root zone.
-Since 2026-10-12 `jig update` and `jig install` do it at the prompt; what is left is a host.
+Since 2026-10-12 `jig update` and `jig install` do it at the prompt; what is left is the run on
+xenon.

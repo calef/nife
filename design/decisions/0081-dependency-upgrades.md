@@ -57,12 +57,13 @@ config block is exactly the size at which that happens without anyone noticing.
 
 ## Why this repository in particular cannot afford a frozen dependency
 
-§46's amendment decides that crypto is an ordinary dependency rather than a vendored copy, and the
-reason it gives is the advisory pipeline: `cargo-deny` and `cargo-audit` work against registry
-versions, so a vendored copy is invisible to an advisory until a human notices.
+§46 (thin primitives or whole subsystems)'s amendment decides that crypto is an ordinary dependency
+rather than a vendored copy. The reason it gives is the advisory pipeline: `cargo-deny` and
+`cargo-audit` work against registry versions, so a vendored copy is invisible to an advisory until a
+human notices.
 
 That reasoning only pays out if we can take the fix when it comes. An advisory against `digest` 0.10
-is worth exactly as much as our ability to move off `digest` 0.10 that week, and a project that has
+is worth exactly as much as our ability to move off `digest` 0.10 that week. A project that has
 foreclosed the major has a cold, unpracticed, unbuilt upgrade path at the moment it needs a warm one.
 So the same argument that made these crates dependencies makes freezing them the wrong shape.
 

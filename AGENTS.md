@@ -41,7 +41,7 @@ needs.
   `needs-architect`, and how a fork reaches an architect.
 - Before you mint or change the name of a crate, program, module or public function, read
   [notes/skills/naming-authority/SKILL.md](notes/skills/naming-authority/SKILL.md).
-- Before you commit, squash or push in a worktree, read
+- Before you commit or push in a worktree, read
   [notes/skills/worktree-commits/SKILL.md](notes/skills/worktree-commits/SKILL.md).
 - Before you run QEMU by hand, or after a session that did, read
   [notes/skills/qemu-hygiene/SKILL.md](notes/skills/qemu-hygiene/SKILL.md).

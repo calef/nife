@@ -73,7 +73,7 @@ pub fn write_image_capabilities(
         // **An unvouched `std` image is previewed from its manifest too** (milestone 205): its
         // two pages sit at the `std` layout's slots, and its words at slot 8, so the native rows
         // below would name slots it does not get.
-        Some(Ok(m)) if vouched || m.runtime == grant_plan::Runtime::Std => {
+        Some(Ok(m)) if vouched || m.startup == grant_plan::StartupContract::Std => {
             out(b" would grant the new process, and nothing else:\n");
             write_preview_rows(e, &m, holdings, None, out);
         }
@@ -132,16 +132,25 @@ fn write_note_asks(declared: Option<grant_plan::Manifest>, out: &mut dyn FnMut(&
     };
     out(b"    its manifest note asks for: ");
     out(match m.output {
-        OutputSpec::Words => b"a word of output".as_slice(),
-        OutputSpec::Silent => b"no output",
+        OutputDeclaration::Words => b"a word of output".as_slice(),
+        OutputDeclaration::Silent => b"no output",
         _ => b"output bytes",
     });
     let items: [(bool, &[u8]); 9] = [
-        (m.arg == ArgSpec::Required, b"an argument"),
-        (m.arg.hears_words(), b"its words"),
-        (!matches!(m.mem, grant_plan::MemSpec::Forbidden), b"memory"),
+        (
+            m.program_argument == ProgramArgumentDeclaration::Required,
+            b"an argument",
+        ),
+        (m.program_argument.hears_words(), b"its words"),
+        (
+            !matches!(
+                m.memory_grant,
+                grant_plan::MemoryGrantDeclaration::Forbidden
+            ),
+            b"memory",
+        ),
         (m.clock, b"the clock"),
-        (m.config, b"the configuration page"),
+        (m.configuration, b"the configuration page"),
         (m.entropy, b"entropy"),
         (m.network, b"the network"),
         (m.domain, b"the process domain"),
@@ -248,9 +257,9 @@ pub fn write_capabilities(
                 // what the progenitor will endow, reading the same word off the argv.
                 let mut verb = [0u8; grant_plan::MAX_VERB];
                 let verb = grant_plan::verb_of(stage, &mut verb);
-                let m = grant_plan::narrow_by_verb(&e.prog.manifest(), e.prog.verbs(), verb);
+                let m = grant_plan::narrow_by_verb(&e.program.manifest(), e.program.verbs(), verb);
                 out(b"  ");
-                out(e.prog.name().as_bytes());
+                out(e.program.name().as_bytes());
                 out(b" would grant the new process, and nothing else:\n");
                 write_preview_rows(&e, &m, &holdings, config, out);
             }
@@ -263,8 +272,8 @@ pub fn write_capabilities(
 /// tree even when the grant is in a mounted second tree ([`Holdings::place`]).
 ///
 /// `config` is this shell's own view of the inert-configuration page, when it holds one
-/// ([`grant_plan::SHELL_CONFIG_SLOT`]). It is the frame the progenitor endows a child declaring
-/// [`grant_plan::Manifest::config`] with, so its values are printed as what that child will read.
+/// ([`grant_plan::SHELL_CONFIGURATION_SLOT`]). It is the frame the progenitor endows a child declaring
+/// [`grant_plan::Manifest::configuration`] with, so its values are printed as what that child will read.
 /// `None` prints the row without values and says why.
 pub fn write_preview(
     e: &Endowment,
@@ -273,9 +282,9 @@ pub fn write_preview(
     out: &mut dyn FnMut(&[u8]),
 ) {
     out(b"  ");
-    out(e.prog.name().as_bytes());
+    out(e.program.name().as_bytes());
     out(b" would grant the new process, and nothing else:\n");
-    write_preview_rows(e, &e.prog.manifest(), holdings, config, out);
+    write_preview_rows(e, &e.program.manifest(), holdings, config, out);
 }
 
 /// [`write_preview`]'s rows, for an endowment bound against `m`. Separate because a file run by its
@@ -292,7 +301,7 @@ fn write_preview_rows(
     // (milestone 595 (provisional), `crates/std_runtime_contract`). The same grants land somewhere
     // else, and slot 0 is not even the same kind of object, so a preview that printed the native
     // positions for one would be describing a child the progenitor does not build.
-    let std = m.runtime == grant_plan::Runtime::Std;
+    let std = m.startup == grant_plan::StartupContract::Std;
     write_result_and_memory_rows(e, m, std, out);
     write_file_and_directory_rows(e, m, holdings, std, out);
     write_page_rows(m, config, std, out);
@@ -303,16 +312,16 @@ fn write_preview_rows(
     write_stream_rows(e, out);
     out(b"    arg    ");
     // **Read the manifest, do not keep a second list of which programs take an argument.** This
-    // was `matches!(e.prog, Prog::LeastAuthorityDemo)` until 2026-08-16, so every other argument-taking program
+    // was `matches!(e.program, Program::LeastAuthorityDemo)` until 2026-08-16, so every other argument-taking program
     // previewed `arg (none)` while the shell went on to hand it the argument anyway. That is the
     // worst possible direction for this particular line to be wrong in: the next thing it prints is
     // that reading the command is reading its whole authority, and a preview that under-reports
     // authority is one a reader would trust. Found by someone adding their first program, who hit
     // it because the manifest already knew the answer.
-    if m.arg == ArgSpec::Required {
-        write_num(e.arg, out);
+    if m.program_argument == ProgramArgumentDeclaration::Required {
+        write_num(e.program_argument, out);
         out(b"\n");
-    } else if m.arg.hears_words() {
+    } else if m.program_argument.hears_words() {
         out(b"(the words on the line, at cap ");
         write_num(std_runtime_contract::ARGS_SLOT, out);
         out(b")\n");
@@ -357,9 +366,9 @@ fn write_result_and_memory_rows(
     } else {
         out(b"    cap 0  endpoint  result   report its answer back\n");
     }
-    if e.mem_pages > 0 {
+    if e.memory_grant_pages > 0 {
         out(b"    cap 1  untyped   ");
-        write_num(e.mem_pages, out);
+        write_num(e.memory_grant_pages, out);
         out(b" pages  split from this shell's budget\n");
     }
 }
@@ -390,7 +399,7 @@ fn write_file_and_directory_rows(
     // this shell's entire endowment and there would have been nothing to print. The `-r` line is
     // the load-bearing half, because typing that option is what widens the capability from "may
     // take a name out of this directory" to "may walk everything under it".
-    if let Some(g) = e.dir {
+    if let Some(g) = e.directory {
         write_slot(
             if std {
                 std_runtime_contract::FS_DIR_SLOT
@@ -401,13 +410,13 @@ fn write_file_and_directory_rows(
         );
         out(b"endpoint  dir      ");
         let mut buf = [0u8; nav::RENDER_MAX];
-        let n = holdings.place(g.which, &g.dir).render(&mut buf);
+        let n = holdings.place(g.which, &g.directory).render(&mut buf);
         out(&buf[..n]);
         // **What a foreign program's words designated** (milestone 205): the names, or the whole
         // directory for `.`, and what it may do with them, which is its manifest's word grant (the
         // progenitor makes it read-only for bytes nobody vouched for, and says so in the manifest
         // this preview was given).
-        if let grant_plan::ArgSpec::Words(w) = m.arg {
+        if let grant_plan::ProgramArgumentDeclaration::Words(w) = m.program_argument {
             if g.names.is_empty() {
                 out(b"  (this directory itself)\n");
             } else {
@@ -477,7 +486,7 @@ fn write_page_rows(
     // the child will be handed, never from a copy of the defaults, so the preview cannot drift from
     // what the child reads. A shell given no view (a `login` session, a test role) says so rather
     // than guessing.
-    if m.config {
+    if m.configuration {
         write_slot(
             if std {
                 std_runtime_contract::CONFIG_SLOT
@@ -503,7 +512,7 @@ fn write_page_rows(
     // **The argv, which is bytes and not authority** (milestone 205, DECISIONS §170). Printed
     // because it is a capability the child holds, and worded so nobody reads it as more: a path
     // among these words reaches only what a directory row above already granted.
-    if m.arg.hears_words() {
+    if m.program_argument.hears_words() {
         write_slot(std_runtime_contract::ARGS_SLOT, out);
         out(b"frame     args     read-only. the words on the line, as bytes; they\n");
         out(b"                              name things and grant none of them\n");
@@ -596,7 +605,7 @@ fn write_service_rows(m: &grant_plan::Manifest, std: bool, out: &mut dyn FnMut(&
 }
 
 /// **The name resolver, beside the network** (milestone 892 (a std program at the prompt holds the
-/// network and a resolver)): the zone is the table's (`Prog::resolver_zone`), so a person reads
+/// network and a resolver)): the zone is the table's (`Program::resolver_zone`), so a person reads
 /// which names the program may look up before it runs, where on Unix every process may read
 /// `/etc/resolv.conf` and ask about anything.
 fn write_resolver_row(
@@ -605,7 +614,7 @@ fn write_resolver_row(
     std: bool,
     out: &mut dyn FnMut(&[u8]),
 ) {
-    let (true, true, Some(zone)) = (m.network, std, e.prog.resolver_zone()) else {
+    let (true, true, Some(zone)) = (m.network, std, e.program.resolver_zone()) else {
         return;
     };
     write_slot(std_runtime_contract::RESOLVER_SLOT, out);
@@ -629,7 +638,7 @@ fn write_machine_rows(m: &grant_plan::Manifest, out: &mut dyn FnMut(&[u8])) {
     // and not the budget, `slabtop` the budget and not the machine, `free` both. The first says the
     // owner's switch exists, because a person reading `caps free` on a machine whose owner withheld
     // the page should learn why the program cannot see it.
-    // `m`, not `e.prog.manifest()`: for an image run from a file `e.prog` is the placeholder row
+    // `m`, not `e.program.manifest()`: for an image run from a file `e.program` is the placeholder row
     // and `m` is what its note declared, and the progenitor endows from the note. Reading the
     // row here under-reported a packaged `free` as holding neither (the 2026-10-03 security
     // audit's follow-up, item (d)).
@@ -678,10 +687,10 @@ fn write_machine_rows(m: &grant_plan::Manifest, out: &mut dyn FnMut(&[u8])) {
 /// places the line's and not this one (`grant_plan::Manifest::indexes`).
 fn write_index_rows(e: &Endowment, m: &grant_plan::Manifest, out: &mut dyn FnMut(&[u8])) {
     let write = match m.indexes {
-        grant_plan::IndexStore::Forbidden => return,
-        _ if e.dir.is_some() => return,
-        grant_plan::IndexStore::ReadOnly => false,
-        grant_plan::IndexStore::ReadWrite => true,
+        grant_plan::IndexStoreDeclaration::Forbidden => return,
+        _ if e.directory.is_some() => return,
+        grant_plan::IndexStoreDeclaration::ReadOnly => false,
+        grant_plan::IndexStoreDeclaration::ReadWrite => true,
     };
     write_slot(std_runtime_contract::FS_DIR_SLOT, out);
     out(if write {

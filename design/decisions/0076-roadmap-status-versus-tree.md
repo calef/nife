@@ -29,11 +29,12 @@ Two candidate signals, both measured rather than assumed.
 - A merged PR titled `milestone N...`. Caught all nine. Needs `gh` and the network, so it
   cannot live in `script/lint`; it would be a CI-only check, or a periodic one the steward runs.
 
-The recommendation. A CI-only check, because the signal that works needs the network and CI has
-it: fail (or warn) when a milestone reads `NOT-STARTED` and a merged PR names it in the
-implementation form. Pair it with the convention that the integrator sets status in the merge,
-but do not rely on the convention alone, since milestone 92's own argument is that a practice living
-in memory gets skipped exactly when it matters, and this one was skipped nine times in one day.
+The recommendation. A CI-only check, because the signal that works needs the network and CI has it:
+fail (or warn) when a milestone reads `NOT-STARTED` and a merged PR names it in the implementation
+form. Pair it with the convention that the integrator sets status in the merge, but do not rely on
+the convention alone. Milestone 92 (security audits as a mechanism)'s own argument is that a
+practice living in memory gets skipped exactly when it matters, and this one was skipped nine times
+in one day.
 
 The argument against. Both signals key on a title convention that nothing enforces, so the
 check is only as good as how people write PR titles, and a lane that titles its PR differently is
@@ -46,20 +47,20 @@ should be honest in its own output about what it cannot see.
 project since 2026-08-04, discussed with calef before ratification: a lane updates its own
 milestone's roadmap status as part of the same PR that does the work, rather than as a separate
 step landing later. That is closer to `AGENTS.md`'s own rung 1 ("make the wrong state
-unrepresentable") than to this decision's own rung-2 check ("a gate that fails loudly"), because the
-status update is bundled into the very commit it describes rather than a fact someone has to
-remember to go add. It directly attacks the shape of the original failure: nine milestones sat
+unrepresentable") than to this decision's own rung-2 check ("a gate that fails loudly"). That is
+because the status update is bundled into the very commit it describes, rather than a fact
+someone has to remember to go add. It directly attacks the shape of the original failure: nine milestones sat
 `NOT-STARTED` because the update was a forgettable separate step, and a step that cannot be separated
 cannot be forgotten the same way.
 
-That closes most of the acute failure mode this decision was written against, but not all of it, and
-three real leaks survive the newer practice: a lane can still be briefed and simply not do the status
-update, or update the wrong milestone's file; work landing outside the "brief a lane" shape (a direct
-maintainer fix, an outside contributor, a dependabot-generated pull request) never goes through this
-treatment at all; and the check's own already-named weakness stands regardless of who lands the
-work, since it keys on a PR-title convention nothing enforces.
+That closes most of the acute failure mode this decision was written against, but not all of it.
+Three real leaks survive the newer practice. A lane can still be briefed and simply not do the
+status update, or update the wrong milestone's file. Work landing outside the "brief a lane" shape
+(a direct maintainer fix, an outside contributor, a dependabot-generated pull request) never goes
+through this treatment at all. And the check's own already-named weakness stands regardless of who
+lands the work, since it keys on a PR-title convention nothing enforces.
 
-So the CI-only check stays the right call, ratified as designed above, but its job changes: it is no
+So the CI-only check stays the right call, ratified as designed above, but its job changes. It is no
 longer the thing standing between this tree and a repeat of nine-in-one-day, because the newer
 practice is already doing most of that work at a stronger rung. It is now the cheap backstop behind
 that practice, catching the residual cases where a lane skips the bundled update or the work never

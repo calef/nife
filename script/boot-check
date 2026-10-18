@@ -47,6 +47,12 @@
 # started and printed, not that a prompt was offered or that anything could be typed at it;
 # `script/swish-check` makes the stronger claim by typing, and this does not duplicate it.
 #
+# **Its kernels are debug builds, and only x86_64 has a release boot beside it.** CI's
+# `boot-check` job also runs `script/ci-build release-uefi-boot`, the release x86_64 UEFI image
+# under OVMF to the shell, because a defect the optimizer exposes (an `asm!` operand sharing a live
+# input's register) is invisible at debug. Nothing boots a release aarch64 or riscv64 kernel, so the
+# same class on those two architectures reaches a bench before any check sees it.
+#
 # **A riscv64 boot that wedges between its tour and its prompt takes the full 180-second cap to
 # report**, rather than the 30-second quiet window, because that window is suppressed from the
 # `Stage::Tour` rung up and riscv64 prints its tour BELOW the prompt. The suppression is right for

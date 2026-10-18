@@ -351,10 +351,11 @@ def classify(text):
 
 # An item a doc comment can sit on, after its attributes. `const fn` is a function, so the keyword
 # list is scanned for the LAST keyword before the identifier.
+# The keyword ends at a word boundary, or a field such as `pub structure: u32` reads as a struct.
 _ITEM = re.compile(
     r"^\s*(?:pub(?:\s*\([^)]*\))?\s+)?"
     r"(?:(?:const|async|unsafe|default|extern(?:\s+\"[^\"]*\")?)\s+)*"
-    r"(fn|const|static|struct|enum|union|trait|type|mod|macro_rules!)\s*(?:mut\s+)?"
+    r"(fn|const|static|struct|enum|union|trait|type|mod|macro_rules!)(?![A-Za-z0-9_])\s*(?:mut\s+)?"
     r"([A-Za-z_][A-Za-z0-9_]*)")
 # A struct field or an enum variant, the two things a `///` can document that are not items.
 _FIELD = re.compile(r"^\s*(?:pub(?:\s*\([^)]*\))?\s+)?([a-z_][A-Za-z0-9_]*)\s*:(?!:)")

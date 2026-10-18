@@ -41,7 +41,7 @@ duplication instead of shrinking it.
 
 **What makes it safe is the provisional name, and that is the load-bearing argument.** Moving a rule
 out of the always-loaded file is a drop down AGENTS.md's own ladder, from a rule an agent has in
-front of it to one it must choose to open, and this tree has been bitten by exactly that shape
+front of it to one it must choose to open. This tree has been bitten by exactly that shape
 (milestone 115 exists because naming decisions lived in a table cell nobody could find). It is
 acceptable here because the audience for the conventions is not the audience under time pressure.
 A lane inventing a name ships it provisional, marked as expected to change, and the maintainer

@@ -3,7 +3,9 @@
 
 use crate::expand::{Expansion, Name};
 use crate::line::Source;
-use crate::test_support::{READS_A_FILE, WITH_DIR, at, mounted, plan, plan_against, plan_line};
+use crate::test_support::{
+    READS_A_FILE, WITH_DIRECTORY, at, mounted, plan, plan_against, plan_line,
+};
 use crate::*;
 
 #[test]
@@ -12,13 +14,13 @@ fn a_bare_program_name_spawns_it() {
     let Command::Run(r) = parse(b"least_authority_demo 9") else {
         panic!("not an invocation")
     };
-    assert_eq!(r.prog, b"least_authority_demo");
+    assert_eq!(r.program, b"least_authority_demo");
     assert_eq!(r.positionals(), [&b"9"[..]]);
-    assert_eq!(r.mem, None);
+    assert_eq!(r.memory_grant, None);
     let e = plan(&r, Holdings::default()).unwrap();
-    assert_eq!(e.prog, Prog::LeastAuthorityDemo);
-    assert_eq!(e.arg, 9);
-    assert_eq!(e.mem_pages, 0);
+    assert_eq!(e.program, Program::LeastAuthorityDemo);
+    assert_eq!(e.program_argument, 9);
+    assert_eq!(e.memory_grant_pages, 0);
     assert!(e.reports);
 }
 
@@ -27,13 +29,19 @@ fn least_authority_demo_needs_an_integer_argument() {
     let Command::Run(r) = parse(b"least_authority_demo") else {
         panic!()
     };
-    assert_eq!(plan(&r, Holdings::default()), Err(Refusal::ArgRequired));
+    assert_eq!(
+        plan(&r, Holdings::default()),
+        Err(Refusal::ProgramArgumentRequired)
+    );
     // And a token that cannot be an integer is a missing argument, not a file: least_authority_demo's
     // manifest declares no file, so there is no other slot the word could have meant.
     let Command::Run(r) = parse(b"least_authority_demo eight") else {
         panic!()
     };
-    assert_eq!(plan(&r, Holdings::default()), Err(Refusal::ArgRequired));
+    assert_eq!(
+        plan(&r, Holdings::default()),
+        Err(Refusal::ProgramArgumentRequired)
+    );
 }
 
 #[test]
@@ -48,10 +56,10 @@ fn least_authority_demo_refuses_a_memory_grant_whichever_side_the_flag_is_typed(
         let Command::Run(r) = parse(line) else {
             panic!()
         };
-        assert_eq!(r.prog, b"least_authority_demo");
+        assert_eq!(r.program, b"least_authority_demo");
         assert_eq!(
             plan(&r, Holdings::default()),
-            Err(Refusal::MemForbidden),
+            Err(Refusal::MemoryGrantForbidden),
             "{}",
             core::str::from_utf8(line).unwrap(),
         );
@@ -63,7 +71,10 @@ fn memory_grant_depleter_needs_its_grant() {
     let Command::Run(r) = parse(b"memory_grant_depleter") else {
         panic!()
     };
-    assert_eq!(plan(&r, Holdings::default()), Err(Refusal::MemRequired));
+    assert_eq!(
+        plan(&r, Holdings::default()),
+        Err(Refusal::MemoryGrantRequired)
+    );
 }
 
 #[test]
@@ -72,9 +83,9 @@ fn memory_grant_depleter_with_mem_plans_the_grant() {
         panic!()
     };
     let e = plan(&r, Holdings::default()).unwrap();
-    assert_eq!(e.prog, Prog::MemoryGrantDepleter);
-    assert_eq!(e.mem_pages, 16);
-    assert_eq!(e.arg, 0);
+    assert_eq!(e.program, Program::MemoryGrantDepleter);
+    assert_eq!(e.memory_grant_pages, 16);
+    assert_eq!(e.program_argument, 0);
 }
 
 #[test]
@@ -84,14 +95,14 @@ fn memory_grant_depleter_mem_out_of_range() {
     };
     assert_eq!(
         plan(&r, Holdings::default()),
-        Err(Refusal::MemOutOfRange { min: 1, max: 64 })
+        Err(Refusal::MemoryGrantOutOfRange { min: 1, max: 64 })
     );
     let Command::Run(r0) = parse(b"memory_grant_depleter --mem 0") else {
         panic!()
     };
     assert_eq!(
         plan(&r0, Holdings::default()),
-        Err(Refusal::MemOutOfRange { min: 1, max: 64 })
+        Err(Refusal::MemoryGrantOutOfRange { min: 1, max: 64 })
     );
 }
 
@@ -107,7 +118,7 @@ fn a_memory_grant_at_either_end_of_the_declared_range_plans() {
             panic!()
         };
         assert_eq!(
-            plan(&r, Holdings::default()).unwrap().mem_pages,
+            plan(&r, Holdings::default()).unwrap().memory_grant_pages,
             pages,
             "{}",
             core::str::from_utf8(line).unwrap(),
@@ -120,7 +131,10 @@ fn memory_grant_depleter_takes_no_argument() {
     let Command::Run(r) = parse(b"memory_grant_depleter --mem 8 5") else {
         panic!()
     };
-    assert_eq!(plan(&r, Holdings::default()), Err(Refusal::ArgForbidden));
+    assert_eq!(
+        plan(&r, Holdings::default()),
+        Err(Refusal::ProgramArgumentForbidden)
+    );
 }
 
 #[test]
@@ -144,7 +158,7 @@ fn a_bare_unplaceable_token_is_still_refused() {
     // **The safety property the `file:` prefix was credited with, proven without it.** The old
     // note argued the prefix stopped a stray word from becoming a capability transfer. It did
     // not: the manifest did. `least_authority_demo 5 extra` has no slot for `extra` because least_authority_demo declares
-    // `FileSpec::Forbidden`, so nothing is granted and the prompt says why.
+    // `FileGrantDeclaration::Forbidden`, so nothing is granted and the prompt says why.
     let Command::Run(r) = parse(b"least_authority_demo 5 extra") else {
         panic!()
     };
@@ -152,7 +166,7 @@ fn a_bare_unplaceable_token_is_still_refused() {
     assert_eq!(plan(&r, Holdings::default()), Err(Refusal::FileForbidden));
     // In a shell that DOES hold a directory the answer is identical, which is the point: the
     // manifest decides, not the endowment.
-    assert_eq!(plan(&r, WITH_DIR), Err(Refusal::FileForbidden));
+    assert_eq!(plan(&r, WITH_DIRECTORY), Err(Refusal::FileForbidden));
 }
 
 #[test]
@@ -166,9 +180,9 @@ fn the_manifest_refuses_a_file_to_a_program_that_declares_none() {
     assert_eq!(
         plan_against(
             &r,
-            Prog::InterruptHeeder,
-            Prog::InterruptHeeder.manifest(),
-            WITH_DIR
+            Program::InterruptHeeder,
+            Program::InterruptHeeder.manifest(),
+            WITH_DIRECTORY
         ),
         Err(Refusal::FileForbidden),
     );
@@ -189,34 +203,39 @@ fn an_unknown_flag_never_reaches_the_file_position() {
     };
     assert_eq!(r.unexpected, Some(&b"--secret"[..]));
     assert_eq!(
-        plan_against(&r, Prog::LeastAuthorityDemo, READS_A_FILE, WITH_DIR),
+        plan_against(
+            &r,
+            Program::LeastAuthorityDemo,
+            READS_A_FILE,
+            WITH_DIRECTORY
+        ),
         Err(Refusal::Unexpected),
     );
 }
 
 /// The writable twin: a program that is endowed a file it may write.
 const WRITES_A_FILE: Manifest = Manifest {
-    file: FileSpec::Required { writable: true },
+    file: FileGrantDeclaration::Required { writable: true },
     ..READS_A_FILE
 };
 
 /// The shape milestone 47 says nothing ships yet and everything hinges on: a program that takes
 /// **both** an integer and a file. It is the reason the prefix could be removed now (positional
-/// resolution is unambiguous while at most one bare token is a file) and the reason `ArgSpec`
+/// resolution is unambiguous while at most one bare token is a file) and the reason `ProgramArgumentDeclaration`
 /// will have to grow position and arity later.
 const STAMPS_A_FILE: Manifest = Manifest {
-    arg: ArgSpec::Required,
-    mem: MemSpec::Forbidden,
-    file: FileSpec::Required { writable: true },
-    dir: DirSpec::Forbidden,
-    flags: NO_FLAGS,
-    output: OutputSpec::Words,
-    input: InputSpec::Forbidden,
+    program_argument: ProgramArgumentDeclaration::Required,
+    memory_grant: MemoryGrantDeclaration::Forbidden,
+    file: FileGrantDeclaration::Required { writable: true },
+    directory: DirectoryGrantDeclaration::Forbidden,
+    short_options: NO_SHORT_OPTIONS,
+    output: OutputDeclaration::Words,
+    input: InputDeclaration::Forbidden,
     reports: true,
     interruptible: false,
     clock: false,
     domain: false,
-    config: false,
+    configuration: false,
     entropy: false,
     network: false,
     machine: false,
@@ -225,8 +244,8 @@ const STAMPS_A_FILE: Manifest = Manifest {
     sync: false,
     installer: false,
     catalog: false,
-    indexes: IndexStore::Forbidden,
-    runtime: Runtime::Native,
+    indexes: IndexStoreDeclaration::Forbidden,
+    startup: StartupContract::Native,
 };
 
 // ---- `bind` (milestone 47 (navigation and naming): "blocked on a second grant") ----
@@ -237,7 +256,7 @@ fn wc_source(line: &[u8], holds: Holdings) -> Result<FileGrant, Refusal> {
     let Command::Run(r) = parse(line) else {
         panic!("not a run: {line:?}")
     };
-    match plan_against(&r, Prog::Wc, Prog::Wc.manifest(), holds)?.source {
+    match plan_against(&r, Program::Wc, Program::Wc.manifest(), holds)?.source {
         Source::File(g) => Ok(g),
         other => panic!("wc's operand planned as {other:?}"),
     }
@@ -250,23 +269,23 @@ fn wc_source(line: &[u8], holds: Holdings) -> Result<FileGrant, Refusal> {
 fn a_grant_under_a_mount_point_is_in_the_mounted_tree() {
     let g = wc_source(b"wc /media/usb/secret", mounted()).unwrap();
     assert_eq!(
-        (g.which, g.dir, g.name.as_bytes()),
+        (g.which, g.directory, g.name.as_bytes()),
         (nav::Which::B, nav::Cwd::root(), &b"secret"[..])
     );
     let g = wc_source(b"wc /media/x", mounted()).unwrap();
-    assert_eq!((g.which, g.dir), (nav::Which::A, at(&[b"media"])));
+    assert_eq!((g.which, g.directory), (nav::Which::A, at(&[b"media"])));
 
     // A relative name from inside the mount stays there, and `..` out of it leaves it.
     let mut holds = mounted();
     holds.cwd = at(&[b"media", b"usb", b"deep"]);
     let g = wc_source(b"wc x", holds).unwrap();
-    assert_eq!((g.which, g.dir), (nav::Which::B, at(&[b"deep"])));
+    assert_eq!((g.which, g.directory), (nav::Which::B, at(&[b"deep"])));
     let g = wc_source(b"wc ../../x", holds).unwrap();
-    assert_eq!((g.which, g.dir), (nav::Which::A, at(&[b"media"])));
+    assert_eq!((g.which, g.directory), (nav::Which::A, at(&[b"media"])));
 
     // The redirection planner is the same resolver.
     let g = redirect_target(b"/media/usb/out", mounted(), true).unwrap();
-    assert_eq!((g.which, g.dir), (nav::Which::B, nav::Cwd::root()));
+    assert_eq!((g.which, g.directory), (nav::Which::B, nav::Cwd::root()));
 }
 
 /// **A bound name designates what it is bound to**, which it did not before milestone 154
@@ -274,12 +293,15 @@ fn a_grant_under_a_mount_point_is_in_the_mounted_tree() {
 /// /recent/x` asked for a directory named `recent` while `ls /recent` walked the bind.
 #[test]
 fn a_bound_name_designates_what_it_is_bound_to() {
-    let mut holds = WITH_DIR;
+    let mut holds = WITH_DIRECTORY;
     holds.bind(b"recent", at(&[b"logs", b"2026"])).unwrap();
     let g = wc_source(b"wc /recent/x", holds).unwrap();
-    assert_eq!((g.which, g.dir), (nav::Which::A, at(&[b"logs", b"2026"])));
+    assert_eq!(
+        (g.which, g.directory),
+        (nav::Which::A, at(&[b"logs", b"2026"]))
+    );
     let g = wc_source(b"wc /recent/../y", holds).unwrap();
-    assert_eq!((g.which, g.dir), (nav::Which::A, at(&[b"logs"])));
+    assert_eq!((g.which, g.directory), (nav::Which::A, at(&[b"logs"])));
 }
 
 /// [`Holdings::anchor`] hands back exactly the steps that are left, which is what the shell
@@ -291,7 +313,7 @@ fn anchor_consumes_a_bound_name_and_nothing_else() {
     let rest = mounted().anchor(true, p.steps(), &mut base);
     assert_eq!((base, rest.len()), (nav::Cwd::root(), 3));
 
-    let mut holds = WITH_DIR;
+    let mut holds = WITH_DIRECTORY;
     holds.bind(b"here", at(&[b"x"])).unwrap();
     let p = nav::path(b"/here/y").unwrap();
     let rest = holds.anchor(true, p.steps(), &mut base);
@@ -304,7 +326,7 @@ fn anchor_consumes_a_bound_name_and_nothing_else() {
 }
 
 /// The combination milestone 117's fifth stranger found no program declares: an integer
-/// argument **and** an input stream. Unlike [`STAMPS_A_FILE`]'s pairing with `FileSpec`, this
+/// argument **and** an input stream. Unlike [`STAMPS_A_FILE`]'s pairing with `FileGrantDeclaration`, this
 /// one needs no "positional arity" widening, because `arg` consumes a fixed position (index 0,
 /// numeric-shaped) before `input`'s bare-name fallback ever looks at what is left; see the
 /// `positionals_fill_the_manifest_slots_in_the_order_typed` and
@@ -313,9 +335,9 @@ fn anchor_consumes_a_bound_name_and_nothing_else() {
 /// not
 /// this test's (design/roadmap/proposals/a-program-that-takes-an-argument-and-an-input.md).
 const TAKES_ARG_AND_READS: Manifest = Manifest {
-    arg: ArgSpec::Required,
-    file: FileSpec::Forbidden,
-    input: InputSpec::Required {
+    program_argument: ProgramArgumentDeclaration::Required,
+    file: FileGrantDeclaration::Forbidden,
+    input: InputDeclaration::Required {
         writes_while_reading: false,
     },
     ..READS_A_FILE
@@ -331,7 +353,13 @@ fn a_bare_name_is_the_grant_and_the_manifest_is_the_direction() {
         panic!()
     };
     assert_eq!(r.positionals(), [&b"report.txt"[..]]);
-    let e = plan_against(&r, Prog::LeastAuthorityDemo, READS_A_FILE, WITH_DIR).unwrap();
+    let e = plan_against(
+        &r,
+        Program::LeastAuthorityDemo,
+        READS_A_FILE,
+        WITH_DIRECTORY,
+    )
+    .unwrap();
     let g = e.file.expect("the name did not become a grant");
     assert_eq!(g.name.as_bytes(), b"report.txt");
     assert!(
@@ -339,7 +367,13 @@ fn a_bare_name_is_the_grant_and_the_manifest_is_the_direction() {
         "the manifest declared a read, so the grant reads"
     );
 
-    let e = plan_against(&r, Prog::LeastAuthorityDemo, WRITES_A_FILE, WITH_DIR).unwrap();
+    let e = plan_against(
+        &r,
+        Program::LeastAuthorityDemo,
+        WRITES_A_FILE,
+        WITH_DIRECTORY,
+    )
+    .unwrap();
     assert!(
         e.file.unwrap().writable,
         "the same command line against a writing program grants a writable file",
@@ -355,7 +389,13 @@ fn a_file_whose_name_is_all_digits_is_still_a_file() {
     let Command::Run(r) = parse(b"wc 2026") else {
         panic!()
     };
-    let e = plan_against(&r, Prog::LeastAuthorityDemo, READS_A_FILE, WITH_DIR).unwrap();
+    let e = plan_against(
+        &r,
+        Program::LeastAuthorityDemo,
+        READS_A_FILE,
+        WITH_DIRECTORY,
+    )
+    .unwrap();
     assert_eq!(e.file.unwrap().name.as_bytes(), b"2026");
 }
 
@@ -367,8 +407,14 @@ fn positionals_fill_the_manifest_slots_in_the_order_typed() {
     let Command::Run(r) = parse(b"stamp 7 report.txt") else {
         panic!()
     };
-    let e = plan_against(&r, Prog::LeastAuthorityDemo, STAMPS_A_FILE, WITH_DIR).unwrap();
-    assert_eq!(e.arg, 7);
+    let e = plan_against(
+        &r,
+        Program::LeastAuthorityDemo,
+        STAMPS_A_FILE,
+        WITH_DIRECTORY,
+    )
+    .unwrap();
+    assert_eq!(e.program_argument, 7);
     assert_eq!(e.file.unwrap().name.as_bytes(), b"report.txt");
     assert!(e.file.unwrap().writable);
 
@@ -376,14 +422,19 @@ fn positionals_fill_the_manifest_slots_in_the_order_typed() {
         panic!()
     };
     assert_eq!(
-        plan_against(&swapped, Prog::LeastAuthorityDemo, STAMPS_A_FILE, WITH_DIR),
-        Err(Refusal::ArgRequired),
+        plan_against(
+            &swapped,
+            Program::LeastAuthorityDemo,
+            STAMPS_A_FILE,
+            WITH_DIRECTORY
+        ),
+        Err(Refusal::ProgramArgumentRequired),
     );
 }
 
 /// **An argument and an input stream compose today, with no widening owed.** Milestone
 /// 117's fifth stranger left `notes/adding-a-program.md`'s `BUGS` section unsure whether this
-/// combination "needs `ArgSpec`'s widening" the way `FileSpec` + `InputSpec` genuinely does
+/// combination "needs `ProgramArgumentDeclaration`'s widening" the way `FileGrantDeclaration` + `InputDeclaration` genuinely does
 /// (see the comment above the input operand in [`plan_against_with`]): two bare names cannot
 /// both self-classify, but an integer argument and a bare-name input feed can, because `arg`
 /// is numeric-shaped and consumes a fixed earlier position before `input`'s fallback ever
@@ -399,13 +450,19 @@ fn an_argument_and_an_input_stream_compose_by_the_same_fixed_order() {
     let Command::Run(r) = parse(b"nth 21 report.txt") else {
         panic!()
     };
-    let e = plan_against(&r, Prog::LeastAuthorityDemo, TAKES_ARG_AND_READS, WITH_DIR).unwrap();
-    assert_eq!(e.arg, 21);
+    let e = plan_against(
+        &r,
+        Program::LeastAuthorityDemo,
+        TAKES_ARG_AND_READS,
+        WITH_DIRECTORY,
+    )
+    .unwrap();
+    assert_eq!(e.program_argument, 21);
     assert_eq!(
         e.source,
         Source::File(FileGrant {
             which: nav::Which::A,
-            dir: nav::Cwd::root(),
+            directory: nav::Cwd::root(),
             name: Name::new(b"report.txt").unwrap(),
             writable: false,
         }),
@@ -421,9 +478,9 @@ fn an_argument_and_an_input_stream_compose_by_the_same_fixed_order() {
     assert_eq!(
         plan_against(
             &missing_input,
-            Prog::LeastAuthorityDemo,
+            Program::LeastAuthorityDemo,
             TAKES_ARG_AND_READS,
-            WITH_DIR
+            WITH_DIRECTORY
         ),
         Err(Refusal::InputRequired),
     );
@@ -437,7 +494,12 @@ fn a_program_endowed_a_file_is_refused_when_the_command_names_none() {
         panic!()
     };
     assert_eq!(
-        plan_against(&r, Prog::LeastAuthorityDemo, READS_A_FILE, WITH_DIR),
+        plan_against(
+            &r,
+            Program::LeastAuthorityDemo,
+            READS_A_FILE,
+            WITH_DIRECTORY
+        ),
         Err(Refusal::FileRequired)
     );
     assert_eq!(
@@ -457,7 +519,12 @@ fn a_name_that_cannot_travel_as_a_grant_is_refused_at_the_prompt() {
             panic!()
         };
         assert_eq!(
-            plan_against(&r, Prog::LeastAuthorityDemo, READS_A_FILE, WITH_DIR),
+            plan_against(
+                &r,
+                Program::LeastAuthorityDemo,
+                READS_A_FILE,
+                WITH_DIRECTORY
+            ),
             Err(Refusal::FileNotNameable),
             "{}",
             core::str::from_utf8(line).unwrap(),
@@ -468,18 +535,18 @@ fn a_name_that_cannot_travel_as_a_grant_is_refused_at_the_prompt() {
     // is the whole of what the leading slash means. It grants nothing extra: `/etc` is a
     // directory this shell could have reached by walking, and if it cannot walk there the
     // server says so at run time exactly as it would for `cd`.
-    let mut deep = WITH_DIR;
+    let mut deep = WITH_DIRECTORY;
     assert!(deep.cwd.apply(nav::path(b"logs").unwrap().steps()).is_ok());
     let Command::Run(r) = parse(b"wc /etc/passwd") else {
         panic!()
     };
-    let g = plan_against(&r, Prog::LeastAuthorityDemo, READS_A_FILE, deep)
+    let g = plan_against(&r, Program::LeastAuthorityDemo, READS_A_FILE, deep)
         .unwrap()
         .file
         .unwrap();
     assert_eq!(g.name.as_bytes(), b"passwd");
     let mut buf = [0u8; nav::RENDER_MAX];
-    let n = g.dir.render(&mut buf);
+    let n = g.directory.render(&mut buf);
     assert_eq!(&buf[..n], b"/etc");
 
     // And it stops at the root like everything else: `/..` names the level above the only root
@@ -487,7 +554,7 @@ fn a_name_that_cannot_travel_as_a_grant_is_refused_at_the_prompt() {
     let Command::Run(r) = parse(b"wc /../passwd") else {
         panic!()
     };
-    let refused = plan_against(&r, Prog::LeastAuthorityDemo, READS_A_FILE, deep);
+    let refused = plan_against(&r, Program::LeastAuthorityDemo, READS_A_FILE, deep);
     assert_eq!(refused, Err(Refusal::FileNotNameable));
     assert!(!refused.unwrap_err().message().contains("denied"));
 }
@@ -498,37 +565,45 @@ fn a_name_that_cannot_travel_as_a_grant_is_refused_at_the_prompt() {
 /// child never sees one.
 #[test]
 fn a_name_is_resolved_against_the_shells_position_at_grant_time() {
-    let mut holds = WITH_DIR;
+    let mut holds = WITH_DIRECTORY;
     assert!(holds.cwd.apply(nav::path(b"logs").unwrap().steps()).is_ok());
 
     let Command::Run(r) = parse(b"wc report.txt") else {
         panic!()
     };
-    let here = plan_against(&r, Prog::LeastAuthorityDemo, READS_A_FILE, holds)
+    let here = plan_against(&r, Program::LeastAuthorityDemo, READS_A_FILE, holds)
         .unwrap()
         .file
         .unwrap();
     assert_eq!(here.name.as_bytes(), b"report.txt");
-    assert_eq!(here.dir.depth(), 1, "resolved where the shell was standing");
+    assert_eq!(
+        here.directory.depth(),
+        1,
+        "resolved where the shell was standing"
+    );
 
     // A path operand is resolved to a directory plus one component, so the FS contract still
     // only ever sees a single name relative to a capability presented to it (§27 intact).
     let Command::Run(r) = parse(b"wc 2026/report.txt") else {
         panic!()
     };
-    let deeper = plan_against(&r, Prog::LeastAuthorityDemo, READS_A_FILE, holds)
+    let deeper = plan_against(&r, Program::LeastAuthorityDemo, READS_A_FILE, holds)
         .unwrap()
         .file
         .unwrap();
     assert_eq!(deeper.name.as_bytes(), b"report.txt");
-    assert_eq!(deeper.dir.depth(), 2);
-    assert_eq!(deeper.dir.component(1), b"2026");
+    assert_eq!(deeper.directory.depth(), 2);
+    assert_eq!(deeper.directory.component(1), b"2026");
 
     // **And the grant does not follow the shell.** Moving afterwards cannot change what an
     // already-planned grant means, because the grant carries a value and not a pointer to
     // wherever the shell happens to be next. This is the whole of "the child cannot re-resolve".
     holds.cwd.ascend();
-    assert_eq!(here.dir.depth(), 1, "the grant moved when the shell did");
+    assert_eq!(
+        here.directory.depth(),
+        1,
+        "the grant moved when the shell did"
+    );
 
     // `..` in a grant's path is resolved at the prompt too, and clamps at the root exactly as
     // `cd` does: there is nothing above the root to name, so the grant cannot be for a file up
@@ -537,7 +612,12 @@ fn a_name_is_resolved_against_the_shells_position_at_grant_time() {
         panic!()
     };
     assert_eq!(
-        plan_against(&r, Prog::LeastAuthorityDemo, READS_A_FILE, WITH_DIR),
+        plan_against(
+            &r,
+            Program::LeastAuthorityDemo,
+            READS_A_FILE,
+            WITH_DIRECTORY
+        ),
         Err(Refusal::FileNotNameable),
         "a grant cannot name its way out of the shell's root",
     );
@@ -552,15 +632,20 @@ fn the_no_such_capability_refusal_is_about_what_the_shell_holds() {
         panic!()
     };
     assert_eq!(
-        plan_against(&r, Prog::LeastAuthorityDemo, READS_A_FILE, WITH_DIR)
-            .map(|e| e.file.map(|g| g.name.as_bytes().to_vec()))
-            .unwrap(),
+        plan_against(
+            &r,
+            Program::LeastAuthorityDemo,
+            READS_A_FILE,
+            WITH_DIRECTORY
+        )
+        .map(|e| e.file.map(|g| g.name.as_bytes().to_vec()))
+        .unwrap(),
         Some(b"report.txt".to_vec()),
         "with a directory in hand, the same line is a grant",
     );
     let refused = plan_against(
         &r,
-        Prog::LeastAuthorityDemo,
+        Program::LeastAuthorityDemo,
         READS_A_FILE,
         Holdings::default(),
     );
@@ -582,7 +667,7 @@ fn the_no_such_capability_refusal_is_about_what_the_shell_holds() {
     let Command::Run(named) = parse(b"nosuchprog report.txt") else {
         panic!()
     };
-    assert_eq!(plan(&named, WITH_DIR), Err(Refusal::NoSuchProgram));
+    assert_eq!(plan(&named, WITH_DIRECTORY), Err(Refusal::NoSuchProgram));
 }
 
 /// A builtin is not a pipeline stage the planner spawns, because it spawns nothing. The shell
@@ -591,7 +676,7 @@ fn the_no_such_capability_refusal_is_about_what_the_shell_holds() {
 #[test]
 fn a_builtin_is_not_something_the_planner_spawns() {
     assert_eq!(
-        plan_line(b"cd logs | wc", WITH_DIR),
+        plan_line(b"cd logs | wc", WITH_DIRECTORY),
         Err((0, Refusal::NotAPipelineStage)),
     );
 }
@@ -605,8 +690,8 @@ fn date_takes_nothing_from_the_command_line() {
         panic!()
     };
     let e = plan(&r, Holdings::default()).unwrap();
-    assert_eq!(e.prog, Prog::Date);
-    assert_eq!((e.arg, e.mem_pages), (0, 0));
+    assert_eq!(e.program, Program::Date);
+    assert_eq!((e.program_argument, e.memory_grant_pages), (0, 0));
     assert!(e.file.is_none());
     assert!(e.reports, "it answers with a line of text");
     assert!(!e.interruptible, "it prints once and exits");
@@ -614,15 +699,21 @@ fn date_takes_nothing_from_the_command_line() {
     let Command::Run(r) = parse(b"date 5") else {
         panic!()
     };
-    assert_eq!(plan(&r, Holdings::default()), Err(Refusal::ArgForbidden));
+    assert_eq!(
+        plan(&r, Holdings::default()),
+        Err(Refusal::ProgramArgumentForbidden)
+    );
     let Command::Run(r) = parse(b"date report.txt") else {
         panic!()
     };
-    assert_eq!(plan(&r, WITH_DIR), Err(Refusal::FileForbidden));
+    assert_eq!(plan(&r, WITH_DIRECTORY), Err(Refusal::FileForbidden));
     let Command::Run(r) = parse(b"date --mem 4") else {
         panic!()
     };
-    assert_eq!(plan(&r, Holdings::default()), Err(Refusal::MemForbidden));
+    assert_eq!(
+        plan(&r, Holdings::default()),
+        Err(Refusal::MemoryGrantForbidden)
+    );
 }
 
 /// **What a line's words designate becomes one directory grant at the current directory**
@@ -637,27 +728,27 @@ fn a_designation_becomes_one_grant_at_the_current_directory() {
     d.name(b"src", true).unwrap();
     let e = super::plan_against(
         &run,
-        Prog::StdExerciser,
-        Prog::StdExerciser.manifest(),
-        WITH_DIR,
+        Program::StdExerciser,
+        Program::StdExerciser.manifest(),
+        WITH_DIRECTORY,
         Expansion::designated(d),
     )
     .unwrap();
-    let g = e.dir.expect("src was designated");
-    assert_eq!(g.dir, WITH_DIR.cwd);
+    let g = e.directory.expect("src was designated");
+    assert_eq!(g.directory, WITH_DIRECTORY.cwd);
     assert_eq!(g.names.only(), Some(&b"src"[..]));
     assert!(g.subtree);
 
     let none = super::plan_against(
         &parse_run(b"std_exerciser needle"),
-        Prog::StdExerciser,
-        Prog::StdExerciser.manifest(),
-        WITH_DIR,
+        Program::StdExerciser,
+        Program::StdExerciser.manifest(),
+        WITH_DIRECTORY,
         Expansion::designated(Designation::none()),
     )
     .unwrap();
     assert_eq!(
-        none.dir, None,
+        none.directory, None,
         "N1: a line that names no file grants nothing"
     );
 
@@ -665,26 +756,26 @@ fn a_designation_becomes_one_grant_at_the_current_directory() {
     here.here();
     let e = super::plan_against(
         &parse_run(b"std_exerciser needle ."),
-        Prog::StdExerciser,
-        Prog::StdExerciser.manifest(),
-        WITH_DIR,
+        Program::StdExerciser,
+        Program::StdExerciser.manifest(),
+        WITH_DIRECTORY,
         Expansion::designated(here),
     )
     .unwrap();
     assert!(
-        e.dir.expect("here").names.is_empty(),
+        e.directory.expect("here").names.is_empty(),
         "empty names: the whole directory"
     );
 
     let holds_none = Holdings {
-        dir: false,
-        ..WITH_DIR
+        directory: false,
+        ..WITH_DIRECTORY
     };
     assert_eq!(
         super::plan_against(
             &run,
-            Prog::StdExerciser,
-            Prog::StdExerciser.manifest(),
+            Program::StdExerciser,
+            Program::StdExerciser.manifest(),
             holds_none,
             Expansion::designated(d)
         ),

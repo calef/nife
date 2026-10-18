@@ -1,5 +1,6 @@
 ---
-status: PROPOSED
+status: NOT-STARTED
+promoted_from: kernel-comments-in-the-linux-style
 raised: 2026-10-15
 milestone_dependencies: 860
 decision_dependencies: 267
@@ -7,7 +8,7 @@ machine_requirements: none
 specific_machine: none
 needs_person: no
 ---
-# Kernel comments in the Linux style
+# 929. Kernel comments in the Linux style
 
 calef asked on 2026-10-15 (UTC) what applying Linux's commenting convention to this tree would look
 like and what it would cost. He asked for this proposal after the answer. It amends §267 (a comment
@@ -115,3 +116,7 @@ Whether the rest of the tree follows once the kernel has been done. `crates/` is
 and its comments are read by the same agents.
 
 *Name: provisional, maintainer/kernel-comments-linux-style, 2026-10-15 (UTC).*
+
+## Index row
+
+Linux comments at a function's head and keeps design in `Documentation/`; this kernel's comment density is 0.92 per code line against Linux's 0.33. The proposal measures the gap and the cost of a Linux-style rule for `kernel/`, and nothing is in force until calef rules.

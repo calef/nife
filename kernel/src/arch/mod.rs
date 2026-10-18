@@ -8,6 +8,24 @@
 //! that is easiest to erode by accident. If you find yourself writing `asm!` or
 //! touching a system register outside `arch/`, that's the bug. See
 //! notes/portability.md.
+//!
+//! # The contract
+//!
+//! Every architecture module provides one shared surface that the portable kernel calls,
+//! about a hundred items across `init`, `isa`, per-CPU state, the context switch, `fp`,
+//! `exceptions`, `interrupts`, `irq`, `timer`, `pmu`, `mmu`, `iommu` and `semihosting`. The
+//! list, one line per item on what it promises, is notes/portability.md's "The arch contract".
+//! It lives there because a comment block here is capped at 40 lines by §267 (a comment states
+//! the constraint as it is now). It is a list, not a trait, so it names the seam without
+//! shaping an abstraction across it.
+//!
+//! Anything else an architecture exports is its own, and its callers reach it under a `cfg`.
+//!
+//! # BUGS
+//!
+//! Nothing checks this list against the tree. The compiler checks the surface itself (an
+//! architecture missing an item the portable kernel calls fails to build), but an item added
+//! without a line in that list, or a line left after its last caller goes, is caught by nobody.
 
 #[cfg(target_arch = "aarch64")]
 mod aarch64;

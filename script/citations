@@ -119,17 +119,12 @@ import roadmap_block                                                        # no
 # file per entry, which is what makes this affordable: `§43 (the clock ladder)` is checked against
 # 0043-clock-authority.md's own first line, with no need to parse a 5,000-line document to find where
 # §43 begins and §44 starts.
-# A LETTERED record gets a second entry under its own label, and the reason is that the two tables
-# answer different questions. `design/roadmap/0020a-name-the-seams.md` is a block of its own with an
-# H1 of its own, and a gloss of `milestone 20a` should be read against THAT title rather than
-# against milestone 20's, which is a different piece of work. The base table stays keyed by the
-# bare integer, because a file that glosses `milestone 19` has told the reader what 19 is and the
-# per-file ratchet rule is about numbers rather than sub-parts. Letters with no file of their own
-# (7a, 9a, 16a, 16b, 19a through 19f) therefore resolve against their parent block, which is where
-# those sub-parts are actually described.
+# A lettered citation (`milestone 16b`, `19d`) names a part of a record, never a file of its own:
+# the roadmap refuses lettered block files (calef, 2026-10-18 UTC: "Yes, please"), so its gloss is
+# read against the parent block, which is where the part is described.
 def load(subdir, pattern):
     d = os.path.join(root, "design", subdir)
-    out, sub = {}, {}
+    out = {}
     for fname in sorted(os.listdir(d)):
         m = re.fullmatch(pattern, fname)
         if not m:
@@ -142,17 +137,14 @@ def load(subdir, pattern):
         if lines[:1] == ["---"] and "---" in lines[1:]:
             lines = lines[lines.index("---", 1) + 1:]
         first = next((line for line in lines if line.strip()), "")
-        h = re.match(r"# (\d+)([a-z]?)\. (.+)$", first)
+        h = re.match(r"# (\d+)[a-z]?\. (.+)$", first)
         if h:
-            entry = (h.group(3).strip(), text, fname)
-            out.setdefault(int(h.group(1)), entry)
-            if h.group(2):
-                sub.setdefault(h.group(1) + h.group(2), entry)
-    return out, sub
+            out.setdefault(int(h.group(1)), (h.group(2).strip(), text, fname))
+    return out
 
 
-DECISIONS, DECISION_PARTS = load("decisions", r"(\d+)[a-z]?-[a-z0-9][a-z0-9-]*\.md")
-MILESTONES, MILESTONE_PARTS = load("roadmap", r"(\d+)[a-z]?-[a-z0-9][a-z0-9-]*\.md")
+DECISIONS = load("decisions", r"(\d+)[a-z]?-[a-z0-9][a-z0-9-]*\.md")
+MILESTONES = load("roadmap", r"(\d+)-[a-z0-9][a-z0-9-]*\.md")
 
 problems = []
 if not DECISIONS or not MILESTONES:
@@ -212,19 +204,6 @@ def path_target(gloss):
     """
     target = gloss.split(",")[0].strip().strip("`")
     return target if IS_PATH.fullmatch(target) else None
-
-
-def part_record(scheme, digits, letter):
-    """The lettered record this citation names, if the tree has one, else None.
-
-    `milestone 20a` has a block of its own, so its gloss is read against that block's H1. The
-    letters with no file (7a, 9a, 16a, 16b, 19a through 19f) return None and fall back to their
-    parent, which is the file that describes them.
-    """
-    if not letter:
-        return None
-    parts = DECISION_PARTS if scheme == "decision" else MILESTONE_PARTS
-    return parts.get(digits + letter)
 
 
 def grounded(gloss, title, body):
@@ -606,7 +585,7 @@ def file_glosses(path, text):
         table = DECISIONS if scheme == "decision" else MILESTONES
         if num not in table:
             continue
-        record = part_record(scheme, m.group(2), m.group(3)) or table[num]
+        record = table[num]
         if GLOSS_ALLOW.get(f"{path}:{scheme}:{num}"):
             out.add((scheme, num))
         elif path_target(gloss):
@@ -974,7 +953,7 @@ if mode == "--ratchet":
             seen.add((scheme, num))
             tag = m.group(2) + m.group(3)
             label = f"§{tag}" if scheme == "decision" else f"milestone {tag}"
-            record = part_record(scheme, m.group(2), m.group(3)) or table[num]
+            record = table[num]
             ungloss.append((f"{path}:{lineno}", label, record[0]))
 
     if ungloss:
@@ -1085,9 +1064,6 @@ if mode == "--moved":
         capture_output=True, text=True,
     ).stdout.split()
 
-    # A lettered addendum (20a) takes no status line, so BLOCK_FILE does not match it and it is
-    # skipped here for the reason script/roadmap skips it: it is an appendix to a milestone, not
-    # one of its own.
     moved = []
     for path in sorted(names):
         m = BLOCK_FILE.fullmatch(path)
@@ -1336,7 +1312,7 @@ for path in candidates:
             continue
 
         # ---- the gloss -------------------------------------------------------
-        title, body, fname = part_record(scheme, m.group(2), m.group(3)) or table[num]
+        title, body, fname = table[num]
         tier = grounded(gloss, title, body)
         if tier:
             tally[tier] += 1

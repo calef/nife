@@ -52,8 +52,8 @@ use grant_plan::expand::{Expander, NameSet, Resume};
 use grant_plan::line::{self, Line, Source};
 use grant_plan::nav::{self, Cwd, Refused, Step};
 use grant_plan::{
-    Action, Command, DirGrant as GrantDir, Endowment, Escalation, Refusal, RunSpec, Streams,
-    TouchArgs, job_page_frame, spawnproto,
+    Action, Command, DirectoryGrant as GrantDir, Endowment, Escalation, ParsedInvocation, Refusal,
+    Streams, TouchOperands, job_page_frame, spawnproto,
 };
 use line_editor::proto;
 use swish::{Route, Say, Status, Untimed, sequence};

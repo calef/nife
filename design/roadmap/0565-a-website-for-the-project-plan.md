@@ -64,4 +64,4 @@ out loud instead of writing it down.
 
 ## Index row
 
-Retiring the generated roadmap index cost a reader nothing and added nothing, and three of the things a stranger wants are still answered only by running a command inside a checkout: what this project intends to do next and why, what shape 522 flat milestone files have, and anything at all for a person who has not cloned the repository. `AGENTS.md`'s third principle is that a newcomer must be able to succeed without asking anyone, and there is no publishing story of any kind here yet, which is the honest size of the work.
+Retiring the generated roadmap index cost a reader nothing and added nothing. Three of the things a stranger wants are still answered only by running a command inside a checkout. Two are what this project intends to do next and why, and what shape 522 flat milestone files have. The third is anything at all for a person who has not cloned the repository. `AGENTS.md`'s third principle is that a newcomer must be able to succeed without asking anyone, and there is no publishing story of any kind here yet, which is the honest size of the work.

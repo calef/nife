@@ -206,7 +206,7 @@ let report = fs_service::start_granted_dir(
     program("redoxfs_server").unwrap(),
     program("fs_subtree_caretaker").unwrap(),
     program("fs_test_client").unwrap(),
-    fs_service::DirGrant {
+    fs_service::DirectoryGrant {
         name: filesystem_contract::fixture::tree::SUB,
         rights: dir::DESCEND | dir::READ | dir::ENUMERATE,
         role: 5,  // ROLE_DIR_ATTACKER

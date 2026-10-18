@@ -86,8 +86,8 @@ nobody would choose is not saved by being mechanical.
 **The sweep is large and most of it is not identifiers.** `elf` appears 1,139 times across 225
 files, `pci` 919 across 157, `ipc` 1,100, `dtb` 718, `gpt` 527, `asid` 408. Four senses of each
 word, and only the first moves: an identifier; a citation of a standard (`NVMe 1.4 §3.1`, an ELF64
-header); a bench transcript, which is evidence and is never edited; and a `BUILT` roadmap block,
-which is an account of what was built under the name it had. AGENTS.md's own scar is the blind
+header); a bench transcript, which is evidence and is never edited; and a `BUILT` roadmap block.
+That block is an account of what was built under the name it had. AGENTS.md's own scar is the blind
 `sed` that rewrote the row recording a name's *refusal*.
 
 Searchability is the standing cost. Datasheets, error messages and this kernel's own boot output

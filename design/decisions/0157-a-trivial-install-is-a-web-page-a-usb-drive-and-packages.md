@@ -36,7 +36,7 @@ and, on whether to pay for the identities that let a downloaded program open wit
 So step 2 below is one downloaded program per host operating system (macOS, Linux, Windows), with
 the system image embedded in it, which writes the stick. The whole x86_64 system is already one
 file on a FAT32 stick at the removable-media path `\EFI\BOOT\BOOTX64.EFI` (notes/x86-uefi-boot.md;
-10,158,080 bytes on 2026-09-17), so the program's common case is a file copy onto a stick that is
+10,158,080 bytes on 2026-09-17). So the program's common case is a file copy onto a stick that is
 already FAT32, which needs no administrator rights, and formatting is the fallback. The design is
 `design/roadmap/proposals/a-program-that-makes-the-stick.md`.
 
@@ -69,8 +69,8 @@ person picks a target is left to the design, and the proposal recommends the uni
 3. Install it. The minimal system writes itself onto the machine's own disk and boots from it
    afterwards, without the stick.
 4. Expand it with packages over the internet. Installing onto a running system is now part of
-   the definition, so the format, activation and trust forks are on this definition's path:
-   DECISIONS §197 (a package is one archive file), the activation proposal
+   the definition, so the format, activation and trust forks are on this definition's path.
+   Those forks are DECISIONS §197 (a package is one archive file), the activation proposal
    `installing-a-package-mutates-or-composes.md`, and DECISIONS §195 (a reviewed recipe vouches
    for a package). The lane had sequenced them after a first slice that installed nothing.
 
@@ -111,8 +111,8 @@ Minutes 1 onward. The build path is a developer's path. `README.md`'s "Try it" s
   `miri` and four targets (`rust-toolchain.toml`). That toolchain is 1.9 GB on disk on this
   machine (`du -sh ~/.rustup/toolchains/nightly-2026-09-17-*`).
 - QEMU for three architectures, from Homebrew on macOS, or apt on Linux, where no Ubuntu release
-  ships a QEMU with `riscv-iommu-pci`, so `script/qemu-check` fails and `script/ci-qemu` builds one;
-  a stranger run measured that at twelve minutes (`notes/stranger-test/run-2.md`, run 2 and its
+  ships a QEMU with `riscv-iommu-pci`, so `script/qemu-check` fails and `script/ci-qemu` builds one.
+  A stranger run measured that at twelve minutes (`notes/stranger-test/run-2.md`, run 2 and its
   2026-09-13 correction).
 - Homebrew's `llvm` for a cross-capable clang, and three contributor tools a person who only wants
   to run the system does not need: `shellcheck`, `cargo-machete` (compiled from source by
@@ -144,9 +144,9 @@ the most common hobby board and nife does not boot on one (`notes/target-hardwar
 | Raspberry Pi | None | Nothing | No port |
 
 The x86-64 row is the nearest thing to a trivial hardware install the tree has, and it is
-close: one file, the firmware's removable-media fallback path, no configuration file, because the
-loader carries the kernel and the archive inside itself (`uefi_loader/build.rs`). What stops it is
-input, not installation.
+close. It needs one file, the firmware's removable-media fallback path, and no configuration file,
+because the loader carries the kernel and the archive inside itself (`uefi_loader/build.rs`). What
+stops it is input, not installation.
 
 ## Prior art for the first ten minutes (read)
 
@@ -195,10 +195,11 @@ the format, activation or trust forks, because it conveys no package and install
 runtime. Every piece is host-side and reversible.
 
 1. A package, as a host-side recipe. A directory per package (provisional:
-   `packages/<name>/`) declaring how to build it for each triple (an in-tree `[[bin]]` after
-   milestone 150 (adding a program should not need eight hand-maintained lists), or a fetch-and-build script, which `helpers/build-ripgrep.sh` already is), its
-   license, and its documentation bundle. One producer and one consumer, both in this tree, so the
-   recipe shape is reversible. It generalizes the two things already doing this by hand:
+   `packages/<name>/`) declaring how to build it for each triple, its license, and its
+   documentation bundle. The build declaration is an in-tree `[[bin]]` after milestone 150
+   (adding a program should not need eight hand-maintained lists), or a fetch-and-build script,
+   which `helpers/build-ripgrep.sh` already is. One producer and one consumer, both in this tree,
+   so the recipe shape is reversible. It generalizes the two things already doing this by hand:
    `build-ripgrep.sh` and milestone 40's `DOC_BUNDLES` table.
 2. Image composition from a declared package set (provisional command: `cargo xtask compose`),
    producing the existing sealed kernel-and-archive pair per architecture. This is option C1 of the

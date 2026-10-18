@@ -85,15 +85,15 @@ the shape this system keeps arriving at: the boundary carries authority, not str
 
 ## The limitation that shaped it, which is a property of the boundary
 
-Nothing in this system delivers bytes from a command line to a program. `Endowment::arg` is one
+Nothing in this system delivers bytes from a command line to a program. `Endowment::program_argument` is one
 `u64`, and `spawnproto` carries three words. Every string-shaped designation a person types (a file,
 a directory) arrives at the child as a capability. That is what `rm logs/old` and `doc
 notes/glob.md` both are, and it is why `rm` learns nothing about the name it removes.
 
 So a *pattern* is not something the prompt can hand over today, and the shipped `pgrep` is `pgrep
 '*'`. It names every member, one tid per line, which is `ps` without the columns and is what pipes.
-This is `Prog::Date`'s deliberate under-declaration verbatim: an `ArgSpec::Forbidden` over a program
-that reads registers the shell cannot set. It lifts when `ArgSpec` grows the positional arity
+This is `Program::Date`'s deliberate under-declaration verbatim: an `ProgramArgumentDeclaration::Forbidden` over a program
+that reads registers the shell cannot set. It lifts when `ProgramArgumentDeclaration` grows the positional arity
 milestone 47 (navigation and naming) deferred. The filter itself is not waiting on that. The kernel test hands it real
 selectors over a real domain, which is the only place in the tree that can.
 

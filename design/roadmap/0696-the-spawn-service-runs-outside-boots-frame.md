@@ -12,7 +12,7 @@ needs_person: no
 
 *Title and slug are drafts.*
 Raised by the progenitor's stack measurement (notes/stack/progenitor-stack.md). Until this is
-built, the stack is made big enough instead (`INIT_STACK_PAGES` in
+built, the stack is made big enough instead (`PROGENITOR_STACK_PAGES` in
 `kernel/src/user/progenitor_boot.rs`).
 
 ## The finding
@@ -33,7 +33,7 @@ catalog), and `_start` calls `spawn_service` with it. The construction locals di
 frame. Expected saving is about 12.5 KB in debug and 3 KB in release, which the gauge in
 `kernel::progenitor_stack` will measure rather than this estimate.
 
-Then decide, with the new number, whether `INIT_STACK_PAGES` goes back to eight. The gate
+Then decide, with the new number, whether `PROGENITOR_STACK_PAGES` goes back to eight. The gate
 (`HEADROOM_FLOOR`) stays either way.
 
 ## Why it waits

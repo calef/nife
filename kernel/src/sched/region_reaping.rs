@@ -175,7 +175,9 @@ pub(super) fn finish_blocked_resident(sched: &mut IpcTables, tid: ThreadId) {
                 hold_token(token);
             }
         }
-        None => {}
+        // A suspended thread (DECISIONS §300 (the paused state, a TCB verb, silent)) is on no
+        // queue and already holds its token.
+        Some(Wait::Resume) | None => {}
     }
 
     // Sweep the outstanding reply capabilities, sharing milestone 254's function rather than
@@ -212,7 +214,7 @@ pub(super) fn reap_region_objects(base: u64, end: u64) -> Result<(), ()> {
     // process parked in `RECEIVE` was refused forever: the refusal armed §16 (object revocation)'s kill, the kill is spent
     // by `schedule()`, and a `Blocked` thread never reaches `schedule()`. The owner retried until it
     // gave up, and the memory stayed spoken for until the machine stopped. That is the whole reason
-    // the aarch64 test boot ran out of frames: `userspace_init_brings_up_the_console_server` builds a
+    // the aarch64 test boot ran out of frames: `the_console_server_builder_brings_up_a_console_that_prints_for_it` builds a
     // console server out of the progenitor's budget and that server blocks in its serve loop, so the progenitor's
     // 2048-frame region was unreclaimable by construction. See notes/frames.md.
     //

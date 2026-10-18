@@ -14,7 +14,7 @@ use super::*;
 
 /// Where the progenitor maps the file service's shared page to read the installed-programs table. Mapped
 /// once, on the first image request, with page tables from its own budget. Clear of every other
-/// window this process maps (`INIT_OUT_VA` and the three peek pages below it, and the loader's
+/// window this process maps (`PROGENITOR_SHELL_OUTPUT_VIRTUAL_ADDRESS` and the three peek pages below it, and the loader's
 /// scratch window, `supervision_protocol::SCRATCH_WINDOW`, which starts at `0x1000_0000`).
 pub(super) const ACTIVATION_FS_VA: u64 = address_space_map::pair_page(0x0f40_0000);
 
@@ -33,7 +33,7 @@ const _: () = assert!(
 );
 
 /// **Take the argv's frame off the spawn endpoint and map it where this process can read it**
-/// (milestone 205, DECISIONS §170; `spawnproto::ARGS_BIT`). Returns the address, or `None` if the
+/// (milestone 205 (how a foreign program is told what to do), DECISIONS §170 (how a foreign program is told what to do); `spawnproto::PROGRAM_ARGUMENTS_BIT`). Returns the address, or `None` if the
 /// caller sent no frame or it would not map. The capability goes at once, as an image frame's does
 /// ([`take_frames`], [`stage_frames`]): the mapping outlives it, and the slot is what is scarce.
 ///

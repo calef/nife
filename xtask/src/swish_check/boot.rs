@@ -1468,7 +1468,7 @@ fn stack_gauge_failures(
                 "the progenitor's stack came within its headroom floor: {gauge:?}, after \
                  {after:?}. Something on that path grew a frame; notes/stack/progenitor-stack.md says how \
                  to list the progenitor's largest frames. Trim the frame, or raise \
-                 INIT_STACK_PAGES in kernel/src/user/progenitor_boot.rs, measurement beside it."
+                 PROGENITOR_STACK_PAGES in kernel/src/user/progenitor_boot.rs, measurement beside it."
             ));
         }
     }

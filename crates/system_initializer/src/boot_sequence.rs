@@ -16,8 +16,8 @@ use super::*;
 ///
 /// `initial_ramdisk_len` is the archive length the kernel passed at entry; `fs_rights` is the
 /// `filesystem_contract::dir` rights the file-service endpoint carries, and 0 means this boot
-/// attached no disk (so `fs_ep` and `fs_page` are empty). `second_dir`, when `Some`, hands the
-/// shell a second, disjoint directory capability (see [`SecondDirGrant`]); every real entry point
+/// attached no disk (so `fs_ep` and `fs_page` are empty). `mounted_tree`, when `Some`, hands the
+/// shell a second, disjoint directory capability (see [`MountedTreeGrant`]); every real entry point
 /// passes `None`, because what that subtree should be is boot policy no call site decides.
 ///
 /// # Examples
@@ -54,7 +54,7 @@ pub fn boot(
     g: &BootEndowment,
     initial_ramdisk_len: u64,
     fs_rights: u64,
-    second_dir: Option<SecondDirGrant>,
+    mounted_tree: Option<MountedTreeGrant>,
 ) -> ! {
     let (fs, table) = open_archive(g, initial_ramdisk_len);
     let p = read_boot_programs(&fs, table);
@@ -126,9 +126,9 @@ pub fn boot(
         term,
         with_fs: fs_rights != 0,
     };
-    let second_dir_ep = start_second_dir_caretaker(&w, second_dir, p.care_elf.as_ref());
-    let (shell, sh_clock_slot) = build_shell(&w, &sh_elf, chan, sh_budget, second_dir_ep);
-    finish_shell_endowment(g, shell.tcb, second_dir_ep);
+    let mounted_tree_ep = start_mounted_tree_caretaker(&w, mounted_tree, p.care_elf.as_ref());
+    let (shell, sh_clock_slot) = build_shell(&w, &sh_elf, chan, sh_budget, mounted_tree_ep);
+    finish_shell_endowment(g, shell.tcb, mounted_tree_ep);
 
     // Free every boot cap the spawn service does not need, so the progenitor's 16-slot capability table has room to
     // build a supervised child (which holds a job untyped and a job frame while the loader retypes
@@ -254,7 +254,7 @@ fn announce_outcomes(
     // **The entropy service's own outcome** (DECISIONS §120's 2026-08-26 amendment), said here
     // rather than where it was decided: `entropy_ready` was set long before this process had a
     // terminal at all (the whole reason the build happens first, at the top of `boot`; see
-    // that block's own comment), and [`INIT_OUT_VA`] is not mapped into the progenitor's own space until the
+    // that block's own comment), and [`PROGENITOR_SHELL_OUTPUT_VIRTUAL_ADDRESS`] is not mapped into the progenitor's own space until the
     // line above this one first used it, so nothing earlier in `boot` could `announce`
     // regardless. Silent when there was nothing to build (no device, or no `entropy` program in
     // the archive), the same posture the sink adapter and the subtree caretaker already take for a
@@ -290,7 +290,7 @@ fn announce_outcomes(
     // nothing below writes (milestone 95 (an unmap primitive), §249 (a running address space stays
     // nameable)): given up before the shell starts, so this process cannot read what the shell
     // prints or write into it.
-    supervision_protocol::give_up_own_page(INIT_OUT_VA);
+    supervision_protocol::give_up_own_page(PROGENITOR_SHELL_OUTPUT_VIRTUAL_ADDRESS);
 }
 
 /// Print the generated login credential, once, before the prompt.

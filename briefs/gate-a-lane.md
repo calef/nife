@@ -36,7 +36,7 @@ happens (`citations: N modified file(s) not checked; --ratchet reads the committ
 first.`), but that message is easy to miss under everything else a gate prints.
 
 **Commit before you run `script/citations --ratchet`.** If it fails, fix the file, commit again
-(a checkpoint commit is fine here; you squash before the final report anyway), and rerun.
+(a new commit whose message names what it fixes, never an amend of a pushed one), and rerun.
 
 ## What the ratchet actually wants: a gloss, on the same line, grounded in the target's own first line
 
@@ -68,7 +68,7 @@ memory (see [notes/coes/2026-09-30-lane-follow-through.md](../notes/coes/2026-09
 The contract, binding from dispatch time:
 
 - Every dispatch writes a PENDING file beside its lane log, named for the lane, holding the
-  exact commands this brief's gates precede: the push (with `--force-with-lease` for a rebase),
+  exact commands this brief's gates precede: the push,
   `gh pr ready`, `gh pr merge --auto`. At dispatch time, not when the lane reports.
 - Executing them flips it to DONE. A PENDING file that exists is work owed. Answer no board
   question while one sits unexecuted, unless you defer it out loud with a reason.

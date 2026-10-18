@@ -113,7 +113,7 @@ fn forge(out: &mut [u8; EHDR + 2 * PHDR]) {
 /// Stack pages to add below the one the kernel maps. `kernel::user::run` gives a process one page,
 /// and the loader's call chain overflowed it on the first build (measured, aarch64, 2026-09-26: a
 /// data abort at `sp`, 48 bytes below the page). Eight in all, the progenitor's
-/// `INIT_STACK_PAGES`, for the same reason: it builds whole ELFs.
+/// `PROGENITOR_STACK_PAGES`, for the same reason: it builds whole ELFs.
 const EXTRA_STACK_PAGES: u64 = 7;
 
 #[unsafe(no_mangle)]

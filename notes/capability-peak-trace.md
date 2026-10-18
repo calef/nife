@@ -93,7 +93,7 @@ the launch 1,636 to the end.
 | 5 | file service endpoint | kernel grant, 5 | never | yes | §219 (how the shell names an installed program to the spawner) |
 | 6 | file window pool | kernel grant, 6 | never | yes | sliced into a window per job |
 | 7 | `net_stack` client endpoint | 4035, 70 | never | yes | milestone 590 (the booted system starts its network stack): endowed to `Manifest::network` |
-| 8 | `term_out` | 1494, 278 | 2626, 1602 | no | mapped at `INIT_OUT_VA` after the block, then dropped |
+| 8 | `term_out` | 1494, 278 | 2626, 1602 | no | mapped at `PROGENITOR_SHELL_OUTPUT_VIRTUAL_ADDRESS` after the block, then dropped |
 | 9 | `term_sink` | 2066, 892 | never | yes | the sink adapter's endpoint |
 | 10 | entropy request | 1380, 24 | never | yes | milestone 111 (a shell that can endow a child with entropy) |
 | 11 | `term_ep` | 1497, 280 | never | yes | the boot discipline, kept for the next session |

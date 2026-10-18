@@ -9,9 +9,9 @@ promoted_from: a-seal-check-that-reads-bytes-cannot-see-a-check-that-was-dropped
 The number is **provisional**: the integrator mints it at merge.
 Promoted from the proposal `a-seal-check-that-reads-bytes-cannot-see-a-check-that-was-dropped` on
 2026-09-22, filed 2026-09-21. Raised by the lane of milestone 523 (moving the job-mix supervisor
-into userspace, and the five permissions it turns out to need), which was launched because
+into userspace, and the five permissions it turns out to need). That lane was launched because
 `script/board-image --job-mix --tftp` reported `NOT SEALED` on a card whose kernel and archive were
-packed by one command. The cause is not the pair and not the seal's arithmetic: the kernel image
+packed by one command. The cause is not the pair and not the seal's arithmetic. The kernel image
 genuinely does not carry the digest, because the build that diverts the boot tour never calls the
 code that would check it, and the linker removed it.
 
@@ -71,7 +71,7 @@ forecloses nothing, and turns an hour of rebuilding into a sentence. This is the
 B. Have the diverted builds keep the check. Call `boot_progenitor`'s verification before the
 workload replaces the tour, so a soak, bench or job-mix card refuses a mismatched archive like any
 other. It is the honest position (a card left running unattended for hours is the last one that
-should skip verification) and it is a change to what three kernel features do, which is a larger
+should skip verification). It is also a change to what three kernel features do, which is a larger
 claim than a tool fix.
 
 C. Make the seal ask the real question. The scan cannot know whether a symbol is reachable, so

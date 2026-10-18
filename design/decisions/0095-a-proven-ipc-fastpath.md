@@ -13,12 +13,12 @@ still make it proven?"* It follows milestone 132, whose gate measured the gap an
 not close it.
 
 **What "don't decide yet" ratifies, precisely.** This decision has two tiers, and calef's answer is
-not one word covering both. Option 3, the fastpath itself, is what stays undecided: it needs
+not one word covering both. Option 3, the fastpath itself, is what stays undecided. It needs
 milestone 74's cycle counters and milestone 127's Jetson TX1 to produce the one measurement that
-would justify it, and neither exists yet, so building it now would be arguing on an estimate rather
+would justify it, and neither exists yet. So building it now would be arguing on an estimate rather
 than measuring, exactly the move this project's benchmark discipline refuses. Option 2, the
 eligibility predicate and its proof in `crates/inter_process_communication`, is ratified as
-buildable now: it is cheap, touches no syscall surface, and turns "the fastpath would be correct"
+buildable now. It is cheap, touches no syscall surface, and turns "the fastpath would be correct"
 from an argument into a harness whether or not a fastpath is ever built on top of it. A lane may
 pursue Option 2 without further sign-off; Option 3 stays gated on the measurement per this
 decision's own text.
@@ -118,10 +118,10 @@ the whole kernel, because that is person-decades.
 §4.7 of the retrospective sets the price explicitly: **"For seL4 we were willing to tolerate no more
 than a 10% degradation in IPC performance"** as the cost of verifiability. They then beat it, at 188
 cycles one-way on ARM11, roughly 10% *better* than the fastest IPC they had measured on any kernel on
-that hardware, with the verdict "Abandoned: Assembler code for performance" and the flat statement
-that assembler implementations are no longer justified by performance arguments. OKL4 had already
-dropped its assembler fastpath commercially, on maintenance cost alone and with no verification
-motive.
+that hardware. It came with the verdict "Abandoned: Assembler code for performance" and the flat
+statement that assembler implementations are no longer justified by performance arguments. OKL4
+had already dropped its assembler fastpath commercially, on maintenance cost alone and with no
+verification motive.
 
 How they got there is the fact that matters here, and the original text of this decision missed
 it. The fastpath was hand-crafted in C by "manually re-ordering statements, making use of (verified)
@@ -147,9 +147,9 @@ The assembly is not the dangerous part. The scheduling semantics are.
 seL4's fastpath switches directly to the receiver and donates the remaining timeslice, and most
 of its win is that, not the byte count.
 
-So a real fastpath here is a change to when threads run, not a trimmed copy of an existing path, and
-it lands on the machinery with the subtlest invariants in the tree: the handshake states, the boot-8
-gate that `serve()` exists to pass, the reaper's interaction with a thread that is queued and
+So a real fastpath here is a change to when threads run, not a trimmed copy of an existing path. It
+lands on the machinery with the subtlest invariants in the tree. They are the handshake states, the
+boot-8 gate that `serve()` exists to pass, the reaper's interaction with a thread that is queued and
 Blocked, and §26's dead-sender corpse case that `ipc_recv` handles inline. Those are the
 invariants that would need to hold under a second path, and none of them is about speed.
 

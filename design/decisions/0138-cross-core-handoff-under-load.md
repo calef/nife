@@ -65,22 +65,22 @@ The other precedents are in
 [`premise.md`](0138-cross-core-handoff-under-load/premise.md#what-this-tree-already-does-in-the-analogous-case).
 The one that stays here:
 
-A feature-gated kernel affordance built only to make an experiment possible is established
-practice. `kernel/Cargo.toml` carries `fastpath_pad`, which adds a large reachable-but-never-taken
-function to the IPC fast path so milestone 134's footprint experiment has something to compare, and
-`watchdog_probe`, which adds a test that deliberately livelocks and is expected to fail the run.
-Neither ships. `soak` itself is the third. So an affordance that exists only under `--features soak`
-crosses no line this tree has not already crossed on purpose, and milestone 219 established the
-hygiene that goes with it: `script/lint` clippies the feature, and `script/fastpath-footprint` proves
-the production binary is byte-identical.
+A feature-gated kernel affordance built only to make an experiment possible is established practice.
+`kernel/Cargo.toml` carries `fastpath_pad`, which adds a large reachable-but-never-taken function to
+the IPC fast path so milestone 134 (the register of measures)'s footprint experiment has something
+to compare. It also carries `watchdog_probe`, which adds a test that deliberately livelocks and is
+expected to fail the run. Neither ships. `soak` itself is the third. So an affordance that exists
+only under `--features soak` crosses no line this tree has not already crossed on purpose. Milestone
+219 established the hygiene that goes with it: `script/lint` clippies the feature, and
+`script/fastpath-footprint` proves the production binary is byte-identical.
 
 ## The prior art, read rather than recalled
 
 [`prior-art.md`](0138-cross-core-handoff-under-load/prior-art.md) holds seL4, L4Re, Barrelfish and
 QNX. [`linux.md`](0138-cross-core-handoff-under-load/linux.md) holds Linux v6.12's load balancing.
 
-The maintainer's three-moment summary was substantively right, and this is a re-cut rather
-than a correction: it folded the tickless case into the idle one, where the source puts it beside
+The maintainer's three-moment summary was substantively right, and this is a re-cut rather than a
+correction. It folded the tickless case into the idle one, where the source puts it beside
 the periodic one, since a NOHZ kick makes a *busy* CPU run the balancer for idle neighbors.
 `sched_setaffinity` is not on this list because it is a request from userspace rather than a moment
 the kernel chooses.
@@ -89,12 +89,13 @@ the kernel chooses.
 because almost nothing ever tells it anything. It schedules unknown binaries for users who never
 declare a placement. The interface that would let them exists (`sched_setaffinity`), but the kernel
 cannot assume it was called, so its working inputs are load, topology and history. Four sampling
-points plus a push is what it takes to keep an arbitrary workload spread without being told. That is a harder
-scheduling problem than nife has, and the machinery is proportionate to it rather than excessive.
-The contrast with seL4 and Barrelfish is about the premise, not about the quality of either
-answer: they assume the application knows where its threads belong and make that a right it holds,
-so there is nothing left for the kernel to infer. nife's §28 sits on the second premise, and
-milestone 219's frozen counter is what the second premise looks like from a bench.
+points plus a push is what it takes to keep an arbitrary workload spread without being told. That is
+a harder scheduling problem than nife has, and the machinery is proportionate to it rather than
+excessive. The contrast with seL4 and Barrelfish is about the premise, not about the quality of
+either answer. They assume the application knows where its threads belong and make that a right it
+holds, so there is nothing left for the kernel to infer. nife's §28 (SMP placement) sits on the
+second premise, and milestone 219's frozen counter is what the second premise looks like from a
+bench.
 
 ### What the prior art decides, and what it leaves open
 
@@ -102,17 +103,16 @@ milestone 219's frozen counter is what the second premise looks like from a benc
   refuse implicit migration on purpose, and seL4's stated reasons (user control of resources,
   real-time analysability) are reasons this project already holds. That is a strong argument
   against option B and it did not come from this tree.
-- Linux is the instructive contrast rather than the cautionary tale, and reading it sharpened
-  what option B actually is. nife is not innocent of load balancing: `pick_spawn_target` is the
-  fork-time placement Linux does in `select_task_rq_fair` under `SD_BALANCE_FORK`,
-  `try_initiate_steal` in `run_idle` is the going-idle pull Linux does in `sched_balance_newidle`,
-  and `wake_load_aware` off `irq_notify` is a narrow version of its wake-time placement. Three of
-  Linux's four moments already have a counterpart here. The one nife does not have is the
-  periodic one, and it is the only one of the four that fires whether or not anything happened.
-  That is exactly why the counter freezes: a saturated rendezvous workload starves the other three
-  of their triggers (nothing forks, no core goes idle, no device interrupt lands), and an
-  event-driven balancer with no events does nothing. This is a point in option B's favor and it
-  is recorded as one, below.
+- Linux is the instructive contrast rather than the cautionary tale, and reading it sharpened what
+  option B actually is. nife is not innocent of load balancing. `pick_spawn_target` is the fork-time
+  placement Linux does in `select_task_rq_fair` under `SD_BALANCE_FORK`, `try_initiate_steal` in
+  `run_idle` is the going-idle pull Linux does in `sched_balance_newidle`, and `wake_load_aware` off
+  `irq_notify` is a narrow version of its wake-time placement. Three of Linux's four moments already
+  have a counterpart here. The one nife does not have is the periodic one, and it is the only one of
+  the four that fires whether or not anything happened. That is exactly why the counter freezes: a
+  saturated rendezvous workload starves the other three of their triggers (nothing forks, no core
+  goes idle, no device interrupt lands), and an event-driven balancer with no events does nothing.
+  This is a point in option B's favor and it is recorded as one, below.
 - If affinity is built, the shape has a clear winner in the family this project belongs to: the
   core is a property of a capability, not an argument in a message. seL4 MCS and L4Re agree, from
   opposite directions (a singleton per core, a narrowable set), and seL4's own history is a
@@ -143,15 +143,15 @@ one.
 Reversibility. High, and it is the only option here that is. §28's own changeability note says
 so: *"this is scheduler-internal policy. No ABI, no capability semantics, no baseline movement"*.
 
-What the prior art says about it, and it is the strongest single argument in this document.
-No capability microkernel read for this proposal rebalances threads at all. seL4 does not, on the
-record and in the source, and its authors' stated reason is *"seL4's general philosophy of having all
-resource management under user control (and also helps reasoning about real-time properties)"*.
+What the prior art says about it, and it is the strongest single argument in this document. No
+capability microkernel read for this proposal rebalances threads at all. seL4 does not, on the
+record and in the source, and its authors' stated reason is *"seL4's general philosophy of having
+all resource management under user control (and also helps reasoning about real-time properties)"*.
 Barrelfish does not, structurally. Linux does, and offers turning it off as a first-class control
-(`cpuset.cpus.partition` set to `"isolated"`, *"Partition root without load balancing"*).
-So the behavior milestone 219 measured and read as a gap is the design position of the kernel this
-project measures itself against, and B would be the one option that moves nife away from it in
-order to run a test.
+(`cpuset.cpus.partition` set to `"isolated"`, *"Partition root without load balancing"*). So the
+behavior milestone 219 measured and read as a gap is the design position of the kernel this project
+measures itself against. B would be the one option that moves nife away from it in order to run a
+test.
 
 Option B's working is in
 [`options.md`](0138-cross-core-handoff-under-load/options.md#b-a-periodic-rebalancer-in-the-scheduler).
@@ -172,13 +172,13 @@ How option D was read, run and costed is in
 
 **What it does not reach**, said precisely because a claim of "the real path" is worth nothing
 without it: the interrupt controller's own claim, mask and complete sequence (the PLIC on riscv64,
-the GIC on aarch64) is not exercised, because the timer is not a controller-routed source. The
-experiment is about the wake protocol, and that is what this runs.
+the GIC on aarch64) is not exercised. That is because the timer is not a controller-routed source.
+The experiment is about the wake protocol, and that is what this runs.
 
 `refused`, `mismatch` and `stalled` stayed at zero throughout both runs. **The spike is not
-committed to this branch** and this document is the only thing that survives it; the patch is a
-scratch file, deliberately, because shipping it is the decision being asked for rather than a thing a
-research lane may do.
+committed to this branch** and this document is the only thing that survives it. The patch is a
+scratch file, deliberately, because shipping it is the decision being asked for rather than a thing
+a research lane may do.
 
 Reversibility. Highest of the four. A feature-gated affordance is deleted by deleting it, nobody
 outside the tree can act on it, and no program is written against it.
@@ -192,8 +192,8 @@ this tree refuses those. It is that D tests the path the defect was on and A tes
 it. Milestone 219's whole lesson was that an instrument *near* the question is not an instrument
 that answers it, and choosing A here would repeat that mistake at the level of the experiment rather
 than the counter. D also leaves the machine unchanged when nobody is testing, which was the property
-the maintainer's provisional pick of A was reaching for, and D has it more completely: A is inert
-only if no program uses it, and a mechanism that is only inert by convention is rung four.
+the maintainer's provisional pick of A was reaching for. D has it more completely: A is inert only
+if no program uses it, and a mechanism that is only inert by convention is rung four.
 
 **On the irreversible part, this lane gives options and does not recommend.** A is syscall surface
 and its capability question is genuinely open. This document's contribution to it is to narrow what
@@ -219,7 +219,7 @@ The Linux reading weakened that refusal without overturning it, and the weakenin
 rather than buried. B is the fourth of four balancing moments, three of which nife already has, so
 "importing Linux's answer" overstates it; and it is the only moment a saturated workload cannot
 starve, which is a real argument that nothing in this tree had made. What survives is the second
-reason and not the first: the cost is not the mechanism, it is the tuning surface, and Linux is the
+reason and not the first. The cost is not the mechanism, it is the tuning surface, and Linux is the
 evidence for how large that surface gets and for the fact that it is only tunable against workloads.
 The refusal now rests on §28's trigger alone. A reader who thinks that trigger has been met should
 reopen B, and this paragraph is the invitation.
@@ -246,14 +246,14 @@ what the decision bought rather than what remains.
   is where the experiment happens: radon is real hardware with no virtio, and the device it does have
   is a UART whose interrupt rate a soak cannot drive. It would also measure the block path rather
   than the wake path, at a fraction of the rate.
-- Raising a software interrupt per architecture instead of using the timer. aarch64 can already
-  do it (`drivers::gic::send_sgi`, which `user/src/tests.rs` uses to raise `INIT_TEST_SGI` at a
-  chosen core) and x86_64 has a self-IPI vector, but riscv64 has neither: its software-interrupt
-  arm is the reschedule IPI and never reaches `irq_route`, which `kernel/src/user/tests.rs` states
-  as the reason that test is aarch64-only. Since radon is the riscv64 board and the one machine that
-  has already produced a defect of this class, a mechanism that cannot run there is the wrong
-  mechanism. The timer arm is the one thing all three architectures share, through a function
-  (`sched::on_tick`) that is already architecture-neutral.
+- Raising a software interrupt per architecture instead of using the timer. aarch64 can already do
+  it (`drivers::gic::send_sgi`, which `system_tests/src/user/elf_child_builder_tests.rs` uses to
+  raise `DELEGATED_TEST_INTERRUPT` at a chosen core), and x86_64 has a self-IPI vector. But riscv64
+  has neither: its software-interrupt arm is the reschedule IPI and never reaches `irq_route`, which
+  `kernel/src/user/tests.rs` states as the reason that test is aarch64-only. Since radon is the
+  riscv64 board and the one machine that has already produced a defect of this class, a mechanism
+  that cannot run there is the wrong mechanism. The timer arm is the one thing all three
+  architectures share, through a function (`sched::on_tick`) that is already architecture-neutral.
 - Making the soak workers themselves cross by pinning them (option A applied only to the soak).
   Refused on `cpu.rs`'s recorded reasoning: a workload the scheduler is not free to place is one
   interleaving explored thoroughly, and this experiment's value is in the interleavings it has not

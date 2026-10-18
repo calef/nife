@@ -1,12 +1,12 @@
-//! **Grants by verb** (milestone 809 (the package client becomes a program), its option V2): a
+//! **Authorities by verb** (milestone 809 (the package client becomes a program), its option V2): a
 //! program's manifest narrowed by the word a line gives after its name, so one program holds, per
 //! line, only what that verb needs. `jig list` reads the catalog; `jig install` also holds the
-//! installer and the network. [`crate::Prog::verbs`] holds each program's table, and
+//! installer and the network. [`crate::Program::verbs`] holds each program's table, and
 //! `capability_manifest_note`'s verb record is the same list as bytes.
 //!
 //! Name: provisional (milestone 809), as are the module, the types and the bit positions.
 
-use crate::{IndexStore, Manifest, each_word};
+use crate::{IndexStoreDeclaration, Manifest, each_word};
 
 /// **The authorities a verb table may hand out**, as bits (milestone 809 (the package client
 /// becomes a program), option V2). Each names one of [`Manifest`]'s fields the progenitor endows
@@ -14,48 +14,49 @@ use crate::{IndexStore, Manifest, each_word};
 /// thing on the line that can choose among them. A verb never widens: [`narrow_by_verb`] keeps a
 /// field only when the manifest declares it **and** the verb names it.
 ///
-/// Name: provisional (milestone 809), as are the bit positions, which `capability_manifest_note`'s verb
-/// record carries.
+/// Name: ratified 2026-10-18 (calef: "Yes"), for the type, its `authorities` field in
+/// [`VerbGrant`] and its `CONFIGURATION` bit. The bit positions are provisional (milestone 809),
+/// and `capability_manifest_note`'s verb record carries them.
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
-pub struct Grants(u16);
+pub struct ManifestAuthorities(u16);
 
-impl Grants {
+impl ManifestAuthorities {
     /// Nothing. What a word that is no verb in the table is granted.
-    pub const NONE: Grants = Grants(0);
+    pub const NONE: ManifestAuthorities = ManifestAuthorities(0);
     /// [`Manifest::clock`].
-    pub const CLOCK: Grants = Grants(1 << 0);
-    /// [`Manifest::config`].
-    pub const CONFIG: Grants = Grants(1 << 1);
+    pub const CLOCK: ManifestAuthorities = ManifestAuthorities(1 << 0);
+    /// [`Manifest::configuration`].
+    pub const CONFIGURATION: ManifestAuthorities = ManifestAuthorities(1 << 1);
     /// [`Manifest::entropy`].
-    pub const ENTROPY: Grants = Grants(1 << 2);
+    pub const ENTROPY: ManifestAuthorities = ManifestAuthorities(1 << 2);
     /// [`Manifest::network`].
-    pub const NETWORK: Grants = Grants(1 << 3);
+    pub const NETWORK: ManifestAuthorities = ManifestAuthorities(1 << 3);
     /// [`Manifest::domain`].
-    pub const DOMAIN: Grants = Grants(1 << 4);
+    pub const DOMAIN: ManifestAuthorities = ManifestAuthorities(1 << 4);
     /// [`Manifest::machine`].
-    pub const MACHINE: Grants = Grants(1 << 5);
+    pub const MACHINE: ManifestAuthorities = ManifestAuthorities(1 << 5);
     /// [`Manifest::share`].
-    pub const SHARE: Grants = Grants(1 << 6);
+    pub const SHARE: ManifestAuthorities = ManifestAuthorities(1 << 6);
     /// [`Manifest::installer`].
-    pub const INSTALLER: Grants = Grants(1 << 7);
+    pub const INSTALLER: ManifestAuthorities = ManifestAuthorities(1 << 7);
     /// [`Manifest::catalog`].
-    pub const CATALOG: Grants = Grants(1 << 8);
+    pub const CATALOG: ManifestAuthorities = ManifestAuthorities(1 << 8);
     /// [`Manifest::indexes`], read only (milestone 801 (packages over the internet)). Name:
     /// provisional 2026-10-12 (UTC), as is the bit.
-    pub const INDEXES: Grants = Grants(1 << 9);
+    pub const INDEXES: ManifestAuthorities = ManifestAuthorities(1 << 9);
     /// [`Manifest::indexes`], read and written: `jig update`. Holds nothing without
-    /// [`Grants::INDEXES`]. Name: provisional 2026-10-12 (UTC), as is the bit.
-    pub const INDEXES_WRITE: Grants = Grants(1 << 10);
+    /// [`ManifestAuthorities::INDEXES`]. Name: provisional 2026-10-12 (UTC), as is the bit.
+    pub const INDEXES_WRITE: ManifestAuthorities = ManifestAuthorities(1 << 10);
     /// Every bit above, and no other.
-    pub const ALL: Grants = Grants((1 << 11) - 1);
+    pub const ALL: ManifestAuthorities = ManifestAuthorities((1 << 11) - 1);
 
     /// Both sets.
-    pub const fn union(self, other: Grants) -> Grants {
-        Grants(self.0 | other.0)
+    pub const fn union(self, other: ManifestAuthorities) -> ManifestAuthorities {
+        ManifestAuthorities(self.0 | other.0)
     }
 
     /// Whether every bit of `other` is in this set.
-    pub const fn contains(self, other: Grants) -> bool {
+    pub const fn contains(self, other: ManifestAuthorities) -> bool {
         self.0 & other.0 == other.0
     }
 
@@ -65,9 +66,9 @@ impl Grants {
     }
 
     /// The set these bits name, or `None` if any bit names no authority.
-    pub const fn from_bits(bits: u16) -> Option<Grants> {
-        if bits & !Grants::ALL.0 == 0 {
-            Some(Grants(bits))
+    pub const fn from_bits(bits: u16) -> Option<ManifestAuthorities> {
+        if bits & !ManifestAuthorities::ALL.0 == 0 {
+            Some(ManifestAuthorities(bits))
         } else {
             None
         }
@@ -76,14 +77,14 @@ impl Grants {
 
 /// **One verb and what it is granted** (milestone 809, option V2): `jig list` reads the catalog and
 /// nothing else; `jig install` also holds the installer and the network. A list of these pairs is
-/// the whole of a verb table, in a program's row ([`Prog::verbs`](crate::Prog::verbs)) or in its note (`capability_manifest_note`'s
+/// the whole of a verb table, in a program's row ([`Program::verbs`](crate::Program::verbs)) or in its note (`capability_manifest_note`'s
 /// verb record, which is the same list as bytes). Name: provisional.
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub struct VerbGrant {
     /// The word, as typed after the program's name. At most [`MAX_VERB`] bytes.
     pub verb: &'static str,
     /// What a line with this verb is endowed with, of what the manifest declares.
-    pub grants: Grants,
+    pub authorities: ManifestAuthorities,
 }
 
 /// The longest verb a verb table may hold, in bytes: `capability_manifest_note`'s record gives each sixteen.
@@ -101,38 +102,38 @@ pub const MAX_VERB: usize = 16;
 pub(crate) const JIG_VERBS: &[VerbGrant] = &[
     VerbGrant {
         verb: "install",
-        grants: Grants::INSTALLER
-            .union(Grants::CATALOG)
-            .union(Grants::NETWORK)
-            .union(Grants::INDEXES)
-            .union(Grants::CLOCK)
-            .union(Grants::ENTROPY),
+        authorities: ManifestAuthorities::INSTALLER
+            .union(ManifestAuthorities::CATALOG)
+            .union(ManifestAuthorities::NETWORK)
+            .union(ManifestAuthorities::INDEXES)
+            .union(ManifestAuthorities::CLOCK)
+            .union(ManifestAuthorities::ENTROPY),
     },
     VerbGrant {
         verb: "list",
-        grants: Grants::CATALOG.union(Grants::INDEXES),
+        authorities: ManifestAuthorities::CATALOG.union(ManifestAuthorities::INDEXES),
     },
     VerbGrant {
         verb: "remove",
-        grants: Grants::INSTALLER,
+        authorities: ManifestAuthorities::INSTALLER,
     },
     VerbGrant {
         verb: "rollback",
-        grants: Grants::INSTALLER,
+        authorities: ManifestAuthorities::INSTALLER,
     },
     VerbGrant {
         verb: "update",
-        grants: Grants::NETWORK
-            .union(Grants::INDEXES)
-            .union(Grants::INDEXES_WRITE)
-            .union(Grants::CLOCK)
-            .union(Grants::ENTROPY),
+        authorities: ManifestAuthorities::NETWORK
+            .union(ManifestAuthorities::INDEXES)
+            .union(ManifestAuthorities::INDEXES_WRITE)
+            .union(ManifestAuthorities::CLOCK)
+            .union(ManifestAuthorities::ENTROPY),
     },
 ];
 
 /// **A manifest narrowed by the verb a line used** (milestone 809 (the package client becomes a
 /// program), option V2, which calef's "One program." ruling of 2026-10-06 kept): with an empty
-/// `verbs` the manifest is returned as it is, and otherwise each field [`Grants`] names is kept only
+/// `verbs` the manifest is returned as it is, and otherwise each field [`ManifestAuthorities`] names is kept only
 /// when the manifest declares it and the verb's entry names it. A `verb` that is not in the table,
 /// or none, keeps none of them: the program runs, holding only what no verb chooses, and says what
 /// it takes.
@@ -148,25 +149,31 @@ pub fn narrow_by_verb(m: &Manifest, verbs: &[VerbGrant], verb: Option<&[u8]>) ->
     let g = verbs
         .iter()
         .find(|v| Some(v.verb.as_bytes()) == verb)
-        .map_or(Grants::NONE, |v| v.grants);
+        .map_or(ManifestAuthorities::NONE, |v| v.authorities);
     Manifest {
-        clock: m.clock && g.contains(Grants::CLOCK),
-        config: m.config && g.contains(Grants::CONFIG),
-        entropy: m.entropy && g.contains(Grants::ENTROPY),
-        network: m.network && g.contains(Grants::NETWORK),
-        domain: m.domain && g.contains(Grants::DOMAIN),
-        machine: m.machine && g.contains(Grants::MACHINE),
-        share: m.share && g.contains(Grants::SHARE),
-        installer: m.installer && g.contains(Grants::INSTALLER),
-        catalog: m.catalog && g.contains(Grants::CATALOG),
+        clock: m.clock && g.contains(ManifestAuthorities::CLOCK),
+        configuration: m.configuration && g.contains(ManifestAuthorities::CONFIGURATION),
+        entropy: m.entropy && g.contains(ManifestAuthorities::ENTROPY),
+        network: m.network && g.contains(ManifestAuthorities::NETWORK),
+        domain: m.domain && g.contains(ManifestAuthorities::DOMAIN),
+        machine: m.machine && g.contains(ManifestAuthorities::MACHINE),
+        share: m.share && g.contains(ManifestAuthorities::SHARE),
+        installer: m.installer && g.contains(ManifestAuthorities::INSTALLER),
+        catalog: m.catalog && g.contains(ManifestAuthorities::CATALOG),
         indexes: match m.indexes {
-            IndexStore::ReadWrite if g.contains(Grants::INDEXES.union(Grants::INDEXES_WRITE)) => {
-                IndexStore::ReadWrite
+            IndexStoreDeclaration::ReadWrite
+                if g.contains(
+                    ManifestAuthorities::INDEXES.union(ManifestAuthorities::INDEXES_WRITE),
+                ) =>
+            {
+                IndexStoreDeclaration::ReadWrite
             }
-            IndexStore::ReadWrite | IndexStore::ReadOnly if g.contains(Grants::INDEXES) => {
-                IndexStore::ReadOnly
+            IndexStoreDeclaration::ReadWrite | IndexStoreDeclaration::ReadOnly
+                if g.contains(ManifestAuthorities::INDEXES) =>
+            {
+                IndexStoreDeclaration::ReadOnly
             }
-            _ => IndexStore::Forbidden,
+            _ => IndexStoreDeclaration::Forbidden,
         },
         ..*m
     }
@@ -202,7 +209,7 @@ pub fn verb_of_page(page: &[u8]) -> Option<&[u8]> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{Prog, Runtime, argv, image_can_carry};
+    use crate::{Program, StartupContract, argv, image_can_carry};
 
     /// **A verb narrows and never widens** (milestone 809, option V2). `jig list` holds the catalog
     /// alone, `jig remove` the installer alone, `jig install` all three, and a word that is no verb
@@ -211,10 +218,10 @@ mod tests {
     /// progenitor, so a shell that read the unnarrowed manifest could not send it a page.
     #[test]
     fn a_verb_narrows_and_never_widens() {
-        let jig = Prog::Jig.manifest();
+        let jig = Program::Jig.manifest();
         let as_typed = |line: &[u8]| {
             let mut buf = [0u8; MAX_VERB];
-            narrow_by_verb(&jig, Prog::Jig.verbs(), verb_of(line, &mut buf))
+            narrow_by_verb(&jig, Program::Jig.verbs(), verb_of(line, &mut buf))
         };
         let list = as_typed(b"jig list");
         assert!(list.catalog && !list.installer && !list.network);
@@ -224,23 +231,26 @@ mod tests {
         assert!(remove.installer && !remove.catalog && !remove.network);
         // Milestone 801: only `update` writes the index store; `list` and `install` read it, and
         // `remove` holds none of it.
-        assert_eq!(as_typed(b"jig update").indexes, IndexStore::ReadWrite);
+        assert_eq!(
+            as_typed(b"jig update").indexes,
+            IndexStoreDeclaration::ReadWrite
+        );
         assert!(!as_typed(b"jig update").installer);
-        assert_eq!(list.indexes, IndexStore::ReadOnly);
-        assert_eq!(install.indexes, IndexStore::ReadOnly);
-        assert_eq!(remove.indexes, IndexStore::Forbidden);
+        assert_eq!(list.indexes, IndexStoreDeclaration::ReadOnly);
+        assert_eq!(install.indexes, IndexStoreDeclaration::ReadOnly);
+        assert_eq!(remove.indexes, IndexStoreDeclaration::Forbidden);
         // The progenitor's reading of the page the shell assembles agrees with the shell's.
         let mut page = [0u8; program_argument_contract::PAGE_BYTES];
         argv(b"jig 'install' greeting", &mut page).unwrap();
         assert_eq!(verb_of_page(&page), Some(&b"install"[..]));
         let nothing = as_typed(b"jig upgrade");
         assert!(!nothing.installer && !nothing.catalog && !nothing.network);
-        assert_eq!(nothing.indexes, IndexStore::Forbidden);
+        assert_eq!(nothing.indexes, IndexStoreDeclaration::Forbidden);
         assert_eq!(as_typed(b"jig"), nothing);
         // Everything else about the manifest is untouched.
-        assert_eq!(list.arg, jig.arg);
-        assert_eq!(list.runtime, jig.runtime);
-        for &p in Prog::ALL {
+        assert_eq!(list.program_argument, jig.program_argument);
+        assert_eq!(list.startup, jig.startup);
+        for &p in Program::ALL {
             let m = p.manifest();
             for v in p.verbs() {
                 assert!(v.verb.len() <= MAX_VERB, "{}", v.verb);
@@ -248,33 +258,39 @@ mod tests {
                 // manifest declares.
                 let narrowed = narrow_by_verb(&m, p.verbs(), Some(v.verb.as_bytes()));
                 let kept = [
-                    (narrowed.clock, Grants::CLOCK),
-                    (narrowed.config, Grants::CONFIG),
-                    (narrowed.entropy, Grants::ENTROPY),
-                    (narrowed.network, Grants::NETWORK),
-                    (narrowed.domain, Grants::DOMAIN),
-                    (narrowed.machine, Grants::MACHINE),
-                    (narrowed.share, Grants::SHARE),
-                    (narrowed.installer, Grants::INSTALLER),
-                    (narrowed.catalog, Grants::CATALOG),
-                    (narrowed.indexes != IndexStore::Forbidden, Grants::INDEXES),
+                    (narrowed.clock, ManifestAuthorities::CLOCK),
+                    (narrowed.configuration, ManifestAuthorities::CONFIGURATION),
+                    (narrowed.entropy, ManifestAuthorities::ENTROPY),
+                    (narrowed.network, ManifestAuthorities::NETWORK),
+                    (narrowed.domain, ManifestAuthorities::DOMAIN),
+                    (narrowed.machine, ManifestAuthorities::MACHINE),
+                    (narrowed.share, ManifestAuthorities::SHARE),
+                    (narrowed.installer, ManifestAuthorities::INSTALLER),
+                    (narrowed.catalog, ManifestAuthorities::CATALOG),
                     (
-                        narrowed.indexes == IndexStore::ReadWrite,
-                        Grants::INDEXES_WRITE,
+                        narrowed.indexes != IndexStoreDeclaration::Forbidden,
+                        ManifestAuthorities::INDEXES,
+                    ),
+                    (
+                        narrowed.indexes == IndexStoreDeclaration::ReadWrite,
+                        ManifestAuthorities::INDEXES_WRITE,
                     ),
                 ]
                 .into_iter()
                 .filter(|(held, _)| *held)
-                .fold(Grants::NONE, |g, (_, bit)| g.union(bit));
-                assert_eq!(kept, v.grants, "{} {}", p.name(), v.verb);
+                .fold(ManifestAuthorities::NONE, |g, (_, bit)| g.union(bit));
+                assert_eq!(kept, v.authorities, "{} {}", p.name(), v.verb);
                 assert!(!narrowed.machine, "{}", p.name());
             }
             if p.verbs().is_empty() {
                 assert_eq!(narrow_by_verb(&m, p.verbs(), Some(b"x")), m);
             }
         }
-        assert_eq!(Grants::from_bits(Grants::ALL.bits()), Some(Grants::ALL));
-        assert_eq!(Grants::from_bits(1 << 15), None);
+        assert_eq!(
+            ManifestAuthorities::from_bits(ManifestAuthorities::ALL.bits()),
+            Some(ManifestAuthorities::ALL)
+        );
+        assert_eq!(ManifestAuthorities::from_bits(1 << 15), None);
     }
 
     /// **Each authority a verb can choose is narrowed on its own.** A manifest declaring all eleven,
@@ -283,7 +299,7 @@ mod tests {
     fn each_field_is_narrowed_by_its_own_bit() {
         let all = Manifest {
             clock: true,
-            config: true,
+            configuration: true,
             entropy: true,
             network: true,
             domain: true,
@@ -291,28 +307,31 @@ mod tests {
             share: true,
             installer: true,
             catalog: true,
-            indexes: IndexStore::ReadWrite,
-            ..Prog::Jig.manifest()
+            indexes: IndexStoreDeclaration::ReadWrite,
+            ..Program::Jig.manifest()
         };
-        let one = |verb: &'static str, grants| VerbGrant { verb, grants };
+        let one = |verb: &'static str, authorities| VerbGrant { verb, authorities };
         let table = [
-            one("a", Grants::CLOCK),
-            one("b", Grants::CONFIG),
-            one("c", Grants::ENTROPY),
-            one("d", Grants::NETWORK),
-            one("e", Grants::DOMAIN),
-            one("f", Grants::MACHINE),
-            one("g", Grants::SHARE),
-            one("h", Grants::INSTALLER),
-            one("i", Grants::CATALOG),
-            one("j", Grants::INDEXES),
-            one("k", Grants::INDEXES.union(Grants::INDEXES_WRITE)),
+            one("a", ManifestAuthorities::CLOCK),
+            one("b", ManifestAuthorities::CONFIGURATION),
+            one("c", ManifestAuthorities::ENTROPY),
+            one("d", ManifestAuthorities::NETWORK),
+            one("e", ManifestAuthorities::DOMAIN),
+            one("f", ManifestAuthorities::MACHINE),
+            one("g", ManifestAuthorities::SHARE),
+            one("h", ManifestAuthorities::INSTALLER),
+            one("i", ManifestAuthorities::CATALOG),
+            one("j", ManifestAuthorities::INDEXES),
+            one(
+                "k",
+                ManifestAuthorities::INDEXES.union(ManifestAuthorities::INDEXES_WRITE),
+            ),
         ];
         for v in &table {
             let n = narrow_by_verb(&all, &table, Some(v.verb.as_bytes()));
             let held = [
                 n.clock,
-                n.config,
+                n.configuration,
                 n.entropy,
                 n.network,
                 n.domain,
@@ -320,15 +339,15 @@ mod tests {
                 n.share,
                 n.installer,
                 n.catalog,
-                n.indexes != IndexStore::Forbidden,
-                n.indexes == IndexStore::ReadWrite,
+                n.indexes != IndexStoreDeclaration::Forbidden,
+                n.indexes == IndexStoreDeclaration::ReadWrite,
             ];
             let bits = held
                 .iter()
                 .enumerate()
                 .filter(|(_, h)| **h)
                 .fold(0u16, |b, (i, _)| b | 1 << i);
-            assert_eq!(bits, v.grants.bits(), "verb {}", v.verb);
+            assert_eq!(bits, v.authorities.bits(), "verb {}", v.verb);
         }
     }
 
@@ -336,14 +355,17 @@ mod tests {
     /// sides hold.
     #[test]
     fn all_is_eleven_bits_and_a_union_keeps_shared_bits() {
-        assert_eq!(Grants::ALL.bits(), 0x7ff);
-        assert_eq!(Grants::from_bits(1 << 11), None);
-        assert_eq!(Grants::CLOCK.union(Grants::CLOCK), Grants::CLOCK);
+        assert_eq!(ManifestAuthorities::ALL.bits(), 0x7ff);
+        assert_eq!(ManifestAuthorities::from_bits(1 << 11), None);
         assert_eq!(
-            Grants::CLOCK
-                .union(Grants::CLOCK.union(Grants::SHARE))
+            ManifestAuthorities::CLOCK.union(ManifestAuthorities::CLOCK),
+            ManifestAuthorities::CLOCK
+        );
+        assert_eq!(
+            ManifestAuthorities::CLOCK
+                .union(ManifestAuthorities::CLOCK.union(ManifestAuthorities::SHARE))
                 .bits(),
-            Grants::CLOCK.bits() | Grants::SHARE.bits()
+            ManifestAuthorities::CLOCK.bits() | ManifestAuthorities::SHARE.bits()
         );
     }
 
@@ -354,20 +376,20 @@ mod tests {
     /// either would be planned and not delivered; and no image may declare them.
     #[test]
     fn only_jig_holds_the_installer_and_the_catalog() {
-        for &p in Prog::ALL {
+        for &p in Program::ALL {
             let m = p.manifest();
-            assert_eq!(m.installer, p == Prog::Jig, "{}", p.name());
+            assert_eq!(m.installer, p == Program::Jig, "{}", p.name());
             assert_eq!(
-                m.indexes != IndexStore::Forbidden,
-                p == Prog::Jig,
+                m.indexes != IndexStoreDeclaration::Forbidden,
+                p == Program::Jig,
                 "{}",
                 p.name()
             );
-            if m.installer || m.catalog || m.indexes != IndexStore::Forbidden {
-                assert_eq!(m.runtime, Runtime::Std, "{}", p.name());
+            if m.installer || m.catalog || m.indexes != IndexStoreDeclaration::Forbidden {
+                assert_eq!(m.startup, StartupContract::Std, "{}", p.name());
             }
         }
-        let jig = Prog::Jig.manifest();
+        let jig = Program::Jig.manifest();
         assert!(!image_can_carry(&jig));
         assert!(!image_can_carry(&Manifest {
             installer: false,
@@ -383,7 +405,7 @@ mod tests {
         assert!(image_can_carry(&Manifest {
             installer: false,
             catalog: false,
-            indexes: IndexStore::Forbidden,
+            indexes: IndexStoreDeclaration::Forbidden,
             network: false,
             ..jig
         }));

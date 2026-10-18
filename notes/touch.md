@@ -4,7 +4,7 @@ Milestone 47. The create half built 2026-08-22; the mtime half built 2026-08-24 
 The contract side is `filesystem_contract::fs::CREATE` (milestone 31 (a capability shell: designation is authorization) phase 2), `GETMTIME`, `SETMTIME`
 and `SETMTIME_AT`. The mtime verbs come from the mtime lane of milestone 47 (navigation and naming: `cd`, `pwd`, `ls`, `mkdir`, `rm`, paths, and environment), and all four names are provisional except `CREATE`. The
 builtin is `Nav::touch` in `components/src/swish/navigation.rs`, parsed by `grant_plan::Command::Touch` into a
-`TouchArgs`.
+`TouchOperands`.
 
 ## What this does
 
@@ -89,7 +89,7 @@ lies are plausible.
 ## `-t`'s syntax: RFC 3339, not Unix's `[[CC]YY]MMDDhhmm[.ss]]`
 
 `grant_plan`'s parser does not interpret the `-t` operand's text at all; it only recognizes the `-t`
-flag and hands the following token, unparsed, to `TouchArgs::at`. Converting it to Unix seconds
+flag and hands the following token, unparsed, to `TouchOperands::at`. Converting it to Unix seconds
 happens where the grant is made (`Nav::touch` in `components/src/swish/navigation.rs`), using
 `calendar::DateTime::parse_rfc3339_bytes`, the same crate and the same layering `date` itself uses
 for the read side. `date`'s own `FMT_RFC3339` output is therefore a valid `-t` operand:

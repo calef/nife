@@ -8,11 +8,11 @@ ratified_by: calef
 # 77. The branch-prefix list now describes the tree
 
 calef, 2026-08-16, taking the recommendation as written: `roadmap/`,
-`decisions/`, `toolchain/` and `ci/` are legitimate, `dependabot/` is exempt as
-machine-generated, `docs/` and `design/` stay out with their single uses standing as history, and
-`audit/` and `finalize/` are kept as declared intent despite never having been used, because
-they cost a word each and removing a permitted name is how a lane that read an older file gets
-its branch refused.
+`decisions/`, `toolchain/` and `ci/` are legitimate. `dependabot/` is exempt as
+machine-generated. `docs/` and `design/` stay out with their single uses standing as history.
+`audit/` and `finalize/` are kept as declared intent despite never having been used. That is
+because they cost a word each and removing a permitted name is how a lane that read an older file
+gets its branch refused.
 
 The gate exempts GitHub's own `gh-readonly-queue/*` branches (#217); refusing them fails **every
 merge-queue group build**, which reads as a hung queue. Its blind spot is recorded below.

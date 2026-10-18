@@ -24,9 +24,9 @@ impl Nav {
 
     /// **A shell holding two trees** (milestone 154): the first at `a`, the second at `b` mounted
     /// at `mount` in the first, standing at the root of the one tree it presents.
-    fn rooted_twice(a: Tree, b: Tree, mount: grant_plan::SecondDir) -> Self {
+    fn rooted_twice(a: Tree, b: Tree, mount: grant_plan::MountedTree) -> Self {
         let mut nav = Nav::rooted_at(a.slot, a.rights);
-        nav.holds.second = Some(mount);
+        nav.holds.mounted = Some(mount);
         nav.second = Some(b);
         nav
     }
@@ -55,7 +55,7 @@ pub(super) fn piping() -> ! {
         // The shell as the producer: a builtin's bytes into a pipe, counted by a real process.
         &b"echo hello world | wc"[..],
         // Three stages, so a middle stage is a real middle: `wc`'s own output is a byte stream, so
-        // it composes, which is what `OutputSpec::Bytes` on `wc` is for.
+        // it composes, which is what `OutputDeclaration::Bytes` on `wc` is for.
         b"echo hello world | wc | wc",
         // The same unmodified `date`, twice, to two different destinations.
         b"date",
@@ -617,7 +617,7 @@ pub(super) fn two_trees(spec: u64) -> ! {
     let mount = nav::path(tt::MOUNT.as_bytes())
         .ok()
         .and_then(|p| grant_plan::Holdings::default().resolve_path(&p).ok())
-        .and_then(grant_plan::SecondDir::mounted_at);
+        .and_then(grant_plan::MountedTree::mounted_at);
     let (Some(mount), true) = (mount, rights != 0) else {
         send(REPORT, VERDICT, tt::TWO_TREES_FAILED, 0);
         exit();
@@ -765,9 +765,9 @@ fn two_tree_rm(nav: &mut Nav) -> u64 {
     if let Command::Run(rspec) = grant_plan::parse(b"rm /second/secret")
         && let Ok(e) =
             grant_plan::plan(&rspec, holdings(nav), grant_plan::expand::Expansion::none())
-        && let Some(g) = e.dir
+        && let Some(g) = e.directory
         && g.which == nav::Which::B
-        && dir_grant(&g, e.flags).is_err()
+        && dir_grant(&g, e.short_options).is_err()
     {
         return tt::RM_IN_MOUNT_REFUSED;
     }
@@ -858,7 +858,7 @@ pub(super) fn globbing(spec: u64) -> ! {
     if let Command::Run(rspec) = grant_plan::parse(line) {
         match expansion(&mut nav, &rspec) {
             Ok(e) => match grant_plan::plan(&rspec, holdings(&nav), e) {
-                Ok(endow) => match endow.dir {
+                Ok(endow) => match endow.directory {
                     Some(g) => swish::write_set(&g.names, &mut |b| granted.push(b)),
                     None => v |= gb::GLOB_FAILED,
                 },

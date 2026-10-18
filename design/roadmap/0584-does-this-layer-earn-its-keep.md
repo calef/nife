@@ -14,7 +14,7 @@ needs_person: no
 2026-09-23, on calef's instruction of 2026-09-24 to promote the proposals. The text below is the
 proposal's own, unedited except for this paragraph, the `## Index row` section, the correction about
 pull request #1170, and the nine layer headings, which read `### 1. The watchers` and so looked like
-milestone headings to `script/roadmap --check`; they now read `### Layer 1: the watchers`: the
+milestone headings to `script/roadmap --check`. They now read `### Layer 1: the watchers`. Its long sentences are split to meet §213 (writing standards). The
 argument is its author's and promotion is not the moment to improve it. On 2026-10-12 (UTC) the
 layers and the notes on the measure table moved whole into
 [layers.md](0584-does-this-layer-earn-its-keep/layers.md) under §212 (a prose budget), and a
@@ -99,7 +99,7 @@ one question asked of them.
 
 ## The layers
 
-Enumerated from the tree on 2026-09-23, not from memory: the watchers, the queue hold, the blocking gates, the scheduled cadences, the proof
+Enumerated from the tree on 2026-09-23, not from memory. The layers are the watchers, the queue hold, the blocking gates, the scheduled cadences, the proof
 and falsification machinery, the ledgers that already measure a layer, the briefs, the role
 structure, and the records layer. The last four are where the honesty is. Each layer's members and what would
 count as a catch in it are in
@@ -126,8 +126,8 @@ The notes on each row of the table are in
 
 A mechanism that has never caught anything is either unnecessary or blind, and from outside those
 two are indistinguishable. `falsifications.yml` looked like both for three weeks and was the
-second one. A workflow that has never gone red is the same sentence: it might be guarding a
-property nothing violates, or it might have a `gh` call missing `--repo`, which is what
+second one. A workflow that has never gone red is the same sentence. It might be guarding a
+property nothing violates, or it might have a `gh` call missing `--repo`. That is what
 `coe-architect-label.yml` turned out to be on its first real input.
 
 So this proposal names the consequence and does not wire it up: removing a layer stays a
@@ -146,10 +146,10 @@ They survive the deferral: they are facts about what a count can mean, not posit
 about one, so they hold whichever way the deferred question is eventually answered.
 
 1. Rung-one mechanisms are exempt by construction. `AGENTS.md`'s ladder puts *make the wrong
-   state unrepresentable* at the top, and its worked example is
+   state unrepresentable* at the top. Its worked example is
    milestone 50 (pipes and redirection), which turned
-   `InputSpec::Required` into a variant that carries `writes_while_reading`, so a program that
-   writes while it reads cannot be declared without saying so. That mechanism will catch zero
+   `InputDeclaration::Required` into a variant that carries `writes_while_reading`. So a program
+   that writes while it reads cannot be declared without saying so. That mechanism will catch zero
    things forever, because the defect it prevents cannot be typed. A zero-catch count on a rung-one
    mechanism is the mechanism working perfectly. This test applies only to mechanisms that operate
    after the fact, which is rungs two through four: gates, watchers, cadences, records. Deterrence
@@ -166,9 +166,9 @@ information rather than a reason to postpone.
 
 One layer, instrumented, surfaced where the measures already live. Not nine.
 
-Take layer 1, the watchers. It is the cheapest by a wide margin: the action sites exist, the
-change is a line each, the log files already exist and are already retained, and one of the five is
-being instrumented right now by another lane, which means the shape can be copied rather than
+Take layer 1, the watchers. It is the cheapest by a wide margin. The action sites exist, the
+change is a line each, and the log files already exist and are already retained. One of the five
+is being instrumented right now by another lane, which means the shape can be copied rather than
 designed.
 
 1. Fix the event vocabulary in a note, as a short table: one prefix per event kind, one line per
@@ -182,8 +182,8 @@ designed.
    kind per week. It is a reader, not a gate; nothing fails.
 4. Surface it in the two places that already exist. Flow columns in
    `notes/project-metrics/weekly.csv`, drawn on
-   notes/project-metrics.md (what moved, week by week), which is the page for numbers that move;
-   and a row apiece in notes/register-of-measures.md (every number this kernel owes itself),
+   notes/project-metrics.md (what moved, week by week), which is the page for numbers that move.
+   And a row apiece in notes/register-of-measures.md (every number this kernel owes itself),
    almost certainly `dated` rather than `gated`, because nothing should fail when a watcher has a
    quiet week.
 
@@ -203,7 +203,7 @@ measures and a substitute for none.
 Which measures depend on it:
 
 - Layer 3's red-then-fixed count. Whether the fix came from the lane that broke it, from a
-  maintainer session, or from calef changes what the number means, and today every commit and every
+  maintainer session, or from calef changes what the number means. Today every commit and every
   pull request in this repository carries calef's name whether he wrote it or not.
 - Layer 6's ledgers, which already record delegated work and are already implicitly about who
   did what.
@@ -240,14 +240,14 @@ automated, and not yet.
 What is deferred, stated as a deferral rather than as a posture. Whether a zero-catch count on a
 rung-two or rung-three mechanism, over some window, is a reason to remove it. That is an open
 decision, and this tree's convention is that an open decision lives in a file rather than in a
-conversation. "A finding only" is a settled posture and is not what was ruled; this is an open
+conversation. "A finding only" is a settled posture and is not what was ruled. This is an open
 question with a trigger, and a reader who takes the difference casually will later quote a deferral
 as a decision.
 
 Why the measurement had to come first, and this defeats the argument this file originally made.
-The proposal argued, and the maintainer agreed and went further by proposing that each mechanism's
-window be stated in advance, that the question must be settled before the numbers exist or it gets
-settled while looking at a specific check somebody is attached to. calef's counter is the better
+The proposal argued that the question must be settled before the numbers exist, or it gets
+settled while looking at a specific check somebody is attached to. The maintainer agreed and went
+further by proposing that each mechanism's window be stated in advance. calef's counter is the better
 argument: we do not yet understand the data, and a threshold chosen in ignorance is no better than
 one chosen under attachment. Nobody can pick a defensible answer to "how long is too long with
 zero catches" without knowing what the distribution looks like across nine layers that have never
@@ -269,4 +269,4 @@ and arguing about the smallest number.
 
 ## Index row
 
-Instruments the mechanisms this tree relies on (watchers, gates, cadences, proofs) to emit events rather than snapshots, so each can show it has caught something a person would have missed. Prompted by four mechanisms found on 2026-09-23 reporting success while checking nothing, it is the third step after §134's falsification records and the gate-must-have-failed rule; the first increment is the watchers alone, counted onto the metrics page, and whether a zero-catch count justifies removing a mechanism is deferred by calef until the data exists.
+Instruments the mechanisms this tree relies on (watchers, gates, cadences, proofs) to emit events rather than snapshots, so each can show it has caught something a person would have missed. Prompted by four mechanisms found on 2026-09-23 reporting success while checking nothing, it is the third step after §134's falsification records and the gate-must-have-failed rule. The first increment is the watchers alone, counted onto the metrics page. Whether a zero-catch count justifies removing a mechanism is deferred by calef until the data exists.

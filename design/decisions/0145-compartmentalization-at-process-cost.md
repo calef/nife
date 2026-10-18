@@ -164,7 +164,7 @@ because it is a customer-path decision and this tree has made one of those too f
 its own section once B has produced numbers.
 
 D should be refused in writing today, not because it is a bad idea in the abstract but because
-leaving it unrefused is how a demonstrator slides into a second unfinished Linux, which is the
+leaving it unrefused is how a demonstrator slides into a second unfinished Linux. That is the
 failure `design/competitor-question.md` was written to prevent.
 
 ## What is blocked until this is answered
