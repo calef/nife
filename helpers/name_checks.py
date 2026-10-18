@@ -306,7 +306,8 @@ def _git(root, *args):
 
 
 def ratchet_problems(judged, tree, rows, rules, base=None, renames=()):
-    """Every failure of the gate. `base` is `(rules, rows)` at the merge base, or None."""
+    """Every failure of the gate. `judged` is the `path::name` of every name the gate judged, and
+    `base` is `(rules, rows)` at the merge base, or None."""
     if not judged:
         return ["the check judged no name at all. A selector that matches nothing passes by "
                 "checking nothing (design/roadmap/0401-a-gate-that-selects-the-set-it-judges.md)"]
@@ -319,9 +320,17 @@ def ratchet_problems(judged, tree, rows, rules, base=None, renames=()):
         bad.append(f"{name} breaks the {check} rule, and it is not on the baseline. A name a change "
                    f"adds or renames meets the current naming rules (design/naming.md); rename it "
                    f"to comply and mark it `Name: provisional, minted <date> (UTC) by <lane>.`")
+    # A row whose name left the judged set (narrowed to `pub(crate)`, deleted, moved or ratified)
+    # still fails rather than passing quietly: left behind, it would admit the same break the day
+    # the name comes back into scope. `--bank` drops it, so the message says that plainly.
     for row, n in sorted((rows - tree).items()):
-        bad.append(f"{BASELINE}: {row} no longer breaks its rule. Remove it (--bank); the list "
-                   f"cannot go stale")
+        if row.rsplit(" ", 1)[0] in judged:
+            why = "no longer breaks its rule"
+        else:
+            why = ("names something the gate no longer judges (narrowed to `pub(crate)`, deleted, "
+                   "moved without a rename git sees, or ratified)")
+        bad.append(f"{BASELINE}: {row} {why}. Run `python3 helpers/name_checks.py --bank` in this "
+                   f"change to drop it; the list cannot go stale")
     if base is not None and base[0] == RULES:
         was = {new: old for old, new in renames}
 
@@ -361,7 +370,7 @@ def run_check(root, rows_now, judged):
         for b in bad:
             print(f"  {b}", file=sys.stderr)
         return 1
-    print(f"names: {judged} unratified names judged against rules revision {RULES}; "
+    print(f"names: {len(judged)} unratified names judged against rules revision {RULES}; "
           f"{sum(rows.values())} known breaks held to the baseline, none new")
     return 0
 
@@ -426,22 +435,27 @@ def _selftest():
     assert cases["lib_a/src/lib.rs::mem_size spelled-out"] == 1, cases
     assert not any(k.endswith(" spelling") for k in cases), "house_style holds spelling"
     base_rows = collections.Counter(cases)
-    assert ratchet_problems(5, cases, cases, RULES, (RULES, base_rows)) == []
+    judged = {f"{c[2]}::{c[1]}" for c in cands} | {"lib_a/src/lib.rs::dir_len",
+                                                    "lib_a/src/b.rs::mem_size"}
+    assert ratchet_problems(judged, cases, cases, RULES, (RULES, base_rows)) == []
     fixed = cases - collections.Counter(["lib_a/src/lib.rs::mem_size spelled-out"])
-    stale = ratchet_problems(5, fixed, cases, RULES)
+    stale = ratchet_problems(judged, fixed, cases, RULES)
     assert len(stale) == 1 and "--bank" in stale[0], "a fixed name's row is removed"
+    gone = ratchet_problems(judged - {"lib_a/src/lib.rs::mem_size"}, fixed, cases, RULES)
+    assert len(gone) == 1 and "pub(crate)" in gone[0] and "--bank" in gone[0], \
+        "a row whose name left scope says so, and how to drop it"
     new = cases + collections.Counter(["lib_a/src/lib.rs::dir_len spelled-out"])
-    bad = ratchet_problems(5, new, cases, RULES)
+    bad = ratchet_problems(judged, new, cases, RULES)
     assert len(bad) == 1 and "dir_len breaks the spelled-out rule" in bad[0], "a new break fails"
-    added = ratchet_problems(5, new, new, RULES, (RULES, base_rows))
+    added = ratchet_problems(judged, new, new, RULES, (RULES, base_rows))
     assert len(added) == 1 and "was added" in added[0], "a row added against the base fails"
-    assert ratchet_problems(5, new, new, RULES, (RULES - 1, base_rows)) == [], \
+    assert ratchet_problems(judged, new, new, RULES, (RULES - 1, base_rows)) == [], \
         "a rules bump admits the rows its revised check finds"
     moved = collections.Counter(r.replace("lib_a/src/lib.rs", "lib_a/src/b.rs") for r in
                                 cases.elements())
-    assert ratchet_problems(5, moved, moved, RULES, (RULES, base_rows),
+    assert ratchet_problems(judged, moved, moved, RULES, (RULES, base_rows),
                             (("lib_a/src/lib.rs", "lib_a/src/b.rs"),)) == [], "a rename moves rows"
-    assert "judged no name" in ratchet_problems(0, cases, cases, RULES)[0]
+    assert "judged no name" in ratchet_problems(set(), cases, cases, RULES)[0]
     print("name_checks: selftest ok")
 
 
@@ -485,7 +499,7 @@ def main(argv):
     british = british_of(c[1] for c in cands + kept)
     rows = survey(cands, sources, manifests, british, reach)
     if mode == "--check":
-        return run_check(root, rows_of(rows), len(cands))
+        return run_check(root, rows_of(rows), {f"{c[2]}::{c[1]}" for c in cands})
     if mode in ("--bank", "--init"):
         path = os.path.join(root, BASELINE)
         if mode == "--init" and os.path.exists(path):
