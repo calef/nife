@@ -11,13 +11,13 @@ needs_person: no
 # 577. The icount baselines predate the pinned nightly, so the tripwire's headroom is eroding unseen
 
 This block's work is in milestone 300 (decompose the icount baseline drift, and
-re-baseline only what is proven), milestone 302 (a baseline records what it was saved against, and a
-stale one fails loudly) and milestone 415 (sub-tripwire drift accumulates across baseline saves).
-Promoted and closed in one act, the shape milestone 431 (the ACPI walk is reachable by the
-prover for the first time, and proved by nothing) used, because a proposal cannot be disposed of in
-place: it was filed 2026-09-15 by the lane of milestone 299 (the x86 port-range capability), sat on
-PR #883, and both halves of it were answered while it sat. *(Number provisional until the merge
-queue lands it.)*
+re-baseline only what is proven) and milestone 302 (a baseline records what it was saved against,
+and a stale one fails loudly). It is also in milestone 415 (sub-tripwire drift accumulates across
+baseline saves). Promoted and closed in one act, the shape milestone 431 (the ACPI walk is
+reachable by the prover for the first time, and proved by nothing) used. That shape exists because
+a proposal cannot be disposed of in place. It was filed 2026-09-15 by the lane of milestone 299 (the
+x86 port-range capability), sat on PR #883, and both halves of it were answered while it sat.
+*(Number provisional until the merge queue lands it.)*
 
 Nothing gates a block whose work has homes. What is still owed is owed by 302 and by
 415's item 2, and both of those carry their own gates; this one exists so the number is spent and
@@ -109,14 +109,15 @@ file could not tell either of them anything.** `notes/benchmarks/rfence-self-row
 reading attributes 6476 to a run made at the wrong hart count and shows the row is hart-sensitive
 (5991 at one hart, 6432 at two, 7153 at four). Tonight's reading attributes the same oscillation to
 the compiler. Both are argued from outside the file, because the file records a number and not why
-it holds that value, and that is the gap: not that a floor goes stale, which now fails loudly,
-but that a floor cannot say what it means. It is the `BUGS`-section posture applied to a data file,
+it holds that value. That is the gap. It is not that a floor goes stale, which now fails loudly, but
+that a floor cannot say what it means. It is the `BUGS`-section posture applied to a data file,
 and it is already item 2 of 415 and the `# why:` line of 302.
 
-The concrete cost is in notes/benchmarks.md already, from the lane that hand-edited the row: the `#`
-comment it wrote above `rfence_self` explaining the correction **did not survive the next `--save`**,
-because the save path rebuilds the file from a fixed header plus one `name ticks iters` line per
-result and preserves nothing else. A row that cannot carry a reason cannot carry a correction either.
+The concrete cost is in notes/benchmarks.md already, from the lane that hand-edited the row. The
+`#` comment it wrote above `rfence_self` explaining the correction **did not survive the next
+`--save`**. The save path rebuilds the file from a fixed header plus one `name ticks iters` line per
+result and preserves nothing else. A row that cannot carry a reason cannot carry a correction
+either.
 
 ## Recommendation, which is a disposal rather than a plan
 
@@ -146,13 +147,13 @@ result and preserves nothing else. A row that cannot carry a reason cannot carry
 
 `bench/baseline-*.txt` are the icount tripwire's committed floors and a new nightly revalues every
 number in them, so this was filed on 2026-09-15 after a bump left the floors alone and most of the
-headroom went with it. Both of its items were answered while it sat unpromoted on a branch: milestone
-300 decomposed the drift and measured the toolchain term at ~0, and milestone 302 is an architect's
-fail-loudly ruling, most of which landed as `99f13dad`'s `script/lint` check that fires when a
-baseline's `# toolchain:` line and `rust-toolchain.toml` disagree. Promoted and closed in one act
-so the number is spent and the evidence has a home: that check covers staleness and nothing else, and
-riscv64's `rfence_self` oscillating between 5991 and 6476 across consecutive saves, read as a wrong
-hart count by one lane and as compiler drift by another four days later, is what a floor that records
-a number without recording why looks like from the outside. The fix is already owned twice, by 302's
-`# why:` header line and by milestone 415's item 2, and this block deliberately adds no third
-statement of it.
+headroom went with it. Both of its items were answered while it sat unpromoted on a branch.
+Milestone 300 decomposed the drift and measured the toolchain term at ~0. Milestone 302 is an
+architect's fail-loudly ruling, most of which landed as `99f13dad`'s `script/lint` check. That check
+fires when a baseline's `# toolchain:` line and `rust-toolchain.toml` disagree. Promoted and closed
+in one act so the number is spent and the evidence has a home. That check covers staleness and
+nothing else. On riscv64, `rfence_self` oscillated between 5991 and 6476 across consecutive saves,
+read as a wrong hart count by one lane and as compiler drift by another four days later. That is
+what a floor that records a number without recording why looks like from the outside. The fix is
+already owned twice, by 302's `# why:` header line and by milestone 415's item 2, and this block
+deliberately adds no third statement of it.
