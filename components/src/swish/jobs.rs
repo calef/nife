@@ -224,9 +224,10 @@ fn start_supervised(e: Endowment, foreground: bool) -> Option<Held> {
     send_cap(job_fr);
 
     // The progenitor acks once the child is running: that is the shell's go-ahead to start watching.
-    if receive(RESULT).0 != spawnproto::SPAWN_OK {
+    let answer = receive(RESULT).0;
+    if answer != spawnproto::SPAWN_OK {
         failed();
-        print(b"  could not spawn (the progenitor is out of memory)\n");
+        print(swish::spawn_failure_sentence(answer));
         give_back(job_fr, job_ut);
         return None;
     }

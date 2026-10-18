@@ -1100,8 +1100,9 @@ pub(super) fn drain_text() {
         // Checked before decoding: the progenitor's sentinel is `u64::MAX`, whose top byte is an opcode this
         // contract does not define, so it would otherwise read as a malformed message rather than as
         // the one thing it is.
-        if w0 == spawnproto::SPAWN_FAILED {
-            print(b"could not spawn (the progenitor is out of memory)\n");
+        if w0 == spawnproto::SPAWN_FAILED || w0 == spawnproto::SPAWN_NOT_IN_IMAGE {
+            // Past the sentence's own indent: this function printed one before the first read.
+            print(&swish::spawn_failure_sentence(w0)[2..]);
             return;
         }
         // **Refused as unvouched** (DECISIONS §219), which nothing but an image request earns.
