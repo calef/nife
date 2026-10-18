@@ -83,7 +83,6 @@ crates/e1000e/src/process.rs::RX_QUEUE_VA spelled-out
 crates/e1000e/src/process.rs::TX_QUEUE_VA spelled-out
 crates/environment_contract/src/lib.rs::ConfigPage spelled-out
 crates/extensible_host_controller_interface/src/dma.rs::dma spelled-out
-crates/extensible_host_controller_interface/src/port.rs::CONFIG_ERROR_CHANGE spelled-out
 crates/extensible_host_controller_interface/src/regs.rs::CONFIG spelled-out
 crates/extensible_host_controller_interface/src/trb.rs::cycle question-shape
 crates/filesystem_contract/src/dir.rs::dir spelled-out
