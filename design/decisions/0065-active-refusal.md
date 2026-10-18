@@ -19,9 +19,9 @@ thread in the region and *then* returns `Err`, which is what lets an owner's ret
 down and is what §24's `^C` escalation is built on.
 
 The comment kept compiling. The child did not survive. `schedule()` converts a killed thread to a
-corpse at its next preemption, so whenever the timer beat the child's nine instructions it was reaped
-before it could `SEND`, the receiver blocked forever, every core fell idle, and the lost-wakeup
-watchdog fired sixty seconds later and arbitrarily far from the cause.
+corpse at its next preemption. So whenever the timer beat the child's nine instructions it was
+reaped before it could `SEND`, and the receiver blocked forever. Every core fell idle, and the
+lost-wakeup watchdog fired sixty seconds later and arbitrarily far from the cause.
 
 ## The rule
 
