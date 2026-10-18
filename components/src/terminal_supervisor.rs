@@ -15,7 +15,7 @@
 //!                parked reader is answered FLAG_RETRY and asks again; the blob is written.
 //!   3 ABSORBING  start the replacement with START_ABSORB. It reads the blob before it serves.
 //!   4 COMMIT     NOTE_ABSORBED: tell the incumbent CTL_QUIT and collect it.
-//!     or UNDO    NOTE_REFUSED: collect the refuser and tell the incumbent CTL_RESUME.
+//!     or UNDO    NOTE_NOT_ABSORBED: collect the refuser and tell the incumbent CTL_RESUME.
 //! ```
 //!
 //! It is `swapper`'s shape, an unprivileged operator holding exactly the objects it swaps, pointed

@@ -3,7 +3,7 @@
 *The last residual of milestone 23 (a capability-routed component OS with live replacement), built
 2026-09-26 to the ruling in DECISIONS §209 (state handoff is an opaque blob over a granted frame,
 and it is optional). `crates/component_plan`'s `Handoff` and `Requirements::handoff`,
-`crates/swap_protocol`'s `TALLY` and `serve_with_state`, `components/src/swapper.rs`'s `handoff()`,
+`crates/swap_protocol`'s `STATEFUL_BACKEND` and `serve_with_state`, `components/src/swapper.rs`'s `handoff()`,
 and the guest test
 `a_component_keeps_its_state_across_a_swap_and_a_swap_that_cannot_absorb_it_does_not_commit`. Read
 notes/live-replacement.md first; this builds on its four steps.*
@@ -18,9 +18,9 @@ notes/live-replacement.md first; this builds on its four steps.*
    versioned there beside the only code that reads it (`LAYOUT_1`, `state_blob`, `absorb`).
 2. Optional, declared beside `depends_on`. `Requirements::handoff: Option<Handoff>`, a required
    field with no default, so a contract cannot be declared without answering the question. Every
-   declaration in the tree says `None` except `TALLY`.
+   declaration in the tree says `None` except `STATEFUL_BACKEND`.
 3. Failure does not commit. The operator retires the outgoing instance only after the incoming
-   one sends `NOTE_ABSORBED`. An incoming instance that cannot read the blob sends `NOTE_REFUSED`,
+   one sends `NOTE_ABSORBED`. An incoming instance that cannot read the blob sends `NOTE_NOT_ABSORBED`,
    exits without ever receiving a request, and is reaped; the operator then sends the incumbent
    `POKE_RESUME`, and it goes back to serving with the state it never lost.
 
@@ -41,7 +41,7 @@ A supervisor that cannot carry state is refused a component that has some. §209
 this and needs it. A supervisor that routes no handoff page, wiring a stateful component anyway,
 performs a kill-and-replace that looks exactly like a successful swap while the state goes to zero.
 So `plan` treats the handoff role like any other need and refuses with `Unprovided`. The guest test
-makes that its opening control: the client's routing table is asked for `TALLY` and refused before
+makes that its opening control: the client's routing table is asked for `STATEFUL_BACKEND` and refused before
 anything is built.
 
 Fresh and absorbing are told, not inferred. The first instance on a channel is started with
@@ -74,8 +74,8 @@ A contract that carries state declares where its page goes, and a supervisor rou
 both instances:
 
 ```rust
-pub const TALLY: Requirements = Requirements {
-    contract: "tally",
+pub const STATEFUL_BACKEND: Requirements = Requirements {
+    contract: "stateful_backend",
     caps: CONSOLE.caps,
     maps: BACKEND.maps,
     pages: INSTANCE_PAGES,
@@ -84,7 +84,7 @@ pub const TALLY: Requirements = Requirements {
 };
 
 let to_incumbent = Provisions { held: &[/* ... */, (component_plan::HANDOFF_ROLE, state)] };
-let plan = component_plan::plan(&TALLY, &to_incumbent)?;
+let plan = component_plan::plan(&STATEFUL_BACKEND, &to_incumbent)?;
 assert_eq!(plan.handoff(), Some(STATE_VA)); // wait for NOTE_ABSORBED before retiring anyone
 ```
 
@@ -125,10 +125,11 @@ The refusal is staged. No build in the tree writes `LAYOUT_2`; the refusing repl
 is real. The incompatibility is configured.
 
 Every new name here is provisional: `handoff` (§209's own), `Handoff`,
-`HANDOFF_ROLE`, `Plan::handoff`, `TALLY` and its contract string `tally`, `ROLE_HANDOFF`,
+`HANDOFF_ROLE`, `Plan::handoff`, `ROLE_HANDOFF`,
 `START_FRESH`, `START_ABSORB`, `STATE_VA`, `LAYOUT_1`, `LAYOUT_2`, `STATE_MAGIC`, `state_blob`,
-`absorb`, `serve_with_state`, `start`, `POKE_RESUME`, `NOTE_ABSORBED`, `NOTE_REFUSED`,
-`step::ABSORBED` and `step::ROLLED_BACK`.
+`absorb`, `serve_with_state`, `start`, `POKE_RESUME`, `NOTE_ABSORBED`,
+`step::ABSORBED` and `step::ROLLED_BACK`. `STATEFUL_BACKEND` with its contract string
+`stateful_backend`, and `NOTE_NOT_ABSORBED`, are ratified (calef, 2026-10-18).
 
 ## See also
 

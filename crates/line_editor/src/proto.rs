@@ -130,7 +130,7 @@ pub const CTL_QUIT: u64 = 2;
 /// capability-routed component OS with live replacement)). `START_HANDOFF`: a handoff page is
 /// mapped at [`HANDOFF_VA`](super::component::HANDOFF_VA), so a quiesce writes the blob there.
 /// `START_ABSORB`: this instance replaces another, so it reads that blob before serving and
-/// tells its supervisor [`NOTE_ABSORBED`] or [`NOTE_REFUSED`] on the slot after its control
+/// tells its supervisor [`NOTE_ABSORBED`] or [`NOTE_NOT_ABSORBED`] on the slot after its control
 /// endpoint.
 ///
 /// Name: provisional (the lane for milestone 23, 2026-09-27).
@@ -141,7 +141,9 @@ pub const START_ABSORB: u64 = 1 << 1;
 pub const NOTE_ABSORBED: u64 = 1;
 /// Terminal → supervisor: the blob was refused; this instance is leaving without serving.
 /// The second word is the refusal: 0 no blob, 1 malformed, otherwise the layout found.
-pub const NOTE_REFUSED: u64 = 2;
+///
+/// Name: ratified 2026-10-18 (calef: "Approve both"), the negation of [`NOTE_ABSORBED`].
+pub const NOTE_NOT_ABSORBED: u64 = 2;
 
 /// Pack a request's first word from an opcode and a length/count.
 pub const fn req(operation: u64, len: u64) -> u64 {
