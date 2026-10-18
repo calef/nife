@@ -99,7 +99,7 @@ existing `Server::handle` host tests and `DiskMemory` fixtures rather than booti
   the fifth pass homed to it; the verdict stays calef's.
 - **Milestone 927.** Rows 19 and 24 of `notes/confinement-claims.md` and the pass-4 refusal log still name
   the window TOCTOU as the open near miss; they want the new test cited and the result recorded. That
-  edit touches the confinement records a lane does not own, so it is left to the confinement owner:
+  edit touches the confinement records a lane does not own, so it is left to the confinement owner as milestone 927 (cite milestone 825's test in the confinement records):
   `design/roadmap/0927-cite-825-in-the-confinement-claims.md`.
 
 ## Index row
