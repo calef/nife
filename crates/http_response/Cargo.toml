@@ -9,3 +9,4 @@ license.workspace = true
 workspace = true
 
 [dependencies]
+httparse = { version = "1.10.1", default-features = false }
