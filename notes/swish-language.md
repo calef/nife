@@ -131,9 +131,11 @@ inside it.
 A single `|` is the pipe. Only the doubled form is a connector, and getting that wrong would
 turn every pipeline in the system into two commands.
 
-A single `&` is an ordinary byte, so `date &` runs `date` with a word `&` on the line. Job
-control is milestone 48's, and this module reads only the doubled form so that milestone can give
-`&` a meaning without one having been taken away first.
+A single `&` at the end of a line runs that line's one command in the background (milestone 48,
+`swish::sequence::background`), and only a supervised job can go there: it is the one job the
+shell holds capabilities for. Anywhere else a single `&` is an ordinary byte, so `echo a & b`
+prints it. A line with a connector or a pipe and a trailing `&` is refused, because backgrounding
+a chain is a different claim from backgrounding one job.
 
 ## Exit status: a refusal is not an error
 
@@ -270,8 +272,8 @@ against run, so a shell that ignored the feature fails both halves.
   and grouping should arrive with them.
 - `time a && b` times only `a`. That is the outermost-split binding and it matches bash, but a
   person who wanted the chain timed has no spelling for it until grouping exists.
-- A single `&` runs nothing in the background. It is an ordinary byte on the line. Job control is
-  milestone 48's.
+- `&` backgrounds only a whole line of one supervised job, and only as the line's last byte.
+  bash's `a & b` has no spelling, and `date &` is refused (milestone 48's block says why).
 - A sequence is at most eight commands and a pipeline at most four stages. Past either the line
   is refused rather than truncated, which is the same posture `line::MAX_STAGES` already took.
 - `xargs <program>` still stops after planning batch one, unchanged by this milestone: the shell

@@ -43,6 +43,11 @@ pub fn write_help(out: &mut dyn FnMut(&[u8])) {
     out(
         b"  apropos <word>          name the installed pages that mention it (it grants nothing)\n",
     );
+    out(b"  <command> &             run a supervised job in the background (jobs, wait, kill, fg)\n");
+    out(b"  jobs                    the background jobs this shell holds\n");
+    out(b"  wait [%N]               until that job (or every job) finishes; ^C stops waiting\n");
+    out(b"  kill [-9] %N            ask job N to stop; -9 tears it down and takes its memory back\n");
+    out(b"  fg [%N]                 watch job N (or the newest) in the foreground; ^C interrupts it\n");
     out(b"  jig install <file>      install every program of a package this image vouches for\n");
     out(b"  jig install <name>      fetch a package and install it\n");
     out(

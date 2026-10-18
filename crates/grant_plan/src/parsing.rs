@@ -113,8 +113,8 @@ pub fn each_word(
 ///
 /// Name: provisional (milestone 47, 2026-09-26).
 pub const BUILTINS: &[&[u8]] = &[
-    b"apropos", b"bind", b"caps", b"cd", b"echo", b"help", b"ls", b"mkdir", b"pwd", b"time",
-    b"touch", b"xargs",
+    b"apropos", b"bind", b"caps", b"cd", b"echo", b"fg", b"help", b"jobs", b"kill", b"ls",
+    b"mkdir", b"pwd", b"time", b"touch", b"wait", b"xargs",
 ];
 
 /// Parse a whole command line into a [`Command`]. Pure and allocation-free.
@@ -205,6 +205,12 @@ pub fn parse(line: &[u8]) -> Command<'_> {
         // only when this shell is the owner's console: a confined shell's root is its own subtree,
         // where a `suspended` file is one nothing reads.
         b"user" => Command::User(trim(rest)),
+        // **Job control** (milestone 48, phase one). Builtins because a job is what this shell
+        // holds capabilities for, and only the holder can act on them.
+        b"jobs" => Command::Jobs,
+        b"wait" => Command::Wait(trim(rest)),
+        b"kill" => Command::Kill(trim(rest)),
+        b"fg" => Command::Fg(trim(rest)),
         // **`rm` is deliberately not here.** It was a builtin in the commands lane and is a program
         // now (milestone 47's rmdir lane): a builtin runs with the shell's whole endowment, and a
         // destructive loop should take an explicit attenuated grant instead. Since builtins are
@@ -213,6 +219,60 @@ pub fn parse(line: &[u8]) -> Command<'_> {
         // Not a builtin, so it is a program invocation, and the whole line (name included) is the
         // grant expression. Whether the program exists is `plan`'s question, not the parser's.
         _ => Command::Run(parse_run(trimmed)),
+    }
+}
+
+/// **Which job an operand names** (milestone 48): `%N` or a bare `N`, counted from one as `jobs`
+/// prints them. `Ok(None)` is an empty operand, which `wait` reads as every job and `fg` as the
+/// most recent; `Err(())` is anything else, which names no job. Name: provisional.
+///
+/// ```
+/// use grant_plan::job_operand;
+/// assert_eq!(job_operand(b"%2"), Ok(Some(2)));
+/// assert_eq!(job_operand(b"2"), Ok(Some(2)));
+/// assert_eq!(job_operand(b""), Ok(None));
+/// assert_eq!(job_operand(b"%0"), Err(()));
+/// assert_eq!(job_operand(b"%1 %2"), Err(()));
+/// ```
+#[allow(clippy::result_unit_err)]
+pub fn job_operand(tail: &[u8]) -> Result<Option<usize>, ()> {
+    let t = trim(tail);
+    if t.is_empty() {
+        return Ok(None);
+    }
+    let digits = t.strip_prefix(b"%").unwrap_or(t);
+    // Two digits is the whole range a job number can have; anything longer names no job, and
+    // refusing it here keeps the sum below from overflowing.
+    if digits.is_empty() || digits.len() > 2 || !digits.iter().all(u8::is_ascii_digit) {
+        return Err(());
+    }
+    let n = digits
+        .iter()
+        .fold(0usize, |n, d| n * 10 + usize::from(d - b'0'));
+    if n == 0 { Err(()) } else { Ok(Some(n)) }
+}
+
+/// **`kill`'s operands** (milestone 48): whether `-9` asked for the forcible tier, and the job.
+/// A job is required, because `kill` with nothing named would have to guess which job to stop.
+/// Name: provisional.
+///
+/// ```
+/// use grant_plan::kill_operands;
+/// assert_eq!(kill_operands(b"%1"), Ok((false, 1)));
+/// assert_eq!(kill_operands(b"-9 %3"), Ok((true, 3)));
+/// assert_eq!(kill_operands(b""), Err(()));
+/// assert_eq!(kill_operands(b"-15 %1"), Err(()));
+/// ```
+#[allow(clippy::result_unit_err)]
+pub fn kill_operands(tail: &[u8]) -> Result<(bool, usize), ()> {
+    let t = trim(tail);
+    let (force, job) = match t.strip_prefix(b"-9") {
+        Some(rest) if rest.first().is_some_and(u8::is_ascii_whitespace) => (true, rest),
+        _ => (false, t),
+    };
+    match job_operand(job) {
+        Ok(Some(n)) => Ok((force, n)),
+        _ => Err(()),
     }
 }
 
