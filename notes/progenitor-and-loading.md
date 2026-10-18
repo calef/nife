@@ -37,9 +37,9 @@ services today, by moving that wiring into the first process.)
 
 ## How the progenitor loads a child (the loader, in userspace, through the verbs)
 
-A builder is handed three things by `spawn_elf_child_builder`: a building untyped budget (slot 0), a report
-endpoint (slot 1, with `GRANT` so it can endow a child), and the whole initrd mapped read-only
-at `INITIAL_RAMDISK_VA` so it can read the ELF. Its length arrives in `x1`.
+`spawn_elf_child_builder` hands a builder three things: a building untyped budget (slot 0), a
+report endpoint (slot 1, with `GRANT` so it can endow a child), and the whole initrd. The initrd is
+mapped read-only at `INITIAL_RAMDISK_VA` so the builder can read the ELF. Its length arrives in `x1`.
 
 `build_child` then does, entirely through the milestone-19 granular verbs, what the kernel's
 `map_segments` used to do privileged:

@@ -97,10 +97,9 @@ An appendix to [notes/riscv-port.md](../riscv-port.md), moved there on 2026-10-1
 
    And userspace init builds the system, from a richer initrd. The single-ELF initrd became a
    nifefs archive holding two programs: `init` (the portable `builder`) and `worker`. The kernel
-   (`riscv_initrd_demo`, a minimal `spawn_progenitor` with no GIC/PL011/IRQ baggage; that function
-   is `spawn_elf_child_builder` since milestone 166 (one boot loader, reached two inconsistent ways)) loads only `init`, maps the whole archive read-only into
-   it, and grants it two capabilities: an untyped budget and a report
-   endpoint. From those, `init` reads `worker` out of the archive by name. It builds it as a child
+   (`riscv_initrd_demo`, a minimal `spawn_progenitor` with no GIC/PL011/IRQ baggage) loads only
+   `init` and maps the whole archive read-only into it. `spawn_elf_child_builder` is that function's
+   descendant. It grants `init` two capabilities: an untyped budget and a report endpoint. From those, `init` reads `worker` out of the archive by name. It builds it as a child
    *entirely from its own budget* through the capability verbs: retype an address space, copy each
    segment into retyped frames and map them, retype a TCB, endow it, configure, start. It hands the
    child a WRITE view of the report endpoint, and starts it with an input. The child squares it and
