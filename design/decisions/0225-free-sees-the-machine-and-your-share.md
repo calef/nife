@@ -14,7 +14,7 @@ statistics fork: *"Rule 3."* *(Section number provisional until the merge queue 
 
 How `free` and `vmstat` learn about memory. `kernel/src/memory.rs` keeps the figures (`stats()`,
 `free_page_frames()`), and today only the boot summary and kernel tests read them. Section 3 of
-[`notes/process-view/what-is-left.md`](../../notes/process-view/what-is-left.md) asked whether
+[`notes/process-view/remaining-procps-programs.md`](../../notes/process-view/remaining-procps-programs.md) asked whether
 "how much memory is free" carries region-scoped authority like everything else here, or becomes the
 second machine-wide ambient fact after monotonic time. It named two options and no winner, because
 both touch the syscall surface. calef ruled a third, which combines them.

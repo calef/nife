@@ -14,7 +14,7 @@
 /// register on the way out of *every* syscall, and some methods write up to the sixth, so no
 /// caller may declare a register as surviving the trap: a yield comes back with `x0 = 0`, and a
 /// retry loop that kept arguments live across one sent the wrong call
-/// (notes/job-mix/spawn-destroy-gone.md). `helpers/syscall_asm.py` gates every userspace trap.
+/// (notes/job-mix/spawn-job-miscompiled-yield.md). `helpers/syscall_asm.py` gates every userspace trap.
 ///
 /// For `SYS_INVOKE` (milestone 139 (drive the unsafe count down) round 2), `cap`, `method` and two
 /// more arguments go in `x0..x3`/`a0..a3` (the fifth is spare and zero on input), and the reply

@@ -147,7 +147,7 @@ impl Pl011 {
     /// `Ns16550::discard_rx`, deliberately.
     ///
     /// Name: provisional since milestone 445, flagged again 2026-09-25 by the lane that re-derived
-    /// the x86 port falsifications (design/naming/boolean-predicates-worklist.md, "`rx` and `tx`").
+    /// the x86 port falsifications (design/naming/functions-that-answer-yes-or-no-worklist.md, "`rx` and `tx`").
     /// calef asked what `rx` stands for in his #1255 review; recommended `discard_waiting_bytes`,
     /// because it drops the bytes `is_byte_waiting` would have reported.
     pub fn discard_rx(&self) {

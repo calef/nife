@@ -49,7 +49,7 @@ That is five pull requests, 20.6 minutes from enqueue to the last merge. At the 
 of 17.0 minutes each, serialized, the same five would have been about 85 minutes. Under the
 up-to-date rule of §73 (ten admin minutes), each merge
 would have staled the other four at least once. So the real before-cost is higher than that, and is
-the thing the ordering brain in [before-the-queue.md](before-the-queue.md) was written to manage.
+the thing the ordering brain in [what-the-merge-queue-took-over.md](what-the-merge-queue-took-over.md) was written to manage.
 
 ## The caveats, and there are five
 

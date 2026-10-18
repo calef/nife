@@ -15,7 +15,7 @@ it.)*
 ## The question
 
 How `pidwait` ships. Upstream `pidwait PATTERN` finds processes by pattern and waits until they
-exit. Section 4 of [`notes/process-view/what-is-left.md`](../../notes/process-view/what-is-left.md)
+exit. Section 4 of [`notes/process-view/remaining-procps-programs.md`](../../notes/process-view/remaining-procps-programs.md)
 found that a pattern-taking `pidwait` holds exactly `pgrep`'s authority, so milestone 281 (`watch`
 holds exactly what `ps` holds)'s rule said it was not a program, and recommended a wait mode on
 `pgrep`.

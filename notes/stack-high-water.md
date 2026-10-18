@@ -206,7 +206,7 @@ on the test build says what each frame costs, with no emulator. It found
 headroom, which is what faulted the branch of milestone 108 (the drivers move onto frame capabilities). A `[T; MAX]` local sized to a table maximum
 is a stack allocation wearing the clothes of a bound. The frame now carries no table-sized local, and
 `script/stack-frame-check` fails the build on a frame over the 4,096-byte guard page. The method and
-the account are in [stack-high-water/frame-cost.md](stack-high-water/frame-cost.md).
+the account are in [stack-high-water/stack-frame-sizes.md](stack-high-water/stack-frame-sizes.md).
 
 ## Per-IPC depth: how much of its kernel stack one IPC touches (milestone 134, 2026-09-19)
 

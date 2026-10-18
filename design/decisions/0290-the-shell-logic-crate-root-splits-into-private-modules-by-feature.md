@@ -71,7 +71,7 @@ test helpers become `pub(crate)` inside a `#[cfg(test)]` module.
 ## What moving the code costs
 
 - The cap ratchet. `lib.rs` naming `write_caps` and `write_image_caps` in its re-exports would
-  count as two new identifiers. The worklist (`design/naming/capability-worklist.md`) already lists
+  count as two new identifiers. The worklist (`design/naming/capability-spelling-worklist.md`) already lists
   both, with `write_capabilities` as the target. #1913 met the same gate with `CapKind`, and the
   answer there was to apply calef's 2026-10-06 (UTC) ruling early rather than change the gate.
   This does the same, in its own commit ahead of the move: `write_capabilities` and

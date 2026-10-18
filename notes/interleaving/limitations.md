@@ -30,7 +30,7 @@ one line.
   whether the rank is right. That is `script/lint`'s rank check and [locking.md](../locking.md), and
   it is the same division `thread_wake_handshake` records for `SCHED`.
 - The gate on `untyped.rs` is narrower than the property it protects. Milestone 136 (one decision
-  path) closes the wider hole (see [lift-and-caller.md](lift-and-caller.md)), and what it buys is
+  path) closes the wider hole (see [lift-is-only-worth-what-its-caller-does.md](lift-is-only-worth-what-its-caller-does.md)), and what it buys is
   bounded. The free-site pin covers `kernel/src/memory_region.rs` only, so
   region pages freed from another module are not caught. The warrant is line order rather than
   dataflow. And nothing checks that a newly pinned public method is modeled at all, so a lane can

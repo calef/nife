@@ -161,7 +161,7 @@ file, because the loader carries both inside itself (`uefi_loader/build.rs`).
 
 
 Enter setup with F2 at the Dell splash; F12 is the one-time boot menu. Each value below is already set
-on xenon, and [`x86-uefi-boot/stick-firmware-steps.md`](x86-uefi-boot/stick-firmware-steps.md)
+on xenon, and [`x86-uefi-boot/usb-stick-firmware-steps-xenon.md`](x86-uefi-boot/usb-stick-firmware-steps-xenon.md)
 has what the machine's own menus said about each step.
 
 1. Secure Boot: off (*Secure Boot → Secure Boot Enable → Disabled*). This image is unsigned, and a

@@ -83,6 +83,6 @@ supervision tree runs one sub-server at a time today and the spawner-issued hand
 
 Amendment, 2026-09-27, milestone 126 (the `procps` package: who else is running). Two more
 consumers, found by that milestone's lane and recorded in
-[`notes/process-view/what-is-left.md`](../../notes/process-view/what-is-left.md) section 2: `w`'s
+[`notes/process-view/remaining-procps-programs.md`](../../notes/process-view/remaining-procps-programs.md) section 2: `w`'s
 `WHAT` column and `ps`'s missing `CMD` column. Both ask this section's exact question, a name for a
 tid already held, so neither is a new fork and both wait on this one.

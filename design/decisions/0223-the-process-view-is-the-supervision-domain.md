@@ -8,7 +8,7 @@ ratified_by: calef
 # 223. The process view is the supervision domain
 
 Raised 2026-09-26 by the maintainer on `maintainer/126-followups`, from section 6 of
-[`notes/process-view/what-is-left.md`](../../notes/process-view/what-is-left.md), which
+[`notes/process-view/remaining-procps-programs.md`](../../notes/process-view/remaining-procps-programs.md), which
 milestone 126 (the `procps` package: who else is running) wrote in pull request #1349. A developer lane
 may not write this directory, so the lane left the text for the integrator. *(Section number
 provisional until the merge queue lands it. §221 (the boot prompt is the owner's console) and

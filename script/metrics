@@ -131,13 +131,6 @@
 #   blobs, or a different git version (this Mac runs 2.55.0; the runner's was not recorded).
 #   Found 2026-10-05 UTC while re-reading 2026W40. A fix would run the numstat with pinned
 #   `-c diff.renames=...` and `--no-textconv` flags and compare on both machines.
-# - **Which files carry a name is written twice**: here in `name_surfaces`, and in `script/names`'
-#   SURFACES table. The parse is shared (`helpers/name_provenance.py`); the enumeration is not,
-#   because this script reads a historical `git ls-tree` and that one reads the working tree. The
-#   two drifted once already: milestone 175 moved programs to `components/` and `fixtures/` on
-#   2026-09-13, `script/names` was told and this was not, and `names_total` showed a collapse from
-#   204 to 133 that never happened until 2026-09-19. Nothing compares the two counts. The cheap
-#   check a reader can run is that the current week's `names_total` equals `script/names`' total.
 # - **The coverage cell is carried, not recomputed.** A `--backfill` or `--update` keeps whatever
 #   coverage a week already had, because it cannot be re-derived without a build. So after the row
 #   is repointed at a later commit, the coverage figure describes an earlier commit of that week
@@ -199,7 +192,9 @@ import comment_block_ratchet                                                # no
 import crate_release                                                        # noqa: E402
 import interface_stability                                                  # noqa: E402
 import line_citations                                                       # noqa: E402
+import name_census                                                          # noqa: E402
 import name_provenance                                                      # noqa: E402
+import name_ruled                                                           # noqa: E402
 import packages as package_boundaries                                       # noqa: E402
 import prose_ratchet                                                        # noqa: E402
 import roadmap_block                                                        # noqa: E402
@@ -435,7 +430,9 @@ MEASURES = [
      + ['model_commits_total']
      + [_model_col('lines', s) for s in MODEL_SLUGS + ['unattributed', 'pre_convention']]),
     ('decisions', [_col('decisions', s) for s in DECISION_STATUSES] + ['decisions_total']),
-    ('names', [_col('names', s) for s in NAME_STATUSES] + ['names_total']),
+    # `names_ruled_owed` is a subset of `names_provisional`: calef has ruled the name and the
+    # rename has not landed (`helpers/name_ruled.py`). Column name provisional.
+    ('names', [_col('names', s) for s in NAME_STATUSES] + ['names_ruled_owed', 'names_total']),
     ('lines', ['kernel_code_lines', 'kernel_comment_lines',
                'other_code_lines', 'other_comment_lines']),
     ('bugs', ['bugs_markdown', 'bugs_rust']),
@@ -1338,88 +1335,65 @@ def decisions(tree):
     return counts
 
 
-# The four kinds of named thing `script/names` knows about, enumerated out of a tree's paths
-# rather than off the disk. This is the half milestone 236's rule says stays at the caller: the
-# parse of a `Name:` block is shared (`helpers/name_provenance.py`), and the file sourcing is not,
-# because `script/names` is asked about the tree in front of it and this is asked about eight
-# revisions nobody has checked out.
-#
-# A package is every `Cargo.toml` outside `crates/` and outside the workspace root, discovered
-# rather than listed, which is the property `script/names` built the kind for: a package that
-# arrives tomorrow is counted without editing anything. Its name is the package's, not the
-# directory's, because that is the name a `use` statement and a dependency list carry.
-_PACKAGE_NAME = re.compile(r'^\s*name\s*=\s*"([^"]+)"', re.M)
-
-
-def name_surfaces(tree):
-    """(name, path of the file that must carry its block, comment prefix), one per named thing."""
-    crates, out = set(), []
-    for path in tree.text:
-        parts = path.split('/')
-        if any(part.startswith('.') or part == 'target' for part in parts[:-1]):
-            continue
-        if parts[0] == 'crates' and len(parts) > 2:
-            crates.add(parts[1])
-        # Programs lived in `user/src/` until milestone 175 split it into `components/src/` and
-        # `fixtures/src/` on 2026-09-13. This enumeration was not told, so from 2026W37 about ninety
-        # programs dropped out of `names_total` (204 to 133) and the chart showed a collapse that
-        # never happened, while `script/names`, which was told, went on reading 222. All three
-        # directories are read because history holds both layouts and a week is counted from the
-        # tree it had. The enumeration is still a second copy of `script/names`' SURFACES table;
-        # the BUGS entry in this file's header says so rather than pretend it cannot drift again.
-        elif (len(parts) == 3 and parts[1] == 'src' and path.endswith('.rs')
-              and parts[0] in ('user', 'components', 'fixtures')):
-            out.append((parts[2][:-3], path, '//!'))
-        # A program can be a directory with its block in `main.rs` (milestone 844 (the shell
-        # program is split along its seams), from 2026W41; `components/src/swish/` was the first).
-        # `script/names` was told in the same change.
-        elif (len(parts) == 4 and parts[1] == 'src' and parts[3] == 'main.rs'
-              and parts[0] in ('components', 'fixtures')):
-            out.append((parts[2], path, '//!'))
-        elif len(parts) == 2 and parts[0] == 'script':
-            out.append((parts[1], path, '#'))
-        elif parts[-1] == 'Cargo.toml' and parts[0] != 'crates':
-            hit = _PACKAGE_NAME.search(tree.text[path])
-            if hit:
-                out.append((hit.group(1), path, '#'))
-    for crate in crates:
-        out.append((crate, 'crates/%s/src/lib.rs' % crate, '//!'))
-    return out
-
-
 def names(tree):
-    """Naming provenance by status, and the count of named things it is out of.
+    """Naming provenance by status, the ruled-and-owed subset, and the count of named things.
+
+    **The names are `script/names`' own**: `helpers/name_census.py` enumerates them for both
+    scripts, out of this week's `git ls-tree` here and out of the working tree there, so the
+    current week's `names_total` is `script/names`' total and `check_names_total` fails when it is
+    not. Every kind it tracks is counted (crates, programs, packages, scripts, marked items and
+    modules, documentation directories and documents), and a name a rule on
+    design/naming/convention-rulings.md covers counts as ratified.
 
     **`names_total` is every named thing, not the sum of the four columns**, which is the one place
     this series deviates from `milestones()` and `decisions()` above, and the deviation is the
-    honest part. `ratified`, `recorded`, `provisional` and `unrecorded` are what a `Name:` block
-    SAYS. A crate with no block at all has said nothing, and counting that silence as `unrecorded`
-    would put a claim in the record that nobody made, which is the failure `script/names` refuses
-    one directory over and the same reason `decisions()` will not read a statusless decision as
-    DECIDED.
+    honest part. A surface with no block has said nothing, and counting that silence as
+    `unrecorded` would put a claim in the record that nobody made, which is the failure
+    `script/names` refuses one directory over. So before milestone 115 (the names that were
+    ratified, and the ones that were refused) invented the convention on
+    2026-08-04 the four columns are zero and `names_total` is the whole vocabulary of the tree. A
+    block that fails `script/names`' form checks counts toward the total and toward no status.
+    `script/lint` runs `script/names --check`, so on `main` the gap is zero.
 
-    So before milestone 115 invented the convention on 2026-08-04, the four columns are zero and
-    `names_total` is the whole vocabulary of the tree, and the gap between them is the size of what
-    was not yet being recorded. `script/lint` runs `script/names --check`, so in any tree from
-    2026W32 onward the gap is zero and the sum is the total.
-
-    A block that fails `script/names`' own form checks (a `ratified` with no date, a `recorded` with
-    no citation) counts toward the total and toward no status, for the same reason: it has not said
-    which of the four it is.
+    An old week is counted with TODAY's enumeration, like every row here: a kind `script/names`
+    added later (items and modules from 2026-09-24, the rules from 2026-10-17) is counted in the
+    weeks before it existed wherever the tree already carried the block it reads.
     """
+    records, _problems, missing = name_census.census(tree.paths, tree.text.get)
     counts = dict.fromkeys(NAME_STATUSES, 0)
-    surfaces = name_surfaces(tree)
-    for _name, path, prefix in surfaces:
-        text = tree.text.get(path)
-        if text is None:
-            continue
-        found = name_provenance.block(text, prefix)
-        if found is None:
-            continue
-        status, _date, _refused, problem = name_provenance.classify(found)
-        if problem is None:
-            counts[status] += 1
-    return counts, len(surfaces)
+    for record in records:
+        counts[record['status']] += 1
+    return counts, len(name_ruled.owed(records)), len(records) + missing
+
+
+# The line `script/names` prints its total on, which `check_names_total` reads.
+_NAMES_TOTAL = re.compile(r'^total: (\d+) names,', re.M)
+
+
+def check_names_total(rows, week, rev, head):
+    """Fail when `week`'s `names_total` is not `script/names`' total for the same tree.
+
+    The two share `helpers/name_census.py`, so what this catches is a difference in sourcing (a
+    file `Tree` does not read, a path the working tree holds and the commit does not). Compared
+    only when the row stands for HEAD and the working tree is HEAD's: `script/names` reads the
+    disk, and a lane's uncommitted edit is a different tree, so that case prints why it skipped.
+    """
+    if rev != head:
+        return
+    if git('status', '--porcelain', '--untracked-files=normal').strip():
+        print('metrics: names_total not compared with script/names: the working tree differs '
+              'from HEAD', file=sys.stderr)
+        return
+    out = subprocess.run(['script/names'], capture_output=True, text=True).stdout
+    hit = _NAMES_TOTAL.search(out)
+    if not hit:
+        raise SystemExit('metrics: script/names printed no `total: N names` line; '
+                         'check_names_total reads it')
+    ours = int(rows[week]['names_total'])
+    if ours != int(hit.group(1)):
+        raise SystemExit('metrics: %s names_total is %d and script/names counts %s names in the '
+                         'same tree; helpers/name_census.py is shared, so the two scripts are '
+                         'reading different files' % (week, ours, hit.group(1)))
 
 
 def proposals(tree):
@@ -1960,9 +1934,10 @@ def row_for(rev, week, coverage='', person_weeks='', coverage_min=''):
     for status in DECISION_STATUSES:
         row[_col('decisions', status)] = dec[status]
     row['decisions_total'] = sum(dec.values())
-    nm, named = names(tree)
+    nm, owed, named = names(tree)
     for status in NAME_STATUSES:
         row[_col('names', status)] = nm[status]
+    row['names_ruled_owed'] = owed
     row['names_total'] = named
     for part in (proposals(tree), lines(tree), bugs(tree),
                  harnesses(tree),
@@ -2466,6 +2441,9 @@ DERIVED = {
                                                    for c in ('green', 'amber', 'red'))),
     'names_no_block': lambda row: max(
         0.0, _cell(row, 'names_total') - sum(_cell(row, _col('names', s)) for s in NAME_STATUSES)),
+    # The provisional band without the ruled-and-owed names, which the chart draws beside it.
+    'names_provisional_unruled': lambda row: max(
+        0.0, _cell(row, 'names_provisional') - _cell(row, 'names_ruled_owed')),
     'tokens_per_milestone': _tokens_per_milestone,
 }
 
@@ -2577,9 +2555,11 @@ CHARTS = [
       ('Superseded', 'decisions_superseded'), ('Proposed', 'decisions_proposed'),
       ('No status recorded', 'decisions_unrecorded')], 1.0, None, None),
     ('names.svg', 'Names by what the tree records about them',
-     'crates, programs, script/ entry points and Cargo packages; provenance lives in the header',
-     [('Ratified', 'names_ratified'), ('Recorded', 'names_recorded'),
-      ('Provisional', 'names_provisional'), ('Unrecorded', 'names_unrecorded'),
+     'every name script/names tracks: crates, programs, packages, scripts, marked items and '
+     'modules, documentation directories and documents',
+     [('Ratified', 'names_ratified'), ('Ruled, rename owed', 'names_ruled_owed'),
+      ('Recorded', 'names_recorded'), ('Provisional', 'names_provisional_unruled'),
+      ('Unrecorded', 'names_unrecorded'),
       ('No provenance block', 'names_no_block')], 1.0, None, None),
     ('lines.svg', 'Rust in the tree, in thousands of lines',
      'kernel/src split out, because it is commented on purpose; vendor/ excluded',
@@ -3622,6 +3602,9 @@ def main(argv):
             fresh = row_for(rev, week)
             for column in columns:
                 rows[week][column] = fresh.get(column, '')
+        head = git('rev-parse', 'HEAD').decode().strip()
+        if 'names_total' in columns:
+            check_names_total(rows, max(rows), week_commits().get(max(rows)), head)
         # A derived measure (`ci-jobs`, `debt-paydown`, the cost records) is not in row_for at all,
         # so the loop above blanks it; `fill_derived` is where `--update` computes it, and only this
         # measure's file is written. Before 2026-10-11 (UTC) `--backfill-measure ci-jobs` wrote a
@@ -3695,6 +3678,7 @@ def main(argv):
     # `fill_derived`. It runs before `--check` compares, so a stale cell is a failure there rather
     # than a surprise on the next write.
     rows = fill_derived(rows, head)
+    check_names_total(rows, current, weeks.get(current, head), head)
 
     rendered = render_csvs(rows)
     if mode == '--check':

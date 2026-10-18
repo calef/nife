@@ -248,7 +248,7 @@ from the public API alone. `script/lint`'s "the region claim protocol has one de
 pins the crate's public surface and requires each free loop to make its entitling call first. The
 other four loom crates have the same exposure and are not gated. The rebuilt gap, the two halves of
 the check and the `compile_fail` doctests are in
-[interleaving/lift-and-caller.md](interleaving/lift-and-caller.md).
+[interleaving/lift-is-only-worth-what-its-caller-does.md](interleaving/lift-is-only-worth-what-its-caller-does.md).
 
 ## The cost, measured
 
