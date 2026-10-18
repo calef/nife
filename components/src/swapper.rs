@@ -15,11 +15,13 @@
 //! - [`ROLE_QUEUED`](hot_swap_contract::ROLE_QUEUED): the opt-in rung. A `broker` stands between producer and
 //!   backend so the producer never blocks on an absent consumer. One extra hop, priced by the
 //!   `broker_rtt` benchmark, and chosen per channel rather than imposed on every IPC.
-//! - [`ROLE_HUNG`](hot_swap_contract::ROLE_HUNG): the same system as the direct rung, against an incumbent
-//!   that **stops answering without dying** (milestone 23's third residual). Step 2 of the four is
-//!   unavailable, because draining needs the incumbent's cooperation and that is exactly what is
-//!   missing; the interesting result is that the other three steps do not. See
-//!   notes/hung-component.md, and read its two open decisions before extending this role.
+//! - [`ROLE_HUNG`](hot_swap_contract::ROLE_HUNG): the same system as the direct rung, against an
+//!   incumbent that **stops answering without dying** (milestone 23 (a capability-routed component
+//!   OS with live replacement)'s third residual). The operator notices because its quiesce goes
+//!   unanswered within a bound, skips the drain the hang made redundant, restores the service with
+//!   the other three steps, and destroys the hung incumbent's region.
+//!   [`ROLE_HUNG_WITHOUT_DEVICE`](hot_swap_contract::ROLE_HUNG_WITHOUT_DEVICE) is the same run with
+//!   no device, for `x86_64`. See notes/hung-component.md.
 //! - [`ROLE_HANDOFF`](hot_swap_contract::ROLE_HANDOFF): **state handoff** (DECISIONS §209 (state handoff is an opaque blob over a granted frame, and it is optional)). The component
 //!   carries a tally across the swap on a handoff page, and the swap is tried twice: against a
 //!   replacement that cannot absorb the state, which must not commit, and then against one that can.
@@ -86,8 +88,8 @@ const TIMER: u64 = 4;
 
 // Pages per process we build is NOT here any more. It is `hot_swap_contract::INSTANCE_PAGES`, declared by
 // each contract, and it reaches this program through `component_plan::Plan::pages`. It is a **peak**,
-// because this operator never destroys a region: all five splits are live at once and the budget has
-// to cover them together.
+// because this operator destroys a region only on the hung channel, and otherwise all five splits are
+// live at once and the budget has to cover them together.
 
 /// The channels this operator owns, created once out of its own budget.
 struct Wiring {
@@ -133,7 +135,8 @@ pub extern "C" fn _start(role: u64, initial_ramdisk_len: u64, _a2: u64) -> ! {
         hot_swap_contract::ROLE_QUEUED => queued(&fs, &w, Warn::OnTime),
         hot_swap_contract::ROLE_UNWARNED => queued(&fs, &w, Warn::Never),
         hot_swap_contract::ROLE_LATE_WARNING => queued(&fs, &w, Warn::Late),
-        hot_swap_contract::ROLE_HUNG => hung(&fs, &w),
+        hot_swap_contract::ROLE_HUNG => hung(&fs, &w, true),
+        hot_swap_contract::ROLE_HUNG_WITHOUT_DEVICE => hung(&fs, &w, false),
         hot_swap_contract::ROLE_HANDOFF => handoff(&fs, &w),
         hot_swap_contract::ROLE_DEPUTY => deputy(&fs, &w),
         _ => direct(&fs, &w),
@@ -512,7 +515,9 @@ fn endow_devices_and_start(
             bail(stage)
         }
     }
-    launch(u, elf, [1, 0, 0], stage + 1);
+    // The device flag is the plan's: a component that declares no registers is not told to probe any.
+    let device = !component.devices().is_empty();
+    launch(u, elf, [device as u64, 0, 0], stage + 1);
     send(
         REPORT,
         hot_swap_contract::RPT_STEP,
@@ -830,13 +835,18 @@ fn build_unstarted(
 }
 
 fn launch(u: Unstarted, elf: &elf::Elf, args: [u64; 3], stage: u64) {
+    cap_delete(launch_keeping_region(u, elf, args, stage));
+}
+
+/// [`launch`], returning the child's region capability instead of dropping it.
+fn launch_keeping_region(u: Unstarted, elf: &elf::Elf, args: [u64; 3], stage: u64) -> u64 {
     if supervision_protocol::configure_child(u.child.tcb, u.aspace, elf.entry()).is_err() {
         bail(stage)
     }
     if !supervision_protocol::start_child(u.child, args[0], args[1], args[2]) {
         bail(stage + 1)
     }
-    cap_delete(u.region);
+    u.region
 }
 
 // ===============================================================================================
@@ -1076,46 +1086,98 @@ fn plan_queued(w: &Wiring, front: u64) -> QueuedPlans {
 // endpoint, holds its device, sits `Blocked`, and is indistinguishable from a healthy server waiting
 // for work, because that is what a healthy server waiting for work is.
 //
-// This role runs the swap against one, and reports three things a supervisor learns the hard way.
-// See notes/hung-component.md; the two questions this run does **not** answer (how a supervisor
-// notices, and what it may do about a component that will not cooperate at all) are decisions rather
-// than code, and that note states them.
+// This role runs the swap against one. The operator notices the hang on its own, by its quiesce going
+// unanswered within a bound, then restores the service and destroys the hung incumbent's region.
+// See notes/hung-component.md.
 // ===============================================================================================
 
-fn hung(fs: &nifefs::Fs, w: &Wiring) -> ! {
+/// **How long the operator waits for `OPERATION_QUIESCE` to be answered before it treats the
+/// incumbent as hung**, in milliseconds of the counter `user_mode_runtime::now` reads.
+///
+/// **Chosen by measurement, with a margin of about forty.** A healthy incumbent's answer, timed the
+/// way [`quiesce_within`] times it (from starting the stand-in to receiving its forwarded answer, so
+/// including the one client request the quiesce can queue behind), measured on 2026-10-18 (UTC),
+/// ten runs per leg, under `script/test`, on a 16 GB Apple Silicon host with a load average of 25
+/// to 34 from other lanes' builds:
+///
+/// | ISA | counter | fastest | slowest |
+/// |---|---|---|---|
+/// | aarch64 (4 cores) | 62.5 MHz | 1.2 ms | 3.4 ms |
+/// | riscv64 (4 cores) | 10 MHz | 1.2 ms | 2.4 ms |
+/// | `x86_64` (2 cores, and the 1-core leg) | TSC, about 1 GHz | 1.1 ms | 6.5 ms |
+///
+/// 250 ms is about 38 times the slowest of the forty, and 25 scheduler ticks. The deadline fires at
+/// the first 10 ms tick at or after it (milestone 106 (a wait that ends on either the interrupt or
+/// the deadline)'s `BUGS`), so the real wait is 250 to 260 ms; the hung test prints what it was.
+///
+/// **This is wall time under QEMU, not instructions.** `script/test` runs TCG without `-icount`
+/// (only `script/bench` and `script/icount` pass it), so the guest counter follows the host clock
+/// and a loaded host stretches a healthy answer. The margin is for that. It is also this fixture's
+/// bound: its incumbent answers a request with eight multiplications, and a component whose
+/// requests take longer needs a supervisor's bound measured against it. A bound that convicts a
+/// healthy component destroys it mid-work: a caller it was serving is answered `Gone` and asks
+/// again, which is safe only for a request that may be repeated. One that is too long costs only
+/// a longer down window.
+const QUIESCE_BOUND_MS: u64 = 250;
+
+/// What a bounded quiesce found.
+enum Quiesce {
+    /// The incumbent answered within the bound: it is drained, exactly as [`drain`] leaves one.
+    Answered,
+    /// The bound passed with no answer. `waited` is in counter ticks; `stand_in` is the region of
+    /// the instance still queued on the stable endpoint with the unanswered quiesce.
+    Unanswered { waited: u64, stand_in: u64 },
+}
+
+fn hung(fs: &nifefs::Fs, w: &Wiring, device: bool) -> ! {
     let v1 = image(fs, "rust_swappable", 2);
     let v2 = image(fs, "c_swappable", 3);
     let client_img = image(fs, "chatty", 4);
 
     // Identical to the direct channel's routing: same declarations, same objects, same rights.
     // Nothing about the wiring says this channel is different, which is the point. What differs is
-    // one start argument, and a start argument carries no authority.
+    // one start argument, and a start argument carries no authority. Without a device page the
+    // contract is `BACKEND`, the console's capability half with no registers, and the routing
+    // offers no `uart`.
+    let held_with_device: &[(&str, u64)] = &[
+        ("service", w.svc),
+        ("report", REPORT),
+        ("operator", w.note),
+        ("control", w.poke),
+        ("witness", w.log_page_frame),
+        ("uart", DEVICE),
+    ];
     let to_component = Provisions {
-        held: &[
-            ("service", w.svc),
-            ("report", REPORT),
-            ("operator", w.note),
-            ("control", w.poke),
-            ("witness", w.log_page_frame),
-            ("uart", DEVICE),
-        ],
+        held: if device {
+            held_with_device
+        } else {
+            &held_with_device[..5]
+        },
     };
     let to_client = Provisions {
         held: &[("service", w.svc), ("report", REPORT), ("operator", w.note)],
     };
-    let Ok(component) = component_plan::plan(&hot_swap_contract::CONSOLE, &to_component) else {
+    let contract = if device {
+        &hot_swap_contract::CONSOLE
+    } else {
+        &hot_swap_contract::BACKEND
+    };
+    let Ok(component) = component_plan::plan(contract, &to_component) else {
         bail(70)
     };
     let Ok(client) = component_plan::plan(&hot_swap_contract::CLIENT, &to_client) else {
         bail(71)
     };
 
-    // The incumbent, told which one request it will never answer.
-    start_child(
+    // The incumbent, told which one request it will never answer. **Its region is kept**, unlike
+    // every other child this operator starts: the region capability is the authority that ends a
+    // child that will never cooperate (milestone 133 (ending a permanently blocked thread, and
+    // deciding who may)), and deleting it here is what left the hung incumbent unreclaimable.
+    let incumbent = start_child_keeping_region(
         &v1,
         &component,
         w.faultep,
-        [1, 0, hot_swap_contract::WEDGE_SEQ],
+        [device as u64, 0, hot_swap_contract::WEDGE_SEQ],
         72,
     );
 
@@ -1123,8 +1185,12 @@ fn hung(fs: &nifefs::Fs, w: &Wiring) -> ! {
     // exactly as on the direct channel and for the same measured reason: a build is a few hundred
     // syscalls, and doing it after the trigger loses the race against a conversation already in
     // flight. Here it matters more, not less: a hung component gives the operator no drain to hide
-    // the build behind.
+    // the build behind. With no device in the plan, "everything except the device" is everything.
     let replacement = build_without_devices(&v2, &component, w.faultep, 75);
+
+    // The stand-in that will carry the quiesce, built now for the replacement's reason: starting it
+    // is then one syscall, so the bound measures the incumbent and not a build.
+    let stand_in = build_unstarted(&client_img, &client, w.faultep, 110);
 
     start_child(
         &client_img,
@@ -1136,34 +1202,29 @@ fn hung(fs: &nifefs::Fs, w: &Wiring) -> ! {
     expect_note(w.note, hot_swap_contract::NOTE_SWAP_NOW, 80);
 
     // ------------------------------------------------------------------------------------------
-    // The hang. Served with `RECEIVE_CAP` rather than `RECEIVE`, because the incumbent announced it with a
-    // `CALL`: taking the reply capability and never using it is what keeps that component parked,
-    // and holding it is the only handle anything in this system has on a wedged process.
+    // **Step 2, bounded.** The trigger is the one a healthy incumbent sends, and nothing in it says
+    // the incumbent has stopped. So the operator asks for the drain as on the direct channel, and
+    // gives the answer a deadline: milestone 106's timed wait. An answer means a healthy
+    // incumbent, drained. No answer within the bound means hung.
     // ------------------------------------------------------------------------------------------
 
-    let req = user_mode_runtime::receive_request(w.note);
-    let (kind, served) = (req.w0, req.w1);
-    // The incumbent's CALL, and nothing else: a delegation here is not the handle (milestone 706 (a
-    // `CALL` server can tell a Reply from a delegation)).
-    let Some(release) = req.delivered.into_reply() else {
-        bail(81)
+    let bound = cntfrq() * QUIESCE_BOUND_MS / 1000;
+    let (waited, stand_in) = match quiesce_within(w, stand_in, &client_img, bound, 112) {
+        Quiesce::Unanswered { waited, stand_in } => (waited, stand_in),
+        // This role exists to run against a hung incumbent, so an answer means the fixture did not
+        // hang and the run tested nothing. A supervisor with a real healthy path would carry on as
+        // `direct` does from its drain.
+        Quiesce::Answered => bail(81),
     };
-    if kind != hot_swap_contract::NOTE_WEDGED {
-        bail(81)
-    }
-    send(
-        REPORT,
-        hot_swap_contract::RPT_WEDGED,
-        hot_swap_contract::V1,
-        served,
-    );
+    send(REPORT, hot_swap_contract::RPT_UNANSWERED, bound, waited);
 
     // ------------------------------------------------------------------------------------------
     // **What the supervisor can see.** Two reports, and both of them are negative results.
     //
     // The domain, through `abi::rendezvous::SURVEY` (milestone 126), which is the only view of its own
     // children this operator has: every member `BLOCKED`, none `DEAD`. That is also what a healthy
-    // idle system looks like from here, and no amount of looking again changes it.
+    // idle system looks like from here, and no amount of looking again changes it. The verdict
+    // above came from the clock, not from this view.
     //
     // Then `Rendezvous::REAP` on every member, which is the supervisor's entire vocabulary over its
     // domain since DECISIONS §32: refused, every one, `StillAlive`. Asking about all of them rather
@@ -1177,61 +1238,153 @@ fn hung(fs: &nifefs::Fs, w: &Wiring) -> ! {
     send(REPORT, hot_swap_contract::RPT_UNCOLLECTABLE, asked, refused);
 
     // ------------------------------------------------------------------------------------------
+    // **The stand-in goes first.** It is parked on the stable endpoint's sender queue holding a
+    // quiesce request, and the replacement is about to receive on that endpoint: left there, it
+    // would drain the replacement the moment it started. Destroying its region finishes it in place
+    // and unlinks it from the queue (milestone 133), so the request is never delivered.
+    // ------------------------------------------------------------------------------------------
+
+    end_region(stand_in, 117);
+
+    // ------------------------------------------------------------------------------------------
     // **Recovery, with no authority this operator did not already hold.** DECISIONS §32 records that
     // a supervisor which must restart a *hung* child "still needs the stronger right", meaning the
-    // construction authority reaping was moved off. For restarting the **service**, that is not so,
-    // and these four syscalls are the argument:
+    // construction authority reaping was moved off. For restarting the **service**, that is not so:
     //
     //   - The device comes back with `PageFrame::REVOKE`, which is `GRANT`-gated take-back (§41) and
     //     asks the current holder for nothing. It works on a live, wedged, wholly uncooperative
     //     holder exactly as it works on a quiesced one.
     //   - There is nothing to drain, and nothing to drain it *for*: a component that is not
-    //     receiving has already achieved what `OPERATION_QUIESCE` exists to achieve. The step that needs
-    //     the incumbent's cooperation is the one step the hang makes unnecessary.
+    //     receiving has already achieved what `OPERATION_QUIESCE` exists to achieve.
     //   - The replacement parks in `RECEIVE_CAP` on the same endpoint and picks up whatever queued
     //     behind the silence, because the stable name is the endpoint object and the kernel's sender
     //     queue is the buffer (§41).
-    //
-    // What still needs the stronger right is **reclaiming the hung component's memory**, which is a
-    // different thing from restarting its service and is not attempted here. That is a task now, not
-    // a decision (corrected 2026-10-08): since milestone 133 (ending a permanently blocked thread,
-    // and deciding who may) the region holder's `DESTROY` finishes a `Blocked` incumbent in place,
-    // and milestone 254 (a caller stranded by a server that died) then answers its stranded caller
-    // `Gone`. This operator deleted the incumbent's region capability in `start_child`, so it
-    // cannot; milestone 23 (a capability-routed component OS with live replacement)'s block records
-    // the change that would demonstrate it.
     // ------------------------------------------------------------------------------------------
 
-    revoke_device(82);
+    if device {
+        revoke_device(82);
+    }
     endow_devices_and_start(replacement, &v2, &component, 83);
 
     // ------------------------------------------------------------------------------------------
-    // **The one thing only the hung component can do.** The service is back, and the caller whose
-    // request the incumbent swallowed is still parked inside its `CALL`: restoring a service does
-    // not recover a caller, and nothing above went anywhere near it.
+    // **Reclaiming the hung incumbent, which is where §32 (a supervisor may collect a corpse)'s
+    // "stronger right" was right**, and the right is the region capability this operator kept.
+    // `DESTROY` finishes the `Blocked` incumbent where it sits without waking it (milestone 133,
+    // `sched::finish_blocked_resident`), and freeing it answers every caller it still held a reply
+    // capability for with `abi::Error::Gone` (milestone 254 (a caller stranded by a server that
+    // died), `sched::strand_callers_of`). That is the client whose request it swallowed, which asks
+    // again and is served by the replacement. Nothing here asks the incumbent for anything, and it
+    // never runs another instruction.
     //
-    // So the operator answers the incumbent's own `CALL`, which is the handle it has been holding
-    // since the hang. The incumbent wakes, uses the reply capability it took from that caller, and
-    // then reads the register it no longer owns. **In this run the wedge is deliberate and it
-    // cooperates.** A real one does not, and then that caller waits for the life of the machine,
-    // which is what makes this line the shape of the gap rather than its cure.
+    // After `STARTED`, so the freed caller's second attempt finds a server rather than parking in
+    // the down window. The witness is the budget's own count of pages in live child regions, read
+    // on either side of the `DESTROY`.
     // ------------------------------------------------------------------------------------------
 
-    user_mode_runtime::reply(release, hot_swap_contract::NOTE_RELEASE, 0);
+    let before = live_children_pages(118);
+    end_region(incumbent, 119);
+    let after = live_children_pages(118);
+    send(REPORT, hot_swap_contract::RPT_RECLAIMED, before, after);
 
+    // The incumbent leaves no corpse: it was finished, not killed, and a finished thread sends no
+    // death message. So the deaths still to collect are the client's and the replacement's.
     let mut corpses = 0u64;
-    let revoke_enforced = wait_for_fault(w.faultep, &mut corpses, hot_swap_contract::DEV_VA);
     expect_note(w.note, hot_swap_contract::NOTE_CLIENT_DONE, 86);
-    reap_to(w.faultep, &mut corpses, 2); // the incumbent and the client
-    retire(w, &mut corpses, 3, 87); // and the replacement
+    reap_to(w.faultep, &mut corpses, 1); // the client
+    retire(w, &mut corpses, 2, 87); // and the replacement
 
+    // No fault receipt for the revoke on this channel: the holder it was taken from never runs
+    // again, so nothing can touch the registers to prove they are gone. The direct channel carries
+    // that receipt.
     send(
         REPORT,
         hot_swap_contract::RPT_LOG,
-        verdict_from_log(0, revoke_enforced),
+        verdict_from_log(0, false),
         changed_at(0),
     );
     user_mode_runtime::exit()
+}
+
+/// **`OPERATION_QUIESCE` with a deadline**, which a `CALL` cannot have. Starts `stand_in` as
+/// [`hot_swap_contract::ROLE_QUIESCER`] to make the call, and waits for its forwarded answer on
+/// `w.note` in a `RECEIVE` that the bound notification ends at `bound` counter ticks (the timer
+/// our spawner granted, `net_stack`'s retransmit-wait pattern). Bails `stage` through `stage + 4`:
+/// the first two are [`launch_keeping_region`]'s.
+///
+/// Nothing else sends on `w.note` while this waits: the incumbent has sent its trigger, and the
+/// client's next note comes only after its last request, which cannot be served before the drain.
+fn quiesce_within(
+    w: &Wiring,
+    stand_in: Unstarted,
+    elf: &elf::Elf,
+    bound: u64,
+    stage: u64,
+) -> Quiesce {
+    let started = now();
+    let region = launch_keeping_region(
+        stand_in,
+        elf,
+        [hot_swap_contract::ROLE_QUIESCER, 0, 0],
+        stage,
+    );
+    if timer_arm(TIMER, started + bound, WAKE, 1) < 0 {
+        bail(stage + 2)
+    }
+    match receive_bound(w.note) {
+        user_mode_runtime::Received::Message(kind, answer, _)
+            if kind == hot_swap_contract::NOTE_QUIESCE_ANSWERED =>
+        {
+            // A deadline that passed between the answer and this cancel has already signaled, and
+            // its word waits on the notification for the next bound receive. At this bound against
+            // a healthy answer's latency (see `QUIESCE_BOUND_MS`) that window is never reached.
+            let _ = user_mode_runtime::timer_cancel(TIMER);
+            if answer != hot_swap_contract::QUIESCED {
+                bail(stage + 3)
+            }
+            Quiesce::Answered
+        }
+        user_mode_runtime::Received::Notification(_) => Quiesce::Unanswered {
+            waited: now() - started,
+            stand_in: region,
+        },
+        _ => bail(stage + 4),
+    }
+}
+
+/// **Destroy a child's region, whatever its resident is doing**, and bail `stage` if it cannot be.
+///
+/// A `Blocked` resident is finished in place on the first try (milestone 133). A `Ready` or
+/// `Running` one is marked killed and the `DESTROY` refused; it dies at its next preemption, and a
+/// retry then finds a corpse and reclaims. The retries are that contract, not a wait for anything:
+/// every resident this is used on has been parked far longer than a scheduling quantum.
+fn end_region(region: u64, stage: u64) {
+    for _ in 0..1000 {
+        if supervision_protocol::memory_region_destroy(region) {
+            return;
+        }
+        user_mode_runtime::yield_now();
+    }
+    bail(stage)
+}
+
+/// **Pages this operator's budget has in live child regions**, `MemoryRegion::USAGE`'s `CHILDREN`
+/// record (milestone 126 (the `procps` package)). The budget arrives with every right, so it holds
+/// `ENUMERATE`.
+fn live_children_pages(stage: u64) -> u64 {
+    // SAFETY: `svc`/`ecall`/`syscall`; USAGE reads one record and writes nothing of ours.
+    let r = unsafe {
+        user_mode_runtime::invoke(
+            ROOT_UT,
+            abi::memory_region::USAGE,
+            abi::usage::CHILDREN,
+            0,
+            0,
+        )
+    };
+    if r < 0 {
+        bail(stage)
+    }
+    r as u64
 }
 
 /// **Walk the supervision domain and count what state its members are in** (milestone 126's
@@ -1336,6 +1489,18 @@ fn start_child(
     args: [u64; 3],
     stage: u64,
 ) {
+    cap_delete(start_child_keeping_region(elf, plan, faultep, args, stage));
+}
+
+/// [`start_child`], returning the child's region capability instead of dropping it: the authority
+/// to end the child whatever it is doing ([`end_region`]).
+fn start_child_keeping_region(
+    elf: &elf::Elf,
+    plan: &component_plan::Plan,
+    faultep: u64,
+    args: [u64; 3],
+    stage: u64,
+) -> u64 {
     let Ok(region) = supervision_protocol::memory_region_split(ROOT_UT, plan.pages()) else {
         bail(stage)
     };
@@ -1352,7 +1517,7 @@ fn start_child(
     if !supervision_protocol::start_child(child, args[0], args[1], args[2]) {
         bail(stage + 2)
     }
-    cap_delete(region);
+    region
 }
 
 /// [`start_child`], for a child with a notification bound to its thread before it runs: `broker`,

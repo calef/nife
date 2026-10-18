@@ -17,6 +17,6 @@ protocol orchestration needs is telling a dependent to degrade before its depend
 That is precisely the step a hang makes unavailable. So a dependency-aware supervisor still needs a
 non-cooperative fallback for every edge in the graph, not just for the component it is replacing.
 
-That fallback is not built, for the same reason a watchdog is not built. Both of its halves are
-behind the two decisions the parent names: how a supervisor notices, and what it may do to a
-component that never cooperates.
+That fallback is not built. Both of its halves now exist for the component being replaced: a
+supervisor notices by its bounded quiesce going unanswered, and ends a component that never
+cooperates by destroying its region. Nothing yet applies either to a dependent.
