@@ -36,7 +36,7 @@ pub fn write_holdings(
     out(b"           the first ");
     write_num(HEAP_MAX_BYTES / 1024, out);
     out(b" KiB of them, and their page tables, are the shell's own heap\n");
-    match (&holdings.second, holdings.dir) {
+    match (&holdings.mounted, holdings.directory) {
         (Some(sd), _) => {
             // **Two rows, one tree**: the second capability is a row of its own, because it is one
             // more thing this shell holds, and the namespace line says where it appears. Which
@@ -63,7 +63,7 @@ pub fn write_holdings(
     // header above; a one-grant shell with something bound gets one here, because otherwise a
     // bound row would appear with no heading to explain it.
     if holdings.binds.iter().next().is_some() {
-        if holdings.second.is_none() {
+        if holdings.mounted.is_none() {
             out(b"    namespace: names bound beside the one root ('bind', milestone 47)\n");
         }
         for entry in holdings.binds.iter() {

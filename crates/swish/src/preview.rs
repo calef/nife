@@ -73,7 +73,7 @@ pub fn write_image_capabilities(
         // **An unvouched `std` image is previewed from its manifest too** (milestone 205): its
         // two pages sit at the `std` layout's slots, and its words at slot 8, so the native rows
         // below would name slots it does not get.
-        Some(Ok(m)) if vouched || m.runtime == grant_plan::Runtime::Std => {
+        Some(Ok(m)) if vouched || m.startup == grant_plan::StartupContract::Std => {
             out(b" would grant the new process, and nothing else:\n");
             write_preview_rows(e, &m, holdings, None, out);
         }
@@ -292,7 +292,7 @@ fn write_preview_rows(
     // (milestone 595 (provisional), `crates/std_runtime_contract`). The same grants land somewhere
     // else, and slot 0 is not even the same kind of object, so a preview that printed the native
     // positions for one would be describing a child the progenitor does not build.
-    let std = m.runtime == grant_plan::Runtime::Std;
+    let std = m.startup == grant_plan::StartupContract::Std;
     write_result_and_memory_rows(e, m, std, out);
     write_file_and_directory_rows(e, m, holdings, std, out);
     write_page_rows(m, config, std, out);
@@ -310,7 +310,7 @@ fn write_preview_rows(
     // authority is one a reader would trust. Found by someone adding their first program, who hit
     // it because the manifest already knew the answer.
     if m.arg == ArgSpec::Required {
-        write_num(e.arg, out);
+        write_num(e.program_argument, out);
         out(b"\n");
     } else if m.arg.hears_words() {
         out(b"(the words on the line, at cap ");
@@ -357,9 +357,9 @@ fn write_result_and_memory_rows(
     } else {
         out(b"    cap 0  endpoint  result   report its answer back\n");
     }
-    if e.mem_pages > 0 {
+    if e.memory_grant_pages > 0 {
         out(b"    cap 1  untyped   ");
-        write_num(e.mem_pages, out);
+        write_num(e.memory_grant_pages, out);
         out(b" pages  split from this shell's budget\n");
     }
 }
@@ -390,7 +390,7 @@ fn write_file_and_directory_rows(
     // this shell's entire endowment and there would have been nothing to print. The `-r` line is
     // the load-bearing half, because typing that option is what widens the capability from "may
     // take a name out of this directory" to "may walk everything under it".
-    if let Some(g) = e.dir {
+    if let Some(g) = e.directory {
         write_slot(
             if std {
                 std_runtime_contract::FS_DIR_SLOT
@@ -401,7 +401,7 @@ fn write_file_and_directory_rows(
         );
         out(b"endpoint  dir      ");
         let mut buf = [0u8; nav::RENDER_MAX];
-        let n = holdings.place(g.which, &g.dir).render(&mut buf);
+        let n = holdings.place(g.which, &g.directory).render(&mut buf);
         out(&buf[..n]);
         // **What a foreign program's words designated** (milestone 205): the names, or the whole
         // directory for `.`, and what it may do with them, which is its manifest's word grant (the
@@ -679,7 +679,7 @@ fn write_machine_rows(m: &grant_plan::Manifest, out: &mut dyn FnMut(&[u8])) {
 fn write_index_rows(e: &Endowment, m: &grant_plan::Manifest, out: &mut dyn FnMut(&[u8])) {
     let write = match m.indexes {
         grant_plan::IndexStore::Forbidden => return,
-        _ if e.dir.is_some() => return,
+        _ if e.directory.is_some() => return,
         grant_plan::IndexStore::ReadOnly => false,
         grant_plan::IndexStore::ReadWrite => true,
     };

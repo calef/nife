@@ -138,10 +138,12 @@ a status existing at all, counted as having none rather than as `DECIDED`.
 ![Names by what the tree records about them](project-metrics/names.svg)
 
 What each name's own provenance block says, for every name `script/names` tracks: crates,
-programs, packages, scripts, and the items, modules, documentation directories and documents that
-carry a `Name:` block. A name a rule covers counts as ratified. `Ruled, rename owed` is a provisional
-name calef has ruled whose rename has not landed. The pale band is named things with no readable
-block, which before 2026-08-04 is every one of them. The current week's total is checked against
+programs, packages, scripts, every module (each `.rs` file under a `src/` directory), every
+documentation directory and document, and every `pub` item. An item is a function, method,
+constant, static, type or trait. A name a rule covers counts as ratified. `Ruled, rename owed` is a provisional
+name calef has ruled whose rename has not landed. `No provenance block` is named things with no
+readable block. Every kind is counted from the tree, so writing a block moves a name out of that
+band without changing the bar's height. The current week's total is checked against
 `script/names`. A week is a bar, so a day's rulings show as the current week's bar moving. A rising
 `Provisional` band is not debt; the band worth an alarm is `Unrecorded`.
 
@@ -217,7 +219,7 @@ and wire-format value changes. [definitions](interface-stability.md),
 [per crate](project-metrics/interface-stability.md).
 
 <!-- interface-stability: script/metrics writes this -->
-interface, 2026W39 to 2026W42: 10 breaking changes (49 additions); 5 syscall numbers changed, 0 format bumps; 74% co-change.
+interface, 2026W39 to 2026W42: 10 breaking changes (56 additions); 5 syscall numbers changed, 0 format bumps; 74% co-change.
 <!-- /interface-stability -->
 
 ## The crates 857 releases
@@ -319,11 +321,12 @@ rest.
   and perfect. Nothing here reads a name, and `script/names`' own `BUGS` is the longer version: it
   cannot check that a recorded reason is still true, that a date is right, or that a `recorded`
   citation leads anywhere.
-- Four kinds of named thing, and the tree names more than four kinds. Crates, programs,
-  `script/` entry points and Cargo packages carry provenance blocks, so those are what this counts.
-  Public function and method names have been calef's call since 2026-08-23 and nothing counts them;
-  types, `helpers/` helpers and directory names are outside `script/names`' surfaces too, and
-  design/naming.md's `BUGS` carries what that leaves uncovered.
+- An item is a `pub` line, found by a regular expression rather than by the compiler
+  (`name_census.pub_items`). An item a macro generates is missed, and a `pub` line inside a block
+  comment or raw string is counted. `pub(crate)` items are not public and are not counted unless
+  they carry a block. 2026W42 has 7,419 `pub` items, 2,955 of them constants. `helpers/` helpers
+  are outside `script/names`' surfaces, and design/naming.md's
+  `BUGS` carries what that leaves uncovered.
 - `proposals_unnumbered` is a net count and cannot see the flow. Five proposals have left the
   directory and 81 remain; a flat line fits both a stalled pile and one draining as fast as it fills. The measurement that would tell them apart is the age of the oldest,
   which `script/roadmap --check` prints on every lint run and this column does not carry.

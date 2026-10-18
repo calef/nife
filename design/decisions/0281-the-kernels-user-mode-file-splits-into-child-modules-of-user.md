@@ -83,7 +83,7 @@ name is provisional and left to calef's naming pass.
 | `user.rs`, the index | module docs, imports, `USER_STACK_VA` and `USER_STACK_TOP`, every `mod` line with its doc | 455 |
 | `user/address_space.rs` | `AddressSpace`, `Backing`, the overhead constants, `ASIDS`, `Drop` | 510 |
 | `user/loader.rs` | `LoadError` through `program`, and `INITRD_VA` | 315 |
-| `user/entry.rs` | `Mapping`, `Spawn`, `INIT_TEST_SGI`, `HELLO_ENTRY`, `spawn_hello`, `DeviceRun`, the `run` family, `enter_frame`, the `outlaw` roles | 540 |
+| `user/entry.rs` | `Mapping`, `Spawn`, `DELEGATED_TEST_INTERRUPT`, `spawn_elf_child_builder`, `DeviceRun`, the `run` family, `enter_frame`, the `outlaw` roles | 540 |
 | `user/console_device.rs` | the console UART's interrupt, page and port-range constants, `uart_irq_and_source` | 110 |
 | `user/boot_demos.rs` | the `x86_64` and riscv64 demos | 375 |
 | `user/progenitor_boot.rs` | `PROGENITOR_ENTRY`, `PROGENITOR_ROLE`, `INIT_STACK_PAGES`, `boot_progenitor` | 735 |

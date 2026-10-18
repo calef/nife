@@ -391,7 +391,7 @@ impl Tally {
             }
         };
 
-        if e.mem_pages > 0 {
+        if e.memory_grant_pages > 0 {
             let clock = self.holds_clock && declared.clock;
             self.fire_exclusive(elf, e, clock);
             return;
@@ -401,7 +401,7 @@ impl Tally {
         // its region with it, then try once more. A second failure is a budget too small for
         // even one instance, which is a wiring error rather than congestion.
         let clock = self.holds_clock && declared.clock;
-        if !fire(elf, e.arg, self.held.report, clock) {
+        if !fire(elf, e.program_argument, self.held.report, clock) {
             if self.outstanding == 0 {
                 // Nothing is out, so there is nothing to wait for: the budget is too small for
                 // even one instance, which is a wiring error rather than congestion.
@@ -410,7 +410,7 @@ impl Tally {
             }
             collect(&mut self.exits, &mut self.faults);
             self.outstanding -= 1;
-            if !fire(elf, e.arg, self.held.report, clock) {
+            if !fire(elf, e.program_argument, self.held.report, clock) {
                 say(b"timetable: the budget cannot back one instance\n");
                 done(E_BUDGET)
             }
@@ -427,8 +427,13 @@ impl Tally {
         // whatever is already running, fire this one alone, and wait for it to die and its
         // grant to be reclaimed before anything else in this document fires again.
         self.drain();
-        let Some(mem_slot) = fire_with_grant(elf, e.arg, e.mem_pages, self.held.report, clock)
-        else {
+        let Some(mem_slot) = fire_with_grant(
+            elf,
+            e.program_argument,
+            e.memory_grant_pages,
+            self.held.report,
+            clock,
+        ) else {
             say(b"timetable: the budget cannot back one instance\n");
             done(E_BUDGET)
         };
@@ -489,7 +494,7 @@ fn resolve_installed(
     let mut manifests = [grant_plan::NO_NOTE_MANIFEST; timetable::MAX_ENTRIES];
     let mut images: Images = [const { None }; timetable::MAX_ENTRIES];
     for (i, entry) in doc.entries().iter().enumerate() {
-        let word = grant_plan::parse_run(entry.command).prog;
+        let word = grant_plan::parse_run(entry.command).program;
         let (Ok(_), true) = (core::str::from_utf8(word), word.len() <= NAME_MAX) else {
             return Err(i);
         };

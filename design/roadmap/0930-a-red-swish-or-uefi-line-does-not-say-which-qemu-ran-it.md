@@ -1,5 +1,6 @@
 ---
-status: PROPOSED
+status: NOT-STARTED
+promoted_from: a-red-swish-or-uefi-line-does-not-say-which-qemu-ran-it
 raised: 2026-10-16
 milestone_dependencies: none
 decision_dependencies: none
@@ -7,7 +8,7 @@ machine_requirements: none
 specific_machine: none
 needs_person: no
 ---
-# A red swish-check or UEFI line does not say which QEMU ran it
+# 930. A red swish-check or UEFI line does not say which QEMU ran it
 
 Raised by milestone 414's lane (a red post-run check does not say which emulator produced it) on
 2026-10-16, while putting the emulator version on the kernel legs' banner and on every red
@@ -42,3 +43,7 @@ on.
 
 A red swish-check line and a red UEFI line each carry the version, and the banners above them do
 too, as the kernel legs' now do.
+
+## Index row
+
+A red `swish-check` or `uefi-test` failure line carries no QEMU version, though apt's 8.2.2 and the pinned 11.0.2 fail disjoint sets of checks. Milestone 414's version reader needs carrying to those two harnesses' banners and failure lines.

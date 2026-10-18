@@ -148,8 +148,8 @@ fn start_supervised(e: Endowment, foreground: bool) -> Option<Held> {
     // signal it and read it.
     let (w0, w1, w2) = spawnproto::request(
         e.prog.id(),
-        e.arg,
-        e.mem_pages,
+        e.program_argument,
+        e.memory_grant_pages,
         spawnproto::Wiring {
             interruptible: true,
             sink: false,
@@ -445,7 +445,7 @@ pub(super) fn background(nav: &mut Nav, cmd: &[u8]) {
         return;
     }
     let spec = match grant_plan::parse(cmd) {
-        Command::Run(spec) if !spec.prog.contains(&b'/') => spec,
+        Command::Run(spec) if !spec.program.contains(&b'/') => spec,
         _ => return not_supervised(),
     };
     let expanded = match expansion(nav, &spec) {

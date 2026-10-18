@@ -119,19 +119,19 @@ pub fn write_help(out: &mut dyn FnMut(&[u8])) {
 ///     "  no such program (try 'help' for the builtins)\n"
 /// );
 /// ```
-pub fn write_refusal(spec: &RunSpec, refusal: Refusal, out: &mut dyn FnMut(&[u8])) {
+pub fn write_refusal(spec: &ParsedInvocation, refusal: Refusal, out: &mut dyn FnMut(&[u8])) {
     out(b"  ");
     // A named-but-unresolvable program, or an un-grantable resource, name the offending thing. A
     // line of nothing but flags (`--mem 16`) names no program at all, and printing an empty name
     // followed by a colon would be worse than printing the bare refusal.
     match refusal {
-        Refusal::NoSuchProgram if !spec.prog.is_empty() => {
-            out(spec.prog);
+        Refusal::NoSuchProgram if !spec.program.is_empty() => {
+            out(spec.program);
             out(b": ");
         }
         Refusal::NoSuchProgram => {}
         _ => {
-            if let Some(p) = Prog::from_name(spec.prog) {
+            if let Some(p) = Prog::from_name(spec.program) {
                 out(p.name().as_bytes());
                 out(b": ");
             }
@@ -246,9 +246,9 @@ pub fn write_outcome(e: &Endowment, answer: u64, out: &mut dyn FnMut(&[u8])) {
     match e.prog {
         Prog::LeastAuthorityDemo => {
             out(b"  a process at EL0 computed ");
-            write_num(e.arg, out);
+            write_num(e.program_argument, out);
             out(b"*");
-            write_num(e.arg, out);
+            write_num(e.program_argument, out);
             out(b" = ");
             write_num(answer, out);
             out(b"\n");
@@ -257,7 +257,7 @@ pub fn write_outcome(e: &Endowment, answer: u64, out: &mut dyn FnMut(&[u8])) {
             out(b"  the process mapped ");
             write_num(answer, out);
             out(b" pages out of the ");
-            write_num(e.mem_pages, out);
+            write_num(e.memory_grant_pages, out);
             out(b"-page budget you granted (the rest paid for its page tables)\n");
         }
         // Milestone 632 (graphics on demand): the session's one word says it ended. It is always 0

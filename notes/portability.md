@@ -76,6 +76,94 @@ Actionable: the second architecture should come early and be as different as pos
 
 ## What this means for nife
 
+### The arch contract
+
+Every architecture module under `kernel/src/arch/` provides the items below, and the portable
+kernel calls each of them. It is a list rather than a trait on purpose, as milestone 20 (a
+portable HAL, proven on a second architecture) asked in its seam-naming appendix: it names the
+seam without shaping an abstraction across it. Paths are relative to `arch::`; flat ones arrive
+by glob re-export. The list was derived from the tree, not designed: every `arch::` path the
+portable kernel names, kept where aarch64, riscv64 and x86_64 all define it.
+
+Boot and per-CPU state:
+- `init()`: install this core's trap vectors; run on every core before anything can trap.
+- `isa::{init(ptr), get, print_summary}`: discover the ISA from the boot handoff (a device
+  tree, or x86_64's boot information) and refuse a CPU the kernel cannot use.
+- `boot_cpu_id()`: the logical id of the boot core, which is not always 0.
+- `set_percpu(ptr)`, `percpu()`, `read_current_thread()`: the per-core block pointer, and
+  this core's current thread read so a migration cannot fall between the two loads.
+- `percpu_matches_hart()`: tests only; whether that pointer names the core we run on.
+- `can_start_secondaries()`, `cpu_start(..)`, `print_bring_up_mechanism()`: whether and how
+  this machine starts another core.
+
+Primitives:
+- `halt(HaltReason) -> !`; `reboot(marker)`, which asks firmware for a cold reset and
+  returns only if it refuses.
+- `wait_for_interrupt()`: park until one interrupt arrives; the idle thread's body.
+- `current_sp()`: the live stack pointer, for the overflow canary.
+- `direct_memory_access_write_barrier()`: order normal-memory writes before the next MMIO
+  write, so a device that reads a ring by DMA sees it whole.
+- `sync_icache(va, len)`: make code written as data fetchable.
+
+Context switch and per-thread registers:
+- `Context`, `switch_to(prev, next)`: callee-saved state, and the swap that returns into
+  the other thread.
+- `thread_pointer::{hand_over, set_live}`: the user thread-pointer register, swapped at a
+  switch and rewritten for a thread that sets its own.
+- `fp::{FpState, REGISTERS, init, enable, disable, is_enabled, save, restore, touch}`: lazy
+  FP state. `init` leaves FP trapped; `disable` does not scrub, the caller does.
+
+Traps and interrupts:
+- `exceptions::TrapFrame`: the saved user state, a layout shared with the arch's assembly.
+- `exceptions::{init, self_test}`.
+- `exceptions::{user_pc, set_user_arg}`: read a trapped thread's PC and write its return
+  registers, through the frame at its kernel stack top.
+- `exceptions::{last_user_fault, USER_FAULTS, ROUTED_IRQS, SPURIOUS_IRQS}`: diagnostics.
+- `interrupts::{disable, restore, enable, is_enabled}`: `disable` returns the prior state
+  and callers `restore` it; `enable` is for first enabling only.
+- `irq::{init, init_this_cpu, print_summary}`: the interrupt controller, then each core.
+- `irq::enable(id)`: unmask a source the handler masked, at an `Irq` capability's ACK.
+- `irq::send_reschedule(cpu)`: the reschedule inter-processor interrupt.
+- `irq::alloc_msi_vector()`: an MSI-X vector and target, or `None` where the board uses INTx.
+
+Time:
+- `timer::{init, frequency, interval, TICK_HZ}`: the periodic tick and its rate.
+- `timer::now()`: the raw counter, which keeps counting with interrupts masked.
+- `timer::{ticks, ticks_on(cpu), is_tick_pending}`: per-core tick counts and the pending bit.
+- `timer::spin_for(ticks)`: a busy-wait that works with interrupts masked.
+- `timer::set_cycle_counter_grant(bool)`: open or close user access to the cycle counter,
+  at every switch.
+- `pmu::{cycles, outcome, print_summary}`: the cycle counter if there is one, and why not.
+
+Memory:
+- `mmu::Format`: this architecture's page-table format from the `paging` crate.
+- `mmu::{init, init_secondary, print_summary}`: the kernel's tables, then each core onto them.
+- `mmu::{phys_to_virt, virt_to_phys}`: the direct map, both ways.
+- `mmu::{map_page, unmap_page}`: one kernel page. Map refuses to overwrite and unmap
+  invalidates the TLB, which is what holds break-before-make.
+- `mmu::{translate, is_mapped}`: kernel lookups from the live tables; `is_mapped` takes no
+  lock, for fault handlers.
+- `mmu::{translate_user, translate_at(root, va)}`: user lookups, live or at any root.
+- `mmu::{reserved_root, switch_user_root, share_kernel_half}`: the empty user root, the
+  switch-time install, and sharing the kernel into a new root (a no-op where the kernel has
+  its own root register).
+- `mmu::map_current_user_page_frame(..)`: map an owned frame into the caller's space.
+- `mmu::{THREAD_STACK_AREA, PCI_ECAM_BUSES, PCI_IRQ_BASE}`: layout and bus constants.
+- `iommu::{init, is_active, print_summary, build_domain, attach, scope_of,
+  for_each_reserved_region}`: build a DMA domain in the unit's own format, bind a requester
+  to it, and report firmware-reserved regions.
+
+Tests:
+- `semihosting::{exit, EXIT_FAILURE}`: end the emulator with a status the host reads.
+
+`HaltReason`, `NAME` and `UserFault` are defined once in `kernel/src/arch/` for all three.
+Anything else an architecture exports is its own, and a caller reaches it under a `cfg`.
+`machine`, `pmu::init`, `exceptions::enable_external`, `fastpath_pad_body` and the timer
+deadline items each exist on two architectures, so they are not in this contract.
+
+Nothing checks this list against the tree; the BUGS section of `kernel/src/arch/mod.rs` says
+what that misses.
+
 ### We got lucky on the memory model
 
 We start on ARM, the weak one. We physically cannot develop hidden strong-ordering

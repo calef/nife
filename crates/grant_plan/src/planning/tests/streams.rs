@@ -1,7 +1,7 @@
 //! Planning tests: the operators, `2>`, and the draining lane.
 
 use crate::expand::{Expansion, Name};
-use crate::test_support::{WITH_DIR, plan_line};
+use crate::test_support::{WITH_DIRECTORY, plan_line};
 use crate::*;
 
 // ---- milestone 50: the operators, checked against the manifests that ship ----
@@ -14,9 +14,9 @@ use crate::*;
 /// that was always going to hold one.
 #[test]
 fn redirecting_and_piping_change_one_field_and_nothing_else() {
-    let (plain, _) = plan_line(b"date", WITH_DIR).unwrap();
-    let (piped, n) = plan_line(b"date | wc", WITH_DIR).unwrap();
-    let (filed, _) = plan_line(b"date > report.txt", WITH_DIR).unwrap();
+    let (plain, _) = plan_line(b"date", WITH_DIRECTORY).unwrap();
+    let (piped, n) = plan_line(b"date | wc", WITH_DIRECTORY).unwrap();
+    let (filed, _) = plan_line(b"date > report.txt", WITH_DIRECTORY).unwrap();
     assert_eq!(n, 2);
     let (a, b, c) = (plain[0].unwrap(), piped[0].unwrap(), filed[0].unwrap());
     assert_eq!(a.sink, line::Sink::Report);
@@ -26,10 +26,10 @@ fn redirecting_and_piping_change_one_field_and_nothing_else() {
     // by clearing `sink` and comparing wholes, so a field added later has to be thought about.
     for other in [b, c] {
         assert_eq!(a.prog, other.prog);
-        assert_eq!(a.arg, other.arg);
-        assert_eq!(a.mem_pages, other.mem_pages);
+        assert_eq!(a.program_argument, other.program_argument);
+        assert_eq!(a.memory_grant_pages, other.memory_grant_pages);
         assert_eq!(a.file, other.file);
-        assert_eq!(a.dir, other.dir);
+        assert_eq!(a.directory, other.directory);
         assert_eq!(a.flags, other.flags);
         assert_eq!(a.source, other.source);
         assert_eq!(a.reports, other.reports);
@@ -45,8 +45,8 @@ fn redirecting_and_piping_change_one_field_and_nothing_else() {
 /// nothing about what `date` holds records which operator was typed.
 #[test]
 fn append_and_truncate_plan_the_same_endowment() {
-    let (trunc, _) = plan_line(b"date > report.txt", WITH_DIR).unwrap();
-    let (app, _) = plan_line(b"date >> report.txt", WITH_DIR).unwrap();
+    let (trunc, _) = plan_line(b"date > report.txt", WITH_DIRECTORY).unwrap();
+    let (app, _) = plan_line(b"date >> report.txt", WITH_DIRECTORY).unwrap();
     let (t, a) = (trunc[0].unwrap(), app[0].unwrap());
     let (line::Sink::File(tg, tm), line::Sink::File(ag, am)) = (t.sink, a.sink) else {
         panic!("a redirection did not plan to a file sink");
@@ -65,7 +65,7 @@ fn append_and_truncate_plan_the_same_endowment() {
 /// middle one is a real middle and not an end wearing a disguise.
 #[test]
 fn a_pipeline_wires_its_joints_and_only_its_ends_touch_a_file() {
-    let (p, n) = plan_line(b"date | wc | wc > out.txt", WITH_DIR).unwrap();
+    let (p, n) = plan_line(b"date | wc | wc > out.txt", WITH_DIRECTORY).unwrap();
     assert_eq!(n, 3);
     assert_eq!(p[0].unwrap().source, line::Source::None);
     assert_eq!(p[0].unwrap().sink, line::Sink::Pipe);
@@ -82,11 +82,14 @@ fn a_pipeline_wires_its_joints_and_only_its_ends_touch_a_file() {
 /// receive that will never complete. On Unix the same command is a shell that appears to hang.
 #[test]
 fn a_reader_with_nothing_to_read_is_refused_at_the_prompt() {
-    assert_eq!(plan_line(b"wc", WITH_DIR), Err((0, Refusal::InputRequired)));
+    assert_eq!(
+        plan_line(b"wc", WITH_DIRECTORY),
+        Err((0, Refusal::InputRequired))
+    );
     // And the three ways to give it one all satisfy it.
-    assert!(plan_line(b"wc report.txt", WITH_DIR).is_ok());
-    assert!(plan_line(b"wc < report.txt", WITH_DIR).is_ok());
-    assert!(plan_line(b"date | wc", WITH_DIR).is_ok());
+    assert!(plan_line(b"wc report.txt", WITH_DIRECTORY).is_ok());
+    assert!(plan_line(b"wc < report.txt", WITH_DIRECTORY).is_ok());
+    assert!(plan_line(b"date | wc", WITH_DIRECTORY).is_ok());
     let msg = Refusal::InputRequired.message();
     assert!(msg.contains("name a file"), "{msg}");
 }
@@ -104,7 +107,7 @@ fn a_reader_with_nothing_to_read_is_refused_at_the_prompt() {
 /// or point at a second name, and cannot tell from a pipe.
 #[test]
 fn naming_a_file_to_a_reader_is_the_operator_left_out() {
-    let e = plan_line(b"wc report.txt", WITH_DIR).unwrap().0[0].unwrap();
+    let e = plan_line(b"wc report.txt", WITH_DIRECTORY).unwrap().0[0].unwrap();
     let line::Source::File(g) = e.source else {
         panic!("the name did not become the input: {:?}", e.source)
     };
@@ -127,14 +130,14 @@ fn naming_a_file_to_a_reader_is_the_operator_left_out() {
 /// cannot place is the same refusal it always was.
 #[test]
 fn an_input_named_twice_is_refused_rather_than_one_of_them_ignored() {
-    let e = plan_line(b"wc < a.txt", WITH_DIR).unwrap().0[0].unwrap();
+    let e = plan_line(b"wc < a.txt", WITH_DIRECTORY).unwrap().0[0].unwrap();
     let line::Source::File(g) = e.source else {
         panic!()
     };
     assert_eq!(g.name.as_bytes(), b"a.txt");
-    assert!(plan_line(b"wc b.txt < a.txt", WITH_DIR).is_err());
+    assert!(plan_line(b"wc b.txt < a.txt", WITH_DIRECTORY).is_err());
     // And a stage fed by a pipe has no room for an operand either.
-    assert!(plan_line(b"date | wc b.txt", WITH_DIR).is_err());
+    assert!(plan_line(b"date | wc b.txt", WITH_DIRECTORY).is_err());
 }
 
 /// The mirror: a program that reads nothing, handed an input. Authority that moved for no
@@ -142,11 +145,11 @@ fn an_input_named_twice_is_refused_rather_than_one_of_them_ignored() {
 #[test]
 fn a_program_that_reads_nothing_is_refused_an_input() {
     assert_eq!(
-        plan_line(b"date < report.txt", WITH_DIR),
+        plan_line(b"date < report.txt", WITH_DIRECTORY),
         Err((0, Refusal::InputForbidden)),
     );
     assert_eq!(
-        plan_line(b"date | date", WITH_DIR),
+        plan_line(b"date | date", WITH_DIRECTORY),
         Err((1, Refusal::InputForbidden)),
     );
 }
@@ -157,22 +160,22 @@ fn a_program_that_reads_nothing_is_refused_an_input() {
 #[test]
 fn only_a_byte_stream_can_be_redirected() {
     assert_eq!(
-        plan_line(b"least_authority_demo 9 > out.txt", WITH_DIR),
+        plan_line(b"least_authority_demo 9 > out.txt", WITH_DIRECTORY),
         Err((0, Refusal::NotAByteStream)),
     );
     assert_eq!(
-        plan_line(b"least_authority_demo 9 | wc", WITH_DIR),
+        plan_line(b"least_authority_demo 9 | wc", WITH_DIRECTORY),
         Err((0, Refusal::NotAByteStream)),
     );
     // The interrupt demonstrators hold no output capability at all, which is the third case and
     // reaches the same refusal from the other side.
     assert_eq!(
-        plan_line(b"interrupt_heeder | wc", WITH_DIR),
+        plan_line(b"interrupt_heeder | wc", WITH_DIRECTORY),
         Err((0, Refusal::NotAByteStream)),
     );
     // A `Bytes` program in the same position is fine, so the refusal is about the declaration
     // and not about the operator.
-    assert!(plan_line(b"date > out.txt", WITH_DIR).is_ok());
+    assert!(plan_line(b"date > out.txt", WITH_DIRECTORY).is_ok());
 }
 
 // ---- `2>`: the second stream is a declaration, not a number (DECISIONS §67) ----
@@ -185,7 +188,7 @@ fn only_a_byte_stream_can_be_redirected() {
 /// a number: the refusal comes from a manifest that is silent about a second stream.
 #[test]
 fn a_diagnostic_redirection_binds_to_a_declaration_and_refuses_without_one() {
-    let e = plan_line(b"date 2> err.txt", WITH_DIR).unwrap().0[0].unwrap();
+    let e = plan_line(b"date 2> err.txt", WITH_DIRECTORY).unwrap().0[0].unwrap();
     let line::Diagnostics::File(g, mode) = e.diagnostics else {
         panic!("2> did not plan to a file: {:?}", e.diagnostics)
     };
@@ -197,14 +200,14 @@ fn a_diagnostic_redirection_binds_to_a_declaration_and_refuses_without_one() {
 
     // And the refusal, which is the truthful one rather than a permission.
     assert_eq!(
-        plan_line(b"wc gate.txt 2> err.txt", WITH_DIR),
+        plan_line(b"wc gate.txt 2> err.txt", WITH_DIRECTORY),
         Err((0, Refusal::NoDiagnosticStream)),
     );
     let msg = Refusal::NoDiagnosticStream.message();
     assert!(msg.contains("declares no second output"), "{msg}");
     // A program with no byte stream at all reaches it too, from the other side.
     assert_eq!(
-        plan_line(b"least_authority_demo 9 2> err.txt", WITH_DIR),
+        plan_line(b"least_authority_demo 9 2> err.txt", WITH_DIRECTORY),
         Err((0, Refusal::NoDiagnosticStream)),
     );
 }
@@ -218,10 +221,10 @@ fn a_diagnostic_redirection_binds_to_a_declaration_and_refuses_without_one() {
 /// destinations differ on a line that names only one of them.
 #[test]
 fn a_declarer_gets_a_second_destination_with_no_operator_on_the_line() {
-    let e = plan_line(b"date", WITH_DIR).unwrap().0[0].unwrap();
+    let e = plan_line(b"date", WITH_DIRECTORY).unwrap().0[0].unwrap();
     assert_eq!(e.diagnostics, line::Diagnostics::Printed);
 
-    let e = plan_line(b"date > when.txt", WITH_DIR).unwrap().0[0].unwrap();
+    let e = plan_line(b"date > when.txt", WITH_DIRECTORY).unwrap().0[0].unwrap();
     assert!(matches!(e.sink, line::Sink::File(g, _) if g.name.as_bytes() == b"when.txt"));
     assert_eq!(
         e.diagnostics,
@@ -235,7 +238,7 @@ fn a_declarer_gets_a_second_destination_with_no_operator_on_the_line() {
         b"wc gate.txt > out.txt",
         b"least_authority_demo 9",
     ] {
-        let e = plan_line(text, WITH_DIR).unwrap().0[0].unwrap();
+        let e = plan_line(text, WITH_DIRECTORY).unwrap().0[0].unwrap();
         assert_eq!(
             e.diagnostics,
             line::Diagnostics::None,
@@ -249,8 +252,8 @@ fn a_declarer_gets_a_second_destination_with_no_operator_on_the_line() {
 /// says the second stream is a destination rather than a different program.
 #[test]
 fn a_diagnostic_redirection_changes_one_field_and_nothing_else() {
-    let plain = plan_line(b"date > out.txt", WITH_DIR).unwrap().0[0].unwrap();
-    let redirected = plan_line(b"date > out.txt 2>> err.txt", WITH_DIR)
+    let plain = plan_line(b"date > out.txt", WITH_DIRECTORY).unwrap().0[0].unwrap();
+    let redirected = plan_line(b"date > out.txt 2>> err.txt", WITH_DIRECTORY)
         .unwrap()
         .0[0]
         .unwrap();
@@ -302,10 +305,10 @@ fn the_declared_slot_is_out_of_reach_of_the_ordinary_grants() {
 #[test]
 fn declaring_a_second_stream_leaves_the_first_one_redirectable() {
     assert!(Prog::Date.manifest().output.is_byte_stream());
-    assert!(plan_line(b"date | wc", WITH_DIR).is_ok());
-    assert!(plan_line(b"date > out.txt", WITH_DIR).is_ok());
+    assert!(plan_line(b"date | wc", WITH_DIRECTORY).is_ok());
+    assert!(plan_line(b"date > out.txt", WITH_DIRECTORY).is_ok());
     // And `2>` rides alongside a pipe, at the tail where it is written.
-    let (p, n) = plan_line(b"date | wc", WITH_DIR).unwrap();
+    let (p, n) = plan_line(b"date | wc", WITH_DIRECTORY).unwrap();
     assert_eq!(n, 2);
     assert_eq!(p[0].unwrap().diagnostics, line::Diagnostics::Printed);
     assert_eq!(p[1].unwrap().diagnostics, line::Diagnostics::None);
@@ -317,7 +320,7 @@ fn declaring_a_second_stream_leaves_the_first_one_redirectable() {
 fn a_missing_argument_is_reported_before_a_missing_byte_stream() {
     // `least_authority_demo` needs an integer AND has no bytes to redirect. Both are true; one is printed.
     assert_eq!(
-        plan_line(b"least_authority_demo > out.txt", WITH_DIR),
+        plan_line(b"least_authority_demo > out.txt", WITH_DIRECTORY),
         Err((0, Refusal::ArgRequired)),
     );
 }
@@ -342,8 +345,8 @@ fn a_redirection_resolves_its_leading_path() {
     let mut deeper = nav::Cwd::root();
     deeper.apply(nav::path(b"logs").unwrap().steps()).unwrap();
     let holds = Holdings {
-        dir: true,
-        second: None,
+        directory: true,
+        mounted: None,
         cwd: deeper,
         binds: nav::Bindings::none(),
     };
@@ -354,7 +357,7 @@ fn a_redirection_resolves_its_leading_path() {
     assert_eq!(g.name.as_bytes(), b"report.txt");
     assert!(g.writable, "a `>` target is written");
     let mut buf = [0u8; nav::RENDER_MAX];
-    let n = g.dir.render(&mut buf);
+    let n = g.directory.render(&mut buf);
     assert_eq!(&buf[..n], b"/logs/old");
     // An absolute path resolves from this shell's root rather than from where it stands, so
     // the same line typed in two directories names one file.
@@ -364,7 +367,7 @@ fn a_redirection_resolves_its_leading_path() {
     else {
         panic!("not a file sink")
     };
-    let n = g.dir.render(&mut buf);
+    let n = g.directory.render(&mut buf);
     assert_eq!(&buf[..n], b"/old");
 }
 
@@ -373,7 +376,7 @@ fn a_redirection_resolves_its_leading_path() {
 /// is handed a sink or a source, neither of which is a file capability.
 #[test]
 fn the_operator_decides_the_direction() {
-    let (p, _) = plan_line(b"wc < in.txt > out.txt", WITH_DIR).unwrap();
+    let (p, _) = plan_line(b"wc < in.txt > out.txt", WITH_DIRECTORY).unwrap();
     let line::Source::File(i) = p[0].unwrap().source else {
         panic!()
     };
@@ -398,7 +401,7 @@ fn the_operator_decides_the_direction() {
 /// which is why nothing caught it.
 #[test]
 fn an_input_operand_survives_a_pipeline() {
-    let (p, n) = plan_line(b"wc report.txt | wc", WITH_DIR).unwrap();
+    let (p, n) = plan_line(b"wc report.txt | wc", WITH_DIRECTORY).unwrap();
     assert_eq!(n, 2);
     let line::Source::File(g) = p[0].unwrap().source else {
         panic!("the head stage's operand did not become a source")
@@ -408,7 +411,7 @@ fn an_input_operand_survives_a_pipeline() {
     assert_eq!(p[0].unwrap().sink, line::Sink::Pipe);
     // And the same name written out loud plans to the same thing, which is what makes the
     // operand a spelling rather than a second mechanism.
-    let (explicit, _) = plan_line(b"wc < report.txt | wc", WITH_DIR).unwrap();
+    let (explicit, _) = plan_line(b"wc < report.txt | wc", WITH_DIRECTORY).unwrap();
     assert_eq!(p[0], explicit[0]);
 }
 
@@ -439,7 +442,7 @@ const RENDERS_AS_IT_READS: Manifest = Manifest {
     installer: false,
     catalog: false,
     indexes: IndexStore::Forbidden,
-    runtime: Runtime::Native,
+    startup: StartupContract::Native,
 };
 
 /// Plan one stage against an explicit manifest, with the operators' answer folded in.
@@ -447,7 +450,7 @@ fn plan_as(m: Manifest, text: &[u8], streams: Streams) -> Endowment {
     let Command::Run(r) = parse(text) else {
         panic!()
     };
-    plan_against_with(&r, Prog::Wc, m, WITH_DIR, Expansion::none(), streams).unwrap()
+    plan_against_with(&r, Prog::Wc, m, WITH_DIRECTORY, Expansion::none(), streams).unwrap()
 }
 
 /// **The declaration reaches the endowment**, which is what lets a whole line be checked rather
@@ -457,7 +460,7 @@ fn writing_while_reading_is_a_declaration_the_plan_carries() {
     let streams = Streams {
         source: line::Source::File(FileGrant {
             which: nav::Which::A,
-            dir: nav::Cwd::root(),
+            directory: nav::Cwd::root(),
             name: Name::new(b"page.md").unwrap(),
             writable: false,
         }),
@@ -478,7 +481,7 @@ fn a_chain_this_shell_feeds_needs_one_stage_that_reads_to_the_end() {
     let src = Streams {
         source: line::Source::File(FileGrant {
             which: nav::Which::A,
-            dir: nav::Cwd::root(),
+            directory: nav::Cwd::root(),
             name: Name::new(b"page.md").unwrap(),
             writable: false,
         }),
@@ -516,7 +519,7 @@ fn a_chain_this_shell_feeds_needs_one_stage_that_reads_to_the_end() {
         sink: line::Sink::File(
             FileGrant {
                 which: nav::Which::A,
-                dir: nav::Cwd::root(),
+                directory: nav::Cwd::root(),
                 name: Name::new(b"out.txt").unwrap(),
                 writable: true,
             },

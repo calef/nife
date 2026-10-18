@@ -1,6 +1,6 @@
 //! Tests of the shell's `Holdings`: one tree, a mount, and `bind`.
 
-use crate::test_support::{WITH_DIR, at, mounted};
+use crate::test_support::{WITH_DIRECTORY, at, mounted};
 use crate::*;
 
 // ---- milestone 154 (a process that holds two directory capabilities): one tree, a mount ----
@@ -8,10 +8,10 @@ use crate::*;
 /// A one-grant [`Holdings`] resolves exactly as it always has.
 #[test]
 fn a_one_grant_holdings_resolves_exactly_as_before() {
-    assert_eq!(WITH_DIR.resolve(b"logs"), Ok(at(&[b"logs"])));
-    assert_eq!(WITH_DIR.resolve(b".."), Err(nav::Refused::AtYourRoot));
+    assert_eq!(WITH_DIRECTORY.resolve(b"logs"), Ok(at(&[b"logs"])));
+    assert_eq!(WITH_DIRECTORY.resolve(b".."), Err(nav::Refused::AtYourRoot));
     assert_eq!(
-        WITH_DIR.locate(&at(&[b"logs"])),
+        WITH_DIRECTORY.locate(&at(&[b"logs"])),
         (nav::Which::A, at(&[b"logs"]))
     );
 }
@@ -48,7 +48,7 @@ fn a_mounted_tree_is_a_path_in_the_one_tree() {
     );
     // `place` is `locate` reversed.
     assert_eq!(holds.place(nav::Which::B, &at(&[b"photos"])), usb);
-    assert!(SecondDir::mounted_at(nav::Cwd::root()).is_none());
+    assert!(MountedTree::mounted_at(nav::Cwd::root()).is_none());
 }
 
 // ---- `bind` (milestone 47 (navigation and naming): "blocked on a second grant") ----
@@ -58,7 +58,7 @@ fn a_mounted_tree_is_a_path_in_the_one_tree() {
 #[test]
 fn a_one_grant_holdings_binds_a_name_and_resolves_through_it() {
     let mut holds = Holdings {
-        dir: true,
+        directory: true,
         ..Holdings::default()
     };
     assert_eq!(holds.resolve(b"/etc/passwd"), Ok(at(&[b"etc", b"passwd"])));
@@ -93,7 +93,7 @@ fn a_bind_reaches_into_a_mount_and_cannot_hide_one() {
 #[test]
 fn holdings_bind_surfaces_the_bind_tables_own_refusals() {
     let mut holds = Holdings {
-        dir: true,
+        directory: true,
         ..Holdings::default()
     };
     holds.bind(b"x", nav::Cwd::root()).unwrap();
@@ -109,7 +109,7 @@ fn holdings_bind_surfaces_the_bind_tables_own_refusals() {
 fn a_second_tree_remembers_where_it_is_mounted() {
     let mut at = nav::Cwd::root();
     assert!(at.descend(b"second"));
-    let second = SecondDir::mounted_at(at).expect("not the root");
+    let second = MountedTree::mounted_at(at).expect("not the root");
     assert_eq!(second.mount(), at);
-    assert!(SecondDir::mounted_at(nav::Cwd::root()).is_none());
+    assert!(MountedTree::mounted_at(nav::Cwd::root()).is_none());
 }

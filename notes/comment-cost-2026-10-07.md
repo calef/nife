@@ -290,5 +290,5 @@ yourself loudly" produces when the correction is written at the site and never r
 - **Recommendation: option 2**, because the density measured is not the problem and the long blocks
   are; it reuses §212's ratchet rather than inventing a rule. This one is calef's rule, so the data
   is here and the call is his. If calef wants the rule itself to move, option 3's wording is Linux's,
-  quoted above. 2026-10-15 (UTC): `design/roadmap/proposals/kernel-comments-in-the-linux-style.md`
+  quoted above. 2026-10-15 (UTC): `design/roadmap/0929-kernel-comments-in-the-linux-style.md`
   now proposes option 2's shape for `kernel/`.

@@ -132,7 +132,7 @@ impl Nav {
             dir: Some(slot),
             rights,
             holds: grant_plan::Holdings {
-                dir: true,
+                directory: true,
                 ..grant_plan::Holdings::default()
             },
             handles: [0; nav::MAX_DEPTH],
@@ -363,7 +363,7 @@ impl Nav {
         // **A mount point is listed in its parent**, as a Unix mount point is, whether or not the
         // first tree has a directory of that name: the second tree is what the name reaches, and a
         // listing that hid it would be a namespace the user could `cd` into but never see.
-        let mount = self.holds.second.map(|sd| sd.mount());
+        let mount = self.holds.mounted.map(|sd| sd.mount());
         let mount_here = mount.filter(|m| {
             let mut parent = *m;
             parent.ascend() && parent == listed
@@ -441,7 +441,7 @@ impl Nav {
     /// **Milestone 47 built the create half first and the mtime half here**, in that order, because
     /// the mtime half needed a decided rights question (DECISIONS §112) and the create half did
     /// not. See notes/touch.md.
-    pub(super) fn touch(&mut self, args: TouchArgs) -> Say {
+    pub(super) fn touch(&mut self, args: TouchOperands) -> Say {
         // `-t`'s text is parsed before anything is named, so a malformed instant is refused before
         // the create half runs: a caller should not see a file appear and then learn its `-t` text
         // was unusable. The create half and the mtime half are still two separate wire requests
