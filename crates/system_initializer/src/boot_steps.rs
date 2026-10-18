@@ -90,6 +90,9 @@ pub(super) struct LoginPrograms {
 /// The programs the shell can spawn, and the names the measurement refused among them.
 pub(super) struct Spawnable {
     pub(super) progs: [Option<elf::Elf<'static>>; grant_plan::PROGRAM_COUNT],
+    /// Which programs this initial ramdisk has no entry for, so a spawn of one is answered
+    /// [`grant_plan::spawnproto::SPAWN_NOT_IN_IMAGE`] rather than as a build failure.
+    pub(super) absent: [bool; grant_plan::PROGRAM_COUNT],
     pub(super) refused: [&'static str; grant_plan::PROGRAM_COUNT],
     pub(super) refused_n: usize,
 }
@@ -387,10 +390,12 @@ pub(super) fn measure_spawnable(fs: &nifefs::Fs<'static>, table: &str) -> Spawna
     let mut progs: [Option<elf::Elf>; grant_plan::PROGRAM_COUNT] = core::array::from_fn(|_| None);
     let mut refused = [""; grant_plan::PROGRAM_COUNT];
     let mut refused_n = 0usize;
+    let mut absent = [false; grant_plan::PROGRAM_COUNT];
     for (id, slot) in progs.iter_mut().enumerate() {
         let Some(name) = Program::from_id(id as u64).and_then(archive_name) else {
             continue;
         };
+        absent[id] = fs.read(name).is_none();
         let found = measured(fs, table, name);
         if found.unvouched {
             refused[refused_n] = name;
@@ -400,6 +405,7 @@ pub(super) fn measure_spawnable(fs: &nifefs::Fs<'static>, table: &str) -> Spawna
     }
     Spawnable {
         progs,
+        absent,
         refused,
         refused_n,
     }
