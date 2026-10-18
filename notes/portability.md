@@ -80,7 +80,8 @@ Actionable: the second architecture should come early and be as different as pos
 
 Every architecture module under `kernel/src/arch/` provides the items below, and the portable
 kernel calls each of them. It is a list rather than a trait on purpose, as milestone 20 (a
-portable HAL, proven on a second architecture) asked in its seam-naming appendix: it names the
+portable HAL, proven on a second architecture) asked in its
+[seam-naming appendix](../design/roadmap/0020-portable-hal/name-the-seams.md): it names the
 seam without shaping an abstraction across it. Paths are relative to `arch::`; flat ones arrive
 by glob re-export. The list was derived from the tree, not designed: every `arch::` path the
 portable kernel names, kept where aarch64, riscv64 and x86_64 all define it.
