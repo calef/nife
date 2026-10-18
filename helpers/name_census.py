@@ -16,10 +16,11 @@ git, which is what lets a historical tree be counted without a checkout.
 and does not is still a named thing, so `script/metrics` counts it toward `names_total` and toward
 no status (the "No provenance block" band). On a tree that passes `script/names --check` it is zero.
 
-**`unblocked` is every module with no block, and a module is a file, not a block.** Every `.rs`
-file under a `src/` directory is a module (`is_module_file`), so the count of modules is a fact of
-the tree and writing a block moves a module from `unblocked` to a status without changing the
-total. Counting only the modules that carried a block would make the total a count of annotation,
+**`unblocked` is every module or document with no block, and each is a file, not a block.** Every
+`.rs` file under a `src/` directory is a module (`is_module_file`), and every document directly
+under `design/`, `notes/` or `briefs/` is a document (`is_top_document`; one in a subdirectory is
+already a `--check` failure without its block). So the count is a fact of the tree, and writing a
+block moves a name from `unblocked` to a status without changing the total. Counting only the modules that carried a block would make the total a count of annotation,
 rising whenever a block is written on code that already existed. `helpers/module_block_ratchet.py`
 holds the unblocked list to a baseline that only shrinks, so new code arrives with its block.
 
@@ -159,6 +160,23 @@ def is_module_file(path):
             and (path.startswith("src/") or "/src/" in path))
 
 
+DOCUMENT_ROOTS = ("design", "notes", "briefs")
+
+
+def is_top_document(path):
+    """True for a document directly under `design/`, `notes/` or `briefs/`, blocked or not.
+
+    Such a document's block is its own entry in that directory's README. It does not inherit the
+    README's directory block the way a subdirectory's documents do (§75), because that block is
+    about the word `notes` (or `design`, `briefs`), which `script/names` does not count. One with no
+    entry is `unblocked` rather than a `script/names --check` failure, held by the module-block
+    ratchet instead.
+    """
+    parts = path.split("/")
+    return (len(parts) == 2 and parts[0] in DOCUMENT_ROOTS and parts[1].endswith(".md")
+            and parts[1] != "README.md" and not _RECORD_STEM.match(parts[1]))
+
+
 def _rust_records(paths, read, surface_files, problems):
     """`(records, unblocked)`: every item and module block, and every module file with none."""
     out, unblocked = [], []
@@ -211,8 +229,19 @@ def _rust_records(paths, read, surface_files, problems):
 
 
 def _document_records(markdown, pathset, read, problems):
-    """Directories and documents under design/, notes/ and briefs/. Returns `(records, missing)`."""
-    out, missing = [], 0
+    """Directories and documents under design/, notes/ and briefs/: `(records, missing, unblocked)`."""
+    out, missing, unblocked = [], 0, []
+    for root in DOCUMENT_ROOTS:
+        _own, stems, _loose = name_provenance.markdown_blocks(read(root + "/README.md") or "")
+        for path in markdown:
+            if os.path.dirname(path) != root or not is_top_document(path):
+                continue
+            stem = os.path.basename(path)[:-3]
+            block = stems.get(stem)
+            if block is None:
+                unblocked.append(path)
+            else:
+                out.append(("document", stem, path, block, "document"))
     for d in sorted({os.path.dirname(p) for p in markdown} - {"design", "notes", "briefs"}):
         if _RECORD_STEM.match(os.path.basename(d)):
             continue
@@ -221,10 +250,17 @@ def _document_records(markdown, pathset, read, problems):
         if os.path.dirname(d) == SKILLS_DIR and d + "/SKILL.md" in pathset:
             continue    # covered by notes/skills/README.md's block; see SKILLS_DIR
         readme = d + "/README.md"
+        roadmap = d == "design/roadmap" or d.startswith("design/roadmap/")
+        names = [] if roadmap else sorted(
+            os.path.basename(p)[:-3] for p in markdown
+            if os.path.dirname(p) == d and os.path.basename(p) != "README.md"
+            and not _RECORD_STEM.match(os.path.basename(p)))
+        # A directory whose block is absent leaves its documents with none either, and they are
+        # still named things: counted in `missing` beside the directory, never dropped.
         if readme not in pathset:
             problems.append(f"directory {d}/: no README.md, and §75 puts a directory's `Name:` "
                             f"block there")
-            missing += 1
+            missing += 1 + len(names)
             continue
         own, stems, loose = name_provenance.markdown_blocks(read(readme) or "")
         for number, para in loose:
@@ -233,19 +269,17 @@ def _document_records(markdown, pathset, read, problems):
                             f"`Provisional name`)\n      {para[:120]}")
         if own is None:
             problems.append(f"directory {d}/: {readme} carries no paragraph opening `Name:`")
-            missing += 1
+            missing += 1 + len(names)
             continue
         out.append(("directory", d + "/", readme, own, "directory"))
-        if d == "design/roadmap" or d.startswith("design/roadmap/"):
+        if roadmap:
             continue
-        names = sorted(os.path.basename(p)[:-3] for p in markdown
-                       if os.path.dirname(p) == d and os.path.basename(p) != "README.md")
         for stem in names:
-            if not _RECORD_STEM.match(stem):
-                out.append(("document", stem, f"{d}/{stem}.md", stems.get(stem, own), "document"))
-        for stem in sorted(set(stems) - set(names)):
+            out.append(("document", stem, f"{d}/{stem}.md", stems.get(stem, own), "document"))
+        all_stems = {os.path.basename(p)[:-3] for p in markdown if os.path.dirname(p) == d}
+        for stem in sorted(set(stems) - all_stems):
             problems.append(f"directory {d}/: {readme} records `{stem}`, which is not a file here")
-    return out, missing
+    return out, missing, unblocked
 
 
 def census(paths, read, british=None):
@@ -268,8 +302,9 @@ def census(paths, read, british=None):
                      if kind in ("crate", "program", "module")}
     markdown = [p for p in paths if p.endswith(".md") and p.startswith(("design/", "notes/",
                                                                          "briefs/"))]
-    docs, missing = _document_records(markdown, pathset, read, problems)
+    docs, missing, unblocked_docs = _document_records(markdown, pathset, read, problems)
     rust, unblocked = _rust_records(paths, read, surface_files, problems)
+    unblocked += unblocked_docs
     for kind, name, path, text, what in rust + docs:
         status, date, refused, problem = name_provenance.classify(text)
         if problem is not None:

@@ -2559,8 +2559,8 @@ CHARTS = [
       ('Superseded', 'decisions_superseded'), ('Proposed', 'decisions_proposed'),
       ('No status recorded', 'decisions_unrecorded')], 1.0, None, None),
     ('names.svg', 'Names by what the tree records about them',
-     'every name script/names tracks: crates, programs, packages, scripts, marked items and '
-     'modules, documentation directories and documents',
+     'every name script/names tracks: crates, programs, packages, scripts, every module and '
+     'document, documentation directories, and the items that carry a block',
      [('Ratified', 'names_ratified'), ('Ruled, rename owed', 'names_ruled_owed'),
       ('Recorded', 'names_recorded'), ('Provisional', 'names_provisional_unruled'),
       ('Unrecorded', 'names_unrecorded'),

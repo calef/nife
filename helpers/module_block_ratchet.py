@@ -1,9 +1,10 @@
-"""The module-block ratchet: every module carries a `//! Name:` block, held to a list that only shrinks.
+"""The module-block ratchet: every module and document carries a `Name:` block, held to a list that only shrinks.
 
 A module is a file (`helpers/name_census.py`'s `is_module_file`): every `.rs` file under a `src/`
-directory outside vendored code, whether or not anyone wrote its block. That is what lets
-`script/names` and `script/metrics` count every module, and it means a module with no block is
-visible, so it can be held to something. This holds it, with
+directory outside vendored code, whether or not anyone wrote its block. So is a document directly
+under `design/`, `notes/` or `briefs/` (`is_top_document`), whose block is its own entry in that
+directory's README. That is what lets `script/names` and `script/metrics` count every one, and it
+means a name with no block is visible, so it can be held to something. This holds it, with
 `helpers/file_length_ratchet.py`'s pattern on purpose: a committed list that only shrinks, a
 comparison against the merge base, and a selftest that runs before the check.
 
@@ -18,9 +19,10 @@ record. `module_block` for what it holds each module to, `ratchet` for the famil
 
 **The rules.**
 
-- A module with no block that is not on the list fails. A new file is not on the list, so new
-  code arrives with its block: `//! Name: provisional, minted <date> (UTC) by <lane>.` is enough.
-- A listed module that now carries a block, or is gone, fails until its row is removed, so dead
+- A module or document with no block that is not on the list fails. A new file is not on the
+  list, so it arrives with its block: `//! Name: provisional, minted <date> (UTC) by <lane>.` at
+  the top of a module, or a README entry for a document, is enough.
+- A listed file that now carries a block, or is gone, fails until its row is removed, so dead
   rows cannot accumulate. `--bank` removes them.
 - Against the merge base a row may not be added. A rename moves its row in the same change: a file
   git calls renamed may take its old row's place, so moving a file does not oblige a block.
@@ -42,14 +44,18 @@ BASELINE = 'design/module-block-baseline.txt'
 
 HEADER = """\
 # The module-block ratchet's baseline: helpers/module_block_ratchet.py, whose header is the manual.
-# One path per line: a module (every .rs file under a src/ directory) that carried no `//! Name:`
-# block when this list was written. The list only shrinks. Remove a row in the change that writes
+# One path per line: a module (every .rs file under a src/ directory) or a document directly under
+# design/, notes/ or briefs/ that carried no `Name:` block when this list was written. The list only shrinks. Remove a row in the change that writes
 # its block or deletes its file (`python3 helpers/module_block_ratchet.py --bank` does it); a row
 # may not be added (script/lint compares against the merge base), and a rename moves its row.
 """
 
-REMEDY = ('write its block, `//! Name: provisional, minted <date> (UTC) by <lane>.`, at the top '
-          'of the file (design/naming.md)')
+def remedy(path):
+    if path.endswith('.md'):
+        return (f'give it an entry in {os.path.dirname(path)}/README.md, a paragraph '
+                f'`` `{os.path.basename(path)}`: Name: provisional, minted <date> (UTC) by <lane>. ``')
+    return ('write its block, `//! Name: provisional, minted <date> (UTC) by <lane>.`, at the top '
+            'of the file (design/naming.md)')
 
 
 # --- the baseline and git -------------------------------------------------------------------------
@@ -97,7 +103,8 @@ def tree_modules():
             return None
 
     _records, _problems, _missing, unblocked = name_census.census(paths, read)
-    return {p for p in paths if name_census.is_module_file(p)}, set(unblocked)
+    judged = {p for p in paths if name_census.is_module_file(p) or name_census.is_top_document(p)}
+    return judged, set(unblocked)
 
 
 # --- the rules, pure so the selftest can drive them ------------------------------------------------
@@ -105,20 +112,20 @@ def tree_modules():
 def problems(modules, unblocked, rows, base_rows=None, renames=()):
     """Every failure in one tree. `base_rows` is None where the merge base holds no baseline."""
     if not modules:
-        return ['the check judged no module at all. A selector that matches nothing passes by '
+        return ['the check judged no file at all. A selector that matches nothing passes by '
                 'checking nothing (design/roadmap/0401-a-gate-that-selects-the-set-it-judges.md)']
     bad = []
     for path in sorted(unblocked - rows):
-        bad.append(f'{path}: a module with no `Name:` block, and it is not on the list. A new '
-                   f'module carries its block; {REMEDY}')
+        bad.append(f'{path}: no `Name:` block, and it is not on the list. A new file carries its '
+                   f'block; {remedy(path)}')
     for path in sorted(rows - unblocked):
-        why = 'carries a block now' if path in modules else 'is not a module in the tree'
+        why = 'carries a block now' if path in modules else 'is not a module or document here'
         bad.append(f'{BASELINE}: {path} {why}. Remove its row (--bank); the list cannot go stale')
     if base_rows is not None:
         was_called = {new: old for old, new in renames}
         for path in sorted(rows - base_rows):
             if was_called.get(path) not in base_rows:
-                bad.append(f'{BASELINE}: {path} was added. The list only shrinks; {REMEDY}')
+                bad.append(f'{BASELINE}: {path} was added. The list only shrinks; {remedy(path)}')
     return bad
 
 
@@ -143,7 +150,7 @@ def run_check():
         for b in bad:
             print(f'  {b}', file=sys.stderr)
         return 1
-    print(f'module-block ratchet: {len(modules)} modules, {len(unblocked)} with no block, held to '
+    print(f'module-block ratchet: {len(modules)} modules and documents, {len(unblocked)} with no block, held to '
           f'{len(rows)} baseline rows')
     return 0
 
@@ -182,6 +189,11 @@ def selftest():
         ('build.rs is not', not name_census.is_module_file('kernel/build.rs')),
         ('vendored code is not', not name_census.is_module_file('vendor/a/src/b.rs')),
         ('code quoted in a note is not', not name_census.is_module_file('notes/a/src/b.rs')),
+        ('a top-level note is a document', name_census.is_top_document('notes/a.md')),
+        ('a numbered record is not', not name_census.is_top_document('design/0001-a.md')),
+        ('a README is not', not name_census.is_top_document('notes/README.md')),
+        ('a nested document is not (its directory gates it)',
+         not name_census.is_top_document('notes/a/b.md')),
     ]
     msg = problems(m('a', 'new'), m('new'), set())[0]
     cases.append(('the failure names the file and the block to write',
