@@ -548,11 +548,13 @@ jobs:
           $errors
           \`\`\`
 
-          The fix is a commit to this branch teaching \`patches/std-nife\` whatever std now wants.
-          Most often that is one name in the \`pub use unsupported_fs::{...}\` list in
-          \`sys/fs/nife.rs\`, because the overlay patches std's own source and therefore tracks
-          upstream *internals* rather than any stable API. When it builds, this PR stops being a draft
-          on the next daily run.
+          The fix goes on a lane branch of its own, never this one: every daily run rebuilds this
+          branch from main and force-pushes it, so a commit here is wiped. On that branch, raise the
+          pin as this diff does and teach \`patches/std-nife\` whatever std now wants. Often that is
+          one name in the \`pub use unsupported_fs::{...}\` list in \`sys/fs/nife.rs\`, because the
+          overlay patches std's own source and therefore tracks upstream *internals* rather than any
+          stable API. Once that lands on main, the daily run has nothing left to propose and this PR
+          can be closed with a pointer to it.
 
           You are reading this instead of nothing because the \`toolchain drift\` workflow has no
           badge and posts no notification, so a red run there reaches nobody. A pull request is the
