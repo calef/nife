@@ -48,64 +48,10 @@ const R_HOLDING: u64 = 0x_48_4F_4C_44_47;
 const PARTITIONS: u64 = 3;
 const NIFE_FIRST_LBA: u64 = 30720;
 
-/// **The machine finds a partition table on a disk it did not write, and says what is on it.**
-///
-/// This is the half of milestone 57 that is not optional. A block device hands a kernel an
-/// undifferentiated run of blocks, and which of them is a filesystem is written in the partition
-/// table and nowhere else, so an OS that cannot read a GPT cannot find a filesystem on a disk it did
-/// not create. `crates/globally_unique_identifier_partition_table` has been able to parse one since
-/// 2026-07-30 and was wired to nothing; this is the wire.
-///
-/// What makes the assertion worth something is where the bytes came from: the image is built from
-/// the committed `sgdisk` fixture, so the table under test was written by gptfdisk, in C++, by
-/// people who have never heard of this project. A parser that only reads its own output proves
-/// nothing, and neither does a driver that only reads a disk its own `mkfs` laid out.
-///
-/// The backup check is the one that would have been easy to skip and is the reason this reads a
-/// second, differently-aligned run of blocks at the far end of the disk: 33 logical blocks ending on
-/// the last block, which begins partway into a filesystem block at an offset that depends on the
-/// disk's size (`globally_unique_identifier_partition_table::span`).
-///
-/// The roster half also holds milestone 421 (the block roster names an NVMe disk): when the runner
-/// attached an NVMe controller, the surveyor must list it.
-///
-/// Falsification: replayable `system_tests/falsifications/user.disk_tests.the_disk_surveyor_reads_a_table_gptfdisk_wrote.patch`
-#[test_case]
-fn the_disk_surveyor_reads_a_table_gptfdisk_wrote() {
-    let Some(w) = disk_service::start(fs_service::blk_server_image(), surveyor_image()) else {
-        // No fourth mmio block device: this boot did not build the GPT image. A fact about the
-        // machine, not a failure, and a fact the final line has to carry: this used to return
-        // silently and be counted as a pass (milestone 214,
-        // design/roadmap/0214-print-and-return-skips.md); the silent form is the same defect with
-        // the line left out.
-        skip_unless_required!(
-            X86_FIXTURES_REQUIRED,
-            "no GPT disk attached (this boot did not build the GPT image)"
-        );
-    };
-    // **On the PVH x86_64 leg the roster is exactly the five fixtures, no more and no fewer**
-    // (milestone 420 (x86_64 has one fixture of five and no NIC, GPU, keyboard or RNG)). The runner
-    // attaches the crash, GPT and blank disks softly (`[ -f img ]`), and the assertions below hold
-    // for any count from zero to five, so a runner that lost those lines used to pass this test
-    // with a skip (measured 2026-10-16: GPT and blank removed, "0 passed, 1 skipped", exit 0).
-    // Removing only the GPT disk slid the blank one into ordinal 3 and went red by accident, on a
-    // protective-MBR panic that names neither disk. This names them.
-    if X86_FIXTURES_REQUIRED {
-        assert_eq!(
-            w.devices,
-            5 + usize::from(NON_VOLATILE_MEMORY_EXPRESS_ATTACHED),
-            "the x86_64 roster names {} block devices; the runner owes five virtio functions \
-             (nifefs=0, redoxfs=1, crash=2, gpt=3, blank=4) and one NVMe controller when \
-             NIFE_NVME is set. A fixture is missing from helpers/qemu-runner-x86_64.sh, and \
-             ordinals above the missing one have slid down",
-            w.devices,
-        );
-    }
-    // Past device bring-up, so a hang below is a hang in a read rather than in the driver.
-    let [ready, ..] = crate::sched::ipc_receive(w.ready);
-    assert_eq!(ready, filesystem_contract::READY);
-
-    // Message one: the roster, which is the authority that does NOT involve the disk.
+/// **Message one: the roster, which is the authority that does NOT involve the disk.** The
+/// surveyor's per-kind counts, checked against the runner's fixtures and against the kernel's own
+/// read of the same frame.
+fn roster_message_names_every_disk(w: &disk_service::Wiring) {
     let [mmio, pci, nvme, ..] = crate::sched::ipc_receive(w.report);
     let total = mmio + pci + nvme;
     assert_eq!(
@@ -189,6 +135,66 @@ fn the_disk_surveyor_reads_a_table_gptfdisk_wrote() {
             "the NVMe controller is not the roster's last entry at ordinal 0",
         );
     }
+}
+
+/// **The machine finds a partition table on a disk it did not write, and says what is on it.**
+///
+/// This is the half of milestone 57 that is not optional. A block device hands a kernel an
+/// undifferentiated run of blocks, and which of them is a filesystem is written in the partition
+/// table and nowhere else, so an OS that cannot read a GPT cannot find a filesystem on a disk it did
+/// not create. `crates/globally_unique_identifier_partition_table` has been able to parse one since
+/// 2026-07-30 and was wired to nothing; this is the wire.
+///
+/// What makes the assertion worth something is where the bytes came from: the image is built from
+/// the committed `sgdisk` fixture, so the table under test was written by gptfdisk, in C++, by
+/// people who have never heard of this project. A parser that only reads its own output proves
+/// nothing, and neither does a driver that only reads a disk its own `mkfs` laid out.
+///
+/// The backup check is the one that would have been easy to skip and is the reason this reads a
+/// second, differently-aligned run of blocks at the far end of the disk: 33 logical blocks ending on
+/// the last block, which begins partway into a filesystem block at an offset that depends on the
+/// disk's size (`globally_unique_identifier_partition_table::span`).
+///
+/// The roster half also holds milestone 421 (the block roster names an NVMe disk): when the runner
+/// attached an NVMe controller, the surveyor must list it.
+///
+/// Falsification: replayable `system_tests/falsifications/user.disk_tests.the_disk_surveyor_reads_a_table_gptfdisk_wrote.patch`
+#[test_case]
+fn the_disk_surveyor_reads_a_table_gptfdisk_wrote() {
+    let Some(w) = disk_service::start(fs_service::blk_server_image(), surveyor_image()) else {
+        // No fourth mmio block device: this boot did not build the GPT image. A fact about the
+        // machine, not a failure, and a fact the final line has to carry: this used to return
+        // silently and be counted as a pass (milestone 214,
+        // design/roadmap/0214-print-and-return-skips.md); the silent form is the same defect with
+        // the line left out.
+        skip_unless_required!(
+            X86_FIXTURES_REQUIRED,
+            "no GPT disk attached (this boot did not build the GPT image)"
+        );
+    };
+    // **On the PVH x86_64 leg the roster is exactly the five fixtures, no more and no fewer**
+    // (milestone 420 (x86_64 has one fixture of five and no NIC, GPU, keyboard or RNG)). The runner
+    // attaches the crash, GPT and blank disks softly (`[ -f img ]`), and the assertions below hold
+    // for any count from zero to five, so a runner that lost those lines used to pass this test
+    // with a skip (measured 2026-10-16: GPT and blank removed, "0 passed, 1 skipped", exit 0).
+    // Removing only the GPT disk slid the blank one into ordinal 3 and went red by accident, on a
+    // protective-MBR panic that names neither disk. This names them.
+    if X86_FIXTURES_REQUIRED {
+        assert_eq!(
+            w.devices,
+            5 + usize::from(NON_VOLATILE_MEMORY_EXPRESS_ATTACHED),
+            "the x86_64 roster names {} block devices; the runner owes five virtio functions \
+             (nifefs=0, redoxfs=1, crash=2, gpt=3, blank=4) and one NVMe controller when \
+             NIFE_NVME is set. A fixture is missing from helpers/qemu-runner-x86_64.sh, and \
+             ordinals above the missing one have slid down",
+            w.devices,
+        );
+    }
+    // Past device bring-up, so a hang below is a hang in a read rather than in the driver.
+    let [ready, ..] = crate::sched::ipc_receive(w.ready);
+    assert_eq!(ready, filesystem_contract::READY);
+
+    roster_message_names_every_disk(&w);
 
     // Message two: the table, which is the authority that does.
     let [flags, partitions, nife_first_lba, ..] = crate::sched::ipc_receive(w.report);
