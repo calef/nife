@@ -566,6 +566,7 @@ fn transcript_failures(leg: &Leg, console: &Console, failed: &mut Vec<String>) -
         failed.extend(rg_walk_failure(arch, &transcript));
     }
     failed.extend(kernel_fault_failure(&transcript));
+    failed.extend(resolver_refusal_failure(&transcript));
     let raw_transcript = console.raw.lock().expect("transcript lock").clone();
     failed.extend(slot_gauge_failure(
         arch,
@@ -1344,6 +1345,30 @@ fn rg_walk_failure(arch: &str, transcript: &str) -> Option<String> {
         }
         Err(why) => Some(why),
     }
+}
+
+/// **A name asked at the prompt must reach the name server** (milestone 892 (a std program at the
+/// prompt holds the network and a name resolver)). [`RESOLVING_LINE`]'s listed location is the one
+/// name a program resolves at this prompt. Under slirp the lease's 10.0.2.3 forwards to the host's
+/// resolver, which knows no `.test` name, so the answer is `NotFound` with a network and
+/// `TimedOut` without one; neither is asserted. What is refused is `NetworkUnreachable`: the
+/// resolver's own socket was refused a step, and no query left the guest. Nothing else here
+/// notices, because `jig` falls back to the address the sources give, so every other line passes
+/// on a boot where no name resolves.
+///
+/// Falsification: replayable `xtask/falsifications/swish_check.boot.resolver_refusal_failure.patch`
+fn resolver_refusal_failure(transcript: &str) -> Option<String> {
+    let (answer, _) = swish_check_answer(transcript, 0, RESOLVING_LINE)?;
+    let refused = answer
+        .lines()
+        .find(|l| l.contains(": NetworkUnreachable"))?;
+    Some(format!(
+        "`{RESOLVING_LINE}` asked a name that never reached the name server: {:?}. The resolver \
+         the progenitor started was refused a network step (the parentheses name it), so no \
+         program at this prompt can resolve a name; `build_domain_name_resolver`'s endowment is \
+         the first place to look.",
+        refused.trim()
+    ))
 }
 
 /// **Nothing may have died** (milestone 233 (`login` dies on every boot, and the boot says it is

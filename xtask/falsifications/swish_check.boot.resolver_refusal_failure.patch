@@ -1,0 +1,36 @@
+Falsifies `xtask::swish_check::boot::resolver_refusal_failure`, at the second boot's
+`jig install uptime`, the one line that resolves a name at the prompt.
+
+Architecture: x86_64
+Line: jig install uptime
+
+Milestone 892 (a std program at the prompt holds the network and a name resolver). The defect is
+the progenitor placing `domain_name_resolver`'s budget `SPEND_ONLY`. Since milestone 824 (a retype
+mints no right its budget lacks) the resolver's socket page then carries no `GRANT`, its
+`SEND_CAP` to each socket it opens is refused, and every resolve answers "the resolver had no
+socket page". `jig` falls back to the address the sources give, so every other line passes.
+
+By hand:
+
+    git apply xtask/falsifications/swish_check.boot.resolver_refusal_failure.patch
+    script/swish-check --arch x86_64        # must exit non-zero, failing `jig install uptime`
+    git apply -R xtask/falsifications/swish_check.boot.resolver_refusal_failure.patch
+
+Expected to fail: `jig install uptime` prints `passed over
+https://packages.basalt.test:8443/rolling/targets/uptime-0.1.0-x86_64.nifepkg: NetworkUnreachable
+(the resolver had no socket page)`. Replayed 2026-10-18 (UTC): exit 1 naming that line; the fixed
+tree prints `NotFound` there and exits 0.
+
+diff --git a/crates/system_initializer/src/children.rs b/crates/system_initializer/src/children.rs
+index 914053131..121550cb8 100644
+--- a/crates/system_initializer/src/children.rs
++++ b/crates/system_initializer/src/children.rs
+@@ -385,7 +385,7 @@ pub(super) fn build_domain_name_resolver(
+                 // lends each socket it opens a page retyped from this budget, and since milestone
+                 // 824 (a retype mints no right its budget lacks) that `SEND_CAP` needs `GRANT`
+                 // here. `SPEND_ONLY` answered every resolve "the resolver had no socket page".
+-                (2, budget, abi::rights::ALL),
++                (2, budget, abi::rights::SPEND_ONLY),
+                 (3, entropy, abi::rights::WRITE),
+                 (
+                     endowment::OWN_SPACE_SLOT,

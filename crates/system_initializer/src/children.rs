@@ -358,9 +358,9 @@ pub(super) fn announce_network(term_ep: u64, network: Option<(u64, u64, u64)>, r
 /// badged copy from it, and sends the grant and the forget through it.
 ///
 /// The endowment is the kernel harness's (`name_resolver_tests::start_resolver`), slot for slot:
-/// its endpoint `READ` (0), the stack `WRITE` (1), a budget (2), the entropy service `WRITE` (3),
-/// and its own address space `WRITE` (4) for a forget's `UNMAP`. What differs is the server: the
-/// harness names the runners' peer, and this names whatever the lease said.
+/// its endpoint `READ` (0), the stack `WRITE` (1), a budget with every right (2), the entropy
+/// service `WRITE` (3), and its own address space `WRITE` (4) for a forget's `UNMAP`. What differs
+/// is the server: the harness names the runners' peer, and this names whatever the lease said.
 ///
 /// Failures trap, [`build_net_stack`]'s reason.
 pub(super) fn build_domain_name_resolver(
@@ -381,7 +381,11 @@ pub(super) fn build_domain_name_resolver(
             placed: &[
                 (0, service, abi::rights::READ),
                 (1, stack, abi::rights::WRITE),
-                (2, budget, abi::rights::SPEND_ONLY),
+                // Every right, as the harness's `memory_region_lending_capability`: the resolver
+                // lends each socket it opens a page retyped from this budget, and since milestone
+                // 824 (a retype mints no right its budget lacks) that `SEND_CAP` needs `GRANT`
+                // here. `SPEND_ONLY` answered every resolve "the resolver had no socket page".
+                (2, budget, abi::rights::ALL),
                 (3, entropy, abi::rights::WRITE),
                 (
                     endowment::OWN_SPACE_SLOT,
