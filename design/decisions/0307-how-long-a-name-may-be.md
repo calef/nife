@@ -1,5 +1,5 @@
 ---
-status: DECIDED
+status: AMENDED
 raised: 2026-10-17
 decided: 2026-10-17
 ratified_by: calef
@@ -16,24 +16,23 @@ packages share, so it was ruled before any code.
 
 ## The rules
 
-1. **A package's file name, `<name>-<version>-<architecture>.nifepkg`, is at most 252 bytes as a
-   whole** (calef: *"252 seems fine for now."*). Each field is bounded by the file name, not given
+1. **A package's file name, `<name>-<version>-<architecture>.jig.tar.zst`, is at most 252 bytes as
+   a whole** (calef: *"252 seems fine for now."*). Each field is bounded by the file name, not given
    its own limit. A program name, which is its own file under `bin/`, is at most the same 252.
 2. **The bound is the smallest name limit among the filesystems nife installs packages onto.** A
    filesystem nife only reads, such as ISO 9660, does not count. Today that set is redoxfs, whose
    `DIR_ENTRY_MAX_LENGTH` is 252: a 4-byte node pointer and 252 name bytes make its 256-byte entry.
    Each writable filesystem crate exports its maximum name length, and a test fails if any is below
    the bound. The bound rises only when that test allows it.
-3. **Names are variable width** in `nifefs` and `package_archive` (calef: *"variable-width"*): a
-   length, then the bytes.
+3. **Names are variable width** (calef: *"variable-width"*): a name costs what it uses.
    - A `nifefs` entry is a one-byte length, the name, then `start_block` and `len` as `u32`s.
      Entries are walked, not indexed. The header's `count` keeps a ceiling, so a hostile header is
      refused before anything is multiplied by it, and the directory is sized in bytes.
      `ENTRIES_IN_FIRST_BLOCK` becomes the entries that end inside block 0, found while walking,
      which is what the EL0 block driver in `crates/virtio` reads.
-   - A package's name, version and architecture are each a `u16` length and bytes. A member name is
-     a path: a `u16` length, every `/`-separated component within the bound, one page at most, so
-     `bin/<a 252-byte program>` fits.
+   - A package is §197 (a package is one archive file)'s tar, a jig package. A member name is a
+     path, held to ustar's fields until pax `path` support lands (the amendment's rule 1). The
+     package's name, version and architecture are lines of its `package_measurements` member.
 4. **One constant, in a crate both formats import** (calef: *"Yes"*). `package_archive` does not
    depend on `nifefs`, so neither owns it; the crate holding it is named by the build lane. Every
    ceiling that holds a program or package name reads it: `HOLDER_MAX`, the timetable's `NAME_MAX`,
@@ -45,10 +44,11 @@ packages share, so it was ruled before any code.
    and lifting it is its own milestone. Until that milestone lands, install checks the same 16
    bytes, so nothing is installed that remove cannot remove. All six of basalt's packages fit; the
    longest is `hackbench`, 9 bytes.
-6. **The magic bumps, and `jig` refuses the old format.** `nifefs` is `CRKR0003` and
-   `package_archive` is `NIFEPKG2`, for §58 (a wider archive name)'s reason: a reader striding the
-   old layout would find a plausible name at the wrong offset. Once the migration's step 3 lands,
-   `jig` refuses `NIFEPKG1` as an unknown format. No installed system holds a `NIFEPKG1` package.
+6. **The format changes visibly, and `jig` refuses the old one.** `nifefs` is `CRKR0003`, for §58
+   (a wider archive name)'s reason: a reader striding the old layout would find a plausible name
+   at the wrong offset. A package becomes §197's zstd-compressed tar, which no `NIFEPKG1` reader
+   mistakes for its own. Once the migration's step 3 lands, `jig` refuses `NIFEPKG1` as an unknown
+   format. No installed system holds a `NIFEPKG1` package.
 
 ## The migration, in order
 
@@ -60,7 +60,7 @@ pins, and in CI a failed fetch fails the row. basalt builds its packages with th
 1. nife, one pull request. The shared constant and rule 2's test. `nifefs` at `CRKR0003`, with
    every reader in the same change (kernel, `virtio`, `sealed_pair`'s scan, xtask, the fuzz targets
    and the Kani harnesses), since images regenerate from the tree. `package_archive` writes
-   `NIFEPKG2` and reads `NIFEPKG2` and `NIFEPKG1`. The `NIFEPKG1` reader exists only to break the
+   §197's tar, `cargo xtask package` compresses it with zstd, and the readers accept `NIFEPKG1` too. The `NIFEPKG1` reader exists only to break the
    cycle: nife's CI must still install basalt's pinned packages until basalt has rebuilt them with
    this commit. It is not compatibility for users. Rule 5's check lands here too.
 2. basalt. Bump the nife pin to step 1's merge commit, cited as `nifeos/nife@<sha>`. Rebuild
@@ -72,6 +72,66 @@ pins, and in CI a failed fetch fails the row. basalt builds its packages with th
 4. basalt. Re-pin nife to step 3.
 
 basalt's earlier `rolling-*` Releases stay published and unchanged.
+
+## Amendment, 2026-10-18: a package is a jig package, a zstd-compressed tar
+
+calef, 2026-10-18 (02:16 to 02:35 UTC), on the measurements in
+[notes/packages/container-format-measurements.md](../../notes/packages/container-format-measurements.md):
+*"tar with a manifest"*, and on compression, *"Yes"*. The format is a jig package, named for its
+client as RPM and apk are (*"Yes"*), in a file `<name>-<version>-<architecture>.jig.tar.zst`.
+
+1. The container is ustar of regular files, read by upstream `tar-no-std` unpatched (*"Yes"*),
+   with `package_archive`'s Kani harnesses proving properties through its public API. The build
+   and the installer refuse a member path over 255 bytes split at a `/`, or a last component over
+   100. That is rule 1's recorded exception, as rule 5's 16 bytes is, until pax `path` support
+   lands as its own milestone. That milestone offers `tar-no-std` a patch first, and forks or
+   writes a reader only if it is refused or Kani cannot prove it.
+2. The first member is `package_measurements`, pairing with the boot archive's
+   `program_measurements` (*"Yes"*). Its first line names the format and its version, for example
+   `jig-package 1`, then identity lines, then one `<path> sha256:<hex>` line per member: the
+   catalog-line shape `measured_boot` parses (calef: *"I believe we already debated the
+   catalog-line format and aligned on what we have."*). Nothing else identifies a jig package: no
+   pax global header and no zstd skippable frame (*"Yes"*).
+3. The file that travels is that tar compressed whole with zstd. `jig` decompresses it at
+   install. The compressor's version, level and flags are pinned, because the same input at the
+   same level gave different bytes from zstd 1.5.5 and 1.5.7, and milestone 917 (basalt's packages
+   build reproducibly) needs identical bytes.
+4. §195 (a reviewed recipe vouches for a package)'s digest covers the compressed file as
+   fetched, and `jig` checks it before decompressing.
+5. The installer reads the uncompressed tar once. `system_initializer`'s activation step parses
+   it at install, and `place_program` writes each program to `packages/<name>/<version>/<program>`.
+   At spawn the progenitor reads that placed file and looks its digest up in the activation set
+   (§208 (installing a package is granting it)), never the tar.
+6. The installer checks a digest of the uncompressed tar. The recipe and the index carry it
+   too, and the activation step checks it before parsing, never trusting
+   `jig`'s check (*"Yes"*). The fetcher and the granter are separate parties, so the granter
+   verifies what it grants, as containerd checks an image's uncompressed `diff_ids`. And it does
+   not move with the compressor, as Nix signs `NarHash` and RPM 4.16 carries `PAYLOADDIGESTALT`.
+
+zstd over gzip and xz, which stock macOS and Ubuntu read unaided, was kept. calef: *"It seems like we have a much smaller sample size than the distributions that moved to
+zstd. And they moved there for a reason."* On basalt's 18 packages, level 19 gives 35.1% of their
+uncompressed size.
+
+basalt's package blobs gain an OCI registry location once nife's OCI registry client exists
+(calef: *"We will be delivering container serving on nife"*, then *"Yes"* to this order). That
+client is milestone 621 (a Linux persona server, confined)'s OCI import shim, or whichever
+container-serving milestone builds it first.
+
+- The registry is one more listed location per entry under §250 (an image names its
+  distribution's package index), with GitHub Releases as the fallback. The TUF index stays on its
+  host, pinned to ISRG Root X1.
+- A blob is trusted by its §195 digest, which is its OCI layer digest unchanged
+  ([notes/packages/oci-artifacts-measurements.md](../../notes/packages/oci-artifacts-measurements.md)).
+- A third-party container registry is an added source, checked against §306 (the web's authority
+  list is a package and a capability)'s list under its rule 5.
+
+Why: nife carries an OCI client for container serving regardless, so this costs little, and every
+`jig install` exercises the container path, as nife's CI installing ripgrep from basalt exercises
+packages. JSON is not a cost, since TUF brings it. What remains is a token request before each
+anonymous ghcr.io pull and one or two more connections.
+
+Still calef's, waiting on milestone 621: which root authenticates a registry location, since §250's
+clause 11 takes it from the image's roots and ghcr.io chains to Sectigo R46.
 
 ## Why these
 
