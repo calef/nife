@@ -10,8 +10,8 @@
 use crate::expand::{Expansion, Name, NameSet};
 use crate::line::{Sink, Source};
 use crate::{
-    ArgSpec, CapabilityKind, DirGrant, DirSpec, Endowment, FileGrant, FileSpec, Holdings,
-    InputSpec, Manifest, MemSpec, Prog, Refusal, RunSpec, check_words, expand, line, nav,
+    ArgSpec, CapabilityKind, DirSpec, DirectoryGrant, Endowment, FileGrant, FileSpec, Holdings,
+    InputSpec, Manifest, MemSpec, ParsedInvocation, Prog, Refusal, check_words, expand, line, nav,
     parse_u64,
 };
 
@@ -26,7 +26,11 @@ use crate::{
 /// matched, so the endowment *is* the set, and the planner must see the set rather than the pattern.
 /// [`Expansion::none`] is the answer for a line with no pattern on it, which is every line the shell
 /// could plan before milestone 47's globbing lane.
-pub fn plan(run: &RunSpec<'_>, holds: Holdings, expanded: Expansion) -> Result<Endowment, Refusal> {
+pub fn plan(
+    run: &ParsedInvocation<'_>,
+    holds: Holdings,
+    expanded: Expansion,
+) -> Result<Endowment, Refusal> {
     plan_stage(run, holds, expanded, Streams::default())
 }
 
@@ -53,17 +57,17 @@ pub struct Streams {
 /// grant refusal is the one that reads truer: what a program is endowed is a bigger fact about the
 /// line than where its output was going to go.
 pub fn plan_stage(
-    run: &RunSpec<'_>,
+    run: &ParsedInvocation<'_>,
     holds: Holdings,
     expanded: Expansion,
     streams: Streams,
 ) -> Result<Endowment, Refusal> {
-    // Ahead of resolving the program, for the reason [`RunSpec::misquoted`] states: a line whose
+    // Ahead of resolving the program, for the reason [`ParsedInvocation::misquoted`] states: a line whose
     // words cannot be read has no reliable first word either.
     if let Some(r) = run.misquoted {
         return Err(r);
     }
-    let prog = Prog::from_name(run.prog).ok_or(Refusal::NoSuchProgram)?;
+    let prog = Prog::from_name(run.program).ok_or(Refusal::NoSuchProgram)?;
     plan_against_with(run, prog, prog.manifest(), holds, expanded, streams)
 }
 
@@ -94,7 +98,7 @@ pub fn plan_stage(
 /// - a token with **no** magic never consults the expansion at all, so a name that was typed always
 ///   designates itself.
 pub fn plan_against(
-    run: &RunSpec<'_>,
+    run: &ParsedInvocation<'_>,
     prog: Prog,
     m: Manifest,
     holds: Holdings,
@@ -106,7 +110,7 @@ pub fn plan_against(
 /// [`plan_against`], with the operators' answer. The one that does the work; the other two are the
 /// spellings without a pipeline on the line.
 pub fn plan_against_with(
-    run: &RunSpec<'_>,
+    run: &ParsedInvocation<'_>,
     prog: Prog,
     m: Manifest,
     holds: Holdings,
@@ -146,7 +150,7 @@ pub fn plan_against_with(
     // A pattern can never land here by accident: every magic byte (`*`, `?`, `[`, `\`) is a
     // non-digit, so `parse_u64` refuses a pattern before the expansion is ever consulted, and
     // `least_authority_demo *` is "needs an integer argument" rather than a grant of anything.
-    let arg = plan_arg(run, &m, pos, &mut next)?;
+    let arg = plan_program_argument(run, &m, pos, &mut next)?;
 
     // The file grant takes the next positional. The name is the whole designation; the direction
     // comes from the manifest, which is why `wc report.txt` reads and `tee report.txt` writes
@@ -158,7 +162,7 @@ pub fn plan_against_with(
     // result is recorded as a value. The child is handed a capability to the directory the names
     // are **in**, plus the names, because taking a name away is an operation on the directory that
     // holds it and no per-file capability can express it. See [`DirSpec`].
-    let dir = plan_dir(&m, flags, pos, &mut next, &holds, expanded)?;
+    let dir = plan_directory_grant(&m, flags, pos, &mut next, &holds, expanded)?;
 
     // **A program that hears words is granted what its words designate** (milestone 205, §170
     // (how a foreign program is told what to do) clauses 2 to 5): one directory grant at the
@@ -166,7 +170,7 @@ pub fn plan_against_with(
     // word was `.`. A line that designated nothing grants nothing (calef's N1 ruling,
     // 2026-09-27T06:27Z). What the grant may do is the manifest's [`WordGrant`], which the shell
     // turns into rights and the progenitor clamps to the manifest it endows.
-    let dir = words_dir_grant(&m, &holds, expanded, dir)?;
+    let dir = words_directory_grant(&m, &holds, expanded, dir)?;
 
     // **The input operand: `wc report.txt` is `wc < report.txt` with the operator left out.**
     //
@@ -211,16 +215,16 @@ pub fn plan_against_with(
 
     // The memory grant. A flag, not a position, so it is checked last: it cannot be confused with
     // anything and it should not shadow a refusal about a resource.
-    let mem_pages = plan_mem(run, &m)?;
+    let mem_pages = plan_memory_grant(run, &m)?;
 
     let diagnostics = check_streams(m, streams)?;
 
     Ok(Endowment {
         prog,
-        arg,
-        mem_pages,
+        program_argument: arg,
+        memory_grant_pages: mem_pages,
         file,
-        dir,
+        directory: dir,
         flags,
         sink: streams.sink,
         source: streams.source,
@@ -238,7 +242,7 @@ pub fn plan_against_with(
 
 /// [`plan_against_with`]'s options: each letter on the line as its bit in `m`'s flags, or
 /// [`Refusal::NoSuchOption`]. A program that hears words has none.
-fn plan_options(run: &RunSpec<'_>, m: &Manifest, words: bool) -> Result<u64, Refusal> {
+fn plan_options(run: &ParsedInvocation<'_>, m: &Manifest, words: bool) -> Result<u64, Refusal> {
     let mut flags = 0u64;
     for &letter in run.options().iter().filter(|_| !words) {
         let bit = m
@@ -253,8 +257,8 @@ fn plan_options(run: &RunSpec<'_>, m: &Manifest, words: bool) -> Result<u64, Ref
 }
 
 /// [`plan_against_with`]'s integer argument, taken from the positional at `next`.
-fn plan_arg(
-    run: &RunSpec<'_>,
+fn plan_program_argument(
+    run: &ParsedInvocation<'_>,
     m: &Manifest,
     pos: &[&[u8]],
     next: &mut usize,
@@ -295,7 +299,7 @@ fn plan_file(
             // What the shell holds decides whether the designation can be backed at all, and it
             // wins over the name's shape: "there is nothing I hold that could grant this" is a
             // bigger fact than "and that name is too long".
-            if !holds.dir {
+            if !holds.directory {
                 return Err(Refusal::NoSuchCapability(CapabilityKind::File));
             }
             let (which, dir, names) = designate(token, at, holds, expanded)?;
@@ -304,7 +308,7 @@ fn plan_file(
             let name = names.only().ok_or(Refusal::AmbiguousFile)?;
             Some(FileGrant {
                 which,
-                dir,
+                directory: dir,
                 name: Name::new(name).ok_or(Refusal::FileNotNameable)?,
                 writable,
             })
@@ -315,21 +319,21 @@ fn plan_file(
 
 /// [`plan_against_with`]'s directory grant, designated by the positional at `next`, widened to the
 /// subtree when its recursion option is in `flags`.
-fn plan_dir(
+fn plan_directory_grant(
     m: &Manifest,
     flags: u64,
     pos: &[&[u8]],
     next: &mut usize,
     holds: &Holdings,
     expanded: Expansion,
-) -> Result<Option<DirGrant>, Refusal> {
+) -> Result<Option<DirectoryGrant>, Refusal> {
     let dir = match m.dir {
         DirSpec::Forbidden => None,
         DirSpec::Required { subtree_flag } => {
             let token = *pos.get(*next).ok_or(Refusal::PathRequired)?;
             let at = *next;
             *next += 1;
-            if !holds.dir {
+            if !holds.directory {
                 return Err(Refusal::NoSuchCapability(CapabilityKind::File));
             }
             let (which, dir, names) = designate(token, at, holds, expanded)?;
@@ -345,9 +349,9 @@ fn plan_dir(
                 },
                 None => false,
             };
-            Some(DirGrant {
+            Some(DirectoryGrant {
                 which,
-                dir,
+                directory: dir,
                 names,
                 subtree,
             })
@@ -358,20 +362,20 @@ fn plan_dir(
 
 /// The directory grant a program that hears words is given for what they designated, or `dir`
 /// unchanged for any other program.
-fn words_dir_grant(
+fn words_directory_grant(
     m: &Manifest,
     holds: &Holdings,
     expanded: Expansion,
-    dir: Option<DirGrant>,
-) -> Result<Option<DirGrant>, Refusal> {
+    dir: Option<DirectoryGrant>,
+) -> Result<Option<DirectoryGrant>, Refusal> {
     let dir = match (m.arg, expanded.designation()) {
         (ArgSpec::Words(_), Some(d)) if !d.is_empty() => {
-            if !holds.dir {
+            if !holds.directory {
                 return Err(Refusal::NoSuchCapability(CapabilityKind::File));
             }
-            Some(DirGrant {
+            Some(DirectoryGrant {
                 which: nav::Which::A,
-                dir: holds.cwd,
+                directory: holds.cwd,
                 names: if d.is_here() {
                     NameSet::empty()
                 } else {
@@ -403,14 +407,14 @@ fn plan_input_operand(
         *next += 1;
         // What the shell holds decides whether the designation can be backed at all, and it wins
         // over the name's shape, exactly as it does for a file grant.
-        if !holds.dir {
+        if !holds.directory {
             return Err(Refusal::NoSuchCapability(CapabilityKind::File));
         }
         let (which, dir, names) = designate(token, at, holds, expanded)?;
         let name = names.only().ok_or(Refusal::AmbiguousFile)?;
         streams.source = Source::File(FileGrant {
             which,
-            dir,
+            directory: dir,
             name: Name::new(name).ok_or(Refusal::FileNotNameable)?,
             // A reader reads. The direction is the manifest's here as everywhere else, and
             // `InputSpec` has only the one.
@@ -421,8 +425,8 @@ fn plan_input_operand(
 }
 
 /// [`plan_against_with`]'s memory grant: `--mem` checked against what `m` declares.
-fn plan_mem(run: &RunSpec<'_>, m: &Manifest) -> Result<u64, Refusal> {
-    let mem_pages = match (m.mem, run.mem) {
+fn plan_memory_grant(run: &ParsedInvocation<'_>, m: &Manifest) -> Result<u64, Refusal> {
+    let mem_pages = match (m.mem, run.memory_grant) {
         (MemSpec::Forbidden, None) => 0,
         (MemSpec::Forbidden, Some(_)) => return Err(Refusal::MemForbidden),
         (MemSpec::Required { .. }, None) => return Err(Refusal::MemRequired),
@@ -452,14 +456,14 @@ pub fn redirect_target(
     holds: Holdings,
     writable: bool,
 ) -> Result<FileGrant, Refusal> {
-    if !holds.dir {
+    if !holds.directory {
         return Err(Refusal::NoSuchCapability(CapabilityKind::File));
     }
     let (which, dir, names) = designate(token, 0, &holds, Expansion::none())?;
     let name = names.only().ok_or(Refusal::FileNotNameable)?;
     Ok(FileGrant {
         which,
-        dir,
+        directory: dir,
         name: Name::new(name).ok_or(Refusal::FileNotNameable)?,
         writable,
     })

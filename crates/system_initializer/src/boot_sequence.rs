@@ -16,8 +16,8 @@ use super::*;
 ///
 /// `initial_ramdisk_len` is the archive length the kernel passed at entry; `fs_rights` is the
 /// `filesystem_contract::dir` rights the file-service endpoint carries, and 0 means this boot
-/// attached no disk (so `fs_ep` and `fs_page` are empty). `second_dir`, when `Some`, hands the
-/// shell a second, disjoint directory capability (see [`SecondDirGrant`]); every real entry point
+/// attached no disk (so `fs_ep` and `fs_page` are empty). `mounted_tree`, when `Some`, hands the
+/// shell a second, disjoint directory capability (see [`MountedTreeGrant`]); every real entry point
 /// passes `None`, because what that subtree should be is boot policy no call site decides.
 ///
 /// # Examples
@@ -54,7 +54,7 @@ pub fn boot(
     g: &BootEndowment,
     initial_ramdisk_len: u64,
     fs_rights: u64,
-    second_dir: Option<SecondDirGrant>,
+    mounted_tree: Option<MountedTreeGrant>,
 ) -> ! {
     let (fs, table) = open_archive(g, initial_ramdisk_len);
     let p = read_boot_programs(&fs, table);
@@ -126,9 +126,9 @@ pub fn boot(
         term,
         with_fs: fs_rights != 0,
     };
-    let second_dir_ep = start_second_dir_caretaker(&w, second_dir, p.care_elf.as_ref());
-    let (shell, sh_clock_slot) = build_shell(&w, &sh_elf, chan, sh_budget, second_dir_ep);
-    finish_shell_endowment(g, shell.tcb, second_dir_ep);
+    let mounted_tree_ep = start_mounted_tree_caretaker(&w, mounted_tree, p.care_elf.as_ref());
+    let (shell, sh_clock_slot) = build_shell(&w, &sh_elf, chan, sh_budget, mounted_tree_ep);
+    finish_shell_endowment(g, shell.tcb, mounted_tree_ep);
 
     // Free every boot cap the spawn service does not need, so the progenitor's 16-slot capability table has room to
     // build a supervised child (which holds a job untyped and a job frame while the loader retypes
