@@ -7,23 +7,10 @@ priority, not an exemption. `script/names --unratified` ranks the items and modu
 
 **The measure is a stated heuristic, not the compiler.** A compiler-backed answer (`cargo doc`
 JSON, rust-analyzer) means building eight workspaces, minutes per run, and `script/names` is run
-for a single name. A name defined in package P crosses when all of these hold:
-
-1. It is visible outside P: an item or field declared `pub` with no restriction, a module declared
-   `pub mod`. A variant has no `pub` of its own and passes.
-2. Another package Q lists P as a dependency (any table, any target, renames followed).
-3. A file in Q holds both the identifier of P (`designware_ethernet`) and the name as whole words.
-   For a free function, constant, type or module (declared at column 0) it must also reach the name
-   by a path (`p::a::name`) or a `use p...;` listing it. A method, field, variant or associated
-   constant has no path to show, so it keeps the two-words test.
-
-The two words are needed in one file because the heuristic that counted every file naming
-the word reported 171 crossings (156 items, 15 modules), and its false hits were files that reached
-the name without the crate: kernel's `sched/rendezvous/tests` through `xtask`, which does not depend
-on `kernel`. Requiring the dependency edge removes those. What it still gets wrong: a name that
-only shares its spelling with a use in Q (`new`, `len`), a glob import that never mentions the crate
-beside the name, and a re-export that moves the name to another path. The first over-counts and the
-other two under-count.
+for a single name. `Reach` below reads text: a name crosses when another package that depends on
+its own reaches it through the defining crate's path, and `helpers/name_checks.py` reports reach
+by the same measure. A bare word never counts: matched that way, every crate's `Error` reached 38
+packages. What it still misses is in `Reach`'s docstring and design/naming/rules-a-script-can-check.md.
 
 **A program is a `[[bin]]`** (calef's tiering, 2026-10-17). A file in `components/src/` that another
 program includes through `mod` or `#[path]` and that has no `[[bin]]` entry is a module of the
@@ -116,59 +103,251 @@ def is_pub(lines, header, what):
     return re.match(r"pub\b(?!\s*\()", declaration(lines, header).strip()) is not None
 
 
-def reached(text, ident, name, strict):
-    """Whether `text` reaches `name` of crate `ident`.
+_RAW = re.compile(r'(?:b|c)?r(#*)"')
+_CHAR = re.compile(r"'(?:\\(?:x[0-9a-fA-F]{2}|u\{[0-9a-fA-F_]+\}|.)|[^\\'\n])'")
+_WORD = re.compile(r"[A-Za-z_]\w*")
+_IMPL = re.compile(r"impl\b(?:\s*<.*?>(?=\s*[\w&(]))?\s*(?:!?\s*[\w:]+(?:<.*>)?\s+for\s+)?"
+                   r"(?:&\s*(?:'\w+\s+)?(?:mut\s+)?)?(?:dyn\s+)?([\w:]+)", re.S)
 
-    Strict is a path (`ident::a::name`) or a `use ident...;` that lists the name: what a free
-    function, constant, type or module needs to be reachable from outside. The loose form is the
-    two words in one file, for what a path cannot show: a method called on a value, a field read,
-    a variant matched after its enum was imported.
+
+def strip(text):
+    """`text` with comments and literals blanked to spaces, newlines kept, so lines still line up.
+
+    A word in a comment or a string is not a read, and a brace in one is not a block.
     """
-    if not strict:
-        return True
-    if re.search(rf"\b{re.escape(ident)}(?:::\w+)*::{re.escape(name)}\b", text):
-        return True
-    return any(re.search(rf"\b{re.escape(name)}\b", m.group(0))
-               for m in re.finditer(rf"\buse\s+{re.escape(ident)}\b[^;]*;", text))
+    out, i, n = [], 0, len(text)
+
+    def blank(a, b):
+        out.append(re.sub(r"[^\n]", " ", text[a:b]))
+
+    def word_start(k):
+        return k == 0 or not (text[k - 1].isalnum() or text[k - 1] == "_")
+
+    while i < n:
+        c = text[i]
+        if text.startswith("//", i):
+            j = text.find("\n", i)
+            j = n if j < 0 else j
+            blank(i, j)
+            i = j
+        elif text.startswith("/*", i):
+            depth, j = 1, i + 2
+            while j < n and depth:
+                if text.startswith("/*", j):
+                    depth, j = depth + 1, j + 2
+                elif text.startswith("*/", j):
+                    depth, j = depth - 1, j + 2
+                else:
+                    j += 1
+            blank(i, j)
+            i = j
+        elif c in "brc" and word_start(i) and _RAW.match(text, i):
+            m = _RAW.match(text, i)
+            j = text.find('"' + m.group(1), m.end())
+            j = n if j < 0 else j + 1 + len(m.group(1))
+            out.append('"')
+            blank(i + 1, j)
+            i = j
+        elif c == '"' or (c in "bc" and text.startswith('"', i + 1) and word_start(i)):
+            j = i + (1 if c == '"' else 2)
+            while j < n and text[j] != '"':
+                j += 2 if text[j] == "\\" else 1
+            j = min(j + 1, n)
+            out.append('"')
+            blank(i + 1, j)
+            i = j
+        elif c == "'" and _CHAR.match(text, i):
+            m = _CHAR.match(text, i)
+            out.append("'")
+            blank(i + 1, m.end())
+            i = m.end()
+        else:
+            j = i + 1
+            while j < n and text[j] not in "/\"'brc":
+                j += 1
+            out.append(text[i:j])
+            i = j
+    return "".join(out)
 
 
-def crossings(cands, manifests, sources):
-    """`{candidate key: (defining package, sorted referencing packages)}` for each candidate that crosses.
+def _without_attributes(header):
+    """A block header with its `#[...]` and `#![...]` attributes removed, brackets nested."""
+    while True:
+        m = re.search(r"#!?\[", header)
+        if not m:
+            return header.strip()
+        depth, j = 0, m.end() - 1
+        while j < len(header):
+            depth += {"[": 1, "]": -1}.get(header[j], 0)
+            j += 1
+            if depth == 0:
+                break
+        header = header[:m.start()] + " " + header[j:]
+
+
+def encloser(header):
+    """`("impl", type)`, `("mod", name)`, `("extern", None)` or `("body", None)` for a block's header."""
+    h = re.sub(r"^(?:pub(?:\s*\([^)]*\))?\s+)?(?:unsafe\s+)?", "", _without_attributes(header))
+    if h.startswith("impl"):
+        m = _IMPL.match(h)
+        return "impl", (m.group(1).split("::")[-1] if m else None)
+    m = re.fullmatch(r"mod\s+(\w+)", h)
+    if m:
+        return "mod", m.group(1)
+    if h.startswith("extern"):
+        return "extern", None    # foreign declarations, reached as free items would be
+    if h.startswith("trait"):
+        return "mod", None
+    return "body", None
+
+
+def enclosers(stripped):
+    """`{1-based line: (encloser, ...)}`: every block open at the start of each line, outermost first."""
+    stack, stmt, line, out = [], 0, 1, {1: ()}
+    for m in re.finditer(r"[{};\n]", stripped):
+        ch = m.group(0)
+        if ch == "\n":
+            line += 1
+            out[line] = tuple(encloser(h) for h in stack)
+            continue
+        if ch == "{":
+            stack.append(" ".join(stripped[stmt:m.start()].split()))
+        elif ch == "}" and stack:
+            stack.pop()
+        stmt = m.end()
+    return out
+
+
+class Reach:
+    """Which packages read each `pub` name of each package, measured by the defining crate's path.
+
+    The one implementation of a read: `script/names --unratified` ranks by it and
+    `helpers/name_checks.py` reports reach by it. A package Q reads a name of package P
+    only when Q depends on P, and then only through P's path, in comments and strings blanked:
+    `p::a::name`, a `use p::...;` listing it, `m::name` for an `m` imported from `p`, or any word
+    of a file holding a glob import from `p`. A member (a method or associated constant) is read
+    when its `impl`'s type is, or when a file of Q naming `p` calls it as `.name(`, `::name(` or
+    `::NAME`. `$crate::name` in a file that exports a macro is read by `$crate`, and every name in
+    a file another package includes with `#[path]` is read by `#path`. A bare word is never a read:
+    matched that way, every crate's `Error` reached 38 packages.
+    """
+
+    def __init__(self, manifests, sources):
+        self.dirs, self.info = {}, {}
+        for d, text in manifests.items():
+            name, ident, deps = parse_manifest(text)
+            if name:
+                self.dirs[d], self.info[name] = name, (ident, deps)
+        self.sources = sources
+        self.stripped = {p: strip(t) for p, t in sources.items()}
+        self._enclosers = {}
+        words = {p: set(_WORD.findall(t)) for p, t in self.stripped.items()}
+        by_package = {}
+        for path in sources:
+            by_package.setdefault(package_of(path, self.dirs), []).append(path)
+        self.paths_reached, self.calls = {}, {}
+        for q, (_ident, deps) in self.info.items():
+            for p in deps:
+                if p == q or p not in self.info:
+                    continue
+                ident = self.info[p][0]
+                for path in by_package.get(q, []):
+                    if ident not in words[path]:
+                        continue
+                    got, glob = self._reached(self.stripped[path], ident)
+                    for w in (words[path] if glob else got):
+                        self.paths_reached.setdefault(p, {}).setdefault(w, set()).add(q)
+                    text = self.stripped[path]
+                    for w in re.findall(r"(?:\.|::)\s*([A-Za-z_]\w*)\s*(?:\(|::\s*<)", text):
+                        self.calls.setdefault(p, {}).setdefault(w, set()).add(q)
+                    for w in re.findall(r"::\s*([A-Z_][A-Z0-9_]*)\b", text):
+                        self.calls.setdefault(p, {}).setdefault(w, set()).add(q)
+        for p, files in by_package.items():
+            for path in files:
+                if "macro_export" not in sources[path]:
+                    continue
+                for m in re.finditer(r"\$crate((?:\s*::\s*\w+)+)", sources[path]):
+                    for w in _WORD.findall(m.group(1)):
+                        self.paths_reached.setdefault(p, {}).setdefault(w, set()).add("$crate")
+        self.pathed = set()
+        for path, text in sources.items():
+            for m in re.finditer(r'#\[path\s*=\s*"([^"]+)"\]', text):
+                target = os.path.normpath(os.path.join(os.path.dirname(path), m.group(1)))
+                if package_of(target, self.dirs) != package_of(path, self.dirs):
+                    self.pathed.add(target)
+
+    @staticmethod
+    def _reached(text, ident):
+        """`(words, glob)`: what one file reaches of crate `ident` by a path, and whether it globs."""
+        got, glob, aliases = set(), False, {ident}
+        for m in re.finditer(rf"\buse\s+(?:::)?{re.escape(ident)}\b([^;]*);", text):
+            glob = glob or "*" in m.group(1)
+            found = set(_WORD.findall(m.group(1))) - {"self", "super", "crate", "as"}
+            got |= found
+            aliases |= found
+        alias = "|".join(sorted(map(re.escape, aliases), key=len, reverse=True))
+        for m in re.finditer(rf"\b(?:{alias})((?:\s*::\s*[A-Za-z_]\w*)+)", text):
+            got |= set(_WORD.findall(m.group(1)))
+        return got, glob
+
+    def package(self, path):
+        return package_of(path, self.dirs)
+
+    def stack(self, path, line):
+        if path not in self._enclosers:
+            self._enclosers[path] = enclosers(self.stripped[path])
+        return self._enclosers[path].get(line, ())
+
+    def readers(self, path, line, name):
+        """The sorted packages (or `$crate`, `#path`) that read the item declared at `path:line`."""
+        p = self.package(path)
+        if p is None:
+            return []
+        if path in self.pathed:
+            return ["#path"]
+        stack = self.stack(path, line)
+        if any(kind == "body" for kind, _ in stack):
+            return []      # inside a function, a macro or a struct body: nothing outside sees it
+        impl = next((t for kind, t in reversed(stack) if kind == "impl"), "")
+        reached = self.paths_reached.get(p, {})
+        if impl == "":
+            return sorted(reached.get(name, ()))
+        if impl is None:
+            return ["?impl"]   # an impl header this parse could not read: assume it is read
+        return sorted(set(reached.get(impl, ())) | self.calls.get(p, {}).get(name, set()))
+
+
+def crossings(cands, manifests, sources, reach=None):
+    """`{candidate key: (defining package, sorted reading packages)}` for each candidate that crosses.
 
     `cands` is `[(key, name, file, what, header_line)]` with `what` an item kind or `module`.
     `manifests` is `{directory: manifest text}`; `sources` is `{path: text}` of every Rust file.
+    The measure is `Reach`'s. A candidate must also be visible: an item declared `pub` with no
+    scope, or a module some file of its package declares `pub mod`.
     """
-    dirs, info = {}, {}
-    for d, text in manifests.items():
-        name, ident, deps = parse_manifest(text)
-        if name:
-            dirs[d], info[name] = name, (ident, deps)
-    words = {p: set(re.findall(r"[A-Za-z_][A-Za-z0-9_]*", t)) for p, t in sources.items()}
+    reach = reach or Reach(manifests, sources)
     by_package = {}
     for path in sources:
-        by_package.setdefault(package_of(path, dirs), []).append(path)
+        by_package.setdefault(reach.package(path), []).append(path)
     out = {}
     for key, name, file, what, header in cands:
-        owner = package_of(file, dirs)
-        if owner is None or owner not in info:
+        owner = reach.package(file)
+        if owner is None or owner not in reach.info:
             continue
+        lines = sources[file].split("\n")
         if what == "module":
-            visible = any(re.search(rf"\bpub\s+mod\s+{re.escape(name)}\b", sources[p])
-                          for p in by_package.get(owner, []))
+            if not any(re.search(rf"\bpub\s+mod\s+{re.escape(name)}\b", reach.stripped[p])
+                       for p in by_package.get(owner, [])):
+                continue
+            readers = sorted(reach.paths_reached.get(owner, {}).get(name, ()))
         else:
-            visible = is_pub(sources[file].split("\n"), header, what)
-        if not visible:
-            continue
-        ident = info[owner][0]
-        users = sorted(q for q, (_i, deps) in info.items() if owner in deps and q != owner)
-        decl = declaration(sources[file].split("\n"), header)
-        strict = (what in ("function", "constant", "type", "macro", "module")
-                  and decl == decl.lstrip())
-        hit = sorted({q for q in users for p in by_package.get(q, [])
-                      if ident in words[p] and name in words[p]
-                      and reached(sources[p], ident, name, strict)})
-        if hit:
-            out[key] = (owner, hit)
+            if not is_pub(lines, header, what):
+                continue
+            number = next((header + i for i, l in enumerate(lines[header - 1:])
+                           if l.strip() and not l.strip().startswith(("//", "#[", "#!["))), header)
+            readers = reach.readers(file, number, name)
+        if readers:
+            out[key] = (owner, readers)
     return out
 
 
@@ -200,6 +379,19 @@ def _selftest():
     sources["app2/src/main.rs"] = "// lib_a\nfn exported() {}\nfn main() { x.hidden(); }\n"
     assert crossings(cands, manifests, sources)["exported"] == ("lib-a", ["app"]), \
         "the crate's name and the item's name in one file are not a reference"
+
+    # The path measure: a module imported from the crate reaches through it, a glob reaches every
+    # word of its file, and an item inside a function body is reached by nothing outside.
+    lib_b = "pub mod wire {\n    pub const FRAME: u8 = 1;\n}\npub fn outer() {\n    pub fn inner() {}\n}\n"
+    reach = Reach({"lib_b": '[package]\nname = "lib_b"\n',
+                   "user": '[package]\nname = "user"\n[dependencies]\nlib_b = "1"\n',
+                   "globber": '[package]\nname = "globber"\n[dependencies]\nlib_b = "1"\n'},
+                  {"lib_b/src/lib.rs": lib_b,
+                   "user/src/main.rs": "use lib_b::wire;\nfn main() { wire::FRAME; inner(); }\n",
+                   "globber/src/main.rs": "use lib_b::*;\nfn main() { outer(); }\n"})
+    assert reach.readers("lib_b/src/lib.rs", 2, "FRAME") == ["user"]
+    assert reach.readers("lib_b/src/lib.rs", 4, "outer") == ["globber"]
+    assert reach.readers("lib_b/src/lib.rs", 5, "inner") == [], "a body's item is unreachable"
 
     manifest = '[[bin]]\nname = "net_stack"\npath = "src/net_stack.rs"\n'
     bins = bin_paths(manifest)
