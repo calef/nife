@@ -12,8 +12,8 @@ provisional until the merge queue lands it.)*
 
 ## What is being decided
 
-The name, and only the name. Whether the function is lifted is already decided by §94; what is
-open is what a public item on `crates/user_mode_runtime` is called, which is the most-read function
+The name, and only the name. Whether the function is lifted is already decided by §94. What is
+open is what a public item on `crates/user_mode_runtime` is called. That is the most-read function
 name this tree could add, since every program in the tree links that crate.
 
 ## Is the premise true
@@ -37,7 +37,7 @@ and it is still a failure.
 ## What this tree already does in the analogous case, which decides everything but the name
 
 §94 is the ruling and it is exact. It asks what the language forces to be per-binary and lifts
-everything else: a property that attaches to the final link (`#[panic_handler]`,
+everything else. A property that attaches to the final link (`#[panic_handler]`,
 `#[global_allocator]`, `_start`) genuinely cannot be an item in a shared crate, and the mechanism it
 is built out of usually can. `user_rt::trap()` holds the instruction; `user_rt::panic_handler!()`
 expands to the handler where the language requires it.
@@ -71,8 +71,8 @@ the point where a pattern is a convention.
 
 `require`, on the recognition argument: the kernel already spends the word on "a mismatch that
 must not be recovered from", and a reader who has met `trust::require` meets the same idea at EL0
-under the same name. The risk is the mirror of the reason, and it should be weighed: one word
-meaning two related things at two privilege levels is either a recognition or a collision, and §31's
+under the same name. The risk is the mirror of the reason, and it should be weighed. One word
+meaning two related things at two privilege levels is either a recognition or a collision. §31's
 refusal of `witness` and milestone 440's refusal of `runner` are both cases where this tree decided
 a second sense cost more than it bought. The difference here is that the two senses are the *same*
 idea rather than two unrelated ones.

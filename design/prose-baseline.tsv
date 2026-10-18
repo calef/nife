@@ -11,16 +11,6 @@
 # two counts). Median and bold are not asked of documents under 200 words.
 # measure: 3
 path	words	median	longest	bold_lead	bold_inline
-design/decisions/0184-an-x86-64-host-in-the-host-pass.md	-	-	49	-	-
-design/decisions/0185-composing-a-process-from-two-capabilities.md	-	-	43	-	-
-design/decisions/0187-crates-for-the-numbers-a-kernel-test-and-its-program-agree-on.md	-	-	52	-	-
-design/decisions/0188-one-home-for-the-trap-on-false-helper.md	-	-	56	-	-
-design/decisions/0189-what-a-caretaker-is-when-it-translates.md	-	-	42	-	-
-design/decisions/0190-what-a-baseline-save-must-record.md	-	-	51	-	-
-design/decisions/0191-job-mix-repeats-and-what-the-line-reports.md	-	-	51	-	-
-design/decisions/0192-a-checked-direct-map-reader-for-the-acpi-walk.md	-	-	62	-	-
-design/decisions/0193-nvme-in-the-block-roster.md	-	-	50	-	-
-design/decisions/0194-sessions-interleave-rather-than-serialize.md	-	-	41	-	-
 design/decisions/0195-a-recipe-vouches-and-the-owner-may-overrule.md	-	-	58	-	-
 design/decisions/0196-nife-carries-tls-and-builds-the-provider.md	-	-	64	-	-
 design/decisions/0197-a-package-is-one-archive-file.md	-	-	49	-	-
