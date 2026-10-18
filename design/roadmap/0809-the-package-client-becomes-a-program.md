@@ -150,7 +150,7 @@ To settle before `add-repository` is built (item 1 is ruled):
    (proposed, unmerged), may later change what added indexes are checked against; this ruling does not
    decide it.
 2. The same name in two indexes: ruled 2026-10-17 (UTC). calef chose *"A"*: a bare name offered by
-   two indexes is refused as `Ambiguous`, as milestone 614 does for versions, and an
+   two indexes is refused as `Ambiguous`, as milestone 614 (two installed versions of one program, each runnable) does for versions, and an
    index-qualified name picks one. First-index-wins is refused as the dependency-confusion shape.
    The qualifier is `jig install --from <index> <name>`, with the index's URL exactly as added. The
    spelling is provisional (`Name: provisional` in
