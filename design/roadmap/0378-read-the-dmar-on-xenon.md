@@ -11,7 +11,7 @@ needs_person: no
 # 378. Read the DMAR, because a firmware checkbox is not an IOMMU
 
 A boot on a VT-d machine prints, on each unit's `iommu` line, both claims about interrupt
-remapping: the unit's own (`ECAP.IR`) and the platform's (the DMAR's `INTR_REMAP` flag, bit 0 of
+remapping: the unit's own (`ECAP.IR`) and the platform's (the `INTR_REMAP` flag in the DMA Remapping Reporting table (DMAR), bit 0 of
 the table's Flags field). A boot log shows at a glance whether firmware and hardware agree.
 
 ```
@@ -36,12 +36,6 @@ the table's Flags field). A boot log shows at a glance whether firmware and hard
   (`helpers/qemu-runner-x86_64.sh`).
 - **No gate reads the `iommu` line.** `script/boot-check` asserts the machine description reaches
   its end, not what each line says, so the wording is held by the host test alone.
-- **Reads and reports only.** Nothing here enables interrupt remapping, programs a remapping unit
-  or changes a driver; `kernel/src/arch/x86_64/iommu.rs`'s header says `ECAP.IR` is read to report
-  and never to act on, and the same holds for `INTR_REMAP`. Turning a unit on is a much larger
-  piece of work.
-- **xenon's own pair is unread.** The first xenon boot under this kernel prints both values; until
-  then whether its firmware's claim matches its units' is not known.
 
 ## What is being proposed
 
@@ -95,6 +89,19 @@ The DMAR's structure is a short table with a variable-length list of remapping-s
 and this tree has parsed several ACPI tables already (`notes/x86-port/acpi-and-pci.md` records the XSDT, MADT
 and MCFG work). The expensive part is not the parse, it is deciding what the kernel should *do*
 when it finds a DMAR it did not expect, and the answer for this proposal is nothing: print it.
+
+## Follow-on
+
+- **Done.** The DMAR's `INTR_REMAP` flag is kept in `DmarUnits` and printed beside each unit's
+  `ECAP.IR` on the `iommu` line, by this milestone's own pull request.
+- **Done.** Carrying more than one DRHD, by milestone 594 (every VT-d unit translates its own
+  devices), which xenon verified at its own bench boot.
+- **Recorded.** This block reads and reports and never enables interrupt remapping, programs a
+  remapping unit or changes a driver. `kernel/src/arch/x86_64/iommu.rs`'s header says `ECAP.IR` is
+  read to report and never to act on, and `crates/machine_discovery/src/acpi.rs`'s `BUGS` says the
+  same of `INTR_REMAP`. Turning a unit on is a much larger piece of work.
+- **None.** xenon's own pair is unread. The next xenon boot under a kernel carrying this change
+  prints both values on its `iommu` lines; reading them needs no further work here.
 
 ## Index row
 
