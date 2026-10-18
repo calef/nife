@@ -41,13 +41,13 @@ name is a file the firmware will not find and nothing will say why. The refusal 
 
 It forecloses an installer on riscv64, and nothing else. The one caller is
 `components/src/system_installer.rs`, which writes a disk's EFI system partition on the machine being
-installed. Nothing else in this tree writes FAT at all: `crates/stick_maker` runs on a host and
-delegates formatting to that host's own tools (`diskutil`, `mkfs.vfat`), and QEMU's `vvfat`
-synthesizes a volume from a directory, so both reach `BOOTRISCV64.EFI` without going near this
+installed. Nothing else in this tree writes FAT at all. `crates/stick_maker` runs on a host and
+delegates formatting to that host's own tools (`diskutil`, `mkfs.vfat`). QEMU's `vvfat`
+synthesizes a volume from a directory. So both reach `BOOTRISCV64.EFI` without going near this
 crate.
 
 So the gap is narrow and it is also on the path. DECISIONS §157 (a trivial install is a web
-page, a USB drive, and packages) makes the install a PC, and rung 2a is an `x86_64` claim for a
+page, a USB drive, and packages) makes the install a PC. Rung 2a is an `x86_64` claim for a
 second reason as well (see the separate proposal on the device-tree architectures' module slot). But
 radon is a riscv64 board this project owns, and the first time somebody wants nife on its disk
 rather than on its card, this is one of the two things in the way.
@@ -60,8 +60,8 @@ the short name that the short entry still has to carry. So the work is:
 
 1. Generate a short alias (`BOOTRI~1.EFI`), because the short entry does not go away.
 2. Compute the `ChkSum` over those eleven bytes, which is the one-byte rotate-and-add the
-   specification defines. This is the part that fails silently: a driver that does not like the
-   checksum ignores the long entries and uses the alias, so a wrong checksum produces a volume that
+   specification defines. This is the part that fails silently. A driver that does not like the
+   checksum ignores the long entries and uses the alias. So a wrong checksum produces a volume that
    mounts, lists a file with the wrong name, and boots nothing.
 3. Write `ceil(len / 13)` entries with the ordinal and `LAST_LONG_ENTRY` bit, plus the `0xFFFF`
    padding the specification requires after the terminating NUL.

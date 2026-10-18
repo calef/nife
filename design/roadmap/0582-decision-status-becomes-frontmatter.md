@@ -77,18 +77,18 @@ recorded in the script's own `BUGS` section, where a reader meets it.
 The schema was ratified before anyone had counted, and the corpus predating it states its own
 provenance thinly. Of 211 files, 59 state a raise date and 106 a decision date.
 
-The rest came from the repository, on calef's ruling of 2026-09-24 that a decision's date is the
-date its commit went to decided, and that a raise date is the date it was minted, and on his
+The rest came from the repository. It rests on calef's ruling of 2026-09-24 that a decision's date
+is the date its commit went to decided, and that a raise date is the date it was minted, and on his
 sharpening of it the same day: *"We write things down when we raise them. There is no gap between
 the commit and when it was raised."* So a date read from git is the date, not a bound on it.
 
 `raised` is the first commit that wrote the decision down, wherever it then lived. For the 73
 sections that predate milestone 114 (split `DECISIONS.md`, and give a decision a status), that is
 the first commit whose `DECISIONS.md` (or, for the six it absorbed, `design/open-decisions.md`) carries the
-section's heading, matched by title as well as number so a renumbered section keeps its origin. The
-split commit's own date, 2026-08-04, is when the files were cut, not when anything was raised, and
-it dates none of them. After the split, `raised` is the file's first commit found with `--follow`,
-merged with a plain walk because `--follow` truncates at some renames; that is what dates §197 (a
+section's heading. It is matched by title as well as number, so a renumbered section keeps its
+origin. The split commit's own date, 2026-08-04, is when the files were cut, not when anything
+was raised, and it dates none of them. After the split, `raised` is the file's first commit found with `--follow`,
+merged with a plain walk because `--follow` truncates at some renames. That is what dates §197 (a
 package is one archive file) to the proposal file it was promoted from, and §103 (what a `Frame`
 names) to its first number.
 
@@ -108,7 +108,7 @@ Where both sources speak, the earlier wins, and that is now a rule about the pro
 git. The prose dates written before 2026-09-13 are calef's local day, not UTC, so a commit made on a
 Pacific evening lands one UTC day after the date the prose gives it. Fifteen files came out raised
 one day after they were decided, and `raised` is clamped to `decided` there. Twelve are that
-evening rollover. Three are not, and they are the exceptions to calef's "no gap": §28 (SMP
+evening rollover. Three are not, and they are the exceptions to calef's "no gap". §28 (SMP
 placement), §34 (RedoxFS is the primary filesystem) and §46 (thin primitives or whole subsystems)
 each say they were decided the day before the commit that wrote them into `DECISIONS.md`, in local
 time too. One goes the other way: §100 (the terminal font)'s prose
@@ -131,10 +131,10 @@ because the difference is the one a later reader cannot reconstruct.
 
 The migration first wrote `ratified_by: calef` on all 168 decided sections, reasoning that this tree
 has one architect, that every decision is his by the constitution, and that no other name appears as
-a ratifier anywhere in the directory. A reviewer refused it, correctly on the evidence available:
-this lane had just declined to infer 213 dates on the grounds that the field whose job is not lying
-must not hold a reconstruction, and a lane that then infers 89 ratifiers has a preference rather
-than a standard. The key was blanked on the 89 files whose prose does not name him.
+a ratifier anywhere in the directory. A reviewer refused it, correctly on the evidence available.
+This lane had just declined to infer 213 dates on the grounds that the field whose job is not lying
+must not hold a reconstruction. A lane that then infers 89 ratifiers has a preference rather than a
+standard. The key was blanked on the 89 files whose prose does not name him.
 
 calef then ruled, on 2026-09-24: *"ratified_by: calef on all 168. [He is] the only ratifier to
 date."* That is the architect stating a fact about his own role, which is not the act the refusal was

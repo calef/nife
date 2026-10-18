@@ -56,6 +56,10 @@ pub(super) struct Nav {
     /// is also where the system's own files are (the manual, the activation table); which tree
     /// [`Nav::handles`] are in follows from `holds.cwd` ([`Nav::which`]).
     pub(super) second: Option<Tree>,
+    /// **The background jobs this shell holds** (milestone 48 (job control), phase one): what
+    /// `jobs` lists and `wait`, `kill` and `fg` act on. Here rather than in a `static` because it
+    /// is session state the prompt threads through every line, as [`Batching`] is.
+    pub(super) jobs: Jobs,
 }
 
 /// **One directory tree this shell holds**: the slot of the endpoint that serves it and the rights
@@ -116,6 +120,7 @@ impl Nav {
             handles: [0; nav::MAX_DEPTH],
             batching: Batching::default(),
             second: None,
+            jobs: Jobs::new(),
         }
     }
 
@@ -133,6 +138,7 @@ impl Nav {
             handles: [0; nav::MAX_DEPTH],
             batching: Batching::default(),
             second: None,
+            jobs: Jobs::new(),
         }
     }
 

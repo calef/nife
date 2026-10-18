@@ -35,6 +35,27 @@ line belongs there, not in a caption.
 
 - 2026W41: risk 4 went green on 2026-10-05 UTC (calef); milestones 761 and 766 cut the null syscall's growth to four tasks from 48 to 10 ticks.
 
+## Architecture decisions by status
+
+![Architecture decisions by status](project-metrics/decisions.svg)
+
+From `design/decisions/`. The gray band in the first three weeks is decisions that predate
+a status existing at all, counted as having none rather than as `DECIDED`.
+
+## Names by what the tree records about them
+
+![Names by what the tree records about them](project-metrics/names.svg)
+
+What each name's own provenance block says, for every name `script/names` tracks: crates,
+programs, packages, scripts, every module (each `.rs` file under a `src/` directory), every
+documentation directory and document, and every `pub` item. An item is a function, method,
+constant, static, type or trait. A name a rule covers counts as ratified. `Ruled, rename owed` is a provisional
+name calef has ruled whose rename has not landed. `No provenance block` is named things with no
+readable block. Every kind is counted from the tree, so writing a block moves a name out of that
+band without changing the bar's height. The current week's total is checked against
+`script/names`. A week is a bar, so a day's rulings show as the current week's bar moving. A rising
+`Provisional` band is not debt; the band worth an alarm is `Unrecorded`.
+
 ## unsafe blocks outside kernel/src/arch/
 
 ![unsafe density](project-metrics/unsafe.svg)
@@ -125,27 +146,6 @@ Added plus removed, not net; volume, not effort. Merges count no lines.
 ![What a turn carried, in thousands of tokens of context](project-metrics/context-per-turn.svg)
 
 Mean prompt per request, from session records that are not in git. A turn costs the size of its context: cache reads are about 98% of every token spent. 2026W29 through 2026W33 are absent, not zero.
-
-## Architecture decisions by status
-
-![Architecture decisions by status](project-metrics/decisions.svg)
-
-From `design/decisions/`. The gray band in the first three weeks is decisions that predate
-a status existing at all, counted as having none rather than as `DECIDED`.
-
-## Names by what the tree records about them
-
-![Names by what the tree records about them](project-metrics/names.svg)
-
-What each name's own provenance block says, for every name `script/names` tracks: crates,
-programs, packages, scripts, every module (each `.rs` file under a `src/` directory), every
-documentation directory and document, and every `pub` item. An item is a function, method,
-constant, static, type or trait. A name a rule covers counts as ratified. `Ruled, rename owed` is a provisional
-name calef has ruled whose rename has not landed. `No provenance block` is named things with no
-readable block. Every kind is counted from the tree, so writing a block moves a name out of that
-band without changing the bar's height. The current week's total is checked against
-`script/names`. A week is a bar, so a day's rulings show as the current week's bar moving. A rising
-`Provisional` band is not debt; the band worth an alarm is `Unrecorded`.
 
 ## Milestones by status
 

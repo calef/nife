@@ -13,7 +13,7 @@ needs_person: no
 *(Number minted at promotion.)* Promoted from the proposal
 `two-core-bench-is-a-different-instrument`, filed 2026-09-23, on calef's instruction of 2026-09-24
 to promote the proposals. The text below is the proposal's own, unedited except for this paragraph
-and the `## Index row` section: the argument is its author's and promotion is not the moment to
+and the `## Index row` section. Its long sentences are split to meet §213 (writing standards). The argument is its author's and promotion is not the moment to
 improve it. As filed: raised by the lane that explained CI's `bench (icount regression tripwire)`
 failure on milestone 315 (a port revoke that reaches every core). The evidence is in
 `notes/benchmarks/x86-instruments.md`, the 2026-09-23 section; this block is the work that evidence
@@ -26,8 +26,8 @@ No syscall surface, no dependency, no hardware.
 Milestone 315 flipped `helpers/qemu-runner-x86_64.sh`'s `NIFE_SMP` default to 2, per
 DECISIONS §153 (how a two-core x86_64 test earns its place).
 `bench_x86` was the one architecture arm that never pinned its own core count, so the icount bench
-silently started measuring a two-core machine while both its `eprintln!`s still said "single hart",
-and five counters left the 10% tripwire, four of them faster. That arm is pinned to 1 now, in the
+silently started measuring a two-core machine while both its `eprintln!`s still said "single hart".
+Five counters left the 10% tripwire, four of them faster. That arm is pinned to 1 now, in the
 same shape `bench()` and `bench_riscv` have always used, and the baseline did not move.
 
 ## Why a two-core baseline cannot simply be saved

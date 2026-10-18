@@ -30,12 +30,12 @@ One fact, how many ticks make a second, now reaches userspace three different wa
 
 Buys: one refusal path. Today aarch64 literally cannot say "unknown", so its `cntfrq_checked` is
 `Some` by construction. That is honest rather than wrong, but it means the three architectures do not
-share a failure mode, and a caller written against one of them can be surprised by another.
+share a failure mode. A caller written against one of them can be surprised by another.
 
-Costs, measured rather than asserted. aarch64's read is a single `mrs` with `nomem`; the page is
+Costs, measured rather than asserted. aarch64's read is a single `mrs` with `nomem`. The page is
 a load that can miss, and `monotonic_nanos` calls it per measurement. Collapsing costs a frame per
-machine plus a mapping per process, spending intermediate table pages from each process's own budget,
-and it would put aarch64 on the same footing the other two have, where a path that forgets to map it
+machine plus a mapping per process, spending intermediate table pages from each process's own budget.
+It would put aarch64 on the same footing the other two have, where a path that forgets to map it
 faults. The riscv64 rollout touched seven kernel call sites and the first run hung because two were
 missed; aarch64 would find the same class.
 
@@ -53,6 +53,6 @@ than for the same implementation on every architecture.
 
 ## Index row
 
-Three mechanisms now answer one question; collapsing them onto the page buys a uniform refusal and
+Three mechanisms now answer one question. Collapsing them onto the page buys a uniform refusal and
 costs aarch64 its architected register read, and the address would be an ABI fact for every process
 on that architecture forever.

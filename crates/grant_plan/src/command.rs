@@ -130,6 +130,23 @@ pub enum Command<'a> {
     /// editing the suspended list at the root of this shell's directory. The tail is classified by
     /// [`user_verb`](crate::user_verb).
     User(&'a [u8]),
+    /// `jobs`: **list the background jobs this shell holds** (milestone 48 (job control), phase
+    /// one). A builtin in `caps`'s category: a job is the capabilities the shell holds for it, so
+    /// listing jobs is the shell reading its own holdings. Name: provisional.
+    Jobs,
+    /// `wait [%N]`: **block until a background job finishes**, every job when no operand names
+    /// one. The tail is classified by [`job_operand`](crate::job_operand). Name: provisional.
+    Wait(&'a [u8]),
+    /// `kill [-9] %N`: **ask a background job to stop, or with `-9` tear it down.** The two tiers
+    /// are DECISIONS §24 (interrupting the foreground process)'s: the cooperative flag on the job's shared frame, and `DESTROY` of the
+    /// region the shell built it from. The tail is classified by [`kill_operands`](crate::kill_operands).
+    /// Name: provisional.
+    Kill(&'a [u8]),
+    /// `fg [%N]`: **watch a background job in the foreground**, the most recent when no operand
+    /// names one, under the same `^C` escalation a job started in the foreground gets. Nothing is
+    /// revoked or granted: no job holds terminal input, so foreground means the shell is watching.
+    /// Name: provisional.
+    Fg(&'a [u8]),
     /// A program invocation: `<prog> [--mem N] [token ...]`. Named `Run` for the act of running a
     /// program, not for a verb on the line; milestone 47 deleted the verb. A first word that is not
     /// a builtin lands here even when no such program exists, and [`plan`](crate::plan) answers

@@ -57,6 +57,17 @@ pub(super) fn builtin(nav: &mut Nav, cmd: &[u8], each: &mut dyn FnMut(&[u8], boo
 /// [`LAST`] is written only by a segment that ran, which is bash's rule: `false && echo hi` leaves
 /// `$?` at the status of `false`. There is no "skipped" status, because nothing happened.
 pub(super) fn dispatch_line(nav: &mut Nav, cmd: &[u8]) {
+    // **A line ending in a single `&`** (milestone 48 (job control)) is one command run in the
+    // background, refused before the connectors are looked for, since a chain cannot be.
+    if let Some(job) = sequence::background(cmd) {
+        CURRENT.store(Status::Ran.code(), core::sync::atomic::Ordering::Relaxed);
+        background(nav, job);
+        LAST.store(
+            CURRENT.load(core::sync::atomic::Ordering::Relaxed),
+            core::sync::atomic::Ordering::Relaxed,
+        );
+        return;
+    }
     let seq = match sequence::split(cmd) {
         Ok(s) => s,
         Err(r) => {
@@ -267,6 +278,10 @@ pub(super) fn dispatch_one(nav: &mut Nav, cmd: &[u8]) {
         Command::Apropos(term) => say(apropos(nav, term)),
         Command::Vouch(tail) => vouch(nav, grant_plan::vouch_verb(tail)),
         Command::User(tail) => user(nav, grant_plan::user_verb(tail)),
+        Command::Jobs => list_jobs(&mut nav.jobs),
+        Command::Wait(tail) => wait_jobs(&mut nav.jobs, tail),
+        Command::Kill(tail) => kill_job(&mut nav.jobs, tail),
+        Command::Fg(tail) => foreground(&mut nav.jobs, tail),
         Command::Run(spec) => run(nav, cmd, spec),
         // Handled above, by the one implementation the witness also runs.
         Command::Cd(_)
