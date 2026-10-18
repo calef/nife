@@ -3,6 +3,7 @@
 //! ```text
 //! jig update                   fetch the image's index over HTTPS and keep a copy of it
 //! jig list                     the packages the index copy offers, or else the image's catalog
+//! jig list -u                  the installed packages the index copy offers a newer version of
 //! jig install <path>           install a package file already on this system
 //! jig install <name>[@<ver>]   fetch a package by name and install it
 //! jig remove <package>         a new generation without the package's programs
@@ -33,9 +34,8 @@
 //! asked for, and the catalog must vouch for its digest (`package_archive::installable_as`).
 //!
 //! The package is read into one run of this program's pages and handed over a page at a time with
-//! `abi::page_frame::SLICE`, so the buffer and the frames are the same memory.
-//!
-//! notes/packages/jig.md has what each verb holds, how an install travels, and the BUGS.
+//! `abi::page_frame::SLICE`, so the buffer and the frames are the same memory. notes/packages/jig.md
+//! has what each verb holds, how an install travels, and the BUGS.
 //!
 //! Name: ratified 2026-10-06 (calef). See `grant_plan::Program::Jig`.
 
@@ -66,6 +66,7 @@ capability_manifest_note::carry!(grant_plan::Manifest {
     installer: false,
     catalog: false,
     indexes: grant_plan::IndexStoreDeclaration::Forbidden,
+    activation_directory: false,
     ..grant_plan::Program::Jig.manifest()
 });
 
@@ -77,8 +78,8 @@ const STAGING_VA: u64 = address_space_map::pair_page(0x0400_0000);
 /// This machine's architecture, as a package stem spells it.
 const ARCHITECTURE: &str = std::env::consts::ARCH;
 
-const USAGE: &str =
-    "  jig update | jig list | jig install <file or name> | jig remove <package> | jig rollback";
+const USAGE: &str = "  jig update | jig list [-u] | jig install <file or name> | jig remove <package> | \
+                     jig rollback";
 
 fn main() -> ExitCode {
     let args: Vec<String> = std::env::args().skip(1).collect();
@@ -86,6 +87,12 @@ fn main() -> ExitCode {
     match words.as_slice() {
         ["update"] => update(),
         ["list"] => list(),
+        ["list", "-u"] => list_outdated(),
+        // calef, 2026-10-17 (UTC): "`-u` only, with a refusal that names `-u` when someone types
+        // `--upgradable` or `--upgradeable`." apt accepts both; this names the one jig takes.
+        ["list", "--upgradable" | "--upgradeable"] => {
+            refuse("jig spells that list -u; it takes no long form")
+        }
         ["install", path] if path.contains('/') => install_file(path),
         ["install", name] => install_name(name),
         ["remove", package] => remove(package),
@@ -146,6 +153,103 @@ fn list() -> ExitCode {
         }
     }
     ExitCode::SUCCESS
+}
+
+/// **`jig list -u`**: each installed package the index copy offers a newer version of, as
+/// `<name> <installed> -> <newer>`. Installed means a row of the live generation that a package
+/// put there; an owner's vouch claims no version, so it has nothing to be outdated against.
+fn list_outdated() -> ExitCode {
+    let installed = match live_generation() {
+        Ok(table) => table,
+        Err(why) => return refuse(&why),
+    };
+    let copy_path = format!("{}/{IMAGE_INDEX_COPY}", package_index::STORE_DIRECTORY);
+    let Ok(copy) = std::fs::read_to_string(&copy_path) else {
+        return refuse("there is no index copy to compare against; run jig update");
+    };
+    let Ok(index) = Index::parse(&copy) else {
+        return refuse("the index copy cannot be read; run jig update");
+    };
+    let offered: Vec<(&str, &str)> = index
+        .entries()
+        .filter_map(|e| name_and_version(e.stem))
+        .collect();
+    let outdated = match outdated(&installed, &offered) {
+        Ok(rows) => rows,
+        Err(why) => return refuse(&why),
+    };
+    if outdated.is_empty() {
+        println!("  no installed package has a newer version in the index copy");
+    } else {
+        println!("  installed packages the index offers newer (the copy jig update wrote):");
+        for (name, have, newer) in outdated {
+            println!("  {name} {have} -> {newer}");
+        }
+    }
+    ExitCode::SUCCESS
+}
+
+/// **The live generation's table**, read through the activation directory: `current` names it.
+fn live_generation() -> Result<String, String> {
+    const NO_VIEW: &str =
+        "this jig holds no view of what is installed; only the owner's console grants one";
+    // The sources page comes with the index store alone, so a line holding it was granted
+    // `activation/indexes` at the directory slot, not `activation/`: there `current` is absent,
+    // and reading on would report nothing installed rather than nothing granted.
+    if sources_text().is_some() {
+        return Err(NO_VIEW.into());
+    }
+    let current = match std::fs::read_to_string(installed_programs::CURRENT) {
+        Ok(text) => text,
+        Err(e) if e.kind() == ErrorKind::NotFound => return Ok(String::new()),
+        Err(e) if e.kind() == ErrorKind::Unsupported => return Err(NO_VIEW.into()),
+        Err(e) => return Err(format!("could not read what is installed: {:?}", e.kind())),
+    };
+    let number = installed_programs::parse_current(&current)
+        .ok_or("the live generation's name cannot be read")?;
+    let mut name = [0u8; 10];
+    let name = installed_programs::generation_name(number, &mut name);
+    std::fs::read_to_string(name)
+        .map_err(|e| format!("could not read generation {number}: {:?}", e.kind()))
+}
+
+/// **Which installed packages `offered` has a newer version of**, in the table's order: each as
+/// its name, its newest installed version and the newest version offered. A version Debian's order
+/// cannot read refuses the whole answer, naming it, since skipping it would report a package as
+/// current that might not be.
+fn outdated<'a>(
+    table: &'a str,
+    offered: &[(&'a str, &'a str)],
+) -> Result<Vec<(&'a str, &'a str, &'a str)>, String> {
+    let mut rows: Vec<(&str, &str, &str)> = Vec::new();
+    for entry in installed_programs::entries(table) {
+        let entry = entry.map_err(|_| "the live generation cannot be read".to_string())?;
+        let package = entry.package;
+        if package == installed_programs::OWNER || rows.iter().any(|r| r.0 == package) {
+            continue;
+        }
+        let rows_of = installed_programs::entries(table).flatten();
+        let have = rows_of
+            .filter(|e| e.package == package && e.version != installed_programs::NO_VERSION)
+            .map(|e| e.version);
+        let Some(have) = newest(have)? else {
+            continue;
+        };
+        let theirs = offered.iter().filter(|o| o.0 == package).map(|o| o.1);
+        // The installed version first, so an equal one offered (`1.00` for `1.0`) is not newer.
+        if let Some(best) = newest([have].into_iter().chain(theirs))?
+            && best != have
+        {
+            rows.push((package, have, best));
+        }
+    }
+    Ok(rows)
+}
+
+/// [`package_index::version::newest`], with the version it could not order named.
+fn newest<'a>(versions: impl Iterator<Item = &'a str>) -> Result<Option<&'a str>, String> {
+    package_index::version::newest(versions)
+        .map_err(|(v, why)| format!("jig cannot order the version {v} ({why:?})"))
 }
 
 /// A stem's name and version, when it is this architecture's.

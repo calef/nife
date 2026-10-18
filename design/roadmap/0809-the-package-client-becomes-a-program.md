@@ -2,7 +2,7 @@
 status: PARTIAL
 raised: 2026-10-06
 promoted_from: the-package-client-becomes-a-program
-milestone_dependencies: 205
+milestone_dependencies: 205, 849
 decision_dependencies: 270
 machine_requirements: none
 specific_machine: none
@@ -10,10 +10,11 @@ needs_person: no
 ---
 # 809. The package client becomes a program, `jig`, with the verbs an index needs
 
-**PARTIAL, 2026-10-10 (UTC).** Items 1 to 5 and item 8's digest check are built, and pass
-`script/swish-check` on aarch64, riscv64 and x86_64 under QEMU. `update` and the index copy are
-built (milestone 801 (packages over the internet)). Left: `list -u`, item 7
-(`add-repository`) and item 8's index half. The program is
+**PARTIAL, 2026-10-18 (UTC).** Items 1 to 6 and item 8's digest check are built, and pass
+`script/swish-check` on aarch64, riscv64 and x86_64 under QEMU; `update` and the index copy are
+milestone 801 (packages over the internet)'s. Item 7 (`add-repository`) waits on the web's
+authority list (§306 (the web's authority list is a package and a capability) rule 5). Item 8's
+index half waits on milestone 849 (a package declares what it needs at run time)'s item 4. The program is
 [notes/packages/jig.md](../../notes/packages/jig.md).
 
 *(calef, 2026-10-07 (UTC): "Promote jig to a milestone." `jig` is ratified; the title, slug and
@@ -44,7 +45,7 @@ His wording is the intent.
 | Install a package from the index | `jig install <name>` (apt's) | yes; `jig` fetches |
 | Install a local package, an archive already on the system | `jig install <path>` (apt's verb); a word with a `/` is a file (§219 (how the shell names an installed program to the spawner)) | yes |
 | Add another index | `jig add-repository <url>` (nife's; apt has no verb) | no, item 7 |
-| List what is outdated | `jig list -u` (the short flag apt also accepts) | no, item 6 |
+| List what is outdated | `jig list -u` (the short flag apt also accepts) | yes; newer in Debian's order |
 | Update the local copy of the index | `jig update` (apt's) | yes (801) |
 | Remove a program | `jig remove <program>` (apt's) | yes |
 | Roll back a generation | `jig rollback` (nife's; apt has none) | yes |
@@ -60,6 +61,10 @@ with a refusal that names `-u` when someone types `--upgradable` or `--upgradeab
 long spellings and `-u`, and `apt update` prints `apt list --upgradable`
 (`apt-private/private-update.cc:159-160`). `-u` is ratified under "We abbreviate on the command
 line."
+
+Newer is Debian's order, ruled 2026-10-18 21:38 (UTC): asked *"How should jig order versions?"*,
+calef answered *"Debian dpkg order"*. It is `package_index::version`. A version dpkg would refuse
+refuses the index at `Index::parse`, and an installed row's is refused by name.
 
 *calef, 2026-10-07 (UTC), on #1805: `jig` must update base packages; only the slot reboots. See §159 (only a new kernel needs a reboot).*
 
@@ -86,7 +91,7 @@ reversible.
 |---|---|---|---|
 | A client view of the network stack (`NETWORK_SLOT`; slots 2 and 3 for a `std` program) | `install <name>`, `update` | `Manifest::network` | yes (milestone 590 (the booted system starts its network stack)); for a `std` program at the prompt, since this block |
 | The index directory, read and write | `list`, `list -u`, `update`, `add-repository`, `install <name>` | `Manifest::indexes`, a directory grant on `activation/indexes`, owner's console only | yes (801) |
-| `activation/`, read only | `list -u` | a directory grant | as above |
+| `activation/`, read only | `list -u` | `Manifest::activation_directory`, a directory grant at the index store's slot, owner's console only | yes, since this block |
 | The file a line names | `install <path>` | `ProgramArgumentDeclaration::Words` designation (§170 (how a foreign program is told what to do)) | yes |
 | A request to the installer | `install`, `remove`, `rollback` | `Manifest::installer`, below | yes, since this block (§270) |
 | The image's catalog, read only | `list`, `install <name>` | `Manifest::catalog` | yes, since this block |
@@ -132,34 +137,12 @@ I3, which waits on a key-custody ruling, `jig` is inside the trusted base for in
 
 ## Many indexes per machine: ruled
 
-calef, 2026-10-06 (UTC): *"A machine may write many indexes."* So a machine holds several, as apt's
-`sources.list` does; details below.
-
-§250 (an image names its distribution's package index) fixes only an image's one index, basalt's;
-an index the owner adds is the machine's. §195 clause 2 scopes trust per source, and §196 clause 4
-holds roots per source.
-
-Its four details are all ruled:
-
-1. How an added index is authenticated: ruled 2026-10-17 (UTC). calef: *"Just a URL."*
-   `jig add-repository <url>` takes only a URL, and a refusal names the root the server needed.
-   He first ruled that the index is checked against the roots the image pins for basalt (ISRG Root
-   X1 today). §306 (the web's authority list is a package and a capability), decided 2026-10-18,
-   replaces that set. An added index is trusted at the channel as a website is, by the list's
-   authorities; basalt's own channel never depends on the list.
-2. The same name in two indexes: ruled 2026-10-17 (UTC). calef chose *"A"*: a bare name offered by
-   two indexes is refused as `Ambiguous`, as milestone 614 (two installed versions of one program, each runnable) does for versions, and an
-   index-qualified name picks one. First-index-wins is refused as the dependency-confusion shape.
-   The qualifier is `jig install --from <index> <name>`, with the index's URL exactly as added. The
-   spelling is provisional (`Name: provisional` in
-   [design/naming/README.md](../naming/README.md), tracked by `script/names --unratified`). It is
-   a flag because §219 reads a word containing `/` as a file, and `@` already means a version.
-3. Provenance: ruled 2026-10-17 (UTC). Asked *"Record each row's vouching index by its URL?"*, calef
-   answered *"Yes"*. Each installed-programs table row records the URL of the index that vouched
-   for it, exactly as added, in place of `OWNER` alone, so a rollback can say what it is undoing.
-4. An added index that says it moved: ruled 2026-10-17 (UTC). calef chose *"B"*: `jig` does not
-   follow an added index's "moved to" field. It reports it and names the `jig add-repository <new
-   url>` command. basalt's own index keeps following §250's field.
+calef, 2026-10-06 (UTC): *"A machine may write many indexes."* He ruled all four details on
+2026-10-17 (UTC). An added index is just a URL, trusted at the channel by the web's authority list
+(§306). A bare name two indexes offer is refused as `Ambiguous`, and `jig install --from <index>
+<name>` picks one. A row records the URL of the index that vouched for it. `jig` reports an added
+index's "moved to" field and does not follow it. [The appendix](0809-the-package-client-becomes-a-program/many-indexes.md) has each ruling in
+calef's words.
 
 ## Other package managers, against the same contracts
 
@@ -194,7 +177,8 @@ meets a program, not a builtin.
 5. `list`, reading the image's catalog until an index exists, and saying so.
 6. `update` and `list -u` over the LAN fixture source, plain HTTP, as rung 3a, with
    `jig` writing the index copy through `package_index`.
-7. `add-repository`, with the many-indexes details above. Unblocked.
+7. `add-repository`, with the many-indexes details above. Waits on the web's authority list:
+   §306 rule 5 checks an added index against it, and no milestone builds it yet.
 8. Before installing, `jig` checks three things. The archive's digest matches the index (§250 (an
    image names its distribution's package index)). The index's needs match the archive's metadata
    (§197 (a package is one archive file)). The metadata matches the manifests in its ELF notes,
@@ -203,6 +187,8 @@ meets a program, not a builtin.
    written only in program manifests, computed by the build into metadata and index. These checks
    keep resolution correct and records honest; they are not the security boundary, which stays at
    spawn, where a program gets only what its manifest names and the grant plan approves (§208).
+   The digest check is built. The other two wait on milestone 849's item 4, since neither the
+   index nor a package's metadata carries needs yet.
 
 Items 1, 2, 3 and 5 wait on nothing. Every item is proved on aarch64, riscv64 and x86_64 by the
 same gate (rule 5).
@@ -225,14 +211,19 @@ lines are new: `caps jig install ...`, `jig list`, and `installed/jig rollback`,
 unvouched and refused the installer. The progenitor's stack went from twelve pages to fourteen,
 measured.
 
+`list -u`, built 2026-10-18 (UTC), passes the same gate on all three. Its line holds
+`activation/` read only and nothing else, keyed in the verb table as the two words `list -u`.
+
 ## Follow-on
 
-- **Outstanding.** `list -u`, which must read `activation/`; the index store grant does
-  not reach it.
-- **Outstanding.** Item 7, `add-repository`: unblocked lane work, since all four many-indexes
-  details are ruled. Checked 2026-10-17 against the Many indexes section.
-- **Outstanding.** Item 8's index half, the needs against metadata and manifests. Checked
-  2026-10-10: the catalog carries digests only, so there is nothing to compare until item 6.
+- **Outstanding.** Item 7, `add-repository`. All four many-indexes details are ruled, but §306 rule
+  5 checks an added index against the web's authority list, and the list's package, the manifest
+  field naming it and its verifier are a milestone nobody has proposed yet. Checked 2026-10-18.
+  The added index's TUF root is also unsettled: §195's 2026-10-10 amendment, clause 3, makes it an
+  owner trust line, and a verb that takes only a URL has no step that supplies one.
+- **Outstanding.** Item 8's index half, the needs against metadata and manifests. Neither
+  `package_index::Entry` nor a package's metadata carries needs; milestone 849's item 4 adds them.
+  Checked 2026-10-18.
 - **Milestone 892.** Milestone 892 (a std program at the prompt holds the network):
   `design/roadmap/0892-a-std-program-at-the-prompt-holds-the-network-and-a-resolver.md`. Item 2 is
   built here for `jig`; 1, 3 and 4 remain, and `jig` needs them to resolve `basalt.nifeos.org` for
@@ -258,6 +249,7 @@ measured.
 | Verb spellings (plan fork 4) | ruled 2026-10-10, calef: "Lets use apt's verbs."; `add-repository`, same day | nothing |
 | 801's items 1 and 2 here (plan fork 5) | moot: 801 built them; `jig` adopts them at item 6 | nothing |
 | The outdated flag | ruled 2026-10-17, calef: "Yes"; `-u` only, `--upgradable` and `--upgradeable` refused with a message naming `-u` | nothing |
+| How versions are ordered | ruled 2026-10-18, calef: "Debian dpkg order"; a version dpkg would refuse is refused | nothing |
 | How a manifest names a fixed directory | decided by 801's lane 2026-10-12, reversible: `Manifest::indexes` | nothing |
 
 ## BUGS
@@ -266,7 +258,8 @@ measured.
 - Until I3, `jig` is inside the trusted base for installs, and the installed-programs table's provenance for
   an index install is `jig`'s claim.
 - `jig`'s own refusals name no generation, and a `remove <package>@<version>` that cannot pick a
-  default names no candidates: it holds no view of `activation/` until item 6 grants one.
+  default names no candidates: only `list -u` holds a view of `activation/`.
+- `list -u` compares versions only, so a digest changed at the same version is not reported.
 - A package file at the root of the shell's namespace cannot be installed by path from the root,
   because the root cannot be narrowed to one name; `cd` to its directory first.
 - An installer holder is built from the image pool, so a file run by its path in the same pipeline
@@ -278,4 +271,5 @@ The package client was a shell builtin, and the progenitor fetched packages, so 
 process parsed HTTP. It is now one program, `jig`, with apt's verbs where apt has one, an installer
 endpoint only the owner's console grants (§270), and grants chosen by verb. It fetches, so
 `Activation::Fetch` and `init`'s `http_response` exception are gone. `update` and the index copy
-are built (milestone 801); `list -u`, `add-repository` and item 8's index half are left.
+are built (milestone 801), and `list -u` reports newer versions in Debian's order. `add-repository`
+waits on the web's authority list (§306), and item 8's index half on milestone 849.
