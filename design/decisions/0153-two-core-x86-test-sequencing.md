@@ -18,7 +18,7 @@ What that means concretely, so no lane has to infer it:
    does not get an opt-in leg of its own. The test it needs already exists and already passes and
    fails for the right reasons; 315 owes the `PortRange::REVOKE` IPI broadcast and nothing else.
 2. `NIFE_SMP` stays 1 until 315 lands. Not as a judgment about SMP, which now works at two
-   cores, but because the two-core suite is red for a true reason and a red default suite is the
+   cores, but because the two-core suite is red for a true reason. A red default suite is the
    thing this tree has repeatedly found gets tolerated and then ignored.
 3. When 315 lands, flip the default to 2 in the same breath, and the suite going green at two
    cores *is* the verification that the broadcast worked. The flip stops being a decision and
@@ -74,9 +74,9 @@ produce *"the first port test able to observe the window at all"*. It already ex
 and became that observer the moment the substrate under it worked.
 
 **So the real question was never about SMP reliability.** It was: if `NIFE_SMP` defaults to 2, the
-suite goes red, correctly, until 315 lands. Do we tolerate that? Three answers were available:
-default to 2 and accept an honest red that puts visible pressure on 315; keep 1 with an opt-in leg,
-which is lane 316's own recommendation and leaves the observation to whoever remembers to ask; or
+suite goes red, correctly, until 315 lands. Do we tolerate that? Three answers were available.
+Default to 2 and accept an honest red that puts visible pressure on 315. Keep 1 with an opt-in leg,
+which is lane 316's own recommendation and leaves the observation to whoever remembers to ask. Or
 close 315 first and let the flip verify it.
 
 calef took the third, and the reason it is better than a scheduling preference is that it converts
@@ -114,12 +114,12 @@ untested for longer, which is the same trade that let the `U`-bit test sit vacuo
 
 ## The recommendation as written, superseded
 
-Option 3, weakly held, and the weakness is worth stating rather than hidden. The reason to
-prefer it is that the test's value is diagnostic rather than regression-catching on day one: it is
-the first thing in this tree that can observe the revocation window at all, and measuring the
-window's width would replace milestone 313's reasoned "at most one tick" with a number. The reason
-to distrust the recommendation is that a two-tier suite is a thing somebody must keep honest, and
-this tree's own evidence is that the lower tier is where tests go quiet.
+Option 3, weakly held, and the weakness is worth stating rather than hidden. The reason to prefer it
+is that the test's value is diagnostic rather than regression-catching on day one. The test is the
+first thing in this tree that can observe the revocation window at all, and measuring the window's
+width would replace milestone 313 (the security audit)'s reasoned "at most one tick" with a number.
+The reason to distrust the recommendation is that a two-tier suite is a thing somebody must keep
+honest, and this tree's own evidence is that the lower tier is where tests go quiet.
 
 ## What was blocked, and what is unblocked
 

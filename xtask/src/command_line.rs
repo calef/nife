@@ -65,7 +65,7 @@ pub(crate) fn main() -> ExitCode {
         "uefi-image" => uefi_image_command(),
         // The same image, booted under OVMF and checked. Runs inside `script/test --arch x86_64`;
         // exposed on its own because the bench procedure starts by watching this pass locally.
-        "uefi-boot" => uefi_boot(),
+        "uefi-boot" => uefi_boot_command(),
         // Milestone 198's rung 3a, the producer half: a reviewed recipe in, one package file and
         // its digest out. Name provisional (2026-09-23).
         "package" => package::package(std::env::args().nth(2)),

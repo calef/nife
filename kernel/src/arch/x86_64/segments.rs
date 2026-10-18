@@ -272,7 +272,12 @@ pub unsafe fn init() {
             code = in(reg) KERNEL_CODE as u64,
             data = in(reg) KERNEL_DATA as u32,
             tss = in(reg) TSS_SELECTOR,
-            tmp = lateout(reg) _,
+            // `out`, never `lateout`: the `lea` writes `tmp` while `data` and `tss` are still to
+            // be read, and `lateout` lets the compiler give `tmp` an input's register. A release
+            // build put `tss` and `tmp` both in `rcx`, so `ltr` loaded the low bits of a code
+            // address as a selector: `#GP`, then a double fault, right after the boot's `pat`
+            // line. Only a release boot shows it, which is `cargo xtask uefi-boot --release`.
+            tmp = out(reg) _,
             options(preserves_flags),
         );
     }
