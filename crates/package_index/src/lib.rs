@@ -608,15 +608,17 @@ pub fn accept<'b>(entry: &Entry<'_>, bytes: &'b [u8]) -> Result<Installable<'b>,
 ///
 /// A version here is what a stem carries between its name and its architecture, so it is dpkg's
 /// upstream version with neither an epoch (`1:`) nor a revision (`-1`): a stem is split at its
-/// hyphens, and an epoch's colon has no meaning without the rest of dpkg's syntax. [`check`] admits
-/// a version only if dpkg would read it without complaint, and refuses everything dpkg refuses or
-/// warns about: an empty string, a first character that is not a digit, or any character outside
-/// `0-9 A-Z a-z . + ~`. basalt writes these strings and `jig` reads them, so a string one side
-/// could not order is refused where the index is read ([`crate::Index::parse`]), not guessed at.
+/// hyphens, and an epoch's colon has no meaning without the rest of dpkg's syntax.
+/// [`check`](version::check) admits a version only if dpkg would read it without complaint, and
+/// refuses everything dpkg refuses or warns about: an empty string, a first character that is not a
+/// digit, or any character outside `0-9 A-Z a-z . + ~`. basalt writes these strings and `jig` reads
+/// them, so a string one side could not order is refused where the index is read
+/// ([`crate::Index::parse`]), not guessed at.
 ///
-/// [`compare`] is dpkg's `verrevcmp` (`lib/dpkg/version.c`): the strings alternate between runs of
-/// non-digits, compared character by character with letters before other symbols and `~` before
-/// everything, even the end of the string, and runs of digits, compared as numbers. So `1.10` is
+/// [`compare`](version::compare) is dpkg's `verrevcmp` (`lib/dpkg/version.c`): the strings
+/// alternate between runs of non-digits, compared character by character with letters before other
+/// symbols and `~` before everything, even the end of the string, and runs of digits, compared as
+/// numbers. So `1.10` is
 /// newer than `1.9`, `1.0~rc1` is older than `1.0`, and `1.0` and `1.00` are the same version.
 ///
 /// # EXAMPLES
@@ -782,6 +784,8 @@ pub mod version {
                 ("007", "7", Equal),
                 ("1a", "1b", Less),
                 ("1Z", "1a", Less),
+                // A digit weighs nothing inside a run of non-digits, so a letter facing one wins.
+                ("1.a", "1.0", Greater),
             ];
             for (a, b, order) in pairs {
                 assert_eq!(compare(a, b), Ok(order), "{a} against {b}");

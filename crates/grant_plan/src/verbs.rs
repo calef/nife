@@ -367,6 +367,25 @@ mod tests {
 
     /// **Each authority a verb can choose is narrowed on its own.** A manifest declaring all twelve,
     /// and a table with one verb per authority: each verb keeps its one, and only that one.
+    /// **A page's verb fits the key buffer, and an empty word is no verb.** The shell's reading
+    /// caps a word at [`MAX_VERB`] before it reaches [`verb_key`], but the progenitor reads the
+    /// page, where an argument may be any length: one byte too long would overrun `out`.
+    #[test]
+    fn a_page_verb_is_bounded_and_never_empty() {
+        let read = |line: &[u8]| {
+            let mut page = [0u8; program_argument_contract::PAGE_BYTES];
+            argv(line, &mut page).unwrap();
+            let mut out = [0u8; MAX_VERB];
+            verb_of_page(&page, &mut out).map(<[u8]>::to_vec)
+        };
+        assert_eq!(
+            read(b"jig sixteen-bytes-ab"),
+            Some(b"sixteen-bytes-ab".to_vec())
+        );
+        assert_eq!(read(b"jig seventeen-bytes-a"), None);
+        assert_eq!(read(b"jig '' -u"), None);
+    }
+
     #[test]
     fn each_field_is_narrowed_by_its_own_bit() {
         let all = Manifest {
