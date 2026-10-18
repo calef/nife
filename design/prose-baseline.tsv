@@ -11,16 +11,6 @@
 # two counts). Median and bold are not asked of documents under 200 words.
 # measure: 3
 path	words	median	longest	bold_lead	bold_inline
-design/decisions/0100-the-terminal-font.md	-	-	54	-	-
-design/decisions/0101-notification-objects.md	-	-	65	-	-
-design/decisions/0103-what-a-frame-names.md	-	-	54	-	-
-design/decisions/0104-the-font-and-the-palette.md	-	-	45	-	-
-design/decisions/0105-thread-spawn-decline-for-now.md	-	-	59	-	-
-design/decisions/0106-tail-output-narrowing.md	-	23.5	55	-	-
-design/decisions/0107-missing-docs-workspace-wide.md	-	24.5	68	-	-
-design/decisions/0108-credential-revocation-kills-durable-session.md	-	-	53	-	-
-design/decisions/0109-attribution-is-a-channel-property.md	-	-	59	-	-
-design/decisions/0111-inert-config-is-a-validated-page.md	-	26	62	-	-
 design/decisions/0112-touch-mtime-authority.md	-	22	-	-	-
 design/decisions/0113-kernel-object-plain-names.md	-	-	63	-	-
 design/decisions/0114-aspace-enumerate.md	-	22	49	-	-

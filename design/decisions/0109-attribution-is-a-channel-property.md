@@ -14,10 +14,10 @@ conversation, not yet built): channel.
 
 Milestone 49's "In brief" names Unix's uid as doing four jobs at once, three already answered here
 structurally. The fourth, attribution ("who did this?"), has no mechanism at all. The fork the
-milestone names to settle first: does attribution become a property of a capability (an
-invocation carries a stamped origin, seL4's badge mechanism), or a property of a channel (a
-server logs which endpoint a request arrived on, established once when that endpoint was handed
-out)?
+milestone names to settle first: does attribution become a property of a capability, or a property
+of a channel? As a property of a capability, an invocation carries a stamped origin (seL4's badge
+mechanism). As a property of a channel, a server logs which endpoint a request arrived on,
+established once when that endpoint was handed out.
 
 ## What else was considered, and why it loses
 
@@ -39,19 +39,19 @@ time:
   from userspace senders."
 
 No badge field exists anywhere in the ABI today (checked directly: `crates/abi`, `crates/capability`).
-In each prior case the actual requirement was confinement, not identity, and a badge answers neither
-question a shared endpoint actually raised: it tells a receiver who called, never whether the
+In each prior case the actual requirement was confinement, not identity. A badge answers neither
+question a shared endpoint actually raised. It tells a receiver who called, never whether the
 message content can be trusted, which is what compositor's and dir-capability's fixes both needed.
 
 ## Why seL4 built it and this tree has not
 
-seL4 is a general-purpose foundation for downstream systems it does not control the shape of, some
-of which legitimately want one cheap, shared endpoint serving many, perhaps many thousands of,
+seL4 is a general-purpose foundation for downstream systems it does not control the shape of. Some
+of those legitimately want one cheap, shared endpoint serving many, perhaps many thousands of,
 distinguishable clients (a resource manager fielding requests from many VMs, for instance). Minting
 a badge is nearly free; minting a kernel object or a process per client is not, at that scale. This
-tree has never had that scale problem: every server built so far serves a small, fixed number of
-principals, and per-principal objects have been cheap enough that the tree reached for them three
-times running rather than reach for a badge.
+tree has never had that scale problem. Every server built so far serves a small, fixed number of
+principals. Per-principal objects have been cheap enough that the tree reached for them three times
+running rather than reach for a badge.
 
 ## The decision
 
@@ -73,9 +73,9 @@ supervision, `SINK_BIT`-shaped delegation). The cost lands on server structure (
 region per principal) rather than on the kernel.
 
 Badging would touch the IPC fast path (the single most gated, most measured surface in this
-kernel: `fastpath-footprint`, milestone 132's L1i-sized budget) for the first time in the project,
-and would need new, proven kernel semantics for how a badge interacts with capability derivation,
-copying and revocation. Real cost, for a feature with no current consumer.
+kernel: `fastpath-footprint`, milestone 132's L1i-sized budget) for the first time in the project.
+It would also need new, proven kernel semantics for how a badge interacts with capability
+derivation, copying and revocation. Real cost, for a feature with no current consumer.
 
 Where the channel model's own cost eventually bites, named rather than assumed away: each durable
 session, as milestone 152 designs it, plausibly owns at least one kernel region (`MAX_REGIONS = 256`,
@@ -93,8 +93,8 @@ Windows Home/Pro's 5/20 concurrent-SMB-connection cap and macOS's 5-simultaneous
 limit, both of which are real, sourced numbers, but they measure a specific, deliberately
 product-throttled consumer feature, not what a general-purpose multi-user OS actually supports.
 Neither Windows nor macOS caps how many *accounts* can hold durable, persistent per-user state (a
-crontab, a systemd `--user` unit with `loginctl linger`) anywhere near 5 or 20; that model is
-resource-bound, not artificially capped, and Unix cron has run one crontab per account with no
+crontab, a systemd `--user` unit with `loginctl linger`) anywhere near 5 or 20. That model is
+resource-bound, not artificially capped. Unix cron has run one crontab per account with no
 built-in ceiling since the 1970s. Shared systems have run that for accounts numbering in the
 hundreds as ordinary practice, though this note does not have a single precise citation for a
 figure and should not be read as claiming one.
@@ -103,9 +103,9 @@ seL4 itself supplies no comparison at all, and that is worth being precise about
 no user, login, or account concept anywhere in the kernel; badging distinguishes *senders on a
 shared endpoint*, for whatever a downstream system builds (VMs in a hypervisor, components in a
 CAmkES system), never "logged-in end users" as such. Citing seL4 as having solved "how many users"
-would be citing an answer it does not give; the honest version of the earlier reasoning (§2, §3
-above) is narrower and still holds: seL4 supports cheap many-sender fan-out for whatever a
-downstream system needs it for, this tree has never needed that, and every prior case here needed
+would be citing an answer it does not give. The honest version of the earlier reasoning (§2, §3
+above) is narrower and still holds. seL4 supports cheap many-sender fan-out for whatever a
+downstream system needs it for. This tree has never needed that, and every prior case here needed
 confinement rather than identity regardless.
 
 **So the number that actually matters is `MAX_REGIONS` itself, not a borrowed desktop-OS throttle.**

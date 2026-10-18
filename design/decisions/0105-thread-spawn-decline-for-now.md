@@ -30,11 +30,11 @@ syscall surface is calef's call:
   would inherit.
 - Option B, sibling processes with replicated frames. Touches no syscall at all. Looked cheap
   going in; measured out not cheap. A fixed shared arena is free (the same pattern `net_stack` and
-  the compositor already use), but a *growing* heap kept consistent across independent address
+  the compositor already use). But a *growing* heap kept consistent across independent address
   spaces needs a from-scratch, race-free synchronization protocol that no surveyed prior art (seL4,
-  Zircon, Linux `pthread_create`) implements for the general case, because all three instead make
-  "one address space, many schedulable things" the definition rather than something userspace
-  reconstructs by hand.
+  Zircon, Linux `pthread_create`) implements for the general case. That is because all three
+  instead make "one address space, many schedulable things" the definition rather than something
+  userspace reconstructs by hand.
 - Option C, decline. `thread::spawn` stays `Unsupported`, permanently rather than "phase one,
   pending." Zero kernel cost, fully reversible: nothing is built, nothing is promised, and neither A
   nor B is foreclosed later.
