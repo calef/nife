@@ -983,8 +983,9 @@ pub(super) fn render_ipv4(addr: u32, out: &mut [u8]) -> usize {
 /// as it always did.
 ///
 /// No swap endpoint is passed: the trigger (milestone 198 (a package manager, and the trivial
-/// install)'s installer activating a new build) is not built, so nothing on this boot asks the
-/// supervisor to swap. `terminal_supervisor`'s `BUGS`.
+/// install)'s installer activating a new build) is ruled by §308 (the installer asks the terminal
+/// to swap) and not built, so nothing on this boot asks the supervisor to swap. Milestone 694 (the
+/// installer asks the terminal to swap) builds it; `terminal_supervisor`'s `BUGS`.
 /// `ut` is where the loader's own scratch tables come from; `budget` is the region the
 /// supervisor's map budget is split from. The same region at boot (the root, before the giveaway),
 /// two different ones inside a `graphical_terminal` session (milestone 632 (provisional): `own_ut` for the

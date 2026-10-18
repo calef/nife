@@ -25,12 +25,12 @@
 //! # BUGS
 //!
 //! **Nothing on a real boot asks it to swap.** The trigger is milestone 198 (a package manager, and the trivial install)'s installer activating a
-//! new `line_editor` build, and that message is not built; `system_initializer` passes no swap
-//! endpoint, so the supervisor builds the terminal and then waits on its supervision endpoint. The
-//! kernel's guest test holds the swap endpoint and is the only thing that swaps today.
+//! new `line_editor` build, ruled by §308 (the installer asks the terminal to swap) and built by
+//! milestone 694 (the installer asks the terminal to swap). `system_initializer` passes no swap
+//! endpoint, so the supervisor builds the terminal and waits; only the kernel's guest test swaps.
 //!
-//! **A replacement is the same image.** The supervisor was handed one `line_editor` image, and the
-//! request carries none. A new build arriving with the trigger is the trigger's design, above.
+//! **A replacement is the same image.** The supervisor was handed one `line_editor` image; §308's
+//! frame run, sent with `SWAP`, is how a new build arrives once milestone 694 is built.
 //!
 //! **A `line_editor` that faults is not restarted.** Its death is collected at the next swap, and
 //! until then the terminal is gone. Restarting it fresh is kill-and-replace, which this program
