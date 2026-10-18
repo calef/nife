@@ -11,16 +11,6 @@
 # two counts). Median and bold are not asked of documents under 200 words.
 # measure: 3
 path	words	median	longest	bold_lead	bold_inline
-design/decisions/0078-signed-commits.md	-	-	42	-	-
-design/decisions/0079-password-equivalent-material.md	-	-	43	-	-
-design/decisions/0080-one-build-for-everything.md	-	-	59	-	-
-design/decisions/0081-dependency-upgrades.md	-	-	43	-	-
-design/decisions/0082-ambient-authority-and-the-rewrite.md	-	-	46	-	-
-design/decisions/0084-how-we-port.md	-	-	41	-	-
-design/decisions/0085-evidence-and-product.md	-	-	44	-	-
-design/decisions/0086-el0-nvme-driver.md	-	-	73	-	-
-design/decisions/0087-permissive-license.md	-	22	59	-	-
-design/decisions/0088-needs-architect-as-a-check.md	-	-	49	-	-
 design/decisions/0089-provisional-versus-unrecorded.md	-	-	54	-	-
 design/decisions/0090-claiming-and-closing.md	-	-	44	-	-
 design/decisions/0091-endpoints-before-the-refusal.md	-	-	62	-	-

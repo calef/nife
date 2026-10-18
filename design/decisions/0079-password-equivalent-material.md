@@ -7,11 +7,11 @@ ratified_by: calef
 
 # 79. Holding password-equivalent material, and what a session key release means
 
-calef approved both halves on 2026-08-04, on milestone 65 (hold the key, expose the operation, never the key)'s pull request; both
-were removed from the tree on 2026-08-30 and the amendment at the bottom says why the section is kept
-rather than retired. This
-section exists because the reasoning is the part worth keeping: the decision itself is one word, and
-in two years the question a reader will have is *why*.
+calef approved both halves on 2026-08-04, on milestone 65 (hold the key, expose the operation,
+never the key)'s pull request. Both were removed from the tree on 2026-08-30, and the amendment at
+the bottom says why the section is kept rather than retired. This section exists because the
+reasoning is the part worth keeping: the decision itself is one word, and in two years the question
+a reader will have is *why*.
 
 What was decided. The secrets service may hold an `NTOWFv2` beside a record's Argon2id tag, and
 may release a 16-byte `SessionBaseKey` to a caller whose proof verified. Three dependencies ship with
