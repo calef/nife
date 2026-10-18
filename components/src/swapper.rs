@@ -695,10 +695,13 @@ fn plan_handoff(
         Err(refusal) => send(REPORT, hot_swap_contract::RPT_REFUSED, refusal.code(), 0),
     };
 
-    let Ok(incumbent) = component_plan::plan(&hot_swap_contract::STATEFUL_BACKEND, &to_incumbent) else {
+    let Ok(incumbent) = component_plan::plan(&hot_swap_contract::STATEFUL_BACKEND, &to_incumbent)
+    else {
         bail(93)
     };
-    let Ok(replacement) = component_plan::plan(&hot_swap_contract::STATEFUL_BACKEND, &to_replacement) else {
+    let Ok(replacement) =
+        component_plan::plan(&hot_swap_contract::STATEFUL_BACKEND, &to_replacement)
+    else {
         bail(94)
     };
     let Ok(client) = component_plan::plan(&hot_swap_contract::CLIENT, &to_client) else {
