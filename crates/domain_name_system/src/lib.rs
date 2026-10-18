@@ -29,9 +29,10 @@
 //! - Host names are restricted to letters, digits, `-` and `_` per label ([`Name::from_dotted`]),
 //!   which keeps escape syntax out of the one place a client's text becomes wire bytes.
 //!
-//! Name: provisional: DNS spelled out under §154 (the acronym test is whether
-//! the phrase is spoken). Refused `dns` for that reason, and `name_resolver`, which names a program
-//! rather than this wire format.
+//! Name: ratified 2026-10-18 (calef, a crate-naming session). Kept: the external DNS wire format,
+//! named for the standard's full name, spelled out under §154 (the acronym test). His answer was
+//! "`domain_name_system`". Refused `dns` (the acronym test) and `name_resolver` (it names a program
+//! rather than this wire format).
 
 #![no_std]
 

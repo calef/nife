@@ -37,9 +37,10 @@
 //! - Grant messages carry eight bytes each (`RECEIVE_CAP` returns two words, one the control word),
 //!   so a 253-byte zone is 32 messages, once per client.
 //!
-//! Name: provisional (milestone 384 (in a capability system the resolver is a grant)'s lane):
-//! named for what it is the protocol of. Refused `resolver_protocol` (the program, not the act)
-//! and `dns_protocol` (§154 (the acronym test)).
+//! Name: provisional, and ruled: calef ruled `domain_name_resolution_contract` on 2026-10-18, to pair
+//! with the program `domain_name_resolver`. The crate takes it when the wire-contract crates take
+//! their suffix. Refused `resolver_protocol` (the program, not the act) and `dns_protocol` (§154
+//! (the acronym test)).
 
 #![no_std]
 
