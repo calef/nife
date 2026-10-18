@@ -43,7 +43,8 @@ headers, memory BARs, virtio vendor caps, the INTx swizzle). The counterweight: 
 most of that decode. Under the rule as written, a maintained no_std crate should have been the
 default for peripheral plumbing outside the TCB. Verdict: keep ours (the swap would trade
 witness-tested, zero-churn code for a dependency, backwards at this point). Let the rule bind
-prospectively, milestone 16's parsing needs being the next real test.
+prospectively, milestone 16 (real hardware + IOMMU-backed driver isolation)'s parsing needs being
+the next real test.
 
 What the kernel is on this bus: with `-bios default`, OpenSBI does no PCI setup. So the kernel is
 the firmware: it sizes and places BARs itself. The hardcoded window/irq constants are held by

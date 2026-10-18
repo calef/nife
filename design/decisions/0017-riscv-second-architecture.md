@@ -8,10 +8,10 @@ ratified_by: calef
 # 17. The second architecture: RISC-V, and the page-table format trait
 
 The port to RISC-V (rv64, QEMU `virt`) is the first real test of rule #1 ("all architecture-specific
-code lives under `arch/`"), an assumption held on faith since milestone 1. RISC-V over x86_64
-because it is clean-different rather than legacy-different. It exercises the HAL abstraction (a
-different trap, paging, interrupt, and firmware model) without the real-mode / GDT / IDT / APIC /
-UEFI tax. x86_64 is the third port. Full plan and findings: notes/riscv-port.md.
+code lives under `arch/`"), an assumption held on faith since milestone 1 (boot to Rust on QEMU).
+RISC-V over x86_64 because it is clean-different rather than legacy-different. It exercises the HAL
+abstraction (a different trap, paging, interrupt, and firmware model) without the real-mode / GDT /
+IDT / APIC / UEFI tax. x86_64 is the third port. Full plan and findings: notes/riscv-port.md.
 
 The port found the `arch/` boundary was **almost** complete, and each leak it exposed was pushed under
 `arch/`, not bodged around:
@@ -47,9 +47,9 @@ per-CPU register, an NS16550 console, the OpenSBI device-tree handoff). It cover
 kernel high half). It covers traps (`stvec`, the `sscratch` dance, the syscall-ABI reconciliation),
 the SBI timer, the scheduler and context switch, and U-mode user programs making syscalls. It covers
 a capability invocation (`SYS_INVOKE` → lookup → rights check → endpoint SEND) from U-mode and
-**preemption** (the timer preempts a thread that never yields, DECISIONS §5). And it covers a real
-compiled ELF at U-mode: the `worker` Rust binary, delivered as the initrd and run through the
-kernel's arch-neutral ELF loader, squares an input and SENDs it home.
+**preemption** (the timer preempts a thread that never yields, DECISIONS §5 (execution model)). And
+it covers a real compiled ELF at U-mode: the `worker` Rust binary, delivered as the initrd and run
+through the kernel's arch-neutral ELF loader, squares an input and SENDs it home.
 
 The ELF step needed three small aarch64 assumptions closed. `user_rt` grew a RISC-V syscall ABI
 (`ecall`+`a7`). The `elf` crate accepts the running kernel's machine (a symmetric, cfg-selected

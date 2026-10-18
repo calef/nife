@@ -35,8 +35,9 @@ in code:
   existing rule rather than a new one. The heap and slab crates were deleted the same way on
   2026-07-27, because *the git history preserves the work and a demonstrator's tree should hold what
   it ships* (notes/heap.md). Nothing was lost that this decision had not already replaced. The
-  capability milestone 10 delivered, a shell at EL0 spawning processes on command, is exactly what
-  userspace init does now. Doing it in userspace is the thesis rather than a consolation.
+  capability milestone 10 (a shell at EL0) delivered, a shell at EL0 spawning processes on command,
+  is exactly what userspace init does now. Doing it in userspace is the thesis rather than a
+  consolation.
 
   One honest caveat on that claim, since it is the sort of thing that decays: no test in the suite
   boots the interactive shell, so "the capability still exists" rests on the hand-validated boot path

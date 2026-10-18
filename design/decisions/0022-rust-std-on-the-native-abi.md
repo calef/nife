@@ -14,19 +14,19 @@ forks inside it.
 
 **The decision: implement std's platform layer (`sys`) directly on the capability ABI, not a POSIX
 shim under the Unix one.** This is Hermit's shape (std on a non-POSIX unikernel ABI). DECISIONS §15
-already priced the alternative (Redox's relibc-first road) at "later, if ever, and at no cost to
-defer". A std program draws its heap from an untyped budget at slot 0, SENDs stdout to an endpoint
-at slot 1, and reads `Instant`/`SystemTime` from the virtual counter. It gets honest `Unsupported`
-from `thread::spawn`, `fs`, and `net` until the servers that back them exist (milestones 30 and 32).
-No new syscall and no new capability method. The PAL is a client of the ABI as it already stands,
-the same surface `allocator_exerciser` proved. `panic!` prints and faults (panic=abort; unwinding is
-never linked), which is this ABI's honest `abort()`.
+(the native ABI) already priced the alternative (Redox's relibc-first road) at "later, if ever, and
+at no cost to defer". A std program draws its heap from an untyped budget at slot 0, SENDs stdout to
+an endpoint at slot 1, and reads `Instant`/`SystemTime` from the virtual counter. It gets honest
+`Unsupported` from `thread::spawn`, `fs`, and `net` until the servers that back them exist
+(milestones 30 and 32). No new syscall and no new capability method. The PAL is a client of the ABI
+as it already stands, the same surface `allocator_exerciser` proved. `panic!` prints and faults
+(panic=abort; unwinding is never linked), which is this ABI's honest `abort()`.
 
-Why now: the first wall an application hits on nife is "no std". And milestone 23's vendor-component
-ambition needs components writable by people who are not kernel people. std on the native ABI widens
-"runs real workloads" to most of crates.io that stays off files and sockets. It does so without
-smuggling in the POSIX assumptions (no fork, no open-by-path, no ambient anything) the ABI
-deliberately excludes.
+Why now: the first wall an application hits on nife is "no std". And milestone 23 (a
+capability-routed component OS with live replacement)'s vendor-component ambition needs components
+writable by people who are not kernel people. std on the native ABI widens "runs real workloads" to
+most of crates.io that stays off files and sockets. It does so without smuggling in the POSIX
+assumptions (no fork, no open-by-path, no ambient anything) the ABI deliberately excludes.
 
 **The one genuinely new thing is build machinery, and its forks were settled by measurement, not
 taste.** `-Zbuild-std` reads std's source from the sysroot of the rustc it invokes. So a patched std
@@ -59,32 +59,32 @@ std program (`Vec`, `String`, `HashMap`, `println!`, `Instant`) spawned as a wor
 byte for byte on both ISAs (the §19 parity gate).
 
 Amendment (phase two, 2026-07-28): `std::net` binds to the socket contract. `std::net::TcpStream`
-and outbound `std::net::UdpSocket` now work, backed by net_stack over the §25 socket contract. The
-`net honestly unsupported` line of phase one is retired. The PAL (`sys/net/connection/nife.rs`) is a
-pure client of the frozen contract, no new syscall and no new capability method. It holds a `Stack`
-endpoint (slot 2) and a frame untyped (slot 3), mints a shared frame per socket, and drives
-net_stack with `socket_proto` `CALL`s. The wire constants are generated verbatim from
-`crates/socket_proto/src/lib.rs` into the patched std, the same anti-drift discipline as the ABI and
-heap crates. A std program does networking only if it holds those two slots. Without them `std::net`
-returns `Unsupported`, which is "no ambient network" (§10) made visible from inside a process. The
-same `std_exerciser` binary proves both. Spawned without the net slots, it runs the offline
-transcript. Spawned with them (and a running net_stack), it does a real UDP DNS query and a TCP echo
-round trip, each asserted byte for byte on both ISAs. `TcpListener` is not a gap: `bind` is
-`OP_LISTEN` and `accept` is `OP_ACCEPT` into a second id. A program without a listen grant gets
-`PermissionDenied` rather than `Unsupported`. That is the difference between an authority it was
-refused and a platform that cannot. The honest gap in its place is an accepted connection's peer
-address. `accept` must return a `SocketAddr` and `OP_ACCEPT`'s reply carries no peer, so it answers
-`0.0.0.0:0`. Remaining gaps carried as `Unsupported`: non-blocking mode and timeouts (blocking-only
-contract), DNS resolution (`lookup_host`; numeric addresses only), and IPv6. One finding reported
-up: net_stack ties a socket's local port to its socket id. So reopening a closed id reuses its port
-and can stall against slirp. The fix is ephemeral local ports in net_stack, a contract-side change
-(notes/std.md).
+and outbound `std::net::UdpSocket` now work, backed by net_stack over the §25 (socket identity)
+socket contract. The `net honestly unsupported` line of phase one is retired. The PAL
+(`sys/net/connection/nife.rs`) is a pure client of the frozen contract, no new syscall and no new
+capability method. It holds a `Stack` endpoint (slot 2) and a frame untyped (slot 3), mints a shared
+frame per socket, and drives net_stack with `socket_proto` `CALL`s. The wire constants are generated
+verbatim from `crates/socket_proto/src/lib.rs` into the patched std, the same anti-drift discipline
+as the ABI and heap crates. A std program does networking only if it holds those two slots. Without
+them `std::net` returns `Unsupported`, which is "no ambient network" (§10 (process model)) made
+visible from inside a process. The same `std_exerciser` binary proves both. Spawned without the net
+slots, it runs the offline transcript. Spawned with them (and a running net_stack), it does a real
+UDP DNS query and a TCP echo round trip, each asserted byte for byte on both ISAs. `TcpListener` is
+not a gap: `bind` is `OP_LISTEN` and `accept` is `OP_ACCEPT` into a second id. A program without a
+listen grant gets `PermissionDenied` rather than `Unsupported`. That is the difference between an
+authority it was refused and a platform that cannot. The honest gap in its place is an accepted
+connection's peer address. `accept` must return a `SocketAddr` and `OP_ACCEPT`'s reply carries no
+peer, so it answers `0.0.0.0:0`. Remaining gaps carried as `Unsupported`: non-blocking mode and
+timeouts (blocking-only contract), DNS resolution (`lookup_host`; numeric addresses only), and IPv6.
+One finding reported up: net_stack ties a socket's local port to its socket id. So reopening a
+closed id reuses its port and can stall against slirp. The fix is ephemeral local ports in
+net_stack, a contract-side change (notes/std.md).
 
 Amendment (phase two, 2026-07-29): `std::fs` binds to the FS-service contract, and a path means
-"under the directory I hold". `std::fs::File` now works, backed by the §27 FS service. The `fs
-honestly unsupported` line of phase one is retired for a program that was granted a directory. The
-PAL (`sys/fs/nife.rs`) is again a pure client of a frozen contract, no new syscall and no new
-capability method. `crates/fs_proto` is generated verbatim into the patched std.
+"under the directory I hold". `std::fs::File` now works, backed by the §27 (the filesystem service)
+FS service. The `fs honestly unsupported` line of phase one is retired for a program that was
+granted a directory. The PAL (`sys/fs/nife.rs`) is again a pure client of a frozen contract, no new
+syscall and no new capability method. `crates/fs_proto` is generated verbatim into the patched std.
 
 The design question, and the answer. `File::open` takes a path and this system has no global
 namespace, so the binding had to decide what a path *means*. Per §27, open-by-path exists only
@@ -93,18 +93,19 @@ mapping is: a std program holds a directory capability at slot 4, and `File::ope
 "foo, under the directory I was granted." Everything else follows. It is enforced client-side before
 a byte reaches the wire, so a would-be escape becomes a legible error rather than an `ENOENT`:
 
-- An absolute path names the root of the caller's own namespace (milestone 47, 2026-08-18). Any `..`
-  that would climb above it is refused as `ErrorKind::InvalidFilename`, with a message naming which
-  case it was. `/` in a system where every program holds its own directory capability is Plan 9's
-  answer, not a global root. So two programs in two subtrees resolve the same absolute token to two
-  different files, and neither can name the other's. A nested path is a chain of attenuated descents
-  (milestone 122 (a directory handle `std` can hold)), one `OPENDIR` per component, each hop asking
-  for `DESCEND` plus what the final verb needs. The grant is exactly as tight as it was, because a
-  child's rights are its parent's intersected with the request. Deliberately **not**
-  `PermissionDenied`: nothing consulted a permission. There is no name here for what was asked,
-  because no capability designates it. Mapping a capability refusal onto EPERM would smuggle in
-  exactly the POSIX fiction this milestone exists to avoid. A name that is expressible but absent
-  stays an ordinary `NotFound`, which is what makes the difference legible.
+- An absolute path names the root of the caller's own namespace (milestone 47 (navigation and
+  naming), 2026-08-18). Any `..` that would climb above it is refused as
+  `ErrorKind::InvalidFilename`, with a message naming which case it was. `/` in a system where every
+  program holds its own directory capability is Plan 9's answer, not a global root. So two programs
+  in two subtrees resolve the same absolute token to two different files, and neither can name the
+  other's. A nested path is a chain of attenuated descents (milestone 122 (a directory handle `std`
+  can hold)), one `OPENDIR` per component, each hop asking for `DESCEND` plus what the final verb
+  needs. The grant is exactly as tight as it was, because a child's rights are its parent's
+  intersected with the request. Deliberately **not** `PermissionDenied`: nothing consulted a
+  permission. There is no name here for what was asked, because no capability designates it. Mapping
+  a capability refusal onto EPERM would smuggle in exactly the POSIX fiction this milestone exists
+  to avoid. A name that is expressible but absent stays an ordinary `NotFound`, which is what makes
+  the difference legible.
 - A program with **no directory capability gets `Unsupported` from all of `std::fs`**, the same
   shape the net half uses without a `Stack` capability. Detecting that cannot touch the shared page
   (an ungranted program has none mapped). So the probe is a payload-free `FSTAT` on an impossible
@@ -133,17 +134,17 @@ Two things reported up rather than built (see §27's amendment and notes/std.md)
 the overlap between the wire's negated-errno space and the kernel's invoke-error space (-1..-8),
 where `-2` is both `ENOENT` and `WrongObject`.
 
-Amendment (milestone 31 phase 2, 2026-07-30): `File::create` and `std::fs::write` work. The first of
-those two reported items is built (§27's amendment carries the contract side). So the PAL binds
-`create`/`create_new` to `CREATE` and `truncate` to `TRUNCATE`, and the "creating a file and
-truncating one are honestly Unsupported" line above is retired. The order in `File::open` is
-POSIX's, and it matters. Open, then create only if the open reported `NotFound` and the caller asked
-for it, then truncate after a successful open. `std::fs::write` is `create(true).truncate(true)`. So
-getting that order wrong would leave the old tail behind on exactly the path that exists to
-*replace* a file's contents. That is the day-costing confusion §27 records being corrected four
-times. A `create_new` over a name that exists closes the handle the probing open minted and returns
-`AlreadyExists`, rather than leaking it for the life of the process. The error path is the one
-nobody exercises, so it is the one that leaks.
+Amendment (milestone 31 (a capability shell) phase 2, 2026-07-30): `File::create` and
+`std::fs::write` work. The first of those two reported items is built (§27's amendment carries the
+contract side). So the PAL binds `create`/`create_new` to `CREATE` and `truncate` to `TRUNCATE`, and
+the "creating a file and truncating one are honestly Unsupported" line above is retired. The order
+in `File::open` is POSIX's, and it matters. Open, then create only if the open reported `NotFound`
+and the caller asked for it, then truncate after a successful open. `std::fs::write` is
+`create(true).truncate(true)`. So getting that order wrong would leave the old tail behind on
+exactly the path that exists to *replace* a file's contents. That is the day-costing confusion §27
+records being corrected four times. A `create_new` over a name that exists closes the handle the
+probing open minted and returns `AlreadyExists`, rather than leaking it for the life of the process.
+The error path is the one nobody exercises, so it is the one that leaks.
 
 Creating a *file* was never what §27 kept host-side. That was creating a *filesystem*, which needs
 uuid and getrandom. `Transaction::create_node` is not std-gated, so a file is made on-device without

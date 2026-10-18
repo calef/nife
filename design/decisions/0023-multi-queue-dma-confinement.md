@@ -7,11 +7,11 @@ ratified_by: calef
 
 # 23. Multi-queue DMA confinement: the validator's second direction (milestone 30 (the network stack as a confined component))
 
-Decided and built 2026-07-28. A virtio-net device needs two virtqueues (receive on queue 0,
-transmit on queue 1). Receive is the direction where the *device writes into* the driver's memory
-rather than reading from it. The §18 seam and the shadow-ring validator were queue-0-only. So the
-net driver's prerequisite is a proved second queue and a proved second direction. Both are built
-under the same confinement discipline as the disk rather than bolted on when a NIC needs it.
+Decided and built 2026-07-28. A virtio-net device needs two virtqueues (receive on queue 0, transmit
+on queue 1). Receive is the direction where the *device writes into* the driver's memory rather than
+reading from it. The §18 (the PCIe transport) seam and the shadow-ring validator were queue-0-only.
+So the net driver's prerequisite is a proved second queue and a proved second direction. Both are
+built under the same confinement discipline as the disk rather than bolted on when a NIC needs it.
 
 **What changed, and what deliberately did not.** The validator (`validate_and_shadow`) did not
 change at all. It bounds the address of every descriptor, `addr..addr+len` inside the driver's DMA

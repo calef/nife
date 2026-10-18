@@ -134,17 +134,17 @@ Five decisions, each with its alternative on the record:
    the lint gate still works and the failure lands at boot where it belongs. A *malformed* manifest
    is a hard build error, because measuring nothing silently is worse than stopping.
 
-5. The kernel measures only the program the kernel loads. `init` on aarch64, `init` and `system_initializer`
-   on riscv64. Every other program in the archive is loaded by init in userspace and is not measured
-   today, so the chain of trust stops at init's entry. The capability-correct extension is init
-   measuring what init loads (its own table, in userspace, trustworthy because init's own bytes are
-   now measured), which keeps policy out of the kernel the same way supervision does. Built by
-   milestone 104 on 2026-08-05, so this paragraph describes the state before it. Init now refuses
-   to load what it cannot vouch for. The table is an archive entry rather than compiled into init
-   (init is *in* the archive it measures), and the kernel gained one digest and no policy. Three
-   programs remain unmeasured and are named in notes/trusted-init.md. Hashing the whole 14 MB
-   archive in the kernel would cover everything with one value but puts both the cost and the
-   policy in the wrong place.
+5. The kernel measures only the program the kernel loads. `init` on aarch64, `init` and
+   `system_initializer` on riscv64. Every other program in the archive is loaded by init in
+   userspace and is not measured today, so the chain of trust stops at init's entry. The
+   capability-correct extension is init measuring what init loads (its own table, in userspace,
+   trustworthy because init's own bytes are now measured), which keeps policy out of the kernel the
+   same way supervision does. Built by milestone 104 (the measurement continues past init) on
+   2026-08-05, so this paragraph describes the state before it. Init now refuses to load what it
+   cannot vouch for. The table is an archive entry rather than compiled into init (init is *in* the
+   archive it measures), and the kernel gained one digest and no policy. Three programs remain
+   unmeasured and are named in notes/trusted-init.md. Hashing the whole 14 MB archive in the kernel
+   would cover everything with one value but puts both the cost and the policy in the wrong place.
 
 The signature variant, recorded as a follow-up rather than built. A signature over init against a
 public key compiled into the kernel buys one thing a hash cannot: updating init without rebuilding
@@ -157,9 +157,10 @@ compromised one. A kernel with a baked-in public key and no revocation list is o
 from accepting anything forever. The peer project Atom ships Ed25519-signed executables, so this is
 real and reachable, just a bigger TCB. It becomes worth paying for when init is delivered
 independently of the kernel; today they are built by one command in one tree in one sequence, so
-the hash is strictly better. The natural sequence if it is ever wanted: signature verification *in
-addition to* the measured root (so the hash stays the floor if key handling fails), and the
-verification code proved under §18's toolchain before it is trusted.
+the hash is strictly better.
+The natural sequence if it is ever wanted: signature verification *in addition to* the
+measured root (so the hash stays the floor if key handling fails), and the verification code proved
+under §18's toolchain before it is trusted.
 
 Proven on both ISAs (`kernel/src/user/measured_boot_tests.rs`): the boot program in RAM measures to
 the digest in the running kernel's own `.rodata` (the end-to-end build-composition proof, nothing

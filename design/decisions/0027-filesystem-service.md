@@ -22,8 +22,9 @@ is resolved under that directory. There is no absolute path, no `..`, no global 
 without the endpoint can open nothing, and the refusal is "no such capability", not a permission
 check. A handle is a server-minted token, validated against the session's table in one place, so
 forging one is meaningless. Open-by-path exists only inside the server. None of this adds a syscall.
-The kernel routes these words the way it routes any IPC (§10, §12) and never reads an opcode. So
-adding a method is a change to `fs_proto` and the note, not to the surface (the §16 discipline).
+The kernel routes these words the way it routes any IPC (§10 (process model), §12 (Call/Reply IPC))
+and never reads an opcode. So adding a method is a change to `fs_proto` and the note, not to the
+surface (the §16 discipline).
 
 The error boundary is mapped exactly once. RedoxFS's error type (`syscall::error::Error`) rides
 unmapped through the sans-IO core and the `Disk` impl; the serve loop is the single site that turns

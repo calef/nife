@@ -46,14 +46,14 @@ process's capability table, not by what it can name. The text below is the July 
    both languages rather than generated bindings, which is the right trade for one page and would not
    be for a real API. Same sans-IO shape RedoxFS's `Disk` trait already uses (§27), across a language
    boundary instead of a trait boundary.
-3. The libc is two symbols, `malloc` and `free`. Tier two of the roadmap's three tiers
-   (freestanding / a handful of symbols / full POSIX; design/roadmap/0036-foreign-component.md).
-   The C object references five (`malloc`, `free`, `memcpy`, `memset`, `strlen`, identical on both
-   ISAs at every optimization level, with no compiler-rt helper and no `__stack_chk_fail`). The
-   linker demands only two, because `compiler_builtins` already supplies the other three weakly for
-   the bare targets. **Tier three is not walked**: a component needing `open`, `fork`, `socket`, or
-   threads needs a real libc port, which is §15's "later, if ever" road, and saying so is what keeps
-   this from becoming that project.
+3. The libc is two symbols, `malloc` and `free`. Tier two of the roadmap's three tiers (freestanding
+   / a handful of symbols / full POSIX; design/roadmap/0036-foreign-component.md). The C object
+   references five (`malloc`, `free`, `memcpy`, `memset`, `strlen`, identical on both ISAs at every
+   optimization level, with no compiler-rt helper and no `__stack_chk_fail`). The linker demands
+   only two, because `compiler_builtins` already supplies the other three weakly for the bare
+   targets. **Tier three is not walked**: a component needing `open`, `fork`, `socket`, or threads
+   needs a real libc port, which is §15 (the native ABI)'s "later, if ever" road, and saying so is
+   what keeps this from becoming that project.
 4. `malloc` comes from the process's own untyped budget (§22 / milestone 27's `UntypedHeap`), wired
    to the very region the instance was built in. So the C heap is the process's own memory, a C leak
    exhausts that instance and nothing else, and the single `Untyped::DESTROY` that reaps the corpse
@@ -121,9 +121,9 @@ construction authority, or proxies the reap through something that does.
   (this is one `clang -c` invocation, not autotools, CMake, or `build.zig`), multiple translation
   units and their link order, headers we do not control. Also untested: a component that wants
   `errno`, `assert`, `stdio`, locales, `setjmp`, floating point, or thread-local storage, and API
-  churn across upstream versions. Milestone 29's libghostty-vt is a tier-one (freestanding)
-  component by design, which is the cheapest possible next step up from here, and that sequencing
-  is deliberate.
+  churn across upstream versions. Milestone 29 (a display terminal)'s libghostty-vt is a tier-one
+  (freestanding) component by design, which is the cheapest possible next step up from here, and
+  that sequencing is deliberate.
 - The C ABI's surface is one function shape. No struct passed by value, no varargs, no callback
   from C into Rust, no C++ (name mangling, exceptions, static initializers, `operator new`), and no
   bitfield or enum-width question. Each of those is a real seam decision this spike did not have to

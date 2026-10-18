@@ -57,7 +57,7 @@ broke.
 Silent on success (`-v` exists because the default prints nothing). Failure is a diagnostic plus a
 non-zero exit. `rm` on a directory without `-r` refuses with `EISDIR`. An interrupted `rm -r` leaves
 a partial tree, reports, and exits non-zero, because a transaction spanning requests would break
-§47's one-request-to-completion property.
+§47 (a directory capability carries six rights)'s one-request-to-completion property.
 
 `-f` stays, and an earlier draft of milestone 47 was wrong about it. That draft argued it should
 not exist, reasoning that with no prompting its only remaining meaning is suppressing errors, which

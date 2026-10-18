@@ -30,7 +30,7 @@ and whose layout it cannot know, which is milestone 23 (live component replaceme
 vendors. Building it now would be an abstraction ahead of its requirement, which rule 3 and the §5
 asymmetry both warn against.
 
-The coupled half, what runs first: a native compute workload (CoreMark), because the disk is
-still blocked (milestone 16) and compute is the honest "real workload" a program can do now. Native,
-not Linux-compat. §10 records that a POSIX shim is *additive* and can come later without a rewrite,
-so there is no reason to pay for it before running something native.
+The coupled half, what runs first: a native compute workload (CoreMark), because the disk is still
+blocked (milestone 16) and compute is the honest "real workload" a program can do now. Native, not
+Linux-compat. §10 (process model) records that a POSIX shim is *additive* and can come later without
+a rewrite, so there is no reason to pay for it before running something native.

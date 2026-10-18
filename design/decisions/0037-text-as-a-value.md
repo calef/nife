@@ -70,8 +70,9 @@ sends `sendkey` on the same QEMU monitor connection the scanout check already ho
 poll, from the start of the run. No synchronization is needed because QEMU drops key events until a
 driver sets `DRIVER_OK`. The keyboard test then proves the path from a physical key event to a
 terminal byte. The compositor test proves the ring to a focused terminal's pixels. The seam between
-them is the ring, exactly where §33 put the authority boundary. Naming the seam is better than one
-test that hides it. Verified headlessly on QEMU 11.0.2, both ISAs.
+them is the ring, exactly where §33 (the compositor's authority is memory) put the authority
+boundary. Naming the seam is better than one test that hides it. Verified headlessly on QEMU 11.0.2,
+both ISAs.
 
 **No new syscall, no new method, no widened surface (§4).** The whole increment is endpoints, shared
 frames, and `Spawn` grants that already existed. One constant moved: `MAX_DEVICES` 24 → 26, because a
@@ -83,9 +84,9 @@ A bug worth recording because it is a real terminal bug. The VT parser had no st
 OSC sequence (`ESC ]0;title BEL`, how every program sets a window title) printed the title onto the
 grid. Found on the host, in milliseconds, by the test that now feeds a title-setting sequence on
 purpose. The interoperability test found its own footing the same way. The escape sequences a
-display terminal must understand are the ones `line_editor` emits (§21). So rather than assert that
-from a list that could drift, the test runs the real line discipline and feeds its echo stream to
-this parser.
+display terminal must understand are the ones `line_editor` emits (§21 (the terminal is a userspace
+component)). So rather than assert that from a list that could drift, the test runs the real line
+discipline and feeds its echo stream to this parser.
 
 Deferred, and stated rather than implied: no scrollback (the roadmap named it; it wants a ring of
 off-screen rows and a viewport, which changes the damage model). No UTF-8 (the grid holds bytes and

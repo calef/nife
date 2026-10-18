@@ -29,12 +29,12 @@ against the alternatives on the record:
    17's message-passing direction rather than away. Cost accepted: a steal lands at the victim's
    next scheduler pass, bounded by the tick.
 
-Deferred, with triggers. An explicit placement grant in the spawn manifest (milestone 23's
-contract) overrides the default, recovering seL4's userspace-owns-placement story for pinned
-components. Priorities and CPU budgets have no mechanism today; round-robin is the whole story.
-Their trigger is a real workload where fairness visibly fails, and the design starts from budgets
-as narrowing grants, not from nice. §12's dormant priority-donation item wakes only with
-priorities.
+Deferred, with triggers. An explicit placement grant in the spawn manifest (milestone 23 (a
+capability-routed component OS with live replacement)'s contract) overrides the default, recovering
+seL4's userspace-owns-placement story for pinned components. Priorities and CPU budgets have no
+mechanism today; round-robin is the whole story. Their trigger is a real workload where fairness
+visibly fails, and the design starts from budgets as narrowing grants, not from nice. §12
+(Call/Reply IPC)'s dormant priority-donation item wakes only with priorities.
 
 Changeability, stated at ratification: this is scheduler-internal policy. No ABI, no
 capability semantics, no baseline movement (the icount benches are hart-pinned). The one-time cost

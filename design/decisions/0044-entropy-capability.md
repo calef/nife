@@ -34,10 +34,11 @@ process holding one device rather than a facility inside every program.
 ## The service passes bytes through, and computes nothing
 
 **No pool, no whitening, no mixing, no DRBG.** There is no cryptographic primitive in this tree
-(vendoring one is milestone 56's other half and its own decision). Without a one-way function,
-every transformation available here is a *reversible permutation*: it would change the bytes without
-adding an unpredictability an attacker could not undo, while making the security property harder to
-state. So the property stays one sentence: these are the device's bytes.
+(vendoring one is milestone 56 (secrets, credentials, and the entropy)'s other half and its own
+decision). Without a one-way function, every transformation available here is a *reversible
+permutation*: it would change the bytes without adding an unpredictability an attacker could not
+undo, while making the security property harder to state. So the property stays one sentence: these
+are the device's bytes.
 
 What the service does keep is a 256-byte buffer, and the distinction from a pool is the point:
 byte *i* out is byte *i* in, unmodified, served to exactly one client, and zeroed behind the cursor.
