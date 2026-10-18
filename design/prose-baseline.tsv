@@ -179,14 +179,6 @@ design/decisions/0209-state-handoff-is-an-opaque-blob-and-it-is-optional.md	-	-	
 design/decisions/0210-a-correction-names-its-action.md	-	-	77	-	-
 design/decisions/0211-what-a-fatal-risk-verdict-says.md	-	-	77	-	-
 design/decisions/0212-a-prose-budget-for-every-document.md	-	-	68	-	-
-design/roadmap/0376-nothing-turns-a-device-back-off.md	-	-	42	-	-
-design/roadmap/0541-a-timed-window-that-excludes-preemption.md	-	23	65	-	-
-design/roadmap/0542-gates-that-mean-what-they-measure.md	-	-	69	-	-
-design/roadmap/0554-a-good-upgrade-sticks.md	-	21	66	-	-
-design/roadmap/0556-a-second-risc-v-implementation-for-rent.md	-	-	47	-	-
-design/roadmap/0557-a-thread-reads-its-own-cpu-from-a-page.md	-	-	62	-	-
-design/roadmap/0559-a-list-strangers-read-to-find-a-kernel.md	-	-	49	-	-
-design/roadmap/0560-a-long-file-name-or-riscv64-cannot-be-installed.md	-	-	42	-	-
 design/roadmap/0570-the-install-offer-should-say-what-is-already-on-the-disk.md	-	-	66	-	-
 design/roadmap/0571-the-x86-boot-calibrates-once-and-can-be-wrong-by-4x.md	-	24	62	-	-
 design/roadmap/0572-there-is-no-way-back-from-the-stick.md	-	-	45	-	-
