@@ -1,9 +1,11 @@
-//! `init_tests`: userspace init and the least-authority demo: init delegates an
-//! interrupt, brings up the console, builds a driver and a running child from an ELF, and a process
-//! spends a memory region without the kernel allocating.
+//! `elf_child_builder_tests`: the six ELF child builders, each a userspace program that reads a
+//! child out of the archive by name, builds it and reports (delegating an interrupt, bringing up
+//! the console, handing a driver a device, building a plain child, passing a demo its argument),
+//! plus the least-authority demo run directly and a process spending a memory region without the
+//! kernel allocating. `cycle_counter_tests` and `counter_frequency_tests` hold the two that enter
+//! `coremark_builder`.
 //!
-//! Name: provisional, minted 2026-10-12 (UTC) by the lane for milestone 873 (the catch-all
-//! userspace test file is split by topic).
+//! Name: ratified 2026-10-18 (calef), with the rule that took `init` out of nife's own names.
 
 use core::sync::atomic::Ordering;
 
@@ -12,9 +14,8 @@ use super::*;
 use crate::arch::exceptions::USER_FAULTS;
 use crate::sched;
 
-/// The `least_authority_demo` program's ELF bytes (milestone 19f.2), a distinct binary in the archive, not a
-/// role of the `hello` binary. `_start(x0, x1, x2)` reads its input in `x1` and needs no
-/// role selector.
+/// The `least_authority_demo` program's ELF bytes (milestone 19f.2). `_start(x0, x1, x2)` reads its
+/// input in `x1` and needs no role selector.
 fn least_authority_demo_image() -> &'static [u8] {
     program("least_authority_demo").expect("no least_authority_demo program in the initial ramdisk")
 }
@@ -32,7 +33,7 @@ fn a_spawned_least_authority_demo_computes_and_reports() {
 
     let tid = sched::spawn(move || {
         run(
-            least_authority_demo_image(), // its own binary now (19f.2), not a role of hello
+            least_authority_demo_image(),
             Spawn {
                 arg0: 0, // no role selector; the input is in x1
                 arg1: 9, // the least_authority_demo computes 9*9
@@ -122,20 +123,20 @@ fn a_process_spends_memory_region_and_the_kernel_never_allocates() {
     assert!(reap_bare(demo), "the untyped demo outlived its kill");
 }
 
-/// **Milestone 19d.2b: init delegates an interrupt to a driver it builds.** The last
+/// **Milestone 19d.2b: a userspace builder delegates an interrupt to a driver it builds.** The last
 /// delegatable device authority after endpoints and device MMIO: an interrupt capability.
-/// init holds one for a test SGI (the kernel routed it), builds a child, hands it the Irq
-/// cap, and starts it. The child blocks in the interrupt's WAIT; the test raises the SGI; the
-/// interrupt is delivered as a message through the delegated capability, the child wakes and
-/// reports. A hang would mean the interrupt never reached the init-built child, so a passing
-/// test is the proof. Completes the "init delegates every authority kind" story the
-/// interrupt-driven drivers (input, virtio) rest on.
+/// `interrupt_child_builder` holds one for a test SGI (the kernel routed it), builds
+/// `interrupt_child`, hands it the Irq cap, and starts it. The child blocks in the interrupt's
+/// WAIT; the test raises the SGI; the interrupt is delivered as a message through the delegated
+/// capability, the child wakes and reports. A hang would mean the interrupt never reached the
+/// built child, so a passing test is the proof. Completes the "userspace delegates every authority
+/// kind" story the interrupt-driven drivers (input, virtio) rest on.
 ///
 /// **aarch64-only, because RISC-V has no second interrupt to raise.** It has no
 /// software-generated interrupt a test can assert on itself at all (the SBI IPI arrives down the
 /// software-interrupt arm and never reaches `irq_route`), so the only line it can raise by hand
-/// is the console UART's own, which `spawn_hello` is already routing for the input driver init
-/// builds. A twin would have to share that one source between init's UART capability and the
+/// is the console UART's own, which `spawn_elf_child_builder` is already routing as the UART receive
+/// interrupt. A twin would have to share that one source between the builder's UART capability and the
 /// test's delegated one, and would then prove delivery through whichever route was bound last
 /// rather than through the delegated capability, which is the entire claim. The *property*
 /// (an interrupt arriving as a message through a delegated Irq cap) is proved on RISC-V by
@@ -145,74 +146,73 @@ fn a_process_spends_memory_region_and_the_kernel_never_allocates() {
 #[cfg(target_arch = "aarch64")]
 #[test_case]
 fn userspace_init_delegates_an_interrupt_to_a_child() {
-    const IRQ_WORD: u64 = 0x1590;
-    const INIT_IRQ_ROLE: u64 = 25;
-
-    let report_region = crate::memory_region::create(1).expect("no region for init's report");
+    let report_region =
+        crate::memory_region::create(1).expect("no region for the builder's report");
     let report =
         crate::sched::create_rendezvous_from(report_region).expect("no rendezvous from region");
-    let init = spawn_hello(
+    let builder = spawn_elf_child_builder(
         initial_ramdisk().expect("no initial ramdisk"),
-        INIT_IRQ_ROLE,
+        "interrupt_child_builder",
         report,
     );
 
     // Raise the test interrupt. The rendezvous counts it if the child is not waiting yet (it is
     // still being built), and the child's WAIT drains that pending signal, so there is no race.
-    crate::arch::irq::send_sgi(INIT_TEST_SGI, crate::cpu::id());
+    crate::arch::irq::send_sgi(DELEGATED_TEST_INTERRUPT, crate::cpu::id());
 
     let word = crate::sched::ipc_receive(report)[0];
     assert_eq!(
-        word, IRQ_WORD,
-        "the interrupt never reached the init-built child through the delegated Irq cap",
+        word,
+        capability_witness_contract::INTERRUPT_CHILD_WORD,
+        "the interrupt never reached the built child through the delegated Irq cap",
     );
-    init.release_or_fail("an init test's building budget");
-    crate::sched::reclaim_region(report_region).expect("init's report region would not reclaim");
+    builder.release_or_fail("a builder test's building budget");
+    crate::sched::reclaim_region(report_region)
+        .expect("the builder's report region would not reclaim");
 }
 
-/// **Milestone 19d.2b: userspace init brings up the real console server.** Past 19d.2a's
-/// ID-read probe: init builds the *actual* print server as a child, wires it a request/reply
-/// channel and a shared page and the UART, then plays the client, asking it to print a line.
-/// The server prints to the real UART (visible in the QEMU log) and acks the length; init
-/// reports that length. Receiving the exact message length proves a userspace-built console
-/// works end to end: a driver init constructed, on a channel init created, driving hardware
-/// init delegated. This is the shape the real boot path (19d.2c) uses.
+/// **Milestone 19d.2b: a userspace builder brings up the real console server.** Past 19d.2a's
+/// ID-read probe: `console_server_builder` builds the *actual* print server as a child, wires it a
+/// request/reply channel and a shared page and the UART, then plays the client, asking it to print
+/// a line. The server prints to the real UART (visible in the QEMU log) and acks the length; the
+/// builder reports that length. Receiving the exact line length proves a userspace-built console
+/// works end to end: a driver the builder constructed, on a channel it created, driving hardware it
+/// delegated. This is the shape the real boot path (19d.2c) uses.
 #[test_case]
 fn userspace_init_brings_up_the_console_server() {
     if crate::user::machine_has_no_device_page_for_the_console() {
         crate::testing::skip!(crate::user::NO_UART_PAGE);
     }
-    // The message length the init_console role prints and the server acks. Kept in sync with
-    // fixtures/src/hello.rs init_console (the b"..." there); a mismatch fails loudly, not silently.
-    const MSG_LEN: u64 = 66;
-    const INIT_CONSOLE_ROLE: u64 = 24;
+    let line_len = capability_witness_contract::CONSOLE_SERVER_BUILDER_LINE.len() as u64;
 
-    let report_region = crate::memory_region::create(1).expect("no region for init's report");
+    let report_region =
+        crate::memory_region::create(1).expect("no region for the builder's report");
     let report =
         crate::sched::create_rendezvous_from(report_region).expect("no rendezvous from region");
-    let init = spawn_hello(
+    let builder = spawn_elf_child_builder(
         initial_ramdisk().expect("no initial ramdisk"),
-        INIT_CONSOLE_ROLE,
+        "console_server_builder",
         report,
     );
 
     let acked = crate::sched::ipc_receive(report)[0];
     assert_eq!(
-        acked, MSG_LEN,
-        "the init-built console server did not print-and-ack: {acked} bytes, expected {MSG_LEN}",
+        acked, line_len,
+        "the built console server did not print-and-ack: {acked} bytes, expected {line_len}",
     );
-    init.release_or_fail("an init test's building budget");
-    crate::sched::reclaim_region(report_region).expect("init's report region would not reclaim");
+    builder.release_or_fail("a builder test's building budget");
+    crate::sched::reclaim_region(report_region)
+        .expect("the builder's report region would not reclaim");
 }
 
-/// **Milestone 19d.2: userspace init builds a device driver and hands it the hardware.**
-/// The step beyond 19d.1: not just a child, but a child that touches a *device*. init holds a
-/// UART **device capability** (a new delegatable authority to map MMIO device-typed), builds
-/// a driver child, and maps the UART's registers into it. The child reads the PL011's
+/// **Milestone 19d.2: a userspace builder builds a device driver and hands it the hardware.**
+/// The step beyond 19d.1: not just a child, but a child that touches a *device*.
+/// `device_child_builder` holds a UART **device capability** (a delegatable authority to map MMIO
+/// device-typed), builds `device_child`, and maps the UART's registers into it. The child reads the PL011's
 /// PrimeCell identification registers, whose value is the fixed `0xB105F00D` every real PL011
 /// returns. Receiving that constant proves the whole chain: device access is a capability the
-/// kernel minted and init delegated, `MAP_INTO` mapped it device-typed (not cached normal
-/// memory, which would corrupt MMIO), and a userspace-init-built driver drove real hardware.
+/// kernel minted and the builder delegated, `MAP_INTO` mapped it device-typed (not cached normal
+/// memory, which would corrupt MMIO), and a userspace-built driver drove real hardware.
 ///
 /// **aarch64-only, because the assertion is a PL011 register and RISC-V `virt` has no PL011.**
 /// `0xB105F00D` in the PrimeCell identification registers is what makes this test exact rather
@@ -225,83 +225,85 @@ fn userspace_init_brings_up_the_console_server() {
 #[test_case]
 fn userspace_init_builds_a_driver_that_reads_real_hardware() {
     const PL011_PRIMECELL_ID: u64 = 0xB105_F00D;
-    const INIT_DEV_ROLE: u64 = 23;
 
-    let report_region = crate::memory_region::create(1).expect("no region for init's report");
+    let report_region =
+        crate::memory_region::create(1).expect("no region for the builder's report");
     let report =
         crate::sched::create_rendezvous_from(report_region).expect("no rendezvous from region");
-    let init = spawn_hello(
+    let builder = spawn_elf_child_builder(
         initial_ramdisk().expect("no initial ramdisk"),
-        INIT_DEV_ROLE,
+        "device_child_builder",
         report,
     );
 
     let id = crate::sched::ipc_receive(report)[0];
     assert_eq!(
         id, PL011_PRIMECELL_ID,
-        "the init-built driver did not read the PL011's id: device delegation or the              device-typed mapping is broken",
+        "the built driver did not read the PL011's id: device delegation or the              device-typed mapping is broken",
     );
-    init.release_or_fail("an init test's building budget");
-    crate::sched::reclaim_region(report_region).expect("init's report region would not reclaim");
+    builder.release_or_fail("a builder test's building budget");
+    crate::sched::reclaim_region(report_region)
+        .expect("the builder's report region would not reclaim");
 }
 
-/// **Milestone 19d: userspace init parses a real ELF and builds a running process from it.**
-/// The kernel loads exactly one program, init (a role of the same binary), and hands it the
-/// initial ramdisk mapped read-only plus a building budget and a report rendezvous. init parses
-/// that ELF *in userspace* (the `elf` crate, no longer in the kernel's trusted core) and loads it
-/// as a child through the granular verbs: retype an address space, copy each segment into
+/// **Milestone 19d: a userspace builder parses a real ELF and builds a running process from it.**
+/// The kernel loads exactly one program, `report_child_builder`, and hands it the initial ramdisk
+/// mapped read-only plus a building budget and a report rendezvous. The builder reads
+/// `report_child` out of it and parses that ELF *in userspace* (the `elf` crate, no longer in the
+/// kernel's trusted core), then loads it as a child through the granular verbs: retype an address space, copy each segment into
 /// retyped frames and map them, retype and endow a TCB, configure, start. The child runs code
 /// the kernel never parsed and reports the agreed word. Receiving it is the whole thesis of
 /// milestone 19 working end to end: a verified kernel that runs a workload it did not load.
 #[test_case]
 fn userspace_init_parses_an_elf_and_builds_a_running_child() {
-    const CHILD_WORD: u64 = 0xC0FFEE;
-    const INIT_ROLE: u64 = 20;
-
-    let report_region = crate::memory_region::create(1).expect("no region for init's report");
+    let report_region =
+        crate::memory_region::create(1).expect("no region for the builder's report");
     let report =
         crate::sched::create_rendezvous_from(report_region).expect("no rendezvous from region");
-    let init = spawn_hello(
+    let builder = spawn_elf_child_builder(
         initial_ramdisk().expect("no initial ramdisk"),
-        INIT_ROLE,
+        "report_child_builder",
         report,
     );
 
     let word = crate::sched::ipc_receive(report)[0];
     assert_eq!(
-        word, CHILD_WORD,
-        "init did not build a running child from the ELF it parsed in userspace",
+        word,
+        capability_witness_contract::REPORT_CHILD_WORD,
+        "the builder did not build a running child from the ELF it parsed in userspace",
     );
-    init.release_or_fail("an init test's building budget");
-    crate::sched::reclaim_region(report_region).expect("init's report region would not reclaim");
+    builder.release_or_fail("a builder test's building budget");
+    crate::sched::reclaim_region(report_region)
+        .expect("the builder's report region would not reclaim");
 }
 
-/// **Milestone 19e: init builds a `least_authority_demo`, passes it an argument, and gets the answer back.**
-/// Every child before this took only its role in `x0`. A `least_authority_demo` computes on an input, so 19e
-/// widened `START` to carry three initial registers. init builds a `least_authority_demo`, starts it with the
-/// input in `x1`, and the `least_authority_demo` squares it and reports. Receiving `n*n` (not `n`, not garbage)
+/// **Milestone 19e: a userspace builder builds a `least_authority_demo`, passes it an argument, and
+/// gets the answer back.** Every child before this took only its role in `x0`. A
+/// `least_authority_demo` computes on an input, so 19e widened `START` to carry three initial
+/// registers. `least_authority_demo_builder` builds one, starts it with the input in `x1`, and the `least_authority_demo` squares it and reports. Receiving `n*n` (not `n`, not garbage)
 /// proves the argument crossed `START` into a fresh EL0 thread's registers intact. This is the
 /// mechanism a real spawn service runs on: a workload parameterized by data, not just identity.
 #[test_case]
 fn init_builds_the_demo_and_passes_it_an_argument() {
-    const INIT_LEAST_AUTHORITY_DEMO_ROLE: u64 = 28;
-    const WORKER_INPUT: u64 = 7;
+    let input = capability_witness_contract::LEAST_AUTHORITY_DEMO_INPUT;
 
-    let report_region = crate::memory_region::create(1).expect("no region for init's report");
+    let report_region =
+        crate::memory_region::create(1).expect("no region for the builder's report");
     let report =
         crate::sched::create_rendezvous_from(report_region).expect("no rendezvous from region");
-    let init = spawn_hello(
+    let builder = spawn_elf_child_builder(
         initial_ramdisk().expect("no initial ramdisk"),
-        INIT_LEAST_AUTHORITY_DEMO_ROLE,
+        "least_authority_demo_builder",
         report,
     );
 
     let answer = crate::sched::ipc_receive(report)[0];
     assert_eq!(
         answer,
-        WORKER_INPUT * WORKER_INPUT,
+        input * input,
         "the least_authority_demo did not receive its START argument: expected n*n back",
     );
-    init.release_or_fail("an init test's building budget");
-    crate::sched::reclaim_region(report_region).expect("init's report region would not reclaim");
+    builder.release_or_fail("a builder test's building budget");
+    crate::sched::reclaim_region(report_region)
+        .expect("the builder's report region would not reclaim");
 }

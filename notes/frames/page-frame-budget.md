@@ -101,8 +101,8 @@ missing was a handle and an ordering.
   destructive (it arms kills; see `reclaim_region`'s BUGS), so this is the same commitment one object
   over.
 
-- `spawn_hello` carves `hello`'s building budget outside the spawned thread and hands the caller a
-  holding over it. The region is unchanged; who can name it is not, and that is the whole difference
+- `spawn_elf_child_builder` carves a builder's building budget outside the spawned thread and hands
+  the caller a holding over it. The region is unchanged; who can name it is not, and that is the whole difference
   between 8 MiB spent and 8 MiB lent.
 
 - A service's endpoints come out of a region of its own (`net_stack`'s do), because that is the

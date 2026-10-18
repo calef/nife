@@ -502,9 +502,9 @@ mod network_tests;
 #[cfg(all(test, initial_ramdisk))]
 mod block_driver_tests;
 
-/// **Userspace init**, the least-authority demo, and a process spending its own memory region.
+/// **The ELF child builders**, the least-authority demo, and a process spending its own memory region.
 #[cfg(all(test, initial_ramdisk))]
-mod init_tests;
+mod elf_child_builder_tests;
 
 /// **The cycle-counter grant**, and the CoreMark workload init runs.
 #[cfg(all(test, initial_ramdisk))]

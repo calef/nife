@@ -36,7 +36,7 @@ const CONFINER_BUDGET_PAGES: u64 = 512;
 const EXPECTED_REPORTS: usize = 4 * ATTEMPTS;
 
 /// **Spawn the confiner the way the kernel spawns the progenitor**, and return the report endpoint every
-/// process in the run holds a WRITE view of. Deliberately the same endowment `spawn_hello` gives
+/// process in the run holds a WRITE view of. Deliberately the same endowment `spawn_elf_child_builder` gives
 /// (the archive read-only at `INITIAL_RAMDISK_VA`, an untyped in slot 0, a report endpoint in slot
 /// 1), so what is under test is the seam rather than a privileged shortcut.
 fn spawn_confiner() -> (sched::RendezvousId, u64) {

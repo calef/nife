@@ -184,23 +184,22 @@ fn el0_cycle_counter_is_known_to_run() -> bool {
     }
 }
 
-/// **Milestone 19e: init runs a real compute workload and it comes out right.**/// **Milestone 19e: init runs a real compute workload and it comes out right.** The `least_authority_demo`'s
-/// `n*n` proved the mechanism; this proves a *substantial* program. init builds the `"coremark"`
-/// binary (a CoreMark-derived run: list sort, matrix multiply, state machine, folded into a CRC),
-/// starts it, and the workload SENDs the run's checksum home. Receiving `coremark::PINNED_CRC_64`
+/// **Milestone 19e: a userspace builder runs a real compute workload and it comes out right.** The
+/// `least_authority_demo`'s `n*n` proved the mechanism; this proves a *substantial* program.
+/// `coremark_builder` builds the `"coremark"` binary (a CoreMark-derived run: list sort, matrix
+/// multiply, state machine, folded into a CRC), starts it, and the workload SENDs the run's checksum home. Receiving `coremark::PINNED_CRC_64`
 /// (`0x7954`, the value the host `coremark` test also pins) proves a real workload ran correctly
 /// against the native ABI, and that the same computation gives the same answer on the kernel's
 /// target as on the host, which is the property a cross-OS comparison will rest on.
 #[test_case]
 fn init_runs_the_coremark_workload_and_it_checks_out() {
-    const INIT_COREMARK_ROLE: u64 = 29;
-
-    let report_region = crate::memory_region::create(1).expect("no region for init's report");
+    let report_region =
+        crate::memory_region::create(1).expect("no region for the builder's report");
     let report =
         crate::sched::create_rendezvous_from(report_region).expect("no rendezvous from region");
-    let init = spawn_hello(
+    let builder = spawn_elf_child_builder(
         initial_ramdisk().expect("no initial ramdisk"),
-        INIT_COREMARK_ROLE,
+        "coremark_builder",
         report,
     );
 
@@ -218,6 +217,7 @@ fn init_runs_the_coremark_workload_and_it_checks_out() {
         "the workload's self-timing read a frozen counter"
     );
     assert!(freq > 0, "CNTFRQ_EL0 read as zero at EL0");
-    init.release_or_fail("an init test's building budget");
-    crate::sched::reclaim_region(report_region).expect("init's report region would not reclaim");
+    builder.release_or_fail("a builder test's building budget");
+    crate::sched::reclaim_region(report_region)
+        .expect("the builder's report region would not reclaim");
 }
