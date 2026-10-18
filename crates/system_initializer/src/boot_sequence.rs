@@ -254,7 +254,7 @@ fn announce_outcomes(
     // **The entropy service's own outcome** (DECISIONS §120's 2026-08-26 amendment), said here
     // rather than where it was decided: `entropy_ready` was set long before this process had a
     // terminal at all (the whole reason the build happens first, at the top of `boot`; see
-    // that block's own comment), and [`INIT_OUT_VA`] is not mapped into the progenitor's own space until the
+    // that block's own comment), and [`PROGENITOR_SHELL_OUTPUT_VIRTUAL_ADDRESS`] is not mapped into the progenitor's own space until the
     // line above this one first used it, so nothing earlier in `boot` could `announce`
     // regardless. Silent when there was nothing to build (no device, or no `entropy` program in
     // the archive), the same posture the sink adapter and the subtree caretaker already take for a
@@ -290,7 +290,7 @@ fn announce_outcomes(
     // nothing below writes (milestone 95 (an unmap primitive), §249 (a running address space stays
     // nameable)): given up before the shell starts, so this process cannot read what the shell
     // prints or write into it.
-    supervision_protocol::give_up_own_page(INIT_OUT_VA);
+    supervision_protocol::give_up_own_page(PROGENITOR_SHELL_OUTPUT_VIRTUAL_ADDRESS);
 }
 
 /// Print the generated login credential, once, before the prompt.

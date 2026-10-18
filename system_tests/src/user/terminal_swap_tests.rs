@@ -24,7 +24,7 @@ const MAX_ELF_PAGES: usize = 64;
 
 /// Stack pages below the one `run` maps. `run` gives a program one page, which a debug build of the
 /// ELF loader and the supervision builder overflows; `swapper` meets the same need in its own
-/// spawn helper with `INIT_STACK_PAGES`. These are ordinary `Spawn` windows placed below the stack.
+/// spawn helper with `PROGENITOR_STACK_PAGES`. These are ordinary `Spawn` windows placed below the stack.
 const EXTRA_STACK_PAGES: usize = 7;
 
 /// The supervisor's view of the `line_editor` image, one mapping per page. A static for `spawn`'s

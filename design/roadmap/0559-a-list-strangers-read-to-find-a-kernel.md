@@ -105,6 +105,7 @@ cannot measure and should most fear, and it is the reason item 1 is first rather
 
 ## Index row
 
-The first deliberate act of telling strangers this tree exists: a one-line entry in a 2,285-star
-directory whose stated purpose is code to study, which is the one thing nife is ready for, with the
-wording constrained so it recruits readers rather than implying a system anyone can install.
+The first deliberate act of telling strangers this tree exists. It is a one-line entry in a
+2,285-star directory whose stated purpose is code to study, which is the one thing nife is ready
+for. The wording is constrained so it recruits readers rather than implying a system anyone can
+install.
