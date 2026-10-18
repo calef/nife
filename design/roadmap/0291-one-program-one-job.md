@@ -186,7 +186,7 @@ See the proposal below.
 
 ## Follow-on
 
-- **Milestone 405 (the nine `INIT` roles).** The nine roles this milestone left in `hello`. Numbered on 2026-09-19 by
+- **Milestone 405.** The nine roles this milestone left in `hello`. Numbered on 2026-09-19 by
   milestone 433's drain of the pile. `spawn_progenitor` (`spawn_hello` since milestone
   166) takes the archive entry as a parameter (or a role-to-entry table), the three children
   become their own programs, and the six parents name their child's entry instead of re-entering
@@ -198,7 +198,7 @@ See the proposal below.
   instruction. `user_rt` is the obvious home; the decision is the public function name, which is
   calef's, so the block carries a `DECISION` gate.
 - **Milestone 405.** The nine roles left here, a name that did not describe them, and a role
-  fault that left a spawner waiting on its watchdog. Milestone 405 made the nine roles programs,
+  fault that left a spawner waiting on its watchdog. Milestone 405 (the nine `INIT` roles) made the nine roles programs,
   and the kernel names the entry it enters.
 - **Done.** The Kani cost of the `DIR_BLOCKS` raise, which this lane could not measure, was
   answered by CI: both `prove` shards green on the tree that made the change. What that does not
