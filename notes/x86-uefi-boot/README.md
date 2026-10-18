@@ -12,7 +12,7 @@ behind each summary on it.
   SMP.
 - [`first-light-2026-09-05.md`](first-light-2026-09-05.md): first light on xenon, the panic and its
   fix, and what xenon still has to establish.
-- [`stick-firmware-steps.md`](stick-firmware-steps.md): the four firmware steps as checked against
+- [`usb-stick-firmware-steps-xenon.md`](usb-stick-firmware-steps-xenon.md): the four firmware steps as checked against
   the machine.
 - [`network-boot-xenon.md`](network-boot-xenon.md): the network-boot procedure in full.
 - [`limitations.md`](limitations.md): the BUGS list in full.
@@ -20,3 +20,6 @@ behind each summary on it.
 Name: provisional, for the directory and every stem in it. The directory follows the `notes/<stem>/`
 appendix convention §212 (a prose budget) set, so its name is the parent's stem. Each file is named
 for its content. calef names directories and files, and `script/names --unratified` lists each stem.
+
+- `usb-stick-firmware-steps-xenon` Name: ratified 2026-10-18 (calef, "Yes") Refused `stick-firmware-steps`.
+- `network-boot-xenon` Name: ratified 2026-10-18 (calef, "Yes"). Kept: the directory names a boot path, not a machine, so the stem keeps its machine.

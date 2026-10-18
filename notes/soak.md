@@ -67,7 +67,7 @@ comparison, not a benchmark. aarch64 ran about 58,000 round trips a second and r
 The tick route cost aarch64 nothing measurable and riscv64 about 7%. Every figure comes from a
 `--features soak_test` kernel, whose `ipc_fastpath` is five to six percent larger than production's,
 so compare a soak number only with another soak number. A production build is byte-identical with
-and without milestone 221. [`soak/qemu-baselines.md`](soak/qemu-baselines.md) has the tables.
+and without milestone 221. [`soak/qemu-2026-09.md`](soak/qemu-2026-09.md) has the tables.
 
 ## The finding: a saturated workload does not migrate under this scheduler
 

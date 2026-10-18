@@ -128,7 +128,7 @@ impl Desc {
 /// `an_accepted_descriptor_is_confined` proof can quantify over all inputs.
 ///
 /// Name: provisional, flagged 2026-09-24 by the boolean-predicate pass
-/// (design/naming/boolean-predicates-worklist.md). It does not yet follow the Rust predicate rule
+/// (design/naming/functions-that-answer-yes-or-no-worklist.md). It does not yet follow the Rust predicate rule
 /// calef ratified 2026-09-24; recommended `is_descriptor_allowed`, because `check_` reads as an
 /// action, and the function only answers.
 ///

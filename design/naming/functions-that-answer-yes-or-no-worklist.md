@@ -1,7 +1,7 @@
 # Boolean predicates: the worklist
 
 *An appendix to [`design/naming.md`](../naming.md), which is the rule, and a companion to
-[boolean-predicates.md](boolean-predicates.md), which argues it. This file is the census the pass
+[functions-that-answer-yes-or-no.md](functions-that-answer-yes-or-no.md), which argues it. This file is the census the pass
 took on 2026-09-24 and what became of each name. It is a dated record: the counts are from that
 day's tree, and a later reader should expect them to drift. The file's stem is a provisional name; naming is an architect's.*
 
@@ -147,7 +147,7 @@ them needs a marker to be found again: `git grep -wiE '[a-z_]*(rx|tx)[a-z_]*'` i
 ## Fits as written
 
 A finite verb or a quantifier already says "this is a question" (see
-[boolean-predicates.md](boolean-predicates.md#why-a-verb-phrase-is-allowed)). The 57, by name:
+[functions-that-answer-yes-or-no.md](boolean-predicates.md#why-a-verb-phrase-is-allowed)). The 57, by name:
 
 `allows` (twice), `survey_includes`, `denies_all`, `carries_len`, `takes_name`, `mutates`, `fits`
 (twice), `is`, `matches_with`, `opens_with_a_literal_dot`, `overlaps` (twice), `overlaps_ram`.

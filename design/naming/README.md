@@ -11,6 +11,8 @@ that two indexes offer (milestone 809 (the package client becomes a program)). N
 `script/names --unratified` lists each stem.*
 
 - `capability-spelling-worklist` Name: ratified 2026-10-18 (calef, "Approve as a group"). Refused `capability-worklist`.
+- `functions-that-answer-yes-or-no` Name: ratified 2026-10-18 (calef, "Yes"). Refused `boolean-predicates`.
+- `functions-that-answer-yes-or-no-worklist` Name: ratified 2026-10-18 (calef, "Yes"). Refused `boolean-predicates-worklist`.
 
 | Appendix | Former sections |
 |---|---|
@@ -24,8 +26,8 @@ that two indexes offer (milestone 809 (the package client becomes a program)). N
 | [spelled-out-rulings.md](spelled-out-rulings.md) | new, 2026-10-04: `op` and `cap` spelled out |
 | [command-line-rulings.md](command-line-rulings.md) | `jig`'s |
 | [capability-spelling-worklist.md](capability-spelling-worklist.md) | the `cap` sweep's worklist |
-| [boolean-predicates.md](boolean-predicates.md) | new, 2026-09-24: the argument for functions that answer yes or no |
-| [boolean-predicates-worklist.md](boolean-predicates-worklist.md) | new, 2026-09-24: every non-conforming predicate, and what became of it |
+| [functions-that-answer-yes-or-no.md](functions-that-answer-yes-or-no.md) | new, 2026-09-24: the argument for functions that answer yes or no |
+| [functions-that-answer-yes-or-no-worklist.md](functions-that-answer-yes-or-no-worklist.md) | new, 2026-09-24: every non-conforming predicate, and what became of it |
 | [rename-what-moves.md](rename-what-moves.md) | Performing a ratified rename, through A quotation never moves |
 | [rename-where-names-hide.md](rename-where-names-hide.md) | program strings, copied crates, crates outside the compiler, the census |
 | [rename-traps.md](rename-traps.md) | A sweep can turn a stale pointer into a fabricated one, and six other traps |

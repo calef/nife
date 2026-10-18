@@ -10,7 +10,7 @@ not:
   were built under DECISIONS §225 (`free` sees the machine and your share), and the method number,
   page layout and names calef ratified.
 - [`pmap` from the prompt](pmap.md): what the listing costs, and the options calef chooses between.
-- [The `SURVEY` method](survey-method.md): the selector, placement, membership and the cursor.
+- [The `SURVEY` method](survey-design.md): the selector, placement, membership and the cursor.
 - [`pgrep`](pgrep.md): the filter, its four answers, and the `pkill` that cannot exist.
 - [`pmap` and `LIST`](address-space-enumeration.md): the method, the delegation audit, and why no live view can be
   handed over today.
@@ -22,7 +22,7 @@ not:
 
 Each stem below is named for its content, and calef names files.
 
-- `survey-method` Name: provisional.
+- `survey-design` Name: ratified 2026-10-18 (calef, "survey-design.md") Refused `survey-method`.
 - `pgrep` Name: provisional. For the program it describes.
 - `address-space-enumeration` Name: ratified 2026-10-18 (calef, "Approve as a group"). Refused `pmap-listing`.
 - `watch` Name: provisional. For the program it records.

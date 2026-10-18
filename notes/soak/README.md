@@ -4,7 +4,7 @@
 the main page's prose budget has no room for: one bench evening's run table each, and the evidence
 behind each section of the main page.
 
-- [`qemu-baselines.md`](qemu-baselines.md): the first QEMU numbers, and what a soak build costs.
+- [`qemu-2026-09.md`](qemu-2026-09.md): the first QEMU numbers, and what a soak build costs.
 - [`saturated-workload-does-not-migrate.md`](saturated-workload-does-not-migrate.md): a saturated workload does not migrate, and why
   the soak extends `board_console`.
 - [`tick-route.md`](tick-route.md): the mechanism that makes the soak cross cores, and its two bugs.
@@ -23,7 +23,7 @@ board and the evening. calef names directories.*
 
 Each stem below is named for its content, and calef names files.
 
-- `qemu-baselines` Name: provisional.
+- `qemu-2026-09` Name: ratified 2026-10-18 (calef, "Yes") Refused `qemu-baselines`.
 - `saturated-workload-does-not-migrate` Name: ratified 2026-10-18 (calef, "Approve as a group"). Refused `migration-finding`.
 - `tick-route` Name: provisional.
 - `placement-census` Name: provisional.

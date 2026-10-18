@@ -18,13 +18,13 @@
 /// tree that does not say falls back to, which on QEMU is also the right answer.
 ///
 /// Name: provisional, flagged 2026-09-25 by the lane that re-derived the x86 port falsifications
-/// (design/naming/boolean-predicates-worklist.md, "`rx` and `tx`"). calef asked what `rx` stands
+/// (design/naming/functions-that-answer-yes-or-no-worklist.md, "`rx` and `tx`"). calef asked what `rx` stands
 /// for in his #1255 review; recommended `UART_RECEIVE_INTID`; `INTID` is the GIC's own term and
 /// stays.
 #[cfg(target_arch = "aarch64")]
 pub const UART_RX_INTID: u32 = 33;
 /// Name: provisional, flagged 2026-09-25 by the lane that re-derived the x86 port falsifications
-/// (design/naming/boolean-predicates-worklist.md, "`rx` and `tx`"). calef asked what `rx` stands
+/// (design/naming/functions-that-answer-yes-or-no-worklist.md, "`rx` and `tx`"). calef asked what `rx` stands
 /// for in his #1255 review; recommended `UART_RECEIVE_INTID`; `INTID` is the GIC's own term and
 /// stays.
 #[cfg(target_arch = "riscv64")]
@@ -36,7 +36,7 @@ pub const UART_RX_INTID: u32 = 10;
 /// that input is programmed to raise. 4 is the legacy line, not either of those.
 ///
 /// Name: provisional, flagged 2026-09-25 by the lane that re-derived the x86 port falsifications
-/// (design/naming/boolean-predicates-worklist.md, "`rx` and `tx`"). calef asked what `rx` stands
+/// (design/naming/functions-that-answer-yes-or-no-worklist.md, "`rx` and `tx`"). calef asked what `rx` stands
 /// for in his #1255 review; recommended `UART_RECEIVE_INTID`; `INTID` is the GIC's own term and
 /// stays.
 #[cfg(target_arch = "x86_64")]

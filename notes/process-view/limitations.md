@@ -104,7 +104,7 @@ one line.
   already learns a member's tid and state, and a name is more about a member already named.
 
 - A survey is a sequence of snapshots. See "why one entry per call" in
-  [survey-method.md](survey-method.md). A member born into an
+  [survey-design.md](survey-design.md). A member born into an
   already-passed slot is missed until the next survey, and a row read early may be stale by the time
   the table prints. Fuchsia handles a process dying mid-enumeration and this does not; their answer
   is worth reading when somebody needs one.

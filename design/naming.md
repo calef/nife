@@ -84,8 +84,8 @@ getter, and std spells those `is_enabled`. Exempt: a function that acts and repo
 worked (`insert`, `push`, `claim`, a `take_` that clears a flag). Also exempt: test functions, which are
 sentences here; fields; a trait method or a name another project owns (`eq`, `readonly`); and an
 `extern` symbol. The prior art and the exceptions std keeps are in
-[boolean-predicates.md](naming/boolean-predicates.md), and the pass that applied the rule is
-[boolean-predicates-worklist.md](naming/boolean-predicates-worklist.md).
+[boolean-predicates.md](naming/functions-that-answer-yes-or-no.md), and the pass that applied the rule is
+[boolean-predicates-worklist.md](naming/functions-that-answer-yes-or-no-worklist.md).
 
 ## Spelling, per domain
 

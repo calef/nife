@@ -76,7 +76,7 @@ Membership is `fault_ep == invoked_ep` and nothing else, proved both ways by Kan
 stranger is never shown, and a member is never hidden. The scheduler lock is given back between
 entries, so a survey is a sequence of snapshots with `readdir`'s bargain. The selector's design,
 the placement cost argument, the proofs and the cursor's safety argument are in
-[process-view/survey-method.md](process-view/survey-method.md).
+[process-view/survey-design.md](process-view/survey-design.md).
 
 ## Refused, empty, and populated are three answers
 

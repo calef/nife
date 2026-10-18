@@ -26,7 +26,7 @@ entry as it was written, sentence-split for the prose limits.
   its place), but every x86_64 number in the tables was taken at one core, and its `crossings=0`
   says so out loud. They are single-core soaks and should not be reread as multicore ones.
 - A soak build is not the binary that ships, so its timing is not the shipping binary's timing.
-  [qemu-baselines.md](qemu-baselines.md) quantifies it. This is normal and accepted. It is stated
+  [qemu-2026-09.md](qemu-2026-09.md) quantifies it. This is normal and accepted. It is stated
   here because the round-trip figures would otherwise read as IPC benchmarks, which they are not.
 - The supervisor yields in a loop rather than sleeping, because this kernel has no sleep-until
   primitive a kernel thread can use. It is one more thread contending, which is not entirely a cost.
