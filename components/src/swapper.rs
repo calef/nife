@@ -124,10 +124,9 @@ pub extern "C" fn _start(role: u64, initial_ramdisk_len: u64, _a2: u64) -> ! {
         bail(10)
     }
     for i in 0..hot_swap_contract::PAGE {
+        let slot = hot_swap_contract::LOG_VA as *mut u8;
         // SAFETY: a page we just mapped read/write into our own address space.
-        unsafe {
-            core::ptr::write_volatile((hot_swap_contract::LOG_VA as *mut u8).add(i as usize), 0)
-        };
+        unsafe { core::ptr::write_volatile(slot.add(i as usize), 0) };
     }
 
     match role {
