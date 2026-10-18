@@ -30,7 +30,7 @@ Fork 1 (§248 (the name resolver is its own confined program)). Forks 2 and 3 we
 lane's leaning answers. calef ratified both on 2026-10-06 (UTC). §252 (a resolver grant is one zone
 per client badge) records them.
 
-- `components/src/name_resolver.rs` (name provisional): §248's confined program. It holds a `Stack`
+- `components/src/domain_name_resolver.rs` (name provisional): §248's confined program. It holds a `Stack`
   endpoint, an entropy endpoint and the name server its spawner names, and serves clients over its
   own endpoint. Each transaction id comes from the entropy service, and it asks nothing without one.
 - `crates/name_resolution_protocol` (name provisional): Fork 3 as P1, the socket contract's shape.
@@ -149,7 +149,7 @@ Kani-proven not to loop or overrun, is in `crates/multicast_dns_protocol` at com
 
 - **Decision.** `design/decisions/0248-the-resolver-is-its-own-confined-program.md` holds Fork 1.
   calef ruled it on 2026-10-04. The resolver is its own confined program.
-- **Done.** The resolver program, `components/src/name_resolver.rs`, by #1760.
+- **Done.** The resolver program, `components/src/domain_name_resolver.rs`, by #1760.
 - **Done.** The grant's shape (Fork 2) is a zone per client badge, built by #1760. The client
   protocol (Fork 3) is P1, in `crates/name_resolution_protocol`. calef ratified both on 2026-10-06
   (UTC). `design/decisions/0252-a-resolver-grant-is-a-zone-per-badge-over-the-socket-contracts-shape.md`

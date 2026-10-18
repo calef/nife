@@ -2,7 +2,7 @@
 //! believed only by the index's digest** (milestone 801 (packages over the internet), items 1, 3
 //! and 4).
 //!
-//! The kernel plays the spawner: `net_stack` over the `e1000e`, `name_resolver` told to ask the
+//! The kernel plays the spawner: `net_stack` over the `e1000e`, `domain_name_resolver` told to ask the
 //! runners' name server, a badge granted the root zone (`package_index::fixture::ZONE`, as `jig`'s
 //! is under calef's Q5), and `package_fetch_exerciser` holding that badge, the network, a clock and
 //! entropy. The repository is `helpers/tls-peer` as `basalt.test`, the image's backup index
@@ -40,7 +40,7 @@ const NO_PROGRAM: &str = "no package_fetch_exerciser in this archive: `cargo xta
 /// **The rebinding half (milestone 871 (a sixth outsider pass attacks the confinement claim),
 /// 2026-10-10): the address check and the connection must agree.** The index lists `rebound` under
 /// `rebind.basalt.test`, whose name answers 192.0.2.1 (public) on the first query and the private
-/// peer on every later one. The resolver has no cache (`components/src/name_resolver.rs`), so a
+/// peer on every later one. The resolver has no cache (`components/src/domain_name_resolver.rs`), so a
 /// client that checks one resolution and then connects by name asks twice, and a rebinding server
 /// answers the two apart. A `Tls(...)` reason on a listed location means a TLS server answered, and
 /// the only one in slirp is the peer at the private 10.0.2.9:8443, so the client reached a private
@@ -114,7 +114,7 @@ fn a_package_is_fetched_through_the_index_by_name_over_tls_and_judged_by_its_dig
     let _ = crate::sched::reclaim_region(spawned.frames);
     run.give_back("package_fetch_exerciser");
     w.held
-        .release_or_fail("net_stack and name_resolver, for the package index client");
+        .release_or_fail("net_stack and domain_name_resolver, for the package index client");
 }
 
 /// The exerciser's report, `text`, holds every step's line in order: the index, its refusals,

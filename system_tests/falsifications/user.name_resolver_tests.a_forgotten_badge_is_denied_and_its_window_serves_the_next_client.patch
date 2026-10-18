@@ -10,10 +10,10 @@ resolver would keep reading and writing a page from a client that has ended.
 Expected to fail: the second badge's first case answers `NOT_ATTACHED` (status 7) where the gate
 wants `OK`. Measured 2026-10-12 (UTC) on aarch64: red with exactly that assertion.
 
-diff --git a/components/src/name_resolver.rs b/components/src/name_resolver.rs
+diff --git a/components/src/domain_name_resolver.rs b/components/src/domain_name_resolver.rs
 index dbbb588e5..7d85a6487 100644
---- a/components/src/name_resolver.rs
-+++ b/components/src/name_resolver.rs
+--- a/components/src/domain_name_resolver.rs
++++ b/components/src/domain_name_resolver.rs
 @@ -278,16 +278,6 @@ fn attach_client(state: &mut State, badge: u32, frame: u64) {
  /// was reclaimed first, and revoking the frame took the mapping with it), which is the same end.
  fn give_up_window(state: &mut State, window: usize) {

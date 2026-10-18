@@ -46,7 +46,7 @@
 //! - **One request per connection**, HTTP/1.0, `Content-Length` required. [`Session::fetch`]
 //!   reports a redirect; only [`listed`] follows one, on a new session with its own pin.
 //! - **The caller connects the stream.** Turning a name into an address is
-//!   `components/src/name_resolver.rs`'s, and the name verified here is whatever the pin says,
+//!   `components/src/domain_name_resolver.rs`'s, and the name verified here is whatever the pin says,
 //!   never what the resolver used.
 
 use std::io::{self, Read, Write};

@@ -12,5 +12,5 @@ crates = ["domain_name_system", "http_response"]
 # 892 (a std program at the prompt holds the network and a resolver)) and std's PAL speaks to
 # resolve. Interface rather than internal for the reason every *_protocol is.
 interfaces = ["name_resolution_protocol"]
-programs = ["net_stack", "name_resolver"]
+programs = ["net_stack", "domain_name_resolver"]
 paths = ["components/src/virtio_net_transport.rs", "components/src/socket_test_client.rs"]

@@ -5,7 +5,7 @@
 //! ```text
 //!   spawner ──unbadged WRITE──┐          (GRANT: badge B may resolve names in zone Z)
 //!                             ▼
-//!   client ──WRITE, badge B──► name_resolver ──Stack──► net_stack ──► a name server
+//!   client ──WRITE, badge B──► domain_name_resolver ──Stack──► net_stack ──► a name server
 //!   (ATTACH a page, then RESOLVE)    │
 //!                                    └──entropy──► the transaction id
 //! ```

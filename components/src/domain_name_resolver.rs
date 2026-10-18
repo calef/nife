@@ -5,7 +5,7 @@
 //!
 //! ```text
 //!   spawner ──GRANT (badge 0)──►┌───────────────┐──Stack (socket contract)──► net_stack ──► name server
-//!   client ──RESOLVE (badge B)─►│ name_resolver │
+//!   client ──RESOLVE (badge B)─►│ domain_name_resolver │
 //!     (its page holds the name, └──────┬────────┘
 //!      and gets the addresses)         └──entropy──► the transaction id
 //! ```
@@ -34,8 +34,10 @@
 //! - The UDP path is proved only up to the bytes; the boot test (`name_resolver_tests.rs`) asks over
 //!   TCP, because slirp forwards UDP to no process a test owns.
 //!
-//! Name: provisional: what the act is called wherever DNS is described. Refused `dns_resolver`
-//! (§154 (the acronym test)) and `resolver` (capabilities are resolved here too).
+//! Name: ratified 2026-10-17 (calef, a program-naming session), replacing `name_resolver`: he
+//! proposed "`domain_name_resolver`" and confirmed it over `domain_name_system_resolver`. Refused
+//! `name_resolver` ("name" is ambiguous: `bare::resolve` resolves program names, `grant_plan::nav`
+//! paths), `domain_name_system_resolver`, `dns_resolver` (§154 (the acronym test)), `resolver`.
 
 #![no_std]
 // Program entry points, not the crates/ library surface milestone 68 (code-quality gates: one lint

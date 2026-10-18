@@ -3,7 +3,7 @@
 //! program)).
 //!
 //! The kernel plays the spawner: it starts `net_stack` over the `e1000e` NIC, starts
-//! `name_resolver` as a client of that stack, grants one badge the zone `nife.test`, and spawns
+//! `domain_name_resolver` as a client of that stack, grants one badge the zone `nife.test`, and spawns
 //! `name_resolver_test_client` holding nothing of the resolver but that badged capability. The
 //! client asks about every name in `name_resolution_protocol::fixture::CASES` and reports each
 //! reply, and this file judges them. The name server is the runners' `helpers/name-server-peer` at
@@ -117,7 +117,7 @@ pub(super) fn start_resolver(
     let service = crate::sched::create_rendezvous_from(region).expect("no resolver endpoint");
     let budget = crate::memory_region::create(BUDGET_PAGES).expect("no untyped for the resolver");
     let maps = stack_pages(RESOLVER_STACK_PAGES, held);
-    let image = image("name_resolver");
+    let image = image("domain_name_resolver");
     let tid = crate::sched::spawn(move || {
         run_with_own_space(
             image,
@@ -141,7 +141,7 @@ pub(super) fn start_resolver(
             endowment::OWN_SPACE_SLOT, // slot 4: its own space, for a forget's UNMAP
         )
     })
-    .expect("could not spawn name_resolver");
+    .expect("could not spawn domain_name_resolver");
     held.add_thread(tid);
     held.add_region(region);
     held.add_region_after_death(budget);
@@ -318,7 +318,7 @@ fn a_granted_client_resolves_inside_its_zone_and_nothing_outside_it() {
     assert_eq!(echo, fixture::ECHO_SKIPPED);
 
     w.held
-        .release_or_fail("net_stack, name_resolver and its clients");
+        .release_or_fail("net_stack, domain_name_resolver and its clients");
 }
 
 /// **A forgotten badge is denied every name, and the window it held serves the next client**
@@ -402,7 +402,7 @@ fn a_forgotten_badge_is_denied_and_its_window_serves_the_next_client() {
     );
 
     w.held
-        .release_or_fail("net_stack, name_resolver and its forgotten clients");
+        .release_or_fail("net_stack, domain_name_resolver and its forgotten clients");
 }
 
 /// The badge `std_resolve`'s capability carries, granted the same zone as the native client's.
@@ -525,5 +525,5 @@ fn a_std_program_resolves_its_granted_zone_and_nothing_without_a_grant() {
     std_resolve_prints(std_resolve, w.stack, None, STD_UNGRANTED);
 
     w.held
-        .release_or_fail("net_stack and name_resolver, for std_resolve");
+        .release_or_fail("net_stack and domain_name_resolver, for std_resolve");
 }

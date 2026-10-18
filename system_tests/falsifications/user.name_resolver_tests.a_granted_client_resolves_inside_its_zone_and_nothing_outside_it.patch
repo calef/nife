@@ -11,10 +11,10 @@ Expected to fail: the case `example.com`, which comes back `SERVER_ERROR` with r
 peer's REFUSED, so the query was sent) where the gate wants `DENIED` (never asked). Measured
 2026-10-06 (UTC) on aarch64: red with exactly that assertion.
 
-diff --git a/components/src/name_resolver.rs b/components/src/name_resolver.rs
+diff --git a/components/src/domain_name_resolver.rs b/components/src/domain_name_resolver.rs
 index c26426a75..e3316a84d 100644
---- a/components/src/name_resolver.rs
-+++ b/components/src/name_resolver.rs
+--- a/components/src/domain_name_resolver.rs
++++ b/components/src/domain_name_resolver.rs
 @@ -288,9 +288,6 @@ fn resolve(state: &mut State, server: &Server, badge: u32, len: u64) -> (Outcome
  
      // **The grant, before the network.** Nothing below this line runs for a name the badge may not

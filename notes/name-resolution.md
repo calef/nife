@@ -15,7 +15,7 @@ badge) records them. Fork 2 and Fork 3 below keep the options and the reasoning.
 | The name decoder, header codec and TCP reassembly, proved | `crates/domain_name_system/src/proofs.rs` | 3 Kani harnesses, about 34 s; each falsified by a replayable patch |
 | `accept` fuzzed with a property, not only for panics | `fuzz/fuzz_targets/domain_name_system_reply.rs` | 5.2 million runs in 120 s clean; deleting the owner check was caught |
 | A name resolved end to end through `net_stack`, with lies refused, then connected to | `components/src/socket_test_client.rs`, `helpers/name-server-peer` | green on aarch64 and riscv64; the same deleted check fails it with `0xe14f` |
-| The resolver, §248's confined program: a `Stack` endpoint, an entropy endpoint, and a zone grant per client badge, judged before anything is sent | `components/src/name_resolver.rs` | the gate below |
+| The resolver, §248's confined program: a `Stack` endpoint, an entropy endpoint, and a zone grant per client badge, judged before anything is sent | `components/src/domain_name_resolver.rs` | the gate below |
 | What the resolver, its clients and its spawner agree on, and the grant table | `crates/name_resolution_protocol` | 11 host tests |
 | A granted client resolves inside its zone and is denied outside it; an ungranted one is denied everything | `system_tests/src/user/name_resolver_tests.rs`, `fixtures/src/name_resolver_test_client.rs` | green on aarch64, riscv64 and x86_64 over the `e1000e`; deleting the zone check fails it on `example.com` |
 
@@ -214,7 +214,7 @@ spawner that starts a resolver hands that address on as its endowment.
 Nothing in milestone 384 waits now: the forks are built and ratified (§252). Starting the
 resolver at boot is milestone 801 (packages over the internet)'s, because the package client is its
 first client. The progenitor reads the name server from `net_stack`'s lease, as the gate does, and
-hands it to `name_resolver`. It then grants the package client's badge its package source's host.
+hands it to `domain_name_resolver`. It then grants the package client's badge its package source's host.
 
 ## BUGS
 
@@ -226,7 +226,7 @@ hands it to `name_resolver`. It then grants the package client's badge its packa
 - `socket_test_client`'s transaction id is fixed, because it holds no entropy endpoint. The
   resolver draws every id from the entropy service and asks nothing without one.
 - The resolver's own `BUGS` (one request at a time, no cache, eight grants for its life) are in
-  `components/src/name_resolver.rs` and the crate's.
+  `components/src/domain_name_resolver.rs` and the crate's.
 - `smoltcp`'s generator is seeded from `now()` for everything it randomizes in `net_stack`, which
   includes TCP's initial sequence numbers (`socket/tcp.rs`, read); `net_stack` picks ephemeral
   ports with its own rotating allocator, not the generator. That is a finding about
