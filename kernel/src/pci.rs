@@ -943,6 +943,38 @@ fn program_msix(bdf: Bdf, bars: &[Option<Bar>; 6], target: pci::MsiTarget) -> Op
     Some(0)
 }
 
+/// Every function on the bus carrying the NVMe class code, in bus-walk order. One walk for the
+/// driver and the roster, so the controller [`find_nvme_device`] brings up is always the one the
+/// roster calls ordinal 0.
+fn each_non_volatile_memory_express_controller(found: &mut dyn FnMut(Bdf)) {
+    if !is_host_bridge_present() {
+        return;
+    }
+    pci::enumerate(
+        ecam_buses(),
+        &mut |b, o| cfg_read32(b, o),
+        &mut |bdf, _, _| {
+            if cfg_read32(bdf, pci::CLASS_REVISION) >> 8 == pci::CLASS_NVME {
+                found(bdf);
+            }
+        },
+    );
+}
+
+/// How many NVMe controllers are on the bus (milestone 421, the roster's NVMe entries).
+///
+/// Config space only, for [`count_block_devices`]'s reason: [`find_nvme_device`] places BARs and
+/// enables bus mastering, and the kernel's bring-up then resets the controller, none of which a
+/// listing may cause.
+///
+/// Name: provisional. Says controllers rather than disks because that is what the class code
+/// identifies; one namespace per controller is what makes the two the same here.
+pub(crate) fn count_non_volatile_memory_express_controllers() -> usize {
+    let mut n = 0;
+    each_non_volatile_memory_express_controller(&mut |_| n += 1);
+    n
+}
+
 /// An enumerated, brought-up NVMe controller: its register file (BAR0) placed and decoding, bus
 /// mastering enabled, requester id known so the caller can confine its DMA before enabling the
 /// controller. No INTx line, on purpose: the milestone-53 driver completes by polling the phase
@@ -965,19 +997,12 @@ pub(crate) struct PciNvmeDevice {
 /// permission is granted at the final moment, and on a machine with an IOMMU the device still
 /// cannot reach a byte until `iommu::confine` maps its region (denied by default, milestone 16b).
 pub(crate) fn find_nvme_device() -> Option<PciNvmeDevice> {
-    if !is_host_bridge_present() {
-        return None;
-    }
     let mut found: Option<Bdf> = None;
-    pci::enumerate(
-        ecam_buses(),
-        &mut |b, o| cfg_read32(b, o),
-        &mut |bdf, _, _| {
-            if found.is_none() && cfg_read32(bdf, pci::CLASS_REVISION) >> 8 == pci::CLASS_NVME {
-                found = Some(bdf);
-            }
-        },
-    );
+    each_non_volatile_memory_express_controller(&mut |bdf| {
+        if found.is_none() {
+            found = Some(bdf);
+        }
+    });
     let bdf = found?;
 
     let mut bars = pci::read_bars(bdf, &mut |b, o| cfg_read32(b, o), &mut |b, o, v| {

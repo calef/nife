@@ -1,6 +1,9 @@
 use core::sync::atomic::Ordering;
 
-use block_roster::{Roster, TRANSPORT_MMIO, TRANSPORT_PCI};
+use block_roster::{
+    Roster, TRANSPORT_NON_VOLATILE_MEMORY_EXPRESS, TRANSPORT_VIRTIO_MEMORY_MAPPED_IO,
+    TRANSPORT_VIRTIO_PCI,
+};
 
 use super::*;
 use crate::arch::exceptions::USER_FAULTS;
@@ -84,10 +87,12 @@ fn the_disk_surveyor_reads_a_table_gptfdisk_wrote() {
     // protective-MBR panic that names neither disk. This names them.
     if X86_FIXTURES_REQUIRED {
         assert_eq!(
-            w.devices, 5,
-            "the x86_64 roster names {} block functions; the runner owes five (nifefs=0, \
-             redoxfs=1, crash=2, gpt=3, blank=4). A fixture is missing from \
-             helpers/qemu-runner-x86_64.sh, and ordinals above the missing one have slid down",
+            w.devices,
+            5 + usize::from(NON_VOLATILE_MEMORY_EXPRESS_ATTACHED),
+            "the x86_64 roster names {} block devices; the runner owes five virtio functions \
+             (nifefs=0, redoxfs=1, crash=2, gpt=3, blank=4) and one NVMe controller when \
+             NIFE_NVME is set. A fixture is missing from helpers/qemu-runner-x86_64.sh, and \
+             ordinals above the missing one have slid down",
             w.devices,
         );
     }
@@ -96,28 +101,40 @@ fn the_disk_surveyor_reads_a_table_gptfdisk_wrote() {
     assert_eq!(ready, filesystem_contract::READY);
 
     // Message one: the roster, which is the authority that does NOT involve the disk.
-    let [total, mmio, pci, ..] = crate::sched::ipc_receive(w.report);
+    let [mmio, pci, nvme, ..] = crate::sched::ipc_receive(w.report);
+    let total = mmio + pci + nvme;
     assert_eq!(
         total as usize, w.devices,
-        "the surveyor counted {total} devices; the kernel put {} in the page",
+        "the surveyor counted {mmio} virtio-mmio, {pci} virtio-pci and {nvme} nvme; the kernel put \
+         {} devices in the page, so some entry is of a kind the surveyor does not count",
         w.devices,
+    );
+    // **The NVMe disk is listed, once, exactly when one is attached** (milestone 421). The runners
+    // attach a controller on all three legs of `cargo xtask test`, and it is the one disk whose
+    // driver is a confined process; a roster that leaves it out says the machine has no NVMe.
+    assert_eq!(
+        nvme,
+        u64::from(NON_VOLATILE_MEMORY_EXPRESS_ATTACHED),
+        "the surveyor lists {nvme} NVMe disks; NIFE_NVME {} on this leg, so the roster owes {}. \
+         An NVMe controller missing from the roster is disk_service::devices not counting \
+         pci::count_non_volatile_memory_express_controllers",
+        if NON_VOLATILE_MEMORY_EXPRESS_ATTACHED {
+            "is set"
+        } else {
+            "is not set"
+        },
+        u64::from(NON_VOLATILE_MEMORY_EXPRESS_ATTACHED),
     );
     // The two shapes the same five fixtures take. On the virt boards they are five mmio slots
     // and one PCI function (milestone 215 (a PCI function's interrupt reaches nothing on x86_64
     // so no userspace driver can run there), its nifefs disk); on `q35` there is no virtio-mmio bus
     // at all, so since milestone 420 (x86_64 has one fixture of five and no NIC, GPU, keyboard
-    // or RNG) all five are PCI functions, in the same ordinal order.
-    // Either way every device is on one bus or the other, and the kernel's own read of the same
-    // frame, below, must agree with the program's count.
+    // or RNG) all five are PCI functions, in the same ordinal order. Either way the kernel's own
+    // read of the same frame, below, must agree with the program's count.
     if cfg!(target_arch = "x86_64") {
         assert_eq!(
             mmio, 0,
             "q35 has no virtio-mmio bus, yet the roster names {mmio} mmio disks"
-        );
-        assert_eq!(
-            pci as usize, w.devices,
-            "every block device on q35 is a PCI function; the roster split {mmio}/{pci} \
-             disagrees"
         );
     } else {
         assert!(
@@ -132,23 +149,41 @@ fn the_disk_surveyor_reads_a_table_gptfdisk_wrote() {
             "one virtio-blk-pci disk is attached (§18's transport)"
         );
     }
-    assert_eq!(total, mmio + pci, "every device is on one bus or the other");
 
     // And the kernel's own read of the same frame agrees, computed through the same contract crate
     // rather than by trusting the number the program sent back.
     let here = Roster::read(w.roster()).expect("the kernel wrote a roster it cannot read");
     assert_eq!(here.len(), w.devices);
     if X86_FIXTURES_REQUIRED {
-        for (i, d) in here.iter().enumerate() {
+        for (i, d) in here.iter().take(5).enumerate() {
             assert_eq!(
                 (d.transport, d.ordinal as usize),
-                (TRANSPORT_PCI, i),
+                (TRANSPORT_VIRTIO_PCI, i),
                 "roster entry {i} is not PCI function {i}: the five fixtures ride in ordinal order"
             );
         }
     }
-    assert_eq!(here.count_on(TRANSPORT_MMIO) as u64, mmio);
-    assert_eq!(here.count_on(TRANSPORT_PCI) as u64, pci);
+    assert_eq!(
+        here.count_on(TRANSPORT_VIRTIO_MEMORY_MAPPED_IO) as u64,
+        mmio
+    );
+    assert_eq!(here.count_on(TRANSPORT_VIRTIO_PCI) as u64, pci);
+    assert_eq!(
+        here.count_on(TRANSPORT_NON_VOLATILE_MEMORY_EXPRESS) as u64,
+        nvme
+    );
+    // The NVMe entry comes after every virtio one and is ordinal 0, the controller
+    // `non_volatile_memory_express_service` serves, so adding it moved no virtio ordinal.
+    if NON_VOLATILE_MEMORY_EXPRESS_ATTACHED {
+        let last = here
+            .get(w.devices - 1)
+            .expect("the roster has an NVMe entry");
+        assert_eq!(
+            (last.transport, last.ordinal, last.transport_name()),
+            (TRANSPORT_NON_VOLATILE_MEMORY_EXPRESS, 0, Some("nvme")),
+            "the NVMe controller is not the roster's last entry at ordinal 0",
+        );
+    }
 
     // Message two: the table, which is the authority that does.
     let [flags, partitions, nife_first_lba, ..] = crate::sched::ipc_receive(w.report);
