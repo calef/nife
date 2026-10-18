@@ -334,18 +334,13 @@ fn read_head(buf: &[u8]) -> Result<Option<Head>, Error> {
     }))
 }
 
-/// Refuse a CR that is not half of a CRLF and an LF that is not the other half, which `httparse`
-/// accepts as line endings. In the status line that is [`Error::BadStatusLine`], elsewhere
-/// [`Error::BadHeader`].
+/// Refuse an LF that is not the second half of a CRLF, which `httparse` accepts as a line ending.
+/// A bare CR needs no check here: `httparse` refuses one in every position (a test pins that). In
+/// the status line the refusal is [`Error::BadStatusLine`], elsewhere [`Error::BadHeader`].
 fn require_crlf(head: &[u8]) -> Result<(), Error> {
     let first_line_ends = head.iter().position(|&b| b == b'\n').unwrap_or(head.len());
     for (at, &byte) in head.iter().enumerate() {
-        let bare = match byte {
-            b'\r' => head.get(at + 1) != Some(&b'\n'),
-            b'\n' => at == 0 || head[at - 1] != b'\r',
-            _ => false,
-        };
-        if bare {
+        if byte == b'\n' && (at == 0 || head[at - 1] != b'\r') {
             return Err(if at <= first_line_ends {
                 Error::BadStatusLine
             } else {
@@ -500,6 +495,25 @@ mod tests {
         assert_eq!(read_in(in_header, 64).unwrap_err(), Error::BadHeader);
         let in_status = b"HTTP/1.0 200 O\rK\r\nContent-Length: 0\r\n\r\n";
         assert_eq!(read_in(in_status, 64).unwrap_err(), Error::BadStatusLine);
+        // And at the end of a line, where only `httparse` is left to refuse it.
+        let before_blank = b"HTTP/1.0 200 OK\r\nContent-Length: 0\r\r\n\r\n";
+        assert_eq!(read_in(before_blank, 64).unwrap_err(), Error::BadHeader);
+        let bare_end = b"HTTP/1.0 200 OK\r\nContent-Length: 0\r\n\r\r";
+        assert_eq!(read_in(bare_end, 64).unwrap_err(), Error::BadHeader);
+    }
+
+    /// `httparse` takes a bare LF as a line ending; this reader does not, wherever it falls: in the
+    /// status line, in a header, or as the blank line that ends the head.
+    #[test]
+    fn a_bare_line_feed_is_refused_where_it_falls() {
+        let status = b"HTTP/1.0 200 OK\nContent-Length: 0\r\n\r\n";
+        assert_eq!(read_in(status, 64).unwrap_err(), Error::BadStatusLine);
+        let blank = b"HTTP/1.0 200 OK\r\nContent-Length: 0\r\n\n";
+        assert_eq!(read_in(blank, 64).unwrap_err(), Error::BadHeader);
+        let last = b"HTTP/1.0 200 OK\r\nContent-Length: 0\n\r\n";
+        assert_eq!(read_in(last, 64).unwrap_err(), Error::BadHeader);
+        let good = b"HTTP/1.0 200 OK\r\nA: b\r\nContent-Length: 0\r\n\r\n";
+        assert!(read_in(good, 64).unwrap().0.is_complete());
     }
 
     /// The declared length is unknown until the head has been read, and is exactly the declared one
