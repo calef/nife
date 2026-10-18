@@ -31,7 +31,7 @@ the reason §226 made `pidwait` a program of its own.
 
 ## The options
 
-Section 4 of `notes/process-view/what-is-left.md` carries them with their costs:
+Section 4 of `notes/process-view/remaining-procps-programs.md` carries them with their costs:
 
 1. A method on the supervision endpoint that blocks until a named member has exited, gated by a new
    right below `ENUMERATE`. It refuses the caller's own tid.

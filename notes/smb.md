@@ -114,7 +114,7 @@ every present tense in it as "as of `685900ec`".
 - [`smb/wire-decisions.md`](smb/wire-decisions.md): every expensive-to-reverse wire choice and its
   reason, from SMB 2.1 only and NTLMv2 to refusing read-only at the protocol layer, parsing a path
   once, and the SMB1 probe a real Mac sent.
-- [`smb/apple-half.md`](smb/apple-half.md): the `AAPL` create context, the bits claimed, and the
+- [`smb/apple-extensions.md`](smb/apple-extensions.md): the `AAPL` create context, the bits claimed, and the
   durability gap `FULL_SYNC` exposed and milestone 55 (Time Machine) closed with a real device flush.
 - [`smb/throughput.md`](smb/throughput.md): the 64 KiB transfer, measured through a real client, and
   the socket contract's 4080-byte chunk that remained.

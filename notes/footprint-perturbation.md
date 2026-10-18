@@ -19,7 +19,7 @@ more decisive results of the evening.
 
 *(The board columns were empty before the session and are filled now. The static footprints
 are still `objdump` on patagonia, and the 2026-08-22 figures are still dev-Mac runs; both are in
-[background.md](footprint-perturbation/background.md).)*
+[background.md](footprint-perturbation/why-it-runs-on-radon.md).)*
 
 ## The next radon evening: E3 under the layout control, and how it shares a night with 168
 
@@ -206,7 +206,7 @@ E3 of milestone 134 (the register of measures) read 2 to 3% on patagonia, inside
 result on a large-cache machine proves little, and radon has 32 KB of L1i per U74. Three things kept
 E1, E3 and E4 off the board until 2026-09-04, and one was a finding: the padding sat on a shape
 nothing runs. The static footprint table, riscv64 `ipc_call_reply` 5,936 bytes unpadded and 11,070
-padded, is 18% and 34% of radon's L1i. All of it is in [background.md](footprint-perturbation/background.md).
+padded, is 18% and 34% of radon's L1i. All of it is in [background.md](footprint-perturbation/why-it-runs-on-radon.md).
 
 ## The two-build procedure, and reading it
 
@@ -223,7 +223,7 @@ Milestone 74 (cycle counters) reads real cycles on radon at 250 per tick. That a
 new answer: the 2026-09-04 within-condition spread was 0 to 2 ticks against a gap of 74, so the ruler
 was never E3's problem. It still cannot see the mechanism, because nothing reads an
 instruction-cache miss counter (M6). The full section is in
-[background.md](footprint-perturbation/background.md).
+[background.md](footprint-perturbation/why-it-runs-on-radon.md).
 
 ## BUGS
 

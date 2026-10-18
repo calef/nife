@@ -16,7 +16,7 @@
   to 751,072 at 32, one run each), because TCG's NMI shootdowns are very expensive. That is a
   property of the emulator, not a claim about xenon.
 - aarch64's job mix wedged under TCG on `main` too, so it gave no comparison. The cause was a
-  miscompiled yield, not this change ([`spawn-destroy-gone.md`](spawn-destroy-gone.md)).
+  miscompiled yield, not this change ([`spawn-job-miscompiled-yield.md`](spawn-job-miscompiled-yield.md)).
 
 ## The radon run that decided it
 

@@ -9,7 +9,7 @@ for.
   replaced its `match`, and the startup ordering one shared frame needed.
 - [`rename.md`](rename.md): `RENAME`'s two atomicities, what it refuses and why, and the two
   checks that are ours rather than the engine's.
-- [`tests-and-stack.md`](tests-and-stack.md): the three attacker runs, the host-side check of the
+- [`tests-and-stack-usage.md`](tests-and-stack-usage.md): the three attacker runs, the host-side check of the
   image, and the FS server's stack before and after `RENAME`.
 - [`limitations.md`](limitations.md): the BUGS list in full.
 
@@ -23,6 +23,6 @@ names files.
 - `caretaker` Name: provisional, minted 2026-10-11 (UTC) by lane/third-ten-longest-notes.
 - `rename` Name: provisional, minted 2026-10-11 (UTC) by lane/third-ten-longest-notes, after the
   verb.
-- `tests-and-stack` Name: provisional, minted 2026-10-11 (UTC) by lane/third-ten-longest-notes.
+- `tests-and-stack-usage` Name: ratified 2026-10-18 (calef, "Approve as a group"). Refused `tests-and-stack`.
 - `limitations` Name: provisional, minted 2026-10-11 (UTC) by lane/third-ten-longest-notes, after
   `notes/soak/limitations.md` and `notes/frames/limitations.md`.

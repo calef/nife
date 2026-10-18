@@ -151,7 +151,7 @@ one line.
   method minimal, and the moment something wants to watch a `^C` land is the moment to add it.
 
 - `pmap` cannot be reached from the interactive prompt against any real process. See "What
-  building it found" in [pmap-listing.md](pmap-listing.md). Every `Object::AddressSpace` capability
+  building it found" in [address-space-enumeration.md](address-space-enumeration.md). Every `Object::AddressSpace` capability
   is minted and consumed within its own builder's thread, `ThreadControlBlock::CONFIGURE` removes the space from the registry
   the instant it binds to a thread, and nothing shipped here delegates one to a second program.
   `ps`'s `Manifest::domain` has no analogue because there is nothing alive to wire it to. Fixing

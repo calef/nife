@@ -236,5 +236,5 @@ Each entry is in full, with its measurements and history, in [frames/limitations
 A thread-stack fault that surfaced during milestone 108's migration was not this milestone's. Its
 cause was one 6816-byte frame in `sched::reap_region_objects` on `main`, and then a stack freed under
 its owner. The account, which uses "frame" for a CPU call frame and predates the `PageFrame` rename,
-is in [frames/stack-frame-fault.md](frames/stack-frame-fault.md).
+is in [frames/thread-stack-fault.md](frames/thread-stack-fault.md).
 

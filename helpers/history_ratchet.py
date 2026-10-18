@@ -289,7 +289,7 @@ def selftest():
         if got != want:
             failed += 1
             print(f'history selftest: {path} counted {got}, wanted {want}', file=sys.stderr)
-    scope = [('notes/coes/x.md', False), ('notes/merge-queue/measured-2026-08-16.md', False),
+    scope = [('notes/coes/x.md', False), ('notes/merge-queue/what-the-queue-bought.md', False),
              ('notes/a.md', True), ('notes/a.rs', False)]
     for path, want in scope:
         if in_scope(path) != want:

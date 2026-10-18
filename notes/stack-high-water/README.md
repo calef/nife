@@ -6,7 +6,7 @@ the rest.
 
 - [`secondary-guard-page.md`](secondary-guard-page.md): the guard page under each secondary stack
   (milestone 90 (a guard page under the per-CPU secondary stacks)), and the re-measurement that showed the move changed nothing.
-- [`frame-cost.md`](frame-cost.md): what one frame costs, statically, and the 6816-byte frame it
+- [`stack-frame-sizes.md`](stack-frame-sizes.md): what one frame costs, statically, and the 6816-byte frame it
   found.
 - [`per-ipc-depth.md`](per-ipc-depth.md): how much of its kernel stack one IPC touches, and what that
   says about E1's knee.
@@ -18,6 +18,6 @@ the rest.
 Each stem below is named for its content, and calef names files.
 
 - `secondary-guard-page` Name: provisional.
-- `frame-cost` Name: provisional.
+- `stack-frame-sizes` Name: ratified 2026-10-18 (calef, "Approve as a group"). Refused `frame-cost`.
 - `per-ipc-depth` Name: provisional.
 - `limitations` Name: provisional.

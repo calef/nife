@@ -10,6 +10,8 @@ provisional, minted 2026-10-17: `--from <index>`, the spelling `jig install` use
 that two indexes offer (milestone 809 (the package client becomes a program)). Naming is calef's;
 `script/names --unratified` lists each stem.*
 
+- `capability-spelling-worklist` Name: ratified 2026-10-18 (calef, "Approve as a group"). Refused `capability-worklist`.
+
 | Appendix | Former sections |
 |---|---|
 | [programs-scripts-and-directories.md](programs-scripts-and-directories.md) | The rule everything else is a corollary of; Components; Shell builtins; Scripts; Directories |
@@ -21,7 +23,7 @@ that two indexes offer (milestone 809 (the package client becomes a program)). N
 | [convention-rulings.md](convention-rulings.md) | new, 2026-10-17: the rules calef ratified for a class of names, with his words |
 | [spelled-out-rulings.md](spelled-out-rulings.md) | new, 2026-10-04: `op` and `cap` spelled out |
 | [command-line-rulings.md](command-line-rulings.md) | `jig`'s |
-| [capability-worklist.md](capability-worklist.md) | the `cap` sweep's worklist |
+| [capability-spelling-worklist.md](capability-spelling-worklist.md) | the `cap` sweep's worklist |
 | [boolean-predicates.md](boolean-predicates.md) | new, 2026-09-24: the argument for functions that answer yes or no |
 | [boolean-predicates-worklist.md](boolean-predicates-worklist.md) | new, 2026-09-24: every non-conforming predicate, and what became of it |
 | [rename-what-moves.md](rename-what-moves.md) | Performing a ratified rename, through A quotation never moves |

@@ -51,7 +51,7 @@ fence, so that half is not evidence about radon.
 Milestone 227 (a GICv3 driver) made `script/job-mix --hvf` boot, which [the job-mix
 note's cross-check](hvf-cross-check-2026-09-19.md)
 said it could not. The full mix could not run there when these were taken, so these runs stub the
-spawn job on both sides; [`spawn-destroy-gone.md`](spawn-destroy-gone.md) fixed that afterwards. Six runs a side, ticks of the 24 MHz counter per 64-trap job:
+spawn job on both sides; [`spawn-job-miscompiled-yield.md`](spawn-job-miscompiled-yield.md) fixed that afterwards. Six runs a side, ticks of the 24 MHz counter per 64-trap job:
 
 | `null_syscall` | 1 task | 2 | 3 | 4 |
 |---|---|---|---|---|

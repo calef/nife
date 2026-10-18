@@ -43,7 +43,7 @@ use super::abi;
 /// `a0..a5`, or `rdi`, `rsi`, `rdx`, `r10`, `r8`, `r9`.
 ///
 /// **Every syscall comes through here**, and the reason is a defect found on 2026-10-05
-/// (notes/job-mix/spawn-destroy-gone.md). The kernel writes its result into the first register on
+/// (notes/job-mix/spawn-job-miscompiled-yield.md). The kernel writes its result into the first register on
 /// the way out of every syscall, and some methods write the next five. A wrapper that declares
 /// fewer outputs than that tells the compiler a register survives the trap when it does not, and
 /// the compiler is entitled to keep a live value there. `user_mode_runtime::yield_now` did, and an
