@@ -22,10 +22,11 @@ calef, 2026-10-18 at 23:10 (UTC), asked what the trivial-install page does about
 not in a footnote, with per-vendor steps and the BitLocker recovery-key warning ahead of them.
 
 K1 adds no key. The only long-lived key the tree plans is basalt's TUF root, which signs basalt's
-package index (§195 (a reviewed recipe vouches for a package, and the machine's owner may overrule
-it) as amended 2026-10-10), and an image carries no key but that root (§220 (signed builds: a vendor
-signs, a developer self-signs, and trusting a key is scoped), clause 1 as that amendment narrows
-it). A boot key would be a second long-lived key and the first one other people's firmware trusts.
+package index. That is §195 (a reviewed recipe vouches for a package, and the machine's owner may
+overrule it) as amended 2026-10-10. The same amendment narrows clause 1 of §220 (signed builds: a
+vendor signs, a developer self-signs, and trusting a key is scoped) so that an image carries that
+root and no other key. A boot key would be a second long-lived key, and the first one other
+people's firmware trusts.
 
 ## The instructions
 

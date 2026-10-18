@@ -8,7 +8,7 @@ a vendor's menu is said to contain below cites the vendor page it was read from,
 [sources](#sources) list gives the date each was read. What was not confirmed is marked where a
 reader meets it.
 
-**Why this step exists.** Secure Boot is a firmware setting that lets a PC start only boot files
+Why this step exists. Secure Boot is a firmware setting that lets a PC start only boot files
 signed by a key the firmware trusts. Most PCs sold with Windows ship with it on (HP states this for
 every HP computer made with Windows 11 [hp]). nife's boot file, `\EFI\BOOT\BOOTX64.EFI` on the
 stick, is not signed, so with Secure Boot on the PC refuses it, often with a message about a
@@ -34,7 +34,7 @@ What Microsoft documents, and why it applies here:
 
 What to do, in Windows, before restarting:
 
-1. Open **Settings → Privacy & security → Device encryption** [ms-de]. If the switch is on, or
+1. Open Settings → Privacy & security → Device encryption [ms-de]. If the switch is on, or
    your PC shows BitLocker as on, continue. If neither page exists, the disk is likely not
    encrypted, and you can go to step 2.
 2. Find the recovery key and write it down somewhere other than this PC. For a personal PC it is
@@ -53,10 +53,10 @@ If Windows does ask for the key after you return to it, type it in. Windows then
 
 Either way works:
 
-- **From Windows 11**: **Settings → System → Recovery → Advanced startup → Restart now**, then
-  **Troubleshoot → Advanced options → UEFI Firmware Settings → Restart** [hp]. Microsoft's older
-  instructions reach the same menu by holding Shift while choosing **Restart** [ms-sb].
-- **With a key at power-on**, from the table in section 3. Press it repeatedly from the moment you
+- From Windows 11: Settings → System → Recovery → Advanced startup → Restart now, then
+  Troubleshoot → Advanced options → UEFI Firmware Settings → Restart [hp]. Microsoft's older
+  instructions reach the same menu by holding Shift while choosing Restart [ms-sb].
+- With a key at power-on, from the table in section 3. Press it repeatedly from the moment you
   press the power button until the setup screen appears.
 
 ## 3. Turn Secure Boot off
@@ -67,15 +67,15 @@ fetched.
 
 | Maker | Setup key | Where the setting is, and what to choose | Boot menu key | Source |
 |---|---|---|---|---|
-| Dell | F2 at the Dell logo | **Secure Boot → Secure Boot Enable**: clear it, or set Secure Boot to **Disabled** | F12 | Read [dell-sb], [dell-f12] |
-| HP consumer laptop | Esc, then F10 | **System Configuration → Boot Options → Secure Boot → Disabled**, then F10 to save | Esc, then F9 | Read [hp] |
-| HP business laptop or workstation | Esc, then F10 | **Security → Secure Boot Configuration**: clear **Secure Boot**, then **Main → Save Changes and Exit** | Esc | Read [hp] |
-| HP desktop | F10 | **Security → Secure Boot Configuration**, press F10 at the message, set Secure Boot to **Disable** | Esc | Read [hp] |
-| Lenovo ThinkPad, ThinkCentre, ThinkStation | F1 at the logo | **Security → Secure Boot → Secure Boot: Disabled**, then F10 | not read | Read [lenovo-think] |
-| Lenovo IdeaPad and other consumer models | F2 or Fn+F2, or the Novo button and **BIOS Setup** | not confirmed | F12 | Excerpt [lenovo-idea] |
-| ASUS laptop | hold F2, then press power | F7 for **Advanced Mode**, then **Security → Secure Boot → Secure Boot Control: Disabled**, then F10 | not read | Read [asus-nb] |
-| Acer laptop | F2 at the logo | **Security**: set a supervisor password; then **Boot → Secure Boot: Disabled**, then F10. Acer advises removing the supervisor password afterward | not read | Excerpt [acer] |
-| Anything else | often F1, F2, F12 or Esc | "usually in either the **Security** tab, the **Boot** tab, or the **Authentication** tab" | varies | Read [ms-sb] |
+| Dell | F2 at the Dell logo | Secure Boot → Secure Boot Enable: clear it, or set Secure Boot to Disabled | F12 | Read [dell-sb], [dell-f12] |
+| HP consumer laptop | Esc, then F10 | System Configuration → Boot Options → Secure Boot → Disabled, then F10 to save | Esc, then F9 | Read [hp] |
+| HP business laptop or workstation | Esc, then F10 | Security → Secure Boot Configuration: clear Secure Boot, then Main → Save Changes and Exit | Esc | Read [hp] |
+| HP desktop | F10 | Security → Secure Boot Configuration, press F10 at the message, set Secure Boot to Disable | Esc | Read [hp] |
+| Lenovo ThinkPad, ThinkCentre, ThinkStation | F1 at the logo | Security → Secure Boot → Secure Boot: Disabled, then F10 | not read | Read [lenovo-think] |
+| Lenovo IdeaPad and other consumer models | F2 or Fn+F2, or the Novo button and BIOS Setup | not confirmed | F12 | Excerpt [lenovo-idea] |
+| ASUS laptop | hold F2, then press power | F7 for Advanced Mode, then Security → Secure Boot → Secure Boot Control: Disabled, then F10 | not read | Read [asus-nb] |
+| Acer laptop | F2 at the logo | Security: set a supervisor password; then Boot → Secure Boot: Disabled, then F10. Acer advises removing the supervisor password afterward | not read | Excerpt [acer] |
+| Anything else | often F1, F2, F12 or Esc | "usually in either the Security tab, the Boot tab, or the Authentication tab" | varies | Read [ms-sb] |
 
 Two warnings that hold on every PC:
 
@@ -89,7 +89,7 @@ Two warnings that hold on every PC:
 
 ## 4. Check, then boot the stick
 
-To confirm from Windows, run `msinfo32`; **Secure Boot State** reads **Off** [dell-sb], [asus-nb].
+To confirm from Windows, run `msinfo32`; Secure Boot State reads Off [dell-sb], [asus-nb].
 Then put the stick in, restart, press the boot menu key from the table, and choose the USB stick.
 
 ## What turning it off costs
@@ -107,13 +107,13 @@ Then put the stick in, restart, press the boot menu key from the table, and choo
 - **No stranger has followed this page, and only one PC has been checked against it**: xenon, a
   Dell OptiPlex 7050, whose menu reads *Secure Boot → Secure Boot Enable* with Disabled and Enabled
   (`notes/xenon-firmware.md`). Every other row is the vendor's own page, not a machine.
-- **Dell's page describes turning Secure Boot on, not off**; the off steps are that page's steps
+- Dell's page describes turning Secure Boot on, not off; the off steps are that page's steps
   reversed. Dell's page names two forms, a checkbox on OptiPlex, Precision, Wyse and XPS and an
   Enabled setting on Alienware, Inspiron and Vostro [dell-sb].
-- **Four sources were excerpts, not read**: Acer's knowledge base sits behind a bot check, and
+- Four sources were excerpts, not read: Acer's knowledge base sits behind a bot check, and
   Lenovo's IdeaPad page, ASUS's motherboard page and HP's Esc menu outside its Secure Boot page
   were not opened. Microsoft Surface, MSI and Gigabyte were not looked up at all.
-- **That turning Secure Boot off triggers BitLocker recovery is an inference** from Microsoft's
+- That turning Secure Boot off triggers BitLocker recovery is an inference from Microsoft's
   `PCR[7]` and "changes to the BIOS or UEFI configuration" sentences [ms-cm], and ASUS's general
   statement [asus-nb]. No Microsoft page read says it of Secure Boot in those words.
 
