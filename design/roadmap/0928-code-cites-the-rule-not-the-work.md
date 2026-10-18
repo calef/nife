@@ -1,5 +1,6 @@
 ---
-status: PROPOSED
+status: NOT-STARTED
+promoted_from: code-cites-the-rule-not-the-work
 raised: 2026-10-15
 milestone_dependencies: none
 decision_dependencies: none
@@ -7,7 +8,7 @@ machine_requirements: none
 specific_machine: none
 needs_person: no
 ---
-# Code cites the rule, not the work that wrote it
+# 928. Code cites the rule, not the work that wrote it
 
 calef raised it on 2026-10-15 (UTC), reading the citation census: *"I do question if the code
 should reference the milestones. Is there prior art?"* Nothing here is in force until he rules on
@@ -150,3 +151,7 @@ form 2 unnecessary, and is calef's call. This proposal keeps form 2 because a te
 it proves is read far more often than the block it proves.
 
 *Name: provisional, maintainer/code-cites-decisions-not-milestones, 2026-10-15 (UTC).*
+
+## Index row
+
+The code cites 6,656 milestones and 3,279 decisions, and a milestone is a unit of work while a decision is a rule. The proposal weighs having code cite the rule, not the work that wrote it, and nothing is in force until calef rules.

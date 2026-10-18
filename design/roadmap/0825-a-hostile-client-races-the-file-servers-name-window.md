@@ -97,10 +97,10 @@ existing `Server::handle` host tests and `DiskMemory` fixtures rather than booti
 - **Done.** `design/fatal-risks/7-the-confinement-claim.md` gained a dated 2026-10-15 paragraph (the
   milestone 275 (a gate that diffs the fatal-risks README against the roadmap it cites) required it) recording that 825 closed the refusal
   the fifth pass homed to it; the verdict stays calef's.
-- **Proposed.** Rows 19 and 24 of `notes/confinement-claims.md` and the pass-4 refusal log still name
+- **Milestone 927.** Rows 19 and 24 of `notes/confinement-claims.md` and the pass-4 refusal log still name
   the window TOCTOU as the open near miss; they want the new test cited and the result recorded. That
   edit touches the confinement records a lane does not own, so it is left to the confinement owner:
-  `design/roadmap/proposals/cite-825-in-the-confinement-claims.md`.
+  `design/roadmap/0927-cite-825-in-the-confinement-claims.md`.
 
 ## Index row
 

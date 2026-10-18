@@ -1,5 +1,6 @@
 ---
-status: PROPOSED
+status: NOT-STARTED
+promoted_from: linux-runs-as-a-guest-of-nife
 raised: 2026-10-12
 milestone_dependencies: 16, 227
 decision_dependencies: unwritten
@@ -7,7 +8,7 @@ machine_requirements: none
 specific_machine: none
 needs_person: no
 ---
-# Linux runs as a guest, with nife as the hypervisor
+# 926. Linux runs as a guest, with nife as the hypervisor
 
 Raised on 2026-10-12 (UTC) by the lane `maintainer/proposal-linux-guests`. calef asked that day,
 "What would it take to be able to host Linux on nife?", and chose the hypervisor answer: an

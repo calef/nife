@@ -1,5 +1,6 @@
 ---
-status: PROPOSED
+status: NOT-STARTED
+promoted_from: point-script-drift-at-the-host-excluded-derivation
 raised: 2026-10-16
 milestone_dependencies: 393
 decision_dependencies: none
@@ -7,7 +8,7 @@ machine_requirements: none
 specific_machine: none
 needs_person: no
 ---
-# Point script/drift's host exclusions at the derived set
+# 931. Point script/drift's host exclusions at the derived set
 
 *(Title and slug provisional.)*
 
@@ -30,3 +31,7 @@ tree; now the derivation is the record and a fifth consumer repeating a fourth l
 ## Reuse
 
 The helper is the reuse. Nothing new is written; the line changes its source of truth.
+
+## Index row
+
+`script/drift`'s `cargo test` line still hand-writes the host-excluded crate set that milestone 393 derived once in `helpers/host-excluded-crates.sh`. It should consume the derivation, and its `BUGS` entry retires.

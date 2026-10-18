@@ -53,13 +53,13 @@ of a red check meets it.
 
 ## Follow-on
 
-- **Proposed.** The red lines one harness out have the same hole, and this lane did not touch
+- **Milestone 930.** The red lines one harness out have the same hole, and this lane did not touch
   either: 412's lane owns the `swish-check` text and the UEFI lines are 516's. A red `swish-check`
   failure names `sendkey` and the monitor socket, both of which the table above shows behaving
   differently across versions. A UEFI failure line classifies the exit status without the version,
   though [notes/uefi-test-exit-rate.md](../../notes/uefi-test-exit-rate.md) exists because of a
   QEMU-version theory. The work is written up where the next lane can claim it:
-  `design/roadmap/proposals/a-red-swish-or-uefi-line-does-not-say-which-qemu-ran-it.md`.
+  `design/roadmap/0930-a-red-swish-or-uefi-line-does-not-say-which-qemu-ran-it.md`.
 
 ## What was measured
 

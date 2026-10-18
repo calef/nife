@@ -1,5 +1,6 @@
 ---
-status: PROPOSED
+status: NOT-STARTED
+promoted_from: a-quote-that-opens-a-sentence-is-counted-with-the-one-before
 raised: 2026-10-12
 milestone_dependencies: none
 decision_dependencies: 213
@@ -7,7 +8,7 @@ machine_requirements: none
 specific_machine: none
 needs_person: no
 ---
-# A quote that opens a sentence is counted with the sentence before it
+# 925. A quote that opens a sentence is counted with the sentence before it
 
 Raised on 2026-10-12 (UTC) by the lane `maintainer/prose-cap-86-and-27` (#2015), while splitting
 §86 (whether an NVMe driver can leave the kernel) under §212 (a prose budget).
@@ -35,3 +36,7 @@ way, which the remeasure records.
 
 `selftest()` holds a full stop followed by a quoted sentence as two sentences, and the baseline is
 remeasured in the same change.
+
+## Index row
+
+`sentences()` in `helpers/prose_ratchet.py` fuses a sentence that opens with a quote to the one before it, so the prose cap measures two sentences as one. The fix is in the splitter, with a selftest case and a remeasured baseline.
