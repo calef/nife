@@ -44,7 +44,7 @@ for TRIPLE in ${NIFE_CRYPTO_TRIPLES:-aarch64-unknown-nife riscv64-unknown-nife x
   (
     cd "$SRC"
     # `CARGO_TARGET_DIR` is pinned because the copy below reads `$BUILD`, and an exported one
-    # would put the build elsewhere (xtask::farm::exerciser_target_dir has the 2026-09-30 story).
+    # would put the build elsewhere (xtask::farm::exerciser_target_directory has the 2026-09-30 story).
     # `--locked` because a gate must build the graph the lockfile names, not a newer one.
     CARGO_TARGET_DIR="$BUILD" RUSTUP_TOOLCHAIN="$ROOT/target/nife-farm" cargo build --release --locked \
       -Zjson-target-spec \

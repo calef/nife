@@ -189,7 +189,10 @@ pub fn classify(o: &Observation) -> Verdict {
 }
 
 /// Whether the transmit descriptor was handed back, for a report line.
-pub const fn transmit_completed(o: &Observation) -> bool {
+///
+/// Name: provisional, minted 2026-10-18 (UTC) by maintainer/names-comply-question-shapes. Refused
+/// `transmit_completed` (a participle alone reads as a getter).
+pub const fn is_transmit_complete(o: &Observation) -> bool {
     o.tx_des3 & TDES3_OWN == 0
 }
 
@@ -301,7 +304,7 @@ mod tests {
             payload: Payload::Poison,
         };
         assert_eq!(classify(&o), Verdict::Inconclusive);
-        assert!(transmit_completed(&o));
+        assert!(is_transmit_complete(&o));
     }
 
     /// The payload bytes run `0x40` to `0x7f` and repeat: the bytes `the_probe_frame_is_never_
@@ -356,9 +359,9 @@ mod tests {
             o.tx_des3,
             crate::TDES3_FS | crate::TDES3_LS | PROBE_LEN as u32
         );
-        assert!(transmit_completed(&o));
+        assert!(is_transmit_complete(&o));
         assert_eq!(o.payload, Payload::Matches);
-        assert!(!transmit_completed(&Observation {
+        assert!(!is_transmit_complete(&Observation {
             tx_des3: crate::TDES3_OWN,
             ..o
         }));

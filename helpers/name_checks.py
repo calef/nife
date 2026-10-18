@@ -70,14 +70,45 @@ WIRE = {"abi", "network_time_protocol", "supervision_protocol", "nifefs", "packa
 # Spelled in two halves because script/lint's naming check refuses the word outside design/.
 _SERVICE_WORD = "dae" + "mon"
 _CAP = {"cap", "caps"}
-# Names that keep a spelling a check refuses, each with its owner: an identifier another project or
-# a specification coined (design/naming.md: a foreign identifier keeps its owner's spelling). Keyed
-# by `path::name`. An entry is added in the change that adds the name, and removed by renaming it.
-KEPT = {}
+# Names a check refuses and a rule of design/naming.md exempts, keyed by `path::name`, each with the
+# checks it is excused from and why. Two kinds, the rule each one applies named in its reason: a
+# foreign identifier keeps its owner's spelling, and a function that acts and reports whether it
+# worked is not a question. An entry is added in the change that adds the name or reads it, and
+# removed by renaming the name. The check cannot tell either kind apart from a break; a reader can.
+_SBI = "RISC-V SBI's own name, kept as the precedents keep `sbi_send_ipi`"
+_ACTS = ("acts and reports whether it worked, which design/naming.md exempts from the question "
+         "shape")
+KEPT = {
+    "crates/designware_ethernet/src/mdio.rs::PA_SHIFT":
+        ({"spelled-out"}, "DesignWare's `PA` field, the PHY address, not a physical address"),
+    "kernel/src/arch/riscv64/harts.rs::sbi_send_ipi": ({"spelled-out"}, _SBI),
+    "kernel/src/arch/riscv64/remote_fence.rs::sbi_remote_sfence_vma_asid": ({"spelled-out"}, _SBI),
+    "kernel/src/arch/aarch64/interrupts.rs::disable": ({"question-shape"}, _ACTS),
+    "kernel/src/arch/riscv64/interrupts.rs::disable": ({"question-shape"}, _ACTS),
+    "kernel/src/arch/x86_64/interrupts.rs::disable": ({"question-shape"}, _ACTS),
+    "kernel/src/arch/aarch64/mmu.rs::permit_kernel_access_to_user_pages": ({"question-shape"}, _ACTS),
+    "kernel/src/arch/riscv64/mmu.rs::permit_kernel_access_to_user_pages": ({"question-shape"}, _ACTS),
+    "kernel/src/arch/x86_64/mmu/user_space.rs::permit_kernel_access_to_user_pages":
+        ({"question-shape"}, _ACTS),
+    "kernel/src/arch/aarch64/timer.rs::within_raise_bound": ({"question-shape"}, _ACTS),
+    "kernel/src/arch/riscv64/timer.rs::within_raise_bound": ({"question-shape"}, _ACTS),
+    "kernel/src/arch/x86_64/mmu/shootdown.rs::serve_shootdown_nmi": ({"question-shape"}, _ACTS),
+    "kernel/src/sched/inspection.rs::kill_thread": ({"question-shape"}, _ACTS),
+    "kernel/src/sched/switch.rs::mark_current_fp_live": ({"question-shape"}, _ACTS),
+    "kernel/src/user/fs_service/std_start.rs::release": ({"question-shape"}, _ACTS),
+    "kernel/src/user/holding.rs::release": ({"question-shape"}, _ACTS),
+    "kernel/src/user/install_service.rs::ask_to_confirm": ({"question-shape"}, _ACTS),
+    "kernel/src/arch/aarch64/percpu.rs::percpu_matches_hart":
+        ({"question-shape"}, "a finite verb phrase (`matches`) the check cannot see, which the "
+                             "question rule allows"),
+    "kernel/src/user/test_support.rs::wait_for": ({"question-shape"}, _ACTS),
+}
 # design/naming.md's question shapes. A finite verb first (`contains`, `starts_with`) is read as a
-# first word ending in `s`, which also passes a plural noun: the check's one known false pass.
+# first word ending in `s`, which also passes a plural noun: the check's known false pass.
 _QUESTION_FIRST = {"is", "has", "can", "was", "will", "all", "any"}
 _QUESTION_INNER = {"is", "has", "can", "was"}
+# A `take_` clears a flag and reports it, which design/naming.md exempts by name.
+_ACTS_FIRST = {"take"}
 # The casing each Rust kind takes. A file name's casing is `script/lint`'s naming check 6, and a
 # name declared in an `extern` block is its owner's, so neither is checked here.
 _CASING = {
@@ -114,7 +145,12 @@ def failures(name, kind, returns_bool, british):
         out.append("service-model: claims a Unix service")
     if kind == "fn" and returns_bool and words:
         first = words[0]
-        if not (first in _QUESTION_FIRST or (first.endswith("s") and not first.endswith("ss"))
+        # A finite verb anywhere passes (design/naming.md: `machine_has_no_rtc`), read as an inner
+        # `is`/`has`/`can`/`was` or a last word ending in `s` (`grant_allows`, `day_matches`).
+        last = words[-1]
+        if not (first in _QUESTION_FIRST or first in _ACTS_FIRST
+                or (first.endswith("s") and not first.endswith("ss"))
+                or (len(words) > 1 and last.endswith("s") and not last.endswith("ss"))
                 or any(w in _QUESTION_INNER for w in words[1:])):
             out.append("question-shape: returns `bool` and is not `is_`, `has_`, `can_` or a "
                        "finite verb")
@@ -214,9 +250,9 @@ def survey(cands, sources, manifests, british=None, reach=None):
                         and _returns_bool(reach.stripped[path].split("\n"), line))
         if path in reach.stripped and any(k == "extern" for k, _ in reach.stack(path, line)):
             continue
-        if f"{path}::{name}" in KEPT:
-            continue
-        why = failures(name, kind, returns_bool, british)
+        excused = KEPT.get(f"{path}::{name}", (set(), ""))[0]
+        why = [f for f in failures(name, kind, returns_bool, british)
+               if f.split(":")[0] not in excused]
         if not why:
             continue
         package = reach.package(path)
@@ -305,7 +341,7 @@ def _git(root, *args):
     return r.stdout if r.returncode == 0 else None
 
 
-def ratchet_problems(judged, tree, rows, rules, base=None, renames=()):
+def ratchet_problems(judged, tree, rows, rules, base=None, renames=(), kept=()):
     """Every failure of the gate. `judged` is the `path::name` of every name the gate judged, and
     `base` is `(rules, rows)` at the merge base, or None."""
     if not judged:
@@ -315,6 +351,9 @@ def ratchet_problems(judged, tree, rows, rules, base=None, renames=()):
     if rules != RULES:
         bad.append(f"{BASELINE}: its rules line says {rules} and name_checks.py's RULES is {RULES}. "
                    f"Run --bank in the change that revised the check")
+    for key in sorted(set(kept) - judged):
+        bad.append(f"name_checks.py KEPT names {key}, which the gate does not judge. Remove the "
+                   f"entry; one left behind would excuse whatever name takes its place")
     for row, n in sorted((tree - rows).items()):
         name, check = row.rsplit(" ", 1)
         bad.append(f"{name} breaks the {check} rule, and it is not on the baseline. A name a change "
@@ -364,7 +403,7 @@ def run_check(root, rows_now, judged):
             cells = line.split("\t")
             if cells[0].startswith("R") and len(cells) == 3:
                 renames += ((cells[1], cells[2]),)
-    bad = ratchet_problems(judged, rows_now, rows, rules, base, renames)
+    bad = ratchet_problems(judged, rows_now, rows, rules, base, renames, KEPT)
     if bad:
         print("names: unratified names must meet the current naming rules:", file=sys.stderr)
         for b in bad:
@@ -421,12 +460,15 @@ def _selftest():
     assert failures("kernel-print-d", "script", False, {})[0].startswith("service"), \
         "a trailing `d` component claims a service"
     assert failures("BadCase", "fn", False, {})[0].startswith("casing")
+    assert failures("take_aborted", "fn", True, {}) == [], "a take_ clears a flag, exempt by name"
+    assert failures("grant_allows", "fn", True, {}) == [], "a finite verb last is a question"
+    assert failures("frame_waiting", "fn", True, {})[0].startswith("question-shape")
     assert failures("why-opt-in", "document", False, {}) == [], "opt in is a verb"
     extern = 'extern "system" {\n    pub fn GetLogicalDrives() -> u32;\n}\n'
     assert survey([("fn", "GetLogicalDrives", "lib_a/src/ffi.rs", 2)],
                   dict(sources, **{"lib_a/src/ffi.rs": extern}), manifests, {}) == [], \
         "an extern block's name is its owner's"
-    KEPT["lib_a/src/lib.rs::mem_size"] = "fixture"
+    KEPT["lib_a/src/lib.rs::mem_size"] = ({"spelled-out"}, "fixture")
     assert "mem_size" not in {r["name"] for r in survey(cands, sources, manifests, {"tint": "tint"})}
     del KEPT["lib_a/src/lib.rs::mem_size"]
     acting = "pub fn insert(&mut self) -> bool { true }\n"
@@ -455,6 +497,8 @@ def _selftest():
                                 cases.elements())
     assert ratchet_problems(judged, moved, moved, RULES, (RULES, base_rows),
                             (("lib_a/src/lib.rs", "lib_a/src/b.rs"),)) == [], "a rename moves rows"
+    stale_kept = ratchet_problems(judged, cases, cases, RULES, kept={"x/src/gone.rs::f": None})
+    assert len(stale_kept) == 1 and "KEPT names x/src/gone.rs::f" in stale_kept[0]
     assert "judged no name" in ratchet_problems(set(), cases, cases, RULES)[0]
     print("name_checks: selftest ok")
 

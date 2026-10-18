@@ -772,25 +772,25 @@ pub fn deactivate_user() {
 #[cfg_attr(not(feature = "system_tests"), allow(dead_code))]
 pub fn user_can_read(va: u64) -> bool {
     // SAFETY: address translation has no side effects beyond PAR_EL1.
-    unsafe { translate_as_el0(va, false) }
+    unsafe { can_el0_access(va, false) }
 }
 
 /// As [`user_can_read`], for a write. `AT S1E0W`. Same disposition, same test.
 #[cfg_attr(not(feature = "system_tests"), allow(dead_code))]
 pub fn user_can_write(va: u64) -> bool {
     // SAFETY: as above.
-    unsafe { translate_as_el0(va, true) }
+    unsafe { can_el0_access(va, true) }
 }
 
 /// # Safety
 /// Sound for any address. The result is advisory only in the sense that the mapping could change
 /// afterwards; (the old `syscall::user_slice` reader that relied on this was removed in milestone 8).
 ///
-/// Name: provisional, flagged 2026-09-24 by the boolean-predicate pass
-/// (design/naming/functions-that-answer-yes-or-no-worklist.md). It does not yet follow the Rust predicate rule
-/// calef ratified 2026-09-24; recommended `can_el0_access`, because it is named for the `AT`
-/// instruction it issues, but the answer is about access.
-unsafe fn translate_as_el0(va: u64, write: bool) -> bool {
+/// Name: provisional, minted 2026-10-18 (UTC) by maintainer/names-comply-question-shapes, as the
+/// yes-or-no worklist recommended.
+/// Refused `translate_as_el0` (named for the `AT` instruction it issues, where the answer is about
+/// access).
+unsafe fn can_el0_access(va: u64, write: bool) -> bool {
     // PAR_EL1 IS A SINGLE SHARED REGISTER, and between the `at` and the `mrs` we could be
     // preempted by the timer, switched to another thread, and switched back with somebody else's
     // translation result sitting in it. Masking interrupts for two instructions closes that, and

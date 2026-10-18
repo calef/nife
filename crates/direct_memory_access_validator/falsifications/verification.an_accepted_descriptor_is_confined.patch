@@ -1,7 +1,7 @@
 Falsifies `direct_memory_access_validator::verification::an_accepted_descriptor_is_confined`.
 
 The defect: `Desc::is_indirect` tests the wrong bit, so it answers false for every
-descriptor. `check_descriptor` refuses an indirect descriptor because that is a table the
+descriptor. `is_descriptor_allowed` refuses an indirect descriptor because that is a table the
 device would follow unchecked, outside anything the shadow ring copied; with this diff
 the refusal never fires and a driver can hand the device an indirect table pointing
 anywhere in physical memory.
@@ -10,7 +10,7 @@ Expected to fail: `assert_eq!(d.word & ((F_INDIRECT as u64) << 32), 0)`, on any
 descriptor with the indirect flag set.
 
 **Measured blind before milestone 211.** The harness used to assert `!d.is_indirect()`,
-which is the predicate `check_descriptor` guards on, so the guard and the assertion were
+which is the predicate `is_descriptor_allowed` guards on, so the guard and the assertion were
 one call and a defect in it satisfied both. Confirmed by applying this diff against the
 old phrasing and watching it stay green. The flag's position in the descriptor word is
 now written out. Its sibling assertion, the containment claim, is phrased through
@@ -18,7 +18,7 @@ now written out. Its sibling assertion, the containment claim, is phrased throug
 `in_region_is_sound`; the containment is restated over the addresses here anyway, so the
 two claims stand on the same footing.
 
-The record this replaces was the `F_INDIRECT` refusal deleted from `check_descriptor`.
+The record this replaces was the `F_INDIRECT` refusal deleted from `is_descriptor_allowed`.
 The harness still catches that, and it is the more obvious of the two defects; it is
 replaced rather than kept because a harness carries one record and the guard-drop was
 never the blind spot.

@@ -18,7 +18,7 @@ pub(super) use line::{JOB_DID_NOT_RUN, Line, interrupted_at_prompt, keys, line};
 use super::*;
 
 mod after_reboot;
-mod clock_config;
+mod clock_configuration;
 mod directories;
 mod installer;
 mod interrupts;
@@ -56,7 +56,7 @@ pub(super) const SWISH_CHECK_KEYBOARD_BOOT: &[Line] =
 pub(super) static SWISH_CHECK_SCRIPT: LazyLock<Vec<Line>> = LazyLock::new(|| {
     [
         pipes_files::LINES,
-        clock_config::LINES,
+        clock_configuration::LINES,
         navigation::LINES,
         process_tools::LINES,
         installer::LINES,
