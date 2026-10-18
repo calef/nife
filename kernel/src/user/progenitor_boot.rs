@@ -39,9 +39,11 @@ pub const PROGENITOR_ENTRY: &str = "progenitor";
 /// The gauge's floor (`progenitor_stack::HEADROOM_FLOOR`, 8 KiB) is what fails `swish-check`.
 /// notes/stack/progenitor-stack.md has the frames, the earlier tables, and why each was a raise
 /// rather than a trim (milestone 696 (the spawn service runs outside `boot`'s frame) is the trim).
+///
+/// Name: ratified 2026-10-18 (calef: "Progenitors numbers are ratified."), replacing `INIT_STACK_PAGES`.
 #[cfg_attr(not(any(test, feature = "system_tests")), allow(dead_code))]
-pub const INIT_STACK_PAGES: u64 = 14;
-const _: () = assert!(INIT_STACK_PAGES <= address_space_map::MAX_STACK_PAGES);
+pub const PROGENITOR_STACK_PAGES: u64 = 14;
+const _: () = assert!(PROGENITOR_STACK_PAGES <= address_space_map::MAX_STACK_PAGES);
 
 /// **The role that means "boot the system"**, as opposed to milestone 19d (run a real workload)'s
 /// test roles.
@@ -243,12 +245,12 @@ fn progenitor_address_space(
         + 1
         + ramdisk_pages / 512
         + crate::revoke::log_pages_for(ramdisk_pages)
-        + INIT_STACK_PAGES
+        + PROGENITOR_STACK_PAGES
         + 8;
     let mut space =
         AddressSpace::new(content).ok_or(LoadError::Unmappable(MapError::OutOfPageFrames))?;
     map_segments(&mut space, elf)?;
-    for k in 0..INIT_STACK_PAGES {
+    for k in 0..PROGENITOR_STACK_PAGES {
         let page = space
             .map_new(USER_STACK_VA - k * FRAME_SIZE, Flags::user_data())
             .map_err(LoadError::Unmappable)?;

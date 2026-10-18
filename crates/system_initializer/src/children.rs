@@ -26,7 +26,7 @@ use super::*;
 ///
 /// **Out of line on purpose.** `spawn_service`'s frame is on the stack under every activation, and
 /// an install of `uptime` runs `package_archive`'s parser beneath it; in a debug build that path
-/// sat within about 400 bytes of the progenitor's 32 KiB stack (kernel `INIT_STACK_PAGES`) until
+/// sat within about 400 bytes of the progenitor's 32 KiB stack (kernel `PROGENITOR_STACK_PAGES`) until
 /// these locals were moved here. CI found it on 2026-09-27 as a data abort one word below the
 /// stack's lowest page.
 #[inline(never)]

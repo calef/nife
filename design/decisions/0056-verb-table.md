@@ -57,7 +57,7 @@ So the table is dispatch only. `fs_subtree_caretaker` consults **no policy rows*
 no checks, because a lookup that picks a length or a zero cannot refuse anything.
 
 `fs_file_caretaker` keeps its own per-verb `POLICY` (`Local`, `Forward`, `Refused(errno)`), because
-its refusals carry meaning a boolean would destroy: `CREATE` answers `ENOTDIR` and not `EACCES`,
+its refusals carry meaning a boolean would destroy. `CREATE` answers `ENOTDIR` and not `EACCES`,
 since a file capability is not a directory, so the request does not mean anything rather than
 meaning something refused. A shared "allowed / not allowed" column would have flattened that.
 

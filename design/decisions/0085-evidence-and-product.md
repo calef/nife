@@ -63,7 +63,7 @@ the ported one. A grant width taken from our own implementation is not evidence 
 
 The head of the ranking is the least suitable part. It is dominated by libraries, the package
 manager, init and language runtimes, none of which are applications and several of which should not
-exist here at all: a package manager writes system-wide and runs maintainer scripts with broad
+exist here at all. A package manager writes system-wide and runs maintainer scripts with broad
 authority, which is tier three outright. A literal walk from the top spends its first stretch on the
 wrong material. The filter above is what prevents that, which is why it is stated in advance.
 
@@ -72,7 +72,7 @@ number is the more informative of the two for this purpose, because a package pr
 dependency says nothing about whether anyone runs it.
 
 And the list encodes Unix's architecture. It is a census of how one system decomposed the
-problem, including the parts that exist *because* authority is ambient: `sudo` exists because there
+problem, including the parts that exist *because* authority is ambient. `sudo` exists because there
 is an ambient root to escalate to, `ps` because enumerating every process is something anyone may do.
 A faithful walk down it rebuilds that shape one program at a time, each individually confined,
 arriving at a system whose structure still assumes the thing this project removed. That is §82's

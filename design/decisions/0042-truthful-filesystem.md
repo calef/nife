@@ -47,7 +47,7 @@ is the mistake POSIX made.
   directories, and cheap to conform to.
 - Crash atomicity: after power loss you see old or new, never garbage. POSIX requires nothing.
   This is where a decade of data-loss bugs lived, ext4's 2009 delayed-allocation saga being the
-  cautionary tale: the rename hit the journal before the data blocks landed, so a crash left a
+  cautionary tale. The rename hit the journal before the data blocks landed, so a crash left a
   correctly-named empty file, and the fix was a heuristic rather than a guarantee.
 
 The temp-file-then-rename idiom, which is how applications get crash-safe updates, needs both.
@@ -98,7 +98,7 @@ introspectable, which is what `caps` prints. No feature-query verb, no capabilit
 - Require crash atomicity for the verb, and expect this to be the demanding clause. It is what
   FAT cannot do and what ext4 only approximates.
 - **Do not require** the extended operations. Linux's `renameat2` flags (`RENAME_EXCHANGE`,
-  `RENAME_NOREPLACE`) work on ext4, btrfs, XFS, f2fs and tmpfs and nowhere else, and emulating
+  `RENAME_NOREPLACE`) work on ext4, btrfs, XFS, f2fs and tmpfs and nowhere else. Emulating
   `NOREPLACE` against a generic backend, a POSIX host filesystem reached through separate `link`
   and `unlink` syscalls with another writer free to run between them, is racy. Corrected,
   [DECISIONS §129](0129-rename-noreplace-flag.md), 2026-08-25: that reason does not describe

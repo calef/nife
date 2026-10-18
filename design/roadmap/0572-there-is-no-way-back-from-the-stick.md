@@ -11,8 +11,8 @@ needs_person: no
 # 572. There is no way back from the stick: an installed disk is never offered an install again
 
 The number is provisional: the integrator mints it at merge. Promoted from the proposal `there-is-no-way-back-from-the-stick` on 2026-09-22, filed 2026-09-21. Raised by the rung 2a lane of milestone 198 (a package manager, and
-the trivial install that makes a second customer possible), which introduced the rule this proposal
-is about and found the case that makes it a defect rather than a choice.
+the trivial install that makes a second customer possible). That lane introduced the rule this
+proposal is about, and found the case that makes it a defect rather than a choice.
 
 It is a second question asked by `kernel/src/user/install_service.rs`, which holds no
 disk and decides nothing a ruling has to cover.
@@ -80,7 +80,7 @@ differs from `INSTALL` on purpose: a person who typed the first one on the machi
 install should not be able to type it again by habit on the machine they did not.
 
 It should say whether there is a filesystem in there, which is what separates a working install
-from the half-written one above, and `mkfs`'s own `ROLE_CHECK` already answers exactly that question
+from the half-written one above. `mkfs`'s own `ROLE_CHECK` already answers exactly that question
 from a process holding the disk and no entropy. Wiring it is the same shape as the survey.
 
 Cost: one more spawn, one more question, and two more lines in the gate. Small, and it is small
@@ -99,4 +99,4 @@ precisely because the confined-program-per-question shape is already built.
 
 ## Index row
 
-An installed machine boots from a file too, and nothing in the handoff distinguishes that file from one on a stick, so the install offer surveys first and declines to ask when a nife data partition is already there. That rule is right and this does not ask to remove it. It asks for the other half: a person who wants to reinstall boots the stick, watches it decline, and has no way forward from inside the system, because nothing in this tree wipes a partition table and `system_installer` is the only program that writes one.
+An installed machine boots from a file too, and nothing in the handoff distinguishes that file from one on a stick, so the install offer surveys first and declines to ask when a nife data partition is already there. That rule is right and this does not ask to remove it. It asks for the other half. A person who wants to reinstall boots the stick, watches it decline, and has no way forward from inside the system. Nothing in this tree wipes a partition table, and `system_installer` is the only program that writes one.

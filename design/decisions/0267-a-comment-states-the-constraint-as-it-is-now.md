@@ -60,7 +60,8 @@ over 40 lines hold 19.8% of comment lines (the note, one day earlier, measured 2
 named. A block of 40 lines is allowed; 41 is over.
 
 The block is the note's unit: a run of adjacent comment lines of one kind, doc (`///`, `//!`) or
-plain (`//`, `/* */`). Comment density itself is not capped and not the target; this tree comments
+plain (`//`, `/* */`). A trailing comment, one that begins after code on its line, labels that line
+and is not part of any block; its code line ends the run around it. Comment density itself is not capped and not the target; this tree comments
 on purpose. The cost the note measured is the long tail of essays, findings and corrections that
 accrete in place, not the median two-line explanation.
 
@@ -104,9 +105,6 @@ worth: the five blocks the note's samples judged "move" or tutorial.
 
 - "About 40" is calef's number read off one measurement; 30 and 50 were not put to him, and either
   could be argued from the same distribution.
-- The block count treats a trailing comment on a code line as a one-line block that can begin a
-  run, which is the note's definition as its scripts took it. A definition that ignored trailing
-  comments would count slightly fewer blocks.
 - A split carries a row only into a file with no rows at the merge base. A block moved into a
   file that already has listed blocks fails as unlisted; amend this section again if a split needs
   it. A block whose kind changes in the move (`///` to `//!`) is not the same block and does not

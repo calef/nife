@@ -105,7 +105,7 @@ region one package larger, from the progenitor's image pool (`grant_plan::named_
   now), and `http_response`, with `init`'s package exception for it.
 - Into the installed-programs table: a manager column (`installed_programs::Entry::manager`). A row from before it
   reads as `-`.
-- Into the progenitor's stack: two pages, to fourteen (`kernel::user::INIT_STACK_PAGES` has the
+- Into the progenitor's stack: two pages, to fourteen (`kernel::user::PROGENITOR_STACK_PAGES` has the
   measurements).
 
 ## BUGS

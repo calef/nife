@@ -21,7 +21,7 @@ taste.
 
 1. The poll. calef: *"I did a small poll and Kaypro II won, so lets switch to Kaypro II."* The
 survey below had already rendered the Kaypro's ROM beside every candidate and judged it the loser on
-letterforms; a poll of people looking at it disagreed, and on a question that is entirely about how
+letterforms. A poll of people looking at it disagreed. On a question that is entirely about how
 something looks, that is the better instrument. The aesthetic verdict below is left standing rather
 than rewritten, because a reader deciding to change the font again should meet the argument against
 the current one.
@@ -68,7 +68,7 @@ claim below.
 On the letterforms it beats what ships, and by a wide margin. Nine rows of cap against
 `font8x8`'s seven, seven of x-height against five, and a three-row descender against one, so
 `g p q y j` get a tail rather than a hook. `font8x8` also carries display-ROM serifs on `I`, `l`, `t`
-and `F` and a flared foot on `A`, which is noise at a size with no room for it, and its glyph widths
+and `F` and a flared foot on `A`, which is noise at a size with no room for it. Its glyph widths
 wander more than anything else measured (width sigma 0.79 against gohufont's 0.74, and its prose sets
 clotted where gohufont's does not).
 
@@ -115,9 +115,9 @@ not a terminal, and notes/glyphs.md says so in its own words.
 
 **So this decision is about which font, and it does not by itself change what a user sees.** Shipping
 it at four rows would make the terminal worse in exchange for better letters. The scanout is what has
-to move, and that is a display-ladder question rather than a font one: 128x64 was chosen so that a
+to move, and that is a display-ladder question rather than a font one. 128x64 was chosen so that a
 stride bug, a transposition and an x/y swap are all size or content mismatches rather than invisible
-(`gfx_proto::WIDTH`), and the only hard floor named is QEMU's 16 pixels per side. Nothing forces it
+(`gfx_proto::WIDTH`). The only hard floor named is QEMU's 16 pixels per side. Nothing forces it
 to stay small; the cost of growing it is in the pixel-for-pixel test harness rather than the driver.
 
 ## The obligations, and where they land

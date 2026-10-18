@@ -16,10 +16,11 @@ and is untouched by this.
 
 Applied the same day to the three such directories that exist: `design/decisions/`,
 `design/roadmap/`, and `notes/`. The fourth is the case that exposed the gap,
-`design/audit-reports/`, which **does not exist yet**: milestone 92 creates it, and its ratified
-name, with `audit-trail` and bare `audits` refused for the reasons `design/naming.md` records,
-lands in its README in the same commit that creates the directory. That is written here because
-a decision whose application waits on a milestone is exactly the kind that gets lost.
+`design/audit-reports/`, which **does not exist yet**. Milestone 92 (security audits as a mechanism)
+creates it. Its ratified name, with `audit-trail` and bare `audits` refused for the reasons
+`design/naming.md` records, lands in its README in the same commit that creates the directory. That
+is written here because a decision whose application waits on a milestone is exactly the kind that
+gets lost.
 
 **No gate, deliberately, and this is rung three rather than rung two.** `script/names --check`
 fails a crate or program with no provenance block because there are 126 of them and forgetting is
@@ -41,7 +42,7 @@ mechanism that half-covers a category is worse than one that says plainly what i
 Why it is not obvious. A directory has no header file to carry a line, so covering it needs a
 different home (a `README.md` in the directory, or a convention file). And the naming tenet already
 says directories follow their own rule (`hyphens` if they need two words, `snake_case` if they hold a
-Rust package), which is a form rule rather than a provenance one, so the two are not the same
+Rust package). That is a form rule rather than a provenance one, so the two are not the same
 question wearing different clothes.
 
 The recommendation. Cover directories under `design/` and `notes/` only, via a line in the

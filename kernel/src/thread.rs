@@ -348,6 +348,11 @@ pub enum Wait {
     /// threads in one address space)), under this key in the scheduler's futex table. The key is
     /// the whole identity: there is no futex object to name.
     Futex(inter_process_communication::futex::Key),
+    /// **Stopped by `ThreadControlBlock::SUSPEND`** (DECISIONS §300), on no queue: only `RESUME`
+    /// serves this wait, so every other wake is refused by the handshake's gate. A thread parks
+    /// here only from `Ready` or `Running`; one suspended inside an IPC finishes that wait first.
+    /// Name: provisional (lane/48-tcb-suspend-resume, 2026-10-18 UTC).
+    Resume,
 }
 
 pub struct Thread {
@@ -686,6 +691,14 @@ pub struct Thread {
     /// This is the forcible tier of `^C` (§24), where the shell's escalation retries `DESTROY`
     /// until the killed thread has self-terminated and the region is object-free.
     pub(crate) killed: bool,
+    /// **`ThreadControlBlock::SUSPEND` has been ordered and `RESUME` has not** (DECISIONS §300 (the
+    /// paused state, a TCB verb, silent)).
+    /// The order is recorded here and carried out where the thread next meets the scheduler:
+    /// `schedule` parks a running thread that carries it, and the pick parks a popped one rather
+    /// than switching into it, so no path to a CPU runs a thread with this set. A thread parked
+    /// that way is `Blocked` on [`Wait::Resume`]. `notes/suspend-and-resume.md` has the cases.
+    /// Name: provisional (lane/48-tcb-suspend-resume, 2026-10-18 UTC).
+    pub(crate) suspend_requested: bool,
     /// **Where this thread's fault/exit is reported** (milestone 22, DECISIONS §26), or `None` for
     /// an unsupervised thread. Set once at `START` from the child's reserved fault slot (abi's
     /// `FAULT_EP_SLOT`) and never afterward: supervision is granted at spawn only, so the
@@ -931,6 +944,7 @@ impl Thread {
             thread_page: None,
             thread_control_block_kmem: true,
             killed: false,
+            suspend_requested: false,
             fault_ep: None,
             fault_label: 0,
             thread_control_block_region: None,
@@ -987,6 +1001,7 @@ impl Thread {
                 thread_page: None,
                 thread_control_block_kmem: true,
                 killed: false,
+                suspend_requested: false,
                 fault_ep: None,
                 fault_label: 0,
                 thread_control_block_region: None,
@@ -1137,6 +1152,7 @@ impl Thread {
                 thread_page: None,
                 thread_control_block_kmem: true,
                 killed: false,
+                suspend_requested: false,
                 fault_ep: None,
                 fault_label: 0,
                 thread_control_block_region: None,
@@ -1181,6 +1197,7 @@ impl Thread {
             thread_page: None,
             thread_control_block_kmem: false, // a user-retyped TCB page; the region owns it
             killed: false,
+            suspend_requested: false,
             fault_ep: None,
             fault_label: 0,
             thread_control_block_region: None,

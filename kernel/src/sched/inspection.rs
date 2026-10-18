@@ -7,6 +7,8 @@
 //! submodules of `sched`)).
 
 use super::*;
+#[cfg(feature = "system_tests")]
+use crate::cap::Object;
 
 /// **Scheduler anomaly and activity totals, for a run long enough that a sixteen-event ring is no
 /// use** (milestone 219). Every one is a sum over the per-core counters `trace::record` keeps; see
@@ -252,8 +254,7 @@ pub fn thread_space_root(tid: ThreadId) -> Option<u64> {
 /// granted only when this page lies inside a memory region the fuzzers were given, which is how it
 /// tells an object a fuzzer made from one it reached. The same test `reap_region_objects` applies.
 #[cfg(feature = "system_tests")]
-pub fn object_page(object: &crate::cap::Object) -> Option<u64> {
-    use crate::cap::Object;
+pub fn object_page(object: &Object) -> Option<u64> {
     // An address-space object's page is its root, out of the user-space registry and *before*
     // `IPC_TABLES`, so the two locks never nest (the confined fuzzer retypes these from its own
     // region, milestone 779).
@@ -546,6 +547,7 @@ pub fn dump_threads() {
             Some(Wait::Futex(k)) => {
                 crate::println!(" wait={:#x}@{:#x}/Futex", k.address, k.space);
             }
+            Some(Wait::Resume) => crate::println!(" wait=Resume"),
             None => crate::println!(" wait=-"),
         }
     }

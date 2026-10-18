@@ -3,7 +3,7 @@ use crate::sched;
 
 /// The report protocol, matching user/src/suptree.rs (the same convention the net client's
 /// selectors follow: userspace owns the definition, the test mirrors it).
-const REPORT_INIT_DROPPED: u64 = 1;
+const REPORT_CONSTRUCTION_AUTHORITY_DROPPED: u64 = 1;
 const REPORT_SERVER_RAN: u64 = 2;
 const REPORT_SUP_SAW_DEATH: u64 = 3;
 const REPORT_SUP_GAVE_UP: u64 = 4;
@@ -117,7 +117,7 @@ fn of_kind(msgs: &[[u64; 5]; EXPECTED_REPORTS], kind: u64) -> impl Iterator<Item
 #[test_case]
 fn the_root_supervisor_drops_its_construction_authority_and_cannot_build_again() {
     let msgs = run_tree();
-    let dropped = of_kind(&msgs, REPORT_INIT_DROPPED)
+    let dropped = of_kind(&msgs, REPORT_CONSTRUCTION_AUTHORITY_DROPPED)
         .next()
         .expect("progenitor never reported dropping its budget");
     assert_eq!(

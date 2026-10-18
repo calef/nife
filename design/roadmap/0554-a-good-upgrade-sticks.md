@@ -12,8 +12,8 @@ day. **Based on the rung 2b branch `abboot/tries-and-priority`, which is not on 
 milestone block is named here in prose rather than cited.
 
 **This block answers that proposal and does not retire it**, which is deliberate rather than an
-oversight: retiring it means editing milestone 525's block, whose `**Proposed.**` follow-on row and
-`BUGS` both name the proposal file and are both now stale, and that block belongs to a lane still
+oversight. Retiring it means editing milestone 525's block, whose `**Proposed.**` follow-on row and
+`BUGS` both name the proposal file and are both now stale. That block belongs to a lane still
 working. For the integrator at merge: delete
 `design/roadmap/proposals/nothing-marks-a-trial-boot-successful.md`, and change milestone 525 (a bad upgrade cannot brick the machine: two boot slots, tries and priority)'s two rows to
 point here. `script/roadmap --check` fails on the deletion until the second half is done.
@@ -24,10 +24,10 @@ back. This built the thing that says a boot worked.
 
 ## The problem, stated so a stranger can check it
 
-`crates/boot_slot` has a `successful` bit and a `State::confirmed`, the installer sets the bit on
+`crates/boot_slot` has a `successful` bit and a `State::confirmed`. The installer sets the bit on
 the slot it writes, and nothing on a running machine ever set it again. So an upgrade written
 into the spare slot, which boots perfectly and runs for a week, was abandoned the moment its tries
-ran out, and the machine quietly returned to the older image.
+ran out. The machine quietly returned to the older image.
 
 It failed safe, which is why the rollback rung shipped without it. It also meant **upgrades did not
 stick**, which is not a system anybody would run: it fails days after the upgrade and looks like
@@ -48,25 +48,25 @@ something else.
 
 A promise rather than a mechanism, and the reason it deserves a section is that both directions of
 error are real. Confirm too early and a machine happily keeps an upgrade that comes up and
-cannot do its job, which is the failure the whole feature exists to prevent. Confirm too late
-and nothing ever confirms on a machine that boots to a prompt and waits for a person, which is what
+cannot do its job. That is the failure the whole feature exists to prevent. Confirm too late
+and nothing ever confirms on a machine that boots to a prompt and waits for a person. That is what
 this system is today, so every upgrade reverts. The bias has to be late.
 
 The criterion: the filesystem server mounted the installed disk and reported ready, and the
-progenitor is built and measured and about to run. Everything between power-on and the last thing
-this machine can check without a person: the kernel and its self-tests, userspace, the NVMe
-controller and its ring-3 server, the block server, the filesystem, and the boot program's
-measurement against the trust root.
+progenitor is built and measured and about to run. That covers everything between power-on and
+the last thing this machine can check without a person. It covers the kernel and its self-tests,
+userspace, the NVMe controller and its ring-3 server, the block server, the filesystem, and the
+boot program's measurement against the trust root.
 
 The proposal recommended one row stronger, *filesystem mounted and the shell reachable*, and the
 shell half is not reached. That is not a cost saving and is not claimed as one: it is the ordering
-below. The confirming program needs the disk, the filesystem server holds the disk, and the one
+below. The confirming program needs the disk, and the filesystem server holds the disk. The one
 window in which both are true and nothing is concurrent is between the mount and the progenitor's
 first instruction. Reaching a prompt is past it.
 
 The Boot Loader Specification's counting leaves this call to the operating system, and ChromeOS's
-update engine sets the bit from userspace, both for the same reason: the bootloader cannot know and
-the system can.
+update engine sets the bit from userspace. Both do so for the same reason: the bootloader cannot
+know and the system can.
 
 ### What a boot that satisfies it can still be wrong about
 
@@ -85,7 +85,7 @@ The honest half, and it is repeated in `crates/boot_slot`'s `BUGS` where a reade
 `blk` endpoint, the page it shares with that disk's server, and a budget for the one page it maps
 itself.
 
-No entropy endpoint, which is what makes it narrow rather than merely small: a partition table
+No entropy endpoint, which is what makes it narrow rather than merely small. A partition table
 carries unique ids, so a process that cannot draw one cannot write a table anything would read back
 as new. The only table it can write is the table it read with the nine bits `boot_slot` owns
 changed. No boot file, so it cannot rewrite the image it is vouching for. No console, no
@@ -94,7 +94,7 @@ filesystem, no network.
 The gap, named rather than papered over: a `blk` endpoint is the whole disk, because nothing in
 `filesystem_protocol::blk` bounds a client to a block range. So this process *could* write anywhere
 on that disk. It is the same limitation `installer`'s own `BUGS` records for the filesystem server,
-it is one wire field away from fixed, and it is why this is a boot-path call rather than an
+and it is one wire field away from fixed. It is why this is a boot-path call rather than an
 authority any program can ask for.
 
 ## What serializes the write, and the answer is an ordering
@@ -106,46 +106,46 @@ it.
 
 What makes this write safe is where it is: after the filesystem server's ready report and before the
 progenitor's first instruction. In that window the filesystem server is blocked in receive with no
-client that could wake it, because the kernel boot path is single-threaded and is the only thing
-that can hand its endpoint to anybody.
+client that could wake it. The kernel boot path is single-threaded and is the only thing that can
+hand its endpoint to anybody.
 
 That is rung three of `AGENTS.md`'s ladder where a higher rung exists, and **it is a foot gun**. The
 day something spawns a second disk client before the progenitor runs, or this call moves after it,
-the ordering silently stops holding and the symptom is a corrupted partition table on somebody's
+the ordering silently stops holding. The symptom is a corrupted partition table on somebody's
 installed machine. The mechanism that would make it hold is a transfer region per client, or a `blk`
 endpoint bounded to a block range; both are wire decisions.
 
 ## The write itself
 
 Idempotent twice over. A slot already successful is returned without the disk being written at
-all, because an installed machine boots its confirmed slot every day of its life and a write on
-every one of those boots is a write that can be interrupted on every one of them. And setting a bit
+all. An installed machine boots its confirmed slot every day of its life. A write on every one of
+those boots is a write that can be interrupted on every one of them. And setting a bit
 that is set writes the same bytes, so the cheap check is an optimization rather than the property.
 
 Safe to interrupt. The bits that change are nine, inside one `u64`, inside one 128-byte entry,
-inside one 512-byte logical block, so the entry on the disk is always either the old one or the new
+inside one 512-byte logical block. So the entry on the disk is always either the old one or the new
 one and never a third thing. The four-write sequence that puts the array and the two headers back
-goes backup first, so at every instant at least one complete self-consistent copy of the table
-is on the disk. The worst outcome of an interrupted confirmation is a slot that is not confirmed,
-which is the state the machine was in a moment earlier and rolls back safely.
+goes backup first. At every instant at least one complete self-consistent copy of the table
+is on the disk. The worst outcome of an interrupted confirmation is a slot that is not confirmed.
+That is the state the machine was in a moment earlier, and it rolls back safely.
 
 ## The gate
 
-`cargo xtask confirm-boot`, the exact negative of `rollback-boot`. Install; stage a good upgrade
-into slot 1 with one try; boot 2 chooses it, spends the try, comes up, and confirms; boot 3
+`cargo xtask confirm-boot`, the exact negative of `rollback-boot`. Install, and stage a good upgrade
+into slot 1 with one try. Boot 2 chooses it, spends the try, comes up, and confirms. Boot 3
 chooses it again, on a slot with no tries left.
 
-Boot 3 is the whole assertion, and the single try is what makes it one rather than a convenience: a
-slot with tries left would be chosen by priority alone, and the gate would pass on a machine whose
+Boot 3 is the whole assertion, and the single try is what makes it one rather than a convenience. A
+slot with tries left would be chosen by priority alone. The gate would then pass on a machine whose
 confirmation did nothing at all. `State::bootable` refuses a slot with no tries unless the successful
-bit is set, so a machine that chooses it has read a bit something on boot 2 wrote, across two
+bit is set. So a machine that chooses it has read a bit something on boot 2 wrote, across two
 separate QEMU processes with nothing between them but the disk.
 
 ## BUGS
 
 - ~~**The slot token's spelling is provisional.**~~ Ratified by calef on 2026-09-22, after he
   asked what a slot is and why the number cannot be recomputed. The answer is what the ruling turned
-  on and it is now in `boot_slot`'s own docs: the chooser spends a try *before* handing off, so
+  on and it is now in `boot_slot`'s own docs. The chooser spends a try *before* handing off. So
   inferring the slot from the table afterwards names the wrong one on exactly the trial boot a
   confirmation exists for. `boot-slot=` is a value two programs agree on and is now committed to.
 - **The criterion does not reach a shell**, which is the row the proposal recommended. See above:
@@ -184,8 +184,8 @@ separate QEMU processes with nothing between them but the disk.
 
 A running machine can now say that its boot worked, so an upgrade that comes up is kept instead of
 being abandoned when its tries run out. The chooser writes the slot number onto the kernel's command
-line, because a running system cannot work out which slot started it (the try is spent before the
-handoff, so the slot that booted is exactly the one `select` no longer names), and a confined
+line, because a running system cannot work out which slot started it. (The try is spent before the
+handoff, so the slot that booted is exactly the one `select` no longer names.) A confined
 process holding the disk and no source of randomness sets one attribute bit once the filesystem
 server has mounted that disk. What that criterion can still be wrong about is written next to it.
 `cargo xtask confirm-boot` is `rollback-boot`'s exact negative: a good upgrade is tried, confirms

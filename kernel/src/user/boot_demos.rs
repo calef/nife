@@ -317,12 +317,12 @@ pub fn riscv_uart_driver_demo(
         })
         .sum::<u64>()
         + 1
-        + INIT_STACK_PAGES
+        + PROGENITOR_STACK_PAGES
         + 8;
     let mut space =
         AddressSpace::new(content).ok_or(LoadError::Unmappable(MapError::OutOfPageFrames))?;
     map_segments(&mut space, &elf)?;
-    for k in 0..INIT_STACK_PAGES {
+    for k in 0..PROGENITOR_STACK_PAGES {
         space
             .map_new(USER_STACK_VA - k * FRAME_SIZE, Flags::user_data())
             .map_err(LoadError::Unmappable)?;

@@ -251,7 +251,7 @@ const PAGE_FRAME_REPORT_MIN: usize = 16;
 /// # BUGS
 ///
 /// - **Two test sites still keep their endpoints for the boot, deliberately.** `pipeline_service`
-///   (its `init_service` is a kernel thread that loops forever) and `user::tests`'
+///   (its `spawn_service_stub` is a kernel thread that loops forever) and `user::tests`'
 ///   `a_user_client_moves_data_through_shared_memory` (a client that spins forever): reclaiming
 ///   either would leave a thread spinning on a stale endpoint. Each takes its pages from a region
 ///   of its own, so the cost is charged to that test and not to a later one.

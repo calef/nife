@@ -50,9 +50,10 @@ programs being written to hold explicit authority needs those programs to exist,
 world was not a thing anyone could afford.
 
 The claim is that LLMs move that price, and this project is the first evidence for it. CLAUDE.md's
-second principle records the measurement: on 2026-08-05, 24 days from the first commit, 63 milestones
-built, 43 crates, 54 user programs, roughly 124,000 lines of Rust, 112 proof harnesses, two
-architectures, with a booting kernel, a shell, a filesystem, a network stack and a compositor.
+second principle records the measurement, taken on 2026-08-05, 24 days from the first commit. It
+counts 63 milestones built, 43 crates, 54 user programs, roughly 124,000 lines of Rust, 112 proof
+harnesses, two architectures, with a booting kernel, a shell, a filesystem, a network stack and a
+compositor.
 
 That is the argument for the timing, and it is worth more skepticism than the rest of this section.
 See the qualifications.
@@ -70,7 +71,7 @@ explicit authority, over time.
 
 That reclassification is not rhetorical. Under §14, porting a real program is a demonstration that
 the box works. Under this section it is the product. Milestone 121 (`ripgrep`) is the worked
-example: as a demo it proves confinement; as product it is one program of an ecosystem, and the
+example. As a demo it proves confinement. As product it is one program of an ecosystem, and the
 question becomes how narrow a grant it can run under rather than whether it runs at all.
 
 ## What would falsify this

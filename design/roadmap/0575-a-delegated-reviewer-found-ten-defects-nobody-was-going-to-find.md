@@ -20,8 +20,8 @@ Every correction is in Markdown that already exists.
 ## What was found
 
 Run blind against a 465-line documentation commit recording an x86 calibration fix, a rented
-reasoning model produced fifty findings over six reviews, of which thirty-eight were true and none
-were false. The commit had passed `script/lint`, `script/citations --ratchet` and
+reasoning model produced fifty findings over six reviews. Thirty-eight were true and none were
+false. The commit had passed `script/lint`, `script/citations --ratchet` and
 `script/roadmap --check`, and a human reviewer had already recorded it as clean.
 
 The ones worth a block, each verified against the file rather than taken from the review:
@@ -37,8 +37,8 @@ The ones worth a block, each verified against the file rather than taken from th
 - A correction notice over-certifies the comparison a reader is most likely to quote. It
   declares the debug-versus-release argument safe because the calibration cancels within a boot,
   four lines above a methods line reading "Six boots debug, five release."
-- A cross-reference resolves to the wrong section, two deliverables in the same commit
-  contradict each other about whether a bug is fixed, a paragraph still says "the fix proposed
+- A cross-reference resolves to the wrong section. Two deliverables in the same commit
+  contradict each other about whether a bug is fixed. A paragraph still says "the fix proposed
   above" after the proposal is deleted, and the milestone's own inventory of its diff omits a file
   the commit changes.
 
@@ -62,4 +62,4 @@ alike.
 
 ## Index row
 
-Run blind against a 465-line documentation commit that had passed `script/lint`, `script/citations --ratchet` and `script/roadmap --check`, and that a human reviewer had recorded as clean, a rented reasoning model produced fifty findings over six reviews, thirty-eight of them true and none false. The ten worth a block are corrections to Markdown that already exists: a paragraph that names the mean where the property belongs to the median, an estimator called unbiased in a sentence saying it converges from above, and a correction notice that over-certifies the comparison a reader is most likely to quote.
+Run blind against a 465-line documentation commit that had passed `script/lint`, `script/citations --ratchet` and `script/roadmap --check`, and that a human reviewer had recorded as clean, a rented reasoning model produced fifty findings over six reviews. Thirty-eight of them were true and none false. The ten worth a block are corrections to Markdown that already exists. One paragraph names the mean where the property belongs to the median, and one sentence calls an estimator unbiased while saying it converges from above. A correction notice over-certifies the comparison a reader is most likely to quote.

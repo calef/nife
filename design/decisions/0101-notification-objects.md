@@ -67,10 +67,10 @@ is also `1`.
 
 ## What is being decided
 
-Whether to add a notification object - a new kernel object type, created by `RETYPE_OBJ`, that
-holds a data word and a wait queue, supports `SIGNAL` (async, non-rendezvous, never lost) and `WAIT`
-(blocking receive of the accumulated word), and can be bound to a TCB so that a signal arriving
-on the notification wakes a thread that is currently blocked in `RECV` on an *endpoint*.
+Whether to add a notification object. That is a new kernel object type, created by `RETYPE_OBJ`,
+that holds a data word and a wait queue. It supports `SIGNAL` (async, non-rendezvous, never lost)
+and `WAIT` (blocking receive of the accumulated word). It can be bound to a TCB so that a signal
+arriving on the notification wakes a thread that is currently blocked in `RECV` on an *endpoint*.
 
 This is seL4's notification object (seL4 manual, chapter "Notifications"), adapted to this kernel's
 idioms: untyped-funded, generational, capability-governed, and riding on the existing `INVOKE`
@@ -201,8 +201,8 @@ the ABI.
 
 - No timed wait. `WAIT` blocks indefinitely, same as `RECV`. A timed wait is milestone 106's
   fork, and a notification bound to a TCB does not give the TCB a deadline. What it does give is the
-  ability to be woken by a *timer notification* - a user process that holds a clock capability and a
-  thread can signal a notification when the timer fires, which is how seL4 userspace implements
+  ability to be woken by a *timer notification*. A user process that holds a clock capability and a
+  thread can signal a notification when the timer fires. That is how seL4 userspace implements
   sleeps without a kernel timed-wait.
 
 ## What this replaces and what it doesn't
@@ -228,7 +228,7 @@ IRQ delivery to endpoints is built, proved, and working. The notification object
 type for *user-initiated* async signals, not a replacement for the IRQ path.
 
 Over time, IRQs may be rerouted to notifications (a driver would bind a notification to its TCB and
-receive both IPC and IRQ signals on one wait point), but that is a migration, not a requirement, and
+receive both IPC and IRQ signals on one wait point). That is a migration, not a requirement, and
 this decision does not mandate it.
 
 ### The shared supervision endpoint (§26.5)

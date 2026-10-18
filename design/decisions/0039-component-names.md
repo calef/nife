@@ -13,7 +13,7 @@ Specifically: no `-d` suffix, and no term of art that requires archaeology to pa
 ## The argument, which is calef's
 
 Milestone 39's naming section had already argued that "daemon" is the wrong word here, on technical
-rather than aesthetic grounds: a Unix daemon is defined by what it detaches from (no controlling
+rather than aesthetic grounds. A Unix daemon is defined by what it detaches from (no controlling
 terminal, inherited ambient authority, a pid file, started by a privileged init), and every one of
 those is something this OS deliberately does not have. `netd` holds five explicit capabilities, cannot
 name its own callers, is supervised, and can be reaped by something that lacks the authority to build
@@ -49,10 +49,10 @@ the phrase is jargon to the system's author, it is jargon in the crate as well.
   component. "Daemon" appears nowhere.
 
 The rename itself is milestone 46, deliberately its own mechanical commit, which also carries the
-naming conventions and the checks for the ones a machine can check. That pairing is on purpose: this
+naming conventions and the checks for the ones a machine can check. That pairing is on purpose. This
 rule and the three inconsistencies found alongside it (crate-name word separation, four spellings of
 "the wire contract", and a `feature/`-versus-`feat/` branch-prefix duplicate) are each the kind that
-decays without enforcement, and the checker is what makes a convention survive the first inconvenient
+decays without enforcement. The checker is what makes a convention survive the first inconvenient
 moment. The part that cannot be checked, "name it for what it is", stays prose because it needs
 judgment.
 

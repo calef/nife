@@ -4517,7 +4517,6 @@ crates/supervision_protocol/src/lib.rs::Child
 crates/supervision_protocol/src/lib.rs::ChildEndowment
 crates/supervision_protocol/src/lib.rs::PAGE
 crates/supervision_protocol/src/lib.rs::REPORT_FAILED
-crates/supervision_protocol/src/lib.rs::REPORT_INIT_DROPPED
 crates/supervision_protocol/src/lib.rs::REPORT_SERVER_RAN
 crates/supervision_protocol/src/lib.rs::REPORT_SUP_GAVE_UP
 crates/supervision_protocol/src/lib.rs::REPORT_SUP_SAW_DEATH
@@ -4637,7 +4636,6 @@ crates/system_initializer/src/endowment.rs::BootEndowment
 crates/system_initializer/src/endowment.rs::MountedTreeGrant
 crates/system_initializer/src/layout.rs::CHILD_STACK_PAGES
 crates/system_initializer/src/layout.rs::IMAGE_POOL_PAGES
-crates/system_initializer/src/layout.rs::INIT_OWN_PAGES
 crates/system_initializer/src/layout.rs::JOBS_BUDGET_PAGES
 crates/system_log/src/assembler.rs
 crates/system_log/src/assembler.rs::Assembler
@@ -6275,7 +6273,6 @@ kernel/src/user/ntp_service.rs::Server
 kernel/src/user/ntp_service.rs::start_client
 kernel/src/user/ntp_service.rs::start_server
 kernel/src/user/ntp_service.rs::start_witness
-kernel/src/user/progenitor_boot.rs::INIT_STACK_PAGES
 kernel/src/user/progenitor_boot.rs::PROGENITOR_ENTRY
 kernel/src/user/raw_mode_service.rs
 kernel/src/user/raw_mode_service.rs::Wiring

@@ -20,13 +20,13 @@ question wearing two milestone numbers.
 ## The scope line in SECURITY.md, which is the only interesting part of it
 
 A security policy for a demonstrator is mostly a scope argument. `SECURITY.md` draws it at
-confinement: capability forgery or widening, MMU escape, DMA escape, IPC confusion, a syscall
-argument that panics or corrupts the kernel, TOCTOU across the shared pages every service contract
-uses, and the foreign-language and vendored seams (§27, §31). Out of scope: that a demonstrator under
-QEMU is not a production system, that a hardening feature on the roadmap
-(design/roadmap/README.md) is missing, and
-anything that requires already being init, which §14 already names as the privileged unverified
-component.
+confinement. In scope: capability forgery or widening, MMU escape, DMA escape, IPC confusion, a
+syscall argument that panics or corrupts the kernel, TOCTOU across the shared pages every service
+contract uses. The scope also covers the foreign-language and vendored seams (§27 (the filesystem
+service), §31 (the foreign-language seam)). Out of scope: that a demonstrator under QEMU is not a
+production system, and that a hardening feature on the roadmap (design/roadmap/README.md) is
+missing. So is anything that requires already being init, which §14 (the project's direction)
+already names as the privileged unverified component.
 
 The distinction that carries the weight is "a missing feature is a roadmap item; a defence that
 is *claimed* and does not work is a vulnerability." That is the honest version, and it is also the
@@ -59,31 +59,32 @@ checked rather than assumed: the extractor reports `176 out of 176 Rust files`.
 
 What the same log shows is the caveat that matters more. 60 of those 176 files were extracted with
 errors and 116 without; the extractor ran with `cargo_target: None` (the host) and `cargo_features:
-[]`. The kernel is `no_std` on two bare-metal targets and does not build for the host at all, so
+[]`. The kernel is `no_std` on two bare-metal targets and does not build for the host at all. So
 CodeQL is analyzing it in a configuration that does not exist, with macro expansion failing across
-`assert_eq!`, `vec!` and friends. "Zero alerts" therefore means less than it looks, which is the
+`assert_eq!`, `vec!` and friends. "Zero alerts" therefore means less than it looks. That is the
 same honesty §35 applied to the gap between Kani and CodeQL, aimed at CodeQL itself.
 
-Advanced setup could set `cargo_target` and exclude `vendor/**`. It is still not worth it yet:
-the Rust extractor is in preview and moving (CodeQL 2.26.2, rust-queries 0.1.39), default setup
-tracks its improvements for free, and a pinned workflow would freeze today's limitations while adding
-a maintained file and a matrix over two ISAs. **Revisit on a stated trigger**, not on a feeling: an
+Advanced setup could set `cargo_target` and exclude `vendor/**`. It is still not worth it yet.
+The Rust extractor is in preview and moving (CodeQL 2.26.2, rust-queries 0.1.39), and default setup
+tracks its improvements for free. A pinned workflow would freeze today's limitations while adding a
+maintained file and a matrix over two ISAs. **Revisit on a stated trigger**, not on a feeling: an
 alert lands in `vendor/**` (upstream's to fix, per SECURITY.md, and noise here), or the
 extracted-with-errors fraction stops falling, or a query we want is unavailable by default.
 
 ## Supply chain: configure it deliberately, and expect the first run to find something
 
 `deny.toml` is written rather than defaulted, with a reason next to every knob, because a default
-config is wrong in both directions at once. It narrows the graph to targets we actually build (the
-default drags `windows-sys`, `wasi` and RedoxFS's redox-native half into the verdict for code nothing
-here compiles, and noise is how an alert list becomes wallpaper), and it tightens what remains:
-`unmaintained = "all"`, `yanked = "deny"`, an allow-list of licenses rather than a deny-list, and
-`unknown-git`/`unknown-registry` denied so a dependency repointed at somebody's fork is loud.
+config is wrong in both directions at once. It narrows the graph to targets we actually build. The
+default drags `windows-sys`, `wasi` and RedoxFS's redox-native half into the verdict for code
+nothing here compiles, and noise is how an alert list becomes wallpaper. The config also tightens
+what remains: `unmaintained = "all"`, `yanked = "deny"`, an allow-list of licenses rather than a
+deny-list, and `unknown-git`/`unknown-registry` denied so a dependency repointed at somebody's fork
+is loud.
 
 First run: no advisories, no yanked crates, no unknown sources, everything permissive. Three real
-findings: one duplicate (`getrandom` 0.2 and 0.4, both under redoxfs, host-side only, skipped with a
-reason), three licenses beyond MIT/Apache-2.0 that are genuinely needed (BSD-3-Clause, 0BSD,
-Apache-2.0 WITH LLVM-exception), and two crates that could not be distinguished from a `version = "*"`
+findings. There was one duplicate (`getrandom` 0.2 and 0.4, both under redoxfs, host-side only,
+skipped with a reason). Three licenses beyond MIT/Apache-2.0 are genuinely needed (BSD-3-Clause,
+0BSD, Apache-2.0 WITH LLVM-exception). Two crates could not be distinguished from a `version = "*"`
 dependency until they declared `publish = false`.
 
 **Vendored integrity is the half that changes a claim rather than adding a check.** §34 and milestone
@@ -101,7 +102,7 @@ trust decision made by reading the code (notes/redoxfs-audit.md), and a hash can
 
 Fuzzing (milestone 42's third leg). Which parsers get harnesses, what a corpus is committed
 against, and how a fuzzer's findings get triaged against §35's three dispositions is its own design
-pass, and bolting a `cargo-fuzz` job onto this milestone would have produced a job nobody reads.
+pass. Bolting a `cargo-fuzz` job onto this milestone would have produced a job nobody reads.
 
 ## Rejected
 

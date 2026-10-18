@@ -19,8 +19,8 @@ The page ships; a reader can call `user_mode_runtime::current_cpu` today.
 
 ## Why this belongs on the list rather than in a report
 
-The page was justified by a consumer that does not exist yet. That is not a flaw in the reasoning:
-the consumer is what decided the shape (a load rather than a crossing, because an allocator asks on
+The page was justified by a consumer that does not exist yet. That is not a flaw in the reasoning.
+The consumer is what decided the shape (a load rather than a crossing, because an allocator asks on
 every allocation), and the shape had to be decided before anything could be built on it. But it does
 mean the mechanism currently has **no measured benefit at all**, and the numbers quoted for it are
 Linux's, about Linux. Until something allocates against it, nife has a fast answer to a question
@@ -33,10 +33,10 @@ fixed.
 
 A small-object allocator in userspace that keeps a free list per CPU id, reads its own CPU on each
 allocation, and falls back correctly when the answer turns out to be the previous core's. The
-fallback is the interesting half and the reason this is a milestone rather than an afternoon: the
-value can be stale the instruction after it is read, Linux solves that with `rseq`'s restartable
+fallback is the interesting half and the reason this is a milestone rather than an afternoon. The
+value can be stale the instruction after it is read. Linux solves that with `rseq`'s restartable
 sequences, and this tree deliberately does not have those. So the design question is what
-correctness argument replaces them, and the candidates (a per-list lock taken only on the slow
+correctness argument replaces them. The candidates (a per-list lock taken only on the slow
 path, a compare-and-swap that tolerates the wrong list, an owner check on free) differ in exactly
 the cost this page was chosen to avoid.
 

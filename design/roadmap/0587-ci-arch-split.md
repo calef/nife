@@ -105,10 +105,10 @@ Why the two QEMU jobs stay, and why only weakly. Recalled from QEMU's documentat
 measured here: multi-threaded TCG runs each guest core on its own host thread and translates guest
 loads and stores to plain host ones. So an aarch64 or riscv64 guest on an aarch64 host can observe
 reorderings the host permits, while on an x86_64 host it sees only what TSO allows. The tree already
-records the other half of that rule: `helpers/qemu-runner-x86_64.sh` notes that QEMU refuses
+records the other half of that rule. `helpers/qemu-runner-x86_64.sh` notes that QEMU refuses
 parallel cores for an x86_64 guest on an aarch64 host (it falls back to round-robin), which is what
 a host weaker than its guest looks like. So the SMP kernel legs on arm64 are the only place CI puts
-guest code in front of weak-memory reorderings, and moving them would remove that silently. "Weakly"
+guest code in front of weak-memory reorderings. Moving them would remove that silently. "Weakly"
 because nothing in this tree records a failure those legs caught that an x86_64 host would have
 missed. The value is a plausible class, not a demonstrated one.
 
@@ -193,4 +193,4 @@ rather than bought) already names "merge throughput" as one of the three things 
 
 ## Index row
 
-On 2026-09-24 arm64 hosted runners were the bottleneck, not the 60-job cap: ~20 jobs ran while 150+ waited. One measured x86_64 run of every job matched arm64's results, so 15 of 18 jobs move to `ubuntu-24.04`, the two SMP QEMU jobs and the arch falsification replay stay on arm64, and a one-minute aarch64 kernel proof keeps `arch/aarch64/` proved.
+On 2026-09-24 arm64 hosted runners were the bottleneck, not the 60-job cap: ~20 jobs ran while 150+ waited. One measured x86_64 run of every job matched arm64's results, so 15 of 18 jobs move to `ubuntu-24.04`. The two SMP QEMU jobs and the arch falsification replay stay on arm64, and a one-minute aarch64 kernel proof keeps `arch/aarch64/` proved.
