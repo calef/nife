@@ -10,9 +10,9 @@ ratified_by: calef
 **Decided 2026-07-30 (milestone 45), the first time code scanning actually ran.** CodeQL found nine
 things, and all nine are fixed: seven CI jobs holding a `GITHUB_TOKEN` with permissions they never
 used, and two `rust/access-invalid-pointer` in `crates/intrusive` that moving the queue API to
-`NonNull` cleared outright: `/language:rust` reports 2 results on `refs/heads/main` and 0 on
-`refs/pull/5/head`, holding across four commits on each side, the oldest zero being the NonNull
-commit itself.
+`NonNull` cleared outright. `/language:rust` reports 2 results on `refs/heads/main` and 0 on
+`refs/pull/5/head`, holding across four commits on each side. The oldest zero is the NonNull commit
+itself.
 
 The controlled comparison above is the evidence, and a query of `?ref=refs/heads/<branch>` is not:
 CodeQL does not store a PR's analyses under the branch ref, so that ref has zero analyses and the

@@ -30,7 +30,7 @@ than a profile nobody manufactures.
 
 It is a separate CI job, not extra work inside `script/test`. The matrix is the same suite five
 times, so folding it in would make every developer's gate four times longer for a check whose whole
-value is that it rarely changes anything; on its own runner it costs no wall clock anyone waits for.
+value is that it rarely changes anything. On its own runner it costs no wall clock anyone waits for.
 On every push rather than nightly, because what breaks it is a change to `kernel/src/arch/riscv64/`,
 which arrives in a pull request, and a nightly reports the failure a day after the merge that caused
 it.
@@ -38,7 +38,7 @@ it.
 ## Narrow the emulator, never fork it
 
 A forked QEMU is a machine that exists nowhere. It proves nothing about the real chip and
-nothing about the standard emulator, which is the worst of both, and this project pins QEMU
+nothing about the standard emulator, which is the worst of both. This project pins QEMU
 (`.qemu-version`, built from source in CI) precisely so that instruction counts mean the same thing
 on a laptop and a runner. `-cpu` already narrows; use it.
 

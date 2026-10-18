@@ -239,5 +239,5 @@ tree later resolved this.
 Classifies every passage of `AGENTS.md` by whether an agent must already be carrying it or can look
 it up when the task arrives, and finds five briefs' worth of prose that fails the carry test. It is
 the still-open "split" half of milestone 118 (CLAUDE.md has a budget, and the rules that get
-violated move up the ladder), run against a timing test rather than 118's duplication test, and it
-is blocked on calef because neither `AGENTS.md` nor `briefs/` is a developer lane's to edit.
+violated move up the ladder), run against a timing test rather than 118's duplication test. It is
+blocked on calef because neither `AGENTS.md` nor `briefs/` is a developer lane's to edit.

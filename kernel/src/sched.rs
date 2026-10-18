@@ -70,6 +70,7 @@ mod process;
 mod region_reaping;
 mod rendezvous;
 mod spawning;
+mod suspension;
 mod switch_decision;
 mod thread_control_block;
 mod thread_table;
@@ -101,6 +102,7 @@ pub use process::{process_state, process_threads_started, reap_corpses_now, stra
 pub use region_reaping::*;
 pub use rendezvous::*;
 pub use spawning::*;
+pub use suspension::{resume_thread_control_block, suspend_thread_control_block};
 pub use thread_control_block::*;
 pub use thread_table::*;
 pub use timer::*;

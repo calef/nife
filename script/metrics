@@ -281,9 +281,10 @@ NAME_STATUSES = name_provenance.STATUSES
 # file, because `.github/workflows/metrics.yml` runs it on a GitHub runner where none of that
 # exists. A trailer-based series can live here. A token-based one cannot.
 #
-# **Every commit falls in exactly one of three buckets, and the sum is checked** (calef,
+# **Every commit falls in exactly one of four buckets, and the sum is checked** (calef,
 # 2026-09-24). `attributed` (a trailer, counted per model), `unattributed` (authored, no trailer),
-# and `merge`. `models_by_week` asserts that the three add up to the week's whole commit count, and
+# `merge`, and `claim` (an empty commit). `models_by_week` asserts that the four add up to the
+# week's whole commit count, and
 # a mismatch is a hard failure rather than a note. That assertion is the point of the shape: every
 # other miscount this tree has written up was a count over a set nobody could see, and this one is
 # auditable by arithmetic. If normalization ever drops a name, or a rule is wrong, the total stops
@@ -307,9 +308,15 @@ MODEL_SLUGS = ['opus_5', 'opus_5_5', 'opus_4_8', 'sonnet_5', 'fable_5', 'fable_5
 # against all 5,487 commits: 2,934 carry a trailer and these seven spellings are all of them.
 # `Claude Opus 5.5` joined the same day, when the tree switched to it: until it had a row here every
 # commit it signed fell into `other_models`, which is the warning below doing its job.
-# `Claude Code` is the tool rather than a model; it signs exactly one commit, from before the
-# convention settled, and it is recorded here so that it lands in `other_models` as a decision
-# rather than as an unrecognized value warned about on every run for the rest of the project.
+# `Claude Code` is the tool rather than a model. It is the default `script/claim` signs its empty
+# claim commit with, and those land in the `claim` bucket, never here; the one non-empty commit it
+# signs predates the convention. `OpenCode (GLM)` (normalized to `OpenCode`) signed 100 commits on
+# 2026-10-15 and 10-16 UTC and names a harness and a vendor but no version, and nothing in the
+# tree says which ran: `commit-models.csv` holds none of those shas and `effort.csv` has no GLM row
+# for 2026W42. Choosing `glm_5_3` or `glm_5_3_flash` would be the silent merge the next paragraph
+# forbids, so both tool names land in `other_models` as decisions rather than as unrecognized
+# values warned about on every run. `GLM-5.3-Flash` is a spelling of `GLM 5.3 Flash`, the same
+# model, and shares its column.
 MODEL_TRAILERS = {
     'Claude Opus 5': 'opus_5',
     'Claude Opus 5.5': 'opus_5_5',
@@ -321,7 +328,9 @@ MODEL_TRAILERS = {
     'Claude Haiku 4.5': 'haiku_4_5',
     'GLM 5.3': 'glm_5_3',
     'GLM 5.3 Flash': 'glm_5_3_flash',
+    'GLM-5.3-Flash': 'glm_5_3_flash',
     'Claude Code': 'other_models',
+    'OpenCode': 'other_models',
 }
 MODEL_UNKNOWN = 'other_models'
 
@@ -351,10 +360,11 @@ def signed_by(sha, trailer_names, recorded):
         return trailer_names
     return [recorded[sha]] if sha in recorded else []
 
-# The three buckets no model owns. `pre_convention` is split out of `unattributed` because the two
+# The buckets no model owns. `pre_convention` is split out of `unattributed` because the two
 # hide different facts: a commit made before the first trailer ever appeared could not have carried
 # one, and a commit made after it and carrying none is a gap. Only the second is a defect.
-MODEL_EXTRA = ['unattributed', 'pre_convention', 'merge']
+# `claim` is an empty commit, which `models_by_week` explains.
+MODEL_EXTRA = ['unattributed', 'pre_convention', 'merge', 'claim']
 
 
 def _model_col(kind, slug):
@@ -425,7 +435,8 @@ MEASURES = [
     # The model-attribution columns (file name `models.csv`; Name: ratified 2026-09-24 (calef, in session, when asked to ratify the two metrics files the split produced; nothing refused)). Commits
     # and lines are one measure and one file rather than two, because a single pass over the same
     # git log produces both and a week that has one always has the other. The two charts it feeds
-    # keep their own names, `models-commits.svg` and `models-lines.svg`.
+    # keep their own names, `models-commits.svg` and `models-lines.svg`. Column name
+    # `model_commits_claim` provisional (metrics-claim-band, 2026-10-18 UTC).
     ('models', [_model_col('commits', s) for s in MODEL_SLUGS + MODEL_EXTRA]
      + ['model_commits_total']
      + [_model_col('lines', s) for s in MODEL_SLUGS + ['unattributed', 'pre_convention']]),
@@ -812,13 +823,24 @@ def models_by_week(rev):
     `merges_by_week`: a commit's trailer and its diff are facts that do not change, so one pass
     over one log answers every week at once.
 
-    **Three buckets, mutually exclusive, and the sum is asserted.**
+    **Four buckets, mutually exclusive, and the sum is asserted.**
 
     - `merge`, first, because a merge commit is not authored work. On this repository
       `allow_squash_merge` is false and the merge queue creates them, so a merge commit IS a pull
       request landing, which makes this a throughput count worth having on its own terms rather
       than a residue. 95 merge commits do carry a trailer, from an agent resolving a conflict, and
       the bucket still wins: the commit records a landing, not a piece of writing.
+    - `claim`, next, for a commit whose tree is its parent's tree: it changes nothing. That is what
+      makes a commit a claim under §90 (the claim is a draft pull request): `script/claim` commits
+      `--allow-empty` so the draft survives its base landing, and signs it with whatever
+      `NIFE_CLAIM_MODEL` names, `Claude Code` by default. So neither the trailer nor the `claim:`
+      subject is the test. Ten non-empty commits have a `claim:` subject and are real work on
+      `script/claim`; the hand-made claims from before that script have subjects like `milestone
+      208: claim the lane`. Measured on main 2026-10-18 UTC: 959 empty non-merge commits, 914 with
+      the script's `claim:` subject and 36 of the other 45 hand-made claims. Six are CI re-triggers
+      and three are stray empty commits, which carry no work either and are counted here too: an
+      exception, on purpose, since telling them apart would need a subject pattern. A claim
+      carries no line count.
     - `attributed`, per model, for a non-merge commit whose trailer this table knows.
     - `unattributed`, for a non-merge commit with no trailer, split into `pre_convention` (before
       the first trailer this repository ever carried) and `unattributed` proper (after it, which is
@@ -850,17 +872,19 @@ def models_by_week(rev):
     # process, the same economy `Tree` buys with one `cat-file --batch`. RS separates the records
     # because a commit subject can hold anything, US separates trailers because a trailer value can
     # hold a comma.
-    fmt = '%x1e%H%x09%cI%x09%(trailers:key=Co-Authored-By,valueonly,separator=%x1f)'
+    fmt = '%x1e%H%x09%T%x09%P%x09%cI%x09%(trailers:key=Co-Authored-By,valueonly,separator=%x1f)'
     log = git('log', '--numstat', '--format=' + fmt, rev).decode('utf-8', 'replace')
     merge_parents = set(git('log', '--min-parents=2', '--format=%H', rev).decode().split())
     first_trailer = None
     records = []
+    trees = {}
     recorded = commit_models()
     for chunk in log.split('\x1e'):
         if not chunk.strip():
             continue
         head, _, rest = chunk.partition('\n')
-        sha, when, trailers = head.split('\t')
+        sha, tree, parents, when, trailers = head.split('\t')
+        trees[sha] = tree
         names = [normalize_model(t) for t in trailers.split('\x1f') if t.strip()]
         names = signed_by(sha, names, recorded)
         churn = 0
@@ -869,16 +893,19 @@ def models_by_week(rev):
                 continue
             added, removed, _ = line.split('\t', 2)
             churn += (int(added) if added != '-' else 0) + (int(removed) if removed != '-' else 0)
-        records.append((sha, when, names, churn))
+        records.append((sha, tree, parents, when, names, churn))
         if names and sha not in merge_parents and (first_trailer is None or when < first_trailer):
             first_trailer = when
 
-    for sha, when, names, churn in records:
+    for sha, tree, parents, when, names, churn in records:
         week = week_of(when)
         row = bucket(week)
         row['_commits'] = row.get('_commits', 0) + 1
         if sha in merge_parents:
             row['merge'] += 1
+            continue
+        if parents and trees.get(parents) == tree:
+            row['claim'] += 1
             continue
         if names:
             # **A commit with more than one trailer is counted once, under the first, and named on
@@ -917,7 +944,7 @@ def models_by_week(rev):
             # Loud, because a denominator that leaks quietly is the failure this whole shape was
             # built to make impossible. There is no softer self-check in this script to follow.
             raise SystemExit('metrics: %s does not balance: %d commits, %d bucketed '
-                             '(attributed + unattributed + merge must be every commit)'
+                             '(attributed + unattributed + merge + claim must be every commit)'
                              % (week, total, counted))
         cells = {_model_col('commits', s): row[s] for s in slugs}
         cells['model_commits_total'] = total
@@ -2487,8 +2514,10 @@ def series_of(rows, weeks, columns, scale=1.0, hues=None):
 # every stack-adjacent pair is 11.6 or more apart (x100; the palette's own target is 8) in both
 # modes, and the worst non-adjacent pairs (Opus 4.8 and GLM 5.3 Flash, about 7) are told apart by
 # the legend and each segment's <title>. Several light steps sit under 3:1 on white, the same relief
-# the palette comment above already relies on. The shared palette has eight slots and this chart
-# needs up to fourteen series, so it carries its own hues the way the fatal-risks colours chart
+# the palette comment above already relies on. The claim tan, checked the same way 2026-10-18 UTC,
+# sits on top of merge, 24.8 and 19.6 from it; in a week with no merge it would touch before the
+# convention at 8.7 and 7.7, which is the palette's target and no better. The shared palette has
+# eight slots and this chart needs up to fifteen series, so it carries its own hues the way the fatal-risks colours chart
 # does, rather than cycling or widening the eight that nine other charts depend on.
 MODEL_HUES = {
     'opus_4_8':      ('#8fb8ec', '#2c5ea8'),
@@ -2507,6 +2536,7 @@ MODEL_BAND_HUES = {
     'unattributed':   ('#eb6834', '#d95926'),
     'before the convention': ('#b1bac4', '#57606a'),
     'merge (a pull request landing)': ('#5a6b7d', '#94a5b7'),
+    'claim (an empty commit)': ('#c4a982', '#7a6a52'),
 }
 
 
@@ -2532,6 +2562,7 @@ def model_chart(kind, with_merge):
                ('before the convention', 'pre_convention')]
     if with_merge:
         buckets.append(('merge (a pull request landing)', 'merge'))
+        buckets.append(('claim (an empty commit)', 'claim'))
     columns += [(label, _model_col(kind, s)) for label, s in buckets]
     hues = [MODEL_HUES[s] for s in models] + [MODEL_BAND_HUES[label] for label, _s in buckets]
     return columns, hues
@@ -2629,7 +2660,7 @@ CHARTS = [
      'ci_build_median_minutes'),
     ('models-commits.svg', 'Commits each week, by the model that signed them',
      'from the Co-Authored-By trailer, and for GLM commits from commit-models.csv; '
-     'attributed + unattributed + merge is every commit that week',
+     'attributed + unattributed + merge + claim is every commit that week',
      model_chart('commits', True)[0], 1.0, None, 'model_commits_unattributed',
      model_chart('commits', True)[1]),
     ('models-lines.svg', 'Lines touched each week, by the model that signed them, in thousands',

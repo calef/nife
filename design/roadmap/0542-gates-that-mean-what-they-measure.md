@@ -37,7 +37,7 @@ and calef's ruling picks the first:
   requests that did not cause it.
 - Auto-re-saving on a bump. Refused, and the refusal is written in the code at both places
   somebody would reach for it. A floor that tracks the compiler by construction moves by exactly as
-  much as a nightly moved the kernel, so a nightly that genuinely made this kernel slower would
+  much as a nightly moved the kernel. So a nightly that genuinely made this kernel slower would
   report nothing, and catching that is most of what the tripwire is for.
 
 What was built. Four small pieces, and the first two are what make the third unnecessary:
@@ -49,7 +49,7 @@ What was built. Four small pieces, and the first two are what make the third unn
    tree stated it.
 2. `script/lint` fails when that line and the pin disagree. This is the resolution of the second
    and third shapes above rather than a compromise between them: **a branch that does not raise the
-   pin cannot fail this check**, because its baseline and its pin already agree and the merge queue
+   pin cannot fail this check**, because its baseline and its pin already agree. The merge queue
    rebases it onto a `main` where they still do. The only branch it can fire on is the one that
    caused it.
 3. `script/toolchain-bump` says the re-record is the operator's, prints the exact commands, and
@@ -60,7 +60,7 @@ What was built. Four small pieces, and the first two are what make the third unn
 
 **One marked exception, and it is a foot gun.** `script/toolchain-bump` sets
 `NIFE_BUMP_IN_PROGRESS=1` around its own gate run, because it has just raised the pin and has not
-re-recorded anything, so the check is guaranteed to fire there and firing would only trip the
+re-recorded anything. So the check is guaranteed to fire there. Firing would only trip the
 script's restore trap and un-bump a tree that is otherwise fine. Nothing in CI sets it. The
 enforcement was never in that script: it is `script/lint` running unexempted on the bump's pull
 request, and a green lint bought with this variable means nothing. Named provisionally.
@@ -177,7 +177,7 @@ half of the 32 KB L1i. It is DECIDED and not built, so printing the fraction is 
 decision visible against the number it was made about.
 
 **Drift still fails and the budget does not.** A 5% jump inside one pull request is a mistake
-somebody just made, which is what a tripwire catches well; a budget the tree is 1.5x to 2x over
+somebody just made, which is what a tripwire catches well. A budget the tree is 1.5x to 2x over
 would fail on the day it was written and be turned off on the next.
 
 ## What was deliberately not done
@@ -225,8 +225,8 @@ would fail on the day it was written and be turned off on the next.
 - **Recorded.** The most urgent item here, and an architect's call. It is deliberately not written
   up as a `design/decisions/` section, because a lane does not mint them; the maintainer holds it.
   `.qemu-version` pins QEMU 11.0.2 and the development machine has run 11.1.1 since 2026-08-28.
-  Which one this project should run is not decided by this milestone, and it is not a tidying job:
-  the divergence has already reached published figures, and the first deliberate `--save` of any
+  Which one this project should run is not decided by this milestone, and it is not a tidying job.
+  The divergence has already reached published figures. The first deliberate `--save` of any
   baseline forces the answer, because CI builds the pinned emulator and will read that floor on it.
 - **Recorded.** Every baseline's `# qemu:` line says `unrecorded`, truthfully, and will keep saying
   so until somebody re-records deliberately. Re-recording was out of scope here.
@@ -235,8 +235,8 @@ would fail on the day it was written and be turned off on the next.
 
 Two gates had stopped making claims about this kernel, and one of them for two reasons. The icount floors in `bench/baseline-*.txt`
 are revalued by any toolchain bump, which happened unremarked on 2026-09-15 and eroded most of the
-tripwire's headroom; they now carry the nightly they were read against, `script/lint` fails when
-that disagrees with the pin (which can only happen on a branch that raises it), and both
+tripwire's headroom. They now carry the nightly they were read against. `script/lint` fails when
+that disagrees with the pin (which can only happen on a branch that raises it). Both
 `script/toolchain-bump` and the proposing workflow say the re-record is a human's while recording
 why auto-re-saving is refused. The emulator is the other half of the same fact and was in worse
 shape: `.qemu-version` pins 11.0.2, this machine has run 11.1.1 since 2026-08-28, nothing checked,
@@ -244,6 +244,6 @@ and `script/qemu-check` asserted the baselines had been recorded against the pin
 carry the emulator that ran (`unrecorded` for every existing file, which is the truth about them),
 `--check` compares it against the emulator in front of it, and neither version was changed to make
 anything pass. `script/fastpath-footprint` reported drift from an old binary rather
-than distance to a budget; it now prints bytes against the 4 KiB target and the 32 KB L1i that
-binds, plus §144's undelivered 16 KiB ceiling, with drift demoted to the secondary check that still
+than distance to a budget. It now prints bytes against the 4 KiB target and the 32 KB L1i that
+binds, plus §144's undelivered 16 KiB ceiling. Drift is demoted to the secondary check that still
 fails. Nothing was shrunk and no footprint baseline was re-saved.

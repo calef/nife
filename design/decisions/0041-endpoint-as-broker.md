@@ -47,7 +47,7 @@ an attacker endowed with the honest client's exact capabilities.
 ## 2. Revoking a device means taking it back, not destroying it
 
 Step 2 revokes the outgoing server's device capability so a device never has two owners. §13's
-`Frame::REVOKE` was the obvious mechanism and it does the wrong thing here: it revokes all
+`Frame::REVOKE` was the obvious mechanism and it does the wrong thing here. It revokes all
 derivatives of a page *including the invoker's own*, because it exists to make reclamation safe and
 a page about to be freed must not stay reachable. A device page is never reclaimed, and the kernel
 mints a `DeviceFrame` capability once, at boot, so a symmetric revoke would strand the UART for
@@ -80,12 +80,12 @@ would take the replacement's copy too, and nothing could hand one back.
 
 What moves is the endowment, not the build. The replacement is laid out, endowed with everything
 except the device, and left unconfigured (a thread that was never started is in nobody's queue, so
-it cannot race the incumbent for requests); the registers are mapped into it on the far side of the
+it cannot race the incumbent for requests). The registers are mapped into it on the far side of the
 revoke. The down window is then four syscalls wide: revoke, map, configure, start.
 
 Building it *is* what showed that the build has to stay first, for a second reason the design did
-not anticipate: process construction is a few hundred syscalls, and when the build was moved after
-the swap trigger the client got through its entire conversation on RISC-V before the operator was
+not anticipate. Process construction is a few hundred syscalls. When the build was moved after the
+swap trigger, the client got through its entire conversation on RISC-V before the operator was
 ready. So the correct order is the roadmap's order for a reason the roadmap did not give.
 
 ## 4. The latency ladder: two rungs built, and the rule that governs them
@@ -95,7 +95,7 @@ The block's rule is *opt-in per channel, never the default*, and the reason is a
 - Rung 0, the default: the shared endpoint. No process in the path, cost zero, buffering by the
   kernel's sender queue, decoupling limited to "the caller blocks until the replacement arrives".
 - Rung 1, opt-in: `broker`, a queue-server process. A producer that cannot afford to block gets
-  an immediate `ACCEPTED` while the backend is away; the broker holds the backlog in its own `.bss`
+  an immediate `ACCEPTED` while the backend is away. The broker holds the backlog in its own `.bss`
   (bounded, inside its own region, so a runaway producer hits `QUEUE_FULL` and never kernel memory)
   and drains it in order when a backend returns. Its control messages travel in band on its own
   front endpoint, for the same reason `OP_QUIESCE` does: a server blocks on one endpoint, and a

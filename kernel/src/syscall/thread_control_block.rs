@@ -1,6 +1,6 @@
 //! **The `ThreadControlBlock` methods**: `CONFIGURE`, `CAP_INSERT`, `START` and milestone 812
 //! (`std::thread::spawn` runs real threads in one address space)'s `SET_THREAD_POINTER`, the
-//! process-spawn machinery a loader runs once per child. Cut out of `syscall.rs` along this seam by
+//! process-spawn machinery a loader runs once per child, and §300 (the paused state, a TCB verb, silent)'s `SUSPEND` and `RESUME`. Cut out of `syscall.rs` along this seam by
 //! §266 (a Rust source file stays under 2,000 lines); what moved is unchanged.
 //!
 //! Name: provisional (milestone 812's lane, 2026-10-10 UTC).
@@ -16,8 +16,9 @@ use crate::sched;
 /// child, never a step of the IPC round trip, and milestone 812's `SET_THREAD_POINTER` arm put
 /// aarch64's flat `syscall_entry` 6% over `script/fastpath-footprint`'s 5% bound while it was
 /// folded into [`super::invoke`]. One call here instead costs the entry one branch. WRITE on the TCB
-/// capability is the authority to shape and start it; every method but a self-aimed
-/// `SET_THREAD_POINTER` refuses a thread that is not an embryo, in the scheduler.
+/// capability is the authority to shape, start, suspend and resume it. The four spawn methods but
+/// a self-aimed `SET_THREAD_POINTER` refuse a thread that is not an embryo, in the scheduler;
+/// `SUSPEND` and `RESUME` refuse one that is.
 #[inline(never)]
 pub(super) fn thread_control_block_invoke(
     frame: &mut TrapFrame,
@@ -53,6 +54,22 @@ pub(super) fn thread_control_block_invoke(
                 return Err(Error::NotPermitted);
             }
             sched::start_thread_control_block(tid, [a0, a1, a2])?; // the child's x0, x1, x2 (19d/19e)
+            Ok(0)
+        }
+        // §300 (the paused state, a TCB verb, silent): the TCB capability is the whole
+        // authority, WRITE as for every method here.
+        abi::thread_control_block::SUSPEND => {
+            if !rights.allows(Rights::WRITE) {
+                return Err(Error::NotPermitted);
+            }
+            sched::suspend_thread_control_block(tid)?;
+            Ok(0)
+        }
+        abi::thread_control_block::RESUME => {
+            if !rights.allows(Rights::WRITE) {
+                return Err(Error::NotPermitted);
+            }
+            sched::resume_thread_control_block(tid)?;
             Ok(0)
         }
         _ => Err(Error::BadMethod),

@@ -61,5 +61,5 @@ output is a note rather than a proof.
 ## Index row
 
 178 harnesses each prove something about one package, and nothing asks whether the properties compose
-into a statement about a path a program takes; the paper this tree read says nobody can know that in
+into a statement about a path a program takes. The paper this tree read says nobody can know that in
 advance, which makes writing down the gap the cheap half.

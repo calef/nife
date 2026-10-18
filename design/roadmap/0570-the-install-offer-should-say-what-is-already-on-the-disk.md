@@ -33,7 +33,7 @@ somebody's photographs on a single large partition, answers that question "no" a
 described to the person about to lose it as an unqualified target.
 
 A confirmation is only worth what the person can check it against. The install's whole safety
-property is that somebody read the sentence and agreed, and the sentence currently withholds the one
+property is that somebody read the sentence and agreed. The sentence currently withholds the one
 fact that would most reliably stop a wrong answer: that this disk is not empty and here is what is
 on it.
 
@@ -68,10 +68,10 @@ and, for the case the current survey covers, the line it already implies:
 ```
 
 Cost: one spawn beside the one already there, a report wide enough for a handful of partitions, and
-a printing loop. The survey role in `system_installer` could equally grow the answer rather than a second
-program being spawned, and the second program is the better shape: `disk_surveyor` is the thing
-in this tree whose whole job is saying what is on a disk, it is already tested against a table
-`sgdisk` wrote, and duplicating its GPT reading inside the installer would be two readers that can
+a printing loop. The survey role in `system_installer` could equally grow the answer rather than a
+second program being spawned. The second program is the better shape. `disk_surveyor` is the thing
+in this tree whose whole job is saying what is on a disk, and it is already tested against a table
+`sgdisk` wrote. Duplicating its GPT reading inside the installer would be two readers that can
 disagree.
 
 ## What it would settle

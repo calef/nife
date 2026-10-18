@@ -11,7 +11,7 @@ needs_person: no
 ---
 # 556. A second RISC-V implementation, for €16 a month
 
-Milestone 89 (Scaleway EM-RV1: a second RISC-V implementation, rented) covers this block: it made the same proposal on 2026-08-03 and carries the port plan, after calef ruled to rent the machine (§215 (the second RISC-V machine is a rented Scaleway Elastic Metal RV1)). Nothing below was lost: the offer is re-read in §215, the port's distance is measured in milestone 89, and this block's two exits (a vendor blob, a 0% SLA) are milestone 89's BUGS and §215's open questions. *(This file was renumbered on 2026-09-22 from 527 to 556 because a concurrently merged lane had taken 527.)* Promoted from the proposal `a-second-risc-v-implementation-for-rent`, filed 2026-09-20, on calef's instruction of 2026-09-20 to give every proposal on `main` a number. The text below is the proposal's own, unedited except for this paragraph.
+Milestone 89 (Scaleway EM-RV1: a second RISC-V implementation, rented) covers this block. It made the same proposal on 2026-08-03 and carries the port plan, after calef ruled to rent the machine (§215 (the second RISC-V machine is a rented Scaleway Elastic Metal RV1)). Nothing below was lost: the offer is re-read in §215, the port's distance is measured in milestone 89, and this block's two exits (a vendor blob, a 0% SLA) are milestone 89's BUGS and §215's open questions. *(This file was renumbered on 2026-09-22 from 527 to 556 because a concurrently merged lane had taken 527.)* Promoted from the proposal `a-second-risc-v-implementation-for-rent`, filed 2026-09-20, on calef's instruction of 2026-09-20 to give every proposal on `main` a number. The text below is the proposal's own, unedited except for this paragraph. Its long sentences are split to meet §213 (writing standards), with the argument unchanged.
 
 As filed: everything the port needs is in this tree, and the machine can be rented by the hour. Milestone 89's gate is HARDWARE.
 
@@ -39,12 +39,12 @@ command-line driven, which is what turns a bench session into a job.
 
 **It is a different implementation, not a second copy.** radon is a StarFive JH7110 with SiFive U74
 cores; this is a T-Head TH1520 with C910. A port to it exercises everything this tree assumed about
-one vendor's silicon: the UART's address and behavior, what firmware hands over, the interrupt
+one vendor's silicon. That is the UART's address and behavior, what firmware hands over, the interrupt
 controller's layout, the device tree's shape, and whatever the C910 does differently about memory
 ordering and cache maintenance.
 
-DECISIONS §19 (architectural parity is a tenet) makes parity a gate rather than an aspiration, and
-the strongest reading of that rule is
+DECISIONS §19 (architectural parity is a tenet) makes parity a gate rather than an aspiration.
+The strongest reading of that rule is
 that two implementations of an architecture are what turn "it works on riscv64" from a claim about a
 board into a claim about an ISA. **This tree has never had a second implementation of any
 architecture.**
@@ -69,7 +69,7 @@ The work is unknown in size and that is the first thing to establish. What is kn
 
 ## What would make this not worth doing
 
-Stated so a lane does not have to discover it: if the port turns out to need a vendor kernel, a
+This is stated so a lane does not have to discover it. If the port turns out to need a vendor kernel, a
 signed bootloader, or a firmware blob this tree cannot inspect, it stops being a nife target and
 becomes a Linux box that happens to be RISC-V. The serial console and the custom-OS statement suggest
 otherwise, but they are marketing until a byte comes out of that port.

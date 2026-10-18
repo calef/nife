@@ -24,7 +24,7 @@ kernel opened `CNTKCTL_EL1.EL0VCTEN` (and `scounteren.TM` on RISC-V). Wall-clock
 
 The payoff is that **adjusting the wall clock cannot perturb monotonic time, by construction rather
 than by discipline.** Unix reaches for `adjtime` slewing partly because stepping the clock backwards
-breaks code that assumed it only moved forward; here the counter is not in the write path at all, so
+breaks code that assumed it only moved forward. Here the counter is not in the write path at all, so
 a step is an offset write and `Instant` never sees it. Slewing for wall-clock readers' benefit
 becomes a policy the service *may* adopt rather than a correctness requirement. A test asserts the
 property directly (`adjusting_the_wall_clock_leaves_the_monotonic_counter_alone`).
@@ -89,7 +89,7 @@ For `std` this is where the rule bites hardest, because `SystemTime::now()` has 
 The only loud refusal available is a panic, and that is what an unknown clock gets, with a message
 naming which of the two causes it was (no capability, or no believable RTC). A program that never
 asks the time is unaffected. Recorded as a real limitation rather than a clean win: std has no way
-to represent "I do not know", so a program cannot ask before it asks, and the readable form of the
+to represent "I do not know", so a program cannot ask before it asks. The readable form of the
 state lives one level down in `clock_proto` for anything that wants to check first.
 
 ## Two drivers, because parity is a gate, and the binding chooses between them
@@ -128,6 +128,6 @@ ISA-keyed driver would compile clean and read garbage on the first real board.
 
   `date` distinguishes the two causes, because they call for different fixes: *the machine has no
   clock it believes* versus *this process holds no clock capability*. The second is probed without
-  touching the page: a process granted no clock has nothing mapped at `CLOCK_VA`, so reading to
-  find out would fault instead of answering; it invokes the slot with a method no object defines,
-  the same shape as the std PAL's `granted()`.
+  touching the page. A process granted no clock has nothing mapped at `CLOCK_VA`, so reading to
+  find out would fault instead of answering. The probe invokes the slot with a method no object
+  defines, the same shape as the std PAL's `granted()`.
