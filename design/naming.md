@@ -208,10 +208,7 @@ script/names --check       the gate; script/lint runs it
 The gate checks presence and form, and never keys on `ratified`, so an unratified name never fails
 a build.
 
-Crossing is a stated heuristic (`helpers/name_crossings.py` says what it counts and what it misses),
-and `--unratified` is the only command that pays for it, about 8 s. A program is a `[[bin]]`; a file
-another program includes is a module of it. calef, 2026-10-17 (UTC): names crossing a crate boundary
-are reviewed first, and internal names still need ratifying.
+The order of `--unratified` is ruled in [convention-rulings.md](naming/convention-rulings.md).
 
 A rule calef ratified for a class of names is recorded with his words in
 [convention-rulings.md](naming/convention-rulings.md) (2026-10-17). `script/names` counts every name
