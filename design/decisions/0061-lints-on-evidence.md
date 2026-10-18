@@ -55,7 +55,7 @@ of re-running it.
 
 The corollary matters more than the rule. Nothing goes in that table "to see what it finds", because
 `script/lint` runs `-D warnings`: adding a lint is a commitment to fix every existing violation
-first. That is the same ratchet discipline §38 applies to dead code, and it is why the two lints
+first. That is the same ratchet discipline §38 applies to dead code. It is why the two lints
 milestone 68 could not finish (`undocumented_unsafe_blocks`, 228 sites; `missing_docs`) are absent
 from the table rather than present with a pile of `#[allow]`s underneath them.
 
@@ -66,14 +66,14 @@ itself landed below the `## Reading` closer when it was written, so the headings
 then the closer, then §61, and the gate reported "numbering clean" throughout because it tests for gaps
 (`set(range(1, max+1)) - set(seen)`) and never for order. Corrected by hand on 2026-08-03. This is
 the same well-formed-but-wrong blind spot CLAUDE.md already records for `§N` citations, which is why
-it is written down here rather than only fixed: the check that would catch it is a comparison of
+it is written down here rather than only fixed. The check that would catch it is a comparison of
 heading order against numeric order, and it does not exist yet.
 
 `missing_docs` was absent for the reason above at this decision's writing (2026-08-03): item
 coverage was 67-94% and adopting it meant an open-ended commitment. **Superseded by §107
-(2026-08-22)**: three burn-down passes shrank the worklist from 32 crates to 7, changing the cost
-enough that calef took it as a considered exception to this section's own rule, recorded explicitly
-there rather than silently reversing it here.
+(2026-08-22)**: three burn-down passes shrank the worklist from 32 crates to 7. That changed the
+cost enough that calef took it as a considered exception to this section's own rule, recorded
+explicitly there rather than silently reversing it here.
 
 `undocumented_unsafe_blocks` WAS the standing example here and is now a gate: all 205 undocumented
 blocks were read and commented, and the lint is in `[workspace.lints]`. The episode that produced

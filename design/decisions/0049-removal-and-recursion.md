@@ -54,10 +54,10 @@ broke.
 
 ## Unix's semantics, kept, and one correction to this project's own reasoning
 
-Silent on success (`-v` exists because the default prints nothing); failure is a diagnostic plus a
-non-zero exit; `rm` on a directory without `-r` refuses with `EISDIR`; an interrupted `rm -r` leaves a
-partial tree, reports, and exits non-zero, because a transaction spanning requests would break §47's
-one-request-to-completion property.
+Silent on success (`-v` exists because the default prints nothing). Failure is a diagnostic plus a
+non-zero exit. `rm` on a directory without `-r` refuses with `EISDIR`. An interrupted `rm -r` leaves
+a partial tree, reports, and exits non-zero, because a transaction spanning requests would break
+§47's one-request-to-completion property.
 
 `-f` stays, and an earlier draft of milestone 47 was wrong about it. That draft argued it should
 not exist, reasoning that with no prompting its only remaining meaning is suppressing errors, which
@@ -69,5 +69,6 @@ thing actually does, not against what its name suggests.
 ## The fixture detail that makes `-f` testable at all
 
 `RM_MISSING` is a name the fixture **never stages**, asserted by a host test. Without that, the `-f`
-run and the plain run are indistinguishable: the whole of `-f` is that a name which is not there is
-not an error, so a fixture that accidentally staged it would make the test pass while proving nothing.
+run and the plain run are indistinguishable. The whole of `-f` is that a name which is not there is
+not an error, so a fixture that accidentally staged it would make the test pass while proving
+nothing.

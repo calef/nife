@@ -11,16 +11,6 @@
 # two counts). Median and bold are not asked of documents under 200 words.
 # measure: 3
 path	words	median	longest	bold_lead	bold_inline
-design/decisions/0047-directory-rights.md	-	-	45	-	-
-design/decisions/0049-removal-and-recursion.md	-	-	48	-	-
-design/decisions/0052-nameset-glob-grant.md	-	-	45	-	-
-design/decisions/0053-parity-matrix.md	-	-	45	-	-
-design/decisions/0056-verb-table.md	-	-	44	-	-
-design/decisions/0060-fuzzing-the-parsers.md	-	-	42	-	-
-design/decisions/0061-lints-on-evidence.md	-	20.5	46	-	-
-design/decisions/0062-below-the-stack-pointer.md	-	23	47	-	-
-design/decisions/0063-program-versus-crate.md	-	21	-	-	-
-design/decisions/0064-per-file-coverage.md	-	-	42	-	-
 design/decisions/0065-active-refusal.md	-	-	50	-	-
 design/decisions/0069-endow-versus-endowment.md	-	-	44	-	-
 design/decisions/0070-built-when-nothing-to-fix.md	-	-	52	-	-
