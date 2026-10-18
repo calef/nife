@@ -1,6 +1,8 @@
 ---
-status: PROPOSED
+status: DECIDED
 raised: 2026-09-19
+decided: 2026-10-18
+ratified_by: calef
 ---
 
 # 193. What a block-roster entry calls an NVMe disk, and whether it carries more than virtio does
@@ -10,6 +12,21 @@ whether milestone 421's `DECISION` gate had a decision behind it. It did not: th
 that block's own *What is needed from calef* section, which is one rung above a chat message and
 below where AGENTS.md says an open decision belongs. *(Section number provisional until the merge
 queue lands it.)*
+
+## The ruling
+
+calef, 2026-10-18 (UTC), recorded by the maintainer at 22:02Z.
+
+- **The entry stays 8 bytes** (question 2, layout A): an ordinal and a transport kind, for NVMe as
+  for virtio. A holder that needs more asks the server that owns the disk.
+- **The NVMe kind is `TRANSPORT_NON_VOLATILE_MEMORY_EXPRESS = 2`** (question 1, spelling A), by
+  §154's own row for `nvme`. No exception is made for a wire constant.
+- **The two virtio kinds say virtio, and `mmio` expands:** `TRANSPORT_MMIO` becomes
+  `TRANSPORT_VIRTIO_MEMORY_MAPPED_IO` and `TRANSPORT_PCI` becomes `TRANSPORT_VIRTIO_PCI`. An NVMe
+  disk is also a PCI device, so a bare `PCI` beside it would claim NVMe too. Their wire values
+  (0 and 1) do not change.
+- `transport_name` keeps printing `virtio-mmio` and `virtio-pci`, the virtio specification's own
+  names. Only identifiers move, as §154 has it for `nvme`.
 
 ## What is being decided
 
@@ -99,12 +116,10 @@ Nothing about who gets the endpoint. §86 and milestone 57 already hold that: th
 which program gets which device's endpoint at wiring time, and nothing a program computes from a
 roster changes it. This decision is only about what the page says.
 
-## What is blocked until this is answered
+## What it unblocks
 
 Milestone 421, which is gate `DECISION` for exactly this and nothing else. Its other dependency
 is closed: QEMU's NVMe is attached on every leg of all three runners (`NIFE_NVME`) and the
-surveyor's two clients run there today, so the work starts the day this is answered.
-
-Nothing else. The roster is correct as it stands for the two transports it names; what it cannot do
-is name the one device in this tree whose driver is a confined process, which is the irony milestone
-421's index row records.
+surveyor's two clients run there today. The roster is correct as it stands for the two transports
+it names; what it cannot do is name the one device in this tree whose driver is a confined process,
+which is the irony milestone 421's index row records.
