@@ -12,8 +12,8 @@ calef, 2026-09-20, on the three asks of the proposal
 in flight on another branch.)*
 
 The ruling, in one line. Keep option E, one roadmap in `basalt`, until the split makes a
-citation cross a repository boundary; record the deferral rather than letting it happen by default;
-and when the split comes, express a cross-repository dependency the way this tree already expresses
+citation cross a repository boundary. Record the deferral rather than letting it happen by default.
+When the split comes, express a cross-repository dependency the way this tree already expresses
 an in-tree one, on the blocked side only.
 
 ## 1. The citation identity is deferred, deliberately
@@ -36,13 +36,13 @@ Two conditions make the deferral honest rather than passive.
   merely indirect, and it is only writable while somebody still knows where each record went. Under E
   it stays nearly empty, which is exactly why establishing it costs nothing now.
 - **The revisit condition is an event, not a date**, in the shape milestone 448 (a refusal gets a
-  number, a status, and a condition that would change it) made mandatory: the first citation that
-  has to cross a repository boundary, and equally the first time two repositories mint the same
-  number independently.
+  number, a status, and a condition that would change it) made mandatory. The condition is the
+  first citation that has to cross a repository boundary, and equally the first time two
+  repositories mint the same number independently.
 
 The cost being accepted, stated because the options table underplays it. Under E the number stays
 hand-minted and global. Milestone 443 (lanes wait on each other for three reasons) made a collision
-cheap to *resolve* rather than impossible to *have*: two sessions that cannot see each other still
+cheap to *resolve* rather than impossible to *have*. Two sessions that cannot see each other still
 both reach for the next free number, and the integrator arbitrates at merge. That happened on the day
 of this ruling, when one lane reserved 449 to 490 and reported its ceiling so the maintainer could
 mint 491 to 516 above it. That coordination was a message between two agents, which is rung four,
@@ -59,11 +59,12 @@ has no home in either tree, and naming it is the right instinct: putting it in o
 that repository authoritative over another's schedule.
 
 The half that is amended, and the amendment is the whole of this clause. Deliverables in both
-repositories referencing each other means two records asserting one relationship, which is
-DECISIONS §90 (the claim is a draft pull request)'s "the same fact in two places" and drifts in the worst direction: the blocker is built
-and updated, and the blocked side still says it is waiting. This tree has that failure on file, in
-milestone 16 (real hardware + IOMMU-backed driver isolation), which listed three things as remaining when two were finished, and calef caught it by
-asking rather than any mechanism catching it.
+repositories referencing each other means two records asserting one relationship. That is
+DECISIONS §90 (the claim is a draft pull request)'s "the same fact in two places", and it drifts in
+the worst direction: the blocker is built and updated, and the blocked side still says it is
+waiting. This tree has that failure on file, in
+milestone 16 (real hardware + IOMMU-backed driver isolation), which listed three things as remaining
+when two were finished, and calef caught it by asking rather than any mechanism catching it.
 
 So: one writer per fact, which is what the tree already does. Every non-BUILT block carries a
 `Gate:` line, and `MILESTONE N` in it means this waits on that. The dependency is declared by the
@@ -82,7 +83,7 @@ which is a third reason the `MOVED` file earns its place at the split rather tha
 Adopted as asked. GitHub Issues are for a stranger's bug report on a released artifact (they have
 no commit bit and no checkout) and for cross-repository coordination that is **not** a dependency.
 Not for milestones, not for status, not for claims, and not for the argument behind a piece of work,
-which stays in the tree: `AGENTS.md`'s third principle is that a newcomer succeeds with only this
+which stays in the tree. `AGENTS.md`'s third principle is that a newcomer succeeds with only this
 repository, and an argument in a tracker fails that for anyone with a clone and no network. Twenty-one
 scripts under `script/` read `design/roadmap/` directly, and every one of them is a reason the record
 stays readable offline.

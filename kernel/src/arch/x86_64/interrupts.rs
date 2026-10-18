@@ -26,7 +26,7 @@ fn flags() -> u64 {
 }
 
 /// Are interrupts currently enabled?
-pub fn is_enabled() -> bool {
+pub(crate) fn is_enabled() -> bool {
     flags() & IF != 0
 }
 

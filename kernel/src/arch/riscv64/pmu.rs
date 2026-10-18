@@ -89,7 +89,7 @@ const FID_COUNTER_STOP: usize = 4;
 /// unreached [`init`] leaves behind.
 #[derive(Copy, Clone, PartialEq, Eq, Debug)]
 #[repr(u8)]
-pub enum CycleCounter {
+pub(crate) enum CycleCounter {
     /// [`init`] has not run.
     Unknown = 0,
     /// Firmware does not implement the SBI PMU extension. Nothing to ask.
@@ -253,7 +253,7 @@ pub fn init() {
 }
 
 /// **Why there is or is not a cycle counter on this hart.** See [`CycleCounter`].
-pub fn outcome() -> CycleCounter {
+pub(crate) fn outcome() -> CycleCounter {
     match OUTCOME.load(Ordering::Acquire) {
         x if x == CycleCounter::NoPmuExtension as u8 => CycleCounter::NoPmuExtension,
         x if x == CycleCounter::NoMatchingCounter as u8 => CycleCounter::NoMatchingCounter,
@@ -289,7 +289,7 @@ fn stop_counter(idx: usize) {
     not(any(test, feature = "system_tests", feature = "bench")),
     allow(dead_code)
 )]
-pub fn cycles() -> Option<u64> {
+pub(crate) fn cycles() -> Option<u64> {
     if outcome() != CycleCounter::Running {
         return None;
     }
@@ -298,7 +298,7 @@ pub fn cycles() -> Option<u64> {
 
 /// How wide the counter is, in bits, or `None` when there is none. For the boot line: a counter
 /// narrower than 64 bits wraps, and a reader differencing two reads needs to know where.
-pub fn cycle_counter_width() -> Option<u32> {
+pub(crate) fn cycle_counter_width() -> Option<u32> {
     if outcome() != CycleCounter::Running {
         return None;
     }
@@ -315,7 +315,7 @@ pub fn cycle_counter_width() -> Option<u32> {
 /// (`SBI_ERR_ALREADY_STOPPED`, -8) from "there was no counter" (-3, which is what an invalid index
 /// earns).
 #[cfg_attr(not(any(test, feature = "system_tests")), allow(dead_code))]
-pub fn stop() -> isize {
+pub(crate) fn stop() -> isize {
     if outcome() != CycleCounter::Running {
         return -3;
     }
@@ -413,7 +413,7 @@ fn sbi_call(fid: usize, args: [usize; 5]) -> (isize, usize) {
 }
 
 /// The boot line, printed beside the ISA summary.
-pub fn print_summary() {
+pub(crate) fn print_summary() {
     match outcome() {
         CycleCounter::Running => crate::println!(
             "  cycles      : SBI PMU counter {}, CSR {:#05x}, {} bits",

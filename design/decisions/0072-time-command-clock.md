@@ -22,9 +22,9 @@ decision easy in the end. `swish`'s block held that a `time` which cannot measur
 the command unmeasured, because that is §42's silent degradation with a stopwatch on it. Correct,
 and unaffected: with an ambient counter `time` can always measure, so the two clock refusals
 (`NoClock`, `UnknownClock`) became unreachable rather than tolerated. `NothingToTime` stays, being
-a usage error. Counter-only is also strictly *more* correct: a clock stepped mid-command used to
+a usage error. Counter-only is also strictly *more* correct. A clock stepped mid-command used to
 make the answer a difference of readings on two different clocks, which the shell detected and
-disclaimed; a monotonic counter cannot be stepped, so both the failure and its disclaimer are
+disclaimed. A monotonic counter cannot be stepped, so both the failure and its disclaimer are
 gone.
 
 If the counter is ever gated (seL4's time-protection work is the precedent, since timing is a
@@ -32,8 +32,8 @@ side channel), `time` inherits whatever the ABI does. The tool follows the ABI r
 pretending to lead it.
 
 What. Milestone 86 shipped `time` reading the shell's clock capability, as its block specified.
-The lane then argued in a BUGS entry that a duration does not need a clock at all: wall clock is
-`offset + counter`, the offset cancels across a command, and the counter is ambient
+The lane then argued in a BUGS entry that a duration does not need a clock at all. Wall clock is
+`offset + counter`, and the offset cancels across a command. The counter is ambient
 (`user_rt::monotonic_nanos`, two register reads, no syscall), so `end - start` reduces to a counter
 difference any process could take.
 
@@ -52,6 +52,6 @@ ends, delete two `Untimed` arms, and the clock wiring below it stops being neede
 
 Removing `time`'s clock reads left the shell's clock *grant* unread: init still endows a clock
 page the shell no longer opens. That is this decision's own principle one level out, a capability
-held for nothing, and it is deliberately not fixed here because the grant is init's wiring rather
+held for nothing. It is deliberately not fixed here because the grant is init's wiring rather
 than `time`'s, and a shell may want a wall clock again (a prompt timestamp, a `date` builtin).
 Whoever revisits the shell's endowment should either find it a reader or stop granting it.

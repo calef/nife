@@ -45,7 +45,7 @@ fn is_v3() -> bool {
 
 /// **The interrupt returned by [`acknowledge`] when there is nothing to take.** Do nothing with
 /// it, and in particular do not call [`end_of_interrupt`].
-pub const SPURIOUS: u32 = gic::SPURIOUS;
+pub(crate) const SPURIOUS: u32 = gic::SPURIOUS;
 
 /// A core's `MPIDR_EL1` affinity, from the roster `smp.rs` read out of the device tree. The logical
 /// id IS the Aff0 value on every machine this kernel seats (`smp::read_cpu_list` seats by hardware
@@ -122,7 +122,7 @@ pub fn enable(intid: u32) {
 
 /// Mask an interrupt source at the controller: the IRQ handler's first act for a line routed to a
 /// userspace driver, undone by [`enable`] when the driver ACKs. A PPI is masked on the calling core.
-pub fn disable(intid: u32) {
+pub(crate) fn disable(intid: u32) {
     if is_v3() {
         gicv3::disable(crate::cpu::id(), intid);
     } else {
@@ -134,7 +134,7 @@ pub fn disable(intid: u32) {
 /// [`SPURIOUS`] when there is nothing to take; on a GICv3 all four special INTIDs (1020-1023) are
 /// folded into it, because none of them is an interrupt this kernel can complete.
 #[inline(always)]
-pub fn acknowledge() -> u32 {
+pub(crate) fn acknowledge() -> u32 {
     if is_v3() {
         let intid = gic_cpu_interface::acknowledge();
         if intid >= gicv3::SPECIAL_FIRST {
@@ -150,7 +150,7 @@ pub fn acknowledge() -> u32 {
 /// "Finished with this one." Until this is written the controller delivers nothing of equal or
 /// lower priority to this core.
 #[inline(always)]
-pub fn end_of_interrupt(intid: u32) {
+pub(crate) fn end_of_interrupt(intid: u32) {
     if is_v3() {
         gic_cpu_interface::end_of_interrupt(intid);
     } else {
@@ -180,7 +180,7 @@ pub fn send_sgi(intid: u32, target_cpu: usize) {
 /// nothing on this board needs it, and a routing path with no consumer is machinery to maintain
 /// with no way to know it works. See design/roadmap/0215-x86-64-pci-interrupt-routing.md for why
 /// `x86_64` answers differently.
-pub fn alloc_msi_vector() -> Option<(u32, pci::MsiTarget)> {
+pub(crate) fn alloc_msi_vector() -> Option<(u32, pci::MsiTarget)> {
     None
 }
 
@@ -240,7 +240,7 @@ pub fn init() {
 /// Per-core interrupt-controller setup, run by each core as it comes online. On a GICv2 the CPU
 /// interface is banked MMIO; on a GICv3 the core finds and wakes its own redistributor, then turns on
 /// its system-register CPU interface. Either way every core enables its own.
-pub fn init_this_cpu() {
+pub(crate) fn init_this_cpu() {
     if is_v3() {
         gicv3::init_this_cpu(
             crate::cpu::id(),
@@ -255,7 +255,7 @@ pub fn init_this_cpu() {
 /// Send a reschedule inter-processor interrupt to `target_cpu`. On aarch64 this is a software-
 /// generated interrupt (SGI) on the reschedule vector; the target core's handler drains its inbox
 /// and reschedules. See sched.rs and DECISIONS §11 (SMP).
-pub fn send_reschedule(target_cpu: usize) {
+pub(crate) fn send_reschedule(target_cpu: usize) {
     send_sgi(crate::sched::RESCHED_SGI, target_cpu);
 }
 
@@ -275,7 +275,7 @@ pub fn send_reschedule(target_cpu: usize) {
     any(test, feature = "system_tests", feature = "bench"),
     allow(dead_code)
 )]
-pub fn print_summary() {
+pub(crate) fn print_summary() {
     match crate::memory::gic_regions() {
         Some(Gic::V2 {
             distributor,

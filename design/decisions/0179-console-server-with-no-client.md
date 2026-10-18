@@ -45,11 +45,11 @@ tree's whole argument is that authority is granted deliberately.
 
 **Infrastructure is not deleted on a demonstration's momentum.** §85 draws the line between what is
 evidence and what is product, and AGENTS.md's blind-`sed` scar is the standing warning about sweeps
-that carry further than the ruling behind them. `components/src/console.rs` is not the narrator: it
+that carry further than the ruling behind them. `components/src/console.rs` is not the narrator. It
 has four consumers that have nothing to do with this path (`crates/system_initializer/src/lib.rs:868`
 loads it by name, `fixtures/src/hello.rs:303` builds it as init's print server,
 `measured_boot_tests.rs` measures it, `components/src/swapper.rs:252` names it in a dependency
-check), and the interactive boot reaches it through `boot_via_progenitor`, never through
+check). The interactive boot reaches it through `boot_via_progenitor`, never through
 `console_service`.
 
 ## The options, and what each one actually changes
@@ -67,10 +67,10 @@ read is that this is a leak and it is not. The server blocks in a rendezvous rat
 and `no_leaked_threads` does not police it because the tour boot is not a test boot.
 
 What it does cost is one spawned process with its own address space, one zeroed frame for a shared
-page nobody writes, two rendezvous objects, and **a second mapping of the UART's registers handed to
-a program that will never use them**. That last item is the one worth a decision, and it is the
-tree's own argument turned on itself: a device mapping that exists because of a program deleted six
-days earlier is the opposite of deliberate, whatever its runtime cost.
+page nobody writes and two rendezvous objects. It also costs **a second mapping of the UART's
+registers handed to a program that will never use them**. That last item is the one worth a
+decision, and it is the tree's own argument turned on itself. A device mapping that exists because
+of a program deleted six days earlier is the opposite of deliberate, whatever its runtime cost.
 
 B is minutes of work. C is unbounded, because nothing has named what would print.
 
@@ -89,7 +89,7 @@ prints. Nobody has.
 ## Would we still choose B if both cost the same
 
 Yes. B is also the cheaper option and that is worth stating in those words, but the argument does
-not rest on it: A costs nothing to build and is still the option this tree's own vocabulary
+not rest on it. A costs nothing to build and is still the option this tree's own vocabulary
 refuses, because it leaves a grant standing with no grantee.
 
 ## How reversible, and who has acted on it

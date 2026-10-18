@@ -30,9 +30,10 @@ undecided.
 
 The milestone's own text left "wiring a second grant into the real interactive boot" as calef's
 call, "a boot-time decision... policy rather than mechanism." Underneath that sits a sharper,
-narrower question that does not require deciding 47's harder open questions (unions, shadowing
-across many sources, enumeration, whether `$PATH` survives as a string) at all: **does a two-grant
-shell have a real, single, moving current directory, the way a one-grant shell already does?**
+narrower question, one that does not require deciding 47's harder open questions (unions, shadowing
+across many sources, enumeration, whether `$PATH` survives as a string) at all. It is this: **does a
+two-grant shell have a real, single, moving current directory, the way a one-grant shell already
+does?**
 
 ## The decision: yes, a real cwd, refuse at either tree's own root
 
@@ -50,26 +51,26 @@ Resolution:
 one-grant `Cwd::apply` already gives at its own root, applied per-tree rather than newly invented.
 Two alternatives were priced before deciding this one:
 
-- Silently clamp instead of refusing (stay put, no error), matching real Unix shells: `/..`
-  resolves to `/` itself on every mainstream system, because the on-disk directory-entry format
-  requires the root's `..` entry to point somewhere and self-reference is the only sane value.
-  That representational necessity does not exist in nife: `Cwd` is a synthetic position tracker in
-  a capability-routed namespace, not a walk over on-disk `..` pointers, so refusing costs exactly
-  the same one-branch check that clamping would; nothing about nife's implementation makes silence
-  the cheaper or more natural choice the way it was for early Unix. And the event means something
-  more security-salient here: hitting your root in Unix means "the top of the whole visible
-  filesystem," where nothing is hidden by stopping silently; hitting your root in nife means "the
-  edge of a specific, narrow capability grant," and silently absorbing that could mask a caller's
-  wrong belief about how much it actually holds. `nav.rs`'s own existing doc comment already states
-  the principle this extends: "the dangerous refusal is the one that answers." Declined.
+- Silently clamp instead of refusing (stay put, no error), matching real Unix shells. `/..` resolves
+  to `/` itself on every mainstream system, because the on-disk directory-entry format requires the
+  root's `..` entry to point somewhere and self-reference is the only sane value. That
+  representational necessity does not exist in nife. `Cwd` is a synthetic position tracker in a
+  capability-routed namespace, not a walk over on-disk `..` pointers. So refusing costs exactly the
+  same one-branch check that clamping would. Nothing about nife's implementation makes silence the
+  cheaper or more natural choice the way it was for early Unix. And the event means something more
+  security-salient here. Hitting your root in Unix means "the top of the whole visible filesystem,"
+  where nothing is hidden by stopping silently. Hitting your root in nife means "the edge of a
+  specific, narrow capability grant," and silently absorbing that could mask a caller's wrong belief
+  about how much it actually holds. `nav.rs`'s own existing doc comment already states the principle
+  this extends: "the dangerous refusal is the one that answers." Declined.
 - **Hop to the other tree's root on `..`.** The one place this would start behaving like a real
   union of the two trees rather than two disjoint labeled ones, and it buys nothing a process
   cannot already do with one absolute-path `cd`. No real prior art found for this shape either
   (checked against Plan 9's `bind` and standard bind-mount unions, neither of which special-cases
   `..` this way). Declined.
 
-Refuse, unchanged from the one-grant case, applied per-tree, wins: it is nife's own existing
-answer to the same question at smaller scope, it is no more code than the alternatives, and the
+Refuse, unchanged from the one-grant case, applied per-tree, wins. It is nife's own existing answer
+to the same question at smaller scope, and it is no more code than the alternatives. The
 capability-boundary reasoning that motivated the one-grant refusal in the first place applies
 identically to two.
 

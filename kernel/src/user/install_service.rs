@@ -45,7 +45,7 @@ use crate::sched::RendezvousId;
 
 /// **The word a person types to destroy a disk.** Upper case and unabbreviated, so that a stray
 /// newline, a `y`, or a terminal echoing something cannot be it.
-pub const CONFIRMATION: &str = "INSTALL";
+pub(crate) const CONFIRMATION: &str = "INSTALL";
 
 /// How long the offer waits for an answer before continuing the boot.
 ///
@@ -104,7 +104,7 @@ const R_NO_SLOT: u64 = 0x_4E_4F_53_4C_54;
 ///
 /// The three programs it needs are named rather than passed, because a caller on the boot path
 /// has no business knowing which binaries an install is made of.
-pub fn offer() {
+pub(crate) fn offer() {
     let Some((_, boot_file_len)) = crate::memory::boot_file_region() else {
         return; // Not booted from a file: nothing to install.
     };
@@ -233,7 +233,7 @@ pub fn offer() {
 /// client before the progenitor runs, or this call moves after it, the symptom is a corrupted
 /// partition table on an installed machine. A transfer region per client, or a `blk` endpoint
 /// bounded to a block range, would make it hold; both are wire decisions.
-pub fn confirm() {
+pub(crate) fn confirm() {
     let Some(slot) = crate::memory::boot_slot() else {
         return; // No chooser started this boot: there is nothing to confirm.
     };

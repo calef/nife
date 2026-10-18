@@ -10,7 +10,7 @@ use super::*;
 /// Returns only when the firmware refused, with the refusal already printed; a successful reset
 /// does not come back. The caller is `syscall::invoke`'s arm for `Object::Reboot`, and the
 /// authority check is the capability itself: §251 asks for no rights bit beyond holding it.
-pub fn restart() -> abi::Error {
+pub(crate) fn restart() -> abi::Error {
     // Out of the ring first: once the reset starts, the drainer never runs again.
     crate::console::enter_reset();
     println!("{MARKER} the kernel was asked to restart the machine");
@@ -32,7 +32,7 @@ pub fn restart() -> abi::Error {
 /// firmware route in the outcome table's fourth row: bus up, PMIC read still failing ten times.
 /// Whatever that attempt prints, the firmware route follows it, because on 2026-10-09 the firmware
 /// route worked and one attempt's evidence is not a verdict either way.
-pub fn cold_reset(marker: &str) -> abi::Error {
+pub(crate) fn cold_reset(marker: &str) -> abi::Error {
     prepare_reset_route(marker);
     pmic_reset_attempt(marker);
     arch::reboot(marker)

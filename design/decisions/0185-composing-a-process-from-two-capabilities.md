@@ -79,7 +79,7 @@ So the gap is a join rather than a hole, and saying it that precisely is what ma
 look as small as it is. `address_space_witness` stops where milestone 19b stopped, because threads
 were 19c's object; the verbs past that point are all proved, from the other side of the boundary.
 
-And the coverage is better than it was, which is why this is a proposal rather than an alarm: no
+And the coverage is better than it was, which is why this is a proposal rather than an alarm. No
 pull-request check has ever executed `builder`, because `script/test`'s riscv64 leg,
 `script/cpu-matrix`, `script/swish-check`, `script/bench --riscv --check` and `script/icount` all
 park before the tour (milestone 406).
@@ -88,7 +88,7 @@ park before the tour (milestone 406).
 
 A claim gets a carrier that runs on every pull request, or it is prose. That is §97 (advisory checks)'s posture
 and milestone 406's whole complaint one subsystem over. `builder`'s failure was not that it was
-wrong; it was that the only thing exercising it was a boot no check performs, so a step nothing
+wrong. It was that the only thing exercising it was a boot no check performs. So a step nothing
 asserts and a step nothing needs produced identical evidence, which is what cost milestone 289 a
 lane.
 

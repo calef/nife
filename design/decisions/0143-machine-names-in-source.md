@@ -83,7 +83,8 @@ household name in a public crate's documentation), and that is a preference rath
   comments is already reading it.
 - The boundary between "a fact about hardware" and "a fact about one machine" is a judgment, and
   the honest cases are at the edges. *"Unknown on radon"* is a fact about our firmware revision as
-  much as about the SoC; naming both is usually the answer, and naming only the machine is the error.
+  much as about the SoC. Naming both is usually the answer, and naming only the machine is the
+  error.
 - `notes/target-hardware.md` is indexed as "Where nife could actually run", which does not
   advertise that it defines the names. A stranger who meets `radon` and wants to resolve it has no
   obvious route, and fixing that index line is the smallest part of acting on this section.

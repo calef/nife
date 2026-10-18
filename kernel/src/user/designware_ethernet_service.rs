@@ -47,7 +47,7 @@ use crate::user::virtio_service::{NET_SERVER_BUDGET_PAGES, NET_SERVER_STACK_PAGE
 
 /// Why no server was started.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum NotStarted {
+pub(crate) enum NotStarted {
     /// What the bring-up said.
     Absent(Absent),
     /// The previous server is still alive, and a bring-up would reset the controller under it.
@@ -57,7 +57,7 @@ pub enum NotStarted {
 }
 
 /// What a wiring started, from the outside.
-pub struct Wiring {
+pub(crate) struct Wiring {
     /// Where the server reports its DHCP lease, once.
     pub report: RendezvousId,
     /// The `Stack` endpoint a client is given WRITE on.
@@ -73,13 +73,16 @@ pub struct Wiring {
 /// `verdict LEASED-AND-MEASURED` with `coherence : Coherent`. Nothing a lane can run proves it: no
 /// emulator has this controller, and the crate's simulation is this tree's reading of OpenBSD,
 /// not the device. Until then a radon boot leaves the port exactly as U-Boot left it.
-pub const PROVEN_ON_SILICON: bool = false;
+pub(crate) const PROVEN_ON_SILICON: bool = false;
 
 /// The last server's thread, so a second wiring can refuse while it lives.
 static SERVER: core::sync::atomic::AtomicU64 = core::sync::atomic::AtomicU64::new(u64::MAX);
 
 /// **Bring the port up and start `net_stack` over it.**
-pub fn start_net_server(image: &'static [u8], listen_grant: u64) -> Result<Wiring, NotStarted> {
+pub(crate) fn start_net_server(
+    image: &'static [u8],
+    listen_grant: u64,
+) -> Result<Wiring, NotStarted> {
     let previous = SERVER.load(core::sync::atomic::Ordering::Acquire);
     if previous != u64::MAX && crate::sched::is_thread_present(previous) {
         return Err(NotStarted::Busy);
@@ -94,7 +97,10 @@ pub fn start_net_server(image: &'static [u8], listen_grant: u64) -> Result<Wirin
 /// **The bench boot's client** (`kernel/src/network_bench.rs`): `socket_test_client`'s
 /// `TEST_TCP_DRAIN` against `peer`, packed `ipv4 << 16 | port`, as `e1000e_service::start_drain`.
 #[cfg_attr(not(feature = "network_bench"), allow(dead_code))]
-pub fn start_drain(image: &'static [u8], peer: u64) -> Result<(RendezvousId, Wiring), NotStarted> {
+pub(crate) fn start_drain(
+    image: &'static [u8],
+    peer: u64,
+) -> Result<(RendezvousId, Wiring), NotStarted> {
     const TEST_TCP_DRAIN: u64 = 7;
     let mut w = start_net_server(image, socket_contract::NO_LISTEN_GRANT)?;
     let cli = super::virtio_service::spawn_stack_client(

@@ -31,53 +31,53 @@ use crate::mdio::{self, Mdio};
 pub const YT8531_ID: u32 = 0x4f51_e91b;
 
 /// The extended-register address port: write an extended register's number here.
-pub const EXT_ADDR: u8 = 0x1e;
+pub(crate) const EXT_ADDR: u8 = 0x1e;
 /// The extended-register data port: then read or write its value here.
-pub const EXT_DATA: u8 = 0x1f;
+pub(crate) const EXT_DATA: u8 = 0x1f;
 
 /// Extended: clock gating.
-pub const EXT_CLOCK_GATING: u16 = 0x000c;
+pub(crate) const EXT_CLOCK_GATING: u16 = 0x000c;
 /// **Clear to keep the receive clock running with no cable.** Linux's `YT8521_CGR_RX_CLK_EN`,
 /// cleared for `motorcomm,keep-pll-enabled`. Cleared here unconditionally, because the controller's
 /// software reset does not complete without a receive clock from the PHY (Linux's stmmac carries
 /// `phylink_rx_clk_stop_block` for the same reason), and a board booted with its cable out must
 /// still reset cleanly rather than refuse.
-pub const EXT_CLOCK_GATING_RX_CLK_EN: u16 = 1 << 12;
+pub(crate) const EXT_CLOCK_GATING_RX_CLK_EN: u16 = 1 << 12;
 /// Extended: sleep control.
-pub const EXT_SLEEP_CONTROL1: u16 = 0x0027;
+pub(crate) const EXT_SLEEP_CONTROL1: u16 = 0x0027;
 /// **Clear to stop the PHY sleeping when the cable is out**, which also stops its clocks. Linux's
 /// `YT8521_ESC1R_SLEEP_SW`, cleared for `motorcomm,auto-sleep-disabled`; cleared here for
 /// [`EXT_CLOCK_GATING_RX_CLK_EN`]'s reason. The cost is the PHY's idle power with no cable.
-pub const EXT_SLEEP_CONTROL1_SLEEP_SW: u16 = 1 << 15;
+pub(crate) const EXT_SLEEP_CONTROL1_SLEEP_SW: u16 = 1 << 15;
 /// Extended: chip configuration.
-pub const EXT_CHIP_CONFIG: u16 = 0xa001;
+pub(crate) const EXT_CHIP_CONFIG: u16 = 0xa001;
 /// The receive clock's extra fixed delay (about 1.9 ns) is enabled.
-pub const CHIP_CONFIG_RXC_DLY_EN: u16 = 1 << 8;
+pub(crate) const CHIP_CONFIG_RXC_DLY_EN: u16 = 1 << 8;
 /// The RGMII I/O voltage the PHY's LDO is strapped to.
-pub const CHIP_CONFIG_LDO_MASK: u16 = 0x3 << 4;
+pub(crate) const CHIP_CONFIG_LDO_MASK: u16 = 0x3 << 4;
 /// 3.3 V.
-pub const CHIP_CONFIG_LDO_3V3: u16 = 0;
+pub(crate) const CHIP_CONFIG_LDO_3V3: u16 = 0;
 /// 2.5 V.
-pub const CHIP_CONFIG_LDO_2V5: u16 = 1 << 4;
+pub(crate) const CHIP_CONFIG_LDO_2V5: u16 = 1 << 4;
 /// Extended: RGMII configuration 1.
-pub const EXT_RGMII_CONFIG1: u16 = 0xa003;
+pub(crate) const EXT_RGMII_CONFIG1: u16 = 0xa003;
 /// The transmit clock is inverted.
-pub const RGMII_CONFIG1_TX_CLK_SEL: u16 = 1 << 14;
+pub(crate) const RGMII_CONFIG1_TX_CLK_SEL: u16 = 1 << 14;
 /// Receive delay select, in 150 ps steps.
-pub const RGMII_CONFIG1_RX_DELAY_SHIFT: u16 = 10;
+pub(crate) const RGMII_CONFIG1_RX_DELAY_SHIFT: u16 = 10;
 /// Transmit delay select, in 150 ps steps.
-pub const RGMII_CONFIG1_TX_DELAY_SHIFT: u16 = 0;
+pub(crate) const RGMII_CONFIG1_TX_DELAY_SHIFT: u16 = 0;
 /// Extended: pad drive strength.
-pub const EXT_PAD_DRIVE: u16 = 0xa010;
+pub(crate) const EXT_PAD_DRIVE: u16 = 0xa010;
 /// The receive clock pad's drive strength field.
-pub const PAD_DRIVE_RXC_SHIFT: u16 = 13;
+pub(crate) const PAD_DRIVE_RXC_SHIFT: u16 = 13;
 /// The receive data pads' drive strength: its low two bits are bits 5:4, its high bit is bit 12.
-pub const PAD_DRIVE_RXD_MASK: u16 = (1 << 12) | (0x3 << 4);
+pub(crate) const PAD_DRIVE_RXD_MASK: u16 = (1 << 12) | (0x3 << 4);
 /// Extended: the synchronous Ethernet clock output.
-pub const EXT_SYNCE_CFG: u16 = 0xa012;
+pub(crate) const EXT_SYNCE_CFG: u16 = 0xa012;
 /// The clock output is enabled. Neither JH7110 tree asks for it, so it is cleared, as OpenBSD
 /// and Linux both do when `motorcomm,clk-out-frequency-hz` is absent.
-pub const SYNCE_CFG_EN: u16 = 1 << 6;
+pub(crate) const SYNCE_CFG_EN: u16 = 1 << 6;
 
 /// Clause 22 vendor register: the PHY's resolved link.
 pub const SPECIFIC_STATUS: u8 = 0x11;
@@ -187,7 +187,7 @@ const STEP_PS: u32 = 150;
 impl Settings {
     /// **radon's `gmac0`, from the table in this module's header.** Both trees give these values,
     /// so a tree that names neither spelling still gets the board it is on, and says so.
-    pub const FALLBACK_GMAC0: Settings = Settings {
+    pub(crate) const FALLBACK_GMAC0: Settings = Settings {
         rx_delay: 0xa,
         rx_fixed_delay: false,
         tx_delay: 0xa,
@@ -203,7 +203,7 @@ impl Settings {
     /// neighboring field, which OpenBSD's shift would do. `tx_inverted` is `None` when the tree
     /// does not say `motorcomm,tx-clk-adj-enabled`, which means "leave the bit alone" there and
     /// "not inverted" here: the bit is written either way, so it is decided rather than inherited.
-    pub fn from_mainline(
+    pub(crate) fn from_mainline(
         rx_ps: u32,
         tx_ps: u32,
         rx_clock_ua: u32,
@@ -231,7 +231,7 @@ impl Settings {
 
 /// **The pad drive code for a current at a voltage**, OpenBSD's `ytphy_yt8531_ds_map`. Unknown
 /// pairs, which includes everything at 2.5 V, get the part's default of 3, as there.
-pub fn drive_code(volt_mv: u32, d: Drive) -> u8 {
+pub(crate) fn drive_code(volt_mv: u32, d: Drive) -> u8 {
     const MAP: [(u32, u32, u8); 16] = [
         (1800, 1200, 0),
         (1800, 2100, 1),
@@ -260,7 +260,7 @@ pub fn drive_code(volt_mv: u32, d: Drive) -> u8 {
 }
 
 /// The I/O voltage the chip configuration word's LDO field states, in millivolts.
-pub const fn volt_mv(chip_config: u16) -> u32 {
+pub(crate) const fn volt_mv(chip_config: u16) -> u32 {
     match chip_config & CHIP_CONFIG_LDO_MASK {
         CHIP_CONFIG_LDO_3V3 => 3300,
         CHIP_CONFIG_LDO_2V5 => 2500,

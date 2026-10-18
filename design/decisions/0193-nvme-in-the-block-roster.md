@@ -27,7 +27,7 @@ writes and a `no_std` program reads:
 reason stated precisely: *"small, but its wire shape depends on who owns the controller."* That
 dependency was real, because a roster entry for a kernel-resident driver and one for a confined EL0
 server differ in what a holder may then ask for. Milestone 261 answered it by putting the data
-plane in a process that serves `filesystem_protocol::blk` on a request endpoint, and that lane
+plane in a process that serves `filesystem_protocol::blk` on a request endpoint. That lane
 deliberately did not take this work, correctly: a transport kind is a wire value two programs read,
 which is the category AGENTS.md prices as expensive and routes here.
 
@@ -84,7 +84,7 @@ Whether that rename rides with this change or is refused is calef's, and refusin
 | **C** | 8 bytes now, a second entry kind later if needed | Keeps A's cheapness and admits the format may need to grow, at the cost of a versioning question nobody has asked yet. |
 
 Recommendation: A, and the argument is the crate's own stated purpose rather than economy.
-A roster says *a device exists*, explicitly not what it is or how to reach it; a namespace id is a
+A roster says *a device exists*, explicitly not what it is or how to reach it. A namespace id is a
 property of a device you have been given, and asking for it is one message to a server that already
 answers `SIZE`. And there is exactly one namespace, so B would add a field that can only ever
 hold one value, which is the speculative generality this tree refuses elsewhere.

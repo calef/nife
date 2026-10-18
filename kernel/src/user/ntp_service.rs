@@ -31,12 +31,12 @@ use crate::sched::RendezvousId;
 pub mod rpt {
     pub const SYNCED: u64 = 1;
     pub const REJECTED: u64 = 2;
-    pub const NO_REPLY: u64 = 3;
+    pub(crate) const NO_REPLY: u64 = 3;
     pub const NO_ENTROPY: u64 = 4;
-    pub const NET_ERROR: u64 = 5;
+    pub(crate) const NET_ERROR: u64 = 5;
     pub const PROBING: u64 = 6;
     pub const SERVED: u64 = 7;
-    pub const BAD_LOCAL_TIME: u64 = 8;
+    pub(crate) const BAD_LOCAL_TIME: u64 = 8;
 }
 
 /// Which reply the test server sends. Must match `fixtures/src/network_time_test_server.rs`'s `srv`.

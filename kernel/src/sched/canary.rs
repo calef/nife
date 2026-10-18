@@ -45,7 +45,7 @@ static SHADOW: Racy<[u8; SHADOW_BYTES]> = Racy(core::cell::UnsafeCell::new([0; S
 /// check finishes before the plan is touched, and the new plan is published whole. Spins, so
 /// call from thread context (both callers do); the tick side never spins, so a tick landing
 /// mid-arm skips rather than deadlocks.
-pub fn arm(ranges: &[(usize, usize)]) {
+pub(crate) fn arm(ranges: &[(usize, usize)]) {
     let guard = GATE.arm();
     DIVERGED.store(0, Ordering::Relaxed);
     PRINTED.store(0, Ordering::Relaxed);
@@ -79,13 +79,13 @@ pub fn arm(ranges: &[(usize, usize)]) {
 /// so the caller may repurpose the watched memory. (Today's watched ranges are `'static`, so
 /// the quiescence buys certainty rather than papers over a lifetime; it costs a bounded spin
 /// while at most one in-flight pass finishes.)
-pub fn disarm() {
+pub(crate) fn disarm() {
     GATE.disarm();
 }
 
 /// How many bytes have diverged since arming. The test hook, and a bench-note number.
 #[cfg_attr(not(any(test, feature = "system_tests")), allow(dead_code))] // release builds read it off the serial print
-pub fn divergences() -> u64 {
+pub(crate) fn divergences() -> u64 {
     DIVERGED.load(Ordering::Relaxed)
 }
 
@@ -106,7 +106,7 @@ pub fn divergences() -> u64 {
 /// refusal instead of swallowing it is the fix for the c906 flake: the test's decisive check
 /// used to lose the slot to a tick's pass that had read the byte before the flip, and its
 /// silent no-op read as a missed corruption.
-pub fn check() -> bool {
+pub(crate) fn check() -> bool {
     if !GATE.is_armed_hint() {
         return false; // one relaxed load: every unarmed tick's whole cost
     }

@@ -50,7 +50,7 @@ impl Context {
     /// The initial context for a brand-new **kernel** thread. `switch_to`'s first `ret` lands in
     /// `thread_trampoline`, which reads the closure pointer out of `rbx` and the monomorphized
     /// caller out of `rbp`, then calls the portable `thread_entry`. See context.s.
-    pub fn for_kernel_thread(closure_at: u64, call_shim: u64) -> Self {
+    pub(crate) fn for_kernel_thread(closure_at: u64, call_shim: u64) -> Self {
         Context {
             r15: 0,
             r14: 0,
@@ -66,7 +66,7 @@ impl Context {
     /// `user_entry_trampoline`, which moves `rbx` to the entry, `rbp` to the user stack pointer and
     /// `r13`..`r15` to the child's first three arguments, then drops to ring 3 via the portable
     /// `user_thread_entry`.
-    pub fn for_user_thread(entry: u64, user_sp: u64, args: [u64; 3]) -> Self {
+    pub(crate) fn for_user_thread(entry: u64, user_sp: u64, args: [u64; 3]) -> Self {
         Context {
             r15: args[2],
             r14: args[1],

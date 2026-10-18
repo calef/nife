@@ -9,13 +9,13 @@
 use super::*;
 
 /// **Say one sentence at the terminal**, through the line discipline, the way the shell does: stage
-/// the bytes in the shell's output page (mapped here at [`INIT_OUT_VA`]) and `CALL` `OPERATION_WRITE`.
+/// the bytes in the shell's output page (mapped here at [`PROGENITOR_SHELL_OUTPUT_VIRTUAL_ADDRESS`]) and `CALL` `OPERATION_WRITE`.
 ///
 /// The only thing this process ever prints, and it is called before the shell is started so nothing
 /// else is writing that page. It exists for the negative control: a claim about what the progenitor can no
 /// longer do is worth only as much as the check behind it, and only the holder can run that check.
 pub(super) fn announce(term_ep: u64, text: &[u8]) {
-    let out = INIT_OUT_VA as *mut u8;
+    let out = PROGENITOR_SHELL_OUTPUT_VIRTUAL_ADDRESS as *mut u8;
     for (i, &b) in text.iter().enumerate() {
         // SAFETY: the shell's output frame is mapped read/write here, and one line is far under a
         // page.

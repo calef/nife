@@ -21,9 +21,9 @@ What that means, and each clause is load-bearing:
    being an answer and becomes an entry.
 2. Trust is scoped per source the owner opted into, never one global key. Every system read
    below does this (a Homebrew tap, a Debian keyring entry, a FreeBSD per-repository fingerprint
-   directory, a pacman `SigLevel`, a Nix substituter), and it is what lets a distribution grow
-   without mastering every package: anyone may stand up a source, and an owner may opt into it,
-   which calef named as the point of the model.
+   directory, a pacman `SigLevel`, a Nix substituter). It is what lets a distribution grow
+   without mastering every package: anyone may stand up a source, and an owner may opt into it.
+   That is what calef named as the point of the model.
 3. The owner may vouch for a digest no source carries. This is the escape hatch every system
    read below keeps: apt's explicit confirmation, pacman's `SigLevel = Optional`, pkg's
    `SIGNATURE_TYPE=NONE`, Nix's `require-sigs = false` and `trusted-users`. Fuchsia is the only
@@ -38,7 +38,7 @@ What that means, and each clause is load-bearing:
 **What this does not decide**, and each is its own ruling: the package format (whether a package is
 named by name-and-version or by content digest), the activation shape, the transport, and whether
 `crickertech` runs a source at all. One consequence is worth stating because it couples two
-rulings: hosting on GitHub (Releases or GHCR, which is what Homebrew does) forces HTTPS, so
+rulings. Hosting on GitHub (Releases or GHCR, which is what Homebrew does) forces HTTPS. So
 choosing GitHub as the first host is close to choosing to carry a TLS stack, which
 DECISIONS §196 rules.
 
@@ -78,8 +78,8 @@ Today's chain is exact and closed:
 2. The progenitor loads every other program only if that table vouches for it: "One rule: the
    progenitor runs nothing it cannot vouch for" (milestone 104, `crates/system_initializer`).
 
-So a kernel and its archive are one sealed set, and that seal has already refused real boots
-twice: radon on 2026-08-15 (boot 12) and xenon on 2026-09-17, both `MEASURED BOOT REFUSED` over a
+So a kernel and its archive are one sealed set. That seal has already refused real boots twice:
+radon on 2026-08-15 (boot 12) and xenon on 2026-09-17. Both were `MEASURED BOOT REFUSED` over a
 kernel and an archive from different builds (`xtask/src/main.rs`, `uefi_image`'s comment;
 `notes/visionfive2.md`, "The microSD payload"). Any package installed after the image was built is
 unvouched by construction. DECISIONS §26 (milestone 22 phase B) already named the condition under
@@ -103,8 +103,8 @@ the hash stays the floor if key handling fails)".
 T1, everywhere, and with a written reason: "today they are built by one command in one tree in one
 sequence, so the hash is strictly better" (§26). What moves the question is that a signature
 verifier in userspace is cheaper than the one §26 declined. §26's first objection was that
-Ed25519 "enters the TCB"; here it would enter a measured userspace program whose compromise is
-bounded by its own grant, which is the microkernel version of the same trade and weakens that
+Ed25519 "enters the TCB". Here it would enter a measured userspace program whose compromise is
+bounded by its own grant. That is the microkernel version of the same trade, and it weakens that
 objection without removing it: the verifier still decides what runs. §26's second objection, key
 custody, is untouched by moving the code.
 
@@ -126,8 +126,8 @@ nearest precedent for an owner-held, durable authority record is the credential 
   prebuilt packages into an image still recompiles the kernel, because `TRUST_ROOT` is
   `include!`d at build time from `target/init-measure-<arch>.txt`. A composition step with no
   compiler would need the kernel to carry the table digest in a slot a host tool can patch after
-  linking, which is a change to how the trust root is built and is part of this ruling if T1 is
-  meant to serve people without a toolchain.
+  linking. That is a change to how the trust root is built, and it is part of this ruling if T1
+  is meant to serve people without a toolchain.
 - T2: a dependency (no Ed25519 crate is in either `Cargo.lock` today; `argon2` is the only
   crypto crate present), a key, and a revocation story.
 - T3: a table, its authority, and an amendment to milestone 104's one rule.
@@ -141,8 +141,8 @@ not in what an owner has already run under it.
 ## The §92 test
 
 T1 is the cheapest and would still be chosen for images we build ourselves if all three cost the
-same, because it has no key to lose. It is not an answer for installing onto a running system at all,
-so for that case the choice is between T2 and T3 on grounds of who should be able to make code
+same, because it has no key to lose. It is not an answer for installing onto a running system at
+all. For that case the choice is between T2 and T3 on grounds of who should be able to make code
 runnable, which is not an effort question.
 
 ## Who runs the first repository, which T2 makes a question and §135 already half-answered
@@ -190,6 +190,6 @@ TUF's rule (root N+1 signed by N's threshold).
 Not ruled here, and owed. Who holds the keys, how many there are, and the threshold are open, and
 no root key exists yet. The line's format for a TUF root, a digest rather than an Ed25519 public
 key, is provisional in the milestone that builds the default line. Also open is how a ceiling covers
-the grants added since §220 named its three: the machine and job views of §225 (`free` sees the
-machine and your share) and the reboot object of §251 (restarting the machine is a kernel object
-the progenitor hands out).
+the grants added since §220 named its three. They are the machine and job views of
+§225 (`free` sees the machine and your share) and the reboot object of
+§251 (restarting the machine is a kernel object the progenitor hands out).

@@ -28,13 +28,13 @@ use super::exceptions::TrapFrame;
 /// masked, so nothing can return to EL0 between the save and the install. Two instructions and a
 /// store. No barrier: the only way back to EL0 is an `eret`, which is context-synchronizing.
 #[inline(always)]
-pub fn hand_over(outgoing: &mut u64, incoming: u64) {
+pub(crate) fn hand_over(outgoing: &mut u64, incoming: u64) {
     *outgoing = TPIDR_EL0.get();
     TPIDR_EL0.set(incoming);
 }
 
 /// **Change the calling thread's register now**, for `SET_THREAD_POINTER` aimed at oneself. The
 /// field was already written under the lock; this makes the register agree before the `eret`.
-pub fn set_live(_frame: &mut TrapFrame, value: u64) {
+pub(crate) fn set_live(_frame: &mut TrapFrame, value: u64) {
     TPIDR_EL0.set(value);
 }

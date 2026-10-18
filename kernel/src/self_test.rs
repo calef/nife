@@ -58,7 +58,7 @@ mod timer {
     pub use crate::arch::timer::{frequency, ticks};
 
     /// The free-running counter, or a stopped one when the build injects a failure.
-    pub fn now() -> u64 {
+    pub(crate) fn now() -> u64 {
         if super::INJECT {
             0x0268
         } else {

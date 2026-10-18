@@ -25,9 +25,10 @@ Neither number was picked in the abstract; they are the interval this project ch
 was counting. Four security audits exist. The arch-and-assembly pass (notes/arch-audit.md) came
 first. The shared-page time-of-check-to-time-of-use pass landed 2026-08-04 with **54 milestones
 built**. The untrusted-counterparty-input pass landed 2026-08-15 with 71 built, an interval of
-17 milestones, and it was productive rather than early or late: it found the NVMe driver's
+17 milestones, and it was productive rather than early or late. It found the NVMe driver's
 panic on two device-written completion fields (the reciprocal, one layer down, of the shared-page
-pass's own finding 6) and cleared three crates that did not exist when the previous audit ran. 15
+pass's own finding 6). It also cleared three crates that did not exist when the previous audit
+ran. 15
 is that interval rounded to a number a person can hold, and it is deliberately slightly tighter
 than the one instance we have.
 

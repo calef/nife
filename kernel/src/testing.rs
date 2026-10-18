@@ -251,7 +251,7 @@ const PAGE_FRAME_REPORT_MIN: usize = 16;
 /// # BUGS
 ///
 /// - **Two test sites still keep their endpoints for the boot, deliberately.** `pipeline_service`
-///   (its `init_service` is a kernel thread that loops forever) and `user::tests`'
+///   (its `spawn_service_stub` is a kernel thread that loops forever) and `user::tests`'
 ///   `a_user_client_moves_data_through_shared_memory` (a client that spins forever): reclaiming
 ///   either would leave a thread spinning on a stale endpoint. Each takes its pages from a region
 ///   of its own, so the cost is charged to that test and not to a later one.
@@ -522,7 +522,7 @@ static LAST_TEST_MILLISECONDS: AtomicU64 = AtomicU64::new(0);
 /// Record one step of forward progress for the hang watchdog (test builds only). Cheap enough to sit
 /// on the wake and console paths: one relaxed increment. See the module note above.
 #[inline]
-pub fn note_progress() {
+pub(crate) fn note_progress() {
     HEARTBEAT.fetch_add(1, Ordering::Relaxed);
 }
 
@@ -544,7 +544,7 @@ fn any_cpu_running_real_work() -> bool {
 /// Called from the timer IRQ each tick (test builds only; see `timer::tick`). Only the boot core
 /// watches, so any dump happens once. The boot core is `arch::boot_cpu_id()` (0 on aarch64, but on
 /// RISC-V whichever hart QEMU booted), which is also the one hart that ticks in a single-hart test.
-pub fn watchdog_tick() {
+pub(crate) fn watchdog_tick() {
     if crate::cpu::id() != crate::arch::boot_cpu_id() {
         return;
     }

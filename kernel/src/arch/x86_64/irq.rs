@@ -45,35 +45,35 @@ use super::port::{in8, out8};
 /// as aligned 32-bit words**: an 8- or 16-bit access to an APIC register is undefined.
 mod reg {
     /// This CPU's local APIC id, in bits 31:24.
-    pub const ID: u64 = 0x020;
+    pub(crate) const ID: u64 = 0x020;
     /// Version, and in bits 23:16 the number of LVT entries minus one.
-    pub const VERSION: u64 = 0x030;
+    pub(crate) const VERSION: u64 = 0x030;
     /// Task Priority. Zero means "accept every vector"; anything else silently drops interrupts
     /// below that priority class, which is a very quiet way to lose them.
-    pub const TPR: u64 = 0x080;
+    pub(crate) const TPR: u64 = 0x080;
     /// End Of Interrupt. Written (with zero) to acknowledge; until then the local APIC will not
     /// deliver another interrupt of the same or lower priority.
-    pub const EOI: u64 = 0x0b0;
+    pub(crate) const EOI: u64 = 0x0b0;
     /// Spurious Interrupt Vector. Bit 8 is the **software enable**, and the low eight bits are the
     /// vector a spurious interrupt arrives on.
-    pub const SPURIOUS: u64 = 0x0f0;
+    pub(crate) const SPURIOUS: u64 = 0x0f0;
     /// Interrupt Command Register, low word: the vector, the delivery mode, and the destination
     /// shorthand. **Writing this word is what sends the IPI**, so the high word must already be in
     /// place. See [`super::send_ipi`].
-    pub const ICR_LOW: u64 = 0x300;
+    pub(crate) const ICR_LOW: u64 = 0x300;
     /// Interrupt Command Register, high word: the destination local APIC id, in bits 31:24.
-    pub const ICR_HIGH: u64 = 0x310;
+    pub(crate) const ICR_HIGH: u64 = 0x310;
     /// Local Vector Table entry for the timer: the vector, the mask bit, and the mode.
-    pub const LVT_TIMER: u64 = 0x320;
+    pub(crate) const LVT_TIMER: u64 = 0x320;
     /// What the timer counts down from.
-    pub const TIMER_INITIAL: u64 = 0x380;
+    pub(crate) const TIMER_INITIAL: u64 = 0x380;
     /// What it is at now.
-    pub const TIMER_CURRENT: u64 = 0x390;
+    pub(crate) const TIMER_CURRENT: u64 = 0x390;
     /// How much the timer divides the bus clock by.
-    pub const TIMER_DIVIDE: u64 = 0x3e0;
+    pub(crate) const TIMER_DIVIDE: u64 = 0x3e0;
     /// The Interrupt Request Register, 256 bits as eight 32-bit words 0x10 apart: bit `v` is set
     /// while vector `v` has been accepted by this local APIC and not yet delivered to the core.
-    pub const IRR: u64 = 0x200;
+    pub(crate) const IRR: u64 = 0x200;
 }
 
 /// Bit 8 of the spurious-interrupt register: the local APIC's software enable.
@@ -81,11 +81,11 @@ const SPURIOUS_ENABLE: u32 = 1 << 8;
 
 /// **The vector a spurious interrupt arrives on.** 0xff by convention, and the low four bits used to
 /// be required to be one on older parts, which is why every kernel picks a vector ending in 0xf.
-pub const SPURIOUS_VECTOR: u8 = 0xff;
+pub(crate) const SPURIOUS_VECTOR: u8 = 0xff;
 
 /// **The vector the local APIC timer raises.** 0x20, the first vector after the 32 the architecture
 /// reserves for exceptions. Not a hardware fact: it is our choice, written into the LVT.
-pub const TIMER_VECTOR: u8 = 0x20;
+pub(crate) const TIMER_VECTOR: u8 = 0x20;
 
 /// **The vector a reschedule inter-processor interrupt arrives on**, and this architecture's
 /// counterpart of aarch64's `sched::RESCHED_SGI` and RISC-V's SBI software interrupt.
@@ -203,7 +203,7 @@ fn mask_the_8259s() {
 /// # Safety
 /// `base` must be this machine's real local APIC address. The direct map covers it from `boot.s`
 /// on, and `mmu::init` re-maps that page device-typed rather than moving it.
-pub unsafe fn init_local_apic(base: u64) {
+pub(crate) unsafe fn init_local_apic(base: u64) {
     mask_the_8259s();
 
     LOCAL_APIC_PHYS.store(base, Ordering::Relaxed);
@@ -222,44 +222,44 @@ pub unsafe fn init_local_apic(base: u64) {
 /// Acknowledge the interrupt being handled. **Every handler must, and the failure mode is a hang
 /// rather than an error**: until the EOI is written the local APIC will not deliver another
 /// interrupt of the same or lower priority, so a missed EOI means the timer ticks exactly once.
-pub fn end_of_interrupt() {
+pub(crate) fn end_of_interrupt() {
     write(reg::EOI, 0);
 }
 
 /// This CPU's local APIC id, which is its hardware name and need not be its logical cpu id.
-pub fn local_apic_id() -> u8 {
+pub(crate) fn local_apic_id() -> u8 {
     (read(reg::ID) >> 24) as u8
 }
 
 /// The local APIC's version register's low byte. Printed at boot; an integrated APIC reports 0x10 or
 /// higher, an external 82489DX reports below 0x10 and would mean a machine older than this kernel
 /// supports.
-pub fn local_apic_version() -> u8 {
+pub(crate) fn local_apic_version() -> u8 {
     read(reg::VERSION) as u8
 }
 
 /// Is the local APIC up? False until [`init_local_apic`] has run, which is what the timer checks
 /// before trying to arm anything.
-pub fn is_local_apic_ready() -> bool {
+pub(crate) fn is_local_apic_ready() -> bool {
     LOCAL_APIC.load(Ordering::Relaxed) != 0
 }
 
 /// Start the timer counting down from `count`, **masked**, so it can be measured without delivering
 /// anything. This is what calibration uses: the timer is a free-running counter until something
 /// unmasks it.
-pub fn start_timer_for_calibration(count: u32) {
+pub(crate) fn start_timer_for_calibration(count: u32) {
     write(reg::TIMER_DIVIDE, TIMER_DIVIDE_16);
     write(reg::LVT_TIMER, LVT_MASKED | TIMER_VECTOR as u32);
     write(reg::TIMER_INITIAL, count);
 }
 
 /// What the timer's countdown is at now.
-pub fn timer_current_count() -> u32 {
+pub(crate) fn timer_current_count() -> u32 {
     read(reg::TIMER_CURRENT)
 }
 
 /// Arm the timer to fire every `count` of its own ticks, on [`TIMER_VECTOR`], forever.
-pub fn arm_periodic_timer(count: u32) {
+pub(crate) fn arm_periodic_timer(count: u32) {
     write(reg::TIMER_DIVIDE, TIMER_DIVIDE_16);
     write(reg::TIMER_INITIAL, count);
     // Unmasked and periodic. Written last, so the count is already loaded when delivery begins.
@@ -279,7 +279,7 @@ pub fn is_timer_pending() -> bool {
 }
 
 /// Stop the timer delivering.
-pub fn mask_timer() {
+pub(crate) fn mask_timer() {
     write(reg::LVT_TIMER, LVT_MASKED | TIMER_VECTOR as u32);
 }
 
@@ -297,19 +297,19 @@ pub fn mask_timer() {
 /// belongs here the moment SMP lands.
 mod io_reg {
     /// The index register, at offset 0. Write the number of the register you want.
-    pub const IOREGSEL: u64 = 0x00;
+    pub(crate) const IOREGSEL: u64 = 0x00;
     /// The data window, at offset 0x10. Reads and writes land on whatever [`IOREGSEL`] last named.
-    pub const IOWIN: u64 = 0x10;
+    pub(crate) const IOWIN: u64 = 0x10;
 
     /// Register 0: this IO APIC's id, in bits 27:24.
-    pub const ID: u32 = 0x00;
+    pub(crate) const ID: u32 = 0x00;
     /// Register 1: the version in bits 7:0, and in bits 23:16 **the number of redirection entries
     /// minus one**. That "minus one" is the field's definition, not an off-by-one: a 24-entry part
     /// reports 23.
-    pub const VERSION: u32 = 0x01;
+    pub(crate) const VERSION: u32 = 0x01;
     /// Register 0x10: the first word of redirection entry 0. Each entry is **two** consecutive
     /// registers, low word first, so entry `n` is at `0x10 + 2 * n`.
-    pub const REDIRECTION_BASE: u32 = 0x10;
+    pub(crate) const REDIRECTION_BASE: u32 = 0x10;
 }
 
 /// Redirection entry bit 16: masked. Every entry powers on masked, which is why arming one is a
@@ -444,7 +444,7 @@ const LOCAL_APIC_MSI_BASE: u64 = 0xfee0_0000;
 /// The trap handler asks so that an MSI can
 /// become a message the way a self-IPI already does. Bounded by what has actually been allocated,
 /// so an unclaimed vector in the band is still counted as spurious rather than routed.
-pub fn is_msi_vector(vector: u64) -> bool {
+pub(crate) fn is_msi_vector(vector: u64) -> bool {
     let base = MSI_VECTOR_BASE as u64;
     vector >= base && vector < base + MSI_NEXT.load(Ordering::Relaxed).min(MSI_VECTORS) as u64
 }
@@ -529,7 +529,7 @@ fn io_apic_read(index: u32) -> u32 {
 ///
 /// # Safety
 /// `base` must be this machine's real IO APIC address, and the direct map must cover it.
-pub unsafe fn init_io_apic(base: u64, gsi_base: u32) {
+pub(crate) unsafe fn init_io_apic(base: u64, gsi_base: u32) {
     IO_APIC_PHYS.store(base, Ordering::Relaxed);
     IO_APIC.store(phys_to_virt(base), Ordering::Relaxed);
     IO_APIC_GSI_BASE.store(gsi_base, Ordering::Relaxed);
@@ -547,7 +547,7 @@ pub unsafe fn init_io_apic(base: u64, gsi_base: u32) {
 
 /// Where this machine's IO APIC is, physically, or `None` if [`init_io_apic`] has not run. Read by
 /// `mmu::init` so the fine map covers the address the machine reported rather than the constant.
-pub fn io_apic_phys() -> Option<u64> {
+pub(crate) fn io_apic_phys() -> Option<u64> {
     match IO_APIC_PHYS.load(Ordering::Relaxed) {
         0 => None,
         base => Some(base),
@@ -556,18 +556,18 @@ pub fn io_apic_phys() -> Option<u64> {
 
 /// This IO APIC's id, from its own register rather than from the MADT. Printed at boot because a
 /// disagreement between the two is a firmware bug worth seeing rather than averaging over.
-pub fn io_apic_id() -> u8 {
+pub(crate) fn io_apic_id() -> u8 {
     ((io_apic_read(io_reg::ID) >> 24) & 0x0f) as u8
 }
 
 /// Its version register's low byte. 0x11 on the discrete 82093AA and on QEMU's q35, 0x20 on the
 /// ICH-era parts.
-pub fn io_apic_version() -> u8 {
+pub(crate) fn io_apic_version() -> u8 {
     io_apic_read(io_reg::VERSION) as u8
 }
 
 /// How many redirection entries it has. Zero until [`init_io_apic`] has run.
-pub fn io_apic_entries() -> u32 {
+pub(crate) fn io_apic_entries() -> u32 {
     IO_APIC_ENTRIES.load(Ordering::Relaxed)
 }
 
@@ -612,7 +612,7 @@ pub fn gsi_vector(gsi: u32) -> Option<u8> {
 /// while `gsi_vector` assigned by GSI, so on an IO APIC with a nonzero base the same interrupt was
 /// routed as a device vector and then not counted as one here.
 /// `proofs::an_owned_gsi_routes_inside_the_io_apic_band` now asserts the agreement directly.
-pub fn is_device_vector(vector: u64) -> bool {
+pub(crate) fn is_device_vector(vector: u64) -> bool {
     let base = GSI_VECTOR_BASE as u64;
     vector >= base && vector < base + io_apic_entries() as u64
 }
@@ -642,7 +642,13 @@ fn redirection_index(gsi: u32) -> Option<u32> {
 /// # Panics
 /// If this IO APIC does not own `gsi`. Silently doing nothing would be an unarmed line that looks
 /// exactly like a device that never interrupts.
-pub fn route_gsi(gsi: u32, vector: u8, active_low: bool, level_triggered: bool, dest_apic_id: u8) {
+pub(crate) fn route_gsi(
+    gsi: u32,
+    vector: u8,
+    active_low: bool,
+    level_triggered: bool,
+    dest_apic_id: u8,
+) {
     let index = redirection_index(gsi).unwrap_or_else(|| {
         panic!(
             "gsi {gsi} is outside the IO APIC's range (base {}, {} entries)",
@@ -668,7 +674,7 @@ pub fn route_gsi(gsi: u32, vector: u8, active_low: bool, level_triggered: bool, 
 ///
 /// # Panics
 /// As [`route_gsi`]: a GSI this part does not own is a caller bug, not a no-op.
-pub fn mask_gsi(gsi: u32) {
+pub(crate) fn mask_gsi(gsi: u32) {
     let index = redirection_index(gsi).unwrap_or_else(|| {
         panic!("gsi {gsi} is outside the IO APIC's range");
     });
@@ -681,7 +687,7 @@ pub fn mask_gsi(gsi: u32) {
 ///
 /// Called once, after ACPI has been walked and before any line is armed. Without it [`enable`]
 /// falls back to the identity map, which is wrong for the timer on every PC ever built.
-pub fn record_isa_routing(table: &[IsaIrqRouting; ISA_IRQ_COUNT]) {
+pub(crate) fn record_isa_routing(table: &[IsaIrqRouting; ISA_IRQ_COUNT]) {
     for (irq, routing) in table.iter().enumerate() {
         let mut packed = routing.gsi & 0xffff;
         if routing.active_low {
@@ -696,7 +702,7 @@ pub fn record_isa_routing(table: &[IsaIrqRouting; ISA_IRQ_COUNT]) {
 
 /// How legacy IRQ `irq` reaches this machine's IO APIC, falling back to the ISA bus's own defaults
 /// when [`record_isa_routing`] has not run or the number is not a legacy IRQ.
-pub fn isa_routing(irq: u32) -> IsaIrqRouting {
+pub(crate) fn isa_routing(irq: u32) -> IsaIrqRouting {
     let fallback = IsaIrqRouting::isa_default(irq as u8);
     let Some(slot) = ISA_ROUTING.get(irq as usize) else {
         return fallback;
@@ -741,7 +747,7 @@ pub fn init() {
 /// A no-op if the boot core never found a local APIC at all (`local_apic_phys()` is `None`):
 /// unreachable in practice, because `smp::bring_up_secondaries` only starts a core once
 /// `arch::can_start_secondaries()` has already required exactly that.
-pub fn init_this_cpu() {
+pub(crate) fn init_this_cpu() {
     if let Some(apic) = local_apic_phys() {
         // SAFETY: the same physical address the boot core already validated (it is where
         // `read_acpi` found the MADT's local APIC entry) and mapped device-typed in `mmu::init`'s
@@ -949,7 +955,7 @@ pub fn raise_self_interrupt(vector: u8) {
 /// # Panics
 /// If `target_cpu` names no seated core. Every caller in `sched` first checks the target is an
 /// online core (`smp::online_cpus`), and an online core is by construction a seated one.
-pub fn send_reschedule(target_cpu: usize) {
+pub(crate) fn send_reschedule(target_cpu: usize) {
     debug_assert!(
         is_local_apic_ready(),
         "a reschedule IPI before the local APIC is up has nothing to send it with"
@@ -979,7 +985,7 @@ pub fn send_nmi(dest_apic_id: u8) {
 /// **Send an INIT inter-processor interrupt** to the local APIC whose id is `dest_apic_id`: the
 /// first step of INIT-SIPI-SIPI. Resets the target into a wait-for-SIPI state; it does not say
 /// where to start, which is what the two STARTUP IPIs that follow are for.
-pub fn send_init(dest_apic_id: u8) {
+pub(crate) fn send_init(dest_apic_id: u8) {
     wait_for_ipi_delivery();
     write(reg::ICR_HIGH, (dest_apic_id as u32) << 24);
     write(reg::ICR_LOW, ICR_INIT | ICR_ASSERT);
@@ -989,7 +995,7 @@ pub fn send_init(dest_apic_id: u8) {
 /// `dest_apic_id`, naming the page it should begin executing at: physical address
 /// `(vector as u64) << 12`. The target starts there in 16-bit real mode, with `cs` = `vector << 8`
 /// and `ip` = 0 (`cs * 16 + ip` is exactly `vector << 12`).
-pub fn send_startup(dest_apic_id: u8, vector: u8) {
+pub(crate) fn send_startup(dest_apic_id: u8, vector: u8) {
     wait_for_ipi_delivery();
     write(reg::ICR_HIGH, (dest_apic_id as u32) << 24);
     write(reg::ICR_LOW, ICR_STARTUP | ICR_ASSERT | vector as u32);
@@ -1010,7 +1016,7 @@ pub fn send_startup(dest_apic_id: u8, vector: u8) {
     any(test, feature = "system_tests", feature = "bench"),
     allow(dead_code)
 )]
-pub fn print_summary() {
+pub(crate) fn print_summary() {
     match (local_apic_phys(), io_apic_phys()) {
         (Some(lapic), Some(ioapic)) => crate::println!(
             "  interrupts      : local apic {lapic:#018x} (id {}), io apic {ioapic:#018x} ({} entries)",

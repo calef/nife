@@ -95,7 +95,7 @@ pub fn page_phys() -> u64 {
 
 /// The allocator's counts, stored by whoever just changed them, under the allocator's lock.
 #[inline]
-pub fn frames(total: usize, free: usize) {
+pub(crate) fn frames(total: usize, free: usize) {
     at(word::TOTAL_FRAMES).store(total as u64, Ordering::Relaxed);
     at(word::FREE_FRAMES).store(free as u64, Ordering::Relaxed);
 }
@@ -111,7 +111,7 @@ pub fn interrupt() {
 /// it has made `switches` context switches since boot (`cpu::PerCpu::switches`, which the switch
 /// counts and this publishes; milestone 629).
 #[inline]
-pub fn tick(switches: u64, idle: bool, runnable: u64) {
+pub(crate) fn tick(switches: u64, idle: bool, runnable: u64) {
     mine(word::ONLINE).store(1, Ordering::Relaxed);
     mine(word::CONTEXT_SWITCHES).store(switches, Ordering::Relaxed);
     let spent = if idle {

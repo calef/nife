@@ -90,7 +90,7 @@ const BAUD: u32 = 115_200;
 /// block, plus what to program the divisor to. One struct so the console can swap all of it in a
 /// single call, and `const`-constructible so the pre-device-tree default costs nothing.
 #[derive(Copy, Clone, PartialEq, Eq, Debug)]
-pub struct Shape {
+pub(crate) struct Shape {
     /// `reg-shift`: log2 of the distance in bytes between consecutive registers. 0 on QEMU `virt`,
     /// 2 on the JH7110.
     pub reg_shift: u8,
@@ -114,7 +114,7 @@ impl Shape {
     /// QEMU `virt`'s wiring, and this driver's entire behavior before the VisionFive 2 prep:
     /// consecutive byte registers, and divisor 1 (115200 from the standard 1.8432 MHz UART clock),
     /// which QEMU ignores. The default until `console::configure_from_dtb` reads the real answer.
-    pub const QEMU_VIRT: Shape = Shape {
+    pub(crate) const QEMU_VIRT: Shape = Shape {
         reg_shift: 0,
         reg_io_width: 1,
         divisor: 1,
@@ -124,7 +124,7 @@ impl Shape {
     /// The divisor for [`BAUD`] from a stated input clock, rounded to nearest: a 16550 divides the
     /// clock by 16 x divisor. 24 MHz gives 13 (actual rate 115385, 0.16% high, well inside
     /// tolerance); QEMU `virt`'s stated 3.6864 MHz gives exactly 2.
-    pub const fn divisor_for(clock_hz: u32) -> u16 {
+    pub(crate) const fn divisor_for(clock_hz: u32) -> u16 {
         ((clock_hz + 8 * BAUD) / (16 * BAUD)) as u16
     }
 }
@@ -148,7 +148,7 @@ const _: () = {
 /// promise that the four functions read and write exactly the width and location named, with no
 /// caching, reordering or elision, which is what a device register requires and what an ordinary
 /// Rust load does not promise.
-pub unsafe trait RegisterSpace {
+pub(crate) unsafe trait RegisterSpace {
     /// Read one byte at `addr`.
     ///
     /// # Safety
@@ -173,7 +173,7 @@ pub unsafe trait RegisterSpace {
 
 /// Registers reached as memory, which is what every 16550 outside x86 looks like. The default, so
 /// a bare `Ns16550` means what it has always meant.
-pub struct Mmio;
+pub(crate) struct Mmio;
 
 // SAFETY: every access below is a `read_volatile`/`write_volatile` of the exact width named at the
 // exact address given, which is the contract.
@@ -197,7 +197,7 @@ unsafe impl RegisterSpace for Mmio {
 }
 
 /// A handle to one NS16550: a base address, the block's [`Shape`], and how to reach it.
-pub struct Ns16550<S: RegisterSpace = Mmio> {
+pub(crate) struct Ns16550<S: RegisterSpace = Mmio> {
     base: usize,
     shape: Shape,
     space: core::marker::PhantomData<S>,
@@ -297,7 +297,7 @@ impl<S: RegisterSpace> Ns16550<S> {
     }
 
     /// Write one byte, spinning until the transmit holding register has room.
-    pub fn write_byte(&self, byte: u8) {
+    pub(crate) fn write_byte(&self, byte: u8) {
         while self.read(LSR) & LSR_THRE == 0 {
             core::hint::spin_loop();
         }
@@ -452,7 +452,7 @@ impl<S: RegisterSpace> Ns16550<S> {
     /// [`enable_tx_interrupt`]. The console is a polling console, so all-off is its resting state
     /// (`init` writes the same value). Test builds only, for the same reason as its partner above.
     #[cfg(any(test, feature = "system_tests"))]
-    pub fn disable_interrupts(&self) {
+    pub(crate) fn disable_interrupts(&self) {
         self.write(IER, 0x00);
     }
 }

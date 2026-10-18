@@ -77,7 +77,7 @@ swap roles genuinely belong to the swap protocol.
 | **1, one per pair** | nineteen names, nineteen `Cargo.toml` entries, nineteen dependency edges | a reader meeting `compositor_test_contract` knows what it holds without opening it |
 | **2, one crate** | one name | a grab bag of unrelated numbers, which §46 and naming.md's generic-name rule both push against; and every kernel test depends on every other test's constants |
 
-Three crate names in milestone 407's table have moved and the work has to read the current ones:
+Three crate names in milestone 407's table have moved and the work has to read the current ones.
 `swap_proto` is `crates/hot_swap_contract`, `login_proto` is `crates/login_contract`, and
 `components/src/ntp.rs` was split into three programs by milestone 290, so that row's program side
 is now `network_time_client` and its siblings.
@@ -85,8 +85,8 @@ is now `network_time_client` and its siblings.
 ## Recommendation
 
 1, and the reason is not symmetry. Option 2's real cost is the dependency edge rather than the
-name: one crate for all of them makes every kernel test's wiring depend on every other test's
-constants, so a number added for the compositor rebuilds the login test, and a reader opening the
+name. One crate for all of them makes every kernel test's wiring depend on every other test's
+constants. So a number added for the compositor rebuilds the login test, and a reader opening the
 crate cannot tell which half is theirs. Nineteen small crates is more entries in a manifest and
 fewer things to hold in a head, which is this tree's definition of elegance.
 

@@ -26,7 +26,7 @@ const CTX_UNKNOWN: usize = usize::MAX;
 ///
 /// Prints only when the machine differs from the formula, because that is the fact worth a boot
 /// line: on QEMU it is silence, on the JH7110 it is the reason interrupts work.
-pub fn init_contexts(dtb_ptr: usize) {
+pub(crate) fn init_contexts(dtb_ptr: usize) {
     // SAFETY: the pointer firmware handed us, already parsed by memory::init on this boot, named
     // through the direct map.
     let Ok(dt) = (unsafe {
@@ -67,7 +67,7 @@ fn s_context_of(hart: usize) -> usize {
 /// `send_reschedule`), so the current hart's context is derived from [`S_CTX`], never stored
 /// per-CPU. The external-interrupt handler claims and completes against this, so a secondary hart
 /// uses its own context, not the boot hart's.
-pub fn this_s_context() -> usize {
+pub(crate) fn this_s_context() -> usize {
     s_context_of(crate::cpu::id())
 }
 
@@ -140,7 +140,7 @@ pub fn enable(intid: u32) {
 /// nothing on this board needs it, and a routing path with no consumer is machinery to maintain
 /// with no way to know it works. See design/roadmap/0215-x86-64-pci-interrupt-routing.md for why
 /// `x86_64` answers differently.
-pub fn alloc_msi_vector() -> Option<(u32, pci::MsiTarget)> {
+pub(crate) fn alloc_msi_vector() -> Option<(u32, pci::MsiTarget)> {
     None
 }
 
@@ -150,7 +150,7 @@ pub fn alloc_msi_vector() -> Option<(u32, pci::MsiTarget)> {
 /// PLIC forever, with all harts parked in `wfi`. Found by the parity-C disk test hanging on some
 /// runs and passing on others, exactly the lottery's coin flip. The hart-to-context mapping itself
 /// comes from [`S_CTX`], for the reason recorded there.
-pub fn boot_s_context() -> usize {
+pub(crate) fn boot_s_context() -> usize {
     s_context_of(super::boot_hartid())
 }
 
@@ -174,7 +174,7 @@ pub fn init() {
 /// its supervisor external interrupts (`sie.SEIE`), so IRQ affinity ([`enable`]) can route a device
 /// source to this hart's PLIC context and have it taken here. The context's threshold is opened, and
 /// sources routed, later and by the boot hart (`target_context`); this only unmasks the CSR.
-pub fn init_this_cpu() {
+pub(crate) fn init_this_cpu() {
     super::exceptions::enable_software_interrupts();
     // Unmask this hart's supervisor external interrupts (`sie.SEIE`) too, so IRQ affinity can route a
     // device source to any online hart and have it actually take the interrupt. Setting SEIE with no
@@ -190,7 +190,7 @@ pub fn init_this_cpu() {
 /// software interrupt (`scause` = 1) and drains its inbox. Unlike the PLIC's external interrupts this
 /// is a software interrupt, the firmware's mechanism rather than this controller's, but the
 /// `arch::irq` seam is the same one aarch64 fills with a GIC SGI.
-pub fn send_reschedule(target_cpu: usize) {
+pub(crate) fn send_reschedule(target_cpu: usize) {
     crate::arch::sbi_send_ipi(target_cpu);
 }
 
@@ -209,7 +209,7 @@ pub fn send_reschedule(target_cpu: usize) {
     any(test, feature = "system_tests", feature = "bench"),
     allow(dead_code)
 )]
-pub fn print_summary() {
+pub(crate) fn print_summary() {
     match crate::memory::plic_region() {
         Some((plic, _)) => crate::println!(
             "  interrupts      : PLIC at {plic:#018x}, this hart's S-mode context {}",

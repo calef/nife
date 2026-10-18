@@ -224,7 +224,7 @@ pub fn init() {
     any(test, feature = "system_tests", feature = "bench"),
     allow(dead_code)
 )]
-pub fn print_summary() {
+pub(crate) fn print_summary() {
     let irq = crate::memory::uart_irq();
     // The screen is read through the same lock the UART is, which is the point of `KernelConsole`:
     // one lock serialises both surfaces. Copied out and released before printing, because printing
@@ -287,7 +287,7 @@ const CONSOLE_KIND: &str = "NS16550";
 // Dead on the other two architectures until milestone 157's U-Boot framebuffer handoff gives them a
 // caller. The console half is arch-neutral deliberately; what they are missing is the discovery.
 #[cfg_attr(not(target_arch = "x86_64"), allow(dead_code))]
-pub unsafe fn attach_screen(found: Framebuffer, virt: u64) -> Option<(u32, u32)> {
+pub(crate) unsafe fn attach_screen(found: Framebuffer, virt: u64) -> Option<(u32, u32)> {
     let mut console = ScreenConsole::new(found)?;
     let len = console.span();
     let mut guard = CONSOLE.lock();
@@ -312,7 +312,7 @@ pub unsafe fn attach_screen(found: Framebuffer, virt: u64) -> Option<(u32, u32)>
 /// and this is the separation.
 ///
 /// `None` when there is no screen, or when a userspace terminal already has it.
-pub fn peek_screen() -> Option<Framebuffer> {
+pub(crate) fn peek_screen() -> Option<Framebuffer> {
     let guard = CONSOLE.lock();
     let screen = guard.screen.as_ref()?;
     if screen.painter != Painter::Kernel {
@@ -333,7 +333,7 @@ pub fn peek_screen() -> Option<Framebuffer> {
 /// gets nothing, which is what makes two userspace painters unrepresentable rather than merely
 /// unlikely. The caller must spawn nothing that paints the aperture until this has returned
 /// `Some`.
-pub fn yield_screen() -> Option<Framebuffer> {
+pub(crate) fn yield_screen() -> Option<Framebuffer> {
     // **The handshake, when a host asked for one** (milestone 445). Off unless the boot command
     // line carried `machine_discovery::framebuffer::SCREEN_HOLD`, and then this is one relaxed load
     // on a path taken once per boot. See [`hold_screen_for_host`] for why the wait is out here
@@ -499,7 +499,7 @@ fn hold_screen_for_host() {
 /// not do it yet.
 ///
 /// Call after `force_unlock`, before printing.
-pub fn reclaim_screen_for_panic() {
+pub(crate) fn reclaim_screen_for_panic() {
     let mut guard = CONSOLE.lock();
     let kernel = &mut *guard;
     let Some(screen) = kernel.screen.as_mut() else {
@@ -538,7 +538,7 @@ pub fn reclaim_screen_for_panic() {
 /// yields divisor 0: leave the divisor and line controls exactly as U-Boot programmed them, which
 /// is the correct move on a board whose firmware just printed a prompt at 115200.
 #[cfg(target_arch = "riscv64")]
-pub fn configure_from_dtb() {
+pub(crate) fn configure_from_dtb() {
     use crate::drivers::ns16550::Shape;
 
     // Nothing has parsed the tree yet on this boot; the magic check inside `device_tree` is what
@@ -646,13 +646,13 @@ pub fn discard_rx() {
 ///
 /// See `kernel::sched::tests` and notes/interrupts.md.
 #[cfg(all(any(test, feature = "system_tests"), target_arch = "riscv64"))]
-pub fn raise_uart_interrupt() {
+pub(crate) fn raise_uart_interrupt() {
     CONSOLE.lock().uart.enable_tx_interrupt();
 }
 
 /// Quiet the line [`raise_uart_interrupt`] raised. Test builds only.
 #[cfg(all(any(test, feature = "system_tests"), target_arch = "riscv64"))]
-pub fn quiet_uart_interrupt() {
+pub(crate) fn quiet_uart_interrupt() {
     CONSOLE.lock().uart.disable_interrupts();
 }
 
@@ -719,7 +719,7 @@ pub fn read_line(out: &mut [u8], patience: core::time::Duration) -> Option<usize
 /// for getting the message out at all.
 ///
 /// See sync.rs, and DECISIONS §9.
-pub unsafe fn force_unlock() {
+pub(crate) unsafe fn force_unlock() {
     // SAFETY: this function's own `# Safety` contract is exactly the one this call needs; it forwards, it does not weaken.
     unsafe { CONSOLE.force_unlock() }
 }
@@ -751,7 +751,7 @@ pub fn enter_panic() {
 ///   boot, beside the console server's own output, as the detached control does. Handing the ring
 ///   back would need the drainer's cursor moved past what was caught up here, and a machine whose
 ///   firmware refused a reset has a bigger problem than a spliced line.
-pub fn enter_reset() {
+pub(crate) fn enter_reset() {
     let mut guard = CONSOLE.lock();
     let con = &mut *guard;
     let (line, mut wire) = con.split();

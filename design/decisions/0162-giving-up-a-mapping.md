@@ -21,9 +21,9 @@ touched. **C, the one-page loader, is optional**: a boot-time refinement that no
 
 The reason. C alone cannot close the window, because the last page stays mapped unless something
 gives it up, and only A does that. And a program giving up a window it made for its own reasons is a
-case only A answers. **B is refused**, for the reasons in the table: it reads as a second revoke and
-invites confusion with §41 (the endpoint is the broker, and a device is revoked by taking it back), and a frame mapped at two addresses in one space has no unambiguous
-answer.
+case only A answers. **B is refused**, for the reasons in the table. It reads as a second revoke and
+invites confusion with §41 (the endpoint is the broker, and a device is revoked by taking it back).
+A frame mapped at two addresses in one space has no unambiguous answer.
 
 **Two semantics stay open**, and milestone 95's lane owes them as amendments to this section before
 its build merges: what UNMAP does to a va that was never mapped, and whether the frame capability
@@ -82,12 +82,13 @@ options rather than an answer.
 | B | `Frame::UNMAP`, the holder naming the frame rather than the address. | Reads as a second revoke and invites confusion with §41's take-back, which already dispatches on the object kind. A frame mapped at two addresses in one space has no unambiguous answer. |
 | C | No new method: a one-page loader. The builder maps a page, writes it, releases it before the next, so the window is never wider than one page and closes when construction ends. | No syscall surface at all, which is the strongest thing that can be said about an option here. It does not remove the window, it bounds it: the last page stays mapped unless something gives it up, so C is likely A plus a loader change rather than an alternative to it. Its price is boot time, and it is measurable. |
 
-Recommendation as raised (2026-09-19, superseded by the ruling above): measure C first, then A. Not because C is less work (it is a restructure of the
-loader against a one-line method, so it is more), but because the measurement decides whether the
-syscall surface has to grow at all, and this project's rule is that the surface stays small and
-every method is deliberate. If a one-page loader costs nothing observable at boot, the question
-becomes whether A is still worth a permanent boundary change for the residual last page; if it
-costs real time, A is the answer and the measurement said so.
+Recommendation as raised (2026-09-19, superseded by the ruling above): measure C first, then A. Not
+because C is less work (it is a restructure of the loader against a one-line method, so it is more).
+It is because the measurement decides whether the syscall surface has to grow at all, and this
+project's rule is that the surface stays small and every method is deliberate. If a one-page loader
+costs nothing observable at boot, the question becomes whether A is still worth a permanent boundary
+change for the residual last page; if it costs real time, A is the answer and the measurement said
+so.
 
 The one question C cannot answer is what a *program* does when it wants to give up a window it
 made for its own reasons. Nothing in this tree asks for that today, which is why C is worth
@@ -96,7 +97,7 @@ measuring rather than dismissing.
 ## Would we still choose this if both options cost the same
 
 Yes, and this is worth saying because the recommendation looks like the cheap one. If a loader
-restructure and a new syscall were the same amount of work, the ordering would be unchanged: the
+restructure and a new syscall were the same amount of work, the ordering would be unchanged. The
 surface is a boundary every future program is written against, and taking the measurement first is
 what makes the addition deliberate rather than reflexive. The effort argument would run the other
 way, since C is the larger change.

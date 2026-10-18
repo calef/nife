@@ -29,9 +29,9 @@ use crate::motorcomm::{Drive, Settings, Source};
 use crate::regs;
 
 /// Mainline's compatible for both ports.
-pub const COMPATIBLE_MAINLINE: &[u8] = b"starfive,jh7110-dwmac";
+pub(crate) const COMPATIBLE_MAINLINE: &[u8] = b"starfive,jh7110-dwmac";
 /// The vendor U-Boot's compatible for both ports, the one radon's firmware serves.
-pub const COMPATIBLE_VENDOR: &[u8] = b"starfive,jh7110-eqos-5.20";
+pub(crate) const COMPATIBLE_VENDOR: &[u8] = b"starfive,jh7110-eqos-5.20";
 
 /// `gmac0`'s window, in both trees and in OpenBSD's port table.
 pub const GMAC0_BASE: u64 = 0x1603_0000;
@@ -59,21 +59,21 @@ pub const BUS: Bus = Bus {
 
 /// The AON syscon's window: mainline's `aon_syscon: syscon@17010000` and the vendor's
 /// `aon_syscon@17010000`, both `0x1000` long.
-pub const AON_SYSCON_BASE: u64 = 0x1701_0000;
+pub(crate) const AON_SYSCON_BASE: u64 = 0x1701_0000;
 /// Its size.
-pub const AON_SYSCON_SIZE: u64 = 0x1000;
+pub(crate) const AON_SYSCON_SIZE: u64 = 0x1000;
 /// Mainline's compatible for it. The vendor's node says only `syscon`, which names nothing.
-pub const COMPATIBLE_AON_SYSCON: &[u8] = b"starfive,jh7110-aon-syscon";
+pub(crate) const COMPATIBLE_AON_SYSCON: &[u8] = b"starfive,jh7110-aon-syscon";
 /// The word holding `gmac0`'s interface select: mainline's `<&aon_syscon 0xc 0x12>` second cell,
 /// the vendor's `AON_SYSCFG_12`.
 pub const GMAC0_SYSCON_OFFSET: u64 = 0xc;
 /// The field's shift: mainline's third cell `0x12`, the vendor's `GMAC5_0_SEL_I_SHIFT`.
-pub const GMAC0_SYSCON_SHIFT: u32 = 18;
+pub(crate) const GMAC0_SYSCON_SHIFT: u32 = 18;
 /// The field is three bits wide (OpenBSD's `((1U << 3) - 1) << shift`; the vendor's mask
 /// `0x1c0000`).
-pub const SYSCON_FIELD: u32 = 0x7;
+pub(crate) const SYSCON_FIELD: u32 = 0x7;
 /// The RGMII interface (OpenBSD's `JH7110_PHY_INTF_RGMII`; the vendor's `BIT(SHIFT)` for 1000M).
-pub const PHY_INTERFACE_RGMII: u32 = 1;
+pub(crate) const PHY_INTERFACE_RGMII: u32 = 1;
 
 /// **The syscon word with `gmac0`'s interface select set to RGMII**, every other field kept.
 pub const fn select_rgmii(word: u32) -> u32 {

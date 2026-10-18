@@ -162,7 +162,7 @@ pub mod throughput {
     /// have moved sixteen times as much data at 64 KiB as at 4 KiB. Two runs of this phase move
     /// the same file however the requests are shaped, which is what makes a before and an after
     /// comparable.
-    pub const TOTAL: u64 = 1024 * 1024;
+    pub(crate) const TOTAL: u64 = 1024 * 1024;
 
     /// Transfers per phase: [`TOTAL`] divided by [`UNIT`]. 256 at one page, 16 at sixteen.
     pub const BLOCKS: u64 = TOTAL / UNIT as u64;

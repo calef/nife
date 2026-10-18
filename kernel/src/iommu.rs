@@ -74,7 +74,7 @@ pub enum Scope {
 
 impl Scope {
     /// True only when this kernel's page tables are what the device's DMA is checked against.
-    pub fn is_confining(&self) -> bool {
+    pub(crate) fn is_confining(&self) -> bool {
         matches!(self, Scope::WholeBus | Scope::Owned { .. })
     }
 }
@@ -123,7 +123,7 @@ impl core::fmt::Display for Scope {
 }
 
 /// Ask the architecture's driver for `rid`'s [`Scope`].
-pub fn scope_of(rid: u32) -> Scope {
+pub(crate) fn scope_of(rid: u32) -> Scope {
     crate::arch::iommu::scope_of(rid)
 }
 
@@ -150,7 +150,7 @@ fn zeroed_page_frame() -> u64 {
 /// `rid` is the PCIe requester id (bus/dev/fn), which both IOMMUs key their tables on (each `virt`
 /// board's device tree gives an identity `iommu-map`). The caller must have checked [`is_active`];
 /// attaching before the driver's `init` panics.
-pub fn confine(rid: u32, regions: &[DmaRegion]) {
+pub(crate) fn confine(rid: u32, regions: &[DmaRegion]) {
     // **The grant, plus every region the firmware reserved for this device** (milestone 594). On
     // VT-d an RMRR is memory the firmware keeps DMA-ing into (USB legacy emulation, a UMA GPU's
     // stolen memory), and VT-d 4.1 section 3.16 asks for it identity-mapped in whatever domain
@@ -227,7 +227,7 @@ pub(crate) fn build_identity<F: paging::PageFormat>(regions: &[DmaRegion]) -> u6
 /// the shadow was authority the device never needed, over the one page whose whole purpose is that
 /// nothing but the kernel shapes it. `virtio::tests::a_device_write_to_the_read_only_shadow_is_refused`
 /// is the proof, on every architecture's IOMMU.
-pub fn virtio_regions(
+pub(crate) fn virtio_regions(
     direct_memory_access_base: u64,
     direct_memory_access_size: u64,
     shadow_base: u64,

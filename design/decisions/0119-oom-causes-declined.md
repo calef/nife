@@ -14,14 +14,14 @@ customer."*
 
 `Untyped::SPLIT` and `RETYPE_OBJ` both return `Error::OutOfMemory` for three unrelated causes: the
 caller's own region budget exhausted, the caller's own cspace full, or `MAX_REGIONS` (the
-system-wide concurrently-live region table) full. The first two are facts about the caller; the
+system-wide concurrently-live region table) full. The first two are facts about the caller. The
 third is a fact about everyone else on the machine, fixable by nothing the caller can do locally.
 Distinguishing them touches the syscall ABI's shared `Error` enum, so the milestone named it a fork
 rather than guessing.
 
 ## The decision
 
-**Declined for now.** No caller is confused by this today; it was found while *pricing* milestone
+**Declined for now.** No caller is confused by this today. It was found while *pricing* milestone
 152's future durable-session cost, not from an actual `MAX_REGIONS`-exhaustion bug anyone hit. Same
 shape as `std::thread::spawn` (§105), hard links (§110), and live component state handoff (§116):
 revisit when a customer needs it, not before.
@@ -39,18 +39,17 @@ left it collapsed.
 
 POSIX already drew this exact line, verified rather than recalled. `EMFILE` (a process's own
 file-descriptor limit exhausted, a per-process fact) is a distinct code from `ENFILE` (the whole
-system's file table full, a system-wide fact nothing the caller does fixes locally) --
-[errno(3), Linux man-pages](https://man7.org/linux/man-pages/man3/errno.3.html). That is nife's
-cause 2 versus cause 3, precisely. `ENOMEM` covers the general allocation-failure case, roughly
-nife's cause 1.
+system's file table full, a system-wide fact nothing the caller does fixes locally) -- [errno(3),
+Linux man-pages](https://man7.org/linux/man-pages/man3/errno.3.html). That is nife's cause 2 versus
+cause 3, precisely. `ENOMEM` covers the general allocation-failure case, roughly nife's cause 1.
 
-Both precedents point the same direction: when this is eventually built, new cause-specific
-`Error` variants (matching `timetable`'s `Unbacked`/`Refusal` shape and POSIX's `EMFILE`/`ENFILE`
-split) is the better-supported option, over a separate diagnostic-only query or leaving it
-collapsed forever. This is non-binding guidance for whoever eventually has a real customer, not a
-commitment -- re-check it against what that customer's failures actually look like rather than
-building to a description with nothing to correct it, the same caveat §116 attached to its own
-guidance.
+Both precedents point the same direction: when this is eventually built, new cause-specific `Error`
+variants (matching `timetable`'s `Unbacked`/`Refusal` shape and POSIX's `EMFILE`/`ENFILE` split) is
+the better-supported option, over a separate diagnostic-only query or leaving it collapsed forever.
+This is non-binding guidance for whoever eventually has a real customer, not a commitment. Re-check
+it against what that customer's failures actually look like rather than building to a description
+with nothing to correct it. That is the same caveat §116 (live component state handoff is declined)
+attached to its own guidance.
 
 ## What this does not decide
 
@@ -61,5 +60,5 @@ way.
 
 ## What it unblocks
 
-Nothing was gated on this (the milestone's own text says so); it closes the open question so
+Nothing was gated on this (the milestone's own text says so). It closes the open question so
 milestone 153 can record DECLINED rather than sitting as a live fork with no customer to answer it.

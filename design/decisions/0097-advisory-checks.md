@@ -56,10 +56,10 @@ not. Its own comment says why, and the reasoning is sound in isolation: *"the qu
 and nothing here should retry it and burn CI."*
 
 So the same red check means "merge it" to the queue and "do not touch it" to the drain. The effect is
-not theoretical: within an hour of #323 fixing the baseline, three pull requests (#319, #321, #325)
-sat stalled with the drain printing `STALLED. #N is failing fastpath footprint` for each, because
-each had branched before the fix and inherited a failure that no longer existed on `main`. Every one
-of them was mergeable and none of them was moving.
+not theoretical. Within an hour of #323 fixing the baseline, three pull requests (#319, #321, #325)
+sat stalled with the drain printing `STALLED. #N is failing fastpath footprint` for each. That was
+because each had branched before the fix and inherited a failure that no longer existed on `main`.
+Every one of them was mergeable and none of them was moving.
 
 Neither behavior is wrong on its own; having both is. A tree where the enforcing mechanism does
 not block and the non-enforcing one does is one where nobody can predict what a red check costs, and
@@ -112,9 +112,9 @@ reasoning about it, and the reading moved two of the six and corrected the reaso
 
    A required context is a **string**, and an unreported one is not failed but *unsatisfied*, which
    has no timeout. So requiring `prove (shard 1/2)` blocks every documentation change forever,
-   needing a ruleset override to land a typo fix. Under the merge queue it is worse than a block:
-   a group that can never satisfy a required context is evicted and rebuilt forever, which is
-   the loop that already happened here on 2026-08-15 when a lint rejected GitHub's own synthetic
+   needing a ruleset override to land a typo fix. Under the merge queue it is worse than a block.
+   A group that can never satisfy a required context is evicted and rebuilt forever. That is the
+   loop that already happened here on 2026-08-15 when a lint rejected GitHub's own synthetic
    branch names.
 
 5. Require none, and say so out loud. The floor rather than an option to prefer: one line naming
@@ -165,9 +165,9 @@ proposing a new one.
 ## What decides it
 
 This is an architect's because it changes what may merge, which is merge authority rather than tooling.
-It is also cheap to reverse (a ruleset edit), so it does not want a long deliberation, and the
-*move fast on what can be undone* tenet applies: the expensive part is not the configuration, it is
-the hours of trunk-red that the current arrangement will keep producing while nobody decides.
+It is also cheap to reverse (a ruleset edit), so it does not want a long deliberation. The *move
+fast on what can be undone* tenet applies: the expensive part is not the configuration, it is the
+hours of trunk-red that the current arrangement will keep producing while nobody decides.
 
 ## Not yet built
 

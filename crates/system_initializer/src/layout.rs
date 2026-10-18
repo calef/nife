@@ -80,8 +80,10 @@ pub(super) const SH_BUDGET_PAGES: u64 = spawnproto::SHELL_BUDGET_PAGES;
 /// below keeps that half of this budget spoken for; the other half pays for `job_undertaker`, which
 /// is built out of this region (its image, twelve stack pages, its tables, its address space and
 /// thread), and the tables under `ACTIVATION_FS_VA` and `IMAGE_STAGING_VA`.
-pub const INIT_OWN_PAGES: u64 = 128;
-const _: () = assert!(INIT_OWN_PAGES >= 2 * supervision_protocol::SCRATCH_TABLE_PAGES);
+///
+/// Name: ratified 2026-10-18 (calef: "Progenitors numbers are ratified."), replacing `INIT_OWN_PAGES`.
+pub const PROGENITOR_RESERVED_PAGES: u64 = 128;
+const _: () = assert!(PROGENITOR_RESERVED_PAGES >= 2 * supervision_protocol::SCRATCH_TABLE_PAGES);
 
 /// **One job's region**: everything a spawned program is made of, so a single reclaim frees all of
 /// it. The biggest program the prompt can spawn is `date` at seven pages, plus
@@ -214,11 +216,14 @@ const _: () = assert!(
 /// Where the progenitor maps the shell's output frame in **its own** address space, to print the one line it
 /// ever prints (the dropped-authority negative control). Well clear of the progenitor's segments, its stack,
 /// and the loader's scratch window at `0x1000_0000`.
-pub(super) const INIT_OUT_VA: u64 = address_space_map::pair_page(0x0f00_0000);
+///
+/// Name: ratified 2026-10-18 (calef: "Progenitors numbers are ratified."), replacing `INIT_OUT_VA`.
+pub(super) const PROGENITOR_SHELL_OUTPUT_VIRTUAL_ADDRESS: u64 =
+    address_space_map::pair_page(0x0f00_0000);
 
 /// Where the progenitor briefly maps the virtio-rng DMA page, in **its own** address space, to read
 /// [`VIRTIO_DMA_PHYS_OFFSET`] back out before handing the same frame on to entropy. Distinct from
-/// [`INIT_OUT_VA`]. Given up with `UNMAP` the moment the offset is read (milestone 95 (an unmap
+/// [`PROGENITOR_SHELL_OUTPUT_VIRTUAL_ADDRESS`]. Given up with `UNMAP` the moment the offset is read (milestone 95 (an unmap
 /// primitive), §249 (a running address space stays nameable)); it was mapped for the life of the
 /// boot until then.
 pub(super) const RNG_DMA_PEEK_VA: u64 = address_space_map::pair_page(0x0f10_0000);
@@ -358,7 +363,7 @@ pub(super) const IDP_FS_VA: u64 = address_space_map::pair_page(0x0000_0000_00e5_
 /// Where this process briefly maps the page it stages `identity_provisioner`'s request into, in its
 /// own address space, before delegating the same physical frame on. Distinct from every VA above
 /// (those are addresses inside a *child's* address space); in the same scratch family as
-/// [`RNG_DMA_PEEK_VA`] and [`INIT_OUT_VA`].
+/// [`RNG_DMA_PEEK_VA`] and [`PROGENITOR_SHELL_OUTPUT_VIRTUAL_ADDRESS`].
 pub(super) const PROVISION_SCRATCH_VA: u64 = address_space_map::pair_page(0x0f20_0000);
 
 /// `credentialer`'s own construction budget, in pages: matches

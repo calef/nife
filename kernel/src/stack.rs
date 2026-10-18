@@ -53,7 +53,7 @@ pub fn init() {
 }
 
 /// Has anything scribbled below the stack?
-pub fn is_intact() -> bool {
+pub(crate) fn is_intact() -> bool {
     // SAFETY: reading our own image.
     unsafe { core::ptr::read_volatile(bottom() as *const [u64; 4]) == CANARY }
 }
@@ -61,7 +61,7 @@ pub fn is_intact() -> bool {
 /// How many bytes are left between `sp` and the bottom of the stack.
 ///
 /// Negative means we are *already* below it and are actively corrupting the kernel.
-pub fn headroom() -> i64 {
+pub(crate) fn headroom() -> i64 {
     let sp = crate::arch::current_sp();
     sp.wrapping_sub(bottom()) as i64
 }
@@ -72,7 +72,7 @@ pub fn headroom() -> i64 {
 /// used to name them: the boot stack's guard is a linker symbol, a secondary's is an offset into a
 /// `.bss` array (milestone 90), and a thread's is a slot in the virtual stack area 64 GiB up.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum GuardPage {
+pub(crate) enum GuardPage {
     /// The boot stack's guard page (`__stack_guard`). Core 0 runs the whole test suite on it.
     Boot,
     /// Secondary core `id`'s guard page.
@@ -106,7 +106,7 @@ pub enum GuardPage {
 /// page without ever touching it, and then write into the *neighbouring slot's* top stack page,
 /// which is mapped and in use. That produces silent corruption rather than a fault, and this
 /// function cannot see it. See notes/load-sensitive-assertions.md.
-pub fn guard_page_at(addr: u64) -> Option<GuardPage> {
+pub(crate) fn guard_page_at(addr: u64) -> Option<GuardPage> {
     const PAGE: u64 = 4096;
 
     let boot = crate::arch::mmu::stack_guard();
@@ -197,7 +197,7 @@ pub(crate) fn thread_stack_site(addr: u64) -> Option<(u64, i64)> {
 /// slot below and leaves `FAR_EL1` holding the *first* failing address. That produces exactly the
 /// "sp is one slot down" picture a store past a neighbour's top does. The fault PC separates them:
 /// inside the vector table means the walk, ordinary Rust means the store.
-pub fn warn_if_guard_page(addr: u64, interrupted_sp: u64) {
+pub(crate) fn warn_if_guard_page(addr: u64, interrupted_sp: u64) {
     let Some(kind) = guard_page_at(addr) else {
         return;
     };
@@ -369,7 +369,7 @@ fn print_text_words(bottom: u64, top: u64) {
 
 /// Shout if the canary is dead. Called from the panic handler and the fault handler,
 /// because a corrupted stack makes every *other* diagnostic a potential lie.
-pub fn warn_if_smashed() {
+pub(crate) fn warn_if_smashed() {
     if !is_intact() {
         crate::println!();
         crate::println!("  *** STACK OVERFLOW ***");
@@ -425,7 +425,7 @@ const PAINT: u64 = 0x5AFE_57AC_5AFE_57AC;
 /// It was a safe fn until milestone 112, with that requirement written as a `// SAFETY:` comment
 /// naming "the caller". Three call sites, and any other safe code in the kernel could have written
 /// this pattern over an arbitrary address range.
-pub unsafe fn paint(bottom: u64, top: u64) {
+pub(crate) unsafe fn paint(bottom: u64, top: u64) {
     let mut p = bottom as *mut u64;
     while (p as u64) < top {
         // SAFETY: this function's own `# Safety` contract puts `[bottom, top)` in a mapped, unused,
@@ -459,7 +459,7 @@ pub unsafe fn paint(bottom: u64, top: u64) {
 /// defect (a safe fn dereferencing an address range built from its own arguments) written in the
 /// passive voice, "a mapped stack region", which names the obligation without naming anybody who
 /// owes it. Passive voice hides the defect from the pattern that found the rest of it.
-pub unsafe fn high_water(bottom: u64, top: u64) -> u64 {
+pub(crate) unsafe fn high_water(bottom: u64, top: u64) -> u64 {
     let mut p = bottom as *const u64;
     while (p as u64) < top {
         // SAFETY: this function's own `# Safety` contract puts `[bottom, top)` in a mapped, aligned
@@ -490,7 +490,7 @@ static BOOT_PAINT_CEILING: core::sync::atomic::AtomicU64 = core::sync::atomic::A
 /// call in a debug build) push frames below our `sp` while the loop runs; painting inside a live
 /// callee frame would corrupt it.
 #[cfg(any(test, feature = "system_tests"))]
-pub fn paint_boot_stack() {
+pub(crate) fn paint_boot_stack() {
     let ceiling = crate::arch::current_sp() - 512;
     BOOT_PAINT_CEILING.store(ceiling, core::sync::atomic::Ordering::Relaxed);
     // Start above the canary words: painting them would kill the canary check.
@@ -515,7 +515,7 @@ static THREAD_STACK_SCANS: core::sync::atomic::AtomicU64 = core::sync::atomic::A
 /// Record one thread stack's measured use (called from `KernelStack`'s `Drop`, and from the live
 /// scan at report time).
 #[cfg(any(test, feature = "system_tests"))]
-pub fn note_thread_stack_use(used: u64) {
+pub(crate) fn note_thread_stack_use(used: u64) {
     use core::sync::atomic::Ordering;
     THREAD_STACK_MAX.fetch_max(used, Ordering::Relaxed);
     THREAD_STACK_SCANS.fetch_add(1, Ordering::Relaxed);
@@ -526,7 +526,7 @@ pub fn note_thread_stack_use(used: u64) {
 /// loaded runner moves nothing here (the one caveat is interrupt-arrival timing, which decides
 /// where on a stack a trap frame lands; see notes/stack-high-water.md for the measured spread).
 #[cfg(any(test, feature = "system_tests"))]
-pub fn report_high_water() {
+pub(crate) fn report_high_water() {
     use core::sync::atomic::Ordering;
 
     let boot_bottom = bottom() + core::mem::size_of_val(&CANARY) as u64;

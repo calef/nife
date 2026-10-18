@@ -70,7 +70,7 @@ pub const RUN_UNVOUCHED_MAGIC: u64 = 0x_7e12_0000_0000_0002;
 pub const RPT_OK: u64 = login_contract::OK;
 pub const RPT_DENIED: u64 = login_contract::DENIED;
 #[allow(dead_code)] // named for completeness with the pair above; nothing exercises it today
-pub const RPT_MALFORMED: u64 = login_contract::MALFORMED;
+pub(crate) const RPT_MALFORMED: u64 = login_contract::MALFORMED;
 /// Milestone 49's terminal update: the terminal was already on loan.
 pub const RPT_NO_TERMINAL: u64 = login_contract::NO_TERMINAL;
 /// [`FREE_TERMINAL`]'s own answer.
