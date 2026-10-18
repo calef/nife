@@ -204,6 +204,18 @@ fn ctrl_c_discards_the_line() {
     assert_eq!(d.line(), b"ok");
 }
 
+/// ^Z reports Suspend and, like ^C, leaves no byte of itself in the line: a job-control key that
+/// was stored as text would reach the next command (milestone 48 (job control)).
+#[test]
+fn ctrl_z_suspends_and_discards_the_line() {
+    let (mut d, mut s) = (LineDisc::new(), Screen::new());
+    let events = feed_all(&mut d, &mut s, b"partial\x1a");
+    assert_eq!(events, [Event::Suspend]);
+    let events = feed_all(&mut d, &mut s, b"ok\r");
+    assert_eq!(events, [Event::Line]);
+    assert_eq!(d.line(), b"ok");
+}
+
 /// ^D is EOF only on an empty line.
 #[test]
 fn ctrl_d_is_eof_only_when_empty() {

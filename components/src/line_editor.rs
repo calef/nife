@@ -149,6 +149,7 @@ pub extern "C" fn _start(mode: u64, control: u64, start: u64) -> ! {
         con: Con { used: 0, mode },
         pending: None,
         intr_count: 0,
+        suspend_count: 0,
         raw_mode: false,
         pending_raw: None,
         resuming_line: false,
@@ -207,6 +208,8 @@ struct Terminal {
     // while a foreground job runs and no read is parked to fail (DECISIONS §24). A
     // monotonic counter, so the shell learns of a ^C by the count advancing, never missing one.
     intr_count: u64,
+    // How many ^Z, the same way, for OPERATION_SUSPEND_COUNT (milestone 48 (job control)).
+    suspend_count: u64,
     // Raw mode (milestone 169 (`kilo`, the smallest real text editor, as the forcing function for raw terminal input); OPERATION_RAWMODE): while true, OPERATION_BYTES bypasses `disc` entirely and
     // lands in `raw_queue` instead, with no echo and no interpretation. `pending_raw` is
     // OPERATION_READRAW's own parked reply capability, the raw-mode twin of `pending`.
@@ -303,6 +306,9 @@ impl Terminal {
                 // the shell can busy-poll it while watching a foreground job (DECISIONS §24).
                 reply(slot, self.intr_count, 0);
             }
+            proto::OPERATION_SUSPEND_COUNT => {
+                reply(slot, self.suspend_count, 0);
+            }
             _ => {
                 reply(slot, proto::BAD_REQUEST, 0);
             }
@@ -344,6 +350,12 @@ impl Terminal {
                     if let Some(p) = self.pending.take() {
                         reply(p, 0, proto::FLAG_INTERRUPTED);
                     }
+                }
+                // ^Z: only counted. The shell polls the count while it watches a foreground job
+                // and suspends the job; a pending read is not failed, since nothing was asked.
+                Event::Suspend => {
+                    self.suspend_count = self.suspend_count.wrapping_add(1);
+                    self.queue.clear();
                 }
                 // Tab is the application's (§227 (how Tab reaches the shell)): a
                 // client that wants completion runs the engine itself over raw mode.

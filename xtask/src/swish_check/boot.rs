@@ -1172,6 +1172,17 @@ fn type_one_line(
             return Err(format!("could not press ^C under `{line}`"));
         }
     }
+    if SWISH_CHECK_SUSPENDED.contains(&line) {
+        if !console.wait_after(at, SWISH_CHECK_RUNNING, line_secs) {
+            return Err(format!(
+                "`{line}` never said it was running under supervision ({SWISH_CHECK_RUNNING:?})"
+            ));
+        }
+        // SUB, the byte a terminal sends for `^Z`.
+        if stdin.write_all(&[0x1a]).is_err() || stdin.flush().is_err() {
+            return Err(format!("could not press ^Z under `{line}`"));
+        }
+    }
     Ok(())
 }
 

@@ -47,7 +47,8 @@ pub fn write_help(out: &mut dyn FnMut(&[u8])) {
     out(b"  jobs                    the background jobs this shell holds\n");
     out(b"  wait [%N]               until that job (or every job) finishes; ^C stops waiting\n");
     out(b"  kill [-9] %N            ask job N to stop; -9 tears it down and takes its memory back\n");
-    out(b"  fg [%N]                 watch job N (or the newest) in the foreground; ^C interrupts it\n");
+    out(b"  fg [%N]                 watch job N (or the newest) in the foreground; ^Z suspends it\n");
+    out(b"  bg [%N]                 let a suspended job run on in the background\n");
     out(b"  jig install <file>      install every program of a package this image vouches for\n");
     out(b"  jig install <name>      fetch a package and install it\n");
     out(
