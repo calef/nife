@@ -15,7 +15,7 @@ calef, 2026-09-05: option 1, the new object. Option 2 was ruled out first
 is not the thing a scope note is for). Between 1 and 3 his reason was one sentence: *"A new object
 seems like the winner. A deadline argument seems like a work around to reduce effort."*
 
-That is [§92 (a caretaker is supervised)](0092-caretaker-lifetime.md)'s test
+That is [§92 (a caretaker is supervised by the client it serves)](0092-caretaker-lifetime.md)'s test
 applied, and it is worth recording as such because §92 exists for exactly this shape: *"the failure
 mode is not laziness, it is a recommendation that sounds like design."* Milestone 51 (wall-clock
 time, the `date` command, and an NTP service) called the deadline argument strongest on "three
