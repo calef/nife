@@ -97,3 +97,14 @@ What it pulls aside, leaving it provisional. `alto`, `tenor`, `greeting`, `hello
 duet, and `greeting`, `hello` and `noteless` say what they print. `outlaw`, `chatty` and `flaky` carry
 rulings of their own that no rename has applied (`kernel_test_subject`, `swap_boundary_witness` and
 `first_attempt_crasher`).
+
+## Review order: names that cross a package boundary come first
+
+calef, 2026-10-17 (UTC), at the maintainer session: names crossing a crate boundary are reviewed
+before names internal to one crate. Internal names still need ratifying later; the order is a
+priority and not an exemption.
+
+`script/names --unratified` ranks the items and modules tier that way, grouped by defining crate.
+Crossing is a stated heuristic (`helpers/name_crossings.py` says what it counts and misses) and
+only `--unratified` pays for it, about 8 s. A program is a `[[bin]]`; a file another program
+includes through `mod` or `#[path]` is a module of it.

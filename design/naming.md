@@ -200,12 +200,15 @@ Name: provisional. <what was considered>
 ```
 script/names <name>        has this name been refused, and where does the reason live?
 script/names --refused     everything turned down, and what holds each refusal
-script/names --unratified  the worklist, ordered by exposure; provisional first
+script/names --unratified  the worklist, ordered by exposure; provisional first; an item or
+                           module another Cargo package reaches comes before an internal one
 script/names --check       the gate; script/lint runs it
 ```
 
 The gate checks presence and form, and never keys on `ratified`, so an unratified name never fails
 a build.
+
+The order of `--unratified` is ruled in [convention-rulings.md](naming/convention-rulings.md).
 
 A rule calef ratified for a class of names is recorded with his words in
 [convention-rulings.md](naming/convention-rulings.md) (2026-10-17). `script/names` counts every name
