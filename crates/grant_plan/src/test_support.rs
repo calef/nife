@@ -50,6 +50,7 @@ pub(crate) const READS_A_FILE: Manifest = Manifest {
     installer: false,
     catalog: false,
     indexes: IndexStoreDeclaration::Forbidden,
+    activation_directory: false,
     startup: StartupContract::Native,
 };
 

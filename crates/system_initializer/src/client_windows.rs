@@ -169,24 +169,50 @@ fn bind_window(
     Some(Fs { ep, page })
 }
 
-/// **A bound channel to the machine's index store** (milestone 801 (packages over the internet),
-/// ruling I2): [`bound_channel`]'s shape for the one directory the progenitor names rather than
-/// the line, `activation/indexes`, made if it is not there yet and then opened with `rights`. It
-/// lives under `activation/` because what it holds decides what installs, the same trust as the
-/// generations beside it, and a path the progenitor names cannot collide with a package's name the
-/// way `packages/indexes` would.
+/// **Which directory under `activation/` the progenitor binds for a `std` job** whose line named
+/// none: the index store (milestone 801 (packages over the internet)) with the verb's rights, or
+/// the activation directory itself, read only (milestone 809 (the package client becomes a
+/// program), `jig list -u`). Never both: the `std` layout has one directory slot.
+///
+/// Name: provisional 2026-10-18 (UTC), lane `milestone/809-jig-list-u`, with its variants.
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+pub(super) enum ActivationGrant {
+    /// `activation/indexes`, opened with these rights.
+    IndexStore(u64),
+    /// `activation/`, read only.
+    ReadOnly,
+}
+
+/// **A bound channel to the machine's index store, or to the activation directory** (milestone
+/// 801 (packages over the internet), ruling I2; milestone 809): [`bound_channel`]'s shape for a
+/// directory the progenitor names rather than the line. The store is `activation/indexes`, made if
+/// it is not there yet and then opened with the verb's rights. It lives under `activation/` because
+/// what it holds decides what installs, the same trust as the generations beside it, and a path the
+/// progenitor names cannot collide with a package's name the way `packages/indexes` would.
 ///
 /// Name: provisional 2026-10-12 (UTC), lane `milestone/801-jig-installs-from-the-index`, as is
-/// the directory's name.
+/// the store directory's name.
 pub(super) fn bound_index_store(
     fs: Fs,
     (windows, w): (&mut Windows, u64),
     own_ut: u64,
     mapped: &mut bool,
-    rights: u64,
+    grant: ActivationGrant,
 ) -> Option<Fs> {
     let files = FsCalls::map(Some(fs), own_ut, mapped)?;
     files.unbind(windows, w);
+    let rights = match grant {
+        ActivationGrant::IndexStore(rights) => rights,
+        ActivationGrant::ReadOnly => {
+            let handle = files.named(
+                fs_operation::OPENDIR,
+                fs_operation::ROOT,
+                installed_programs::DIRECTORY,
+                grant_plan::WordGrant::ReadOnly.rights(),
+            );
+            return bind_window(fs, &files, (windows, w), handle);
+        }
+    };
     let act = files.directory(fs_operation::ROOT, installed_programs::DIRECTORY);
     if act < 0 {
         return None;

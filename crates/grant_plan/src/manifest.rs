@@ -374,6 +374,7 @@ pub const UNVOUCHED_MANIFEST: Manifest = Manifest {
     installer: false,
     catalog: false,
     indexes: IndexStoreDeclaration::Forbidden,
+    activation_directory: false,
     startup: StartupContract::Native,
 };
 
@@ -775,6 +776,21 @@ pub struct Manifest {
     ///
     /// **Provisional field name.**
     pub indexes: IndexStoreDeclaration,
+    /// **Endowed the activation directory, read only** (milestone 809 (the package client becomes
+    /// a program)): a directory grant on `activation/`, at the `std` layout's one directory slot in
+    /// place of the index store. It holds the installed-programs table (`installed_programs`) and,
+    /// beneath it, the index store, so one grant shows what is installed and what the index copy
+    /// offers. `jig list -u` holds it, to say which installed packages the index offers newer.
+    ///
+    /// Knowledge, not authority: read only, so nothing installed or vouched for changes through
+    /// it. It is still the owner's console's to grant, as [`indexes`](Manifest::indexes) is,
+    /// because what is installed is the owner's to show. No image may declare it
+    /// ([`image_can_carry`](crate::image_can_carry)), no note may carry it, and a verb holding it
+    /// holds no index store ([`narrow_by_verb`](crate::narrow_by_verb)), since there is one slot.
+    ///
+    /// Name: provisional, minted 2026-10-18 (UTC) by lane `milestone/809-jig-list-u`. Not
+    /// `activation`, which was the draft spelling of [`installer`](Manifest::installer).
+    pub activation_directory: bool,
     /// **Which runtime contract the program was built against**, and so where it expects each
     /// capability to be (milestone 595 (provisional)). See [`StartupContract`].
     ///
