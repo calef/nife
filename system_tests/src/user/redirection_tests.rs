@@ -1,4 +1,4 @@
-use filesystem_protocol::dir;
+use filesystem_contract::dir;
 use pipeline_service::{answer, counts};
 
 use super::*;
@@ -153,7 +153,7 @@ fn naming_a_file_to_a_reader_is_the_operator_left_out() {
 /// thrown away and the stage was spawned with an **empty** input slot.
 ///
 /// It did not hang, which is what made it hard to see. A `receive` on an empty slot answers
-/// `NoSuchSlot` rather than blocking, the error word decodes as `byte_sink_protocol::Msg::Malformed`, and
+/// `NoSuchSlot` rather than blocking, the error word decodes as `byte_sink_contract::Msg::Malformed`, and
 /// every reader in this tree treats a malformed message as the end of the document. So the stage
 /// ran to completion over nothing and reported an honest count of an empty stream.
 ///

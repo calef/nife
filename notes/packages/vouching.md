@@ -58,7 +58,7 @@ the `caps` line and the census red, because the vouch no longer named those byte
 ## Who else may run new native code
 
 A session `login` builds gets D2's capability only if its identity is on the owner's list:
-`may-run-unvouched` at the root of the file service (`login_protocol::RUN_UNVOUCHED_LIST`), one
+`may-run-unvouched` at the root of the file service (`login_contract::RUN_UNVOUCHED_LIST`), one
 identity per line, `#` for a comment. There is no list on a fresh machine, and no list lists
 nobody. The owner writes it at the boot prompt:
 

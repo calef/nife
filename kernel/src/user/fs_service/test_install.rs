@@ -11,7 +11,7 @@ use super::*;
 /// with their digest, made live by `current`. Anything already there is overwritten, and a
 /// generation this writes replaces the whole table, which no test here needs more of.
 pub fn install_for_test(program: &str, name: &str, version: &str, bytes: &[u8]) {
-    use filesystem_protocol::{PAGE, dir as rights, fs};
+    use filesystem_contract::{PAGE, dir as rights, fs};
     let (fs_ep, fs_page_frame) = root_directory(
         blk_server_image(),
         crate::user::program("redoxfs_server").expect("no redoxfs_server in the initial ramdisk"),

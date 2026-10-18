@@ -9,5 +9,5 @@ license.workspace = true
 workspace = true
 
 [dependencies]
-machine_statistics_protocol = { version = "0.1.0", path = "../machine_statistics_protocol" }
+machine_statistics_contract = { version = "0.1.0", path = "../machine_statistics_contract" }
 number_writer = { version = "0.1.0", path = "../number_writer" }

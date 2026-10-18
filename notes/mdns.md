@@ -30,7 +30,7 @@ What went with it, all at `0652c981` in git:
   below say what each took.
 
 What stayed, because it is not mDNS-shaped: the UDP bind grant (`BIND_UDP`,
-`socket_protocol::udp_bind_grant`), still proved by `socket_test_client`'s refusal and exclusivity
+`socket_contract::udp_bind_grant`), still proved by `socket_test_client`'s refusal and exclusivity
 checks inside the accept test, and the source endpoint on a UDP `RECEIVE`, still proved by the TFTP
 exchange.
 
@@ -55,7 +55,7 @@ Four pieces, all built:
   against real captured router packets; Kani harnesses cover the parser's termination and bounds.
 - The stack half (both ISAs). smoltcp's `multicast` feature is on and `net_stack` joins
   224.0.0.251 at startup. `BIND_UDP` claims a fixed port against a granted range
-  (`socket_protocol::udp_bind_grant`, the UDP twin of milestone 107's listen grant, riding the high
+  (`socket_contract::udp_bind_grant`, the UDP twin of milestone 107's listen grant, riding the high
   half of the same spawn word). A UDP `RECEIVE` reply carries the datagram's source endpoint in the
   frame's dst fields.
 - `crates/multicast_dns_config` and `components/multicast_dns_responder.conf`: what this machine
@@ -113,7 +113,7 @@ The document is compiled in, not read from disk. `include_str!`, because a progr
 needs a file capability wired through the spawn and a fixture the QEMU gate cannot seed today. That
 is a delivery limitation and not a design one: the format, the parser, the line-numbered errors and
 every test are unaffected by where the bytes come from. The fix is a `FileSpec` grant plus an
-`filesystem_protocol` open-and-read at startup, and it is the shortest remaining piece of
+`filesystem_contract` open-and-read at startup, and it is the shortest remaining piece of
 milestone 55's discovery half.
 
 The gate reads the same document (`xtask` depends on `multicast_dns_config`) and derives its

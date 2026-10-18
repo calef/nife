@@ -84,7 +84,7 @@ pub(super) fn run_as_process_with(
         .expect("the program's first thread could not join its process");
     assert_eq!(
         page,
-        current_cpu_protocol::PAGE_VA,
+        current_cpu_contract::PAGE_VA,
         "a process's first member reads the page every thread read before"
     );
 
@@ -144,8 +144,8 @@ fn map_the_stack_and_setup_pages(space: &mut AddressSpace, setup: &Setup) -> u64
 
     // The deep stack a std program's main thread needs, from a region this test gives back.
     let stack_region =
-        crate::memory_region::create(std_runtime_protocol::STACK_PAGES).expect("no stack region");
-    for k in 1..std_runtime_protocol::STACK_PAGES {
+        crate::memory_region::create(std_runtime_contract::STACK_PAGES).expect("no stack region");
+    for k in 1..std_runtime_contract::STACK_PAGES {
         let frame = crate::memory_region::retype_page(stack_region).expect("no stack frame");
         map(
             space,
@@ -183,20 +183,20 @@ fn fill_the_runtime_slots(
     let writer = |ep| capabilities::rendezvous_cap(ep, Rights::WRITE);
     for (slot, capability) in [
         (
-            std_runtime_protocol::MEMORY_REGION_SLOT,
+            std_runtime_contract::MEMORY_REGION_SLOT,
             capabilities::memory_region_cap(budget),
         ),
-        (std_runtime_protocol::STDOUT_SLOT, writer(report)),
+        (std_runtime_contract::STDOUT_SLOT, writer(report)),
         (
-            std_runtime_protocol::PROCESS_SLOT,
+            std_runtime_contract::PROCESS_SLOT,
             capabilities::process_capability(pid, Rights::BIND),
         ),
         (
-            std_runtime_protocol::THREAD_SLOT,
+            std_runtime_contract::THREAD_SLOT,
             capabilities::thread_control_block_cap(tid, Rights::WRITE),
         ),
         (
-            std_runtime_protocol::SPACE_SLOT,
+            std_runtime_contract::SPACE_SLOT,
             capabilities::address_space_cap(name, Rights::READ),
         ),
     ] {
@@ -239,9 +239,9 @@ pub(super) fn drain_until_end(
             sched::yield_now();
         }
         let words = sched::ipc_receive(report);
-        let mut chunk = [0u8; byte_sink_protocol::INLINE_MAX];
-        match byte_sink_protocol::unpack(words[0], words[1], words[2], &mut chunk) {
-            byte_sink_protocol::Msg::Bytes(n) => {
+        let mut chunk = [0u8; byte_sink_contract::INLINE_MAX];
+        match byte_sink_contract::unpack(words[0], words[1], words[2], &mut chunk) {
+            byte_sink_contract::Msg::Bytes(n) => {
                 assert!(
                     len + n <= out.len(),
                     "{what}: wrote more than the buffer holds"
@@ -249,8 +249,8 @@ pub(super) fn drain_until_end(
                 out[len..len + n].copy_from_slice(&chunk[..n]);
                 len += n;
             }
-            byte_sink_protocol::Msg::Eof => return len,
-            byte_sink_protocol::Msg::Malformed => panic!("{what}: a sink message out of contract"),
+            byte_sink_contract::Msg::Eof => return len,
+            byte_sink_contract::Msg::Malformed => panic!("{what}: a sink message out of contract"),
         }
     }
 }

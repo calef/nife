@@ -47,7 +47,7 @@ static FLUSH_COUNT: AtomicUsize = AtomicUsize::new(0);
 /// whose receive comes back aborted. Before this, every call kept a scanout's worth of frames,
 /// about 300, for the rest of the boot.
 fn kernel_display() -> (sched::RendezvousId, u64, u64) {
-    let frames = graphics_protocol::SURFACE_PAGE_FRAMES as u64;
+    let frames = graphics_contract::SURFACE_PAGE_FRAMES as u64;
     let region = crate::memory_region::create(frames + 1)
         .expect("no contiguous screen frames for the compositor");
     let (screen, _) =
@@ -69,17 +69,17 @@ fn kernel_display() -> (sched::RendezvousId, u64, u64) {
             else {
                 panic!("the display stand-in was sent something that was not a CALL");
             };
-            let (r0, r1) = match graphics_protocol::operation(w0) {
-                graphics_protocol::display::FLUSH => {
-                    LAST_FLUSH.store(graphics_protocol::operand(w0), Ordering::SeqCst);
+            let (r0, r1) = match graphics_contract::operation(w0) {
+                graphics_contract::display::FLUSH => {
+                    LAST_FLUSH.store(graphics_contract::operand(w0), Ordering::SeqCst);
                     FLUSH_COUNT.fetch_add(1, Ordering::SeqCst);
                     (0, 0)
                 }
-                graphics_protocol::display::INFO => (
+                graphics_contract::display::INFO => (
                     0,
-                    graphics_protocol::WIDTH as u64 | ((graphics_protocol::HEIGHT as u64) << 32),
+                    graphics_contract::WIDTH as u64 | ((graphics_contract::HEIGHT as u64) << 32),
                 ),
-                _ => (graphics_protocol::EINVAL as u64, 0),
+                _ => (graphics_contract::EINVAL as u64, 0),
             };
             sched::ipc_reply(caller, [r0, r1]);
             sched::delete_current_cap(slot).expect("consume the one-shot reply");
@@ -615,7 +615,7 @@ fn a_one_window_redraw_costs_one_rectangle_and_not_the_screen() {
     );
     assert_eq!(
         LAST_FLUSH.load(Ordering::SeqCst),
-        graphics_protocol::rect(0, 0, compositor::SCREEN_W, compositor::SCREEN_H),
+        graphics_contract::rect(0, 0, compositor::SCREEN_W, compositor::SCREEN_H),
         "the startup flush should be the whole screen",
     );
     assert_screen_is(&w, 0);
@@ -658,7 +658,7 @@ fn a_one_window_redraw_costs_one_rectangle_and_not_the_screen() {
         flushes + 1,
         "one commit must be one flush",
     );
-    let flushed = graphics_protocol::unrect(LAST_FLUSH.load(Ordering::SeqCst));
+    let flushed = graphics_contract::unrect(LAST_FLUSH.load(Ordering::SeqCst));
     assert_eq!(
         flushed,
         (want.x as u32, want.y as u32, want.w, want.h),
@@ -779,7 +779,7 @@ fn input_reaches_only_the_focused_client_and_focus_is_the_compositors_call() {
 ///
 /// `compositor` cannot tell a display terminal from the `window` client that paints a coordinate
 /// pattern: same grants, same control page, same doorbell, same `COMMIT`. Neither `compositor` nor
-/// `graphics_protocol` needed a line changed to carry text. That is the seam claim made twice in one
+/// `graphics_contract` needed a line changed to carry text. That is the seam claim made twice in one
 /// milestone, once at each rung.
 ///
 /// Uses the kernel's display stand-in rather than the GPU, deliberately: this test is about
@@ -957,12 +957,12 @@ fn three_clients_compose_into_one_scanout_and_the_host_sees_it() {
     let [tag, geometry, ..] = sched::ipc_receive(driver_report);
     assert_eq!(
         tag,
-        graphics_protocol::status::UP,
+        graphics_contract::status::UP,
         "the GPU driver did not come up (it reported {tag:#x})",
     );
     assert_eq!(
         geometry,
-        graphics_protocol::WIDTH as u64 | ((graphics_protocol::HEIGHT as u64) << 32),
+        graphics_contract::WIDTH as u64 | ((graphics_contract::HEIGHT as u64) << 32),
     );
 
     let w = compositor_service::start(3, 0, display, screen);
@@ -974,10 +974,10 @@ fn three_clients_compose_into_one_scanout_and_the_host_sees_it() {
     let [tag, driver_digest, pixels, ..] = sched::ipc_receive(driver_report);
     assert_eq!(
         tag,
-        graphics_protocol::status::FLUSHED,
+        graphics_contract::status::FLUSHED,
         "the driver served no flush"
     );
-    assert_eq!(pixels, graphics_protocol::PIXELS as u64);
+    assert_eq!(pixels, graphics_contract::PIXELS as u64);
     assert_eq!(
         driver_digest,
         compositor::expected_screen_checksum(0),

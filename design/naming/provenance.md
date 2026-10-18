@@ -205,7 +205,7 @@ UNRATIFIED (54 of 126), in the order worth working through
     abi                          crates/abi/src/lib.rs
     ...
   crates, recorded
-    clock_protocol               crates/clock_protocol/src/lib.rs
+    clock_contract               crates/clock_contract/src/lib.rs
     ...
   scripts, recorded
     fmt                          script/fmt

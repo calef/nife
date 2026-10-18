@@ -38,7 +38,7 @@ import sys
 
 EMITTER = "helpers/host-excluded-crates.sh"
 FLAG = "--" + "exclude"
-BANNED = ["user_mode_runtime", "swap_protocol", "supervision_protocol", "system_initializer"]
+BANNED = ["user_mode_runtime", "hot_swap_contract", "supervision_protocol", "system_initializer"]
 BAN_RE = re.compile(
     re.escape(FLAG) + r"""[\s"',=]+(?:%s)\b""" % "|".join(BANNED))
 BAN_SKIP_PREFIXES = ("notes/", "design/", "vendor/")
@@ -197,7 +197,7 @@ def selftest():
     def hits(text, path="script/x"):
         return ban_hits({path: text})
 
-    for form in (FLAG + " user_mode_runtime", FLAG + "=swap_protocol",
+    for form in (FLAG + " user_mode_runtime", FLAG + "=hot_swap_contract",
                  '"' + FLAG + '", "supervision_protocol"',
                  '"' + FLAG + '",\n    "system_initializer"'):
         assert hits("a\n" + form + "\n"), "ban must fire on " + form

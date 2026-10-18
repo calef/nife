@@ -66,7 +66,7 @@ Two details are worth carrying:
   back perfectly through the offset disk that wrote it, and is unreadable by anything else.
 - Every timestamp on a filesystem made this way is zero, because the program holds no clock
   capability. Passing zero is the honest answer where inventing a plausible number is not. Adding a
-  `clock_protocol` endpoint is one slot, and was deliberately not taken, because it would blur the
+  `clock_contract` endpoint is one slot, and was deliberately not taken, because it would blur the
   two-capability claim.
 
 The evidence is not the guest's. After the run, `cargo xtask test` parses the table the guest wrote

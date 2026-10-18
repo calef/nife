@@ -131,7 +131,7 @@ pub fn load(image: &[u8], windowed: u64) -> Result<(AddressSpace, u64), LoadErro
     if let Some(phys) = timebase_page_phys() {
         space
             .map_physical(
-                counter_frequency_protocol::PAGE_VA,
+                counter_frequency_contract::PAGE_VA,
                 phys,
                 Flags::user_rodata(),
                 crate::revoke::PageMapSource::NoCapability,
@@ -156,7 +156,7 @@ pub fn load(image: &[u8], windowed: u64) -> Result<(AddressSpace, u64), LoadErro
 /// `OutOfFrames` a segment that would not fit reports; this is not a bad-program condition, so it
 /// is not a panic). If [`crate::arch::timer::frequency_checked`] has not resolved yet (never
 /// observed: `init_frequency` runs early in both boot tours, well before the first call to
-/// `load`), the frame is allocated anyway and left zeroed, which [`counter_frequency_protocol::TimebasePage::hz`]
+/// `load`), the frame is allocated anyway and left zeroed, which [`counter_frequency_contract::TimebasePage::hz`]
 /// reads as "unknown" rather than a fabricated rate; that keeps every process's layout
 /// identical regardless of boot order, the same reason `boot_clock_page` hands out a zeroed page
 /// when there is no `clock` program to ask.
@@ -181,7 +181,7 @@ fn timebase_page_phys() -> Option<u64> {
     let dst = mmu::phys_to_virt(phys) as *mut u8;
     match crate::arch::timer::frequency_checked() {
         Some(hz) => {
-            let bytes = counter_frequency_protocol::build_page(hz);
+            let bytes = counter_frequency_contract::build_page(hz);
             // SAFETY: `dst` names a freshly allocated frame, reachable through the direct map and
             // owned by nobody else yet; `bytes` is `PAGE_BYTES` (24) bytes, far under the frame's
             // `FRAME_SIZE`, so the copy does not run past it.
@@ -193,7 +193,7 @@ fn timebase_page_phys() -> Option<u64> {
         //
         // SAFETY: as the `Some` arm above: `dst` names a freshly allocated, exclusively owned
         // frame, and `PAGE_BYTES` is far under `FRAME_SIZE`.
-        None => unsafe { core::ptr::write_bytes(dst, 0, counter_frequency_protocol::PAGE_BYTES) },
+        None => unsafe { core::ptr::write_bytes(dst, 0, counter_frequency_contract::PAGE_BYTES) },
     }
 
     PAGE_PHYS.store(phys, Ordering::Release);
@@ -223,7 +223,7 @@ fn timebase_page_phys() -> Option<u64> {
 pub fn map_timebase_page(space: &mut AddressSpace) -> Result<(), MapError> {
     if let Some(phys) = timebase_page_phys() {
         space.map_physical(
-            counter_frequency_protocol::PAGE_VA,
+            counter_frequency_contract::PAGE_VA,
             phys,
             Flags::user_rodata(),
             crate::revoke::PageMapSource::NoCapability,

@@ -42,10 +42,10 @@ pub(super) const ROLE_TIMING: u64 = 5;
 /// Provisional name.
 pub(super) const ROLE_TWO_TREES: u64 = 6;
 
-/// **What `arg1` carries into every role that holds a directory**: the `filesystem_protocol::dir` rights that
+/// **What `arg1` carries into every role that holds a directory**: the `filesystem_contract::dir` rights that
 /// capability was granted, with 0 meaning "you were granted no directory at all".
 ///
-/// The shell is **told** rather than asking, and that is a gap in `filesystem_protocol` rather than a shortcut:
+/// The shell is **told** rather than asking, and that is a gap in `filesystem_contract` rather than a shortcut:
 /// nothing on that wire reports what a handle carries, and `OPENDIR` refuses a request wider than
 /// the parent instead of narrowing it, so a shell that guessed `dir::ALL` from a narrower capability
 /// could not `cd` at all. See notes/shell-navigation.md.
@@ -87,7 +87,7 @@ pub extern "C" fn _start(role: u64, arg: u64, clock: u64) -> ! {
     }
 }
 
-/// The interactive prompt. `rights` is the [`_start`] convention: the `filesystem_protocol::dir` rights of the
+/// The interactive prompt. `rights` is the [`_start`] convention: the `filesystem_contract::dir` rights of the
 /// directory capability at [`DIR_TERMINAL`], or 0 for a boot that wired no filesystem.
 pub(super) fn interactive(rights: u64) -> ! {
     // **The line that says userspace is up**, and it is the top rung of milestone 268's boot

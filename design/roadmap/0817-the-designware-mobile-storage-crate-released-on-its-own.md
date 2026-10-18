@@ -37,7 +37,7 @@ calef's rulings, quoted from the maintainer comments on #1806 of 2026-10-07 (UTC
 - Class B in #1806's note `notes/releasable-crates-2026-10-07.md`. **The cut** is larger than that
   note's inventory says. `jh7110::discover` reads a `DeviceTreeBlob`; under codebase rule 2 the
   caller passes the register region instead, and the query moves to the kernel side. The `serve`
-  module is nife's own: it speaks nife's block protocol (`filesystem_protocol::blk`) and places
+  module is nife's own: it speaks nife's block protocol (`filesystem_contract::blk`) and places
   nife's virtual addresses (`address_space_map::pair_page`). So `serve` and its harness move to
   `components/src/designware_mobile_storage.rs`, or stay with the two constants inlined; the lane
   picks and records why. The tests also `include_bytes!` a fixture from
@@ -48,7 +48,7 @@ calef's rulings, quoted from the maintainer comments on #1806 of 2026-10-07 (UTC
   `components/src/designware_mobile_storage.rs` (the EL0 driver).
 - crates.io answers 404 for the name (checked 2026-10-07).
 
-**Reuse:** the alternatives were surveyed in #1806's `survey.md` appendix (looked up 2026-10-07),
+**Reuse:** the alternatives were surveyed in #1806's `other-implementations.md` appendix (looked up 2026-10-07),
 and none is taken, because calef ruled this crate "publish ours". rcore-os's `dwmmc-host` 0.4.2
 (Apache-2.0, 1.7k downloads) and `starfive-jh7110-dwmmc` 0.1.8 (911) live in the `tgoskits`
 monorepo with no proofs found. drivercraft's `sdmmc` 0.1.0 (11k) is a general SD/MMC crate with no
@@ -129,7 +129,7 @@ with the pinned nightly for `aarch64-unknown-none-softfloat`, `riscv64imac-unkno
 `script/crate-standalone designware_mobile_storage` fails today, at base `ae6b91e79`. The manifest
 inherits `license` and `lints` from nife's workspace and states no `rust-version`, and there is no
 README, `LICENSE-MIT` or `LICENSE-APACHE`. Those hold for all nine crates. It does not build alone:
-`address_space_map`, `filesystem_protocol` and `device_tree_blob` are path dependencies outside the
+`address_space_map`, `filesystem_contract` and `device_tree_blob` are path dependencies outside the
 copy, so neither the build nor Kani ran. A test reads
 `../../device_tree_blob/tests/fixtures/qemu-riscv64-virt.dtb`. Beyond manifest and files, 14 lines
 cite this tree: 5 `milestone N`, 4 tree paths, 2 `§N`, 2 provenance blocks and 1 naming calef.
@@ -140,7 +140,7 @@ Name: `designware_mobile_storage` is ratified today (`script/names`, checked 202
 
 - The public API speaks the device's vocabulary, not nife's: no nife capability type, spawn handoff
   or nife error enum in a public signature. A reviewer judges this; no script can. Known today:
-  `serve` speaks nife's block protocol (`filesystem_protocol::blk`); the cut moves it or inlines it.
+  `serve` speaks nife's block protocol (`filesystem_contract::blk`); the cut moves it or inlines it.
 
 ## Exit
 

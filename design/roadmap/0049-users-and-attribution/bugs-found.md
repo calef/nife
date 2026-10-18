@@ -19,7 +19,7 @@ and never the `MemoryRegion` capability *naming the region being destroyed*.
 
 So a server that destroys a region per request runs out of its sixteen-slot capability table while
 its memory budget still looks healthy. The failure arrives as whatever that server says when it
-cannot serve. Here that was `login_protocol::DENIED` on a correct password, on the second login after
+cannot serve. Here that was `login_contract::DENIED` on a correct password, on the second login after
 start-up, for two days.
 
 The kernel's `Error::OutOfMemory` made it expensive to find. It collapses "your budget is empty"

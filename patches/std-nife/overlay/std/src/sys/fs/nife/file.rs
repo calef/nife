@@ -137,7 +137,7 @@ impl File {
     }
 
     /// **`File::set_len`** (milestone 64, rank 8). The contract's `TRUNCATE` is POSIX `ftruncate` in
-    /// both directions already (`filesystem_protocol::fs::TRUNCATE` says so and the server implements it), and
+    /// both directions already (`filesystem_contract::fs::TRUNCATE` says so and the server implements it), and
     /// the size rides in the second word. This was refused here for the same reason the five verbs
     /// in milestone 64's first pass were: the binding was never written, not the verb missing.
     ///

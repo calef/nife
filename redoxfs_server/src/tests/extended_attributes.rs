@@ -31,7 +31,7 @@ fn store_holds(srv: &mut Server<DiskMemory>, node_id: u32) -> bool {
 fn attr_names(srv: &mut Server<DiskMemory>, handle: u32) -> Vec<Vec<u8>> {
     let mut page = [0u8; 4096];
     let n = srv.list_xattr(handle, &mut page).expect("list");
-    filesystem_protocol::xattr::list::iter(&page[..n])
+    filesystem_contract::xattr::list::iter(&page[..n])
         .map(|s| s.to_vec())
         .collect()
 }
@@ -94,21 +94,21 @@ fn a_rename_carries_the_attributes_because_the_store_keys_on_the_node() {
 
     // Rename within the root, then into a subdirectory: neither touches the node.
     srv.rename(
-        filesystem_protocol::fs::ROOT as u32,
+        filesystem_contract::fs::ROOT as u32,
         &named("motd"),
-        filesystem_protocol::fs::ROOT as u32,
+        filesystem_contract::fs::ROOT as u32,
         &named("motd2"),
     )
     .expect("rename in place");
     let sub = srv
         .open_dir(
-            filesystem_protocol::fs::ROOT as u32,
+            filesystem_contract::fs::ROOT as u32,
             &named("sub"),
             dir::ALL,
         )
         .unwrap();
     srv.rename(
-        filesystem_protocol::fs::ROOT as u32,
+        filesystem_contract::fs::ROOT as u32,
         &named("motd2"),
         sub,
         &named("moved"),
@@ -151,7 +151,7 @@ fn unlink_takes_the_attributes_and_a_reused_node_inherits_nothing() {
     assert!(store_holds(&mut srv, doomed));
 
     srv.close(h).unwrap(); // an open handle pins the node; close first so the id is really freed
-    srv.unlink(filesystem_protocol::fs::ROOT as u32, &named("doomed"))
+    srv.unlink(filesystem_contract::fs::ROOT as u32, &named("doomed"))
         .unwrap();
     assert!(
         !store_holds(&mut srv, doomed),
@@ -202,9 +202,9 @@ fn a_rename_over_a_file_takes_the_replaced_files_attributes() {
     let winner_id = node_id_of(&mut srv, TreePtr::root(), "winner");
 
     srv.rename(
-        filesystem_protocol::fs::ROOT as u32,
+        filesystem_contract::fs::ROOT as u32,
         &named("winner"),
-        filesystem_protocol::fs::ROOT as u32,
+        filesystem_contract::fs::ROOT as u32,
         &named("victim"),
     )
     .expect("replace");
@@ -229,7 +229,7 @@ fn a_directory_carries_attributes_and_rmdir_takes_them_with_it() {
     let mut srv = server_with_tree();
     let d = srv
         .make_dir(
-            filesystem_protocol::fs::ROOT as u32,
+            filesystem_contract::fs::ROOT as u32,
             &named("attrdir"),
             dir::ALL,
         )
@@ -241,7 +241,7 @@ fn a_directory_carries_attributes_and_rmdir_takes_them_with_it() {
         (3, b"yes".to_vec()),
     );
 
-    srv.rmdir(filesystem_protocol::fs::ROOT as u32, &named("attrdir"))
+    srv.rmdir(filesystem_contract::fs::ROOT as u32, &named("attrdir"))
         .unwrap();
     assert!(
         !store_holds(&mut srv, id),
@@ -298,7 +298,7 @@ fn the_last_attribute_takes_the_store_with_it() {
     // so the two paths need separate evidence.
     srv.set_xattr(motd, b"user.c", xattr::RAW, b"3").unwrap();
     assert!(store_exists(&mut srv));
-    srv.unlink(filesystem_protocol::fs::ROOT as u32, &named("motd"))
+    srv.unlink(filesystem_contract::fs::ROOT as u32, &named("motd"))
         .unwrap();
     srv.close(motd).unwrap();
     assert!(
@@ -322,7 +322,7 @@ fn the_attribute_store_is_not_in_the_namespace() {
         "nothing was created, so nothing is being hidden",
     );
 
-    let root = filesystem_protocol::fs::ROOT as u32;
+    let root = filesystem_contract::fs::ROOT as u32;
     let listed = list(&mut srv, root, 4096).unwrap();
     assert!(
         !listed.iter().any(|(n, _)| n == xattr::STORE_DIR),
@@ -391,7 +391,7 @@ fn attributes_take_the_direction_the_capability_already_carries() {
     // A read-only directory, so the file handle under it inherits read and not write.
     let ro = srv
         .open_dir(
-            filesystem_protocol::fs::ROOT as u32,
+            filesystem_contract::fs::ROOT as u32,
             &named("sub"),
             dir::READ | dir::DESCEND,
         )
@@ -416,7 +416,7 @@ fn attributes_take_the_direction_the_capability_already_carries() {
     // `EBADF` because it is a fact about the handle rather than about the capability.
     let wo = srv
         .open_dir(
-            filesystem_protocol::fs::ROOT as u32,
+            filesystem_contract::fs::ROOT as u32,
             &named("sub"),
             dir::WRITE | dir::DESCEND,
         )

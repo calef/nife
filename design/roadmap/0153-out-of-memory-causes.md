@@ -70,7 +70,7 @@ evidence that decision asked for rather than as a request to reverse it (that is
 call).
 
 Milestone 49's channel-per-client lane spent two days on a `login` service that answered
-`login_protocol::DENIED` to a correct password on its second login after start-up. The failing call was
+`login_contract::DENIED` to a correct password on its second login after start-up. The failing call was
 `MemoryRegion::RETYPE`, and the kernel's own implementation is four lines:
 
 ```rust

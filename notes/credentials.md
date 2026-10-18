@@ -11,7 +11,7 @@ An identity, a secret, and a way to check the second against the first without e
 read it. Milestone 56's second half; the first half is [entropy](entropy.md), and this depends on
 it for every salt it uses.
 
-The contract is `crates/credential_protocol`, the logic is `crates/credentialer`, the service is
+The contract is `crates/credential_contract`, the logic is `crates/credentialer`, the service is
 `components/src/credentialer.rs`, and its clients are `fixtures/src/credentialer_test_client.rs`.
 
 Milestone 65 (a secrets service) generalized this process in place ([NTLM](ntlm.md)). The
@@ -145,9 +145,9 @@ channel has no room for it. A service that answered a verify with the stored tag
 decryption oracle wearing a verifier's clothes, and the shape of the contract makes that a change
 to the contract rather than a bug in a serve loop.
 
-The reply codes are all small positives (1..=6), which is the trick `entropy_protocol` established:
+The reply codes are all small positives (1..=6), which is the trick `entropy_contract` established:
 every failure the kernel can return from a `CALL` is one of its small negatives, which read as
-enormous `u64`s. So `credential_protocol::is_authenticated` can collapse "there is no credential
+enormous `u64`s. So `credential_contract::is_authenticated` can collapse "there is no credential
 service", "the request was malformed", "the service died" and "wrong password" into one `false`, and
 no caller has to remember which of six codes were the good ones. A caller that mistook a missing
 capability for a successful authentication would be the single worst bug this contract could
@@ -172,7 +172,7 @@ compiler that can prove nobody reads those bytes again is entitled to delete a p
 From a provisioner holding the provision endpoint in slot 0 and its page mapped:
 
 ```rust
-use credential_protocol as proto;
+use credential_contract as proto;
 
 let page = /* the mapped provision page, 4096 bytes */;
 for (identity, secret) in [
@@ -227,9 +227,9 @@ is the API expressing what the process boundary enforces.
 
 ## What is proven, and where
 
-Host tests (`cargo test -p credentialer -p credential_protocol`) pin the known-answer vectors,
+Host tests (`cargo test -p credentialer -p credential_contract`) pin the known-answer vectors,
 right and wrong secrets, every single-byte corruption of a record, a hostile cost, and the decoy
-lookup at every slot. Three Kani harnesses over `credential_protocol` prove that no request word
+lookup at every slot. Three Kani harnesses over `credential_contract` prove that no request word
 makes the parse read outside the page and that nothing but `MATCH` authenticates, over all 2^64
 words. Guest tests on aarch64 and riscv64 show provisioning sealing, a client with one endpoint
 getting right answers, the same endowment unable to write the store, the service surviving it, and
@@ -265,7 +265,7 @@ the shared frame left all zero. Each test and what it pins is listed in
   branch nothing reaches. A real deployment with a fourth person edits a constant and rebuilds.
 - One verify page means one client at a time. The page is per service, not per channel, so two
   clients sharing the endpoint would share the frame each writes its presented secret into. Nothing
-  detects that. `filesystem_protocol`'s answer (one page per channel) is the shape to copy when a second client
+  detects that. `filesystem_contract`'s answer (one page per channel) is the shape to copy when a second client
   exists; today the intended client is the single SMB adapter.
 - No rate limit, no lockout, no attempt counter. A client holding the verify endpoint can guess
   as fast as it can `CALL`. Each guess costs the service one Argon2id derivation, which is the only

@@ -290,7 +290,7 @@ enum El0 {
 /// scratch range, writable, and its one block is read, overwritten, read back and restored through
 /// the server.
 fn through_el0(slot: &Slot, r: &ReadReport, write: bool) -> El0 {
-    use filesystem_protocol::blk;
+    use filesystem_contract::blk;
 
     use crate::user::designware_mobile_storage_service as service;
 
@@ -312,7 +312,7 @@ fn through_el0(slot: &Slot, r: &ReadReport, write: bool) -> El0 {
         return El0::NotStarted;
     };
     let ready = crate::sched::ipc_receive(w.ready);
-    if ready[0] != filesystem_protocol::READY {
+    if ready[0] != filesystem_contract::READY {
         return El0::NotReady(ready[0], ready[1], ready[2]);
     }
     let call = |op, block| crate::sched::ipc_call(w.request, [blk::req(op, 1), block])[0] as i64;
@@ -329,7 +329,7 @@ fn through_el0(slot: &Slot, r: &ReadReport, write: bool) -> El0 {
     }
     let past = window.sectors / 8;
     let got = call(blk::READ, past);
-    if got != filesystem_protocol::reply_err(22) {
+    if got != filesystem_contract::reply_err(22) {
         return El0::Wrong("READ past the window is EINVAL", got);
     }
     let got = call(blk::READ, 0);
@@ -372,13 +372,13 @@ fn el0_window(
 
 /// A read-only build's checks: block 0 is the boot sector the kernel read, and a WRITE is refused.
 fn read_only_checks(call: &impl Fn(u64, u64) -> i64, shared: &[u8], r: &ReadReport) -> El0 {
-    use filesystem_protocol::blk;
+    use filesystem_contract::blk;
 
     if shared[510..512] != [0x55, 0xaa] || shared[82..90] != r.fs_type {
         return El0::Wrong("block 0 is the boot sector the kernel read", 0);
     }
     let got = call(blk::WRITE, 0);
-    if got != filesystem_protocol::reply_err(30) {
+    if got != filesystem_contract::reply_err(30) {
         return El0::Wrong("WRITE to a read-only window is EROFS", got);
     }
     El0::Served
@@ -391,7 +391,7 @@ fn write_cycle_checks(
     shared: &mut [u8],
     window: designware_mobile_storage::serve::Window,
 ) -> El0 {
-    use filesystem_protocol::blk;
+    use filesystem_contract::blk;
 
     let mut original = [0u8; blk::BLOCK_SIZE];
     original.copy_from_slice(shared);

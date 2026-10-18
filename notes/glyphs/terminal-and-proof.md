@@ -41,7 +41,7 @@ This is the part that took the most care, because text is where "it looked right
 and least sufficient.
 
 The picture is a value three parties compute without talking to each other. The script is
-`video_terminal::script`, a constant in the contract crate: the same move `graphics_protocol::pixel`
+`video_terminal::script`, a constant in the contract crate: the same move `graphics_contract::pixel`
 and `compositor::SCENE` make.
 
 1. The terminal runs the engine over the bytes it was sent, and paints what it says.

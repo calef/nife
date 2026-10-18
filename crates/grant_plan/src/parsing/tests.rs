@@ -419,15 +419,15 @@ fn time_runs_the_command_you_would_have_typed() {
 
 /// Assemble `line`'s argv and check it reads back as exactly `want`.
 fn assert_words(line: &[u8], want: &[&[u8]]) {
-    let mut page = [0u8; argument_protocol::PAGE_BYTES];
+    let mut page = [0u8; program_argument_contract::PAGE_BYTES];
     assert_eq!(argv(line, &mut page), Ok(want.len() as u32));
-    let got = argument_protocol::ArgPage::parse(&page);
+    let got = program_argument_contract::ArgPage::parse(&page);
     assert_eq!(got.len(), want.len());
     assert!(got.iter().eq(want.iter().copied()));
 }
 
 fn refused(line: &[u8]) -> Refusal {
-    argv(line, &mut [0u8; argument_protocol::PAGE_BYTES]).unwrap_err()
+    argv(line, &mut [0u8; program_argument_contract::PAGE_BYTES]).unwrap_err()
 }
 
 /// **Every word arrives as it was typed, and none is classified** (§170). An option the shell
@@ -460,11 +460,11 @@ fn argv_refuses_an_unquoted_pattern_and_passes_a_quoted_one() {
 /// left reading as no arguments rather than as the words that fitted.
 #[test]
 fn argv_refuses_a_line_past_one_page_and_leaves_no_argv() {
-    let mut line = [b'x'; argument_protocol::CAPACITY + 3];
+    let mut line = [b'x'; program_argument_contract::CAPACITY + 3];
     line[..3].copy_from_slice(b"rg ");
-    let mut page = [0u8; argument_protocol::PAGE_BYTES];
+    let mut page = [0u8; program_argument_contract::PAGE_BYTES];
     assert_eq!(argv(&line, &mut page), Err(Refusal::ArgumentsTooLong));
-    assert!(argument_protocol::ArgPage::parse(&page).is_empty());
+    assert!(program_argument_contract::ArgPage::parse(&page).is_empty());
 }
 
 // ---- survivor triage of the 2026-10-03 census ---------------------------------------------
@@ -484,7 +484,7 @@ fn a_quoted_word_is_known_by_its_position_and_the_last_slot_is_readable() {
 /// prefix, so the line that fills the page exactly is taken and one byte more is not.
 #[test]
 fn a_line_that_exactly_fills_the_argument_page_is_taken() {
-    let cap = argument_protocol::CAPACITY;
+    let cap = program_argument_contract::CAPACITY;
     let word = |n: usize| {
         let mut line = [b'a'; 8192];
         line[..n].fill(b'a');

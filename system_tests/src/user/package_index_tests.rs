@@ -74,7 +74,7 @@ fn a_package_is_fetched_through_the_index_by_name_over_tls_and_judged_by_its_dig
     let image = |name: &str| program(name).unwrap_or_else(|| panic!("no {name} in the archive"));
     let mut w = match e1000e_service::start_net_server(
         image("net_stack"),
-        socket_protocol::NO_LISTEN_GRANT,
+        socket_contract::NO_LISTEN_GRANT,
     ) {
         Ok(w) => w,
         Err(e1000e_service::Absent::NoController) => {

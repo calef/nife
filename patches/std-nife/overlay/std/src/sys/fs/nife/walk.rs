@@ -145,7 +145,7 @@ pub(super) fn descend(p: &mut Page, parent: &At, name: &str, want: u64) -> io::R
 ///
 /// **The rights story, because it looks like a widening and is not.** Every hop asks for
 /// `DESCEND | needs`, where `needs` is what the *final* verb requires on the directory it lands in
-/// (`filesystem_protocol::verb::TABLE` is the list, and `OPEN`'s "READ or WRITE" is the one row a caller has
+/// (`filesystem_contract::verb::TABLE` is the list, and `OPEN`'s "READ or WRITE" is the one row a caller has
 /// to resolve from its own `OpenOptions`). Carrying `needs` down the whole chain rather than only
 /// asking for it at the end costs nothing that was ever available: a child's rights are its
 /// parent's intersected with the request, so a right an ancestor lacks is a right no descendant of

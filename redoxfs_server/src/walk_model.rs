@@ -28,8 +28,8 @@
 
 use alloc::vec::Vec;
 
+use filesystem_contract::dir;
 use filesystem_fixture::walk as tree;
-use filesystem_protocol::dir;
 use redoxfs::Disk;
 use syscall::error::Result;
 
@@ -221,14 +221,14 @@ fn walk_from<D: Disk>(
     // `readdir`: the whole listing drained up front, then the handle closed.
     let at = descend(srv, root, path, LIST, &mut w.requests)?;
     let mut entries: Vec<(Vec<u8>, bool)> = Vec::new();
-    let mut page = [0u8; filesystem_protocol::PAGE];
+    let mut page = [0u8; filesystem_contract::PAGE];
     loop {
         w.requests.readdir += 1;
         let n = srv.read_dir(at, entries.len() as u32, &mut page)?;
         if n == 0 {
             break;
         }
-        for (name, is_dir) in filesystem_protocol::dirent::iter(&page[..n]) {
+        for (name, is_dir) in filesystem_contract::dirent::iter(&page[..n]) {
             entries.push((name.to_vec(), is_dir));
         }
     }

@@ -124,7 +124,7 @@ pub const ADMIN_IDENTIFY: u8 = 0x06;
 
 /// NVM (I/O) opcodes (NVMe 1.4 §6). Flush is opcode 0, and it is mandatory: §6.8 requires every
 /// controller to implement it, which is why the block server can offer
-/// `filesystem_protocol::blk::FLUSH` unconditionally where the virtio one has to negotiate a
+/// `filesystem_contract::blk::FLUSH` unconditionally where the virtio one has to negotiate a
 /// feature bit and refuse when it is absent.
 pub const NVM_FLUSH: u8 = 0x00;
 /// Write logical blocks.
@@ -139,7 +139,7 @@ pub const CNS_CONTROLLER: u32 = 0x01;
 
 /// One 64-byte submission queue entry, as the sixteen dwords the driver writes. `#[repr(C)]` so
 /// the kernel can copy it into the ring as-is; the wire format is little-endian dwords and both
-/// target ISAs are little-endian (the same layout argument `filesystem_protocol` records).
+/// target ISAs are little-endian (the same layout argument `filesystem_contract` records).
 #[repr(C)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Command(pub [u32; 16]);
@@ -202,7 +202,7 @@ impl Command {
     /// the volatile write cache, if the controller has one, has been committed.
     ///
     /// **Mandatory for every controller**, which is what lets the block server answer
-    /// `filesystem_protocol::blk::FLUSH` without negotiating anything. A controller with no
+    /// `filesystem_contract::blk::FLUSH` without negotiating anything. A controller with no
     /// volatile write cache completes it as a no-op, and that is a truthful yes rather than the
     /// silent one milestone 55's verb exists to forbid: the data really is durable.
     pub fn flush(cid: u16, nsid: u32) -> Self {

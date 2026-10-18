@@ -84,7 +84,7 @@ cost is the down window, not measured in time: the guest test asserts program or
 elapsed time, on purpose (notes/hung-component.md).
 
 Reversibility (question 6). Reversible until a second forwarding dependent exists. It retires
-`BOP_DOWN`/`BOP_UP` as `CALL` opcodes in `swap_protocol`, a contract two programs in the swap suite
+`BOP_DOWN`/`BOP_UP` as `CALL` opcodes in `hot_swap_contract`, a contract two programs in the swap suite
 speak and nothing else does.
 
 Would we choose B at equal cost (question 7)? Yes, and it is also the cheaper one given that 151
@@ -107,7 +107,7 @@ and stays §32's. This proposal only shows the dependent case does not need it.
 
 ## Built (2026-09-27)
 
-The recommendation, as ruled. `swap_protocol::BROKER` declares a read-only warning page;
+The recommendation, as ruled. `hot_swap_contract::BROKER` declares a read-only warning page;
 `swapper` writes `WANT_DOWN` or `WANT_UP` on it and signals a notification bound to `broker`'s
 thread before it runs, and never waits. `broker` reads the page on every wakeup, message or
 signal, so a signal it has not seen changes only latency. `BOP_DOWN` and `BOP_UP` are gone. Three

@@ -8,7 +8,7 @@ kernel tests, the mutations each was watched fail on, and why one exchange test 
 
 The client's whole network authority is one endpoint capability, so the tests substitute the peer
 at that boundary. `fixtures/src/network_time_test_server.rs` holds `READ` on the endpoint the client
-holds `WRITE` on. It speaks the same socket contract (`crates/socket_protocol/src/lib.rs`, the same
+holds `WRITE` on. It speaks the same socket contract (`crates/socket_contract/src/lib.rs`, the same
 file `net_stack` compiles) while being an NTP server on the other side of it. The client cannot
 tell, and there is no test-only branch anywhere in the client. That is the shape a capability
 system makes available, and it is why this is the honest choice rather than a compromise.

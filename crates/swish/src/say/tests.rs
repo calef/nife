@@ -25,10 +25,10 @@ fn every_say_but_nothing_is_one_line() {
 #[test]
 fn a_filesystem_refusal_keeps_the_filesystems_own_words() {
     // The shell does not get to invent a friendlier sentence for an errno. This pins that the
-    // rendering goes through `filesystem_protocol`, which is where the number was chosen.
+    // rendering goes through `filesystem_contract`, which is where the number was chosen.
     assert_eq!(
         shown(|o| write_say(Say::Failed(-2), o)).trim(),
-        filesystem_protocol::dir::explain(-2)
+        filesystem_contract::dir::explain(-2)
     );
 }
 

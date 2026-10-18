@@ -2,7 +2,7 @@
 //! program's manifest narrowed by the word a line gives after its name, so one program holds, per
 //! line, only what that verb needs. `jig list` reads the catalog; `jig install` also holds the
 //! installer and the network. [`crate::Prog::verbs`] holds each program's table, and
-//! `manifest_note`'s verb record is the same list as bytes.
+//! `capability_manifest_note`'s verb record is the same list as bytes.
 //!
 //! Name: provisional (milestone 809), as are the module, the types and the bit positions.
 
@@ -14,7 +14,7 @@ use crate::{IndexStore, Manifest, each_word};
 /// thing on the line that can choose among them. A verb never widens: [`narrow_by_verb`] keeps a
 /// field only when the manifest declares it **and** the verb names it.
 ///
-/// Name: provisional (milestone 809), as are the bit positions, which `manifest_note`'s verb
+/// Name: provisional (milestone 809), as are the bit positions, which `capability_manifest_note`'s verb
 /// record carries.
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub struct Grants(u16);
@@ -76,7 +76,7 @@ impl Grants {
 
 /// **One verb and what it is granted** (milestone 809, option V2): `jig list` reads the catalog and
 /// nothing else; `jig install` also holds the installer and the network. A list of these pairs is
-/// the whole of a verb table, in a program's row ([`Prog::verbs`](crate::Prog::verbs)) or in its note (`manifest_note`'s
+/// the whole of a verb table, in a program's row ([`Prog::verbs`](crate::Prog::verbs)) or in its note (`capability_manifest_note`'s
 /// verb record, which is the same list as bytes). Name: provisional.
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub struct VerbGrant {
@@ -86,11 +86,11 @@ pub struct VerbGrant {
     pub grants: Grants,
 }
 
-/// The longest verb a verb table may hold, in bytes: `manifest_note`'s record gives each sixteen.
+/// The longest verb a verb table may hold, in bytes: `capability_manifest_note`'s record gives each sixteen.
 pub const MAX_VERB: usize = 16;
 
 /// **`jig`'s verbs** (milestone 809; the spellings are apt's, ruled 2026-10-10 by calef), sorted
-/// by their bytes, which `manifest_note`'s record requires. The
+/// by their bytes, which `capability_manifest_note`'s record requires. The
 /// least each needs: `list` the catalog, `remove` and `rollback` the installer, `install` all three
 /// of the installer, the catalog (to resolve a name and check what arrives) and the network.
 ///
@@ -193,7 +193,7 @@ pub fn verb_of<'o>(line: &[u8], out: &'o mut [u8; MAX_VERB]) -> Option<&'o [u8]>
 /// reading of the page [`argv`](crate::argv) assembled from the line, which is what the progenitor holds; `None`
 /// for a page that does not parse, has one word, or whose second is longer than [`MAX_VERB`].
 pub fn verb_of_page(page: &[u8]) -> Option<&[u8]> {
-    argument_protocol::ArgPage::parse(page)
+    program_argument_contract::ArgPage::parse(page)
         .iter()
         .nth(1)
         .filter(|w| w.len() <= MAX_VERB)
@@ -230,7 +230,7 @@ mod tests {
         assert_eq!(install.indexes, IndexStore::ReadOnly);
         assert_eq!(remove.indexes, IndexStore::Forbidden);
         // The progenitor's reading of the page the shell assembles agrees with the shell's.
-        let mut page = [0u8; argument_protocol::PAGE_BYTES];
+        let mut page = [0u8; program_argument_contract::PAGE_BYTES];
         argv(b"jig 'install' greeting", &mut page).unwrap();
         assert_eq!(verb_of_page(&page), Some(&b"install"[..]));
         let nothing = as_typed(b"jig upgrade");

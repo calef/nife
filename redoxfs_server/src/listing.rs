@@ -11,7 +11,7 @@ use super::*;
 /// # BUGS
 ///
 /// - **Every child costs a node read**, because the record carries
-///   [`filesystem_protocol::dirent::IS_DIR`] and a RedoxFS directory entry does not store the
+///   [`filesystem_contract::dirent::IS_DIR`] and a RedoxFS directory entry does not store the
 ///   child's type: `read_tree` of each child is how this learns it. Measured by milestone 121
 ///   (`ripgrep` on nife: enumeration as a capability) on 2026-09-26: listing 128 files cost 43 to
 ///   85 us per entry under HVF. Since milestone 606 the listing is memoized ([`Memo`]), so the
@@ -49,7 +49,7 @@ pub(crate) fn list<D: Disk>(
 pub(crate) fn encode_listing(listing: &[memo::Child], cursor: u32, out: &mut [u8]) -> usize {
     let mut used = 0;
     for child in listing.iter().skip(cursor as usize) {
-        match filesystem_protocol::dirent::encode(
+        match filesystem_contract::dirent::encode(
             &mut out[used..],
             child.name.as_bytes(),
             child.kind == Kind::Directory,

@@ -3,7 +3,7 @@
 Authentication that produces capabilities instead of mutating an identity. Milestone 49's login
 half; the attribution half is [DECISIONS §109 (attribution is a property of a channel, not of a capability)](../design/decisions/0109-attribution-is-a-channel-property.md).
 
-The contract is `crates/login_protocol`, the service is `components/src/login.rs`, and its test
+The contract is `crates/login_contract`, the service is `components/src/login.rs`, and its test
 client is `fixtures/src/login_test_client.rs`. The names were ratified 2026-09-15 (calef, the
 whole `login` family).
 
@@ -23,7 +23,7 @@ is the same trade the credential service (milestone 56 (secrets, credentials, an
 ## The shape
 
 `login` relays the presented identity and secret to the credential service's `VERIFY` unchanged: it
-never touches `credential_protocol`'s protocol or `credentialer.rs`. On a match it **builds**,
+never touches `credential_contract`'s protocol or `credentialer.rs`. On a match it **builds**,
 rather than narrows, a capability set. It holds a fresh `fs_subtree_caretaker` (the same
 construction
 `crates/system_initializer` performs for a directory-granted spawn) and a fresh budget split off its
@@ -31,7 +31,7 @@ own construction untyped. Two different successful logins therefore hold two dif
 *objects*, which is §109's channel-shaped attribution rather than a badge on a shared one.
 
 The exchange is two-phase since milestone 49's channel-per-client update
-(`crates/login_protocol`'s module docs have the diagram). The front door every client is handed at
+(`crates/login_contract`'s module docs have the diagram). The front door every client is handed at
 spawn answers only `CONNECT`, and the answer is a fresh, private request/result pair and staging
 page delegated to exactly that caller. The identity and secret travel only on that private
 pair. Two clients that reach the front door close together can contend only for which is
@@ -63,16 +63,16 @@ creating it on a principal's first login). An authenticated identity with no pro
 refused, folded into the same `DENIED` a wrong password gets.
 
 Two bounds came with that change, and both still hold. An identity longer than
-`filesystem_protocol::grant::MAX_NAME` (16 bytes) cannot get a per-identity subtree in this slice
-at all, though `login_protocol::MAX_IDENTITY` (64 bytes) would otherwise accept it. The grant
+`filesystem_contract::grant::MAX_NAME` (16 bytes) cannot get a per-identity subtree in this slice
+at all, though `login_contract::MAX_IDENTITY` (64 bytes) would otherwise accept it. The grant
 name travels in two `START` argument words, not a frame, and `mint` refuses rather than truncate
 a name that two identities agreeing on their first 16 bytes would silently share (a collision
 hazard, not merely a usability one). Lifting it means a frame for the caretaker's grant, a change
-to `filesystem_protocol::grant`'s contract and every caretaker built against it. And the
+to `filesystem_contract::grant`'s contract and every caretaker built against it. And the
 unprovisioned-subtree fold is a considered answer, not the accident of reusing the fold. A caller
 must not be able to tell "your identity has no home" from "your password is wrong" by comparing
 outcomes across attempts. That would let a caller probe which identities are provisioned without
-ever presenting a right password for one (`login_protocol::DENIED`'s own doc gives the reasoning).
+ever presenting a right password for one (`login_contract::DENIED`'s own doc gives the reasoning).
 The honest cost is that an operator who forgot to run `identity_provisioner` sees the same denial a
 typo would produce. The audit trail does not help, since it only records a successful login.
 Distinguishing the two would need a deliberately-weaker operator-facing channel than the login
@@ -128,7 +128,7 @@ bool`.
 
 What this does not build, named rather than assumed away: `LOGOUT` authenticates nothing. That is a
 deliberate choice for today's actual deployment, one interactive boot with no untrusted co-tenant
-reaching the front door. (`login_protocol`'s own BUGS records the real interruption hazard a hostile
+reaching the front door. (`login_contract`'s own BUGS records the real interruption hazard a hostile
 holder of the front door would pose in a different deployment). There is no liveness check on
 whoever currently holds the terminal. A session that exits, crashes, or simply never calls
 `LOGOUT` leaves the terminal held for the rest of this process's life. This process has no wait-any
@@ -142,7 +142,7 @@ commits to nothing the wider one would later have to unwind.
 ## Who may run new native code (§219 (how the shell names an installed program to the spawner) gate D2)
 
 A session may run bytes nobody vouched for only when its identity is on the owner's list
-(`login_protocol::RUN_UNVOUCHED_LIST`, empty by default; §219's consequence, §221 (the boot prompt is the owner's console) ruling 2). The
+(`login_contract::RUN_UNVOUCHED_LIST`, empty by default; §219's consequence, §221 (the boot prompt is the owner's console) ruling 2). The
 run-unvouched capability, when the spawner placed one (the progenitor does, after building this
 process), is delivered as a sixth capability on the `OK` reply, `WRITE` with no `GRANT`: a session
 can present it and cannot pass it on. Which users may run new code is therefore decided here, per
@@ -181,11 +181,11 @@ would be inventing a requirement neither has.
 
 ## EXAMPLES
 
-Two phases since the channel-per-client update; `crates/login_protocol`'s module docs carry the
+Two phases since the channel-per-client update; `crates/login_contract`'s module docs carry the
 full diagram.
 
 ```rust
-use login_protocol as proto;
+use login_contract as proto;
 
 // Phase one, on the front door every client is handed at spawn.
 send(REQUEST, proto::connect_word(), 0, 0);
@@ -220,8 +220,8 @@ assert_eq!(verdict, proto::DENIED);
 
 ## What is proven, and where
 
-Host tests (`cargo test -p login_protocol`, milliseconds, no emulator): the request page's encoding
-round-trips through the same `credential_protocol` helpers the credential service uses, and the attribution
+Host tests (`cargo test -p login_contract`, milliseconds, no emulator): the request page's encoding
+round-trips through the same `credential_contract` helpers the credential service uses, and the attribution
 hint is stable per identity and distinct across identities.
 
 Guest tests (`kernel::user::login_tests`, both aarch64 and riscv64):

@@ -13,13 +13,13 @@ Filed 2026-09-14 as an unnumbered proposal by milestone 293's lane, which
 reduced one instance of this and then measured the rest of it. Numbered 2026-09-19 by milestone
 433's drain of the proposal pile. Premise re-read against the tree on 2026-09-19 and still true,
 and the tree's counter-example is still in it. `system_tests/src/user/live_swap_tests.rs` still
-re-declares `ROLE_DIRECT`, `ROLE_QUEUED` and `ROLE_HUNG` locally although `crates/swap_protocol`
+re-declares `ROLE_DIRECT`, `ROLE_QUEUED` and `ROLE_HUNG` locally although `crates/hot_swap_contract`
 publishes all three. An independent re-count on 2026-09-19, over `ROLE_*`, `RPT_*`, `F_*` and
 `TERM_MAGIC` declared on both sides of a spawn, found **25 kernel/program file pairs sharing 79
 constant names**. That is a similar method rather than the same one, so it is not byte-comparable
 with the 19 pairs and 76 names below, and what it establishes is that the shape has not shrunk.
 Three crate names in the table have moved and the work has to read the current ones.
-`swap_proto` is `crates/swap_protocol`, `login_proto` is `crates/login_protocol`, and
+`swap_proto` is `crates/hot_swap_contract`, `login_proto` is `crates/login_contract`, and
 `components/src/ntp.rs` was split into three programs by milestone 290, so that row's program side
 is now `network_time_client` and its siblings. *(Number provisional until the merge queue lands
 it.)*
@@ -62,9 +62,9 @@ It is rung four of AGENTS.md's ladder for a fact that has a rung-one answer sitt
 failure it permits is silent and specific: a role number changed on one side spawns a *different*
 role, and a flag bit changed on one side makes a test assert against a bit nothing sets. Both read
 as a bug in the code under test rather than as a mismatch, which is the same misdiagnosis
-`credential_protocol::fixture`'s own module doc warns about for the SMB account.
+`credential_contract::fixture`'s own module doc warns about for the SMB account.
 
-**This is not hypothetical, and the counter-example is in the tree.** `crates/swap_protocol` already
+**This is not hypothetical, and the counter-example is in the tree.** `crates/hot_swap_contract` already
 publishes `ROLE_DIRECT`, `ROLE_QUEUED` and `ROLE_HUNG` with real doc comments, and
 `system_tests/src/user/live_swap_tests.rs` **re-declares all three locally anyway** under a four-word
 comment. So even where the crate exists, one side was written without it. That is the strongest
@@ -72,11 +72,11 @@ argument for a gate rather than a convention.
 
 ## Prior art inside this tree
 
-The shape is built and works, twice. `crates/swap_protocol` and `crates/job_mix` both publish the role
+The shape is built and works, twice. `crates/hot_swap_contract` and `crates/job_mix` both publish the role
 numbers their two binaries agree on, and `crates/schedule_store` publishes the file names
 `session_reviver` and `fs_test_client` both depend on, for exactly this reason and with the reason
 written down. Milestone 293 did the same for the credential values three files were copying
-(`credential_protocol::fixture::PEOPLE`). What is missing is not a design, it is the sweep.
+(`credential_contract::fixture::PEOPLE`). What is missing is not a design, it is the sweep.
 
 ## What a lane cannot decide
 
@@ -113,9 +113,9 @@ failure it permits is silent and specific. A role number changed on one side spa
 role, and a flag bit changed on one side makes a test assert against a bit nothing sets. Both read
 as a bug in the code under test rather than as a mismatch. It is not hypothetical, and
 the counter-example is the strongest argument for a gate rather than a convention:
-`crates/swap_protocol` already publishes three role numbers with real doc comments and
+`crates/hot_swap_contract` already publishes three role numbers with real doc comments and
 `system_tests/src/user/live_swap_tests.rs` re-declares all three locally anyway. The shape is built and
-works three times over, in `swap_protocol`, `job_mix` and `schedule_store`, so what is missing is
+works three times over, in `hot_swap_contract`, `job_mix` and `schedule_store`, so what is missing is
 not a design but the sweep. What a lane cannot decide is the crate names, and there is no useful
 half of this work that does not create one. These numbers are not part of any shipped wire
 contract, so putting a test client's behavior numbers into a protocol crate would widen what a real

@@ -279,7 +279,7 @@ pub(super) fn dispatch_one(nav: &mut Nav, cmd: &[u8]) {
 
 /// **`user suspend <name>` and `user resume <name>`** (milestone 152 (durable delegation), calef's
 /// §108 (disabling credentials kills the durable session) ruling of 2026-09-26, names ratified): add the name to, or take it off,
-/// `login_protocol::SUSPENDED_LIST` at the root of this shell's directory, in the one format
+/// `login_contract::SUSPENDED_LIST` at the root of this shell's directory, in the one format
 /// `login` and the boot-time re-deriver read it in. `login` refuses a listed identity from its next
 /// login attempt, ends its durable session then, and the re-deriver skips it at boot.
 ///
@@ -289,7 +289,7 @@ pub(super) fn dispatch_one(nav: &mut Nav, cmd: &[u8]) {
 ///
 /// # BUGS
 ///
-/// **It does not send `login_protocol::SUSPEND`**, the word that ends a durable session at once:
+/// **It does not send `login_contract::SUSPEND`**, the word that ends a durable session at once:
 /// this shell holds no capability to `login`'s front door. On the boot that runs this prompt that
 /// costs nothing yet, because `login` is started there with no schedule archive and so holds no
 /// durable session to end; the day it is, this shell needs the front door, `WRITE`, beside its
@@ -311,14 +311,14 @@ pub(super) fn user(nav: &mut Nav, verb: grant_plan::UserVerb<'_>) {
     // The first tree, as `caps` reads the activation table from: the owner's lists are the
     // system's, whichever tree this shell stands in.
     let t = nav.first();
-    let file = login_protocol::SUSPENDED_LIST.as_bytes();
+    let file = login_contract::SUSPENDED_LIST.as_bytes();
     let mut list = [0u8; USER_LIST_MAX];
     let had = read_named(nav, t, fs::ROOT, file, &mut list).unwrap_or(0);
     let mut edited = [0u8; USER_LIST_MAX];
     let n = if suspend {
-        login_protocol::with_listed(&list[..had], name, &mut edited)
+        login_contract::with_listed(&list[..had], name, &mut edited)
     } else {
-        login_protocol::without_listed(&list[..had], name, &mut edited)
+        login_contract::without_listed(&list[..had], name, &mut edited)
     };
     let Some(n) = n else {
         refused();

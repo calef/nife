@@ -25,7 +25,7 @@ calef ruled all five forks on 2026-10-07 (UTC), between 01:32 and 02:13, in comm
 | 1 | `system_log`, program and crate, moves to a new `system-log` package | "Yes, seems like a lot of packages would be dependent upon the service it provides, if not its actual implementation." |
 | 2 | `swapper` moves from `init` to `fixtures` | "Yes, move to fixtures." |
 | 3 | `broker` stays in `init`, and the program is renamed `queue_broker` | "Put it in init. Rename it to queue-broker", then "Yes" to the underscore, since programs take underscores and only packages take hyphens |
-| 4 | `system_initializer` stays in `init`; the three status words move to `graphics_protocol` and the installer's fetch moves to `jig` | "Yes" |
+| 4 | `system_initializer` stays in `init`; the three status words move to `graphics_contract` and the installer's fetch moves to `jig` | "Yes" |
 | 5 | `root_supervisor`, `spawner` and `sub_server_supervisor` stay in `init` | "Yes" |
 
 Fork 3's rename re-rules the 2026-07-30 ratification of `broker` under §39 (a component is named for
@@ -74,10 +74,10 @@ names. `*` marks a crate `contracts` or `runtime` already exports, so linking it
 | `root_supervisor` | `abi*`, `address_space_map*`, `elf*`, `nifefs*`, `supervision_protocol*`, `user_mode_runtime*` | `authority_tests` only |
 | `spawner`, `sub_server_supervisor` | a subset of the row above | `root_supervisor` only |
 | `job_undertaker` | `abi*`, `grant_plan*`, `user_mode_runtime*` | `system_initializer`, at boot |
-| `swapper` | `abi*`, `component_plan*`, `elf*`, `nifefs*`, `supervision_protocol*`, `swap_protocol*`, `user_mode_runtime*` | `live_swap_tests` only; it builds `broker` and the `chatty`, `rust_swappable` and `c_swappable` fixtures by name |
-| `broker` | `component_plan*`, `swap_protocol*`, `user_mode_runtime*` | `swapper` only |
-| `system_log` (program) | `system_log`, `system_log_protocol*`, `abi*`, `address_space_map*`, `user_mode_runtime*` | `system_initializer` builds it by archive name; `console` and the kernel speak `system_log_protocol` to it |
-| `system_log` (crate) | `byte_sink_protocol*`, `system_log_protocol*` | linked by the `system_log` program and a fuzz target, nothing else |
+| `swapper` | `abi*`, `component_plan*`, `elf*`, `nifefs*`, `supervision_protocol*`, `hot_swap_contract*`, `user_mode_runtime*` | `live_swap_tests` only; it builds `broker` and the `chatty`, `rust_swappable` and `c_swappable` fixtures by name |
+| `broker` | `component_plan*`, `hot_swap_contract*`, `user_mode_runtime*` | `swapper` only |
+| `system_log` (program) | `system_log`, `system_log_contract*`, `abi*`, `address_space_map*`, `user_mode_runtime*` | `system_initializer` builds it by archive name; `console` and the kernel speak `system_log_contract` to it |
+| `system_log` (crate) | `byte_sink_contract*`, `system_log_contract*` | linked by the `system_log` program and a fuzz target, nothing else |
 | `system_initializer` | 23 crates, all contracts or runtime except `http_response` (`network`) and `video_terminal` (`display`) | linked by `progenitor` only |
 
 Two more facts bear on the forks. `init`'s `depends = ["timetable"]` exists only because the
@@ -90,7 +90,7 @@ ninth program, `reboot`, to `init`.
 What moves: the `system_log` program and the `system_log` crate.
 
 Edges: none added. No `init` member links the `system_log` crate, and `system_initializer` reaches
-the service only by archive name and through `system_log_protocol`, which is in `contracts`. The new
+the service only by archive name and through `system_log_contract`, which is in `contracts`. The new
 package's `depends` is empty. The exceptions it removes: none, since it carried none.
 
 Alternatives:
@@ -175,7 +175,7 @@ Where they arise:
 
 - `video_terminal`: three status words (`MODE_DISPLAY`, `TERM_UP`, `KEYBOARD_UP`) that
   `system_initializer` reads while building a graphical session. Status words two programs agree on
-  are a contract under rule 7. They belong in `graphics_protocol`, which `system_initializer`
+  are a contract under rule 7. They belong in `graphics_contract`, which `system_initializer`
   already links and whose manifest comment already calls them "the two graphical programs' status
   words". Moving them retires this exception. It is the same shape as milestone 689 (contracts
   leave implementation crates).
@@ -199,7 +199,7 @@ composition is init's job there. Fuchsia's `component_manager` both composes and
 its memory monitor is a separate component. Linux's `kswapd` is a kernel thread, which puts memory
 reclaim beside the kernel rather than beside init.
 
-Ruled yes, 2026-10-07. Recommendation was: keep it in `init`. Move the three status words into `graphics_protocol` as a small
+Ruled yes, 2026-10-07. Recommendation was: keep it in `init`. Move the three status words into `graphics_contract` as a small
 lane of its own, and let `jig` retire `http_response`. Correct the "integration, not init" wording in
 both exception reasons and in the package-boundaries limitation, since it misdescribes the crate.
 
@@ -248,7 +248,7 @@ possible first step for 691, not a fork of this block.
 his, by ruling (Fork 3). `memory` and `live-swap` stay provisional and unused. The slug of this file
 is a draft, like every roadmap title.
 
-Reuse: the existing `fixtures` package for Fork 2 and the existing `graphics_protocol` contract for
+Reuse: the existing `fixtures` package for Fork 2 and the existing `graphics_contract` contract for
 Fork 4; no new crate is proposed. The package format, gate and table are milestone 611's, unchanged.
 
 ## The worklist
@@ -265,13 +265,13 @@ item waits on it.
 3. Fork 3: rename `broker` to `queue_broker`. A code change, performed as design/naming.md says a
    ratified rename is performed. Its scope, measured 2026-10-06: the `[[bin]]` and source file in
    `components`, the `init` package line, and the archive name `swapper` builds it by. Then the
-   `contract` string in `swap_protocol` and `component_plan`, and the kernel's `broker_rtt`
+   `contract` string in `hot_swap_contract` and `component_plan`, and the kernel's `broker_rtt`
    comments. The provenance line keeps the 2026-07-30 ruling and adds this one. Best after item 2, so
    the file it edits in `swapper` has settled in its new package. The `broker_rtt` benchmark name is
    keyed in the three `bench/baseline-*.txt` files and the recorded radon logs; the program rename
    does not require it, so the lane leaves it unless calef says otherwise.
 4. Fork 4a: the three status words (`MODE_DISPLAY`, `TERM_UP`, `KEYBOARD_UP`) move from
-   `video_terminal::status` to `graphics_protocol`, and the `video_terminal` exception leaves
+   `video_terminal::status` to `graphics_contract`, and the `video_terminal` exception leaves
    `init`. A code change; it waits on nothing.
 5. Fork 4b: the package installer's fetch moves to `jig`, and the `http_response` exception leaves
    `init`. Waits on `jig` existing, which is

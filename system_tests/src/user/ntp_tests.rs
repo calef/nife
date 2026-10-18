@@ -1,6 +1,6 @@
 use core::sync::atomic::Ordering;
 
-use clock_protocol::{NANOS_PER_SEC, policy, state, status};
+use clock_contract::{NANOS_PER_SEC, policy, state, status};
 use ntp_service::{ATTEMPTS, reject, rpt, srv};
 
 use super::*;
@@ -59,7 +59,7 @@ fn entropy() -> Option<crate::sched::RendezvousId> {
     if let Some(report) = w.wait_for_ready() {
         assert_eq!(
             report[0],
-            entropy_protocol::READY,
+            entropy_contract::READY,
             "the entropy service did not come up (it reported {:#x})",
             report[0],
         );

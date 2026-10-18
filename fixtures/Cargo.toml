@@ -251,7 +251,7 @@ test = false
 bench = false
 
 # The login service's test client (milestone 49, provisional name): presents an identity and a
-# secret, and on `login_protocol::OK` receives the caretaker's endpoint, the file service's shared
+# secret, and on `login_contract::OK` receives the caretaker's endpoint, the file service's shared
 # frame, and a budget, then uses all three to prove they work rather than merely that they arrived.
 # `initial_ramdisk_aarch64` packs it as "login_test_client" for both ISAs.
 [[bin]]
@@ -298,7 +298,7 @@ test = false
 bench = false
 
 # The name resolver's test client (milestone 384 (in a capability system the resolver is a grant)):
-# asks the resolver about each name in `name_resolution_protocol::fixture::CASES` through the one
+# asks the resolver about each name in `domain_name_resolution_contract::fixture::CASES` through the one
 # badged capability it holds, reports every reply, then connects to the first address. The shape
 # milestone 801 (packages over the internet)'s package client will have. Provisional name.
 [[bin]]
@@ -510,10 +510,10 @@ address_space_map = { version = "0.1.0", path = "../crates/address_space_map" }
 abi = { version = "0.1.0", path = "../crates/abi" }
 # The words the milestone 7-19 capability demonstrations agree on, now that each is its own
 # binary (milestone 291). AGENTS.md rule 7: what two binaries must agree on is a crate.
-capability_witness_protocol = { version = "0.1.0", path = "../crates/capability_witness_protocol" }
+capability_witness_contract = { version = "0.1.0", path = "../crates/capability_witness_contract" }
 # The slots, the conductor's words and the report page `confined_syscall_fuzzer` shares with its
 # conductor in `system_tests` (milestone 779, provisional).
-confined_fuzz_protocol = { version = "0.1.0", path = "../crates/confined_fuzz_protocol" }
+confined_syscall_fuzzer_contract = { version = "0.1.0", path = "../crates/confined_syscall_fuzzer_contract" }
 # A program's check that its own ELF image was loaded correctly (milestone 291). Two fixtures
 # need it, so it is a crate rather than a second copy.
 loaded_image_check = { version = "0.1.0", path = "../crates/loaded_image_check" }
@@ -526,7 +526,7 @@ system_initializer = { version = "0.1.0", path = "../crates/system_initializer" 
 # its declaration rather than from literals, and `chatty` and `broker` derive their own slot
 # numbers from the declarations they are built against.
 component_plan = { version = "0.1.0", path = "../crates/component_plan" }
-swap_protocol = { version = "0.1.0", path = "../crates/swap_protocol" }
+hot_swap_contract = { version = "0.1.0", path = "../crates/hot_swap_contract" }
 grant_plan = { version = "0.1.0", path = "../crates/grant_plan" }
 # The soak workload's shared page (milestone 219). The kernel reads what the soaker writes, so the
 # layout and the reply transform live in one crate rather than in two copies.
@@ -534,8 +534,8 @@ soak_page = { version = "0.1.0", path = "../crates/soak_page" }
 # The multi-tasking workload's definition (milestone 168). The task runs what the kernel-side
 # supervisor times, from one description of the mix rather than two copies.
 job_mix = { version = "0.1.0", path = "../crates/job_mix" }
-credential_protocol = { version = "0.1.0", path = "../crates/credential_protocol" }
-login_protocol = { version = "0.1.0", path = "../crates/login_protocol" }
+credential_contract = { version = "0.1.0", path = "../crates/credential_contract" }
+login_contract = { version = "0.1.0", path = "../crates/login_contract" }
 # The registration page's layout (milestone 152 (durable delegation)): `login_test_client` opens and empties a durable
 # session's schedule through it.
 timetable = { version = "0.1.0", path = "../crates/timetable" }
@@ -546,12 +546,12 @@ elf = { version = "0.1.0", path = "../crates/elf" }
 # The fixtures that carry a manifest note (milestone 597 (a program carries its manifest in an ELF
 # note), provisional): `greeting`, and the unvouched witness whose note asks for what it will not be
 # given.
-manifest_note = { version = "0.1.0", path = "../crates/manifest_note" }
-filesystem_protocol = { version = "0.1.0", path = "../crates/filesystem_protocol" }
+capability_manifest_note = { version = "0.1.0", path = "../crates/capability_manifest_note" }
+filesystem_contract = { version = "0.1.0", path = "../crates/filesystem_contract" }
 filesystem_fixture = { version = "0.1.0", path = "../crates/filesystem_fixture" }
-graphics_protocol = { version = "0.1.0", path = "../crates/graphics_protocol" }
+graphics_contract = { version = "0.1.0", path = "../crates/graphics_contract" }
 line_editor = { version = "0.1.0", path = "../crates/line_editor" }
-byte_sink_protocol = { version = "0.1.0", path = "../crates/byte_sink_protocol" }
+byte_sink_contract = { version = "0.1.0", path = "../crates/byte_sink_contract" }
 # The durable schedule store's shared names (milestone 152, DECISIONS §122 (the on-disk schedule
 # store) and §125 (which identities have pending work)): the schedule file's name, which
 # `login_test_client.rs` writes and `login.rs` reads back.
@@ -559,17 +559,17 @@ schedule_store = { version = "0.1.0", path = "../crates/schedule_store" }
 user_mode_runtime = { version = "0.1.0", path = "../crates/user_mode_runtime" }
 # The current-CPU page's layout and its `CPU_ID_BOUND`, which `current_cpu_reader` reports back so
 # the kernel's test can check that the two binaries still agree on it.
-current_cpu_protocol = { version = "0.1.0", path = "../crates/current_cpu_protocol" }
+current_cpu_contract = { version = "0.1.0", path = "../crates/current_cpu_contract" }
 # The three crates `network_time_test_server` and `unwritable_clock_witness` need (milestone 290),
 # which arrived with them when the `ntp` binary's test-only roles moved out of `components/`. All
 # three are already in the shipping graph through `components`; nothing external was taken.
 network_time_protocol = { version = "0.1.0", path = "../crates/network_time_protocol" }
-socket_protocol = { version = "0.1.0", path = "../crates/socket_protocol" }
+socket_contract = { version = "0.1.0", path = "../crates/socket_contract" }
 # The name resolver's contract and the boot test's cases, which `name_resolver_test_client` and the
 # kernel's test must agree on (milestone 384, provisional name).
-name_resolution_protocol = { version = "0.1.0", path = "../crates/name_resolution_protocol" }
-clock_protocol = { version = "0.1.0", path = "../crates/clock_protocol" }
+domain_name_resolution_contract = { version = "0.1.0", path = "../crates/domain_name_resolution_contract" }
+clock_contract = { version = "0.1.0", path = "../crates/clock_contract" }
 # `unreachable_network_witness`'s entropy probe (milestone 202's unvouched-child claim, DECISIONS
 # §219 (how the shell names an installed program to the spawner) gate D2): a real `GET`, so a child wrongly handed the service gets an answer rather than a
 # request the service would not recognise. Already in the shipping graph through `components`.
-entropy_protocol = { version = "0.1.0", path = "../crates/entropy_protocol" }
+entropy_contract = { version = "0.1.0", path = "../crates/entropy_contract" }

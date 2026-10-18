@@ -46,20 +46,20 @@ against one.
 
 | Contract | Server | Client(s) | Files |
 |---|---|---|---|
-| blk IPC | block server | FS server | `crates/filesystem_protocol` (`blk`), `components/src/block_driver.rs`, `redoxfs_server/src/bin/redoxfs_server.rs` |
-| file IPC | FS server | every FS client | `crates/filesystem_protocol` (`fs`, `xattr`), `redoxfs_server/src/bin/redoxfs_server.rs` |
+| blk IPC | block server | FS server | `crates/filesystem_contract` (`blk`), `components/src/block_driver.rs`, `redoxfs_server/src/bin/redoxfs_server.rs` |
+| file IPC | FS server | every FS client | `crates/filesystem_contract` (`fs`, `xattr`), `redoxfs_server/src/bin/redoxfs_server.rs` |
 | file IPC, narrowed | the three caretakers | one confined program each | `components/src/fs_file_caretaker.rs`, `fs_subtree_caretaker.rs`, `fs_nameset_caretaker.rs` |
-| the sink | `fixtures/src/file_sink.rs`, `fixtures/src/file_source.rs` | a redirected program | `crates/byte_sink_protocol` |
+| the sink | `fixtures/src/file_sink.rs`, `fixtures/src/file_source.rs` | a redirected program | `crates/byte_sink_contract` |
 | the serial terminal | `components/src/line_editor.rs` | the shell | `crates/line_editor` |
 | the console | `components/src/console.rs` | its client | `kernel/src/user/console_service.rs` |
-| the display | `components/src/gpu_driver.rs` | painter, terminal, compositor | `crates/graphics_protocol` |
+| the display | `components/src/gpu_driver.rs` | painter, terminal, compositor | `crates/graphics_contract` |
 | the compositor | `components/src/compositor.rs` | window clients, the input source | `crates/compositor` |
 | the display terminal | `components/src/display_terminal.rs` | an application | `crates/video_terminal` |
-| credentials | `components/src/credentialer.rs` | provisioner, verifier | `crates/credential_protocol` |
-| the wall clock | `kernel/src/user/clock_service.rs` | The progenitor, the shell, `date` | `crates/clock_protocol` |
+| credentials | `components/src/credentialer.rs` | provisioner, verifier | `crates/credential_contract` |
+| the wall clock | `kernel/src/user/clock_service.rs` | The progenitor, the shell, `date` | `crates/clock_contract` |
 | the C seam | `fixtures/src/c_shim.rs` (C) | `fixtures/src/c_confiner.rs` | `crates/c_seam`, `fixtures/c/c_seam.c` |
 | the input ring | the compositor | the keyboard driver | `crates/compositor` (`proto::ring`) |
-| sockets | `components/src/net_stack.rs` | a client, `std::net`, `network_time_client` | `crates/socket_protocol` |
+| sockets | `components/src/net_stack.rs` | a client, `std::net`, `network_time_client` | `crates/socket_contract` |
 | the virtio DMA regions | four userspace drivers | the **device** | `components/src/virtio_net_transport.rs`, `kbd.rs`, `entropy.rs`, `display.rs` |
 
 The last row is not a process pair and is in the table on purpose. A DMA region is a page one party
@@ -90,14 +90,14 @@ An audit reads a commit, not a project. This one read `main` at `313a055`, and t
 in flight; each is named so the clearance above is not read as covering work it never saw.
 
 - The inbound socket half (`LISTEN`/`ACCEPT` with a spawn-time port grant) is not on `main`.
-  `crates/socket_protocol` there stops at `OPERATION_CLOSE` and `net_stack.rs` has no listener. What is
+  `crates/socket_contract` there stops at `OPERATION_CLOSE` and `net_stack.rs` has no listener. What is
   audited here is the outbound contract only. The `net_transport.rs` finding below applies to both,
-  the file being identical across them. (It has since landed: `crates/socket_protocol` now carries
+  the file being identical across them. (It has since landed: `crates/socket_contract` now carries
   `LISTEN`, `ACCEPT` and `LISTEN_DENIED`; noted 2026-10-15 UTC.)
-- `crates/credential_protocol` and `components/src/credentialer.rs` are being substantially rewritten with an
+- `crates/credential_contract` and `components/src/credentialer.rs` are being substantially rewritten with an
   NTLM path. The clearance recorded below is of the version on `main` and does not transfer.
 - The clock page's seqlock has a live finding of its own from another lane (see finding 7's last
-  paragraph). This audit did not re-derive it and does not claim `clock_protocol` is clear; it uses that
+  paragraph). This audit did not re-derive it and does not claim `clock_contract` is clear; it uses that
   page only as the in-tree precedent for the acquire side.
 
 ## The structural fact that saves most of the tree
@@ -107,8 +107,8 @@ Worth stating before the findings, because it is the reason there are so few.
 Lengths, offsets, counts, handles, opcodes and rectangles all travel in the IPC register words,
 never in the page. The kernel copies a message's words into its own state at `SEND` time and hands
 them to the receiver in registers, so by the time a server sees them they are in memory only that
-server can write. `filesystem_protocol::fs::req` packs opcode, handle and a 40-bit length into one word;
-`graphics_protocol` packs a whole rectangle into four 14-bit fields of one word; `credential_protocol` packs two
+server can write. `filesystem_contract::fs::req` packs opcode, handle and a 40-bit length into one word;
+`graphics_contract` packs a whole rectangle into four 14-bit fields of one word; `credential_contract` packs two
 lengths into one word. There is no contract in this tree whose length field lives in the shared
 page. That removes the entire classic form of the bug (read a length from the page, bound-check
 it, read it again to size the copy) by construction rather than by care.
@@ -119,8 +119,8 @@ Three consequences fell out of the sweep and bound the search:
   local, not a re-read. `redoxfs_server.rs:246` `let len = fs::req_len(w0).min(BLOCK);` is the pattern,
   and the three caretakers, `line_editor`, `display_terminal` and `sink` all repeat it.
 - The one contract whose decode lives in a host-testable crate is the one with a proof.
-  `credential_protocol::read` takes the page and the register word, checks both lengths against their
-  maxima, and returns two subslices; `crates/credential_protocol/src/lib.rs` carries a harness asserting the
+  `credential_contract::read` takes the page and the register word, checks both lengths against their
+  maxima, and returns two subslices; `crates/credential_contract/src/lib.rs` carries a harness asserting the
   returned slices' lengths match the word and stay inside the page. Every other contract's decode is
   inlined into a `no_std` serve loop, where neither a host test nor Kani can reach it. That is rule
   7's argument arriving from a new direction.
@@ -148,7 +148,7 @@ below has the table of all seven and their dispositions.
 ## Candidates cleared
 
 "We looked and it is fine" is the other half of an audit. The FS server's request decode,
-`GETXATTR`, `credential_protocol::read`, the display driver's `FLUSH`, the keyboard ring, the
+`GETXATTR`, `credential_contract::read`, the display driver's `FLUSH`, the keyboard ring, the
 compositor's damage handling, `line_editor`, the C seam, the clock page, the nameset grant frame and
 the socket contract's decode were each cleared. Each is a place a future change could break
 something. One warning is worth carrying here: the socket page's `OFF_LEN` is a length field that

@@ -17,7 +17,7 @@
 //!   answer and returns the portable reason as one of four `abi::Error`s (`NoResetMechanism`,
 //!   `ResetNotSupported`, `ResetDenied`, `ResetDidNotHappen`), and the method answers it: calef's ruling on §251's amendment, item 3 (2026-10-06 UTC).
 //! - **It syncs nothing.** The kernel knows no filesystem, and a microkernel that did would be the
-//!   bug. The `reboot` program sends `filesystem_protocol::fs::SYNC` first. A holder that skips it
+//!   bug. The `reboot` program sends `filesystem_contract::fs::SYNC` first. A holder that skips it
 //!   loses whatever the device had not flushed: a foot gun, recorded in §251 and in the program's
 //!   `BUGS`, and the mitigation is that exactly one program is endowed.
 //! - **It does not quiesce devices.** A DMA transfer in flight is cut off with everything else.

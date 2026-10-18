@@ -43,21 +43,21 @@ region, so neither verdict is known.
 | documentation | 5 | 2 | 12 | 5 | 0 |
 | line_editor | 4 | 2 | 16 | 13 | 0 |
 | memory_corruption_canary_gate | 2 | 2 | 0 | 0 | 0 |
-| filesystem_protocol | 33 | 1 | 23 | 5 | 1 |
+| filesystem_contract | 33 | 1 | 23 | 5 | 1 |
 | capability | 10 | 1 | 3 | 2 | 1 |
 | free | 5 | 1 | 0 | 0 | 0 |
 | sealed_pair | 4 | 1 | 2 | 0 | 0 |
 | system_log | 4 | 1 | 4 | 1 | 0 |
 | network_time_protocol | 13 | 0 | 1 | 0 | 0 |
-| clock_protocol | 7 | 0 | 0 | 0 | 0 |
+| clock_contract | 7 | 0 | 0 | 0 | 0 |
 | component_plan | 7 | 0 | 1 | 0 | 0 |
 | measured_boot | 7 | 0 | 4 | 1 | 0 |
-| environment_protocol | 3 | 0 | 2 | 0 | 0 |
+| environment_contract | 3 | 0 | 2 | 0 | 0 |
 | address_space_map | 2 | 0 | 0 | 0 | 0 |
 | memory_regions | 2 | 0 | 14 | 1 | 0 |
 | schedule_store | 2 | 0 | 3 | 0 | 0 |
 | abi | 1 | 0 | 3 | 0 | 0 |
-| argument_protocol | 1 | 0 | 10 | 5 | 0 |
+| program_argument_contract | 1 | 0 | 10 | 5 | 0 |
 | block_roster | 1 | 0 | 8 | 4 | 0 |
 | firmware_configuration | 1 | 0 | 1 | 0 | 0 |
 | inter_process_communication | 1 | 0 | 0 | 0 | 0 |
@@ -66,21 +66,21 @@ region, so neither verdict is known.
 | thread_wake_handshake | 1 | 0 | 0 | 0 | 0 |
 | boot_slot | 0 | 0 | 8 | 4 | 0 |
 | compositor | 0 | 0 | 2 | 0 | 0 |
-| counter_frequency_protocol | 0 | 0 | 1 | 0 | 0 |
+| counter_frequency_contract | 0 | 0 | 1 | 0 | 0 |
 | cpu_set | 0 | 0 | 2 | 0 | 0 |
-| credential_protocol | 0 | 0 | 7 | 2 | 0 |
-| current_cpu_protocol | 0 | 0 | 1 | 0 | 0 |
+| credential_contract | 0 | 0 | 7 | 2 | 0 |
+| current_cpu_contract | 0 | 0 | 1 | 0 | 0 |
 | generational_table | 0 | 0 | 8 | 2 | 0 |
 | glob | 0 | 0 | 4 | 0 | 0 |
 | intrusive_fifo | 0 | 0 | 1 | 0 | 0 |
 | job_mix | 0 | 0 | 1 | 0 | 0 |
-| login_protocol | 0 | 0 | 4 | 1 | 0 |
-| machine_statistics_protocol | 0 | 0 | 1 | 0 | 0 |
+| login_contract | 0 | 0 | 4 | 1 | 0 |
+| machine_statistics_contract | 0 | 0 | 1 | 0 | 0 |
 | non_volatile_memory_express | 0 | 0 | 12 | 5 | 0 |
 | page_frames | 0 | 0 | 4 | 1 | 0 |
 | pci | 0 | 0 | 3 | 1 | 0 |
 | screen_console | 0 | 0 | 9 | 4 | 0 |
-| system_log_protocol | 0 | 0 | 1 | 0 | 0 |
+| system_log_contract | 0 | 0 | 1 | 0 | 0 |
 | top | 0 | 0 | 1 | 0 | 0 |
 | video_terminal | 0 | 0 | 10 | 3 | 0 |
 | virtio | 0 | 0 | 5 | 5 | 0 |
@@ -111,7 +111,7 @@ region, so neither verdict is known.
 | system_initializer | 84 | 37 |
 | supervision_protocol | 24 | 0 |
 | cryptography_provider | 20 | 0 |
-| swap_protocol | 5 | 2 |
+| hot_swap_contract | 5 | 2 |
 | user_mode_runtime | 2 | 4 |
 
 | kind | paths |

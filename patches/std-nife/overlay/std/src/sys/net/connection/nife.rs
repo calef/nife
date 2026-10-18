@@ -1,5 +1,5 @@
 //! `std::net` for nife (milestone 27 phase two): `TcpStream` and outbound `UdpSocket` bound
-//! to the net_stack socket contract (DECISIONS §25, notes/net.md, `crates/socket_protocol`).
+//! to the net_stack socket contract (DECISIONS §25, notes/net.md, `crates/socket_contract`).
 //!
 //! A std program given the network holds a `Stack` endpoint and an untyped budget (the slot
 //! convention in `pal/nife/rt.rs`). Opening a socket is a `CALL` on that endpoint, which net_stack

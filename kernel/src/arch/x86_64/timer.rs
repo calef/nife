@@ -331,10 +331,10 @@ pub fn init_frequency(boot_info_pointer: usize) {
     // calibration that came back garbage passes. Calibration is a *measurement*, against a PIT, on a
     // vCPU the host may deschedule mid-window, so this is the one of the three rates that can be
     // wrong without anything being broken. A rate outside the band is not a machine this kernel can
-    // time anything on; see `counter_frequency_protocol::is_plausible` for where the bounds come
+    // time anything on; see `counter_frequency_contract::is_plausible` for where the bounds come
     // from.
     assert!(
-        counter_frequency_protocol::is_plausible(hz),
+        counter_frequency_contract::is_plausible(hz),
         "the TSC rate came back as {hz} Hz ({}), which no real part runs at",
         if from_cpuid {
             "CPUID leaf 0x15"

@@ -100,7 +100,7 @@ unusually concentrated in exactly those.
 | Roadmap and decision records | 90 | 47 files |
 | `AGENTS.md` | 3 | |
 | Renames | 52 | including `untyped.rs` to `memory_region.rs`, `Tcb` to `ThreadControlBlock`, `CSpace` to `CapabilityTable` |
-| New crates | 7 | `jh7110_entropy_source`, `login_protocol`, `schedule_store`, `counter_frequency_protocol`, `uptime`, `user_mode_runtime` additions, `watch` |
+| New crates | 7 | `jh7110_entropy_source`, `login_contract`, `schedule_store`, `counter_frequency_contract`, `uptime`, `user_mode_runtime` additions, `watch` |
 | New user programs | 7 | `login`, `printenv`, `uptime`, `watch`, `session_reviver`, `jh7110_entropy_source`, `login_test_client` |
 
 Milestone 158 (build the eleven kernel object and identifier renames) is most of that, and it landed
@@ -110,9 +110,9 @@ rather than in a file.
 
 The naming half of this needs no new review, and that is worth saying because it is the part
 that looks most alarming. `script/names` already tracks it. calef already ratified the big ones in
-the window (`memory_regions`, `page_frames` and `login_protocol` all carry 2026-08-23). The rest sit
+the window (`memory_regions`, `page_frames` and `login_contract` all carry 2026-08-23). The rest sit
 on the existing worklist as `provisional` or `unrecorded` (`uptime`, `watch`, `printenv`,
-`session_reviver`, `schedule_store`, `counter_frequency_protocol`, `jh7110_trng`, `login`, `login_test_client`).
+`session_reviver`, `schedule_store`, `counter_frequency_contract`, `jh7110_trng`, `login`, `login_test_client`).
 That is the mechanism working exactly as designed. `script/names --unratified` is the queue; it does
 not want a study.
 

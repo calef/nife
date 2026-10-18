@@ -239,7 +239,7 @@ which is the control this whole milestone rests on and which the test asserts on
   architectures. See notes/state-handoff.md, including the one-page limit that `redoxfs_server`
   will hit.
 - **A component manifest**: the operator's endowments are not literals in its own source.
-  `swap_protocol` carries the capability half of its own contract, `swapper` wires every component
+  `hot_swap_contract` carries the capability half of its own contract, `swapper` wires every component
   from a declaration, and the slot agreement is a compile-time derivation. See
   notes/component-manifest.md, including the honest limit: a manifest is compiled in rather than
   shipped beside a binary, which is a wire format and so a decision left to the architect.

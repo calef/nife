@@ -1,0 +1,14 @@
+[package]
+name = "capability_manifest_note"
+version = "0.1.0"
+edition = "2024"
+publish = false     # the default; the allowlist lint holds the exception (crates/publish-allowlist.txt)
+license.workspace = true
+
+[lints]
+workspace = true
+
+[dependencies]
+# The type a note carries. The note is `grant_plan::Manifest` in bytes, so the vocabulary is the one
+# the shell already binds lines against and the progenitor already endows from.
+grant_plan = { version = "0.1.0", path = "../grant_plan" }

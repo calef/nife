@@ -1,7 +1,7 @@
 # The hung component
 
 *Milestone 23's third residual, and the one §32 named and declined: a component that stops answering
-without dying. The swap itself is DECISIONS §41 and notes/live-replacement.md. `crates/swap_protocol`, `components/src/swapper.rs`'s
+without dying. The swap itself is DECISIONS §41 and notes/live-replacement.md. `crates/hot_swap_contract`, `components/src/swapper.rs`'s
 `ROLE_HUNG`, and `a_component_that_stops_answering_without_dying_is_invisible_to_its_supervisor` in
 `system_tests/src/user/live_swap_tests.rs`.*
 
@@ -107,7 +107,7 @@ supervisor's bound, denominated in progress, is milestone 62 (tests)'s argument 
 bound expressed in something other than the property under test."*
 
 Concretely: a component publishes a monotone progress counter in a page its supervisor owns, and §41
-already has that page (`swap_protocol::LOG_VA`). A verdict is *work is owed and the counter has not
+already has that page (`hot_swap_contract::LOG_VA`). A verdict is *work is owed and the counter has not
 moved across k observations*. No clock is consulted, and k is the supervisor's. Two costs come with
 it. The counter's granularity is the false-positive rate. Separating k observations needs a wait,
 and there is no timed wait anywhere in the kernel, which is milestone 106 (wait)'s fork. This lane did
@@ -223,7 +223,7 @@ service under a hung component: the Rust for each, with `ps`'s precedent quoted 
 ## BUGS
 
 **Detection is not demonstrated, only its impossibility with what exists.** The wedge announces
-itself, and the note says so at every site: `swap_protocol::NOTE_WEDGED`'s doc comment, the test's
+itself, and the note says so at every site: `hot_swap_contract::NOTE_WEDGED`'s doc comment, the test's
 header, and this file. What is under test is what a supervisor can do about a hang it already knows
 about. A run in which something noticed a hang on its own is not in this tree and cannot be until
 milestone 106's fork is decided, because every available notifier is a deadline and there is nothing

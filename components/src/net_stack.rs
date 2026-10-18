@@ -7,7 +7,7 @@
 //!
 //! `net_stack` brings the NIC up, runs DHCP to completion (reporting the lease), then serves a
 //! capability-shaped socket contract on a `Stack` endpoint (DECISIONS §25, notes/net.md,
-//! `crates/socket_protocol/src/lib.rs`): a socket is a capability this server mints and names by its
+//! `crates/socket_contract/src/lib.rs`): a socket is a capability this server mints and names by its
 //! badge (§255 (each socket is its own capability)), per-connection bytes cross in a shared frame
 //! the client delegates, and every operation is one message. Phase one is single-threaded and
 //! synchronous, one exchange per request; the server blocks on the `Stack` endpoint between
@@ -26,7 +26,7 @@
 //! - arg1: the DMA page's physical address
 //! - arg2: the **grant word**: the TCP listen range (milestone 107) in its low half and the
 //!   fixed-UDP bind range (milestone 55's stack half) in its high half, both packed by
-//!   `socket_protocol`. Zero, the default, means no port anywhere in either protocol: a stack serves
+//!   `socket_contract`. Zero, the default, means no port anywhere in either protocol: a stack serves
 //!   inbound connections, or claims a fixed UDP port, only when whoever spawned it said which.
 //!
 //! Name: ratified 2026-07-30 (calef, DECISIONS §39, landed by milestone 46), replacing `netd`, and
@@ -105,7 +105,7 @@ mod socket_test_client;
 // 15-file reason; its header records why that is an exception.
 #[path = "socket_squatter.rs"]
 mod socket_squatter;
-use socket_protocol::*;
+use socket_contract::*;
 
 #[path = "nic_device.rs"]
 mod nic_device;

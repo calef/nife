@@ -79,7 +79,7 @@ second. Search for more before building; this list is what a grep found on 2026-
     follows the tree down: `static-mut-declarations` in
     [notes/unsafe-obligations/ceilings.md](../../notes/unsafe-obligations/ceilings.md). Each one
     this milestone converts lowers that marker in the same commit.
-11. The current-CPU page (`crates/current_cpu_protocol`, `kernel/src/user.rs`'s `current_cpu_page`).
+11. The current-CPU page (`crates/current_cpu_contract`, `kernel/src/user.rs`'s `current_cpu_page`).
     It is per address space, which is per thread only because of §105. The crate's `BUGS` names
     the change: per thread by something other than the space.
 12. `MemoryRegionHeap`'s spinlock (`crates/user_mode_runtime/src/heap.rs`). Correct under

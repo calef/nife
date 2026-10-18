@@ -26,7 +26,7 @@ The compositor is rung one's client, unchanged at that seam. It holds the displa
 scanout frames exactly as `painter` did, and `gpu_driver` cannot tell the difference; three of the
 four kernel tests replace `gpu_driver` with the kernel itself and the compositor does not notice
 that either. That was the promise the framebuffer contract made when it said routing was by
-endpoint. It cost nothing to keep: `gpu_driver` and `graphics_protocol` needed no change for this
+endpoint. It cost nothing to keep: `gpu_driver` and `graphics_contract` needed no change for this
 milestone beyond one new kernel-side wiring entry point (`display_service::start_driver`, the driver
 with no client).
 

@@ -104,7 +104,7 @@ for the input ring gets it right. `kernel/src/user/keyboard_service.rs`'s `take_
 tail, then `fence(SeqCst)`, then reads the bytes, with the comment "The tail is published after the
 bytes it advertises; read it before them." Two readers of one contract, one fenced.
 
-Disposition: fixed in this lane, two `fence(Acquire)`, matching `clock_protocol`'s reader, which is
+Disposition: fixed in this lane, two `fence(Acquire)`, matching `clock_contract`'s reader, which is
 the in-tree precedent for the acquire side of exactly this pattern.
 
 Relationship to milestone 80. That lane found the same failure shape in the clock page's

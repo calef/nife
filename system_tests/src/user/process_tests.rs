@@ -201,8 +201,8 @@ fn join(region: u64, process_slot: u64, index: u64, stack: u64) -> (u64, u64) {
     let (tid, tcb, page) = try_join(region, process_slot, index, stack);
     let page = page.expect("CONFIGURE refused to join a thread to its process");
     assert!(
-        current_cpu_protocol::THREAD_PAGE_SLOTS
-            .gt(&((current_cpu_protocol::PAGE_VA - page as u64) as usize / 4096)),
+        current_cpu_contract::THREAD_PAGE_SLOTS
+            .gt(&((current_cpu_contract::PAGE_VA - page as u64) as usize / 4096)),
         "a joined thread's current-CPU page {page:#x} is outside the thread page window",
     );
     (tid, tcb)
@@ -415,12 +415,12 @@ const THREAD_EXITER: &[u32] = &[0x0000_0513, 0x0040_0893, 0x0000_0073, 0x0000_00
 const THREAD_EXITER: &[u32] = &[0x04B8_FF31, 0x0F00_0000, 0x90FE_EB05];
 
 /// The bytes of the current-CPU page `space` maps at `va`, through its own tables.
-fn page_of(space: u64, va: u64) -> (u64, current_cpu_protocol::CurrentCpuPage) {
+fn page_of(space: u64, va: u64) -> (u64, current_cpu_contract::CurrentCpuPage) {
     let root = user_address_space_root(space).expect("the space is gone");
     let (phys, _) = crate::arch::mmu::translate_at(root, va).expect("no current-CPU page mapped");
     // SAFETY: a frame the space maps read-only for its thread, read here through the direct map;
     // the kernel is its only writer.
-    let page = unsafe { current_cpu_protocol::CurrentCpuPage::new(mmu::phys_to_virt(phys)) };
+    let page = unsafe { current_cpu_contract::CurrentCpuPage::new(mmu::phys_to_virt(phys)) };
     (phys, page)
 }
 
@@ -439,13 +439,13 @@ fn each_member_of_a_process_has_its_own_current_cpu_page() {
     let region = crate::memory_region::create(64).expect("no region");
     let (space, _) = lay_out(region, &[SPINNER, THREAD_EXITER]);
     let (process, _) = create_process(region, space);
-    let below = current_cpu_protocol::PAGE_VA - page_frames::FRAME_SIZE;
+    let below = current_cpu_contract::PAGE_VA - page_frames::FRAME_SIZE;
 
     let (a, a_tcb, a_page) = try_join(region, process, 0, STACK_VA);
     let (b, b_tcb, b_page) = try_join(region, process, 0, STACK_B_VA);
     assert_eq!(
         a_page,
-        Ok(current_cpu_protocol::PAGE_VA as i64),
+        Ok(current_cpu_contract::PAGE_VA as i64),
         "the first member's page"
     );
     assert_eq!(
@@ -458,7 +458,7 @@ fn each_member_of_a_process_has_its_own_current_cpu_page() {
 
     let online = crate::smp::online_harts_mask();
     let ((a_phys, a_view), (b_phys, b_view)) = (
-        page_of(space, current_cpu_protocol::PAGE_VA),
+        page_of(space, current_cpu_contract::PAGE_VA),
         page_of(space, below),
     );
     assert_ne!(a_phys, b_phys, "two members read one current-CPU page");
@@ -496,7 +496,7 @@ fn each_member_of_a_process_has_its_own_current_cpu_page() {
     );
 
     // Fill every slot, then one more.
-    let mut embryos = [0u64; current_cpu_protocol::THREAD_PAGE_SLOTS];
+    let mut embryos = [0u64; current_cpu_contract::THREAD_PAGE_SLOTS];
     let mut filled = 3;
     let refused = loop {
         let (_, tcb, page) = try_join(region, process, 0, STACK_B_VA);
@@ -510,7 +510,7 @@ fn each_member_of_a_process_has_its_own_current_cpu_page() {
     };
     assert_eq!(
         (refused.0, refused.1),
-        (current_cpu_protocol::THREAD_PAGE_SLOTS, Error::OutOfMemory),
+        (current_cpu_contract::THREAD_PAGE_SLOTS, Error::OutOfMemory),
         "a process took more threads than it has current-CPU page slots, or fewer",
     );
 

@@ -67,7 +67,7 @@ rendezvous; the queue is userspace policy bounded by the broker's own untyped.
 ### The component manifest (2026-08-17)
 
 `crates/component_plan`, notes/component-manifest.md. `swapper` holds no endowment literals: each
-contract declares its capability half in `swap_protocol`, and the operator says only which of its
+contract declares its capability half in `hot_swap_contract`, and the operator says only which of its
 own objects answers to which role name, per child. A manifest is a request and the provisions are the
 authority (Fuchsia's `use`/`offer` split), so a vendor's declaration cannot widen its own authority.
 The role name is the component's and the object is the supervisor's, which makes a component's peer
@@ -97,7 +97,7 @@ a pure consumer degrades for free on the endpoint's sender queue, §41's mechani
 
 notes/state-handoff.md, to the ruling in DECISIONS §209 (state handoff is an opaque blob over a
 granted frame, and it is optional). `Requirements` gained the optional `handoff` field (provisional,
-as §209 asked), `swap_protocol` a stateful contract, and `swapper` a fourth role, `ROLE_HANDOFF`,
+as §209 asked), `hot_swap_contract` a stateful contract, and `swapper` a fourth role, `ROLE_HANDOFF`,
 that tries the swap twice. First against a replacement that cannot read the incumbent's blob, which
 refuses, is reaped, and leaves the incumbent serving with its state. Then against one that can,
 which commits. The client's unchanged sequence check is the continuity witness, because the

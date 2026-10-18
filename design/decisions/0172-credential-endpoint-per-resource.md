@@ -23,7 +23,7 @@ an endpoint minted against one identity, where a caller can present a secret and
 
 ## The tree as it stands, read rather than recalled
 
-`crates/credential_protocol/src/lib.rs` fixes the layout: `ID_OFF = 0`, `SECRET_OFF = 64`,
+`crates/credential_contract/src/lib.rs` fixes the layout: `ID_OFF = 0`, `SECRET_OFF = 64`,
 `MAX_IDENTITY = 64`, `MAX_SECRET = 256`, `LAYOUT_LEN = 320`. The identity is *"an opaque byte string
 and nothing more"*, and `place` refuses an empty one.
 
@@ -38,7 +38,7 @@ programs: `components/src/login.rs` at one site, and `fixtures/src/credentialer_
 the test client, at six. `components/src/credentialer.rs` is the server that answers it, and
 `kernel/src/user/credential_tests.rs` asserts the opcode-space property below. Five crates and
 program trees depend on `credential_protocol` at all (`components`, `fixtures`, `kernel`,
-`crates/system_initializer`, `crates/login_protocol`).
+`crates/system_initializer`, `crates/login_contract`).
 
 ## What this tree already does in the analogous case, which is the strongest argument here
 

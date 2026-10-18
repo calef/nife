@@ -55,7 +55,7 @@ pub const MAX_IDENTITIES: usize = 8;
 
 /// The longest one identity name this crate will carry.
 ///
-/// Matches `login_protocol::MAX_IDENTITY` (64 bytes) by convention rather than by a shared type: the
+/// Matches `login_contract::MAX_IDENTITY` (64 bytes) by convention rather than by a shared type: the
 /// manifest names the same identities a login authenticates, so a name too long to ever log in with
 /// is not a name this store needs to carry either. Not enforced by a shared dependency (this crate
 /// takes none), only by this constant and the comment naming why it was chosen.
@@ -157,7 +157,7 @@ fn strip_comment(line: &str) -> &str {
 
 /// **Render a manifest**, one identity name per line: the write-path half of this crate, used by
 /// whoever records that an identity now has a durable session with pending work. `login` edits the
-/// manifest a line at a time instead (`login_protocol::with_listed`, the same format), so this is
+/// manifest a line at a time instead (`login_contract::with_listed`, the same format), so this is
 /// the whole-document form, host-tested against [`parse_manifest`].
 ///
 /// A fixed buffer rather than a `String`, because this crate is `no_std` with no `alloc`

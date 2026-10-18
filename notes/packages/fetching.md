@@ -20,7 +20,7 @@ $ packages/greeting/0.1.0/greeting
 
 `jig` asks its copy of the image's catalog first (`package_archive::cataloged_stem`, on the page
 `grant_plan::Manifest::catalog` maps). A name the image vouches for nothing by costs no network.
-Then it opens a `std::net::TcpStream` to the package source (`socket_protocol::fixture`), sends
+Then it opens a `std::net::TcpStream` to the package source (`socket_contract::fixture`), sends
 `GET /<stem>.nifepkg` and reads the reply with `http_response`. The body goes into one run of
 `jig`'s own pages, sized from the declared length.
 

@@ -17,7 +17,7 @@ proposal of the same name. §267 (a comment
 states the constraint as it is now) caps a comment block at 40 lines, with history in the commit
 message and git and no narrative transplanted into documents.
 
-This worth takes the next three rows: `crates/login_protocol/src/lib.rs:2` (169),
+This worth takes the next three rows: `crates/login_contract/src/lib.rs:2` (169),
 `crates/jh7110_entropy/src/lib.rs:2` (169), `kernel/src/arch/x86_64/iommu.rs:1` (164). It expects
 floors. Three worths before it took the history. What remains should be constraint.
 
@@ -30,7 +30,7 @@ worth only runs the sweep, banks and closes, and takes no new code.
 
 ## The worth, 2026-10-10 (UTC): built, and the sweep is closed
 
-- `crates/login_protocol/src/lib.rs:2` 169 to 164. The Name block keeps its three rulings with
+- `crates/login_contract/src/lib.rs:2` 169 to 164. The Name block keeps its three rulings with
   their dates (ratified 2026-08-23, suffix at milestone 265 (`_proto` is a truncation), stem
   stays 2026-09-15). The
   parked-family anecdote between them went to git.

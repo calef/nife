@@ -19,7 +19,7 @@
 //! Nothing here can run off a machine: every entry point writes device registers through a
 //! mapping the kernel handed this process and returns `!`, so the example on [`run`] is `no_run`.
 //! The checkable parts of this subsystem are `direct_memory_access_validator` and
-//! `filesystem_protocol`.
+//! `filesystem_contract`.
 //!
 
 //! Name: ratified 2026-09-14 (calef, working the unratified worklist), as a proper name rather than
@@ -29,7 +29,7 @@
 //! refused `virtio_net` for the transport adapter because this crate also drives net).
 
 use abi::interrupt;
-use filesystem_protocol::blk;
+use filesystem_contract::blk;
 use user_mode_runtime::virtio::virtio_ring_barrier;
 use user_mode_runtime::{exit, invoke, receive_request, reply, send};
 
@@ -1004,15 +1004,15 @@ const CONFIG: u64 = 0x100;
 /// page, the control (opcode, block index, result) rides in the message, the §10 split.
 pub fn run_blk_server(direct_memory_access_phys: u64) -> ! {
     // Ask for VIRTIO_BLK_F_FLUSH, and remember whether we got it. Everything about
-    // `filesystem_protocol::blk::FLUSH` hangs off this one bool: with it, a sync is a device round trip; without
+    // `filesystem_contract::blk::FLUSH` hangs off this one bool: with it, a sync is a device round trip; without
     // it, a sync is a loud refusal. There is no third behaviour, and in particular there is no
     // "answer yes and do nothing", which is the state this server was in before milestone 55.
     let can_flush = init_with_features(0, true);
     // The device is up: signal readiness, so a hang here (bring-up) is distinct from a hang in the
     // first read completion. SEND rendezvous, so this also paces the test past bring-up.
-    send(BLK_READY, filesystem_protocol::READY, 0, 0);
+    send(BLK_READY, filesystem_contract::READY, 0, 0);
     // How many device flushes have completed. Answered back on every successful `blk::FLUSH`, so a
-    // client can tell a real round trip from a constant yes: see `filesystem_protocol::blk::FLUSH`.
+    // client can tell a real round trip from a constant yes: see `filesystem_contract::blk::FLUSH`.
     let mut flushes: i64 = 0;
     loop {
         // RECEIVE_CAP: (first word, the Reply, second word = the starting block index). The Reply is
@@ -1028,7 +1028,7 @@ pub fn run_blk_server(direct_memory_access_phys: u64) -> ! {
         // stay inside the region it shares just because the packing allows a larger number to be
         // spelled at all.
         let count = blk::req_blocks(w0).min(blk::TRANSFER_BLOCKS) as u64;
-        let r0: i64 = match filesystem_protocol::operation(w0) {
+        let r0: i64 = match filesystem_contract::operation(w0) {
             blk::READ => {
                 blk_read(direct_memory_access_phys, block, count);
                 0
@@ -1040,7 +1040,7 @@ pub fn run_blk_server(direct_memory_access_phys: u64) -> ! {
             blk::SIZE => disk_size_bytes(),
             // The one verb that can refuse for a reason outside this program. A device that never
             // offered the feature gets EOPNOTSUPP rather than a zero, because a zero here is a lie
-            // about somebody's data; see `filesystem_protocol::blk::FLUSH`.
+            // about somebody's data; see `filesystem_contract::blk::FLUSH`.
             blk::FLUSH => {
                 if !can_flush {
                     -95 // EOPNOTSUPP: this device has no flush, and pretending otherwise is the bug

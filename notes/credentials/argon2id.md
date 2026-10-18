@@ -3,7 +3,7 @@
 An appendix to [`notes/credentials.md`](../credentials.md). It records the dependency decision, the
 known-answer vectors, a bug found in the dependency, and the cost parameters with their
 measurements. The crates were renamed after this was written: `cred` is now `credentialer` and
-`cred_proto` is `credential_protocol`.
+`cred_proto` is `credential_contract`.
 
 DECISIONS §46 draws the line at **exposure**: write the thing whose correctness you can argue from
 the spec, depend on the thing whose correctness is won by many people checking it against published

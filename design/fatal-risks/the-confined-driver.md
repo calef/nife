@@ -42,7 +42,7 @@ The risk names three things and they were never one claim. Measured on radon, tr
   `3faa07e1` and `731191ba`, each boot's two draws differing from each other. Reseeded per boot
   rather than a constant in silicon or a stale register file.
 - At real speed: MEASURED on silicon, 2026-09-16. A first figure, 955,223 bytes/s, 64 bytes in 67 us
-  over eight `entropy_protocol` round trips, which is about 8.4 us per round trip, bring-up 562 us,
+  over eight `entropy_contract` round trips, which is about 8.4 us per round trip, bring-up 562 us,
   has no committed transcript (#1495): `bench/radon-2026-09-16/tour-083200.log`, which it cites, has
   no `hw entropy` line, and no committed log holds 955,223 (commit `4af8ff980` carries only the
   number). Four committed boots of radon measure the same step: 988,416, 992,248 and 992,248 bytes/s on 2026-09-16 (`jobmix-boot3.log:721`,

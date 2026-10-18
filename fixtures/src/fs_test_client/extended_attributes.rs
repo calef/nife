@@ -8,8 +8,8 @@
 //! Name: provisional (lane maintainer/files-over-1500, 2026-10-12 UTC), for the module and the
 //! file.
 
+use filesystem_contract::{dir, fs, xattr};
 use filesystem_fixture as fixture;
-use filesystem_protocol::{dir, fs, xattr};
 use fixture::attrs;
 use user_mode_runtime::call;
 
@@ -119,14 +119,14 @@ pub(crate) fn attr_witness(scratch: u64) -> u64 {
         xattr::spec(xattr::RAW, (xattr::MAX_VALUE + 1) as u64),
     )
     .0 as i64;
-    if filesystem_protocol::reply_errno(r) == Some(xattr::E2BIG) {
+    if filesystem_contract::reply_errno(r) == Some(xattr::E2BIG) {
         v |= attrs::OVERSIZE_REFUSED;
     }
 
     // 4. Removing it takes it away, and reading it afterwards is ENODATA. Without this the round
     //    trip above is equally true of a store that never forgets anything.
     if xattr_remove(scratch, attrs::NAME) >= 0
-        && filesystem_protocol::reply_errno(xattr_get(scratch, attrs::NAME)) == Some(xattr::ENODATA)
+        && filesystem_contract::reply_errno(xattr_get(scratch, attrs::NAME)) == Some(xattr::ENODATA)
     {
         v |= attrs::GONE_AFTER_REMOVE;
     }
@@ -206,7 +206,7 @@ fn a_full_enumeration_does_not_name_the_store() -> u64 {
         }
         get_page(n as usize, &mut buf);
         let mut seen = 0u64;
-        for (name, _) in filesystem_protocol::dirent::iter(&buf[..(n as usize).min(buf.len())]) {
+        for (name, _) in filesystem_contract::dirent::iter(&buf[..(n as usize).min(buf.len())]) {
             if name == xattr::STORE_DIR.as_bytes() {
                 clean = false;
             }
