@@ -39,13 +39,13 @@ use crate::{
 
 /// The probe frame's `EtherType`: IEEE 802's first local experimental type, which no real
 /// protocol uses and no switch acts on (it never leaves the MAC anyway).
-pub const PROBE_ETHERTYPE: u16 = 0x88b5;
+pub(crate) const PROBE_ETHERTYPE: u16 = 0x88b5;
 /// The probe frame's length, CRC excluded: comfortably more than one cache line, so a stale line
 /// anywhere in it is seen.
-pub const PROBE_LEN: usize = 128;
+pub(crate) const PROBE_LEN: usize = 128;
 /// What receive buffer 0 holds before the device writes it. Never a byte of [`probe_frame`]'s
 /// payload, so a buffer still holding it cannot be mistaken for a delivery.
-pub const POISON: u8 = 0xa5;
+pub(crate) const POISON: u8 = 0xa5;
 /// How long the caller waits for receive descriptor 0 before reading the device's account. A
 /// 128-byte frame at any speed through a loopback is microseconds; a hundred milliseconds is
 /// slack for a slow first descriptor fetch, not a guess at the wire.
@@ -53,7 +53,7 @@ pub const WAIT_US: u64 = 100_000;
 
 /// **The probe frame**: addressed from and to `mac` (so the packet filter passes it), the
 /// experimental `EtherType`, and a payload whose every byte differs from [`POISON`] and from zero.
-pub fn probe_frame(mac: [u8; 6]) -> [u8; PROBE_LEN] {
+pub(crate) fn probe_frame(mac: [u8; 6]) -> [u8; PROBE_LEN] {
     let mut f = [0u8; PROBE_LEN];
     f[..6].copy_from_slice(&mac);
     f[6..12].copy_from_slice(&mac);
