@@ -59,10 +59,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "program_argument_contract"
-version = "0.1.0"
-
-[[package]]
 name = "base64ct"
 version = "1.8.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -220,6 +216,7 @@ dependencies = [
  "designware_ethernet",
  "designware_mobile_storage",
  "documentation",
+ "domain_name_resolution_contract",
  "domain_name_system",
  "e1000e",
  "elf",
@@ -227,12 +224,13 @@ dependencies = [
  "environment_contract",
  "extensible_host_controller_interface",
  "file_allocation_table",
- "filesystem_fixture",
  "filesystem_contract",
+ "filesystem_fixture",
  "free",
  "globally_unique_identifier_partition_table",
  "grant_plan",
  "graphics_contract",
+ "hot_swap_contract",
  "http_response",
  "jh7110_entropy",
  "line_editor",
@@ -240,7 +238,6 @@ dependencies = [
  "machine_statistics_contract",
  "manifest_note",
  "measured_boot",
- "domain_name_resolution_contract",
  "network_time_protocol",
  "nifefs",
  "non_volatile_memory_express",
@@ -253,7 +250,6 @@ dependencies = [
  "smoltcp",
  "socket_contract",
  "supervision_protocol",
- "hot_swap_contract",
  "swish",
  "system_initializer",
  "system_log",
@@ -421,6 +417,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "domain_name_resolution_contract"
+version = "0.1.0"
+dependencies = [
+ "domain_name_system",
+]
+
+[[package]]
 name = "domain_name_system"
 version = "0.1.0"
 
@@ -458,18 +461,18 @@ name = "file_allocation_table"
 version = "0.1.0"
 
 [[package]]
-name = "filesystem_fixture"
-version = "0.1.0"
-dependencies = [
- "filesystem_contract",
-]
-
-[[package]]
 name = "filesystem_contract"
 version = "0.1.0"
 dependencies = [
  "filesystem_fixture",
  "glob",
+]
+
+[[package]]
+name = "filesystem_fixture"
+version = "0.1.0"
+dependencies = [
+ "filesystem_contract",
 ]
 
 [[package]]
@@ -501,25 +504,25 @@ dependencies = [
  "coremark",
  "credential_contract",
  "current_cpu_contract",
+ "domain_name_resolution_contract",
  "elf",
  "entropy_contract",
- "filesystem_fixture",
  "filesystem_contract",
+ "filesystem_fixture",
  "grant_plan",
  "graphics_contract",
+ "hot_swap_contract",
  "job_mix",
  "line_editor",
  "loaded_image_check",
  "login_contract",
  "manifest_note",
- "domain_name_resolution_contract",
  "network_time_protocol",
  "nifefs",
  "schedule_store",
  "soak_page",
  "socket_contract",
  "supervision_protocol",
- "hot_swap_contract",
  "system_initializer",
  "timetable",
  "user_mode_runtime",
@@ -568,9 +571,9 @@ dependencies = [
 name = "grant_plan"
 version = "0.1.0"
 dependencies = [
- "program_argument_contract",
  "filesystem_contract",
  "glob",
+ "program_argument_contract",
 ]
 
 [[package]]
@@ -600,6 +603,16 @@ checksum = "25ba4bd83f9415b58b4ed8dc5714c76e626a105be4646c02630ad730ad3b5aa4"
 dependencies = [
  "hash32",
  "stable_deref_trait",
+]
+
+[[package]]
+name = "hot_swap_contract"
+version = "0.1.0"
+dependencies = [
+ "abi",
+ "address_space_map",
+ "component_plan",
+ "user_mode_runtime",
 ]
 
 [[package]]
@@ -686,8 +699,8 @@ dependencies = [
  "entropy_contract",
  "environment_contract",
  "extensible_host_controller_interface",
- "filesystem_fixture",
  "filesystem_contract",
+ "filesystem_fixture",
  "firmware_configuration",
  "generational_table",
  "grant_plan",
@@ -838,13 +851,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "domain_name_resolution_contract"
-version = "0.1.0"
-dependencies = [
- "domain_name_system",
-]
-
-[[package]]
 name = "network_time_protocol"
 version = "0.1.0"
 
@@ -942,6 +948,10 @@ checksum = "985e7ec9bb745e6ce6535b544d84d6cd6f7ad8bd711c398938ae983b91a766d9"
 dependencies = [
  "unicode-ident",
 ]
+
+[[package]]
+name = "program_argument_contract"
+version = "0.1.0"
 
 [[package]]
 name = "ps"
@@ -1144,16 +1154,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "hot_swap_contract"
-version = "0.1.0"
-dependencies = [
- "abi",
- "address_space_map",
- "component_plan",
- "user_mode_runtime",
-]
-
-[[package]]
 name = "swish"
 version = "0.1.0"
 dependencies = [
@@ -1197,6 +1197,7 @@ dependencies = [
  "address_space_map",
  "byte_sink_contract",
  "credential_contract",
+ "domain_name_resolution_contract",
  "elf",
  "entropy_contract",
  "filesystem_contract",
@@ -1207,7 +1208,6 @@ dependencies = [
  "machine_statistics_contract",
  "manifest_note",
  "measured_boot",
- "domain_name_resolution_contract",
  "nifefs",
  "package_archive",
  "package_index",
@@ -1249,12 +1249,13 @@ dependencies = [
  "counter_frequency_contract",
  "credential_contract",
  "current_cpu_contract",
+ "domain_name_resolution_contract",
  "domain_name_system",
  "elf",
  "entropy_contract",
  "environment_contract",
- "filesystem_fixture",
  "filesystem_contract",
+ "filesystem_fixture",
  "grant_plan",
  "graphics_contract",
  "kernel",
@@ -1263,7 +1264,6 @@ dependencies = [
  "machine_discovery",
  "machine_statistics_contract",
  "measured_boot",
- "domain_name_resolution_contract",
  "network_time_protocol",
  "nifefs",
  "package_archive",

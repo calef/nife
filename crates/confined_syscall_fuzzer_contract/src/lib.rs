@@ -9,7 +9,7 @@
 //!
 //! Every name in this crate is provisional, the crate's included.
 //!
-//! Name: ratified 2026-10-17 (calef): "ratify confined_syscall_fuzzer_contract". It matches the
+//! Name: ratified 2026-10-17 (calef): "ratify `confined_syscall_fuzzer_contract`". It matches the
 //! fixture program it serves, `confined_syscall_fuzzer`.
 
 #![no_std]

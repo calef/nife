@@ -28,7 +28,7 @@
 //! endowing the new one. The old instance is asked to touch them one more time afterwards, and the
 //! kernel's fault message is the receipt.
 //!
-//! Name: ratified 2026-10-17 (calef): "hot_swap_contract makes sense". "Swap" alone means paging in
+//! Name: ratified 2026-10-17 (calef): "`hot_swap_contract` makes sense". "Swap" alone means paging in
 //! OS vocabulary; milestone 23's word for live replacement is hot swap.
 
 use user_mode_runtime::invoke;

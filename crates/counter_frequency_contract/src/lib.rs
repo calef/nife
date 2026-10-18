@@ -26,7 +26,7 @@
 //!   would not. A new spawn path must map the page or not link anything that calls `cntfrq`.
 //! - The rate is read once per process, so a later, better number could not reach it.
 //!
-//! Name: ratified 2026-10-17 (calef): "ratify counter_frequency_contract and fix the docs". The stem
+//! Name: ratified 2026-10-17 (calef): "ratify `counter_frequency_contract` and fix the docs". The stem
 //! `counter_frequency` was ruled on 2026-09-13. It mirrors `CNTFRQ_EL0`, the register this page
 //! substitutes for. Refused `timebase_proto` (the oscillator, where the contents are the frequency),
 //! `tick_rate_proto` (drops the `CNTFRQ_EL0` connection), `tsc_frequency_proto` and
