@@ -11,8 +11,7 @@ in this order, because each needs the one before:
 2. On patagonia: flip `PCH_PROVEN_ON_SILICON` in a commit citing that log, and build the
    installer from it. About 5 minutes.
 3. Milestone 801 (packages over the internet)'s exit criterion: install, boot from the disk, then
-   `jig update` and `jig install ioping` from `basalt.nifeos.org`. About 15 minutes. Waits on
-   #2370 (below).
+   `jig update` and `jig install ioping` from `basalt.nifeos.org`. About 15 minutes.
 4. Risk 6, step 1 of its path back to GREEN: ioping on nife (the package step 3 installed), then on
    Linux, three boots of five passes each. About an hour.
 5. Risk 5: the first of the three boots §259 (a multicore soak counts toward risk 5 at ten million
@@ -23,8 +22,8 @@ Where this card and a procedure page disagree, the machine decides and the page 
 
 ## Status
 
-Not ready to run (see "What stands between this card and the evening"). Every image below was built from main at
-`805620590` and booted under OVMF.
+Not ready to run: step 4's nife row waits on #2371 (below). Every image below was built from main
+at `805620590` and booted under OVMF, and all of them are rebuilt once #2371 merges.
 
 | image | build | under OVMF | SHA-256 |
 |---|---|---|---|
@@ -39,14 +38,11 @@ are kept off-tree by the maintainers.
 
 ## What stands between this card and the evening
 
-Two things, neither a bench step nor a ruling.
+Step 3 passes under QEMU on main at `5e6c40c96`, from an installed disk: `index updated: 6
+packages for x86_64, from basalt.nifeos.org over TLS`, then `fetched ioping-1.3-x86_64 from
+release-assets.githubusercontent.com via github.com over TLS` and `fetched and installed;
+generation 1 is live`. The table's `805620590` images predate that and are rebuilt with the rest.
 
-- Step 3 needs #2370 (the name resolver gets a budget it can lend from) on main. Rehearsed under
-  QEMU on its branch at `3ed3256c9`, from an installed disk, the whole of step 3 passes:
-  `index updated: 6 packages for x86_64, from basalt.nifeos.org over TLS`, then `fetched
-  ioping-1.3-x86_64 from release-assets.githubusercontent.com via github.com over TLS` and
-  `fetched and installed; generation 1 is live`. On main at `805620590` the same `jig update`
-  fails with `NetworkUnreachable`. The images in the table are rebuilt once #2370 merges.
 - Step 4's nife row does not yet measure the device. In the same rehearsal, `ioping -c 20 -i 0 -s
   4k ioping/1.3/ioping` runs but prints `non-cached I/O not supported by this platform`. It sees
   the file as `0 B`, so every request reads offset 0, and steady reads take 41 to 42 us. That is a
@@ -55,7 +51,8 @@ Two things, neither a bench step nor a ruling.
   through a cache, the run uses the block window instead, and the row says so", and Linux makes
   the same choice. So the nife row waits on engineering, not a ruling: why nife reports the file
   as 0 B, why ioping cannot do non-cached I/O there, and a direct-I/O target in the block window.
-  The step 4 commands below change when that lands.
+  calef ruled on 2026-10-18 (UTC) that the shell gets a read-only, uncached view of the NVMe at
+  the prompt, built in #2371. The step 4 commands below change when it lands.
 
 ## What calef needs at the bench
 
