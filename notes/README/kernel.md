@@ -27,6 +27,7 @@ Part of [the notes index](../README.md), which says how to add a line.
 - [The progenitor's capability-table peak, slot by slot](../capability-peak-trace.md): which capabilities hold the 31 of 32, and what each option to lower it saves. Name provisional.
 - [Object revocation: tearing a process back down](../object-revocation.md): reclaiming the kernel objects a process built.
 - [Ending a permanently blocked thread](../blocked-thread-teardown.md): research and proposals for ending a blocked thread.
+- [Suspending and resuming a thread](../suspend-and-resume.md): how `SUSPEND` and `RESUME` stop and continue a thread, case by case.
 - [Supervision: a thread's death becomes a message](../supervision.md): the fault endpoint, and reaping without building.
 - [Per-process resource quotas](../quotas.md): a live-children cap on spawners, kept but unused.
 - [What a timed wait costs](../timed-wait.md): pricing a deadline on a blocked thread.

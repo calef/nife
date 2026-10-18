@@ -36,10 +36,10 @@ never write. Nothing in between. Everything in between is written here.
 
 1. Is it on the verification path? Then write it. This is the load-bearing reason and it is not
    about pride: you cannot restructure someone else's crate to make a model checker tractable.
-   `crates/calendar` is the worked example: the parser gained a byte-level entry point because
+   `crates/calendar` is the worked example. The parser gained a byte-level entry point because
    `from_utf8` made CBMC branch on length every step (ten minutes to seventeen seconds, and a better
-   API); monotonicity was rephrased as its induction step over adjacent days (228s to 40s, same
-   theorem); `div_euclid` on a symbolic timestamp had to be kept out of the harness entirely. Three
+   API). Monotonicity was rephrased as its induction step over adjacent days (228s to 40s, same
+   theorem). `div_euclid` on a symbolic timestamp had to be kept out of the harness entirely. Three
    other lanes hit the same wall the same day (`ntp_proto`'s fixed-point multiply, `gpt`'s
    table-driven CRC) and all three resolved it by changing code. None of that is available in a
    dependency.
