@@ -83,19 +83,19 @@ const ENTROPY: u64 = 4;
 
 /// A sample was accepted and proposed. `w1` is the `clock_contract::status` the service answered with,
 /// `w2` the nanoseconds proposed.
-pub const RPT_SYNCED: u64 = 1;
+pub(crate) const RPT_SYNCED: u64 = 1;
 /// A reply arrived and `Query::accept` refused it. `w1` is a [`reject_code`], `w2` the number of
 /// requests sent. **Nothing was proposed.**
-pub const RPT_REJECTED: u64 = 2;
+pub(crate) const RPT_REJECTED: u64 = 2;
 /// No reply after [`ATTEMPTS`] requests. `w1` is the number sent.
-pub const RPT_NO_REPLY: u64 = 3;
+pub(crate) const RPT_NO_REPLY: u64 = 3;
 /// **No unguessable bits, so no request.** `w1` is the entropy service's reply word (or the kernel
 /// error from a `CALL` on an empty slot, which is what "no capability" looks like).
-pub const RPT_NO_ENTROPY: u64 = 4;
+pub(crate) const RPT_NO_ENTROPY: u64 = 4;
 /// The socket contract refused us. `w1` names the step, so a wiring mistake is not a mystery.
-pub const RPT_NET_ERROR: u64 = 5;
+pub(crate) const RPT_NET_ERROR: u64 = 5;
 /// The local wall clock is outside the range an NTP timestamp can hold, so no exchange is possible.
-pub const RPT_BAD_LOCAL_TIME: u64 = 8;
+pub(crate) const RPT_BAD_LOCAL_TIME: u64 = 8;
 
 /// How many requests one synchronisation makes before giving up. Three is a client's ordinary
 /// behaviour on a lossy path, not a widened timeout; the DNS check in `socket_test_client` settled on the same

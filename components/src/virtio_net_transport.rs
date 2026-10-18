@@ -98,7 +98,7 @@ const BUF_BASE: u64 = 0x400;
 
 /// The interface MTU. Small because the buffers are small (single-page DMA region); slirp's DHCP,
 /// DNS, and small TCP segments fit. A recorded demonstrator caveat, not a protocol limit.
-pub const MTU: usize = 576;
+pub(crate) const MTU: usize = 576;
 
 fn rx_buf(i: usize) -> u64 {
     BUF_BASE + i as u64 * BUF
@@ -144,7 +144,7 @@ fn write_desc(desc_base: u64, i: u64, addr: u64, len: u32, flags: u16, next: u16
 
 /// The virtio-net device, behind `net_stack`'s `Nic`. Holds the ring bookkeeping; the buffers
 /// and descriptor tables live in the DMA page at fixed offsets.
-pub struct VirtioNet {
+pub(crate) struct VirtioNet {
     direct_memory_access_phys: u64,
     rx_avail: u16,
     rx_seen: u16, // receive used-ring index already drained
@@ -229,7 +229,7 @@ impl VirtioNet {
 
     /// Quiet the device's interrupt and re-enable the line at the controller, after a `WAIT`
     /// returned. The server calls this each wakeup, the disk driver's discipline.
-    pub fn ack_irq(&self) {
+    pub(crate) fn ack_irq(&self) {
         let istatus = mr(INTERRUPT_STATUS);
         mw(INTERRUPT_ACK, istatus);
         interrupt_acknowledge(IRQ); // re-enable the interrupt the kernel masked when it fired
@@ -237,7 +237,7 @@ impl VirtioNet {
 
     /// Take one received frame, if the receive used ring has advanced. Copies the frame out (minus
     /// the virtio header) and re-posts the buffer so the device can fill it again.
-    pub fn rx_take(&mut self) -> Option<Vec<u8>> {
+    pub(crate) fn rx_take(&mut self) -> Option<Vec<u8>> {
         let used_idx = r16(RX_USED + 2);
         if used_idx == self.rx_seen {
             return None;
@@ -292,7 +292,7 @@ impl VirtioNet {
 
     /// Transmit one frame: prepend the zero virtio header, post the next transmit buffer's
     /// descriptor, and ring the device. Waits briefly for a buffer to free if all are in flight.
-    pub fn tx_send(&mut self, frame: &[u8]) {
+    pub(crate) fn tx_send(&mut self, frame: &[u8]) {
         let i = self.tx_next;
         // Do not overwrite a buffer the device has not finished sending. Under slirp this never
         // actually spins, but a bounded wait keeps a slow completion from corrupting an in-flight

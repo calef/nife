@@ -4,8 +4,6 @@
 # `<path>::<name> <check>`, once per break. The list only shrinks: a fixed name's row goes in the
 # change that fixes it (`python3 helpers/name_checks.py --bank`). A row may be added only by the
 # change that bumps the rules line above, because it adds or revises the check.
-components/src/designware_ethernet_transport.rs::frame_waiting question-shape
-components/src/e1000e_transport.rs::frame_waiting question-shape
 components/src/swish/witness.rs::removed question-shape
 crates/abi/src/futex.rs::admitted question-shape
 crates/abi/src/virtio.rs::DMA_PHYS_OFFSET spelled-out

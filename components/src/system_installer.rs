@@ -149,18 +149,18 @@ pub const R_INSTALLED: u64 = 0x_49_4E_53_54_44;
 /// truthful)).
 pub const R_NO_ENTROPY: u64 = 0x_4E_4F_52_4E_47;
 /// The disk is too small to hold the layout. The second word is its size in bytes.
-pub const R_TOO_SMALL: u64 = 0x_53_4D_41_4C_4C;
+pub(crate) const R_TOO_SMALL: u64 = 0x_53_4D_41_4C_4C;
 /// The disk refused a read or a write, or a layout step failed. The second word says which step.
-pub const R_DISK_FAILED: u64 = 0x_44_49_53_4B_45;
+pub(crate) const R_DISK_FAILED: u64 = 0x_44_49_53_4B_45;
 /// There is no boot file to copy, so an install would produce a disk that boots nothing.
-pub const R_NO_BOOT_FILE: u64 = 0x_4E_4F_42_4F_54;
+pub(crate) const R_NO_BOOT_FILE: u64 = 0x_4E_4F_42_4F_54;
 
 // [`ROLE_SURVEY`]'s verdicts.
 /// **The disk already carries a nife data partition**, so this machine is installed rather than
 /// installable. ASCII `HAVIT`.
 pub const R_ALREADY: u64 = 0x_48_41_56_49_54;
 /// The disk carries no nife data partition: no table at all, or somebody else's.
-pub const R_EMPTY: u64 = 0x_45_4D_50_54_59;
+pub(crate) const R_EMPTY: u64 = 0x_45_4D_50_54_59;
 
 // [`ROLE_CONFIRM`]'s verdicts.
 /// **The slot is successful**, whether this process set the bit or found it already set. One
