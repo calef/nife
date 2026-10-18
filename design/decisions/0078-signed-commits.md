@@ -55,8 +55,8 @@ re-measurement), and Dependabot's acceptance under a blocking rule is still unte
 The three items above (quiet pipeline, Dependabot verified, non-enforcing rollout) are about *when*
 it would be safe to turn this on, not *why* it would be worth turning on. Absent one of the four
 conditions below, signing today would buy little beyond the ceremony this file's own text already
-warns against: a real cost (every merge blocked until every committer can satisfy the rule), for a
-property nothing here currently needs.
+warns against. It would be a real cost (every merge blocked until every committer can satisfy the
+rule), for a property nothing here currently needs.
 
 1. Milestone 128 lands (real per-agent identity). Every commit on this repository pushes under
    calef's account through the shared `gh` token today (`AGENTS.md` says this plainly: "every pull

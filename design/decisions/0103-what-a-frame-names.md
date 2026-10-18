@@ -12,11 +12,11 @@ The fork this was researching was answered while it was being researched. calef 
 on 2026-08-20 (§102, a `Frame` names a run), which is the same answer L4 reached and which this
 survey found Barrelfish had already built. So nothing here is waiting on anybody.
 
-**It is kept**, because the four recalled claims it
-checked are the reason a reader should trust §102 rather than merely obey it: two of the four
-framings a maintainer offered from memory turned out to be wrong, and finding that out is what
-separates a decision from a guess. The pricing in section 3 is also the closest thing this tree has
-to a cost model for the syscall surface, and §102 does not restate it.
+**It is kept**, because the four recalled claims it checked are the reason a reader should trust
+§102 (a Frame names a run of pages) rather than merely obey it. Two of the four framings a
+maintainer offered from memory turned out to be wrong, and finding that out is what separates a
+decision from a guess. The pricing in section 3 is also the closest thing this tree has to a cost
+model for the syscall surface, and §102 does not restate it.
 
 This section was salvaged from a lane the account's spend limit killed mid-run, with 214 lines
 uncommitted in its worktree. What follows is the lane's own text, unedited.
@@ -33,9 +33,9 @@ the sixteen, so the ceiling is nine frames and 36,864 bytes, and an 800x600 surf
 non-square shape under the ceiling gives five text rows or fewer, so no scanout reachable today
 makes gohufont-14 a terminal.
 
-This section prices four options. It gives no recommendation, deliberately: three of the four change
+This section prices four options. It gives no recommendation, deliberately. Three of the four change
 what a syscall method means, which is the irreversible column of the *move fast on what can be
-undone* tenet, and a recommendation on that fork is most of the way to a decision.
+undone* tenet. A recommendation on that fork is most of the way to a decision.
 
 What is blocked until this is answered. Milestone 29's scanout, and therefore §100's font
 landing anywhere a person can read it. Nothing else is waiting; the display path is the only place
@@ -68,8 +68,8 @@ The four options are set out in full in section 6 below with their measured pric
 | **C. `aspace::MAP_INTO` at spawn** | nothing in the model | Live, and the only option that changes no syscall meaning. Costs 475 map calls, and the client ends up holding **no capability for its own pixels**, which is what milestone 108 spent itself closing on this exact path. |
 | **D. A large `Frame`: one 2 MiB page** | `PageFormat` gains block descriptors; `Object::Frame` gains an order | Live, and cheaper than this lane expected. `800x608x4 = 1,945,600` fits one 2 MiB page with 37 pages to spare, and `SURFACE_VA` is already 2 MiB-aligned. |
 
-A and D are the same decision at different granularity, which is the useful way to see them: both
-make one capability name more than one page, and they differ in whether the size is arbitrary
+A and D are the same decision at different granularity, which is the useful way to see them. Both
+make one capability name more than one page. They differ in whether the size is arbitrary
 (`pages: u64`) or a power-of-two order the hardware already understands. That is exactly the split
 between Barrelfish's frame capability and seL4's frame sizes, and the survey in section 3 is mostly
 about what each side of it costs.
@@ -96,7 +96,7 @@ harnesses over it. Whatever a run-shaped `Frame` decides about partial pages and
 argument is already written down and machine-checked one module over.
 
 And the display driver's own DMA region is already a run in physics and nine capabilities in the
-model, which is the whole complaint: `display_service.rs` allocates it with one
+model, which is the whole complaint. `display_service.rs` allocates it with one
 `memory::alloc_contiguous(DMA_FRAMES)` and then mints nine `Frame` capabilities over consecutive
 pages of it (`grant_run`). The kernel *knows* it is one run at the moment it hands it over and throws
 that fact away.
@@ -116,8 +116,8 @@ was retrieved from the source named beside it.
 
 Two corrections to what was assumed alongside the claim. The manual states the **virtual**
 address alignment explicitly (section 7.1.2: *"The virtual address for a Page mapping must be aligned to the
-size of the Page"*, and `seL4_ARM_Page_Map` returns `seL4_AlignmentError` for it), and this lane
-found no sentence stating a physical alignment requirement; that follows from retype allocating
+size of the Page"*, and `seL4_ARM_Page_Map` returns `seL4_AlignmentError` for it). This lane
+found no sentence stating a physical alignment requirement. That follows from retype allocating
 size-aligned within an untyped rather than from a rule anyone wrote down, so the manual should not be
 cited for it. And the AArch64 page-size table is **not** qualified by hypervisor configuration: the
 guess that `arm_hyp` or a 40-bit PA changes the frame sizes is not supported by this revision.
@@ -186,9 +186,9 @@ for level in 0..F::LEVELS - 1 {
 ```
 
 `is_present` cannot tell a table from a block, and the walk assumes table. That is the hazard,
-and it is sharper than "unsupported": if a 2 MiB block descriptor existed at level 2 today and
-anything mapped a 4 KiB page beneath it, `F::entry_pa` would return the *block's* physical address
-and the mapper would write page-table entries into the framebuffer. `translate` would return
+and it is sharper than "unsupported". If a 2 MiB block descriptor existed at level 2 today and
+anything mapped a 4 KiB page beneath it, `F::entry_pa` would return the *block's* physical address.
+The mapper would then write page-table entries into the framebuffer. `translate` would return
 pixels as a page-table address. So block support is not additive; every walk needs a new
 discrimination step, and `PageFormat` needs a method it does not have.
 

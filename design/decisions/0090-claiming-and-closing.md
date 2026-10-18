@@ -7,14 +7,14 @@ ratified_by: calef
 
 # 90. The claim is a draft pull request; the status flip is a gate
 
-calef, 2026-08-16, from the observation that a team of humans would use an
-issue tracker to stop two developers taking the same task, that this project has no analog, and
-that **an issue tracker cannot be stuck in a merge queue.**
+calef, 2026-08-16, from this observation. A team of humans would use an issue tracker to stop two
+developers taking the same task. This project has no analog. And **an issue tracker cannot be
+stuck in a merge queue.**
 
 ## Two problems that look like one
 
 Claiming. Nothing stops two lanes taking the same work. The roadmap cannot serve as the claim
-board, and the reason is structural rather than a matter of discipline: claiming would mean
+board, and the reason is structural rather than a matter of discipline. Claiming would mean
 editing `design/roadmap/`, which means a pull request, which means the merge queue, which is
 twelve minutes and not atomic. By the time a claim lands the other lane is half finished.
 
@@ -59,7 +59,7 @@ makes it legible.
 **A branch named `milestone/N-*` may not merge without touching `design/roadmap/N-*.md`.**
 Fifteen lines in `script/lint`, and it would have caught all four of this week's misrecordings.
 
-It forces the status flip into the same merge as the work, which is where it belongs: merging is
+It forces the status flip into the same merge as the work, which is where it belongs. Merging is
 what finishes a lane, and anything not attached to the merge is attached to whoever happens to
 notice, which is rung zero.
 
@@ -76,8 +76,8 @@ that was missing four times this week.
 
 ## What this does not solve
 
-Two lanes can still collide in the same *files* without claiming the same milestone, which is what
-happened twice on 2026-08-15 and is a different problem with a different answer (the lane-count
+Two lanes can still collide in the same *files* without claiming the same milestone. That is what
+happened twice on 2026-08-15, and it is a different problem with a different answer (the lane-count
 rule now reads against the collision surface, and `git ls-remote --heads` is the ledger). And a
 draft pull request claims work that has a branch; a design question with no branch is a
 `design/decisions/` entry with `**Status: PROPOSED.**`, which is where those already live.
@@ -118,8 +118,8 @@ Measured 2026-09-05 over the last two hundred merged pull requests:
 | `milestone/260-xenon-netboot` | 2026-09-05 |
 
 The first is the day the `maintainer/mint-*` pattern began, so this has been true for as long as the
-pattern has. It went unnoticed because it is rate-dependent, and that is the part worth carrying
-to the next rare failure in this tree: at one occurrence every couple of days it reads as noise and
+pattern has. It went unnoticed because it is rate-dependent. That is the part worth carrying to
+the next rare failure in this tree: at one occurrence every couple of days it reads as noise and
 nobody connects two incidents two days apart. Two in one evening reads as a pattern. Nothing about
 the mechanism changed on 2026-09-05, only the number of lanes, which is AGENTS.md's own observation
 about the bottleneck moving, arriving as a defect becoming visible rather than as a constraint.

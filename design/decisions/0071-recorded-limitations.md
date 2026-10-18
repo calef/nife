@@ -49,8 +49,8 @@ other.
 
 ## The evidence it was already the practice
 
-The day this was decided ran the convention three times unknowingly: the UART-IRQ limitation
-went straight to a lane (trigger 3, small enough to skip a row), the canary flake was promoted
-the moment a second failure signature appeared, and `net_stack`'s accept-backlog entries stayed
+The day this was decided ran the convention three times unknowingly. The UART-IRQ limitation
+went straight to a lane (trigger 3, small enough to skip a row). The canary flake was promoted
+the moment a second failure signature appeared. And `net_stack`'s accept-backlog entries stayed
 "eventually" because no trigger had fired. Writing down what the practice already is, is this
 project's favorite kind of decision.

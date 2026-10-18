@@ -36,7 +36,7 @@ the kernel, or does the syscall surface grow whatever lets it leave?
    against the microkernel thesis that drivers are user programs (§21, §23 spent real work getting
    virtio out).
 2. A kernel-owned admin plane. The kernel keeps the admin queues (queue creation names physical
-   addresses; that is the dangerous authority) and hands EL0 a capability to a pre-built I/O queue
+   addresses; that is the dangerous authority). It hands EL0 a capability to a pre-built I/O queue
    pair whose rings and data buffers all live inside the driver's own confined DMA region. The
    IOMMU bounds every fetch and every transfer to that region, so the kernel never parses commands;
    it only guarantees the geometry inside which any command is harmless. This is the `Virtio`
@@ -51,37 +51,40 @@ the kernel, or does the syscall surface grow whatever lets it leave?
 ## Recommendation
 
 Option 2, **but not yet**. The recommendation is to hold this PROPOSED until the board-side work
-(the JH7110's PLDA XpressRICH root complex, tracked as milestone 163, NOT-STARTED) exists, for the
-same reason §23 built multi-queue confinement only after single-queue worked: the second data point
-tells you which parts of the contract are QEMU artifacts. A second, possibly faster path to the same
-data point may exist through milestone 87's x86 machine instead; see milestone 163's own text for
-why that does not make 163 unnecessary. Option 1 is honest in the meantime because the limitation is recorded
-in notes/non-volatile-memory-express.md's BUGS section rather than implied away.
+(the JH7110's PLDA XpressRICH root complex, tracked as milestone 163 (the JH7110's root
+complex), NOT-STARTED) exists. §23 (multi-queue DMA confinement) built multi-queue confinement only
+after single-queue worked for the same reason: the second data point tells you which parts of the
+contract are QEMU artifacts. A second, possibly faster path to the same data point may exist through
+milestone 87 (the x86_64 bare-metal machine)'s x86 machine instead; see milestone 163's own text for
+why that does not make 163 unnecessary. Option 1 is honest in the meantime because the limitation is
+recorded in notes/non-volatile-memory-express.md's BUGS section rather than implied away.
 
-A scoping lane has now reported on x86_64 (milestone 165, PARTIAL), and it is half an answer
-rather than a whole one. Milestone 165 wired real PCI enumeration on x86_64 through ACPI's MCFG
-and proved it under QEMU's `q35`, which is stronger evidence than an equivalent RISC-V QEMU proof
-would be, because x86's discovery mechanism (ACPI tables naming an ECAM window) is the same one
-real x86 hardware uses, unlike RISC-V's QEMU-only fake ECAM device. That closes the *discovery*
-half of what a real data point needs. It does not close the *confinement* half this decision turns
-on: x86 has no IOMMU driver at all (VT-d, roadmap item 6 of milestone 161, unbuilt), so a real
-NVMe-behind-IOMMU controller cannot yet be brought up confined on either machine this tree targets.
-This stays PROPOSED, pending either the JH7110 board bring-up or VT-d, whichever lands first. (A
-separate lane was scoping a dedicated milestone for the JH7110 driver as this report was being
-written; check the roadmap index for its number before citing it.)
+A scoping lane has now reported on x86_64 (milestone 165 (x86_64 PCI enumeration), PARTIAL), and it
+is half an answer rather than a whole one. Milestone 165 wired real PCI enumeration on x86_64
+through ACPI's MCFG and proved it under QEMU's `q35`. That is stronger evidence than an equivalent
+RISC-V QEMU proof would be, because x86's discovery mechanism (ACPI tables naming an ECAM window) is
+the same one real x86 hardware uses, unlike RISC-V's QEMU-only fake ECAM device. That closes the
+*discovery* half of what a real data point needs. It does not close the *confinement* half this
+decision turns on. x86 has no IOMMU driver at all (VT-d, roadmap item 6 of milestone 161 (the x86_64
+port), unbuilt), so a real NVMe-behind-IOMMU controller cannot yet be brought up confined on
+either machine this tree targets. This stays PROPOSED, pending either the JH7110 board bring-up or
+VT-d, whichever lands first. (A separate lane was scoping a dedicated milestone for the JH7110
+driver as this report was being written; check the roadmap index for its number before citing it.)
 
 The VT-d half has now landed and been exercised against this driver (2026-08-25), and the
-*confinement* gap this section named is closed on x86_64. VT-d itself landed earlier this
-session (milestone 161 item 6, `kernel/src/arch/x86_64/iommu.rs`) but had confined no real PCI
-device; this is that exercise. `helpers/qemu-runner-x86_64.sh` now attaches `-device nvme` the same
-way the aarch64 and riscv64 runners do (no `iommu_platform` flag, same as the other two, since a
-real PCI device's DMA is not virtio's opt-in), and
-`kernel/src/nvme.rs::tests::the_nvme_disk_serves_the_block_interface_end_to_end` now runs for real (an account: that module is `kernel/src/non_volatile_memory_express.rs` since 2026-09-18, and milestone 261 replaced that test with the EL0 one, so neither the path nor the symbol resolves today)
-on all three architectures instead of skipping on x86_64. The result: the confinement claim
-holds under VT-d exactly as it does under SMMUv3 and the RISC-V IOMMU. The existing driver,
-unmodified in shape, enumerates the controller over ACPI's real MCFG, confines its requester id to
-its six-page DMA region before enabling it, and serves SIZE/WRITE/READ over the blk-IPC verbs, on
-QEMU's `q35` with `-device intel-iommu`.
+*confinement* gap this section named is closed on x86_64. VT-d itself landed earlier this session
+(milestone 161 item 6, `kernel/src/arch/x86_64/iommu.rs`) but had confined no real PCI device; this
+is that exercise. `helpers/qemu-runner-x86_64.sh` now attaches `-device nvme` the same way the
+aarch64 and riscv64 runners do (no `iommu_platform` flag, same as the other two, since a real PCI
+device's DMA is not virtio's opt-in).
+`kernel/src/nvme.rs::tests::the_nvme_disk_serves_the_block_interface_end_to_end` now runs for real
+on all three architectures instead of skipping on x86_64. (An account: that module is
+`kernel/src/non_volatile_memory_express.rs` since 2026-09-18, and milestone 261 (the NVMe driver
+leaves the kernel) replaced that test with the EL0 one, so neither the path nor the symbol resolves
+today.) The result: the confinement claim holds under VT-d exactly as it does under SMMUv3 and the
+RISC-V IOMMU. The existing driver, unmodified in shape, enumerates the controller over ACPI's real
+MCFG, confines its requester id to its six-page DMA region before enabling it, and serves
+SIZE/WRITE/READ over the blk-IPC verbs, on QEMU's `q35` with `-device intel-iommu`.
 
 Moved to [`vt-d-and-interrupts.md`](0086-el0-nvme-driver/vt-d-and-interrupts.md): the fixes the VT-d
 exercise needed, and the paragraphs that closed this section.
@@ -129,15 +132,15 @@ boundary in the hardware. NVMe puts the controller and admin registers at offset
 data path" is expressible by mapping one page of BAR0 and not the other, with the `DeviceFrame`
 capability this tree already has and **no new syscall surface at all.** That splits option 2 in two:
 
-- 2a, map the doorbell page. Zero new surface. The catch is real and must be stated where a
-  reader meets it: with `CAP.DSTRD` = 0, which section 8.6 calls "the expected doorbell stride value"
-  for hardware implementations, the **admin** doorbells share that page with the I/O ones, so the EL0
+- 2a, map the doorbell page. Zero new surface. The catch is real and must be stated where a reader
+  meets it. With `CAP.DSTRD` = 0, which section 8.6 calls "the expected doorbell stride value" for
+  hardware implementations, the **admin** doorbells share that page with the I/O ones, so the EL0
   driver can ring the admin doorbell. It cannot write the admin submission queue if the kernel keeps
-  the `PageFrame` capabilities for the pages the admin rings live in, which is entirely in the
-  kernel's gift, since the kernel allocates and confines the region and mints every capability to
-  it. What is left is that the driver can make the controller re-fetch admin slots the kernel wrote
-  or never filled. That is a denial-of-service surface against the controller, not an escape, and
-  the region-relative confinement is untouched by it.
+  the `PageFrame` capabilities for the pages the admin rings live in. Keeping them is entirely in
+  the kernel's gift, since the kernel allocates and confines the region and mints every capability
+  to it. What is left is that the driver can make the controller re-fetch admin slots the kernel
+  wrote or never filled. That is a denial-of-service surface against the controller, not an escape,
+  and the region-relative confinement is untouched by it.
 - 2b, keep BAR0 and add a capability. The kernel maps no part of BAR0 to EL0 and exposes a
   doorbell-ring method, mirroring `Object::Virtio` exactly. Costs one enum variant and a few method
   constants, priced below.
@@ -146,12 +149,12 @@ Option 3, delegate the whole controller. Unchanged, and the interrupt finding be
 reason it is not recommended.
 
 Option 4, new: mediate at the doorbell, the way §23 mediates virtio. 2b plus validation: on the
-ring, the kernel walks the newly-published submission queue entries, bounds PRP1 and PRP2 into the
-driver's DMA region, copies each validated entry into a kernel-private shadow submission queue (the
-one the controller was actually told about at Create I/O SQ time), and only then writes the
-hardware doorbell. This is `dma_validator::validate_and_shadow`'s design transferred, and the whole
-reason to want it is that **it does not depend on an IOMMU.** On a board with none, which is every
-board this project owns, it is the only option in this list that confines anything.
+ring, the kernel walks the newly-published submission queue entries and bounds PRP1 and PRP2 into
+the driver's DMA region. It copies each validated entry into a kernel-private shadow submission
+queue (the one the controller was actually told about at Create I/O SQ time), and only then writes
+the hardware doorbell. This is `dma_validator::validate_and_shadow`'s design transferred, and the
+whole reason to want it is that **it does not depend on an IOMMU.** On a board with none, which is
+every board this project owns, it is the only option in this list that confines anything.
 
 ### What this tree already does, item by item
 

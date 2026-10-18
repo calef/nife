@@ -16,7 +16,7 @@ the tree carries a workaround in the place a reader meets the type.
 
 Every verb in the std PAL asks for the minimum right it needs, because over-asking is `EPERM`
 rather than attenuation, and a client cannot read its own capability to find out what it holds. That
-rule is right and it is why `readdir` does not ask for `dir::ALL`; the same file records that
+rule is right and it is why `readdir` does not ask for `dir::ALL`. The same file records that
 `readdir` nearly shipped asking for exactly that, which would have passed every test in the suite and
 failed through every narrowed grant.
 

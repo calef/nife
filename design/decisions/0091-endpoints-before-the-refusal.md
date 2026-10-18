@@ -37,9 +37,9 @@ ownership rule §16 already states for memory, applied to the thing that keeps a
 
 ## What everyone else does, and where this diverges
 
-Approved by calef on 2026-08-16 after asking for the alternatives and the prior art, which is
-the useful half of this section: destroying a communication object and waking whoever is blocked
-on it is the mainstream answer rather than an invention here.
+Approved by calef on 2026-08-16 after asking for the alternatives and the prior art. That is the
+useful half of this section: destroying a communication object and waking whoever is blocked on it
+is the mainstream answer rather than an invention here.
 
 - seL4, the closest relative, does exactly this. Deleting the last capability to an endpoint
   runs `finaliseCap`, which calls `cancelAllIPC` and restarts every thread blocked on it with a
@@ -71,9 +71,10 @@ endpoint first, moves a kernel invariant into every caller, which is the silent-
 Because the failure was invisible and expensive. The region was not leaked in any way a reader
 could see: the refusal was correct at each individual call, and only the *repetition* was wrong.
 The cost showed up two layers away as a boot that ran out of contiguous frames and blamed
-whichever test happened to spawn last, which misled three milestones before it was measured
-(notes/frames.md and notes/net/memory-and-reclamation.md carry the receipts, and the measurement is the durable half:
-free frames at boot's end went from 216 to 15,305, longest contiguous run from 117 to 14,080).
+whichever test happened to spawn last. That misled three milestones before it was measured.
+notes/frames.md and notes/net/memory-and-reclamation.md carry the receipts, and the measurement is
+the durable half: free frames at boot's end went from 216 to 15,305, longest contiguous run from
+117 to 14,080.
 
 ## BUGS
 

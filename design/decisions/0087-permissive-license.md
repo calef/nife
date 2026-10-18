@@ -9,13 +9,13 @@ ratified_by: calef
 
 calef, 2026-08-15, ratifying as a recorded decision what had lived since the
 first commit as a Cargo.toml convention. Raised from a conversation about why Linux beat the
-BSDs, which is the argument this entry exists to answer: the tree is permissively licensed, and
+BSDs, which is the argument this entry exists to answer. The tree is permissively licensed, and
 the best-known story in free software says copyleft is why the biggest free kernel won.
 
 ## The choice
 
 Dual **MIT OR Apache-2.0**, the Rust ecosystem's convention, declared once in the workspace
-metadata and inherited by every member crate. MIT for maximal simplicity and reach; Apache-2.0
+metadata and inherited by every member crate. MIT for maximal simplicity and reach. Apache-2.0
 beside it for the explicit patent grant the bare MIT license lacks, which is doing real work for
 an operating system that may someday court hardware vendors.
 
@@ -26,9 +26,9 @@ that far it is wrong. What the history supports: **the license that minimizes co
 friction in its own era wins.** In 1998 that was the GPL, because vendors would not fund a
 commons a competitor could capture, and copyleft was the guarantee that let IBM and Red Hat
 invest. The sign has since flipped. LLVM overtook GCC substantially because permissive licensing
-let Apple and Google build on it without legal friction; Rust, Kubernetes, and nearly every
-ecosystem winner since 2010 is MIT or Apache; and this project's own reference set agrees (Redox
-is MIT, Zircon is BSD-style, and seL4's GPLv2 kernel is widely cited as adoption friction in the
+let Apple and Google build on it without legal friction. Rust, Kubernetes, and nearly every
+ecosystem winner since 2010 is MIT or Apache. This project's own reference set agrees (Redox is
+MIT, Zircon is BSD-style, and seL4's GPLv2 kernel is widely cited as adoption friction in the
 embedded space it targets). A Rust kernel under GPL would sit awkwardly inside the
 permissive-normed crate culture its own components live in. A newcomer arriving from Rust meets
 exactly the license they expect, which is the third principle applied to legal text.
