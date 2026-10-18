@@ -1191,14 +1191,14 @@ echo "==> decisions"
 # again. script/decisions accepts either width on purpose, so the width is judged once, here.
 # One check for every directory the ruling covers: design/roadmap/ joins the list rather than
 # getting a near-copy of this block.
-# design/roadmap/ joined on 2026-10-07 (UTC). Its letter addenda (`0020a-`) pass on the `[a-z]?`, and
-# an appendix directory beside a block is judged like a file, since `listdir` returns both.
+# An appendix directory beside a block is judged like a file, since `listdir` returns both. A
+# lettered roadmap file is not this check's to judge: `script/roadmap --check` refuses it outright.
 echo "==> numbered record files carry four digits"
 python3 - <<'PY'
 import os, re, sys
 
 DIRS = ['design/decisions', 'design/roadmap']
-NUMBERED = re.compile(r'(\d+)[a-z]?-')
+NUMBERED = re.compile(r'(\d+)-')
 bad = []
 for d in DIRS:
     for name in sorted(os.listdir(d)):

@@ -58,8 +58,8 @@ solely because each marked its own milestone `BUILT`.
   `notes/README.md` already sets, which `script/lint` already enforces ("every notes/*.md must appear
   in notes/README.md").
 - `design/roadmap/0074-cycle-counters.md` per milestone. Hyphenated, per CLAUDE.md's rule for ordinary
-  markdown. Numbers run 12 to 76 today and one block is sub-lettered (`20a`), so `0020a-name-the-seams.md`
-  is the shape for those.
+  markdown. Numbers run 12 to 76 today. A block's addendum is an appendix in its directory
+  (`0020-portable-hal/name-the-seams.md`), never a lettered block.
 - The three `##` essays currently interleaved among the blocks are design prose, not milestones, and
   become their own files under `design/`: "One decision this roadmap still forces", "The display
   ladder", and "The rival worth understanding, not building".
@@ -95,7 +95,8 @@ waiting behind it.
 
 Two details for whoever implements it. The existing `n >= 12` floor stays, because milestones below 12
 predate the table and live in git history and `DECISIONS.md`. And the regex must keep matching
-`milestone 16a` as 16, since sub-lettered blocks exist (`20a`).
+milestone 16a (real hardware + IOMMU-backed driver isolation) as 16, since prose names a block's
+parts with a letter.
 
 ## Backfill milestones 1 to 11, and drop the `n >= 12` floor (calef, 2026-08-03)
 

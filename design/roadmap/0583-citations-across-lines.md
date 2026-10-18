@@ -23,7 +23,7 @@ This is rung two of `AGENTS.md`'s ladder failing quietly. Both defects were foun
 
 The pre-filter is looser than `CITE` in two ways, and both were the defect. `git grep` is line-based and `CITE` is not, so the pattern now also accepts a line that *ends* in a citation, which is what a wrapped one looks like. And the letter is in the pattern. The candidate list grows from 649 files to 853 and the scan still takes about three seconds, which is the argument for keeping a pre-filter loose: it selects files to read, and `CITE` decides.
 
-A lettered record keeps its own title. `design/roadmap/0020a-name-the-seams.md` is a block of its own, so a gloss of milestone 20a (name the seams) is read against that H1 rather than against milestone 20's, which is different work. Letters with no file of their own, such as milestone 19 (run a real workload)'s addenda 19a through 19f, resolve against the parent block, which is where those sub-parts are described.
+A lettered citation resolves against its parent block, which is where the sub-part is described: milestone 19 (run a real workload)'s addenda 19a through 19f are read against milestone 19. No lettered block file exists to read instead, since the roadmap refuses one (`design/roadmap/README.md`).
 
 A closing emphasis marker is part of the gap. This tree does not bold a citation by wrapping the gloss with it. It writes the number bold and the gloss plain:
 
