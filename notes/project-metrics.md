@@ -139,11 +139,11 @@ a status existing at all, counted as having none rather than as `DECIDED`.
 
 What each name's own provenance block says, for every name `script/names` tracks: crates,
 programs, packages, scripts, every module (each `.rs` file under a `src/` directory), every
-documentation directory and document, and the items that carry a `Name:` block. A name a rule covers
-counts as ratified. `Ruled, rename owed` is a provisional name calef has ruled whose rename has not
-landed. `No provenance block` is named things with no readable block. Everything but items is counted from
-the files, so writing a block moves a name out of that band without changing the bar's height;
-an item is counted only where its block exists. The current week's total is checked against
+documentation directory and document, and every `pub` item (functions, methods, constants, statics,
+types and traits). A name a rule covers counts as ratified. `Ruled, rename owed` is a provisional
+name calef has ruled whose rename has not landed. `No provenance block` is named things with no
+readable block. Every kind is counted from the tree, so writing a block moves a name out of that
+band without changing the bar's height. The current week's total is checked against
 `script/names`. A week is a bar, so a day's rulings show as the current week's bar moving. A rising
 `Provisional` band is not debt; the band worth an alarm is `Unrecorded`.
 
@@ -321,11 +321,11 @@ rest.
   and perfect. Nothing here reads a name, and `script/names`' own `BUGS` is the longer version: it
   cannot check that a recorded reason is still true, that a date is right, or that a `recorded`
   citation leads anywhere.
-- Items are counted by their blocks, not by the code. Every other kind is enumerated from the
-  tree, so its count moves only when a file is added or removed. An item counts only where a
-  `/// Name:` block exists, because "item" has no definition yet that a tree can be enumerated by:
-  2026W42 has 4,798 `pub` items and 331 item blocks. An item block written on old code still
-  raises the bar. `helpers/` helpers are outside `script/names`' surfaces, and design/naming.md's
+- An item is a `pub` line, found by a regular expression rather than by the compiler
+  (`name_census.pub_items`). An item a macro generates is missed, and a `pub` line inside a block
+  comment or raw string is counted. `pub(crate)` items are not public and are not counted unless
+  they carry a block. 2026W42 has 7,419 `pub` items, 2,955 of them constants. `helpers/` helpers
+  are outside `script/names`' surfaces, and design/naming.md's
   `BUGS` carries what that leaves uncovered.
 - `proposals_unnumbered` is a net count and cannot see the flow. Five proposals have left the
   directory and 81 remain; a flat line fits both a stalled pile and one draining as fast as it fills. The measurement that would tell them apart is the age of the oldest,
