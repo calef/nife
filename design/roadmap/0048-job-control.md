@@ -18,8 +18,8 @@ verbs on 2026-10-15: they ride the TCB capability, resume continues at the PC, a
 
 Why it matters. Unix job control is one of the most intricate things in a kernel: sessions, a
 controlling terminal, process groups, `tcsetpgrp`, and `SIGTSTP`/`SIGCONT`/`SIGTTIN`/`SIGTTOU`. Most
-of that machinery exists to answer one question (*who may read the keyboard*), and here that question
-answers itself.
+of that machinery exists to answer one question (*who may read the keyboard*), and here that
+question answers itself.
 
 ## A job is what the shell holds capabilities for
 
@@ -31,10 +31,11 @@ membership; "what I hold" cannot drift. What the shell holds depends on how the 
   region, so `DESTROY` tears the job down, and the frame, whose flags interrupt it and say it is
   done. That is everything job control needs short of pausing.
 - **Every other job** is built in the progenitor's pool. The progenitor deletes its TCB at `START`
-  ([§142 (what a spawner retains over a child after `START`)](../decisions/0142-spawn-retention.md)), it answers on the one result
-  rendezvous every job shares, and `job_undertaker` holds its supervision endpoint. The shell holds
-  nothing for it after the spawn, so it cannot wait on it, stop it, or keep its answer apart from
-  the next command's.
+  ([§142 (what a spawner retains over a child after
+  `START`)](../decisions/0142-spawn-retention.md)), it answers on the one result rendezvous every
+  job shares, and `job_undertaker` holds its supervision endpoint. The shell holds nothing for it
+  after the spawn, so it cannot wait on it, stop it, or keep its answer apart from the next
+  command's.
 
 So phase one covers supervised jobs, and `&` on any other program is refused with a sentence.
 

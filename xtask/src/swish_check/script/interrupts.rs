@@ -34,7 +34,7 @@ pub(super) const LINES: &[Line] = &[
         "interrupt_ignorer",
         &["^C again: tearing the job down.", "its memory reclaimed"],
     ),
-    // **Job control's phase one** (milestone 48): two supervised jobs in the background, listed,
+    // **Job control's phase one** (milestone 48 (job control)): two supervised jobs in the background, listed,
     // one torn down with `kill -9`, a `wait` the gate interrupts (the job keeps running), the
     // survivor brought to the foreground and interrupted there, then the cooperative `kill` and
     // a `wait` on the one job it named. `wait` and `fg %1` are in [`SWISH_CHECK_INTERRUPTED`];

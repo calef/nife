@@ -131,11 +131,11 @@ inside it.
 A single `|` is the pipe. Only the doubled form is a connector, and getting that wrong would
 turn every pipeline in the system into two commands.
 
-A single `&` at the end of a line runs that line's one command in the background (milestone 48,
-`swish::sequence::background`), and only a supervised job can go there: it is the one job the
-shell holds capabilities for. Anywhere else a single `&` is an ordinary byte, so `echo a & b`
-prints it. A line with a connector or a pipe and a trailing `&` is refused, because backgrounding
-a chain is a different claim from backgrounding one job.
+A single `&` at the end of a line runs that line's one command in the background (milestone 48 (job
+control), `swish::sequence::background`), and only a supervised job can go there: it is the one job
+the shell holds capabilities for. Anywhere else a single `&` is an ordinary byte, so `echo a & b`
+prints it. A line with a connector or a pipe and a trailing `&` is refused, because backgrounding a
+chain is a different claim from backgrounding one job.
 
 ## Exit status: a refusal is not an error
 

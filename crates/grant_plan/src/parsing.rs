@@ -205,7 +205,7 @@ pub fn parse(line: &[u8]) -> Command<'_> {
         // only when this shell is the owner's console: a confined shell's root is its own subtree,
         // where a `suspended` file is one nothing reads.
         b"user" => Command::User(trim(rest)),
-        // **Job control** (milestone 48, phase one). Builtins because a job is what this shell
+        // **Job control** (milestone 48 (job control), phase one). Builtins because a job is what this shell
         // holds capabilities for, and only the holder can act on them.
         b"jobs" => Command::Jobs,
         b"wait" => Command::Wait(trim(rest)),
