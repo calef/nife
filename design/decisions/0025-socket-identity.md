@@ -10,9 +10,9 @@ ratified_by: calef
 **Decided 2026-07-28 (calef), resolving the milestone 30 (the network stack as a confined component) piece-3 fork (notes/net/prior-art-and-the-contract.md).** A process
 holds one `Stack` endpoint capability. Opening a connection yields a **socket id**, a small
 integer carried in the message words. The per-connection **shared frame** is the real granted
-resource. Chosen because milestone 27's `std::net` PAL wants a file-descriptor-like handle. Also
-chosen because a minted kernel endpoint per TCP connection spends a bounded kernel object per
-socket (the endpoint budget is finite, as the 27+28 merge demonstrated).
+resource. Chosen because milestone 27's `std::net` PAL wants a file-descriptor-like handle, and
+because a minted kernel endpoint per TCP connection spends a bounded kernel object per socket
+(the endpoint budget is finite, as the 27+28 merge demonstrated).
 
 **The purer capability story is deferred, not rejected, and calef's direction is explicit: come
 back for it.** Minted-endpoint-per-socket makes a socket an unforgeable, individually delegatable,
