@@ -115,7 +115,7 @@ pub const KIND_NONE: u8 = 0;
 /// Verdict kind: planned, backed, armed.
 pub const KIND_FIRES: u8 = 1;
 /// Verdict kind: the program's own manifest refuses the line. The sentence is in the plan.
-pub const KIND_REFUSED: u8 = 2;
+pub(crate) const KIND_REFUSED: u8 = 2;
 /// Verdict kind: legal, and this timetable holds nothing to back it. Bits 2 to 4 say what.
 pub const KIND_UNBACKED: u8 = 3;
 /// Verdict bit 7: the entry was byte-identical to one already in force and kept its beat.

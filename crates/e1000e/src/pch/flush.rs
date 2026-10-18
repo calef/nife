@@ -5,7 +5,7 @@ pub const REQUIRED: u16 = 0x100;
 /// `FEXTNVM11.DISABLE_MULR_FIX`, set before the flush.
 pub const FEXTNVM11_DISABLE_MULR_FIX: u32 = 0x0000_2000;
 /// The dummy transmit's length: FreeBSD sends 512 bytes of the ring itself.
-pub const TX_DUMMY_LEN: u16 = 512;
+pub(crate) const TX_DUMMY_LEN: u16 = 512;
 
 /// Is a flush required, given the status word and `TDLEN`? FreeBSD flushes nothing when the
 /// transmit ring has no length.

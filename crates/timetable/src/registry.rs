@@ -63,7 +63,7 @@ impl<'a> Row<'a> {
     }
 
     /// The monotonic reading at which this next fires, or `None` if it never will.
-    pub fn next_fire(&self) -> Option<u64> {
+    pub(crate) fn next_fire(&self) -> Option<u64> {
         (self.next != NEVER).then_some(self.next)
     }
 }

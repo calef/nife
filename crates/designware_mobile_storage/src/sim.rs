@@ -26,7 +26,7 @@ use crate::regs;
 
 /// Which card is in the slot.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum CardKind {
+pub(crate) enum CardKind {
     /// An SDHC card: answers CMD8, high capacity, block addressed.
     SdHighCapacity,
     /// An SD 1.x card: ignores CMD8, standard capacity, byte addressed.
@@ -152,9 +152,9 @@ pub struct Sim {
 }
 
 /// The `VERID` the simulation reports: release 2.90a, which puts the FIFO at `0x200`.
-pub const VERID: u32 = 0x5342_290a;
+pub(crate) const VERID: u32 = 0x5342_290a;
 /// The `HCON` it reports: a 32-bit FIFO, 32-bit addresses.
-pub const HCON: u32 = 1 << 7;
+pub(crate) const HCON: u32 = 1 << 7;
 
 impl Sim {
     /// A controller of FIFO `depth` words with `kind` of card holding `blocks` blocks of zero.
@@ -216,7 +216,7 @@ impl Sim {
     /// The same controller, reporting release `verid` instead (an older one puts the FIFO at
     /// `0x100`, where a later one has the card threshold register).
     #[must_use]
-    pub fn with_verid(mut self, verid: u32) -> Sim {
+    pub(crate) fn with_verid(mut self, verid: u32) -> Sim {
         self.verid = verid;
         self.regs[(regs::VERID / 4) as usize] = verid;
         self

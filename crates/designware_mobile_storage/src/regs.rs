@@ -8,144 +8,144 @@
 /// Control: the three self-clearing resets, the interrupt and DMA enables.
 pub const CTRL: u32 = 0x000;
 /// Reset the controller's state machines. Self-clearing.
-pub const CTRL_CONTROLLER_RESET: u32 = 1 << 0;
+pub(crate) const CTRL_CONTROLLER_RESET: u32 = 1 << 0;
 /// Reset the data FIFO. Self-clearing.
-pub const CTRL_FIFO_RESET: u32 = 1 << 1;
+pub(crate) const CTRL_FIFO_RESET: u32 = 1 << 1;
 /// Reset the DMA interface. Self-clearing.
-pub const CTRL_DMA_RESET: u32 = 1 << 2;
+pub(crate) const CTRL_DMA_RESET: u32 = 1 << 2;
 /// All three resets, which is how bring-up uses them.
-pub const CTRL_ALL_RESET: u32 = CTRL_CONTROLLER_RESET | CTRL_FIFO_RESET | CTRL_DMA_RESET;
+pub(crate) const CTRL_ALL_RESET: u32 = CTRL_CONTROLLER_RESET | CTRL_FIFO_RESET | CTRL_DMA_RESET;
 /// The global interrupt enable. This driver polls, so it stays clear: an interrupt nobody routes
 /// is a line held asserted at the PLIC for no reader.
-pub const CTRL_INT_ENABLE: u32 = 1 << 4;
+pub(crate) const CTRL_INT_ENABLE: u32 = 1 << 4;
 /// Hand the FIFO to a DMA engine instead of the CPU.
-pub const CTRL_DMA_ENABLE: u32 = 1 << 5;
+pub(crate) const CTRL_DMA_ENABLE: u32 = 1 << 5;
 /// Use the controller's own descriptor-walking DMA (IDMAC) rather than an external one.
-pub const CTRL_USE_INTERNAL_DMAC: u32 = 1 << 25;
+pub(crate) const CTRL_USE_INTERNAL_DMAC: u32 = 1 << 25;
 
 /// Power enable, one bit per card slot. Slot 0 is the only one on the JH7110.
-pub const PWREN: u32 = 0x004;
+pub(crate) const PWREN: u32 = 0x004;
 /// Clock divider 0 in bits 7:0: card clock is `base / (2 * div)`, or `base` itself when 0.
-pub const CLKDIV: u32 = 0x008;
+pub(crate) const CLKDIV: u32 = 0x008;
 /// Which divider each card uses. Always 0 here.
-pub const CLKSRC: u32 = 0x00c;
+pub(crate) const CLKSRC: u32 = 0x00c;
 /// Card clock enable (bit 0) and low-power gating (bit 16), per slot.
-pub const CLKENA: u32 = 0x010;
+pub(crate) const CLKENA: u32 = 0x010;
 /// Card clock on, slot 0.
-pub const CLKENA_ENABLE: u32 = 1 << 0;
+pub(crate) const CLKENA_ENABLE: u32 = 1 << 0;
 /// Stop the card clock while the bus is idle. Memory cards only; an SDIO card needs the clock to
 /// signal its interrupt.
-pub const CLKENA_LOW_POWER: u32 = 1 << 16;
+pub(crate) const CLKENA_LOW_POWER: u32 = 1 << 16;
 /// Response timeout in bits 7:0 (card clocks), data read timeout in bits 31:8.
-pub const TMOUT: u32 = 0x014;
+pub(crate) const TMOUT: u32 = 0x014;
 /// Bus width per slot: bit 0 for 4-bit, bit 16 for 8-bit, neither for 1-bit.
-pub const CTYPE: u32 = 0x018;
+pub(crate) const CTYPE: u32 = 0x018;
 /// 4-bit bus, slot 0.
-pub const CTYPE_4BIT: u32 = 1 << 0;
+pub(crate) const CTYPE_4BIT: u32 = 1 << 0;
 /// 8-bit bus, slot 0.
-pub const CTYPE_8BIT: u32 = 1 << 16;
+pub(crate) const CTYPE_8BIT: u32 = 1 << 16;
 /// Block size in bytes for the next data phase.
-pub const BLKSIZ: u32 = 0x01c;
+pub(crate) const BLKSIZ: u32 = 0x01c;
 /// Total bytes in the next data phase.
-pub const BYTCNT: u32 = 0x020;
+pub(crate) const BYTCNT: u32 = 0x020;
 /// Which raw interrupt bits reach the interrupt line. Zero: this driver polls `RINTSTS`.
-pub const INTMASK: u32 = 0x024;
+pub(crate) const INTMASK: u32 = 0x024;
 /// The next command's argument.
-pub const CMDARG: u32 = 0x028;
+pub(crate) const CMDARG: u32 = 0x028;
 /// The command register; writing it with [`CMD_START`] hands the command to the card interface.
-pub const CMD: u32 = 0x02c;
+pub(crate) const CMD: u32 = 0x02c;
 /// Set by software to issue; the controller clears it when it has taken the command.
 pub const CMD_START: u32 = 1 << 31;
 /// Drive the command and data lines from the hold register (half a clock later). OpenBSD sets it
 /// on every command, on every `SoC` it supports, the JH7110 among them.
-pub const CMD_USE_HOLD_REG: u32 = 1 << 29;
+pub(crate) const CMD_USE_HOLD_REG: u32 = 1 << 29;
 /// Load `CLKDIV`, `CLKSRC` and `CLKENA` into the card clock domain without sending anything.
-pub const CMD_UPDATE_CLOCK_ONLY: u32 = 1 << 21;
+pub(crate) const CMD_UPDATE_CLOCK_ONLY: u32 = 1 << 21;
 /// Send 80 clocks of initialization sequence before this command. CMD0 only.
 pub const CMD_SEND_INIT: u32 = 1 << 15;
 /// This command stops a data transfer in progress (CMD12).
-pub const CMD_STOP_ABORT: u32 = 1 << 14;
+pub(crate) const CMD_STOP_ABORT: u32 = 1 << 14;
 /// Wait for a previous data transfer to finish before sending.
-pub const CMD_WAIT_PREVIOUS_DATA: u32 = 1 << 13;
+pub(crate) const CMD_WAIT_PREVIOUS_DATA: u32 = 1 << 13;
 /// Send CMD12 automatically when the byte count is reached.
-pub const CMD_SEND_AUTO_STOP: u32 = 1 << 12;
+pub(crate) const CMD_SEND_AUTO_STOP: u32 = 1 << 12;
 /// The data phase is a write to the card.
-pub const CMD_WRITE: u32 = 1 << 10;
+pub(crate) const CMD_WRITE: u32 = 1 << 10;
 /// The command has a data phase.
-pub const CMD_DATA_EXPECTED: u32 = 1 << 9;
+pub(crate) const CMD_DATA_EXPECTED: u32 = 1 << 9;
 /// Check the response's CRC7.
-pub const CMD_CHECK_RESPONSE_CRC: u32 = 1 << 8;
+pub(crate) const CMD_CHECK_RESPONSE_CRC: u32 = 1 << 8;
 /// The response is 136 bits (R2).
-pub const CMD_LONG_RESPONSE: u32 = 1 << 7;
+pub(crate) const CMD_LONG_RESPONSE: u32 = 1 << 7;
 /// The command has a response.
 pub const CMD_RESPONSE_EXPECT: u32 = 1 << 6;
 
 /// Response word 0, bits 31:0 of a short response, or bits 31:0 of a long one.
-pub const RESP0: u32 = 0x030;
+pub(crate) const RESP0: u32 = 0x030;
 /// Response word 1 (long responses).
-pub const RESP1: u32 = 0x034;
+pub(crate) const RESP1: u32 = 0x034;
 /// Response word 2 (long responses).
-pub const RESP2: u32 = 0x038;
+pub(crate) const RESP2: u32 = 0x038;
 /// Response word 3, bits 127:96 of a long response.
-pub const RESP3: u32 = 0x03c;
+pub(crate) const RESP3: u32 = 0x03c;
 /// Raw interrupt status, write one to clear. The driver's only completion signal.
-pub const RINTSTS: u32 = 0x044;
+pub(crate) const RINTSTS: u32 = 0x044;
 /// Response error.
-pub const INT_RE: u32 = 1 << 1;
+pub(crate) const INT_RE: u32 = 1 << 1;
 /// Command done: the controller sent the command and, if one was expected, took the response.
-pub const INT_CD: u32 = 1 << 2;
+pub(crate) const INT_CD: u32 = 1 << 2;
 /// Data transfer over.
-pub const INT_DTO: u32 = 1 << 3;
+pub(crate) const INT_DTO: u32 = 1 << 3;
 /// Transmit FIFO data request: room at or below the transmit watermark.
-pub const INT_TXDR: u32 = 1 << 4;
+pub(crate) const INT_TXDR: u32 = 1 << 4;
 /// Receive FIFO data request: data above the receive watermark.
-pub const INT_RXDR: u32 = 1 << 5;
+pub(crate) const INT_RXDR: u32 = 1 << 5;
 /// Response CRC error.
-pub const INT_RCRC: u32 = 1 << 6;
+pub(crate) const INT_RCRC: u32 = 1 << 6;
 /// Data CRC error.
-pub const INT_DCRC: u32 = 1 << 7;
+pub(crate) const INT_DCRC: u32 = 1 << 7;
 /// Response timeout: no card answered.
-pub const INT_RTO: u32 = 1 << 8;
+pub(crate) const INT_RTO: u32 = 1 << 8;
 /// Data read timeout.
-pub const INT_DRTO: u32 = 1 << 9;
+pub(crate) const INT_DRTO: u32 = 1 << 9;
 /// Data starvation by host timeout: the FIFO was not serviced in time.
-pub const INT_HTO: u32 = 1 << 10;
+pub(crate) const INT_HTO: u32 = 1 << 10;
 /// FIFO underrun or overrun.
-pub const INT_FRUN: u32 = 1 << 11;
+pub(crate) const INT_FRUN: u32 = 1 << 11;
 /// Hardware locked write: a write to `CMD` while a command was still loading.
-pub const INT_HLE: u32 = 1 << 12;
+pub(crate) const INT_HLE: u32 = 1 << 12;
 /// Start bit error.
-pub const INT_SBE: u32 = 1 << 13;
+pub(crate) const INT_SBE: u32 = 1 << 13;
 /// Auto command done: the automatic CMD12 finished.
-pub const INT_ACD: u32 = 1 << 14;
+pub(crate) const INT_ACD: u32 = 1 << 14;
 /// End bit error (read) or no CRC status (write).
-pub const INT_EBE: u32 = 1 << 15;
+pub(crate) const INT_EBE: u32 = 1 << 15;
 /// Every bit that means a data phase went wrong, as OpenBSD groups them.
-pub const INT_DATA_ERRORS: u32 = INT_EBE | INT_SBE | INT_HLE | INT_FRUN | INT_DCRC;
+pub(crate) const INT_DATA_ERRORS: u32 = INT_EBE | INT_SBE | INT_HLE | INT_FRUN | INT_DCRC;
 /// Every bit that means a data phase timed out.
-pub const INT_DATA_TIMEOUTS: u32 = INT_HTO | INT_DRTO;
+pub(crate) const INT_DATA_TIMEOUTS: u32 = INT_HTO | INT_DRTO;
 /// Every bit below the SDIO interrupts, which is what a clear writes.
-pub const INT_ALL: u32 = 0xffff;
+pub(crate) const INT_ALL: u32 = 0xffff;
 
 /// Status: FIFO count, busy, command state.
 pub const STATUS: u32 = 0x048;
 /// The card is holding DAT0 low (busy after a write or an R1b command).
-pub const STATUS_DATA_BUSY: u32 = 1 << 9;
+pub(crate) const STATUS_DATA_BUSY: u32 = 1 << 9;
 
 /// How many FIFO words are filled, bits 29:17 of `STATUS`.
 #[must_use]
-pub const fn fifo_count(status: u32) -> u32 {
+pub(crate) const fn fifo_count(status: u32) -> u32 {
     (status >> 17) & 0x1fff
 }
 
 /// FIFO thresholds and the DMA burst size.
-pub const FIFOTH: u32 = 0x04c;
+pub(crate) const FIFOTH: u32 = 0x04c;
 
 /// **The `FIFOTH` word for polled transfers** with a FIFO of `depth` words: a receive watermark one
 /// below half and a transmit watermark at half, OpenBSD's `dwmmc_pio_mode`. The burst field is
 /// OpenBSD's `2` and means nothing without DMA.
 #[must_use]
-pub const fn fifoth_for_pio(depth: u32) -> u32 {
+pub(crate) const fn fifoth_for_pio(depth: u32) -> u32 {
     let half = depth / 2;
     let rx = if half == 0 { 0 } else { half - 1 };
     (2 << 28) | ((rx & 0xfff) << 16) | (half & 0xfff)
@@ -154,12 +154,12 @@ pub const fn fifoth_for_pio(depth: u32) -> u32 {
 /// The receive watermark field of `FIFOTH`, which OpenBSD reads back as `depth - 1` when the tree
 /// gives no `fifo-depth` (the reset value is `depth - 1`).
 #[must_use]
-pub const fn fifoth_rx_watermark(fifoth: u32) -> u32 {
+pub(crate) const fn fifoth_rx_watermark(fifoth: u32) -> u32 {
     (fifoth >> 16) & 0xfff
 }
 
 /// Card detect, active low: bit 0 clear means a card is in slot 0.
-pub const CDETECT: u32 = 0x050;
+pub(crate) const CDETECT: u32 = 0x050;
 /// Write protect, active high, slot 0.
 pub const WRTPRT: u32 = 0x054;
 /// Bytes the card interface has moved in the current data phase.
@@ -167,11 +167,11 @@ pub const TCBCNT: u32 = 0x05c;
 /// Bytes moved between the host and the FIFO in the current data phase.
 pub const TBBCNT: u32 = 0x060;
 /// The integrator's user identifier, a free-form word.
-pub const USRID: u32 = 0x068;
+pub(crate) const USRID: u32 = 0x068;
 /// Synopsys version identifier: `0x5342_xxxx`, where `xxxx` is the release, `0x270a` for 2.70a.
-pub const VERID: u32 = 0x06c;
+pub(crate) const VERID: u32 = 0x06c;
 /// Hardware configuration: FIFO width, address width, how many slots.
-pub const HCON: u32 = 0x070;
+pub(crate) const HCON: u32 = 0x070;
 /// UHS-I register: per-slot DDR mode (bit 16) and 1.8 V signaling (bit 0).
 pub const UHS: u32 = 0x074;
 /// Per-slot hardware reset line to an eMMC device, active low.
@@ -179,13 +179,13 @@ pub const RST_N: u32 = 0x078;
 /// Internal DMA bus mode.
 pub const BMOD: u32 = 0x080;
 /// Card read threshold control: hold a read until a block fits in the FIFO.
-pub const CARDTHRCTL: u32 = 0x100;
+pub(crate) const CARDTHRCTL: u32 = 0x100;
 /// Enable the card read threshold.
-pub const CARDTHRCTL_READ_ENABLE: u32 = 1 << 0;
+pub(crate) const CARDTHRCTL_READ_ENABLE: u32 = 1 << 0;
 
 /// The release `VERID` is compared at, Linux's `DW_MMC_240A`. Controllers before it put the data
 /// FIFO at `0x100`, from it on at `0x200`.
-pub const VERID_240A: u32 = 0x240a;
+pub(crate) const VERID_240A: u32 = 0x240a;
 
 /// **Where the data FIFO is**, given `VERID`: `0x200` from release 2.40a, `0x100` before. Linux's
 /// `dw_mci_probe` makes the same test; OpenBSD assumes `0x200` and so supports only the later

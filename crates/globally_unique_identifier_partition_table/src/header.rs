@@ -25,31 +25,31 @@ pub const SIGNATURE: [u8; 8] = *b"EFI PART";
 /// GPT revision 1.0, encoded as `0x00010000` (major in the high 16 bits). The only revision that
 /// has ever existed, and the only one this crate accepts: a revision we do not know is a header
 /// whose fields might not be where we think they are.
-pub const REVISION: u32 = 0x0001_0000;
+pub(crate) const REVISION: u32 = 0x0001_0000;
 
 /// The size of the defined part of the header, in bytes, and the number of bytes the header CRC
 /// covers. A header may declare a *larger* size (the spec reserves the right to grow it), and this
 /// crate rejects that rather than guessing at fields it does not know: see [`Header::decode`].
-pub const HEADER_SIZE: u32 = 92;
+pub(crate) const HEADER_SIZE: u32 = 92;
 
 /// Field offsets within the header, in the order UEFI 2.10 Table 5.5 lists them. Written out
 /// because a run of `u64::from_le_bytes` calls with literal indices is unreadable and one
 /// transposed digit is a silent bug.
 mod at {
     pub const SIGNATURE: usize = 0;
-    pub const REVISION: usize = 8;
-    pub const HEADER_SIZE: usize = 12;
-    pub const HEADER_CRC: usize = 16;
+    pub(crate) const REVISION: usize = 8;
+    pub(crate) const HEADER_SIZE: usize = 12;
+    pub(crate) const HEADER_CRC: usize = 16;
     pub const RESERVED: usize = 20;
-    pub const MY_LBA: usize = 24;
+    pub(crate) const MY_LBA: usize = 24;
     pub const ALTERNATE_LBA: usize = 32;
     pub const FIRST_USABLE_LBA: usize = 40;
     pub const LAST_USABLE_LBA: usize = 48;
-    pub const DISK_GUID: usize = 56;
-    pub const ENTRY_ARRAY_LBA: usize = 72;
-    pub const ENTRY_COUNT: usize = 80;
-    pub const ENTRY_SIZE: usize = 84;
-    pub const ENTRY_ARRAY_CRC: usize = 88;
+    pub(crate) const DISK_GUID: usize = 56;
+    pub(crate) const ENTRY_ARRAY_LBA: usize = 72;
+    pub(crate) const ENTRY_COUNT: usize = 80;
+    pub(crate) const ENTRY_SIZE: usize = 84;
+    pub(crate) const ENTRY_ARRAY_CRC: usize = 88;
 }
 
 /// A decoded GPT header.
@@ -206,7 +206,7 @@ impl Header {
     /// `None` on overflow, which a hostile header can cause with two `u32`s (`0xFFFFFFFF` each
     /// multiplies out past `usize` on a 32-bit target). Returning an `Option` rather than
     /// saturating keeps the caller from silently CRC-ing a shorter buffer than the header claimed.
-    pub fn entry_array_bytes(&self) -> Option<usize> {
+    pub(crate) fn entry_array_bytes(&self) -> Option<usize> {
         usize::try_from(self.entry_count as u64 * self.entry_size as u64).ok()
     }
 }

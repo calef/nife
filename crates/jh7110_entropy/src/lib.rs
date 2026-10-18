@@ -198,11 +198,11 @@ pub const ISTAT_SEED_DONE: u32 = 1 << 1;
 /// transcribed from it, so a bench session that read a 2 or an 8 in `ISTAT` had nothing in this
 /// tree to decode it with. It is a reminder rather than a fault: [`interpret`] does not act on it,
 /// and a bring-up that writes 0 to [`regs::AUTO_AGE`] never raises it.
-pub const ISTAT_AGE_ALARM: u32 = 1 << 2;
+pub(crate) const ISTAT_AGE_ALARM: u32 = 1 << 2;
 /// `ISTAT` bit 3: the auto-reseed **request-count** alarm, the `AUTO_RQSTS` counterpart of
 /// [`ISTAT_AGE_ALARM`] \[trm\], \[netbsd\]. Same status: named, not acted on, and disabled by a
 /// bring-up that writes 0 to [`regs::AUTO_RQSTS`].
-pub const ISTAT_RQST_ALARM: u32 = 1 << 3;
+pub(crate) const ISTAT_RQST_ALARM: u32 = 1 << 3;
 /// `ISTAT` bit 4: the hardware's own fault signal, an SEU (single-event upset) in the LFSR-based
 /// post-processing stage. The Linux driver treats this as "reseed and try again", never as "trust
 /// the RAND registers anyway"; [`interpret`] gives it priority over `RAND_RDY` in the same
@@ -228,7 +228,7 @@ pub const ISTAT_ALL: u32 =
 /// as a fallback compatible (the JH8100 reuses the same TRNG IP), which is out of scope: this
 /// crate matches the JH7110's own string only, never the fallback, so it says nothing about a `SoC`
 /// this project has no board for.
-pub const COMPATIBLE: &[u8] = b"starfive,jh7110-trng";
+pub(crate) const COMPATIBLE: &[u8] = b"starfive,jh7110-trng";
 
 /// **The spelling radon's own firmware uses for the same device**, and the reason milestone 239
 /// (radon's device tree does not describe the TRNG, so a working driver never runs) exists.

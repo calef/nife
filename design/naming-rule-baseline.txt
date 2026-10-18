@@ -4,15 +4,12 @@
 # `<path>::<name> <check>`, once per break. The list only shrinks: a fixed name's row goes in the
 # change that fixes it (`python3 helpers/name_checks.py --bank`). A row may be added only by the
 # change that bumps the rules line above, because it adds or revises the check.
-components/src/designware_ethernet_transport.rs::frame_waiting question-shape
-components/src/e1000e_transport.rs::frame_waiting question-shape
 components/src/swish/witness.rs::removed question-shape
 crates/abi/src/futex.rs::admitted question-shape
 crates/abi/src/virtio.rs::DMA_PHYS_OFFSET spelled-out
 crates/address_space_identifier/src/lib.rs::ASIDS spelled-out
 crates/board_console/src/exposure.rs::soaked question-shape
 crates/board_console/src/progress.rs::userspace_ran question-shape
-crates/board_console/src/stop.rs::reached_the_goal question-shape
 crates/boot_slot/src/lib.rs::NVME spelled-out
 crates/boot_slot/src/lib.rs::encode_nvme spelled-out
 crates/boot_slot/src/lib.rs::is_nvme spelled-out
@@ -34,14 +31,6 @@ crates/designware_ethernet/src/mdio.rs::PA_SHIFT spelled-out
 crates/designware_ethernet/src/process.rs::DATA_PLANE_VA spelled-out
 crates/designware_ethernet/src/process.rs::DMA_PAGE_VA spelled-out
 crates/designware_ethernet/src/regs.rs::DMA_PAGE spelled-out
-crates/designware_mobile_storage/src/card.rs::IF_COND_ARG spelled-out
-crates/designware_mobile_storage/src/card.rs::MMC_OP_COND_ARG spelled-out
-crates/designware_mobile_storage/src/card.rs::SD_OP_COND_ARG spelled-out
-crates/designware_mobile_storage/src/command.rs::MMC_SEND_OP_COND spelled-out
-crates/designware_mobile_storage/src/command.rs::SD_SEND_OP_COND spelled-out
-crates/designware_mobile_storage/src/partition.rs::TYPE_PROTECTIVE_GPT spelled-out
-crates/designware_mobile_storage/src/regs.rs::CTRL_DMA_ENABLE spelled-out
-crates/designware_mobile_storage/src/regs.rs::CTRL_DMA_RESET spelled-out
 crates/designware_mobile_storage/src/regs.rs::dma_64bit question-shape
 crates/designware_mobile_storage/src/regs.rs::dma_64bit spelled-out
 crates/designware_mobile_storage/src/sd.rs::in_range question-shape
@@ -50,17 +39,12 @@ crates/designware_mobile_storage/src/serve.rs::TRANSFER_VA spelled-out
 crates/direct_memory_access_validator/src/lib.rs::check_descriptor question-shape
 crates/documentation/src/index.rs::STORE_DIR spelled-out
 crates/e1000e/src/pch/flush.rs::required question-shape
-crates/e1000e/src/pch/phy.rs::LED_CONFIG spelled-out
-crates/e1000e/src/pch/phy.rs::OP_READ spelled-out
-crates/e1000e/src/pch/phy.rs::OP_WRITE spelled-out
-crates/e1000e/src/pch/phy.rs::ULP_CONFIG1 spelled-out
 crates/e1000e/src/pch/ulp.rs::done question-shape
 crates/e1000e/src/process.rs::DATA_PLANE_VA spelled-out
 crates/e1000e/src/process.rs::RX_QUEUE_VA spelled-out
 crates/e1000e/src/process.rs::TX_QUEUE_VA spelled-out
 crates/environment_contract/src/lib.rs::ConfigPage spelled-out
 crates/extensible_host_controller_interface/src/dma.rs::dma spelled-out
-crates/extensible_host_controller_interface/src/port.rs::CONFIG_ERROR_CHANGE spelled-out
 crates/extensible_host_controller_interface/src/regs.rs::CONFIG spelled-out
 crates/extensible_host_controller_interface/src/trb.rs::cycle question-shape
 crates/filesystem_contract/src/dir.rs::dir spelled-out
@@ -152,8 +136,6 @@ crates/timetable/src/contract.rs::ARG_REGISTRATION_PAGE spelled-out
 crates/timetable/src/contract.rs::CLOCK_VA spelled-out
 crates/timetable/src/contract.rs::E_CONFIG spelled-out
 crates/timetable/src/contract.rs::STORE_PAGE_VA spelled-out
-crates/timetable/src/recurrence.rs::day_matches question-shape
-crates/timetable/src/recurrence.rs::month_day_matches question-shape
 crates/user_mode_runtime/src/heap.rs::commit_all question-shape
 crates/user_mode_runtime/src/ipc.rs::ipc spelled-out
 crates/user_mode_runtime/src/objects.rs::map_page_frame question-shape

@@ -232,7 +232,7 @@ impl Boot {
 
     /// `Some(true)` when crossings rose between the first and last beat, `None` with one beat.
     #[must_use]
-    pub fn crossed(&self) -> Option<bool> {
+    pub(crate) fn crossed(&self) -> Option<bool> {
         let (first, last) = (self.first?, self.last?);
         if first.beat == last.beat {
             return None;
@@ -243,7 +243,7 @@ impl Boot {
     /// The curve's workload column. A soak that did not cross cores is named so, because the
     /// note excludes it from the curve and the name is how a reader knows.
     #[must_use]
-    pub fn workload(&self) -> String {
+    pub(crate) fn workload(&self) -> String {
         let name = if self.rebooting {
             "soak-test-reboot"
         } else {

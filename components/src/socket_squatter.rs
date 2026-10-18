@@ -64,10 +64,10 @@ const MEMORY_REGION: u64 = 2;
 
 /// Word 0 of the first report: the attempts are made and the watch begins. Word 1 is the bitmask
 /// of attempts that were refused (below).
-pub const RPT_ARMED: u64 = 1;
+pub(crate) const RPT_ARMED: u64 = 1;
 /// Word 0 of the final report: did the victim's traffic land in this program's page?
-pub const RPT_LEAKED: u64 = 1;
-pub const RPT_QUIET: u64 = 0;
+pub(crate) const RPT_LEAKED: u64 = 1;
+pub(crate) const RPT_QUIET: u64 = 0;
 
 // Word 2 of that report (`recv_refused`) sets one bit per kernel-IPC probe on the squatter's own
 // socket capability that was refused: bit 0 a plain `RECEIVE`, bit 1 a `RECEIVE_CAP`. Both set is

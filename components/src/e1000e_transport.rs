@@ -36,7 +36,7 @@ use e1000e::{DataPlane, Handoff, MAX_FRAME, Region, TAIL_IN_PAGE, Tails, layout}
 use user_mode_runtime::mapped_window::{MappedWindow, PAGE, doorbell_barrier};
 
 /// How long the poll loop sleeps between looks at the receive ring when smoltcp has nothing sooner.
-pub const POLL_MS: u64 = 1;
+pub(crate) const POLL_MS: u64 = 1;
 
 // SAFETY: the spawner maps `layout::PAGES` pages of the DMA region read/write at DATA_PLANE_VA,
 // and one device-typed page at each queue VA, before `_start` runs (`e1000e_service`).
@@ -98,7 +98,7 @@ impl Tails for Queues {
 }
 
 /// The NIC as `net_stack` sees it.
-pub struct GigabitNic {
+pub(crate) struct GigabitNic {
     plane: DataPlane,
     mac: [u8; 6],
 }
@@ -120,14 +120,14 @@ impl GigabitNic {
     }
 
     /// The next received frame, if the device has written one.
-    pub fn rx_take(&mut self) -> Option<Vec<u8>> {
+    pub(crate) fn rx_take(&mut self) -> Option<Vec<u8>> {
         let mut buf = [0u8; MAX_FRAME];
         let n = self.plane.receive(&mut Plane, &mut Queues, &mut buf)?;
         Some(buf[..n].to_vec())
     }
 
     /// Queue `frame`, waiting a bounded while for a descriptor if the ring is full.
-    pub fn tx_send(&mut self, frame: &[u8]) {
+    pub(crate) fn tx_send(&mut self, frame: &[u8]) {
         for _ in 0..100_000 {
             if self.plane.can_transmit(&mut Plane) {
                 break;
@@ -140,7 +140,7 @@ impl GigabitNic {
     }
 
     /// Whether a frame is waiting, without taking it, so the poll loop can skip a sleep.
-    pub fn frame_waiting(&self) -> bool {
+    pub(crate) fn frame_waiting(&self) -> bool {
         let word = PLANE.r64(layout::rx_descriptor(self.plane.rx_cursor()) + 8);
         e1000e::rx_verdict(word, MAX_FRAME) != e1000e::RxVerdict::NotYet
     }

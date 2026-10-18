@@ -9,7 +9,7 @@ use super::*;
 /// Where the firmware starts us. The name is UEFI's default entry point for the UEFI targets, and
 /// the one `cargo xtask`'s riscv64 build names as the image's entry.
 #[unsafe(no_mangle)]
-pub extern "efiapi" fn efi_main(handle: Handle, system_table: *mut SystemTable) -> Status {
+pub(crate) extern "efiapi" fn efi_main(handle: Handle, system_table: *mut SystemTable) -> Status {
     // SAFETY: the firmware's own contract for an EFI application entry point: it passes a valid
     // system table that outlives the call, and `boot_services` is non-null until
     // `ExitBootServices`.

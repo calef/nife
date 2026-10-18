@@ -55,7 +55,7 @@ use std::time::{Duration, Instant};
 /// worse than one that can. The inertness it buys is already bought by [`Escape`]'s gate, which
 /// sends nothing until the board has said it is running an armed soak; there is no state left for
 /// an inert byte to be inert in.
-pub const ESCAPE_BYTE: u8 = b'\r';
+pub(crate) const ESCAPE_BYTE: u8 = b'\r';
 
 /// **How long to wait for the board's `DISARMED` line before giving up on it.**
 ///
@@ -66,7 +66,7 @@ pub const ESCAPE_BYTE: u8 = b'\r';
 ///
 /// The byte is sent just after the arming banner and the first beat follows within five seconds, so
 /// a healthy board answers well inside this.
-pub const CONFIRM_WINDOW: Duration = Duration::from_secs(15);
+pub(crate) const CONFIRM_WINDOW: Duration = Duration::from_secs(15);
 
 /// The arming announcement's distinctive phrase, from `kernel/src/soak.rs`'s `arm_reboot`.
 ///
@@ -114,7 +114,7 @@ impl Report {
     /// reboot itself, which is the state the flag exists to reach. See this module's `BUGS` for why
     /// that reads worse for `--stop-after n` than for `--stop`.
     #[must_use]
-    pub fn reached_the_goal(&self) -> bool {
+    pub(crate) fn reached_the_goal(&self) -> bool {
         matches!(self, Report::Confirmed | Report::NothingToStop)
     }
 
@@ -195,7 +195,7 @@ impl<'a> Escape<'a> {
     /// unacknowledged send, once a write has failed, and once the firmware has said there is no
     /// loop. False while waiting for the n-th draw, which is what lets the deadline do its job.
     #[must_use]
-    pub fn is_finished(&self) -> bool {
+    pub(crate) fn is_finished(&self) -> bool {
         match &self.report {
             Report::Confirmed | Report::Failed(_) | Report::NothingToStop => true,
             Report::Sent => self
@@ -223,7 +223,7 @@ impl<'a> Escape<'a> {
     /// The log's error, if the log cannot be written. A failure to write to the *port* is recorded
     /// in the report and logged rather than returned, because the session is still worth finishing:
     /// the board is still talking and the operator still wants what it says.
-    pub fn observe_line(
+    pub(crate) fn observe_line(
         &mut self,
         line: &str,
         at: Duration,

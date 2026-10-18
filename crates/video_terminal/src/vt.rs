@@ -188,7 +188,7 @@ impl Vt {
     /// **How many scrolled-off rows this terminal keeps**: [`SCROLLBACK_ROWS`], or fewer when a
     /// row is wider than [`SCROLLBACK_CELLS`] can hold that many of.
     #[must_use]
-    pub const fn scrollback_depth(&self) -> u32 {
+    pub(crate) const fn scrollback_depth(&self) -> u32 {
         let fit = (SCROLLBACK_CELLS / self.cols as usize) as u32;
         if fit < SCROLLBACK_ROWS as u32 {
             fit

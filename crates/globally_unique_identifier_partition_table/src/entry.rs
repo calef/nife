@@ -46,11 +46,11 @@ pub const ATTR_NO_BLOCK_IO: u64 = 1 << 1;
 pub const ATTR_LEGACY_BIOS_BOOTABLE: u64 = 1 << 2;
 
 mod at {
-    pub const TYPE_GUID: usize = 0;
-    pub const UNIQUE_GUID: usize = 16;
-    pub const FIRST_LBA: usize = 32;
-    pub const LAST_LBA: usize = 40;
-    pub const ATTRIBUTES: usize = 48;
+    pub(crate) const TYPE_GUID: usize = 0;
+    pub(crate) const UNIQUE_GUID: usize = 16;
+    pub(crate) const FIRST_LBA: usize = 32;
+    pub(crate) const LAST_LBA: usize = 40;
+    pub(crate) const ATTRIBUTES: usize = 48;
     pub const NAME: usize = 56;
 }
 

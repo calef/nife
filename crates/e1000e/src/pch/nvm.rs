@@ -65,13 +65,13 @@ pub enum Error {
 }
 
 /// Where the flash registers sit in BAR0 on SPT (`E1000_FLASH_BASE_ADDR`).
-pub const FLASH_BASE: u64 = 0xe000;
+pub(crate) const FLASH_BASE: u64 = 0xe000;
 /// Hardware sequencing flash status, low half; control, high half (`ICH_FLASH_HSFSTS`).
-pub const HSFSTS: u64 = 0x04;
+pub(crate) const HSFSTS: u64 = 0x04;
 /// Flash linear address (`ICH_FLASH_FADDR`).
-pub const FADDR: u64 = 0x08;
+pub(crate) const FADDR: u64 = 0x08;
 /// Flash data 0 (`ICH_FLASH_FDATA0`).
-pub const FDATA0: u64 = 0x10;
+pub(crate) const FDATA0: u64 = 0x10;
 
 /// `HSFSTS` bits (`union ich8_hws_flash_status`).
 pub mod status {
@@ -80,11 +80,11 @@ pub mod status {
     /// Flash cycle error.
     pub const ERROR: u16 = 1 << 1;
     /// Direct access error log.
-    pub const DIRECT_ACCESS_ERROR: u16 = 1 << 2;
+    pub(crate) const DIRECT_ACCESS_ERROR: u16 = 1 << 2;
     /// A cycle is in progress.
-    pub const IN_PROGRESS: u16 = 1 << 5;
+    pub(crate) const IN_PROGRESS: u16 = 1 << 5;
     /// The flash descriptor is valid.
-    pub const DESCRIPTOR_VALID: u16 = 1 << 14;
+    pub(crate) const DESCRIPTOR_VALID: u16 = 1 << 14;
 }
 
 /// `HSFCTL` bits (`union ich8_hws_flash_ctrl`), in the high half of the dword at [`HSFSTS`].
@@ -92,33 +92,33 @@ pub mod control {
     /// Start the cycle.
     pub const GO: u16 = 1 << 0;
     /// The cycle-type field; zero is a read (`ICH_CYCLE_READ`).
-    pub const CYCLE_MASK: u16 = 0b11 << 1;
+    pub(crate) const CYCLE_MASK: u16 = 0b11 << 1;
     /// The byte-count field, bits 9:8, holding the count minus one.
-    pub const BYTE_COUNT_SHIFT: u16 = 8;
+    pub(crate) const BYTE_COUNT_SHIFT: u16 = 8;
     /// Its mask.
-    pub const BYTE_COUNT_MASK: u16 = 0b11 << 8;
+    pub(crate) const BYTE_COUNT_MASK: u16 = 0b11 << 8;
 }
 
 /// `ICH_FLASH_LINEAR_ADDR_MASK`.
-pub const LINEAR_ADDR_MASK: u32 = 0x00ff_ffff;
+pub(crate) const LINEAR_ADDR_MASK: u32 = 0x00ff_ffff;
 /// `ICH_FLASH_READ_COMMAND_TIMEOUT`, in 1 µs polls: ten seconds, FreeBSD's bound.
-pub const COMMAND_TIMEOUT: u32 = 10_000_000;
+pub(crate) const COMMAND_TIMEOUT: u32 = 10_000_000;
 /// `ICH_FLASH_CYCLE_REPEAT_COUNT`.
-pub const CYCLE_REPEATS: u32 = 10;
+pub(crate) const CYCLE_REPEATS: u32 = 10;
 /// The signature word (`E1000_ICH_NVM_SIG_WORD`).
-pub const SIG_WORD: u32 = 0x13;
+pub(crate) const SIG_WORD: u32 = 0x13;
 /// `E1000_ICH_NVM_VALID_SIG_MASK`.
-pub const SIG_MASK: u8 = 0xc0;
+pub(crate) const SIG_MASK: u8 = 0xc0;
 /// `E1000_ICH_NVM_SIG_VALUE`.
-pub const SIG_VALUE: u8 = 0x80;
+pub(crate) const SIG_VALUE: u8 = 0x80;
 /// `E1000_SHADOW_RAM_WORDS`.
 pub const WORDS: u32 = 2048;
 /// `NVM_SIZE_MULTIPLIER`.
-pub const SIZE_MULTIPLIER: u32 = 4096;
+pub(crate) const SIZE_MULTIPLIER: u32 = 4096;
 
 /// The NVM's size, from `STRAP` on SPT.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub struct Geometry {
+pub(crate) struct Geometry {
     /// One bank's size in 16-bit words.
     pub bank_words: u32,
 }
@@ -126,7 +126,7 @@ pub struct Geometry {
 impl Geometry {
     /// `e1000_init_nvm_params_ich8lan`'s SPT branch: `STRAP` bits 5:1 hold the size in 4 KiB
     /// units, minus one; the NVM is two banks.
-    pub const fn from_strap(strap: u32) -> Self {
+    pub(crate) const fn from_strap(strap: u32) -> Self {
         let bytes = ((strap >> 1 & 0x1f) + 1) * SIZE_MULTIPLIER;
         Geometry {
             bank_words: bytes / 2 / 2,
@@ -186,7 +186,7 @@ fn cycle(hw: &mut impl Hw) -> Result<(), Error> {
 }
 
 /// `e1000_read_flash_data32_ich8lan`: one dword at byte offset `byte`.
-pub fn read_dword_at_byte(hw: &mut impl Hw, byte: u32) -> Result<u32, Error> {
+pub(crate) fn read_dword_at_byte(hw: &mut impl Hw, byte: u32) -> Result<u32, Error> {
     if byte > LINEAR_ADDR_MASK {
         return Err(Error::OutOfRange);
     }
@@ -215,12 +215,12 @@ pub fn read_dword_at_byte(hw: &mut impl Hw, byte: u32) -> Result<u32, Error> {
 }
 
 /// `e1000_read_flash_dword_ich8lan`: the dword at word offset `word`.
-pub fn read_dword(hw: &mut impl Hw, word: u32) -> Result<u32, Error> {
+pub(crate) fn read_dword(hw: &mut impl Hw, word: u32) -> Result<u32, Error> {
     read_dword_at_byte(hw, word << 1)
 }
 
 /// `e1000_valid_nvm_bank_detect_ich8lan`'s SPT branch: which bank carries the signature.
-pub fn valid_bank(hw: &mut impl Hw, g: Geometry) -> Result<u32, Error> {
+pub(crate) fn valid_bank(hw: &mut impl Hw, g: Geometry) -> Result<u32, Error> {
     for bank in 0..2 {
         let d = read_dword(hw, SIG_WORD + bank * g.bank_words)?;
         if (d >> 8) as u8 & SIG_MASK == SIG_VALUE {
@@ -232,7 +232,7 @@ pub fn valid_bank(hw: &mut impl Hw, g: Geometry) -> Result<u32, Error> {
 
 /// `e1000_read_nvm_spt` for one word: find the valid bank (bank 0 if none, as FreeBSD assumes),
 /// read the dword holding the word, and take its half.
-pub fn read_word(hw: &mut impl Hw, g: Geometry, word: u32) -> Result<u16, Error> {
+pub(crate) fn read_word(hw: &mut impl Hw, g: Geometry, word: u32) -> Result<u16, Error> {
     if word >= WORDS {
         return Err(Error::OutOfRange);
     }

@@ -82,10 +82,10 @@ pub struct Identity {
 /// How long a reset, a clock update or a command may take before the driver gives up. Generous:
 /// these are fixed costs of a few card clocks at most, and a deadline exists only so a dead
 /// controller is a reported error rather than a hung boot.
-pub const COMMAND_DEADLINE_US: u64 = 100_000;
+pub(crate) const COMMAND_DEADLINE_US: u64 = 100_000;
 /// How long a data phase may go without progress before it is abandoned. A card may take 250 ms
 /// to start a write (the SD spec's write timeout for SDHC); half a second is that with slack.
-pub const DATA_DEADLINE_US: u64 = 500_000;
+pub(crate) const DATA_DEADLINE_US: u64 = 500_000;
 
 /// **The card clock divider** for a `target` from a `base`: the smallest `div` with
 /// `base / (2 * div) <= target`, or 0 (bypass) when `base` itself is low enough. `None` when even
@@ -253,7 +253,7 @@ impl<R: Registers> Host<R> {
 
     /// Power slot 0. The JH7110 ties the card supply on the board, so on radon this bit is what
     /// U-Boot already set; written anyway, because a controller fresh from reset may not have it.
-    pub fn power_on(&mut self) {
+    pub(crate) fn power_on(&mut self) {
         self.regs.write(regs::PWREN, 1);
     }
 
@@ -276,7 +276,7 @@ impl<R: Registers> Host<R> {
     ///
     /// [`Error::ClockUpdate`] if the controller does not take either update; `BufferSize` is never
     /// returned. A target no divider reaches runs at the slowest the controller has.
-    pub fn set_clock(&mut self, hz: u32) -> Result<u32, Error> {
+    pub(crate) fn set_clock(&mut self, hz: u32) -> Result<u32, Error> {
         let div = clock_divider(self.base_hz, hz).unwrap_or(255);
         self.regs.write(regs::CLKENA, 0);
         self.regs.write(regs::CLKSRC, 0);
@@ -289,7 +289,7 @@ impl<R: Registers> Host<R> {
     }
 
     /// Set the bus width the controller drives: 1, 4 or 8. Anything else is 1.
-    pub fn set_bus_width(&mut self, width: u8) {
+    pub(crate) fn set_bus_width(&mut self, width: u8) {
         let ctype = match width {
             4 => regs::CTYPE_4BIT,
             8 => regs::CTYPE_8BIT,
@@ -303,7 +303,7 @@ impl<R: Registers> Host<R> {
     /// # Errors
     ///
     /// [`Error::Busy`] past [`DATA_DEADLINE_US`].
-    pub fn wait_not_busy(&mut self) -> Result<(), Error> {
+    pub(crate) fn wait_not_busy(&mut self) -> Result<(), Error> {
         if self.wait(DATA_DEADLINE_US, |r| {
             r.read(regs::STATUS) & regs::STATUS_DATA_BUSY == 0
         }) {

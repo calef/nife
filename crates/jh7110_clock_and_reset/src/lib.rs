@@ -63,10 +63,10 @@ pub enum Step {
 
 /// A multiplexed clock's parent field, bits 27:24 of its word (\[mainline-clk\]'s
 /// `JH71X0_CLK_MUX_MASK`, `GENMASK(27, 24)`).
-pub const CLOCK_MUX_MASK: u32 = 0xf << CLOCK_MUX_SHIFT;
+pub(crate) const CLOCK_MUX_MASK: u32 = 0xf << CLOCK_MUX_SHIFT;
 
 /// Where [`CLOCK_MUX_MASK`]'s field starts (`JH71X0_CLK_MUX_SHIFT`).
-pub const CLOCK_MUX_SHIFT: u32 = 24;
+pub(crate) const CLOCK_MUX_SHIFT: u32 = 24;
 
 /// **A clock word with its parent replaced**, leaving the enable bit, the divider and every other
 /// field as they were. A parent too wide for the field is reduced to it rather than spilling into
@@ -116,12 +116,12 @@ pub const TRNG_BRING_UP: &[Step] = &[
 
 /// `JH7110_STGCLK_SEC_AHB` \[mainline-ids\]; the vendor tree's `JH7110_SEC_HCLK` (205) rebased on
 /// its stg group's start (190). The TRNG's `hclk`.
-pub const STGCLK_SEC_AHB: u32 = 15;
+pub(crate) const STGCLK_SEC_AHB: u32 = 15;
 
 /// `JH7110_STGCLK_SEC_MISC_AHB` \[mainline-ids\]; the vendor tree's `JH7110_SEC_MISCAHB_CLK` (206)
 /// rebased the same way. The TRNG's second clock, `ahb` to mainline and `miscahb_clk` to the
 /// vendor, which is the same wire under two names.
-pub const STGCLK_SEC_MISC_AHB: u32 = 16;
+pub(crate) const STGCLK_SEC_MISC_AHB: u32 = 16;
 
 /// `JH7110_STGRST_SEC_AHB` \[mainline-ids\]; the vendor tree's `RSTN_U0_SEC_TOP_HRESETN` (131)
 /// rebased on its stg group's start (128).
@@ -148,13 +148,13 @@ pub const AON: Domain = Domain {
 /// **The AON domain's register window**, `0x1700_0000`, size `0x1_0000`: mainline's `aoncrg`
 /// node and `reg-names` entry `"aon"`/`"aoncrg"` of both vendor nodes. The fallback when a tree
 /// names none of them, for [`STG_BASE`]'s reason.
-pub const AON_BASE: u64 = 0x1700_0000;
+pub(crate) const AON_BASE: u64 = 0x1700_0000;
 
 /// The AON window's size, `0x10000` in every tree that names it.
-pub const AON_SIZE: u64 = 0x1_0000;
+pub(crate) const AON_SIZE: u64 = 0x1_0000;
 
 /// Mainline's dedicated AON clock-and-reset controller node, `aoncrg: clock-controller@17000000`.
-pub const COMPATIBLE_AONCRG: &[u8] = b"starfive,jh7110-aoncrg";
+pub(crate) const COMPATIBLE_AONCRG: &[u8] = b"starfive,jh7110-aoncrg";
 
 /// The `reg-names` entry naming the AON window in each vendor node's spelling (`"aon"` in
 /// `clkgen`, `"aoncrg"` in `rstgen`; \[vendor-dts\]).
@@ -162,30 +162,30 @@ const VENDOR_CLKGEN_AON_NAME: &[u8] = b"aon";
 const VENDOR_RSTGEN_AON_NAME: &[u8] = b"aoncrg";
 
 /// `JH7110_AONCLK_GMAC0_AHB` \[mainline-ids\]: a gate, `gmac0`'s `pclk`. Word `0x08`.
-pub const AONCLK_GMAC0_AHB: u32 = 2;
+pub(crate) const AONCLK_GMAC0_AHB: u32 = 2;
 /// `JH7110_AONCLK_GMAC0_AXI`: a gate, `gmac0`'s `stmmaceth` (its CSR and bus clock). Word `0x0c`.
-pub const AONCLK_GMAC0_AXI: u32 = 3;
+pub(crate) const AONCLK_GMAC0_AXI: u32 = 3;
 /// `JH7110_AONCLK_GMAC0_TX`: a gate with a two-way mux, `gmac0_gtxclk` (0) or
 /// `gmac0_rmii_rtx` (1). Word `0x14`, which radon's vendor U-Boot calls `GMAC5_0_CLK_TX_SHIFT`
 /// and sets bit 24 of (`jh7110_gmac_sel_tx_to_rgmii`, `board/starfive/visionfive2/`).
-pub const AONCLK_GMAC0_TX: u32 = 5;
+pub(crate) const AONCLK_GMAC0_TX: u32 = 5;
 /// `gmac0_tx`'s parent on a VisionFive 2 v1.3B: `gmac0_rmii_rtx`, mainline's
 /// `assigned-clock-parents` for `&gmac0` in `jh7110-starfive-visionfive-2-v1.3b.dts` beside
 /// `starfive,tx-use-rgmii-clk`, and the same bit the vendor U-Boot sets. radon's EEPROM says PCB
 /// revision `0xb2`, a v1.3B (bench transcripts, `PCB revision: 0xb2`).
-pub const AONCLK_GMAC0_TX_PARENT_RMII_RTX: u32 = 1;
+pub(crate) const AONCLK_GMAC0_TX_PARENT_RMII_RTX: u32 = 1;
 /// `JH7110_AONRST_GMAC0_AXI` \[mainline-ids\], `gmac0`'s `stmmaceth` reset. Bit 0 at `0x38`.
-pub const AONRST_GMAC0_AXI: u32 = 0;
+pub(crate) const AONRST_GMAC0_AXI: u32 = 0;
 /// `JH7110_AONRST_GMAC0_AHB`, `gmac0`'s `ahb` reset. Bit 1 at `0x38`.
-pub const AONRST_GMAC0_AHB: u32 = 1;
+pub(crate) const AONRST_GMAC0_AHB: u32 = 1;
 
 /// `JH7110_SYSCLK_GMAC0_GTXCLK` \[mainline-ids\]: a gated divider of PLL0, the parent of
 /// `gmac0_gtxc`. Word `0x1b0` of the SYS window.
-pub const SYSCLK_GMAC0_GTXCLK: u32 = 108;
+pub(crate) const SYSCLK_GMAC0_GTXCLK: u32 = 108;
 /// `JH7110_SYSCLK_GMAC0_PTP`: a gated divider, `gmac0`'s `ptp_ref`. Word `0x1b4`.
-pub const SYSCLK_GMAC0_PTP: u32 = 109;
+pub(crate) const SYSCLK_GMAC0_PTP: u32 = 109;
 /// `JH7110_SYSCLK_GMAC0_GTXC`: a gate, `gmac0`'s `gtx`. Word `0x1bc`.
-pub const SYSCLK_GMAC0_GTXC: u32 = 111;
+pub(crate) const SYSCLK_GMAC0_GTXC: u32 = 111;
 
 /// **`gmac0`'s SYS-domain clocks**, the half of its clocks that are not in the AON domain
 /// (milestone 53). Every clock mainline's `&gmac0` node names that lives in SYS, with the parent
@@ -270,10 +270,10 @@ pub const STG: Domain = Domain {
 /// controller node, nothing attempted" has spent a trip to the machine and learned nothing. Two
 /// independently published trees agree on this number, which is a stronger warrant than most
 /// device-tree reads get.
-pub const STG_BASE: u64 = 0x1023_0000;
+pub(crate) const STG_BASE: u64 = 0x1023_0000;
 
 /// The STG window's size, `0x10000` in both trees.
-pub const STG_SIZE: u64 = 0x1_0000;
+pub(crate) const STG_SIZE: u64 = 0x1_0000;
 
 /// **The SYS domain** (milestone 592 (radon's cold reboot dies in OpenSBI's PMIC write), provisional), which is where I2C5's clock and reset live,
 /// and so where the only road to radon's PMIC starts.
@@ -293,10 +293,10 @@ pub const SYS: Domain = Domain {
 /// **The SYS domain's register window**, `0x1302_0000`, size `0x1_0000`, in mainline's `syscrg`
 /// node and as `reg-names` entry `"sys"`/`"syscrg"` of both vendor nodes. The fallback when a tree
 /// names none of them, for [`STG_BASE`]'s reason.
-pub const SYS_BASE: u64 = 0x1302_0000;
+pub(crate) const SYS_BASE: u64 = 0x1302_0000;
 
 /// The SYS window's size, `0x10000` in every tree that names it.
-pub const SYS_SIZE: u64 = 0x1_0000;
+pub(crate) const SYS_SIZE: u64 = 0x1_0000;
 
 /// `JH7110_SYSCLK_I2C5_APB` \[mainline-ids\], and `JH7110_I2C5_CLK_APB` in the vendor header,
 /// both **143**: the vendor numbers the SYS group first, so no rebase is needed. Word `0x23c`.
@@ -306,7 +306,7 @@ pub const SYS_SIZE: u64 = 0x1_0000;
 /// `starfive_clk_fix_factor(..., "u5_dw_i2c_clk_core", "u5_dw_i2c_clk_apb", 1, 1)`, a
 /// divide-by-one child of this gate with no register of its own, and mainline's `DesignWare` node
 /// names this clock alone. So there is no second gate to turn on, and 298 is not a word to write.
-pub const SYSCLK_I2C5_APB: u32 = 143;
+pub(crate) const SYSCLK_I2C5_APB: u32 = 143;
 
 /// `JH7110_SYSRST_I2C5_APB` \[mainline-ids\], and `RSTN_U5_DW_I2C_APB` in the vendor header, both
 /// **81**. Bit 17 of the word at `0x300`, watched at `0x310`.
@@ -318,12 +318,12 @@ pub const SYSCLK_I2C5_APB: u32 = 143;
 /// in reset reads `IC_STATUS` as zero, so its transmit-FIFO-empty poll can never succeed, which is
 /// the ten `i2c read: write daddr 36 to` lines in radon's 2026-09-04 log. See
 /// `design/roadmap/0592-radons-reboot-dies-in-opensbis-pmic-write.md` for every source.
-pub const SYSRST_I2C5_APB: u32 = 81;
+pub(crate) const SYSRST_I2C5_APB: u32 = 81;
 
 /// **What I2C5 needs before OpenSBI can reach the PMIC**, when the tree does not say (milestone
 /// 592). Clock first, then reset, for [`TRNG_BRING_UP`]'s reason: Linux's reset driver warns that
 /// a deassert against a gated clock "might otherwise hang forever".
-pub const PMIC_BUS_BRING_UP: &[Step] = &[
+pub(crate) const PMIC_BUS_BRING_UP: &[Step] = &[
     Step::EnableClock(SYSCLK_I2C5_APB),
     Step::DeassertReset(SYSRST_I2C5_APB),
 ];
@@ -331,21 +331,21 @@ pub const PMIC_BUS_BRING_UP: &[Step] = &[
 /// `JH7110_SYSCLK_SDIO0_AHB` \[mainline-ids\], the vendor header's `JH7110_SDIO0_CLK_AHB`, both
 /// **91**: the eMMC socket's controller's bus clock, `biu` in both trees (milestone 53 (the
 /// board's own peripherals: network and storage on real silicon)). Word `0x16c`.
-pub const SYSCLK_SDIO0_AHB: u32 = 91;
+pub(crate) const SYSCLK_SDIO0_AHB: u32 = 91;
 /// `JH7110_SYSCLK_SDIO1_AHB`, vendor `JH7110_SDIO1_CLK_AHB`, both **92**: the microSD slot's
 /// controller's bus clock. Word `0x170`.
-pub const SYSCLK_SDIO1_AHB: u32 = 92;
+pub(crate) const SYSCLK_SDIO1_AHB: u32 = 92;
 /// `JH7110_SYSCLK_SDIO0_SDCARD`, vendor `JH7110_SDIO0_CLK_SDCARD`, both **93**: the eMMC
 /// controller's card clock source, `ciu`, a gated divider both trees assign 50 MHz. Word `0x174`.
-pub const SYSCLK_SDIO0_SDCARD: u32 = 93;
+pub(crate) const SYSCLK_SDIO0_SDCARD: u32 = 93;
 /// `JH7110_SYSCLK_SDIO1_SDCARD`, vendor `JH7110_SDIO1_CLK_SDCARD`, both **94**: the microSD
 /// controller's `ciu`. Word `0x178`.
-pub const SYSCLK_SDIO1_SDCARD: u32 = 94;
+pub(crate) const SYSCLK_SDIO1_SDCARD: u32 = 94;
 /// `JH7110_SYSRST_SDIO0_AHB` \[mainline-ids\]: the eMMC controller's one reset. Bit 0 of the
 /// word at `0x300`.
-pub const SYSRST_SDIO0_AHB: u32 = 64;
+pub(crate) const SYSRST_SDIO0_AHB: u32 = 64;
 /// `JH7110_SYSRST_SDIO1_AHB`: the microSD controller's one reset. Bit 1 of the word at `0x300`.
-pub const SYSRST_SDIO1_AHB: u32 = 65;
+pub(crate) const SYSRST_SDIO1_AHB: u32 = 65;
 
 /// **What each SD/MMC controller needs before its registers answer** (milestone 53), slot 0 (the
 /// eMMC socket) then slot 1 (the microSD slot): both clocks mainline's node names, then its reset,
@@ -377,15 +377,15 @@ pub const fn clock_divider(word: u32) -> u32 {
 /// The PMIC as radon's vendor tree spells it (U-Boot SDK `VF2_v2.10.4`, `starfive_visionfive2.dts`:
 /// `pmic: axp15060_reg@36 { compatible = "stf,axp15060-regulator"; reg = <0x36>; }` under
 /// `&i2c5`). This is also the string radon's OpenSBI matches to find its reset device.
-pub const COMPATIBLE_PMIC_VENDOR: &[u8] = b"stf,axp15060-regulator";
+pub(crate) const COMPATIBLE_PMIC_VENDOR: &[u8] = b"stf,axp15060-regulator";
 
 /// The same PMIC in mainline's `jh7110-common.dtsi`: `axp15060: pmic@36 { compatible =
 /// "x-powers,axp15060"; }` under `&i2c5`.
-pub const COMPATIBLE_PMIC_MAINLINE: &[u8] = b"x-powers,axp15060";
+pub(crate) const COMPATIBLE_PMIC_MAINLINE: &[u8] = b"x-powers,axp15060";
 
 /// How many steps a tree-derived plan can hold. Radon's tree names two clocks and one reset, one
 /// of those clocks virtual; four is slack, and a bus naming more is recorded as truncated.
-pub const MAX_PMIC_BUS_STEPS: usize = 4;
+pub(crate) const MAX_PMIC_BUS_STEPS: usize = 4;
 
 /// **The plan for the PMIC's bus, and where it came from** (milestone 592, provisional).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -581,11 +581,11 @@ pub const SYSCLK_STG_AXIAHB: u32 = 8;
 pub const SYSCLK_APB_BUS_FUNC: u32 = 11;
 
 /// The oscillator every JH7110 rate chain is rooted in, 24 MHz, `refclk` in the vendor PLL code.
-pub const OSC_HZ: u64 = 24_000_000;
+pub(crate) const OSC_HZ: u64 = 24_000_000;
 
 /// The vendor PLL code's default for a PLL it cannot interpret (`deffreq` for PLL2), returned
 /// rather than guessed from fields that are not in integer mode.
-pub const PLL2_DEFAULT_HZ: u64 = 1_188_000_000;
+pub(crate) const PLL2_DEFAULT_HZ: u64 = 1_188_000_000;
 
 /// **The words the I2C input-clock chain reads**, one struct so the kernel can read them in one
 /// place and the arithmetic can be tested without a device (milestone 592, provisional). The CRG
@@ -964,16 +964,16 @@ pub struct Found {
 }
 
 /// Mainline's dedicated STG clock-and-reset controller node \[mainline-dts\].
-pub const COMPATIBLE_STGCRG: &[u8] = b"starfive,jh7110-stgcrg";
+pub(crate) const COMPATIBLE_STGCRG: &[u8] = b"starfive,jh7110-stgcrg";
 
 /// The vendor U-Boot's single clock controller covering sys, stg and aon \[vendor-dts\]. This is
 /// the one radon's firmware actually serves, if it serves either.
-pub const COMPATIBLE_VENDOR_CLKGEN: &[u8] = b"starfive,jh7110-clkgen";
+pub(crate) const COMPATIBLE_VENDOR_CLKGEN: &[u8] = b"starfive,jh7110-clkgen";
 
 /// The vendor U-Boot's separate reset controller, whose `reg` list covers the same windows
 /// \[vendor-dts\]. Tried last: it names the same address as the clkgen node, so it is only
 /// reached by a tree that carries one and not the other.
-pub const COMPATIBLE_VENDOR_RSTGEN: &[u8] = b"starfive,jh7110-reset";
+pub(crate) const COMPATIBLE_VENDOR_RSTGEN: &[u8] = b"starfive,jh7110-reset";
 
 /// The `reg-names` entry naming the STG window, in each vendor node's own spelling
 /// (`"stg"` in `clkgen`, `"stgcrg"` in `rstgen`; \[vendor-dts\]).
@@ -982,7 +982,7 @@ const VENDOR_RSTGEN_STG_NAME: &[u8] = b"stgcrg";
 
 /// Mainline's dedicated SYS clock-and-reset controller node, `syscrg: clock-controller@13020000`
 /// (\[mainline-dts\]; milestone 592).
-pub const COMPATIBLE_SYSCRG: &[u8] = b"starfive,jh7110-syscrg";
+pub(crate) const COMPATIBLE_SYSCRG: &[u8] = b"starfive,jh7110-syscrg";
 
 /// The `reg-names` entry naming the SYS window, in each vendor node's own spelling (`"sys"` in
 /// `clkgen`, `"syscrg"` in `rstgen`; \[vendor-dts\]). Window 0 in both today, found by name anyway
