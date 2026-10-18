@@ -47,8 +47,13 @@ impl ManifestAuthorities {
     /// [`Manifest::indexes`], read and written: `jig update`. Holds nothing without
     /// [`ManifestAuthorities::INDEXES`]. Name: provisional 2026-10-12 (UTC), as is the bit.
     pub const INDEXES_WRITE: ManifestAuthorities = ManifestAuthorities(1 << 10);
+    /// [`Manifest::activation_directory`]: `activation/`, read only, in place of the index store
+    /// (milestone 809, `jig list -u`).
+    ///
+    /// Name: provisional, minted 2026-10-18 (UTC) by lane `milestone/809-jig-list-u`, as is the bit.
+    pub const ACTIVATION: ManifestAuthorities = ManifestAuthorities(1 << 11);
     /// Every bit above, and no other.
-    pub const ALL: ManifestAuthorities = ManifestAuthorities((1 << 11) - 1);
+    pub const ALL: ManifestAuthorities = ManifestAuthorities((1 << 12) - 1);
 
     /// Both sets.
     pub const fn union(self, other: ManifestAuthorities) -> ManifestAuthorities {
@@ -81,7 +86,9 @@ impl ManifestAuthorities {
 /// verb record, which is the same list as bytes). Name: provisional.
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub struct VerbGrant {
-    /// The word, as typed after the program's name. At most [`MAX_VERB`] bytes.
+    /// The word, as typed after the program's name, or that word, one space and the word after
+    /// it, for a verb whose option changes what it holds (`list -u`). At most [`MAX_VERB`] bytes.
+    /// [`narrow_by_verb`] tries the two words first and then the first alone.
     pub verb: &'static str,
     /// What a line with this verb is endowed with, of what the manifest declares.
     pub authorities: ManifestAuthorities,
@@ -99,6 +106,10 @@ pub const MAX_VERB: usize = 16;
 /// entropy (TLS to the index) and writes the index store; `install` reads the store too, and
 /// takes the clock and entropy, since a name the index copy lists is fetched over TLS; `list`
 /// reads the store beside the catalog.
+///
+/// `list -u` (milestone 809, the flag calef ruled 2026-10-17 UTC) reads the activation directory
+/// alone: the installed-programs table, and the index copy beneath it. Not the catalog, since
+/// `list -u` compares what is installed with the index and nothing else.
 pub(crate) const JIG_VERBS: &[VerbGrant] = &[
     VerbGrant {
         verb: "install",
@@ -112,6 +123,10 @@ pub(crate) const JIG_VERBS: &[VerbGrant] = &[
     VerbGrant {
         verb: "list",
         authorities: ManifestAuthorities::CATALOG.union(ManifestAuthorities::INDEXES),
+    },
+    VerbGrant {
+        verb: "list -u",
+        authorities: ManifestAuthorities::ACTIVATION,
     },
     VerbGrant {
         verb: "remove",
@@ -146,9 +161,10 @@ pub fn narrow_by_verb(m: &Manifest, verbs: &[VerbGrant], verb: Option<&[u8]>) ->
     if verbs.is_empty() {
         return *m;
     }
-    let g = verbs
-        .iter()
-        .find(|v| Some(v.verb.as_bytes()) == verb)
+    let first = verb.map(|v| v.split(|&b| b == b' ').next().unwrap_or(v));
+    let find = |key: Option<&[u8]>| verbs.iter().find(|v| Some(v.verb.as_bytes()) == key);
+    let g = find(verb)
+        .or_else(|| find(first))
         .map_or(ManifestAuthorities::NONE, |v| v.authorities);
     Manifest {
         clock: m.clock && g.contains(ManifestAuthorities::CLOCK),
@@ -160,6 +176,7 @@ pub fn narrow_by_verb(m: &Manifest, verbs: &[VerbGrant], verb: Option<&[u8]>) ->
         share: m.share && g.contains(ManifestAuthorities::SHARE),
         installer: m.installer && g.contains(ManifestAuthorities::INSTALLER),
         catalog: m.catalog && g.contains(ManifestAuthorities::CATALOG),
+        activation_directory: m.activation_directory && g.contains(ManifestAuthorities::ACTIVATION),
         indexes: match m.indexes {
             IndexStoreDeclaration::ReadWrite
                 if g.contains(
@@ -180,30 +197,56 @@ pub fn narrow_by_verb(m: &Manifest, verbs: &[VerbGrant], verb: Option<&[u8]>) ->
 }
 
 /// **The line's verb**: its second word, quotes off, as the program will hear it as `argv[1]`
-/// (`each_word`'s reading, which [`argv`](crate::argv) assembles the page from). `None` past [`MAX_VERB`] bytes
-/// or when there is no second word. Copied into `out`, because a quoted word's text is a temporary.
+/// (`each_word`'s reading, which [`argv`](crate::argv) assembles the page from), followed by a
+/// space and the third word when both fit in [`MAX_VERB`] bytes, which is the key a verb with an
+/// option has (`list -u`). `None` when there is no second word, when it is longer than
+/// [`MAX_VERB`], or when it holds a space itself, so a quoted `'list -u'` is no verb. Copied into
+/// `out`, because a quoted word's text is a temporary.
 pub fn verb_of<'o>(line: &[u8], out: &'o mut [u8; MAX_VERB]) -> Option<&'o [u8]> {
     let mut seen = 0usize;
-    let mut len = None;
+    let mut held = [[0u8; MAX_VERB]; 2];
+    let mut lens = [None; 2];
     let _ = each_word(line, &mut |w| {
         seen += 1;
-        if seen == 2 && w.len() <= MAX_VERB {
-            out[..w.len()].copy_from_slice(w);
-            len = Some(w.len());
+        if (2..=3).contains(&seen) && w.len() <= MAX_VERB {
+            held[seen - 2][..w.len()].copy_from_slice(w);
+            lens[seen - 2] = Some(w.len());
         }
         Ok(())
     });
-    len.map(|n| &out[..n])
+    let verb = &held[0][..lens[0]?];
+    let option = lens[1].map(|n| &held[1][..n]);
+    verb_key(verb, option, out)
 }
 
-/// **The verb on an argument page**: its `argv[1]`, as the program will read it. [`verb_of`]'s
-/// reading of the page [`argv`](crate::argv) assembled from the line, which is what the progenitor holds; `None`
-/// for a page that does not parse, has one word, or whose second is longer than [`MAX_VERB`].
-pub fn verb_of_page(page: &[u8]) -> Option<&[u8]> {
-    program_argument_contract::ArgPage::parse(page)
-        .iter()
-        .nth(1)
-        .filter(|w| w.len() <= MAX_VERB)
+/// The key [`narrow_by_verb`] looks up for a verb and the word after it: see [`verb_of`].
+fn verb_key<'o>(
+    verb: &[u8],
+    option: Option<&[u8]>,
+    out: &'o mut [u8; MAX_VERB],
+) -> Option<&'o [u8]> {
+    if verb.is_empty() || verb.len() > MAX_VERB || verb.contains(&b' ') {
+        return None;
+    }
+    out[..verb.len()].copy_from_slice(verb);
+    let mut len = verb.len();
+    if let Some(option) = option.filter(|o| !o.is_empty() && len + 1 + o.len() <= MAX_VERB) {
+        out[len] = b' ';
+        out[len + 1..len + 1 + option.len()].copy_from_slice(option);
+        len += 1 + option.len();
+    }
+    Some(&out[..len])
+}
+
+/// **The verb on an argument page**: its `argv[1]`, and `argv[2]` after a space when both fit,
+/// as the program will read them. [`verb_of`]'s reading of the page [`argv`](crate::argv)
+/// assembled from the line, which is what the progenitor holds; `None` for a page that does not
+/// parse, has one word, or whose second is longer than [`MAX_VERB`] or holds a space.
+pub fn verb_of_page<'o>(page: &[u8], out: &'o mut [u8; MAX_VERB]) -> Option<&'o [u8]> {
+    let args = program_argument_contract::ArgPage::parse(page);
+    let mut words = args.iter().skip(1);
+    let verb = words.next()?;
+    verb_key(verb, words.next(), out)
 }
 
 #[cfg(test)]
@@ -242,7 +285,23 @@ mod tests {
         // The progenitor's reading of the page the shell assembles agrees with the shell's.
         let mut page = [0u8; program_argument_contract::PAGE_BYTES];
         argv(b"jig 'install' greeting", &mut page).unwrap();
-        assert_eq!(verb_of_page(&page), Some(&b"install"[..]));
+        let mut read = [0u8; MAX_VERB];
+        assert_eq!(
+            verb_of_page(&page, &mut read),
+            Some(&b"install greeting"[..])
+        );
+        // **`list -u` holds the activation directory and nothing else** (milestone 809), and
+        // only typed as two words: quoted as one, it is no verb at all.
+        let outdated = as_typed(b"jig list -u");
+        assert!(outdated.activation_directory && !outdated.catalog);
+        assert_eq!(outdated.indexes, IndexStoreDeclaration::Forbidden);
+        assert!(!list.activation_directory && !install.activation_directory);
+        assert!(!as_typed(b"jig list --upgradable").activation_directory);
+        assert_eq!(as_typed(b"jig 'list -u'"), as_typed(b"jig upgrade"));
+        let mut page = [0u8; program_argument_contract::PAGE_BYTES];
+        argv(b"jig list -u", &mut page).unwrap();
+        let mut read = [0u8; MAX_VERB];
+        assert_eq!(verb_of_page(&page, &mut read), Some(&b"list -u"[..]));
         let nothing = as_typed(b"jig upgrade");
         assert!(!nothing.installer && !nothing.catalog && !nothing.network);
         assert_eq!(nothing.indexes, IndexStoreDeclaration::Forbidden);
@@ -275,12 +334,25 @@ mod tests {
                         narrowed.indexes == IndexStoreDeclaration::ReadWrite,
                         ManifestAuthorities::INDEXES_WRITE,
                     ),
+                    (
+                        narrowed.activation_directory,
+                        ManifestAuthorities::ACTIVATION,
+                    ),
                 ]
                 .into_iter()
                 .filter(|(held, _)| *held)
                 .fold(ManifestAuthorities::NONE, |g, (_, bit)| g.union(bit));
                 assert_eq!(kept, v.authorities, "{} {}", p.name(), v.verb);
                 assert!(!narrowed.machine, "{}", p.name());
+                // The `std` layout has one directory slot: a verb holds the activation directory
+                // or the index store, never both.
+                assert!(
+                    !(narrowed.activation_directory
+                        && narrowed.indexes != IndexStoreDeclaration::Forbidden),
+                    "{} {}",
+                    p.name(),
+                    v.verb
+                );
             }
             if p.verbs().is_empty() {
                 assert_eq!(narrow_by_verb(&m, p.verbs(), Some(b"x")), m);
@@ -293,7 +365,7 @@ mod tests {
         assert_eq!(ManifestAuthorities::from_bits(1 << 15), None);
     }
 
-    /// **Each authority a verb can choose is narrowed on its own.** A manifest declaring all eleven,
+    /// **Each authority a verb can choose is narrowed on its own.** A manifest declaring all twelve,
     /// and a table with one verb per authority: each verb keeps its one, and only that one.
     #[test]
     fn each_field_is_narrowed_by_its_own_bit() {
@@ -308,6 +380,7 @@ mod tests {
             installer: true,
             catalog: true,
             indexes: IndexStoreDeclaration::ReadWrite,
+            activation_directory: true,
             ..Program::Jig.manifest()
         };
         let one = |verb: &'static str, authorities| VerbGrant { verb, authorities };
@@ -326,6 +399,7 @@ mod tests {
                 "k",
                 ManifestAuthorities::INDEXES.union(ManifestAuthorities::INDEXES_WRITE),
             ),
+            one("l", ManifestAuthorities::ACTIVATION),
         ];
         for v in &table {
             let n = narrow_by_verb(&all, &table, Some(v.verb.as_bytes()));
@@ -341,6 +415,7 @@ mod tests {
                 n.catalog,
                 n.indexes != IndexStoreDeclaration::Forbidden,
                 n.indexes == IndexStoreDeclaration::ReadWrite,
+                n.activation_directory,
             ];
             let bits = held
                 .iter()
@@ -351,12 +426,12 @@ mod tests {
         }
     }
 
-    /// The set of every authority is the eleven bits and no twelfth, and a union keeps a bit both
+    /// The set of every authority is the twelve bits and no thirteenth, and a union keeps a bit both
     /// sides hold.
     #[test]
-    fn all_is_eleven_bits_and_a_union_keeps_shared_bits() {
-        assert_eq!(ManifestAuthorities::ALL.bits(), 0x7ff);
-        assert_eq!(ManifestAuthorities::from_bits(1 << 11), None);
+    fn all_is_twelve_bits_and_a_union_keeps_shared_bits() {
+        assert_eq!(ManifestAuthorities::ALL.bits(), 0xfff);
+        assert_eq!(ManifestAuthorities::from_bits(1 << 12), None);
         assert_eq!(
             ManifestAuthorities::CLOCK.union(ManifestAuthorities::CLOCK),
             ManifestAuthorities::CLOCK
@@ -385,6 +460,7 @@ mod tests {
                 "{}",
                 p.name()
             );
+            assert_eq!(m.activation_directory, p == Program::Jig, "{}", p.name());
             if m.installer || m.catalog || m.indexes != IndexStoreDeclaration::Forbidden {
                 assert_eq!(m.startup, StartupContract::Std, "{}", p.name());
             }
@@ -402,10 +478,19 @@ mod tests {
             network: false,
             ..jig
         }));
+        // Milestone 809: so is the activation directory.
+        assert!(!image_can_carry(&Manifest {
+            installer: false,
+            catalog: false,
+            indexes: IndexStoreDeclaration::Forbidden,
+            network: false,
+            ..jig
+        }));
         assert!(image_can_carry(&Manifest {
             installer: false,
             catalog: false,
             indexes: IndexStoreDeclaration::Forbidden,
+            activation_directory: false,
             network: false,
             ..jig
         }));

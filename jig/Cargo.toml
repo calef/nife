@@ -35,6 +35,8 @@ grant_plan = { path = "../crates/grant_plan" }
 http_response = { path = "../crates/http_response" }
 capability_manifest_note = { path = "../crates/capability_manifest_note" }
 package_archive = { path = "../crates/package_archive" }
+# What is installed, for `list -u`: the installed-programs table's reader and where it lives.
+installed_programs = { path = "../crates/installed_programs" }
 socket_contract = { path = "../crates/socket_contract" }
 std_runtime_contract = { path = "../crates/std_runtime_contract" }
 user_mode_runtime = { path = "../crates/user_mode_runtime" }

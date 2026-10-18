@@ -796,6 +796,15 @@ fn the_jig_preview_shows_the_index_store_the_verb_holds_and_yields_it_to_a_desig
         list.contains("cap 4  endpoint  dir      /activation/indexes  read-only."),
         "{list}"
     );
+    // `list -u` (milestone 809): `activation/` itself, read only, and no index store or sources.
+    let outdated = preview(b"jig list -u");
+    assert!(
+        outdated.contains("cap 4  endpoint  dir      /activation  read-only."),
+        "{outdated}"
+    );
+    assert!(!outdated.contains("/activation/indexes"), "{outdated}");
+    assert!(!outdated.contains("sources"), "{outdated}");
+    assert!(!list.contains("/activation  read-only"), "{list}");
     let mut designated = endowment(Program::Jig);
     designated.directory = Some(grant_plan::DirectoryGrant {
         which: grant_plan::nav::Which::A,

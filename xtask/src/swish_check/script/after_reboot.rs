@@ -118,6 +118,29 @@ pub(in crate::swish_check) const SWISH_CHECK_AFTER_REBOOT: &[Line] = &[
             "  greeting 0.3.0",
         ],
     ),
+    // **`list -u`: what is installed against what the copy offers** (milestone 809 (the package
+    // client becomes a program)). The live generation holds `greeting` 0.1.0, from the first
+    // boot's catalog install, and the copy offers 0.3.0, newer in Debian's order. The line holds
+    // `activation/` read only and nothing else, which `caps` shows; `--upgradable` is refused
+    // naming `-u` (calef, 2026-10-17 UTC).
+    line(
+        0,
+        "caps jig list -u",
+        &["endpoint  dir      /activation  read-only."],
+    ),
+    line(
+        1,
+        "jig list -u",
+        &[
+            "installed packages the index offers newer (the copy jig update wrote):",
+            "  greeting 0.1.0 -> 0.3.0",
+        ],
+    ),
+    line(
+        1,
+        "jig list --upgradable",
+        &["refused: jig spells that list -u; it takes no long form"],
+    ),
     // **A lying repository, refused by the index's digest** before the installer is asked: the
     // peer serves `uptime` with a byte flipped. `jig` tries the entry's listed location first,
     // which this prompt cannot resolve, and then the repository's own copy. That listed location
@@ -148,6 +171,12 @@ pub(in crate::swish_check) const SWISH_CHECK_AFTER_REBOOT: &[Line] = &[
         1,
         "packages/greeting/0.3.0/greeting",
         &["hello from a package this image never carried"],
+    ),
+    // With 0.3.0 installed beside 0.1.0, the newest installed is the newest offered.
+    line(
+        1,
+        "jig list -u",
+        &["no installed package has a newer version in the index copy"],
     ),
     // **A package carries several programs** (milestone 919 (a package carries several
     // programs)). `duet` carries `bin/alto` and `bin/tenor`, neither named after it: one install
