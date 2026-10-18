@@ -21,11 +21,11 @@ The ruling, in four clauses:
    `tls12` is 7 crates, all Rust, and that part builds. `embedded-tls` (58 crates) and OpenSSL
    are not taken; the table says why.
 3. The crypto provider is ours to make work, and it is the actual project. Every candidate
-   provider fails on our bare-metal targets today, in two classes: `getrandom` has no backend
-   (`ring`, `rustls-rustcrypto`), which is exactly what `entropy_backend` exists to answer and
-   which nife can supply because it has an entropy service; and SIMD paths in `sha2` and `polyval`
-   fail on the soft-float `x86_64-unknown-none`, which the probe itself says may differ against
-   nife's own target specification and pinned nightly. Milestone 442 carries that work.
+   provider fails on our bare-metal targets today, in two classes. First, `getrandom` has no
+   backend (`ring`, `rustls-rustcrypto`). That is exactly what `entropy_backend` exists to answer,
+   and nife can supply it because it has an entropy service. Second, SIMD paths in `sha2` and
+   `polyval` fail on the soft-float `x86_64-unknown-none`. The probe itself says that may differ
+   against nife's own target specification and pinned nightly. Milestone 442 carries that work.
 4. **Roots are held per source, not in a system store**, which is §195's shape one layer down: the
    package client holds one root or one pinned key for the one source it talks to. A system-wide
    trust store would need updating independently of the system, and the thing that updates it is
@@ -60,9 +60,9 @@ Integrity of content is the trust fork's job, whatever the transport
 | **T3** (the owner) | A digest the owner records | **Not for integrity**, provided the owner got the digest somewhere trustworthy. On §157's path they did: **the web page**, read in their own browser over their browser's TLS |
 
 So **under T2 or T3, TLS is not required for integrity.** What it would still buy is confidentiality
-and a defense against a network that blocks or tampers with plain HTTP, and what plain HTTP needs
+and a defense against a network that blocks or tampers with plain HTTP. What plain HTTP needs
 instead of TLS for freshness is an expiry in signed metadata (the Update Framework's timestamp role;
-Debian's `Valid-Until`, recalled), which the format fork's metadata rows do not yet carry.
+Debian's `Valid-Until`, recalled). The format fork's metadata rows do not yet carry it.
 
 ## A fact the choice depends on: where the packages are hosted
 
@@ -94,8 +94,8 @@ and the hosting question (calef's, under §157's step 1) are one decision seen f
 The probe's limits, stated so the table is not over-read. It ran on the stable host toolchain
 against the stock bare-metal targets, not against nife's own target specifications and the pinned
 nightly. The `x86_64-unknown-none` failures in `sha2` and `polyval` are the kind a soft-float target
-produces for crates with SIMD paths, which is a reason to expect a different answer on nife's x86_64
-target rather than a finding about it; that was not checked. The `getrandom` failures are the class
+produces for crates with SIMD paths. That is a reason to expect a different answer on nife's x86_64
+target rather than a finding about it. That was not checked. The `getrandom` failures are the class
 `entropy_backend` exists to answer, for the versions it answers.
 
 ## The trust store, which is the part of HTTPS nobody prices

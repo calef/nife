@@ -84,8 +84,8 @@ roughly 0.005% of a core.
 
 The high-frequency consumer is real, and identifying it is what separated the two mechanisms: a
 memory allocator keeping a per-CPU cache reads *its own* CPU on every allocation. That is
-`rseq`'s reason for existing, and Linux made it a memory read rather than a syscall because the
-vDSO path is x86-specific and impossible to implement on AArch64; the memory approach measured
+`rseq`'s reason for existing. Linux made it a memory read rather than a syscall because the
+vDSO path is x86-specific and impossible to implement on AArch64. The memory approach measured
 20x faster on x86 and 35x on ARM.
 
 **That consumer wants one thread's own CPU, not a table of everyone's**, so it carries none of the
@@ -95,9 +95,9 @@ objections above: no slot reuse, no table cap, and the page is the thread's own.
 
 - Affinity. Whether a program may *choose* where its threads run is seL4's position and remains
   open. calef's reading, 2026-09-21: placement could be a userspace program that gets smart about
-  it. Placement at thread creation is cheap and works today; re-placing a running thread needs
-  migration, which this kernel does not do and seL4 deliberately refuses, and that is a question the size of
-  §96 (process kernel or event kernel) rather than a feature.
+  it. Placement at thread creation is cheap and works today. Re-placing a running thread needs
+  migration, which this kernel does not do and seL4 deliberately refuses. That is a question the
+  size of §96 (process kernel or event kernel) rather than a feature.
 - A push mechanism for a profiler. Sampling at 1 to 4 kHz wants the kernel to push into a ring
   buffer rather than anyone to poll. Named here so a later reader does not mistake the selector's
   scope for it.
