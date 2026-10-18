@@ -23,11 +23,11 @@ spawner retains over a child after `START`)), it answers on the one unbadged res
 job shares, and `job_undertaker` holds its supervision endpoint and reaps it. The shell holds
 nothing for it once it is spawned.
 
-If every job were built from a region the shell holds, with its exit delivered to an endpoint the
-shell holds (as a screen-narrowed tail's already is, §106 (take the `terminal_sink_caretaker`
-narrowing)) and its output on the terminal's sink when it runs in the background, then job control
-would apply to every program. `wait` would be a receive on that endpoint and a `REAP`, and `kill -9`
-would be `DESTROY`.
+Suppose every job were built from a region the shell holds, with its exit delivered to an endpoint
+the shell holds, as a screen-narrowed tail's already is (§106 (take the `terminal_sink_caretaker`
+narrowing)). Then job control would apply to every program. A background job's output would go to
+the terminal's sink, `wait` would be a receive on that endpoint and a `REAP`, and `kill -9` would be
+`DESTROY`.
 
 What it costs, and why it is an architect's call rather than a lane's:
 
