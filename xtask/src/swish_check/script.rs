@@ -79,6 +79,13 @@ pub(super) static SWISH_CHECK_SCRIPT: LazyLock<Vec<Line>> = LazyLock::new(|| {
 pub(super) const SWISH_CHECK_INTERRUPTED: [&str; 4] =
     ["interrupt_heeder", "interrupt_ignorer", "wait", "fg %1"];
 
+/// **The lines after which this gate presses `^Z`** (milestone 48 (job control)), once the shell
+/// has said the job is running, as [`SWISH_CHECK_INTERRUPTED`] does for `^C`. The job is suspended
+/// and the prompt comes back, so nothing else needs pressing.
+///
+/// Name: provisional, minted 2026-10-18 (UTC) by lane/48-ctrl-z.
+pub(super) const SWISH_CHECK_SUSPENDED: [&str; 1] = ["fg"];
+
 /// What the shell prints once a supervised job is running and watched. Pressing `^C` before it
 /// would still be counted (the shell's watermark catches an early one), but after it is the case a
 /// person types, so it is the one this gate proves.

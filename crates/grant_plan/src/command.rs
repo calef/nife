@@ -147,6 +147,13 @@ pub enum Command<'a> {
     /// revoked or granted: no job holds terminal input, so foreground means the shell is watching.
     /// Name: provisional.
     Fg(&'a [u8]),
+    /// `bg [%N]`: **resume a job `^Z` stopped, without watching it**, the newest stopped job when
+    /// no operand names one. The resume is `ThreadControlBlock::RESUME` on the TCB the shell holds
+    /// for a supervised job (DECISIONS §309 (a supervised job's `ThreadControlBlock` goes to the
+    /// shell that asked for it)).
+    ///
+    /// Name: provisional, minted 2026-10-18 (UTC) by lane/48-ctrl-z.
+    Bg(&'a [u8]),
     /// A program invocation: `<prog> [--mem N] [token ...]`. Named `Run` for the act of running a
     /// program, not for a verb on the line; milestone 47 deleted the verb. A first word that is not
     /// a builtin lands here even when no such program exists, and [`plan`](crate::plan) answers

@@ -22,6 +22,13 @@ pub const OPERATION_BYTES: u64 = 3;
 /// signal: there is no non-blocking receive, so a busy-poll with `yield` is how the shell watches
 /// two things (the job and `^C`) at once until the blocking notification primitive arrives.
 pub const OPERATION_INTRCOUNT: u64 = 4;
+/// Application → terminal: how many `^Z` has the terminal seen since boot? Replied immediately
+/// (r0 = the running count). [`OPERATION_INTRCOUNT`]'s twin for job control (milestone 48 (job
+/// control)): the shell polls it while it watches a foreground job, and suspends the job when the
+/// count advances. Only the line discipline counts, so a `^Z` in raw mode is a byte to the reader.
+///
+/// Name: provisional, minted 2026-10-18 (UTC) by lane/48-ctrl-z.
+pub const OPERATION_SUSPEND_COUNT: u64 = 9;
 /// Adapter → terminal: print `len` (1..=8) bytes carried **in registers**, packed
 /// little-endian in the second word. Replied when the bytes are on the wire: r0 = bytes
 /// consumed, exactly as [`OPERATION_WRITE`] answers.

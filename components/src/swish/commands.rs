@@ -282,6 +282,7 @@ pub(super) fn dispatch_one(nav: &mut Nav, cmd: &[u8]) {
         Command::Wait(tail) => wait_jobs(&mut nav.jobs, tail),
         Command::Kill(tail) => kill_job(&mut nav.jobs, tail),
         Command::Fg(tail) => foreground(&mut nav.jobs, tail),
+        Command::Bg(tail) => resume_in_background(&mut nav.jobs, tail),
         Command::Run(spec) => run(nav, cmd, spec),
         // Handled above, by the one implementation the witness also runs.
         Command::Cd(_)

@@ -809,7 +809,9 @@ impl Service<'_> {
                 &ChildEndowment {
                     maps: &[(CHILD_JOB_PAGE_FRAME_VA, fr, abi::address_space::MAP_RW)],
                     stack_pages: CHILD_STACK_PAGES,
-                    ..ChildEndowment::new(Retention::Nothing)
+                    ..ChildEndowment::new(Retention::Requester {
+                        reason: "the shell suspends its supervised job on ^Z (DECISIONS §309)",
+                    })
                 },
             )
             .ok(),
@@ -817,6 +819,7 @@ impl Service<'_> {
         };
         match built {
             Some(child) => {
+                let tcb = child.tcb;
                 let ok = start_child(child, 0, req.arg, 0);
                 send(
                     result_ep,
@@ -828,6 +831,15 @@ impl Service<'_> {
                     0,
                     0,
                 );
+                // **The job's TCB is the one message after `SPAWN_OK`** (§309 (a supervised job's
+                // `ThreadControlBlock` goes to the shell that asked for it)): the shell receives
+                // it before anything else, so this `SEND` cannot strand. A job that did not start
+                // owes nothing, and its TCB is deleted unsent.
+                if ok {
+                    hand_to_requester(tcb, result_ep);
+                } else {
+                    forget_thread_control_block(tcb);
+                }
             }
             None if failure == spawnproto::SPAWN_NOT_IN_IMAGE => {
                 send(result_ep, failure, 0, 0);

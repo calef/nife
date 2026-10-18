@@ -35,7 +35,7 @@
 //! 2026-09-05) plus the stem, the tree's word for the restart discipline; `ChildEndowment` is an
 //! open naming question of its own (§69 (`Endow` is a verb)).
 
-use user_mode_runtime::{cap_delete, invoke};
+use user_mode_runtime::{cap_delete, invoke, send_capability};
 
 // ===========================================================================================
 // The report protocol. Every process in the tree holds a WRITE view of one report endpoint and
@@ -418,10 +418,11 @@ impl<'a> ChildEndowment<'a> {
 /// `cap_delete`, and a spawn path that forgot to decide looked exactly like one that had decided.
 ///
 /// **Nothing here can grant an authority the kernel does not offer.** A `ThreadControlBlock`
-/// capability held after `START` authorizes nothing at all: all three of its methods
-/// (`CONFIGURE`, `CAP_INSERT`, `START`) refuse anything but an `Embryo`, and the refusal is in the
-/// scheduler rather than the dispatcher. So retaining one is a claim about intent, not about power,
-/// and that is why the retaining variant has to carry a reason.
+/// capability held after `START` authorizes pausing the thread and nothing else: `CONFIGURE`,
+/// `CAP_INSERT`, `START` and `SET_THREAD_POINTER` refuse anything but an `Embryo`, and only
+/// `SUSPEND` and `RESUME` (DECISIONS §300 (the paused state, a TCB verb, silent)) act on a started
+/// thread. So keeping one, or handing it on, is a claim that someone will pause this thread, and
+/// that is why both variants that keep it carry a reason.
 ///
 /// # Examples
 ///
@@ -456,6 +457,16 @@ pub enum Retention {
     /// still say nothing; what it cannot do is say nothing invisibly.
     ThreadControlBlock {
         /// Why this spawner keeps the capability, in the words a reader of the call site needs.
+        reason: &'static str,
+    },
+    /// The spawner hands the child's `ThreadControlBlock` capability to whoever asked for the
+    /// child, and keeps no copy (DECISIONS §309 (a supervised job's `ThreadControlBlock` goes to
+    /// the shell that asked for it)). [`start_child`] leaves the slot alone; the caller sends it on
+    /// and deletes it. The reason is required for [`ThreadControlBlock`](Retention::ThreadControlBlock)'s.
+    ///
+    /// Name: provisional, minted 2026-10-18 (UTC) by lane/48-ctrl-z.
+    Requester {
+        /// Why the requester holds the capability, in the words a reader of the call site needs.
         reason: &'static str,
     },
 }
@@ -962,11 +973,33 @@ pub fn start_child(child: Child, a0: u64, a1: u64, a2: u64) -> bool {
     // SAFETY: as above: the kernel validates the capability and the method.
     let started = unsafe { invoke(child.tcb, abi::thread_control_block::START, a0, a1, a2) == 0 };
     match child.retention {
-        Retention::Nothing => cap_delete(child.tcb),
+        Retention::Nothing => forget_thread_control_block(child.tcb),
         // The reason is the caller's, recorded at the call site; nothing here reads it.
-        Retention::ThreadControlBlock { reason: _ } => {}
+        Retention::ThreadControlBlock { reason: _ } | Retention::Requester { reason: _ } => {}
     }
     started
+}
+
+/// **Hand a started child's `ThreadControlBlock` to whoever asked for it**, the second half of
+/// [`Retention::Requester`] (DECISIONS §309 (a supervised job's `ThreadControlBlock` goes to the
+/// shell that asked for it)). The capability goes on `endpoint` narrowed to `WRITE`, which is what
+/// `SUSPEND` and `RESUME` need, and without `GRANT`, so the requester can pause the child and
+/// cannot pass that on. The builder's own slot is deleted whether or not the send succeeded: a
+/// send fails only when nobody is left on `endpoint` to want the capability.
+///
+/// Name: provisional, minted 2026-10-18 (UTC) by lane/48-ctrl-z.
+pub fn hand_to_requester(tcb: u64, endpoint: u64) {
+    let _ = send_capability(endpoint, tcb, abi::rights::WRITE, 0);
+    forget_thread_control_block(tcb);
+}
+
+/// **Delete the builder's slot for a child's TCB**: [`start_child`]'s [`Retention::Nothing`],
+/// [`hand_to_requester`] after its send, and a builder whose child never started, which owes its
+/// requester nothing.
+///
+/// Name: provisional, minted 2026-10-18 (UTC) by lane/48-ctrl-z.
+pub fn forget_thread_control_block(tcb: u64) {
+    cap_delete(tcb);
 }
 
 /// Trap. A half-built system is not worth limping along, and a fault is legible: the kernel prints

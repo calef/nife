@@ -1,7 +1,9 @@
 //! **Interruptible jobs**, the shell's side of the two-tier `^C` path (DECISIONS §24
 //! (interrupting the foreground process)): `spawn_interruptible`, `watch`, `forcible` and `reclaim`.
-//! And **background jobs** (milestone 48 (job control), phase one): a trailing `&`, `jobs`,
-//! `wait`, `kill` and `fg`, all acting on the capabilities this shell holds for a supervised job.
+//! And **job control** (milestone 48 (job control)): a trailing `&`, `jobs`, `wait`, `kill`, `fg`,
+//! `bg` and `^Z`, all acting on the capabilities this shell holds for a supervised job, its TCB
+//! included (DECISIONS §309 (a supervised job's `ThreadControlBlock` goes to the shell that asked
+//! for it)).
 //!
 //! # BUGS
 //!
@@ -69,30 +71,58 @@ pub(super) static CONSUMED: core::sync::atomic::AtomicU64 = core::sync::atomic::
 /// Run a supervised foreground job: mint its resources from our own budget, direct the progenitor to build it
 /// from a region we hold, then watch it under the two-tier `^C` escalation until it stops or we tear
 /// it down. This is the whole of DECISIONS §24 on the shell's side.
-pub(super) fn spawn_interruptible(e: Endowment) {
+pub(super) fn spawn_interruptible(jobs: &mut Jobs, e: Endowment) {
     let Some(h) = start_supervised(e, true) else {
         return;
     };
     print(b"  running ");
     print(h.program.name().as_bytes());
-    print(b" in the foreground. ^C interrupts it.\n");
-    watch_to_the_end(h);
+    print(b" in the foreground. ^C interrupts it. ^Z suspends it.\n");
+    watch_to_the_end(jobs, h);
 }
 
-/// Watch a job in the foreground until it ends, then account for every `^C` it was sent and give
-/// back the capabilities this shell held for it.
-fn watch_to_the_end(h: Held) {
-    watch(h.jf, h.job_ut);
-    // Account for every ^C up to now, so the job's interrupts do not leak into the next one.
+/// Watch a job in the foreground until it ends or is suspended. An ended job's `^C` are accounted
+/// for and its capabilities given back; a suspended one goes into `jobs`, stopped, and the prompt
+/// comes back.
+fn watch_to_the_end(jobs: &mut Jobs, mut h: Held) {
+    let suspended = watch(&h);
+    // Account for every ^C and ^Z up to now, so this job's keys do not leak into the next one.
     CONSUMED.store(intr_count(), core::sync::atomic::Ordering::Relaxed);
-    release(h);
+    SUSPENDS_SEEN.store(suspend_count(), core::sync::atomic::Ordering::Relaxed);
+    if !suspended {
+        return release(h);
+    }
+    h.stopped = true;
+    if h.started == 0 {
+        jobs.started += 1;
+        h.started = jobs.started;
+    }
+    let Some(i) = jobs.held.iter().position(Option::is_none) else {
+        // Nowhere to list it, and a stopped job nobody can name would never run again.
+        thread_control_block_resume(h.tcb);
+        refused();
+        print(
+            b"  this shell holds as many jobs as it can list; the job runs on in the foreground\n",
+        );
+        h.stopped = false;
+        return watch_to_the_end(jobs, h);
+    };
+    jobs.held[i] = Some(h);
+    print_job(i + 1, &h);
+    print(b" stopped\n");
 }
 
-/// Give back the slots this shell held for a job. If the job was reclaimed, the region's slot is
-/// already stale and deleting it only frees the slot.
+/// Give back the slots this shell held for a job. If the job was reclaimed, every slot is already
+/// stale and deleting it only frees the slot.
 fn release(h: Held) {
-    cap_delete(h.job_fr);
-    cap_delete(h.job_ut);
+    give_back(h.job_fr, h.job_ut);
+    supervision_protocol::forget_thread_control_block(h.tcb);
+}
+
+/// Delete this shell's slots for a job's frame and region, on every path that ends with them.
+fn give_back(job_fr: u64, job_ut: u64) {
+    cap_delete(job_fr);
+    cap_delete(job_ut);
 }
 
 /// **Mint, direct and start a supervised job**, and hand back what this shell holds for it once the
@@ -116,15 +146,13 @@ fn start_supervised(e: Endowment, foreground: bool) -> Option<Held> {
     // Map the shared frame into our own space so we can signal the job and read its status.
     let va = SH_JOBFRAME_NEXT.fetch_add(PAGE, core::sync::atomic::Ordering::Relaxed);
     if !JOBFRAME_WINDOWS.contains(&va) {
-        cap_delete(job_fr);
-        cap_delete(job_ut);
+        give_back(job_fr, job_ut);
         failed();
         print(b"  this shell has run as many supervised jobs as it has room to watch\n");
         return None;
     }
     if !map_page_frame(job_fr, va) {
-        cap_delete(job_fr);
-        cap_delete(job_ut);
+        give_back(job_fr, job_ut);
         failed();
         print(b"  could not map the job frame\n");
         return None;
@@ -189,6 +217,7 @@ fn start_supervised(e: Endowment, foreground: bool) -> Option<Held> {
     if foreground {
         leave_raw();
         CONSUMED.store(intr_count(), core::sync::atomic::Ordering::Relaxed);
+        SUSPENDS_SEEN.store(suspend_count(), core::sync::atomic::Ordering::Relaxed);
     }
     send(SPAWN, w0, w1, w2);
     delegate(job_ut, abi::rights::ALL);
@@ -199,26 +228,35 @@ fn start_supervised(e: Endowment, foreground: bool) -> Option<Held> {
     if answer != spawnproto::SPAWN_OK {
         failed();
         print(swish::spawn_failure_sentence(answer));
-        cap_delete(job_fr);
-        cap_delete(job_ut);
+        give_back(job_fr, job_ut);
         return None;
     }
+    // **The job's TCB, the one message after `SPAWN_OK`** (DECISIONS §309 (a supervised job's
+    // `ThreadControlBlock` goes to the shell that asked for it)), received before anything else
+    // because the progenitor is blocked sending it. `WRITE` without `GRANT`: this shell can
+    // suspend and resume its job and cannot pass that on.
+    let (_, tcb, _) = receive_cap(RESULT);
     Some(Held {
         jf,
         job_ut,
         job_fr,
+        tcb,
         program: e.program,
         started: 0,
+        stopped: false,
     })
 }
 
-/// Watch a running supervised job: poll its done flag and the terminal's `^C` count, drive the
-/// escalation policy, and act. The busy-poll with `yield` is how one thread watches two things (the
-/// job and `^C`) with only blocking primitives and no non-blocking receive (DECISIONS §24, wait A).
-pub(super) fn watch(jf: MappedWindow, job_ut: u64) {
+/// Watch a running supervised job: poll its done flag and the terminal's `^C` and `^Z` counts,
+/// drive the escalation policy, and act. The busy-poll with `yield` is how one thread watches
+/// three things with only blocking primitives and no non-blocking receive (DECISIONS §24, wait A).
+/// `true` means a `^Z` suspended the job, which is still held; `false` means it is over.
+pub(super) fn watch(h: &Held) -> bool {
+    let (jf, job_ut) = (h.jf, h.job_ut);
     // The baseline is the session watermark, not a fresh read: a ^C counted during the spawn is
     // already reflected in intr_count but not yet in CONSUMED, so diffing against CONSUMED sees it.
     let base = CONSUMED.load(core::sync::atomic::Ordering::Relaxed);
+    let suspends = SUSPENDS_SEEN.load(core::sync::atomic::Ordering::Relaxed);
     let mut esc = Escalation::new();
     let mut fed: u64 = 0;
     loop {
@@ -228,7 +266,13 @@ pub(super) fn watch(jf: MappedWindow, job_ut: u64) {
             let beats = jf.read::<u64>(job_page_frame::HEARTBEAT as u64);
             reclaim(job_ut);
             report_finished(status, beats);
-            return;
+            return false;
+        }
+        // **`^Z`: suspend it and give the prompt back** (milestone 48 (job control), §300 (the
+        // paused state, a TCB verb, silent)). A refusal means the job ended in the same instant,
+        // and the next pass finds it done.
+        if suspend_count() != suspends && thread_control_block_suspend(h.tcb) == 0 {
+            return true;
         }
         // Fold in every ^C the terminal has seen since we started watching.
         let n = intr_count().wrapping_sub(base);
@@ -250,7 +294,7 @@ pub(super) fn watch(jf: MappedWindow, job_ut: u64) {
             }
             Action::Forcible => {
                 forcible(job_ut);
-                return;
+                return false;
             }
             Action::None => {}
         }
@@ -368,6 +412,17 @@ fn map_page_frame(slot: u64, va: u64) -> bool {
     user_mode_runtime::map_page_frame(slot, va, true, BUDGET)
 }
 
+/// The terminal's `^Z` count already accounted for, [`CONSUMED`]'s twin: taken when a job comes to
+/// the foreground, so only a `^Z` typed while it is watched suspends it.
+static SUSPENDS_SEEN: core::sync::atomic::AtomicU64 = core::sync::atomic::AtomicU64::new(0);
+
+/// Ask the terminal how many `^Z` it has seen (`proto::OPERATION_SUSPEND_COUNT`). A terminal that
+/// does not count them answers `BAD_REQUEST`, read here as a count that never moves.
+fn suspend_count() -> u64 {
+    let n = call(TERM, proto::req(proto::OPERATION_SUSPEND_COUNT, 0), 0).0;
+    if n == proto::BAD_REQUEST { 0 } else { n }
+}
+
 /// Ask the terminal how many `^C` it has seen (a non-blocking poll; see `proto::OPERATION_INTRCOUNT`).
 pub(super) fn intr_count() -> u64 {
     call(TERM, proto::req(proto::OPERATION_INTRCOUNT, 0), 0).0
@@ -381,14 +436,18 @@ pub(super) fn intr_count() -> u64 {
 pub(super) const MAX_JOBS: usize = 8;
 
 /// **What this shell holds for one supervised job**: the shared frame it signals and reads, the
-/// region the job was built from, and the frame's capability. Nothing else is needed to watch it,
-/// ask it to stop, or tear it down, which is why a job is exactly this.
+/// region the job was built from, the frame's capability and the job's TCB. Nothing else is needed
+/// to watch it, ask it to stop, pause it, or tear it down, which is why a job is exactly this.
 #[derive(Clone, Copy)]
 pub(super) struct Held {
     jf: MappedWindow,
     job_ut: u64,
     job_fr: u64,
+    /// `WRITE` on the job's thread, for `SUSPEND` and `RESUME` (DECISIONS §309).
+    tcb: u64,
     program: grant_plan::Program,
+    /// Suspended by `^Z`, and not running until `bg` or `fg` resumes it.
+    stopped: bool,
     /// When it went into the background, counted in jobs started, so `fg` with no operand takes
     /// the newest. Zero for a job that never left the foreground.
     started: u64,
@@ -524,6 +583,8 @@ pub(super) fn list_jobs(jobs: &mut Jobs) {
             print(b" work units\n");
             jobs.take(n);
             collect(h);
+        } else if h.stopped {
+            print(b" stopped\n");
         } else {
             print(b" running\n");
         }
@@ -552,6 +613,10 @@ pub(super) fn wait_jobs(jobs: &mut Jobs, tail: &[u8]) {
         let mut left = 0;
         for n in (1..=MAX_JOBS).filter(|&n| waited(n)) {
             let Some(h) = jobs.get(n) else { continue };
+            // A stopped job will not finish until it is resumed, so it is not waited for.
+            if h.stopped {
+                continue;
+            }
             if !h.done() {
                 left += 1;
                 continue;
@@ -589,6 +654,14 @@ pub(super) fn kill_job(jobs: &mut Jobs, tail: &[u8]) {
     };
     if !force {
         h.jf.write(job_page_frame::INTERRUPT as u64, 1u64);
+        // A stopped job is resumed so it can see the request, which is bash's `kill` on a stopped
+        // job: the signal, then `SIGCONT`. It runs on in the background.
+        if h.stopped
+            && let Some(held) = jobs.held[n - 1].as_mut()
+        {
+            thread_control_block_resume(h.tcb);
+            held.stopped = false;
+        }
         print(b"  asked job ");
         print_num(n as u64);
         print(b" to stop\n");
@@ -604,21 +677,53 @@ pub(super) fn kill_job(jobs: &mut Jobs, tail: &[u8]) {
     }
 }
 
-/// `fg [%N]`: watch a background job as if it had been started in the foreground. Nothing is
-/// revoked or granted, because no job holds terminal input; foreground is the shell watching.
+/// `fg [%N]`: watch a background job as if it had been started in the foreground, resuming it
+/// first if it is stopped. Nothing is revoked or granted, because no job holds terminal input;
+/// foreground is the shell watching.
 pub(super) fn foreground(jobs: &mut Jobs, tail: &[u8]) {
     let n = match grant_plan::job_operand(tail) {
         Ok(Some(n)) => Some(n),
         Ok(None) => jobs.newest(),
         Err(()) => None,
     };
-    let Some(h) = n.and_then(|n| jobs.take(n)) else {
+    let Some(mut h) = n.and_then(|n| jobs.take(n)) else {
         return no_such_job(b"fg");
     };
     leave_raw();
     CONSUMED.store(intr_count(), core::sync::atomic::Ordering::Relaxed);
+    SUSPENDS_SEEN.store(suspend_count(), core::sync::atomic::Ordering::Relaxed);
+    if h.stopped {
+        thread_control_block_resume(h.tcb);
+        h.stopped = false;
+    }
     print(b"  running ");
     print(h.program.name().as_bytes());
-    print(b" in the foreground. ^C interrupts it.\n");
-    watch_to_the_end(h);
+    print(b" in the foreground. ^C interrupts it. ^Z suspends it.\n");
+    watch_to_the_end(jobs, h);
+}
+
+/// `bg [%N]`: resume a stopped job without watching it, the newest stopped job when no operand
+/// names one. It runs on in the background, where `jobs`, `wait`, `kill` and `fg` find it.
+pub(super) fn resume_in_background(jobs: &mut Jobs, tail: &[u8]) {
+    let n = match grant_plan::job_operand(tail) {
+        Ok(Some(n)) => Some(n),
+        Ok(None) => (1..=MAX_JOBS)
+            .filter_map(|n| jobs.get(n).filter(|h| h.stopped).map(|h| (h.started, n)))
+            .max()
+            .map(|(_, n)| n),
+        Err(()) => None,
+    };
+    let Some((n, held)) = n.and_then(|n| jobs.held.get_mut(n - 1)?.as_mut().map(|h| (n, h))) else {
+        return no_such_job(b"bg");
+    };
+    if !held.stopped {
+        refused();
+        print(b"  bg: that job is already running\n");
+        return;
+    }
+    thread_control_block_resume(held.tcb);
+    held.stopped = false;
+    let h = *held;
+    print_job(n, &h);
+    print(b" running in the background\n");
 }
