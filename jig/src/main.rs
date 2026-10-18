@@ -444,21 +444,8 @@ fn addresses(c: &Configured<'_>) -> Result<Vec<SocketAddr>, String> {
     }
     Ok((c.repository.host, port)
         .to_socket_addrs()
-        .map_err(|e| why(&e))?
+        .map_err(|e| format!("not resolved: {}", listed::reason(&e)))?
         .collect())
-}
-
-/// An I/O error's kind, then its message when it carries one. The kind alone hid which of the
-/// resolver's four network steps failed (`NetworkUnreachable` covers all four), and a bench
-/// transcript is often the only evidence there is.
-fn why(e: &std::io::Error) -> String {
-    let kind = format!("{:?}", e.kind());
-    let text = e.to_string();
-    if text == e.kind().to_string() {
-        kind
-    } else {
-        format!("{kind} ({text})")
-    }
 }
 
 /// **One `GET` over TLS**, connected to one of `to` and speaking to `server_name`, pinned to
@@ -473,7 +460,7 @@ fn get(
     body: impl FnMut(&[u8]),
 ) -> Result<(), String> {
     let peer = PinnedPeer::new(server_name, root).map_err(|e| format!("{e:?}"))?;
-    let tcp = TcpStream::connect(to).map_err(|e| why(&e))?;
+    let tcp = TcpStream::connect(to).map_err(|e| listed::reason(&e))?;
     let session = Session::handshake(&peer, tcp).map_err(|e| format!("{e:?}"))?;
     match session.get(path, body) {
         Ok(200) => Ok(()),
