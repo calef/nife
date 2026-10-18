@@ -20,4 +20,4 @@ individually revocable object. **Triggers to build:** (1) a socket needs to be d
 third process; (2) milestone 23's hot-swap work wants per-connection revocation during a net
 server swap. For the first, the id is meaningless outside the holder of the stack cap, which is a
 feature until it is a limit. The contract keeps the shared frame as the per-connection resource
-precisely so this migration changes the handle, not the data plane.
+so this migration changes the handle, not the data plane.
