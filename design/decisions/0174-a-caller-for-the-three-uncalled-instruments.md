@@ -58,10 +58,10 @@ Read against that, the three sort themselves:
 
 `script/ci-build`'s own header says, in capitals, that **the tier tags and the no-argument meaning
 are PROVISIONAL pending calef**, and points at milestone 440 (*What `script/ci-build` with no
-arguments should mean*), which is also one of milestone 435's 45 blocks and is held by another
-slice. 400 decides how a tier is *spelled* and what no arguments *defaults to*; this decides which
-tier three specific checks take. They are separable and they are cheaper to answer together, since
-both are read off the same table.
+arguments should mean*). That milestone is also one of milestone 435's 45 blocks and is held by
+another slice. 400 decides how a tier is *spelled* and what no arguments *defaults to*; this
+decides which tier three specific checks take. They are separable and they are cheaper to answer
+together, since both are read off the same table.
 
 ## The options, per instrument
 
@@ -84,8 +84,8 @@ finds it wrong. What is not reversible is leaving a fatal risk resting on somebo
 is the standing cost of not answering.
 
 And question 7, answered out loud: yes, this recommendation would stand if all three options
-cost the same to implement, because the argument is about what a developer should have to wait for
-rather than about what is easier to wire. All three placements are a single line.
+cost the same to implement. That is because the argument is about what a developer should have to
+wait for rather than about what is easier to wire. All three placements are a single line.
 
 ## What is blocked until this is answered
 
@@ -95,5 +95,5 @@ of the three are expensive enough that "run it in CI" changes what a pull reques
 ## What this does not decide
 
 Nothing about whether these checks should be required in the merge queue's ruleset, which is
-[§97](0097-advisory-checks.md)'s question and a different one: §97 asks whether a red check may stop a
-merge, and this asks whether anything runs the check at all.
+[§97](0097-advisory-checks.md)'s question and a different one. §97 asks whether a red check
+may stop a merge, and this asks whether anything runs the check at all.

@@ -7,10 +7,11 @@ ratified_by: calef
 
 # 175. Where the kernel's own output goes once userspace owns the console
 
-Raised 2026-09-19 by milestone 435 (forty-five milestones are gated on a decision nobody wrote down)'s slice B, which read milestone 342 (the kernel and the `console` server drive one UART from two address spaces)'s
-`DECISION` gate and found it naming no section. Milestone 230 named the fork while fixing something
-else, and the 2026-09-03 proposal sweep carried it forward. *(Section number provisional until the
-merge queue lands it.)*
+Raised 2026-09-19 by milestone 435 (forty-five milestones are gated on a decision nobody wrote
+down)'s slice B. That slice read milestone 342 (the kernel and the `console` server drive one UART
+from two address spaces)'s `DECISION` gate and found it naming no section. Milestone 230 named the
+fork while fixing something else, and the 2026-09-03 proposal sweep carried it forward. *(Section
+number provisional until the merge queue lands it.)*
 
 ## The ruling
 
@@ -37,8 +38,8 @@ Options and why each lost, from `notes/kernel-console-arbitration-pricing.md`:
   kernel: get the message out, spliced or not.
 - **C (a claim, respected except in a panic)** and **D (leave it)** are superseded, not refused: the
   pricing note (part 4) shows B-with-escape is C wearing a buffer. Outside a panic the buffer removes
-  the byte-granularity splice C could only avoid by waiting; in a panic it behaves exactly as C's
-  claim would; and a dead drainer degrades to a counted fallback rather than either D's constant
+  the byte-granularity splice C could only avoid by waiting. In a panic it behaves exactly as C's
+  claim would. A dead drainer degrades to a counted fallback rather than either D's constant
   splicing or a silent void.
 
 ## What is being decided
@@ -54,15 +55,15 @@ server takes and the kernel respects except in a panic, or something else.
 ## Why it is not a bug to fix
 
 It corrupts every bench session on argon, radon and xenon, where a serial log is the only thing
-those machines can say, and milestone 216 (nothing in this tree can read a board) built a tool whose contract is recognizing a boot sequence
-in that stream. Interleaved bytes break that contract in the least visible way available: the log is
-present, it looks like output, and the line being matched has a kernel message spliced through the
-middle of it.
+those machines can say. Milestone 216 (nothing in this tree can read a board) built a tool whose
+contract is recognizing a boot sequence in that stream. Interleaved bytes break that contract in the
+least visible way available: the log is present, it looks like output, and the line being matched
+has a kernel message spliced through the middle of it.
 
 Nothing in `design/decisions/` answers it, checked 2026-09-19.
-[§149](0149-kernel-served-console-endpoint.md) is the nearest and is a different question: it asked
-whether the kernel may *answer on an endpoint* where §121 left x86 without a userspace holder, and
-it was resolved on 2026-09-15 by dissolving that premise, so x86's console is a userspace driver like
+[§149](0149-kernel-served-console-endpoint.md) is the nearest and is a different question. It asked
+whether the kernel may *answer on an endpoint* where §121 left x86 without a userspace holder. It
+was resolved on 2026-09-15 by dissolving that premise, so x86's console is a userspace driver like
 the other two. That makes the interleaving question more live rather than less, because all three
 architectures now reach the shape that produces it.
 

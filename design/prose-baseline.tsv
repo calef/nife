@@ -11,16 +11,6 @@
 # two counts). Median and bold are not asked of documents under 200 words.
 # measure: 3
 path	words	median	longest	bold_lead	bold_inline
-design/decisions/0171-where-a-program-image-starts.md	-	-	42	-	-
-design/decisions/0172-credential-endpoint-per-resource.md	-	-	44	-	-
-design/decisions/0173-narrowing-the-namespace-root.md	-	-	42	-	-
-design/decisions/0174-a-caller-for-the-three-uncalled-instruments.md	-	-	45	-	-
-design/decisions/0175-kernel-console-arbitration.md	-	-	48	-	-
-design/decisions/0177-measured-numbers-in-the-front-door-file.md	-	-	47	-	-
-design/decisions/0179-console-server-with-no-client.md	-	-	50	-	-
-design/decisions/0180-a-third-program-directory.md	-	-	50	-	-
-design/decisions/0182-provenance-for-wire-visible-names.md	-	-	53	-	-
-design/decisions/0183-what-no-arguments-means.md	-	-	46	-	-
 design/decisions/0184-an-x86-64-host-in-the-host-pass.md	-	-	49	-	-
 design/decisions/0185-composing-a-process-from-two-capabilities.md	-	-	43	-	-
 design/decisions/0187-crates-for-the-numbers-a-kernel-test-and-its-program-agree-on.md	-	-	52	-	-
