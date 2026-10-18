@@ -153,7 +153,7 @@ cd <checkout>/target && screen -L /dev/cu.usbserial-<id> 115200     # ctrl-a k e
 | `index updated: N packages for x86_64, from basalt.nifeos.org over TLS` | the index came by name over pinned TLS |
 | `fetched ioping-1.3-x86_64 from ... over TLS`, then `fetched and installed; generation N is live` | milestone 801's exit criterion is met |
 | `ioping 1.3` | the installed program runs |
-| `index unreachable at basalt.nifeos.org: NetworkUnreachable (<step>)` | the resolver was refused a network step, and the parenthesis names which |
+| `index unreachable at basalt.nifeos.org: not resolved: <kind> (<step>)` | the name did not resolve; the parenthesis names the resolver's failed step |
 | `index unreachable at basalt.nifeos.org: <other>` | the name resolved and the connection or TLS failed; the text says which |
 | `passed over https://...: <why>` | the Release location was refused; `jig` falls back to Pages' `targets/` |
 | `no source sent the package; nothing was installed` or `refused: the index does not vouch for the bytes` | a fetch or digest failure; stop |
