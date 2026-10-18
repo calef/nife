@@ -37,8 +37,7 @@
 //!   sizing, useless for iterating, which is the selector's question.
 //!
 //! Name: ratified 2026-10-17 (calef): "Yes". `current_cpu` is the field's own word for this
-//! quantity, `cpu` is ruled in design/naming.md (2026-10-03), and the suffix follows
-//! `counter_frequency_contract`.
+//! quantity (`cpu` is ruled in design/naming.md, 2026-10-03); the suffix follows its sibling.
 
 #![cfg_attr(not(test), no_std)]
 
