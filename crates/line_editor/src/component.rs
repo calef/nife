@@ -106,7 +106,8 @@ pub const DISPLAY: Requirements = Requirements {
 /// Start arguments: the output sink's mode (`line_editor`'s own `MODE_CONSOLE` = 0 or
 /// `MODE_DISPLAY` = 1), the length of the `line_editor` image copied to [`ELF_VA`](supervisor::ELF_VA), and the slot
 /// of an endpoint to receive swap requests on, `0` for none (a boot today: the trigger is
-/// milestone 198 (a package manager, and the trivial install)'s installer and is not built).
+/// milestone 198 (a package manager, and the trivial install)'s installer, ruled by §308 (the
+/// installer asks the terminal to swap) and not built).
 ///
 /// Name: provisional (the lane for milestone 23, 2026-09-27), for the module and every constant
 /// in it. `terminal_supervisor` itself is calef's to name.

@@ -60,8 +60,8 @@ What is built:
   three architectures: a line half typed before the swap finishes after it, and history typed
   before it is recalled after it. `script/swish-check`, plain and graphical, boots through it.
 
-What is left is the trigger, which `design/roadmap/0694-the-installer-asks-the-terminal-to-swap.md`
-sets out.
+What is left is the trigger. [§308 (the installer asks the terminal to swap)](../design/decisions/0308-the-installer-asks-the-terminal-to-swap.md)
+rules it, and `design/roadmap/0694-the-installer-asks-the-terminal-to-swap.md` builds it.
 
 ## display_terminal: a declaration and a handoff
 
