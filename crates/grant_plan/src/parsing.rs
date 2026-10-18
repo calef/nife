@@ -224,7 +224,9 @@ pub fn parse(line: &[u8]) -> Command<'_> {
 
 /// **Which job an operand names** (milestone 48): `%N` or a bare `N`, counted from one as `jobs`
 /// prints them. `Ok(None)` is an empty operand, which `wait` reads as every job and `fg` as the
-/// most recent; `Err(())` is anything else, which names no job. Name: provisional.
+/// most recent; `Err(())` is anything else, which names no job.
+///
+/// Name: provisional, minted 2026-10-18 (UTC) by milestone/48-job-control.
 ///
 /// ```
 /// use grant_plan::job_operand;
@@ -254,7 +256,9 @@ pub fn job_operand(tail: &[u8]) -> Result<Option<usize>, ()> {
 
 /// **`kill`'s operands** (milestone 48): whether `-9` asked for the forcible tier, and the job.
 /// A job is required, because `kill` with nothing named would have to guess which job to stop.
-/// Name: provisional.
+///
+///
+/// Name: provisional, minted 2026-10-18 (UTC) by milestone/48-job-control.
 ///
 /// ```
 /// use grant_plan::kill_operands;

@@ -202,7 +202,9 @@ pub fn split(line: &[u8]) -> Result<Sequence<'_>, Refusal> {
 /// else stays an ordinary byte, so `echo a & b` still prints its `&`; bash's `a & b`, two commands
 /// with the first in the background, has no spelling yet. What comes back is trimmed and may hold
 /// connectors or be empty: the shell refuses those, since backgrounding a chain is a different
-/// claim than backgrounding one job. Name: provisional.
+/// claim than backgrounding one job.
+///
+/// Name: provisional, minted 2026-10-18 (UTC) by milestone/48-job-control.
 ///
 /// ```
 /// use swish::sequence::background;
