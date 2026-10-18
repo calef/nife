@@ -66,7 +66,7 @@ pub const UNIX_DELTA: u64 = 2_208_988_800;
 /// The number of NTP fraction ticks in one second: 2<sup>32</sup>. One tick is about 233 ps, which
 /// is finer than a nanosecond, which is why nanoseconds survive a round trip through a
 /// [`Timestamp`] and arbitrary tick values do not.
-pub const TICKS_PER_SEC: u64 = 1 << 32;
+pub(crate) const TICKS_PER_SEC: u64 = 1 << 32;
 
 const NANOS_PER_SEC: u64 = 1_000_000_000;
 
@@ -84,12 +84,12 @@ pub const UNIX_MIN: u64 = 0;
 /// earlier, so [`Timestamp::from_unix`] refuses it rather than returning a wrong answer.
 /// `UNIX_MIN..UNIX_LIMIT` is exactly the range over which Unix → NTP → Unix is the identity, and
 /// that is the property Kani proves.
-pub const UNIX_LIMIT: u64 = (TICKS_PER_SEC - UNIX_DELTA) + (1 << 31);
+pub(crate) const UNIX_LIMIT: u64 = (TICKS_PER_SEC - UNIX_DELTA) + (1 << 31);
 
 /// The highest stratum a synchronised server may claim (RFC 5905 `MAXSTRAT`). 1 is a reference
 /// clock, 15 is fifteen hops from one, 16 means "unsynchronised" and anything above is reserved.
 /// A reply outside `1..=15` is not a time source ([`Reject::Stratum`]).
-pub const MAX_STRATUM: u8 = 15;
+pub(crate) const MAX_STRATUM: u8 = 15;
 
 /// The root distance we refuse outright, in [`Short`] units: 16 seconds, RFC 5905's `MAXDISP`.
 ///
@@ -99,12 +99,12 @@ pub const MAX_STRATUM: u8 = 15;
 /// describing something the protocol cannot mean; a server 200 ms away over a bad path is merely a
 /// poor sample, and deciding what to do with a poor sample is the service's call, made with the
 /// other samples in front of it.
-pub const MAX_ROOT_DISTANCE: Short = Short(16 << 16);
+pub(crate) const MAX_ROOT_DISTANCE: Short = Short(16 << 16);
 
 /// The poll interval a request advertises, as log2 seconds: 6, which is 64 seconds. The server does
 /// not act on it for a unicast client; it exists so the packet is well-formed and so a server that
 /// rate-limits can see we are not asking often.
-pub const DEFAULT_POLL: i8 = 6;
+pub(crate) const DEFAULT_POLL: i8 = 6;
 
 /// The NTP mode field (RFC 5905 §7.3). Three bits, in the low bits of the first octet.
 pub mod mode {
@@ -132,7 +132,7 @@ pub mod leap {
     pub const DELETE: u8 = 2;
     /// **The clock is not synchronised.** The server is telling us its own time is not to be
     /// trusted, and [`super::Query::accept`] believes it.
-    pub const UNSYNCHRONISED: u8 = 3;
+    pub(crate) const UNSYNCHRONISED: u8 = 3;
 }
 
 // =================================================================================================
@@ -172,7 +172,7 @@ impl Timestamp {
     }
 
     /// The fraction field, in units of 2<sup>-32</sup> s.
-    pub const fn fraction(self) -> u32 {
+    pub(crate) const fn fraction(self) -> u32 {
         self.0 as u32
     }
 
@@ -470,13 +470,13 @@ impl Packet {
     /// dispersion. The server's own claim about how far from a real clock it is. Compared against
     /// [`MAX_ROOT_DISTANCE`] by [`Query::accept`]; saturating, so a server claiming the maximum of
     /// both fields gets a large answer rather than a wrapped small one.
-    pub const fn root_distance(&self) -> Short {
+    pub(crate) const fn root_distance(&self) -> Short {
         Short((self.root_delay.0 / 2).saturating_add(self.root_dispersion.0))
     }
 
     /// Is the reference id a kiss code? True exactly when the stratum is 0, which is what makes the
     /// four bytes ASCII (`DENY`, `RSTR`, `RATE`) instead of an address. See [`Reject::KissOfDeath`].
-    pub const fn is_kiss_of_death(&self) -> bool {
+    pub(crate) const fn is_kiss_of_death(&self) -> bool {
         self.stratum == 0
     }
 }
