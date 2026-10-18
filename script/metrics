@@ -1349,7 +1349,8 @@ def names(tree):
     this series deviates from `milestones()` and `decisions()` above, and the deviation is the
     honest part. A surface with no block has said nothing, and counting that silence as
     `unrecorded` would put a claim in the record that nobody made, which is the failure
-    `script/names` refuses one directory over. So before milestone 115 invented the convention on
+    `script/names` refuses one directory over. So before milestone 115 (the names that were
+    ratified, and the ones that were refused) invented the convention on
     2026-08-04 the four columns are zero and `names_total` is the whole vocabulary of the tree. A
     block that fails `script/names`' form checks counts toward the total and toward no status.
     `script/lint` runs `script/names --check`, so on `main` the gap is zero.

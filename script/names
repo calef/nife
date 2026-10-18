@@ -145,10 +145,10 @@ import sys
 root, mode = sys.argv[1], sys.argv[2]
 
 # The enumeration and the `Name:` block parse this script shares with `script/metrics`, in one place
-# rather than copied into both: milestone 236's rule (three derivations were copied between scripts,
-# and nothing noticed when they drifted). `dont_write_bytecode` because the
-# import would otherwise leave a `helpers/__pycache__/` behind on every run, which is an untracked
-# directory a gate has no business creating.
+# rather than copied into both, by milestone 236 (three derivations are copied between scripts, and
+# nothing notices when they drift). `dont_write_bytecode` because the import would otherwise leave
+# a `helpers/__pycache__/` behind on every run, which is an untracked directory a gate has no
+# business creating.
 sys.dont_write_bytecode = True
 sys.path.insert(0, os.path.join(root, "helpers"))
 import name_census                                                          # noqa: E402
@@ -160,8 +160,8 @@ import name_ruled                                                           # no
 # `script/metrics`, which counts the same names out of each week's `git ls-tree`. What stays HERE is
 # the sourcing: a gate is asked about the tree in front of it, so this passes every tracked or
 # untracked-and-not-ignored file that exists on disk, and reads each one from disk. `helpers/` (the
-# helper drawer) is out of scope; milestone 446 priced and refused it, and
-# design/naming/provenance-limits.md carries the reason.
+# helper drawer) is out of scope; milestone 446 (the naming worklist says what it covers) priced and
+# refused it, and design/naming/provenance-limits.md carries the reason.
 #
 # `package` is a PROVISIONAL name for the kind (an architect names things). It is Cargo's own word,
 # which is the argument for it, and it is imprecise against Cargo's strict taxonomy, where a package
@@ -173,9 +173,10 @@ import name_ruled                                                           # no
 # **Why that kind had to exist** (calef, 2026-08-18). `script/names std_exerciser` answered "neither
 # a name in the tree nor a recorded refusal" for weeks, because the three surfaces before it were
 # the only places this tool looked. Eight packages live outside `crates/` and not one carried a
-# provenance block, so milestone 115's whole claim, that a name's provenance lives beside the name,
-# was false for every one of them, silently. A registry with a hole is worse than no registry: it
-# answers confidently about the names it happens to cover.
+# provenance block, so the claim of milestone 115 (the names that were ratified, and the ones that
+# were refused), that a name's provenance lives beside the name, was false for every one of them,
+# silently. A registry with a hole is worse than no registry: it answers confidently about the names
+# it happens to cover.
 #
 # Only an item or module that CARRIES a marker is tracked. Thousands of `pub fn`s have no record of
 # why they are named so, and failing them would build the wall this script refuses to build. A

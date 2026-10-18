@@ -30,7 +30,8 @@ import name_provenance
 import name_rules
 
 # Where a program's file lives. `user/src/` is only in history: milestone 175 split it into the
-# other two on 2026-09-13, and `script/metrics` counts each week from the tree it had.
+# other two on 2026-09-13, and `script/metrics` counts each week from the tree it had. (Milestone 175 is the split of `user/`
+# into `components/` for services and `fixtures/` for test and benchmark programs.)
 PROGRAM_DIRS = ("components/src", "fixtures/src", "user/src")
 _RECORD_STEM = re.compile(r"^\d")
 _PACKAGE_NAME = re.compile(r'^\s*name\s*=\s*"([^"]+)"', re.M)
@@ -48,7 +49,8 @@ STRAY_WHY = {
         "it is a second block below the one that was read, and nothing reads past the first",
 }
 
-# An exception to §75's README-per-directory rule (2026-10-06, UTC). Each entry under notes/skills/
+# An exception to §75's README-per-directory rule (directories under `design/` and `notes/` carry
+# provenance in their own README) (2026-10-06, UTC). Each entry under notes/skills/
 # is an Agent Skills directory whose SKILL.md name the specification fixes, so the entry has no
 # README of its own. calef ratified all six entry names in one ruling, which notes/skills/README.md
 # records beside the directory's own block, and judged a README per entry the gate's fault ("SKILL.md
@@ -116,7 +118,8 @@ def _includer(kind, path, paths, read):
 
 
 def _stray_problems(kind, name, path, prefix, text):
-    """One problem per header-shaped line that is not the block (milestone 283), and per refusal
+    """One problem per header-shaped line that is not the block (milestone 283, one provenance
+    block per file, in the spelling the parse reads), and per refusal
     the parse cannot reach (2026-09-18), because either would leave a ruling invisible."""
     out = []
     for number, line, why in name_provenance.strays(text, prefix):
@@ -261,6 +264,8 @@ def census(paths, read, british=None):
             continue
         status, date, refused, problem = name_provenance.classify(text)
         if problem is not None:
+            # The `recorded` example cites milestone 46 (rename the components for what they are,
+            # and write down the naming rules), a real citation of the form.
             problems.append({
                 name_provenance.NO_STATUS:
                     f"{kind} {name}: the block must start `ratified <date>`, `recorded (where)`, "
