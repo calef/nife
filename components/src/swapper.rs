@@ -564,7 +564,7 @@ fn handoff(fs: &nifefs::Fs, w: &Wiring) -> ! {
 
     // The handoff run, as many pages as the contract declares, minted as one frame capability
     // (`MemoryRegion::RETYPE`'s page count). A contract with no handoff would not reach this role.
-    let Some(declared) = swap_protocol::TALLY.handoff else {
+    let Some(declared) = swap_protocol::TALLY.state_handoff else {
         bail(90)
     };
     let state = match user_mode_runtime::retype_page_frame_run(ROOT_UT, declared.pages) {
@@ -641,7 +641,7 @@ fn handoff(fs: &nifefs::Fs, w: &Wiring) -> ! {
 /// incumbent and the replacements share a declaration and differ only in their `control` endpoint.
 fn plan_handoff(
     w: &Wiring,
-    declared: component_plan::Handoff,
+    declared: component_plan::StateHandoff,
     state: u64,
     replacement_control: u64,
 ) -> (
@@ -656,7 +656,7 @@ fn plan_handoff(
             ("operator", w.note),
             ("control", w.poke),
             ("witness", w.log_page_frame),
-            (component_plan::HANDOFF_ROLE, state),
+            (component_plan::STATE_HANDOFF_ROLE, state),
         ],
     };
     let to_replacement = Provisions {
@@ -666,7 +666,7 @@ fn plan_handoff(
             ("operator", w.note),
             ("control", replacement_control),
             ("witness", w.log_page_frame),
-            (component_plan::HANDOFF_ROLE, state),
+            (component_plan::STATE_HANDOFF_ROLE, state),
         ],
     };
     let to_client = Provisions {
@@ -694,7 +694,7 @@ fn plan_handoff(
     let Ok(client) = component_plan::plan(&swap_protocol::CLIENT, &to_client) else {
         bail(95)
     };
-    if incumbent.handoff() != Some(declared) {
+    if incumbent.state_handoff() != Some(declared) {
         bail(96)
     }
     (incumbent, replacement, client)
