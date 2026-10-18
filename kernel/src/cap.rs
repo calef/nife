@@ -594,7 +594,7 @@ pub(crate) fn virtio_cap_rights(id: usize, rights: Rights) -> Cap {
 /// disposition [`device_frame_cap`] gets on the other two architectures. `x86_64` only, like the
 /// [`Object::PortRange`] it constructs: there is no port space to name elsewhere.
 #[cfg(target_arch = "x86_64")]
-pub(crate) fn port_range_cap(base: u16, count: u16, rights: Rights) -> Cap {
+pub fn port_range_cap(base: u16, count: u16, rights: Rights) -> Cap {
     Cap {
         object: Object::PortRange(base, count),
         rights,

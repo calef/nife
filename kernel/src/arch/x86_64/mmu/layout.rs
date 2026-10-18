@@ -15,7 +15,7 @@
 /// can alias the first gigabyte into the high half with a single PDPT entry.
 ///
 /// This is deliberately **not** where physical memory is mapped; see [`DIRECT_MAP_BASE`].
-pub(crate) const KERNEL_VA_BASE: u64 = 0xffff_ffff_8000_0000;
+pub const KERNEL_VA_BASE: u64 = 0xffff_ffff_8000_0000;
 
 /// **The base of the direct map: where physical address `pa` is readable as `pa + this`.**
 ///
@@ -80,7 +80,7 @@ const _: () = {
 /// **Not for the kernel image's own frames.** The direct map skips them on purpose (a second,
 /// writable alias of `.text` would undo W^X; `claims::direct_map_claims` step 1), so the result for
 /// an image frame is unmapped and a read through it faults.
-pub(crate) const fn phys_to_virt(pa: u64) -> u64 {
+pub const fn phys_to_virt(pa: u64) -> u64 {
     pa + DIRECT_MAP_BASE
 }
 
@@ -94,7 +94,7 @@ pub(crate) const fn phys_to_virt(pa: u64) -> u64 {
 ///
 /// It is the exact inverse of [`phys_to_virt`] over the direct map, now for **all** of physical
 /// memory rather than the low 2 GiB the single-base arithmetic could reach.
-pub(crate) const fn virt_to_phys(va: u64) -> u64 {
+pub const fn virt_to_phys(va: u64) -> u64 {
     if va >= KERNEL_VA_BASE {
         va - KERNEL_VA_BASE
     } else {
@@ -151,6 +151,6 @@ pub(crate) const PCI_ECAM_PHYS: u64 = 0xb000_0000;
 pub(crate) const PCI_ECAM_BUSES: u16 = 1;
 
 /// A page table at physical address `pa`, reached through the direct map.
-pub(crate) fn phys_to_ptr(pa: u64) -> *mut paging::PageTable {
+pub fn phys_to_ptr(pa: u64) -> *mut paging::PageTable {
     phys_to_virt(pa) as *mut paging::PageTable
 }

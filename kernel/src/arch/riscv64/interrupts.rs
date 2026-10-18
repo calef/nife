@@ -19,13 +19,13 @@ pub(crate) fn is_enabled() -> bool {
 /// Mask S-mode interrupts, returning whether they were enabled before (for [`restore`]). Atomic:
 /// `csrrci` reads the old `sstatus` and clears `SIE` in one instruction, so no interrupt can land
 /// between the read and the clear.
-pub(crate) fn disable() -> bool {
+pub fn disable() -> bool {
     instructions::read_and_clear_sstatus_sie() as usize & SIE != 0
 }
 
 /// Restore the interrupt-enable state [`disable`] reported. The paired half of `disable`; nesting
 /// composes because each `disable` returns the exact bit its `restore` puts back.
-pub(crate) fn restore(was_enabled: bool) {
+pub fn restore(was_enabled: bool) {
     if was_enabled {
         enable();
     } else {

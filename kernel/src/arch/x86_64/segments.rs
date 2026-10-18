@@ -520,7 +520,7 @@ pub(crate) fn revoke_port_grant_everywhere(base: u16, count: u16, spare_this_cpu
 /// The grant this core's TSS currently permits, if any: `(base, count)` as
 /// [`set_port_range_grant`] installed it. Read for tests and diagnostics; the switch path keeps its
 /// own copy in the thread.
-pub(crate) fn installed_port_grant() -> Option<(u16, u16)> {
+pub fn installed_port_grant() -> Option<(u16, u16)> {
     // SAFETY: this core's own slot, read only; a different core reads a different index.
     unsafe { (*INSTALLED_PORT_GRANT.get())[crate::cpu::id()] }
 }

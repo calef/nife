@@ -23,7 +23,7 @@ use crate::memory;
 /// T-Head's memory types, because firmware has turned `XTheadMae` on and plain Sv39's zeros there are
 /// undefined. `arch::isa::init` refuses a hart that disagrees with the format chosen here.
 #[cfg(not(feature = "board_th1520"))]
-pub(crate) type Format = paging::Sv39;
+pub type Format = paging::Sv39;
 #[cfg(feature = "board_th1520")]
 pub(crate) type Format = paging::Sv39Mae;
 
@@ -103,7 +103,7 @@ fn current_root_pa() -> u64 {
 /// extension of bit 38 = 1). Chosen exactly like aarch64's base so `VA = PA | KERNEL_VA_BASE` is
 /// exact and a kernel VA shares its physical address's page-table indices. Matched to
 /// `KERNEL_VA_BASE` in link-riscv64.ld, and the kernel runs here from `boot.s`'s high-half jump on.
-pub(crate) const KERNEL_VA_BASE: u64 = 0xffff_ffc0_0000_0000;
+pub const KERNEL_VA_BASE: u64 = 0xffff_ffc0_0000_0000;
 
 /// **Where kernel thread stacks live, virtually** (`thread.rs`'s `STACK_AREA`).
 ///
@@ -247,7 +247,7 @@ static BOOT_PAGE_TABLE: BootTable = boot_table();
 /// The physical address of the virtio-mmio transport window on QEMU's `virt` machine. The `virt`
 /// board lays out 8 virtio-mmio slots of 0x1000 each starting at `0x1000_1000`, growing downward by
 /// slot; this base and the count below describe that window for the driver layer.
-pub(crate) const VIRTIO_MMIO_BASE: u64 = 0x1000_1000;
+pub const VIRTIO_MMIO_BASE: u64 = 0x1000_1000;
 /// The size of the virtio-mmio window (8 slots of 0x1000).
 pub(crate) const VIRTIO_MMIO_SIZE: u64 = 8 * 0x1000;
 /// The first PLIC interrupt id for the virtio-mmio slots on the `virt` machine (irq 1 is the first
@@ -318,7 +318,7 @@ pub(crate) const PCI_IRQ_BASE: u32 = 32;
 /// things in, and every machine this tree boots keeps its RAM in the first 16 GiB. It is enforced
 /// where it can be checked without a cost per call: [`refuse_unnameable_ram`] at the top of
 /// [`init`] for RAM, and `direct_map` for every device mapping.
-pub(crate) const fn phys_to_virt(pa: u64) -> u64 {
+pub const fn phys_to_virt(pa: u64) -> u64 {
     (pa & ((1 << 38) - 1)) | KERNEL_VA_BASE
 }
 
@@ -353,7 +353,7 @@ fn refuse_unnameable_ram() {
 }
 
 /// Kernel-virtual to physical. The inverse of [`phys_to_virt`].
-pub(crate) const fn virt_to_phys(va: u64) -> u64 {
+pub const fn virt_to_phys(va: u64) -> u64 {
     if va >= DEVICE_WINDOW_VA {
         va - DEVICE_WINDOW_VA + DEVICE_WINDOW_PA
     } else {
@@ -363,7 +363,7 @@ pub(crate) const fn virt_to_phys(va: u64) -> u64 {
 
 /// A physical page-table address as a kernel pointer. Identity in bare mode; the direct map makes it
 /// valid once the Sv39 step maps all of RAM into the high-half. Same role as the aarch64 helper.
-pub(crate) fn phys_to_ptr(pa: u64) -> *mut PageTable {
+pub fn phys_to_ptr(pa: u64) -> *mut PageTable {
     phys_to_virt(pa) as *mut PageTable
 }
 
@@ -868,7 +868,7 @@ pub(crate) fn ttbr0_value(root: u64, asid: u16) -> u64 {
 /// exists so a portable test can ask "which tag is this space wearing?" without knowing that this
 /// ISA keeps it in `satp[59:44]` and aarch64 keeps it in `TTBR0_EL1[63:48]`.
 #[cfg_attr(not(feature = "system_tests"), allow(dead_code))] // the tests are its only caller; the kernel composes, never decomposes
-pub(crate) fn asid_of(satp: u64) -> u16 {
+pub fn asid_of(satp: u64) -> u16 {
     ((satp >> SATP_ASID_SHIFT) & 0xffff) as u16
 }
 
@@ -892,7 +892,7 @@ pub(crate) fn asid_of(satp: u64) -> u16 {
 ///
 /// Skipped when this is the only hart online, exactly as [`flush_tlb`] skips it: there is nobody to
 /// shoot down, and single-hart boot tears down address spaces before the secondaries exist.
-pub(crate) fn flush_asid(asid: u16) {
+pub fn flush_asid(asid: u16) {
     // Local first, so this hart's own page-table writes are ordered before anyone is told to look.
     instructions::sfence_vma_asid(asid as u64);
 
@@ -919,7 +919,7 @@ pub(crate) fn flush_asid(asid: u16) {
 /// nothing.
 #[cfg(any(test, feature = "system_tests"))]
 #[cfg_attr(not(feature = "system_tests"), allow(dead_code))] // the system tests call it; a unit-test boot on some ISAs does not
-pub(crate) fn permit_kernel_access_to_user_pages(allowed: bool) -> bool {
+pub fn permit_kernel_access_to_user_pages(allowed: bool) -> bool {
     const SSTATUS_SUM: u64 = 1 << 18;
     // Widening what S-mode may touch is a permission change, not a memory-safety one; the kernel's
     // own mappings are unaffected.
@@ -936,14 +936,14 @@ pub(crate) fn permit_kernel_access_to_user_pages(allowed: bool) -> bool {
 /// # Safety
 /// `satp` must name a well-formed Sv39 root that includes the kernel high-half (else the next
 /// instruction fetch faults); the caller owns that invariant, as on aarch64.
-pub(crate) unsafe fn activate_user(satp: u64) {
+pub unsafe fn activate_user(satp: u64) {
     // SAFETY: this function's own `# Safety` contract is exactly the one this call needs; it
     // forwards, it does not weaken.
     unsafe { write_satp(satp) };
 }
 
 /// Remove the user address space from this hart: fall back to the kernel-only reserved root.
-pub(crate) fn deactivate_user() {
+pub fn deactivate_user() {
     // SAFETY: `reserved_root()` composes `KERNEL_ROOT`, the fine map `init` built and stored, which
     // is `'static` and contains the kernel high half by construction. Its low half is empty, so
     // every user address faults, which is the point.
@@ -992,12 +992,12 @@ pub fn user_can_read(va: u64) -> bool {
 
 /// Whether U-mode may write `va`: user-accessible and writable. Same disposition, same test.
 #[cfg_attr(not(feature = "system_tests"), allow(dead_code))]
-pub(crate) fn user_can_write(va: u64) -> bool {
+pub fn user_can_write(va: u64) -> bool {
     translate_in_either_half(va).is_some_and(|(_, f)| f.is_user_accessible() && f.is_writable())
 }
 
 /// The physical root of the currently installed address space (`satp.PPN << 12`).
-pub(crate) fn current_user_root() -> u64 {
+pub fn current_user_root() -> u64 {
     current_root_pa()
 }
 
@@ -1031,7 +1031,7 @@ pub(crate) fn cut_user_table(root: u64, va: u64, table: u64, asid: u16) -> Optio
 }
 
 /// Translate `va` in the space rooted at physical `root`.
-pub(crate) fn translate_at(root: u64, va: u64) -> Option<(u64, Flags)> {
+pub fn translate_at(root: u64, va: u64) -> Option<(u64, Flags)> {
     // SAFETY: `root` is a page table; the direct map makes `phys_to_ptr` valid; no allocation.
     let mapper = unsafe { Mapper::<_, _, Format>::new(root, Half::Low, || None, phys_to_ptr) };
     mapper.translate(va)
@@ -1166,13 +1166,13 @@ pub(crate) fn is_enabled() -> bool {
 }
 
 /// Translate a kernel virtual address through the live kernel tables.
-pub(crate) fn translate(va: u64) -> Option<(u64, Flags)> {
+pub fn translate(va: u64) -> Option<(u64, Flags)> {
     let _guard = KERNEL_MMU.lock();
     kernel_mapper().translate(va)
 }
 
 /// Translate a user virtual address through the currently installed address space.
-pub(crate) fn translate_user(va: u64) -> Option<(u64, Flags)> {
+pub fn translate_user(va: u64) -> Option<(u64, Flags)> {
     translate_at(current_root_pa(), va)
 }
 

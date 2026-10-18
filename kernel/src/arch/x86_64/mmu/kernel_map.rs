@@ -223,7 +223,7 @@ pub(crate) fn flush_tlb(va: u64) {
 }
 
 /// Translate a kernel virtual address through the live kernel tables.
-pub(crate) fn translate(va: u64) -> Option<(u64, Flags)> {
+pub fn translate(va: u64) -> Option<(u64, Flags)> {
     let _guard = KERNEL_MMU.lock();
     kernel_mapper().translate(va)
 }

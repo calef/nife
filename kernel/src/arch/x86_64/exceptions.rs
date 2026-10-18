@@ -29,7 +29,7 @@ use crate::arch::UserFault;
 /// there is exactly one frame layout rather than two, and `iretq` always pops five words.
 #[repr(C)]
 #[derive(Debug, Clone, Copy)]
-pub(crate) struct TrapFrame {
+pub struct TrapFrame {
     pub rax: u64,
     pub rbx: u64,
     pub rcx: u64,
@@ -105,7 +105,7 @@ impl TrapFrame {
 
     /// Set syscall argument/return register `i`. The return value and IPC message words ride back
     /// in the first three, exactly as they do on the other two architectures.
-    pub(crate) fn set_arg(&mut self, i: usize, v: u64) {
+    pub fn set_arg(&mut self, i: usize, v: u64) {
         match i {
             0 => self.rdi = v,
             1 => self.rsi = v,
@@ -132,7 +132,7 @@ impl TrapFrame {
     /// all, and the TSS's I/O permission bitmap is empty (segments.rs). That is the only correct
     /// answer while there is no capability shape for a port (DECISIONS §121).
     #[allow(dead_code)]
-    pub(crate) fn for_user_entry(entry: u64, user_sp: u64, args: [u64; 3]) -> Self {
+    pub fn for_user_entry(entry: u64, user_sp: u64, args: [u64; 3]) -> Self {
         const RFLAGS_IF: u64 = 1 << 9;
         const RFLAGS_ALWAYS_ONE: u64 = 1 << 1;
         TrapFrame {
@@ -254,7 +254,7 @@ unsafe extern "C" {
 /// Nothing lost a number to this. Timer ticks are counted by `arch::timer::ticks()` and printed by
 /// the bring-up tour from there; an unclaimed device vector is counted by [`DEVICE_IRQS`] and, when
 /// there was nothing to route it to, by [`SPURIOUS_IRQS`].
-pub(crate) static ROUTED_IRQS: AtomicUsize = AtomicUsize::new(0);
+pub static ROUTED_IRQS: AtomicUsize = AtomicUsize::new(0);
 
 /// **How many interrupts arrived with nothing to route them to.** A spurious interrupt is normal on
 /// x86 in a way it is not elsewhere: the 8259 PIC manufactures vector 7 (or 15) when a line drops
@@ -278,10 +278,10 @@ pub(crate) static DEVICE_IRQS: AtomicUsize = AtomicUsize::new(0);
 /// in all of them, and it was one of two shared writes on the cheapest syscall's path
 /// (notes/job-mix/null-syscall-under-load.md).
 #[cfg(any(test, feature = "system_tests"))]
-pub(crate) static SVC_COUNT: AtomicUsize = AtomicUsize::new(0);
+pub static SVC_COUNT: AtomicUsize = AtomicUsize::new(0);
 
 /// **How many user-mode faults were taken.**
-pub(crate) static USER_FAULTS: AtomicUsize = AtomicUsize::new(0);
+pub static USER_FAULTS: AtomicUsize = AtomicUsize::new(0);
 
 /// **How many breakpoints were taken.** `int3`, vector 3, which is what [`self_test`] uses to prove
 /// the trap path round-trips.
@@ -300,7 +300,7 @@ static LAST_USER_FAULT_ADDRESS: AtomicU64 = AtomicU64::new(0);
 /// overwrites it before a test reads it, and a user exception that is not a page fault records
 /// address 0. A test that asserts on it must retry or tie the record to its own thread. Found by
 /// the eighth outsider pass (`notes/confinement-outsider-pass-8.md`), whose row-21 test retries.
-pub(crate) fn last_user_fault() -> Option<(UserFault, u64)> {
+pub fn last_user_fault() -> Option<(UserFault, u64)> {
     // Pairs with the `Release` on `USER_FAULTS` in [`user_fault`]: a caller that has already seen
     // the counter rise must see the record that rise was announcing, and not the previous one.
     let code = LAST_USER_FAULT.load(Ordering::Acquire);
@@ -365,7 +365,7 @@ unsafe extern "C" {
 /// kernel stack, with the user address space installed and `TSS.RSP0` naming a kernel stack the
 /// next trap can be pushed onto (`segments::set_kernel_stack`).
 #[inline(always)]
-pub(crate) unsafe fn enter_user(frame: *mut TrapFrame) -> ! {
+pub unsafe fn enter_user(frame: *mut TrapFrame) -> ! {
     // **Refuse to enter ring 3 with no entry point**, for the reason the RISC-V twin carries at
     // length: a thread dispatched with `rip == 0` fetches its first instruction from address 0,
     // page-faults, and dies, and whatever it was supposed to serve then never answers. That is a

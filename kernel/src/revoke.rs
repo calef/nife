@@ -910,7 +910,7 @@ pub fn revoke_device_from_others(phys: u64) {
 /// makes the revoked holder fault on its next `in`/`out`. This is `PortRange::REVOKE`'s body.
 /// `x86_64` only, like the `PortRange` object it revokes ([`crate::cap::Object`]).
 #[cfg(target_arch = "x86_64")]
-pub(crate) fn revoke_port_range_from_others(base: u16, count: u16) {
+pub fn revoke_port_range_from_others(base: u16, count: u16) {
     crate::sched::delete_port_range_caps_from_others(base, count);
 }
 
@@ -923,7 +923,7 @@ pub(crate) fn revoke_port_range_from_others(base: u16, count: u16) {
     not(all(any(test, feature = "system_tests"), initial_ramdisk)),
     allow(dead_code)
 )]
-pub(crate) fn revoke_port_range(base: u16, count: u16) {
+pub fn revoke_port_range(base: u16, count: u16) {
     crate::sched::delete_port_range_caps(base, count);
 }
 

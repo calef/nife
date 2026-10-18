@@ -378,7 +378,7 @@ pub fn start_pit_ticking(hz: u64) -> u64 {
 }
 
 /// The counter's current value: the TSC.
-pub(crate) fn now() -> u64 {
+pub fn now() -> u64 {
     rdtsc()
 }
 
@@ -501,7 +501,7 @@ pub fn init() {
 // than deleted: milestone 74's cycle-counter work is the caller that will want it in anger.
 #[cfg_attr(not(feature = "system_tests"), allow(dead_code))]
 #[cfg(any(test, feature = "system_tests", feature = "cycle_counter_grant"))]
-pub(crate) fn is_cycle_counter_grantable() -> bool {
+pub fn is_cycle_counter_grantable() -> bool {
     true
 }
 
@@ -565,7 +565,7 @@ pub fn is_tick_pending() -> bool {
 }
 
 /// Spin for `counter_ticks` of the TSC.
-pub(crate) fn spin_for(counter_ticks: u64) {
+pub fn spin_for(counter_ticks: u64) {
     let start = now();
     while now().wrapping_sub(start) < counter_ticks {
         core::hint::spin_loop();

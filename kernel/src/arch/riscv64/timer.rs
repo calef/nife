@@ -134,7 +134,7 @@ fn sbi_set_timer(next: u64) {
 
 /// The free-running counter (`rdtime`). Real: a leaf read with no dependency on the timer being set
 /// up, the RISC-V counterpart of reading `CNTVCT`.
-pub(crate) fn now() -> u64 {
+pub fn now() -> u64 {
     instructions::read_time()
 }
 
@@ -252,7 +252,7 @@ const CY: u64 = 1 << 0;
 // than deleted: milestone 74's cycle-counter work is the caller that will want it in anger.
 #[cfg_attr(not(feature = "system_tests"), allow(dead_code))]
 #[cfg(any(test, feature = "system_tests", feature = "cycle_counter_grant"))]
-pub(crate) fn is_cycle_counter_grantable() -> bool {
+pub fn is_cycle_counter_grantable() -> bool {
     true
 }
 
@@ -464,7 +464,7 @@ pub(crate) fn uptime_ms() -> u64 {
 }
 
 /// Busy-wait for `counter_ticks` of the free-running counter.
-pub(crate) fn spin_for(counter_ticks: u64) {
+pub fn spin_for(counter_ticks: u64) {
     let start = now();
     while now().wrapping_sub(start) < counter_ticks {
         core::hint::spin_loop();

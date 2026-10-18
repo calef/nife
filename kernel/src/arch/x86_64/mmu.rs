@@ -50,7 +50,7 @@ use super::{ap_boot, current_sp, instructions, irq, isa, machine, segments};
 use crate::memory;
 
 /// This architecture's page-table format. Portable code names it as `arch::mmu::Format`.
-pub(crate) type Format = Ia32e;
+pub type Format = Ia32e;
 
 // **Every type and function of `mmu` lives in a child named for it**, and this file is the index
 // (§282 (when a file is split, the parent becomes an index)). `Format` stays: the arch contract's

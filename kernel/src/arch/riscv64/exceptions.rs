@@ -19,7 +19,7 @@ use crate::arch::{UserFault, UserFaultAccess};
 /// `x` is `pub` because the portable syscall dispatcher indexes it; the rest is arch-internal.
 #[repr(C)]
 #[derive(Debug, Clone, Copy)]
-pub(crate) struct TrapFrame {
+pub struct TrapFrame {
     /// The general registers `x0`..`x31`. `x0` is always zero; it is kept in the array so an index
     /// *is* a register number.
     pub x: [u64; 32],
@@ -56,7 +56,7 @@ impl TrapFrame {
 
     /// Set syscall argument/return register `i`. The return value and IPC message words ride in
     /// `a0`..`a2` (`x10`..`x12`).
-    pub(crate) fn set_arg(&mut self, i: usize, v: u64) {
+    pub fn set_arg(&mut self, i: usize, v: u64) {
         self.x[10 + i] = v;
     }
 
@@ -76,7 +76,7 @@ impl TrapFrame {
     /// The register indices are the RISC-V ABI: `a0`..`a2` are `x10`..`x12`, `sp` is `x2`. This is
     /// also where the syscall-ABI reconciliation (the traps step) will settle, since the dispatcher
     /// reads its arguments from this same frame.
-    pub(crate) fn for_user_entry(entry: u64, user_sp: u64, args: [u64; 3]) -> Self {
+    pub fn for_user_entry(entry: u64, user_sp: u64, args: [u64; 3]) -> Self {
         // sstatus for the sret: SPIE (interrupts on after the return), SPP left 0 (return to U-mode),
         // and UXL = 2 (U-mode is 64-bit, bits 33:32). UXL is load-bearing: the trap-return path
         // writes this whole value into sstatus, so omitting UXL would clear it to 0 and make the
@@ -140,7 +140,7 @@ unsafe extern "C" {
 /// `frame` must be a correctly-built, writable `TrapFrame` at the top of the current thread's kernel
 /// stack, with the user address space installed.
 #[inline(always)]
-pub(crate) unsafe fn enter_user(frame: *mut TrapFrame) -> ! {
+pub unsafe fn enter_user(frame: *mut TrapFrame) -> ! {
     // **Refuse to enter U-mode with no entry point.** A thread dispatched with `sepc == 0` fetches
     // its first instruction from address 0, takes an instruction page fault, and dies; whatever it
     // was supposed to serve then never answers, so every thread waiting on it blocks and the run
@@ -217,7 +217,7 @@ pub unsafe fn set_user_arg(stack_top: u64, i: usize, v: u64) {
 }
 
 /// Interrupts routed to a userspace handler (delegated IRQs). Bumped by the trap dispatcher.
-pub(crate) static ROUTED_IRQS: AtomicUsize = AtomicUsize::new(0);
+pub static ROUTED_IRQS: AtomicUsize = AtomicUsize::new(0);
 
 /// Interrupts taken with no source enabled to explain them (should stay zero until the timer/PLIC
 /// steps enable real sources).
@@ -229,11 +229,11 @@ pub(crate) static SPURIOUS_IRQS: AtomicUsize = AtomicUsize::new(0);
 /// in all of them, and it was one of two shared writes on the cheapest syscall's path
 /// (notes/job-mix/null-syscall-under-load.md).
 #[cfg(any(test, feature = "system_tests"))]
-pub(crate) static SVC_COUNT: AtomicUsize = AtomicUsize::new(0);
+pub static SVC_COUNT: AtomicUsize = AtomicUsize::new(0);
 
 /// User faults taken (a page fault or illegal instruction from U-mode). Read by the boot tour;
 /// bumped by the trap dispatcher.
-pub(crate) static USER_FAULTS: AtomicUsize = AtomicUsize::new(0);
+pub static USER_FAULTS: AtomicUsize = AtomicUsize::new(0);
 
 /// Breakpoints (`ebreak`) caught. Exists so a test can prove the trap round-trip actually ran,
 /// rather than proving only that we did not crash. The aarch64 analog is its own `BRK_COUNT`.
@@ -293,7 +293,7 @@ static LAST_USER_FAULT_ADDR: AtomicU64 = AtomicU64::new(0);
 /// fault, so a test on this ISA could assert "something died" and nothing more. See [`classify`]
 /// for what "kind" costs here that it does not cost on aarch64.
 #[cfg_attr(not(feature = "system_tests"), allow(dead_code))]
-pub(crate) fn last_user_fault() -> Option<(UserFault, u64)> {
+pub fn last_user_fault() -> Option<(UserFault, u64)> {
     // Pairs with the `Release` on `USER_FAULTS` in [`user_fault`], so a caller that has seen the
     // counter rise reads the record the faulting hart wrote rather than something older.
     //

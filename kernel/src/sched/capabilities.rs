@@ -149,7 +149,7 @@ pub(crate) fn delete_device_frame_caps_from_others(phys: u64) {
 /// change that let a caller name a sub-range would reopen it. Found by the eighth outsider pass
 /// (`notes/confinement-outsider-pass-8.md`, near miss 1).
 #[cfg(target_arch = "x86_64")]
-pub(crate) fn delete_port_range_caps_from_others(base: u16, count: u16) {
+pub fn delete_port_range_caps_from_others(base: u16, count: u16) {
     delete_port_range_caps_impl(base, count, Some(current_thread_id()));
 }
 
@@ -162,7 +162,7 @@ pub(crate) fn delete_port_range_caps_from_others(base: u16, count: u16) {
     not(any(test, feature = "system_tests", initial_ramdisk)),
     allow(dead_code)
 )]
-pub(crate) fn delete_port_range_caps(base: u16, count: u16) {
+pub fn delete_port_range_caps(base: u16, count: u16) {
     delete_port_range_caps_impl(base, count, None);
 }
 

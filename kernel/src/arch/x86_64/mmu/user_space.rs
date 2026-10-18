@@ -39,7 +39,7 @@ pub(super) fn read_cr3() -> u64 {
 /// On this architecture there is only one root, so this is the same register [`current_root`]
 /// reads. A thread with no user space of its own is running on [`reserved_root`], whose low half is
 /// empty, so "the user root" is always a real answer rather than a `None` in disguise.
-pub(crate) fn current_user_root() -> u64 {
+pub fn current_user_root() -> u64 {
     current_root()
 }
 
@@ -156,7 +156,7 @@ pub(crate) unsafe fn switch_user_root(cr3: u64) {
 /// than read a zero as agreement. The aarch64 twin shifts bits 63:48 out and the RISC-V one
 /// `satp[59:44]`.
 #[cfg_attr(not(feature = "system_tests"), allow(dead_code))]
-pub(crate) fn asid_of(cr3: u64) -> u16 {
+pub fn asid_of(cr3: u64) -> u16 {
     let _ = cr3;
     0
 }
@@ -180,7 +180,7 @@ pub(crate) fn asid_of(cr3: u64) -> u16 {
 /// for evidence about.
 #[cfg(any(test, feature = "system_tests"))]
 #[cfg_attr(not(feature = "system_tests"), allow(dead_code))] // the system tests call it; a unit-test boot on some ISAs does not
-pub(crate) fn permit_kernel_access_to_user_pages(_allowed: bool) -> bool {
+pub fn permit_kernel_access_to_user_pages(_allowed: bool) -> bool {
     true
 }
 
@@ -196,7 +196,7 @@ pub(crate) fn permit_kernel_access_to_user_pages(_allowed: bool) -> bool {
 /// half. Anything else unmaps the instruction after this one; see [`switch_user_root`] for what that
 /// costs on this architecture.
 #[cfg_attr(not(feature = "system_tests"), allow(dead_code))]
-pub(crate) unsafe fn activate_user(cr3: u64) {
+pub unsafe fn activate_user(cr3: u64) {
     // SAFETY: this function's own `# Safety` contract is exactly the one `install` needs; it
     // forwards, it does not weaken.
     unsafe { install(cr3) };
@@ -204,7 +204,7 @@ pub(crate) unsafe fn activate_user(cr3: u64) {
 
 /// Remove the user address space from this CPU: fall back to the kernel-only reserved root.
 #[allow(dead_code)]
-pub(crate) fn deactivate_user() {
+pub fn deactivate_user() {
     // SAFETY: `reserved_root()` composes `KERNEL_ROOT`, the fine map `init` built, verified and is
     // running on. It carries the kernel half by construction and its low half is empty.
     unsafe { switch_user_root(reserved_root()) };
@@ -226,7 +226,7 @@ pub(crate) fn deactivate_user() {
 /// translations and the next space handed this number reads them, which is one process reading
 /// another's memory with no fault to announce it.
 #[allow(dead_code)]
-pub(crate) fn flush_asid(asid: u16) {
+pub fn flush_asid(asid: u16) {
     let _ = asid; // nothing to select on; see this function's doc comment
     // SAFETY: rewriting CR3 with the value it already holds changes no mapping and invalidates
     // every non-global entry, which is exactly the discharge this owes. TLB maintenance is always
@@ -290,7 +290,7 @@ pub(crate) fn cut_user_table(root: u64, va: u64, table: u64, asid: u16) -> Optio
 
 /// Translate `va` in the space rooted at physical `root`.
 #[allow(dead_code)]
-pub(crate) fn translate_at(root: u64, va: u64) -> Option<(u64, paging::Flags)> {
+pub fn translate_at(root: u64, va: u64) -> Option<(u64, paging::Flags)> {
     // SAFETY: `root` is a page table; the direct map makes `phys_to_ptr` valid; a translate
     // allocates nothing, so the `|| None` allocator is never called.
     let mapper = unsafe { Mapper::<_, _, Ia32e>::new(root, Half::Low, || None, phys_to_ptr) };
@@ -299,6 +299,6 @@ pub(crate) fn translate_at(root: u64, va: u64) -> Option<(u64, paging::Flags)> {
 
 /// Translate `va` as a user address in the currently installed space.
 #[allow(dead_code)]
-pub(crate) fn translate_user(va: u64) -> Option<(u64, paging::Flags)> {
+pub fn translate_user(va: u64) -> Option<(u64, paging::Flags)> {
     translate_at(current_root(), va)
 }

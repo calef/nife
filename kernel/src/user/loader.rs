@@ -220,7 +220,7 @@ fn timebase_page_phys() -> Option<u64> {
 /// once, rather than rediscovering them one page fault at a time, which is what the factoring above
 /// bought: there was one function to widen and one `cfg` per site to change.
 #[cfg(any(target_arch = "x86_64", target_arch = "riscv64"))]
-pub(crate) fn map_timebase_page(space: &mut AddressSpace) -> Result<(), MapError> {
+pub fn map_timebase_page(space: &mut AddressSpace) -> Result<(), MapError> {
     if let Some(phys) = timebase_page_phys() {
         space.map_physical(
             counter_frequency_contract::PAGE_VA,

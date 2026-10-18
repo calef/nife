@@ -79,12 +79,12 @@ pub const UART_PHYS: u64 = 0;
 /// drivers, so their `in`/`out` reach these ports and no others (enforced by the TSS I/O bitmap). The
 /// port analogue of [`UART_PHYS`] on the other two architectures.
 #[cfg(target_arch = "x86_64")]
-pub(crate) const X86_COM1_PORT_BASE: u16 = 0x3F8;
+pub const X86_COM1_PORT_BASE: u16 = 0x3F8;
 /// The eight ports a 16550 occupies (data/interrupt-enable/FIFO-control/line-control/modem-control/
 /// line-status/modem-status/scratch). A range because a device capability names what the hardware
 /// names, the port-space twin of a `DeviceFrame` naming a page.
 #[cfg(target_arch = "x86_64")]
-pub(crate) const X86_COM1_PORT_COUNT: u16 = 8;
+pub const X86_COM1_PORT_COUNT: u16 = 8;
 
 /// **Is there a UART a device capability can be a mapping of on this machine?** (milestone 161.)
 ///
