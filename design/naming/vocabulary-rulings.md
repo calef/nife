@@ -292,17 +292,3 @@ calef, 2026-10-06 UTC, ratifying `user_timetable_keeper` over `session`.
 calef, 2026-10-06 UTC: "system_installer ratified." It names what is installed, the whole system,
 apart from `jig`, which installs packages. Refused `basalt_installer`: the program copies whatever
 image the stick booted, so a distribution prefix would go false.
-
-## nife's wire-contract crates end in `_contract`
-
-calef, 2026-10-18 (UTC), on being asked "Adopt `_contract`?": "Yes". He had weighed `_handshake`,
-`_agreement` and `_compact`, and the prior art: Singularity's channel contracts, Hubris `-api`,
-Genode sessions and Fuchsia's `fidl_`.
-
-The reason is that his 2026-09-13 rule spells out network standards, so external standards keep
-producing `*_protocol` names (`network_time_protocol` is NTPv4's own), and those collide with nife's
-contract suffix. The tree already says "wire contract" and "service contract" for these crates.
-
-Nineteen crates took the suffix; `network_time_protocol` keeps its word, as the standard's name.
-`supervision_protocol` waits for its split into `supervision_contract` and `process_builder`.
-`script/lint` check 3 holds the spelling and lists those two exceptions by name.

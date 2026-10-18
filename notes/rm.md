@@ -114,7 +114,7 @@ the names this run has already taken away.
   buffer by value. `rm` asks for 4 stack pages. A deep enough tree will exhaust it, and the failure
   will be a data abort rather than a diagnostic.
 - **`rm` removes nothing this contract has since grown**, and that is now checked rather than
-  assumed. Milestone 61 (the caretakers: one verb table, and names that say what you get) made the caretakers dispatch off `filesystem_contract::verb`, so a verb added to the
+  assumed. Milestone 61 (the caretakers: one verb table, and names that say what you get) made the caretakers dispatch off `filesystem_contract::verb`. A verb added to the
   contract is forwarded by them from the day its row exists; `rm` still holds `REMOVE` and nothing
   else, so what it can *send* is unchanged. The two facts are independent and it is worth saying so:
   the caretaker got wider, the grant did not.

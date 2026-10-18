@@ -2,7 +2,7 @@
 
 Milestone 47. The create half built 2026-08-22; the mtime half built 2026-08-24 (DECISIONS §112).
 The contract side is `filesystem_contract::fs::CREATE` (milestone 31 (a capability shell: designation is authorization) phase 2), `GETMTIME`, `SETMTIME`
-and `SETMTIME_AT` (milestone 47's mtime lane, all four names provisional except `CREATE`); the
+and `SETMTIME_AT` (milestone 47's mtime lane, all four names provisional except `CREATE`). The
 builtin is `Nav::touch` in `components/src/swish/navigation.rs`, parsed by `grant_plan::Command::Touch` into a
 `TouchArgs`.
 

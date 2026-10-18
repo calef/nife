@@ -65,7 +65,7 @@ resource so the name is implied and unforgeable."*
 A holder of a `credential_contract` verify endpoint names the identity it asks about, so the
 confinement claim for a program that verifies credentials is "it only asks about its own" rather than
 "it cannot ask about anything else", and only the second is checkable from outside. This applies
-DECISIONS §27 (the filesystem service: a capability-shaped contract over a component we did not write) from milestone 32 (a real filesystem: RedoxFS behind a capability FS server), phase 2, has the argument to `credential_contract`: the endpoint should be the credential for one
+DECISIONS §27 (the filesystem service: a capability-shaped contract over a component we did not write)'s argument, from milestone 32 (a real filesystem: RedoxFS behind a capability FS server) phase 2, carries over to `credential_contract`. The endpoint should be the credential for one
 resource, with the name implied by which endpoint you hold and therefore unforgeable. The consumer
 that motivated it is gone, since milestone 54's SMB adapter was deleted on 2026-08-30, so nothing
 today is visibly harmed by the extra authority. What makes it worth doing is the direction of the

@@ -228,4 +228,4 @@ the sweep took and restored, and why `script/lint`'s `crates/*proto` glob had to
 calef ruled on 2026-10-18 (UTC) that nife's wire-contract crates end in `_contract`; the crates this
 block renamed to `_protocol` took the new suffix in one pass, except `network_time_protocol` (the
 NTPv4 standard's own name) and `supervision_protocol` (waiting for its split).
-design/naming/vocabulary-rulings.md has his words and the reason.
+design/naming/convention-rulings.md has his words and the reason.
