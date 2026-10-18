@@ -29,7 +29,7 @@
 //!
 //! Name: ratified 2026-10-17 (calef, a program-naming session). Kept, paired with its crate as
 //! `non_volatile_memory_express` is; a rename of the crate renames this with it. He considered
-//! `designware_sd_storage` and `sd_and_emmc_storage`, then answered "designware_mobile_storage".
+//! `designware_sd_storage` and `sd_and_emmc_storage`, then answered "`designware_mobile_storage`".
 //! Refused `designware_sd_storage` and `sd_and_emmc_storage` (considered against the crate's name).
 //!
 //! # BUGS

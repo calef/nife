@@ -52,7 +52,7 @@
 //!
 //! Name: ratified 2026-10-17 (calef, a program-naming session). Kept, with the acronym, because
 //! "USB" is the everyday word and the expansion adds nothing a newcomer can use. He weighed
-//! `universal_serial_bus_keyboard_driver`, then answered "usb_keyboard_driver". Refused
+//! `universal_serial_bus_keyboard_driver`, then answered "`usb_keyboard_driver`". Refused
 //! `universal_serial_bus_keyboard_driver` (the expansion). It is the `<device>_driver` shape of
 //! `keyboard_driver` and `block_driver`; the controller crate's name
 //! (`extensible_host_controller_interface`, 36 bytes) does not fit `nifefs`'s 32-byte program name,
