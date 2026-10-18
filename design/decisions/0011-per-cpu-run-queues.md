@@ -102,12 +102,12 @@ Lock ordering. With no run-queue locks, the surface is small:
 Placement and waking. Prefer the current core: a `spawn` or an IPC-wake whose thread can run
 here just enqueues locally, no lock, no IPI. Only when a thread must run elsewhere (spreading across
 idle cores at spawn, or waking a thread whose target core is idle in `wfi`) do we message the target
-inbox and SGI it; the SGI handler drains the inbox and re-runs `schedule()`. That is also the
+inbox and SGI it. The SGI handler drains the inbox and re-runs `schedule()`. That is also the
 reschedule-a-remote-core primitive. Spreading policy stays trivial (round-robin idle cores);
 balancing cleverness is unmeasurable on QEMU.
 
 Bring-up via PSCI. QEMU `virt` implements PSCI. Core 0, after its own init and once the heap
-exists, calls `PSCI CPU_ON` (via `SMC`) for each secondary, passing an entry point and a per-core
+exists, calls `PSCI CPU_ON` (via `SMC`) for each secondary. It passes an entry point and a per-core
 stack allocated from the frame allocator (the heap is up by then, so no static stack array).
 Each secondary sets `sp`, sets `TPIDR_EL1`, enables its own GICC (PMR + CTLR) and its timer PPI,
 then enters the scheduler and runs its idle thread.
@@ -153,19 +153,19 @@ it wants those tests audited first. Also still deferred (unchanged): per-CPU all
 *scalability* (§9), which are a different problem from correctness.
 
 Three SMP-latent bugs, each invisible on one core, surfaced during 3b-ii and are recorded in that
-commit: `VBAR_EL1` is per-core (a secondary that never set it died silently on its first trap); the
+commit. `VBAR_EL1` is per-core (a secondary that never set it died silently on its first trap). The
 per-core boot stacks were an immutable `static` that landed in read-only `.rodata`, which only bit
-once the fine map enforced W^X; and a global tick counter, advanced by every core, broke "holding a
+once the fine map enforced W^X. A global tick counter, advanced by every core, broke "holding a
 lock masks *my* timer." The clean starting point (`IrqSafeMutex` already a real spinlock, every
 `tlbi` already inner-shareable) is why there were only three.
 
 ## Testing
 
-`-smp 4` in `qemu-runner-aarch64.sh`. New invariants, each proving something one core could not: a shared
-counter incremented by threads on multiple cores under a lock sums exactly (cross-core mutual
-exclusion); a spawned thread runs on a core other than the spawner (the inbox/SGI path actually
-delivers work); an IPC send on one core wakes a receiver that runs on another; the per-CPU rank
-tracking does not false-positive under concurrent locking. The semihosting exit stays single-caller:
+`-smp 4` in `qemu-runner-aarch64.sh`. New invariants, each proving something one core could not.
+A shared counter incremented by threads on multiple cores under a lock sums exactly (cross-core
+mutual exclusion). A spawned thread runs on a core other than the spawner (the inbox/SGI path
+actually delivers work). An IPC send on one core wakes a receiver that runs on another. The per-CPU
+rank tracking does not false-positive under concurrent locking. The semihosting exit stays single-caller:
 core 0 drives the runner, the others idle at suite end.
 
 ## Risks, named

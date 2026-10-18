@@ -26,17 +26,17 @@ in code:
   as userspace composition, not as syscall surface.
 
 - **The kernel is retired as the interactive system's builder.** The aarch64 kernel-wired
-  `shell_service` (the pre-19d.2c path) cannot host a shell that speaks the terminal contract, so
+  `shell_service` (the pre-19d.2c path) cannot host a shell that speaks the terminal contract. So
   every aarch64 interactive build (the milestone tour, `--features shell`, `--features initboot`)
   now hands off to userspace init through `boot_via_init`, the way RISC-V's `--features shell`
-  already hands off to the portable `system_initializer`. `shell_service` was kept as dead code for reference at
-  the time, and milestone 41 deleted it outright on 2026-07-30, along with `input_service`. That
-  supersedes the sentence this one replaces, and the reasoning is the project's existing rule rather
-  than a new one: the heap and slab crates were deleted the same way on 2026-07-27, because *the git
-  history preserves the work and a demonstrator's tree should hold what it ships* (notes/heap.md).
-  Nothing was lost that this decision had not already replaced: the capability milestone 10 delivered,
-  a shell at EL0 spawning processes on command, is exactly what userspace init does now, and doing it
-  in userspace is the thesis rather than a consolation.
+  already hands off to the portable `system_initializer`. `shell_service` was kept as dead code for
+  reference at the time, and milestone 41 deleted it outright on 2026-07-30, along with
+  `input_service`. That supersedes the sentence this one replaces. The reasoning is the project's
+  existing rule rather than a new one. The heap and slab crates were deleted the same way on
+  2026-07-27, because *the git history preserves the work and a demonstrator's tree should hold what
+  it ships* (notes/heap.md). Nothing was lost that this decision had not already replaced. The
+  capability milestone 10 delivered, a shell at EL0 spawning processes on command, is exactly what
+  userspace init does now. Doing it in userspace is the thesis rather than a consolation.
 
   One honest caveat on that claim, since it is the sort of thing that decays: no test in the suite
   boots the interactive shell, so "the capability still exists" rests on the hand-validated boot path
@@ -53,7 +53,7 @@ in code:
   9), and a recommendation are in [design/interrupt-routing.md](../interrupt-routing.md), for
   the architect to settle before code.
 
-The engine was built, not ported, against the §14 (the project's direction) default for userspace, because `noline`
-blocks on a cursor-position report a piped line never answers and is a per-read readline rather
-than an always-on discipline, and `embedded-cli` is the application's altitude. The full accounting
-is in [notes/line-discipline.md](../../notes/line-discipline.md).
+The engine was built, not ported, against the §14 (the project's direction) default for userspace.
+The reason: `noline` blocks on a cursor-position report a piped line never answers and is a per-read
+readline rather than an always-on discipline, and `embedded-cli` is the application's altitude. The
+full accounting is in [notes/line-discipline.md](../../notes/line-discipline.md).

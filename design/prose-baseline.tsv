@@ -11,16 +11,6 @@
 # two counts). Median and bold are not asked of documents under 200 words.
 # measure: 3
 path	words	median	longest	bold_lead	bold_inline
-design/decisions/0011-per-cpu-run-queues.md	-	-	66	-	-
-design/decisions/0013-frame-revocation.md	-	20.5	-	-	-
-design/decisions/0014-project-direction.md	-	-	45	-	-
-design/decisions/0015-native-abi.md	-	21	43	-	-
-design/decisions/0017-riscv-second-architecture.md	-	22	111	-	-
-design/decisions/0018-pcie-transport.md	-	24	55	-	-
-design/decisions/0019-architectural-parity.md	-	27	74	-	-
-design/decisions/0020-iommu-dma-isolation.md	-	24	68	-	-
-design/decisions/0021-terminal-in-userspace.md	-	-	49	-	-
-design/decisions/0022-rust-std-on-the-native-abi.md	-	24.5	69	-	-
 design/decisions/0023-multi-queue-dma-confinement.md	-	22.5	67	-	-
 design/decisions/0025-socket-identity.md	-	-	47	-	-
 design/decisions/0026-fault-endpoint.md	-	-	76	-	-
