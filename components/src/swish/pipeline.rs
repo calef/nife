@@ -917,9 +917,9 @@ impl FileIn {
 fn drain_into(f: &mut FileOut) {
     for _ in 0..MAX_OUTPUT_CHUNKS {
         let (w0, w1, w2) = receive(RESULT);
-        if w0 == spawnproto::SPAWN_FAILED {
+        if w0 == spawnproto::SPAWN_FAILED || w0 == spawnproto::SPAWN_NOT_IN_IMAGE {
             failed();
-            print(b"  could not spawn (the progenitor is out of memory)\n");
+            print(swish::spawn_failure_sentence(w0));
             return;
         }
         // **The writer died mid-stream** (milestone 235). The file keeps what arrived before the
@@ -1077,9 +1077,9 @@ fn spawn_stage(
                 print(swish::FAULTED_SENTENCE);
                 return false;
             }
-            _ => {
+            w => {
                 failed();
-                print(b"  could not spawn (the progenitor is out of memory)\n");
+                print(swish::spawn_failure_sentence(w));
                 return false;
             }
         }

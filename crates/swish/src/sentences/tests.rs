@@ -79,6 +79,23 @@ fn a_spawn_that_failed_says_so_whatever_the_program_was() {
     }
 }
 
+/// A program the image was built without is named as that, not as the job pool running dry: the
+/// sentence an image without `jig` answered `jig` with sent a person after the wrong cause.
+#[test]
+fn a_program_missing_from_the_image_is_not_reported_as_out_of_memory() {
+    let s = shown(|o| {
+        write_outcome(&endowment(Program::Date), spawnproto::SPAWN_NOT_IN_IMAGE, o);
+    });
+    assert_eq!(
+        s,
+        "  could not spawn (this image was built without that program)\n"
+    );
+    assert_eq!(
+        spawn_failure_sentence(spawnproto::SPAWN_FAILED),
+        b"  could not spawn (the progenitor is out of memory)\n"
+    );
+}
+
 #[test]
 fn the_two_programs_that_answer_with_a_number_report_it_in_their_own_terms() {
     let mut e = endowment(Program::LeastAuthorityDemo);

@@ -902,6 +902,15 @@ pub const SPAWN_REFUSED_BY_MANIFEST: u64 = u64::MAX - 3;
 /// ruling covered the mechanism only.
 pub const SPAWN_NO_DISPLAY: u64 = u64::MAX - 4;
 
+/// **The progenitor's word for a program this image does not carry**: the initial ramdisk has no
+/// entry under the program's name, so there was nothing to build. Distinct from [`SPAWN_FAILED`]
+/// for [`SPAWN_UNVOUCHED`]'s reason: an image built without `jig` answered `jig` with "out of
+/// memory", which sent a person looking at the job pool for a fault in how the image was built.
+/// Five below `u64::MAX`, for [`JOB_FAULTED`]'s reason.
+///
+/// Name: provisional, minted 2026-10-18 (UTC) by lane/image-needs-jig.
+pub const SPAWN_NOT_IN_IMAGE: u64 = u64::MAX - 5;
+
 /// The ack the progenitor sends on the result endpoint when a **supervised** (interruptible) child started
 /// cleanly. An interruptible child reports its own progress and exit through the shared job frame,
 /// not the result endpoint, so the progenitor sends this once as the go-ahead: the shell reads it, then begins
@@ -1148,6 +1157,7 @@ mod tests {
             SPAWN_UNVOUCHED,
             SPAWN_REFUSED_BY_MANIFEST,
             SPAWN_NO_DISPLAY,
+            SPAWN_NOT_IN_IMAGE,
         ];
         for (i, a) in all.iter().enumerate() {
             assert!(*a > u64::MAX - 8, "{a:#x}");
