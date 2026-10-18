@@ -16,14 +16,14 @@
 //!   once a `SIZE` has come back.
 //! - **[`BLK_PAGE`]**: the NVMe window, read-only here. The controller writes it by DMA.
 //! - **[`FILE_PAGE`]**: `fs::CLIENT_WINDOWS` client windows of `fs::TRANSFER_MAX` bytes, one run,
-//!   window `badge` per request (milestone 599's pattern, which the progenitor already slices
+//!   window `badge` per request (milestone 599 (a frame per filesystem client channel)'s pattern, which the progenitor already slices
 //!   jobs' windows out of).
 //!
 //! Name: provisional (lane `lane/ioping-direct-io`, 2026-10-18 UTC), with `crates/disk_tree`.
 
 #![no_std]
-// Program entry points, not the crates/ library surface milestone 68's ratchet tracks
-// (DECISIONS §107): each `[[bin]]` is its own crate root with one `_start`, and 58 of them
+// Program entry points, not the crates/ library surface milestone 68 (code-quality gates)'s ratchet tracks
+// (DECISIONS §107 (`missing_docs` moves to `workspace.lints.rust`)): each `[[bin]]` is its own crate root with one `_start`, and 58 of them
 // documenting an OS-facing ABI entry point is not what the lint is for.
 #![allow(missing_docs)]
 #![no_main]

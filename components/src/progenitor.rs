@@ -140,7 +140,7 @@ pub extern "C" fn _start(_a0: u64, initial_ramdisk_len: u64, fs_rights: u64) -> 
     // symmetry the old `spawn_progenitor` established, when the same function also entered `hello` at
     // milestone 19d's test roles.
     //
-    // **The second mounted tree is the disk tree** (milestone 154's mechanism, milestone 834 (ioping on nife and Linux)'s
+    // **The second mounted tree is the disk tree** (milestone 154 (a process that holds two directory capabilities)'s mechanism, milestone 834 (ioping on nife and Linux)'s
     // use): the whole NVMe namespace as one read-only file with no cache, at `/disk`. DECISIONS
     // §126 (a real, single, moving `cwd`) reserved what the second subtree should be for an
     // architect, and calef ruled it on nifeos/nife#2371, 2026-10-18 21:36 UTC: "Yes, read-only at

@@ -523,7 +523,7 @@ pub const MAX_DSTRD: u32 = 8;
 /// "Per-client window" on nifeos/nife#2371, 2026-10-18 23:06 UTC). Each window is
 /// `filesystem_contract::blk::TRANSFER_BLOCKS` pages of the DMA region, and the server stages a
 /// request in window `badge`, the badge on the endpoint capability the client called
-/// (milestone 599's pattern), so two clients staging at once cannot overwrite each other.
+/// (milestone 599 (a frame per filesystem client channel)'s pattern), so two clients staging at once cannot overwrite each other.
 ///
 /// The clients are a fixed set the kernel wires, one window each, so there is no pool and nothing
 /// to hand back: [`FILESYSTEM_WINDOW`], [`INSTALLER_WINDOW`] and [`DISK_TREE_WINDOW`]. A new client

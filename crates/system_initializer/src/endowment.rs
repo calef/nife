@@ -243,7 +243,7 @@ pub struct BootEndowment {
     pub for_test_roles: &'static [u64],
 }
 
-/// **The shell's second mounted tree** (milestone 154's mechanism; milestone 834 (ioping on nife
+/// **The shell's second mounted tree** (milestone 154 (a process that holds two directory capabilities)'s mechanism; milestone 834 (ioping on nife
 /// and Linux) gave it a server): a second file service the kernel granted, which the boot shell
 /// holds at `grant_plan::spawnproto::MOUNTED_TREE_SLOT` and sees at `/disk`
 /// (`grant_plan::spawnproto::MOUNTED_TREE_NAME`). Passed to [`boot`](crate::boot) beside
