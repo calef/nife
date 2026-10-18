@@ -1,6 +1,7 @@
 ---
-status: NOT-STARTED
+status: BUILT
 raised: 2026-10-13
+built: 2026-10-17
 milestone_dependencies: 810
 decision_dependencies: 195, 197
 machine_requirements: none
@@ -34,30 +35,30 @@ a package's digest in a reviewed recipe. A reviewer can only vouch for a digest 
 §197 (a package is one archive file, named and vouched for by its recipe) makes that digest the
 digest of one file, so the archive's bytes must be stable.
 
-## Where it starts
+**BUILT, 2026-10-17 (UTC).** basalt's packages build reproducibly on aarch64, riscv64 and x86_64.
+Every basalt recipe records one SHA-256 per architecture in its `[package_digest]` table, and
+`helpers/packages.py build` refuses a package that hashes to anything else. basalt's `packages`
+workflow builds twice, on two runners with different checkout, temporary, cargo and rustup paths,
+and its `reproduce` job (`the two builds are byte-identical`) fails unless the two repositories
+match. basalt's pin-bump workflow runs `--update-digests` and commits the changed digests in the
+bump pull request. `cargo xtask basalt-fetch` reads each digest from the recipe at the basalt commit
+`xtask/basalt-pin` names and keeps none of its own.
 
-- basalt's `recipes/ripgrep.toml` pins the `ripgrep` crate and its patched `ignore` by SHA-256.
-  Its header says the package digest is not recorded, because nobody has measured reproducibility.
-- basalt's `helpers/packages.py` builds the package in its `packages` workflow. It uses the pinned
-  nife's `cargo xtask foreign-note` for the manifest note and `cargo xtask package` for the archive.
-- nife's archive writer is `package_archive::write_package` in `crates/package_archive`. The
-  note writer is `xtask/src/foreign_note.rs`.
-- Pull request #2128 (milestone 810) adds `cargo xtask basalt-fetch`. It pins each published
-  package's digest in nife's own `xtask/basalt-pins.index`, a second copy of what basalt produced.
+## What was measured
 
-## The work
+Two builds at the same paths on separate runners are byte-identical. A build at another checkout
+path is not. The causes, both in basalt's build and neither in nife's `write_package` or
+`foreign-note` (no timestamps or member order differed):
 
-1. Measure first. Build `ripgrep` twice, on two different runners, with basalt's `packages`
-   workflow. Diff the `.nifepkg` for each architecture and record which bytes differ. Likely causes,
-   unverified until measured: build paths embedded in the binary, timestamps, archive member order,
-   and the manifest note.
-2. Fix each cause in the repository that owns the code. The archive writer and the note writer are
-   nife's. The build flags are basalt's. Candidate fixes are `--remap-path-prefix`,
-   `SOURCE_DATE_EPOCH`, and sorted members in `write_package`.
-3. A gate in basalt. The package build fails unless a second build yields identical bytes. The
-   recipe gains one package digest line per architecture.
-4. nife's early-warning rows read each digest from basalt's recipe at the basalt commit nife names.
-   `cargo xtask basalt-fetch` keeps no digest of its own, so no digest-bump chore remains.
+1. Absolute paths in panic locations: the nife checkout, `$CARGO_HOME/registry`, the unpacked
+   `ignore` crate, and the toolchain's `core`.
+2. Cargo hashes a path dependency outside its workspace root into crate ids by absolute path (the
+   patched `ignore`; nife's `c_library`, a workspace of its own with dependencies in `../crates`).
+   The ids set function order, so the layout moved.
+
+basalt fixes them with a fixed build path (`/tmp/basalt-build`), cargo `trim-paths`, relative link
+inputs and the patched `ignore` inside the crate directory (nifeos/basalt#29). A path-independent
+`c_library` build in nife was declined as invasive.
 
 ## Exit
 
@@ -71,8 +72,10 @@ archive's member list may be enough, so it is a tool to reach for, not a depende
 ## BUGS
 
 - A second build doubles basalt's package build time.
-- Some nondeterminism may be in the Rust toolchain or the linker, not fixable here. If so, the
-  gate cannot pass for that architecture until upstream fixes it, and the block records which.
+- The build is reproducible only at the fixed path `/tmp/basalt-build`. On macOS `/tmp` is a link,
+  so a package rebuilt there does not match one built on Linux.
+- The `reproduce` job is not a required check on basalt's `main` until calef adds it to the ruleset.
+- That the digests the pin-bump bot writes reproduce is first proven by `packages` on a real bump.
 
 ## Follow-on
 

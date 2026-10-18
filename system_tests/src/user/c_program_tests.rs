@@ -13,7 +13,8 @@
 //!   Linux) runs on silicon, built by basalt the same way (milestone 906 (ioping is packaged in
 //!   basalt)).
 //!
-//! `cargo xtask basalt-fetch` takes each package by the digest `xtask/basalt-pins.index` pins.
+//! `cargo xtask basalt-fetch` takes each package by the digest basalt's recipe
+//! records at the commit `xtask/basalt-pin` names.
 //!
 //! Neither source is touched. What differs from a Linux build is on the command line: the target
 //! flags, nife's headers, and for SQLite two compile-time options it documents.

@@ -41,7 +41,7 @@ Lane `milestone/922-demos-are-packaged-in-basalt`, with nifeos/basalt#25.
 
 - The recipe packs `bin/least_authority_demo`. The release build keeps its manifest note, a
   76-byte `PT_NOTE` on aarch64 (item 1). The first published Release is
-  `rolling-2026-10-14-4d05b6c`, and `xtask/basalt-pins.index` pins its three lines.
+  `rolling-2026-10-14-4d05b6c`, and `xtask/basalt-pin` names a basalt commit whose recipe records its digests.
 - `swish-check` types `jig install demos`. It must fetch the package from basalt's index and
   then answer the installer's refusal: *"the image carries the program least_authority_demo; a
   new base updates it, not install"* (item 2, half). Found 2026-10-14 (UTC) by a local boot: the

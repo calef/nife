@@ -13,7 +13,7 @@ needs_person: no
 SHA-256 and publishes one package per architecture on a GitHub Release, indexed at
 `basalt.nifeos.org`. nife builds no `rg`. Its gates fetch that package by a pinned digest, and a
 booted nife runs `jig install ripgrep` and `rg --version` against it on all three architectures
-under QEMU, on every pull request. Left: recording the package's digest in the recipe. The two
+under QEMU, on every pull request. Each recipe records its package's digest (milestone 917). The two
 "Built" sections below have the rest.
 
 *(From fork 4 of
@@ -39,7 +39,7 @@ depends on this one only for running `rg` at the swish prompt.
 In nife:
 
 - No build of `rg`. `cargo xtask basalt-fetch` fetches basalt's published package for each
-  architecture by the digest `xtask/basalt-pins.index` pins.
+  architecture by the digest basalt's recipe records at the commit `xtask/basalt-pin` names.
 - `xtask` packs the package's `rg` into each architecture's initrd only when it was fetched, so a
   base image never carries it.
 - `system_tests/src/user/ripgrep_tests.rs` and `ripgrep_threads_tests.rs` run it by hand-placed
@@ -114,10 +114,10 @@ published `rg` package by digest and install it with `jig` in the test image, or
 basalt's packages workflow, he answered: *"1 is preferable because that tests jig and basalt's
 delivery mechanism as well."*
 
-- `cargo xtask basalt-fetch` (`xtask/src/basalt.rs`) reads `xtask/basalt-pins.index`, basalt's
-  served index lines for `ripgrep`, one per architecture. It fetches each package from the Release
-  its line lists, and accepts it only through `package_index::accept`, the installer's own
-  decision, under that line's SHA-256.
+- `cargo xtask basalt-fetch` (`xtask/src/basalt.rs`) reads `xtask/basalt-pin`, a basalt
+  commit and the Release it published. It fetches each package from that Release, and accepts it
+  only through `package_index::accept`, the installer's own decision, under the SHA-256 in the
+  recipe's `[package_digest]` at that commit.
 - It writes them as a repository under `target/basalt/`. The test index host serves its lines
   beside the fixtures', and `script/swish-check`'s second boot types `jig install ripgrep` and
   `rg --version` against them in nife's own CI (item 6).
@@ -131,10 +131,9 @@ delivery mechanism as well."*
   with that reason. In CI a failed fetch fails the row.
 - nife has no ripgrep build. The `ignore` patch is basalt's, byte for byte the same file.
 
-**Who bumps the pinned digests.** Nobody has to: basalt never prunes a Release, so the pinned URLs
-keep serving. A lane that wants a newer build, or whose change the pinned build cannot run on,
-refreshes `xtask/basalt-pins.index` with the one-line `curl` in `xtask/src/basalt.rs`'s header and
-lets CI judge it. A ripgrep or recipe bump in basalt names the nife pull request that takes it.
+**Who bumps the pin.** Nobody has to: basalt never prunes a Release, so the pinned URLs keep
+serving. A lane that wants a newer build, or whose change the pinned build cannot run on, sets
+`xtask/basalt-pin` to a basalt commit and its Release tag and lets CI judge it. No digest is copied. A ripgrep or recipe bump in basalt names the nife pull request that takes it.
 
 ### The question for calef: how a package names a program that is not its own name
 
@@ -176,9 +175,6 @@ would replace only the download (unverified for `cargo-binstall`'s custom-target
   by-path lines run the package's program member, accepted on the host.
 - A nife change the pinned `rg` cannot run on cannot pass CI on its own. basalt builds against
   nife's merged `main`, so the `rg` rows stay red until basalt builds at a commit that has the change.
-- The recipe records the source's digest, not the package's: that needs a reproducible build,
-  unmeasured.
-
 - A search may not fit a `std` program's heap. PR #1777 measured `rg --threads 1 --no-mmap` over
   this tree at a 3.0 MiB peak on macOS, against about 1 MiB of `std` heap. That is milestone 121's
   to solve, but `rg --version` passing here says nothing about it.
@@ -192,7 +188,7 @@ would replace only the download (unverified for `cargo-binstall`'s custom-target
 - **Outstanding.** A route for a nife change the pinned `rg` cannot run on: basalt building at an
   unmerged nife commit, published where nife's CI can fetch it by digest. Not needed by any change
   so far.
-- **Milestone 917.** Milestone 917 (basalt's packages build reproducibly, and the recipe records each
+- **Done.** Milestone 917 (basalt's packages build reproducibly, and the recipe records each
   package's digest).
 - **Milestone 919.** Several programs in one package, as calef ruled: milestone 919 (a package
   carries several programs, and `jig` installs, finds and removes each one) holds the work and the

@@ -12,15 +12,14 @@ needs_person: no
 
 **PARTIAL, 2026-10-10 (UTC).** Items 1 to 5 and item 8's digest check are built, and pass
 `script/swish-check` on aarch64, riscv64 and x86_64 under QEMU. `update` and the index copy are
-built (milestone 801 (packages over the internet)). Left: `list --upgradable`, item 7
+built (milestone 801 (packages over the internet)). Left: `list -u`, item 7
 (`add-repository`) and item 8's index half. The program is
 [notes/packages/jig.md](../../notes/packages/jig.md).
 
 *(calef, 2026-10-07 (UTC): "Promote jig to a milestone." `jig` is ratified; the title, slug and
 verb spellings are drafts. Later rulings are in the work list and the forks table.)*
 
-*Not a dependency of 198: 198 is the umbrella over 802, which names this block. What this block
-uses from 198 is rung 3a, built inside 198 with no milestone of its own.*
+*Not a dependency of 198, the umbrella over 802; it uses rung 3a, built inside 198.*
 
 calef ruled on 2026-10-06 (UTC) that the package client must be a program, not a shell builtin, and
 named six things it must do.
@@ -45,15 +44,22 @@ His wording is the intent.
 | Install a package from the index | `jig install <name>` (apt's) | yes; `jig` fetches |
 | Install a local package, an archive already on the system | `jig install <path>` (apt's verb); a word with a `/` is a file (§219 (how the shell names an installed program to the spawner)) | yes |
 | Add another index | `jig add-repository <url>` (nife's; apt has no verb) | no, item 7 |
-| List what is outdated | `jig list --upgradable` (apt's, as ruled) | no, item 6 |
+| List what is outdated | `jig list -u` (the short flag apt also accepts) | no, item 6 |
 | Update the local copy of the index | `jig update` (apt's) | yes (801) |
 | Remove a program | `jig remove <program>` (apt's) | yes |
 | Roll back a generation | `jig rollback` (nife's; apt has none) | yes |
 
 `update` refreshes the index and installs nothing: apt(8), FreeBSD's pkg-update(8) and Homebrew's
 manpage, read 2026-10-10 (UTC), agree. apt's `upgrade` is not built here; it is the spelling the
-#1805 amendment below will use. apt(8) spells the flag `--upgradeable`; the ruling's `--upgradable`
-is held until calef says which.
+#1805 amendment below will use.
+
+The outdated flag is `-u` alone (ruled 2026-10-17 UTC). Asked whether it was `--upgradable` or
+`--upgradeable`, calef asked *"What if we just did -u?"*, then answered *"Yes"* to: *"`-u` only,
+with a refusal that names `-u` when someone types `--upgradable` or `--upgradeable`."* Measured
+2026-10-17 in apt's source (Debian/apt `apt-private/private-cmndline.cc:356-357`): apt accepts both
+long spellings and `-u`, and `apt update` prints `apt list --upgradable`
+(`apt-private/private-update.cc:159-160`). `-u` is ratified under "We abbreviate on the command
+line."
 
 *calef, 2026-10-07 (UTC), on #1805: `jig` must update base packages; only the slot reboots. See §159 (only a new kernel needs a reboot).*
 
@@ -79,8 +85,8 @@ reversible.
 | Capability | Verbs that use it | How it is granted | Exists today? |
 |---|---|---|---|
 | A client view of the network stack (`NETWORK_SLOT`; slots 2 and 3 for a `std` program) | `install <name>`, `update` | `Manifest::network` | yes (milestone 590 (the booted system starts its network stack)); for a `std` program at the prompt, since this block |
-| The index directory, read and write | `list`, `list --upgradable`, `update`, `add-repository`, `install <name>` | `Manifest::indexes`, a directory grant on `activation/indexes`, owner's console only | yes (801) |
-| `activation/`, read only | `list --upgradable` | a directory grant | as above |
+| The index directory, read and write | `list`, `list -u`, `update`, `add-repository`, `install <name>` | `Manifest::indexes`, a directory grant on `activation/indexes`, owner's console only | yes (801) |
+| `activation/`, read only | `list -u` | a directory grant | as above |
 | The file a line names | `install <path>` | `ArgSpec::Words` designation (§170 (how a foreign program is told what to do)) | yes |
 | A request to the installer | `install`, `remove`, `rollback` | `Manifest::installer`, below | yes, since this block (§270) |
 | The image's catalog, read only | `list`, `install <name>` | `Manifest::catalog` | yes, since this block |
@@ -104,12 +110,11 @@ directory, `remove` needs only the installer, and `update` needs the network and
 |---|---|---|
 | V1. One program holding the union | Every line holds the network, the index, `activation/` and the installer | Refused. `jig list` would carry authority it never uses: 281's own counterfactual, where `ps` would always carry a clock it rarely needs |
 | V2. One program, granted by verb | The manifest maps each verb to its grants, and the planner reads the first word | Recommended |
-| V3. Split by authority | A reader (`list`, `list --upgradable`), an index keeper (`update`, `add-repository`) and an installer client (`install`, `remove`, `rollback`) | Refused by calef's ruling |
+| V3. Split by authority | A reader (`list`, `list -u`), an index keeper (`update`, `add-repository`) and an installer client (`install`, `remove`, `rollback`) | Refused by calef's ruling |
 
 V2 has a precedent: `rm -r` hands over more than `rm` through `subtree_flag`, and a verb table is
-that idea keyed by a word. V1 was cheaper, so V2 was not about effort. Fork 2, the table's encoding
-in a note, was the lane's: (verb, grants) pairs, sorted, as a note type of its own
-(`manifest_note::VERBS`). A manifest stays fixed-size, and basalt can write a table.
+that idea keyed by a word. V1 was cheaper, so V2 was not about effort. The table's encoding was the
+lane's: sorted (verb, grants) pairs, a note type of its own (`manifest_note::VERBS`).
 
 ## Who writes the index copy: ruled, `jig`
 
@@ -135,11 +140,16 @@ calef, 2026-10-06 (UTC): *"A machine may write many indexes."* So a machine hold
 an index the owner adds is the machine's. §195 clause 2 scopes trust per source, and §196 clause 4
 holds roots per source.
 
-To settle before `add-repository` is built:
+To settle before `add-repository` is built (item 1 is ruled):
 
-1. How is a second index authenticated? §250 authenticates basalt's index by TLS alone, pinned to
-   ISRG Root X1. A second index needs a root or key the owner supplies at `add-repository`. There is no
-   system store to fall back on, by §196 clause 4's design.
+1. How an added index is authenticated: ruled 2026-10-17 (UTC). calef: *"Just a URL."*
+   `jig add-repository <url>` takes only a URL. The index is checked against the roots the image
+   already pins for basalt (ISRG Root X1 today), and a server whose certificate chains elsewhere is
+   refused with a message naming the root it needed. The owner supplies no root or key, so there is
+   no system store to fall back on, by §196 clause 4's design. A separate proposal, [the web's
+   authority list as a package and a capability](https://github.com/nifeos/nife/pull/2277)
+   (proposed, unmerged), may later change what added indexes are checked against; this ruling does not
+   decide it.
 2. Two indexes may vouch for different bytes under one name. The tree's analogous case is milestone
    614: a bare name the catalog vouches for at several versions is refused as `Ambiguous`, and
    `name@version` picks one. The same refusal, with an index-qualified name to pick, is one answer.
@@ -150,21 +160,19 @@ To settle before `add-repository` is built:
 
 ## Other package managers, against the same contracts
 
-calef asked whether other package managers could emerge. `jig` uses only public contracts: the
-package format (`crates/package_archive`, §197 (a package is one archive file)), the index format
-(801's crate), `spawnproto`'s activation request (§208) and `crates/activation_set`. A second manager
-on those crates can do what `jig` can, once the owner's console grants it the installer endpoint.
+`jig` uses only public contracts: `crates/package_archive` (§197 (a package is one archive file)),
+the index format, `spawnproto`'s activation request (§208) and `crates/activation_set`. A second
+manager on those crates can do what `jig` can, once the owner's console grants it the installer
+endpoint.
 
-calef accepted how managers coexist, 2026-10-06 (UTC): *"Yes."* By default only `jig` holds the
-endpoint. Other tools stay user-local, run by path or vouched, like `pipx`. Each activation set row
-records which manager installed it, and the progenitor refuses a manager's remove or rollback of
-another manager's row.
+calef, 2026-10-06 (UTC), accepted how managers coexist: *"Yes."* Only `jig` holds the endpoint by
+default; other tools stay user-local, like `pipx`. Each activation set row records which manager
+installed it, and the progenitor refuses a manager's remove or rollback of another's row.
 
 ## How this splits against milestones 801 and 802
 
-Milestone 801 built its items 1 and 2 itself: the index format is `crates/package_index`, and
-`package_fetch_exerciser` fetches through it. Fork 5 is moot. `jig` adopts both at item 6, as 801's
-Follow-on section says. Milestone 802 (the trivial install) depends on this block so its stranger
+Milestone 801 built the index format (`crates/package_index`) and `package_fetch_exerciser`; `jig`
+adopts both at item 6. Milestone 802 (the trivial install) depends on this block so its stranger
 meets a program, not a builtin.
 
 ## The work, in the order it can land
@@ -181,7 +189,7 @@ meets a program, not a builtin.
    `http_response` exception in `packages/init.package.toml`.
 4. Grants by verb (V2), or V1 with a `BUGS` line if V2 is refused.
 5. `list`, reading the image's catalog until an index exists, and saying so.
-6. `update` and `list --upgradable` over the LAN fixture source, plain HTTP, as rung 3a, with
+6. `update` and `list -u` over the LAN fixture source, plain HTTP, as rung 3a, with
    `jig` writing the index copy through `package_index`.
 7. `add-repository`, once the details of many indexes are settled.
 8. Before installing, `jig` checks three things. The archive's digest matches the index (§250 (an
@@ -197,37 +205,32 @@ meets a program, not a builtin.
 Items 1, 2, 3 and 5 wait on nothing.
 Every item is proved on aarch64, riscv64 and x86_64 by the same gate, per rule 5.
 
-Reuse: all inside the tree. `package_archive`, `http_response`, `socket_protocol`'s fixture peer,
-`activation_set`, `spawnproto`'s activation request, swish's frame sender and milestone 205's argv
-and designation. Writing the program was forced: no existing client speaks this capability ABI. The
+Reuse: all inside the tree (`package_archive`, `http_response`, `socket_protocol`'s fixture peer,
+`activation_set`, `spawnproto`'s activation request, swish's frame sender, milestone 205's argv and
+designation). Writing the program was forced: no existing client speaks this capability ABI. The
 apt, pkg and Homebrew manuals §46 (thin primitives or whole subsystems) owed were read 2026-10-10;
-[the vocabulary record](../naming/command-line-rulings.md#jig-takes-apts-verbs)
-cites them.
+[the vocabulary record](../naming/command-line-rulings.md#jig-takes-apts-verbs) cites them.
 
-## Plan, 2026-10-07 (UTC), and what was built
+## What was built
 
-The planning lane proposed this exit, on all three architectures under QEMU. `jig install` (both
-forms), `remove` and `rollback` pass `script/swish-check` with the builtin gone, and `greeting` is
-fetched by `jig`. The progenitor has no `http_response` or `Activation::Fetch`. A program without
-the installer grant is refused.
-
-Built 2026-10-10 (UTC), #1903, as
-[notes/packages/jig.md](../../notes/packages/jig.md) describes. The gate's typed text changed in four
-ways. `package` became `jig`. The file installs are typed from inside `downloads`, since the root
-cannot be narrowed. A refusal `jig` makes itself names no generation. And three lines are new: `caps
-jig install ...`, `jig list`, and `installed/jig rollback`, the same bytes run unvouched and refused
-the installer. The progenitor's stack went from twelve pages to fourteen, measured.
+Built 2026-10-10 (UTC), #1903, as [notes/packages/jig.md](../../notes/packages/jig.md) describes,
+on all three architectures under QEMU. `install` (both forms), `remove` and `rollback` pass
+`script/swish-check` with the builtin gone, and `greeting` is fetched by `jig`. The progenitor has
+no `http_response` or `Activation::Fetch`, and a program without the installer grant is refused.
+The gate's typed text changed: `package` became `jig`, file installs are typed from inside
+`downloads` since the root cannot be narrowed, and `jig`'s own refusals name no generation. Three
+lines are new: `caps jig install ...`, `jig list`, and `installed/jig rollback`, the same bytes run
+unvouched and refused the installer. The progenitor's stack went from twelve pages to fourteen,
+measured.
 
 ## Follow-on
 
-- **Outstanding.** `list --upgradable`, which must read `activation/`; the index store grant does
+- **Outstanding.** `list -u`, which must read `activation/`; the index store grant does
   not reach it.
 - **Outstanding.** Item 7, `add-repository`, waiting on the many-indexes details below. Checked
   2026-10-10: none of the four is ruled.
 - **Outstanding.** Item 8's index half, the needs against metadata and manifests. Checked
   2026-10-10: the catalog carries digests only, so there is nothing to compare until item 6.
-- **Outstanding.** `--upgradable` (the ruling) or `--upgradeable` (apt(8) as read 2026-10-10). Only
-  item 6's spelling waits on it.
 - **Milestone 892.** Milestone 892 (a std program at the prompt holds the network):
   `design/roadmap/0892-a-std-program-at-the-prompt-holds-the-network-and-a-resolver.md`. Item 2 is
   built here for `jig`; 1, 3 and 4 remain, and `jig` needs them to resolve `basalt.nifeos.org` for
@@ -252,7 +255,7 @@ the installer. The progenitor's stack went from twelve pages to fourteen, measur
 | The verb table's encoding (plan fork 2) | the lane's, approved 2026-10-10 on #1903 with calef's change: sorted (verb, grants) pairs, variable length, at most 256 | nothing |
 | Verb spellings (plan fork 4) | ruled 2026-10-10, calef: "Lets use apt's verbs."; `add-repository`, same day | nothing |
 | 801's items 1 and 2 here (plan fork 5) | moot: 801 built them; `jig` adopts them at item 6 | nothing |
-| `--upgradable` or apt's documented `--upgradeable` | open, found by the lane 2026-10-10 | item 6's spelling only |
+| The outdated flag | ruled 2026-10-17, calef: "Yes"; `-u` only, `--upgradable` and `--upgradeable` refused with a message naming `-u` | nothing |
 | How a manifest names a fixed directory | decided by 801's lane 2026-10-12, reversible: `Manifest::indexes` | nothing |
 
 ## BUGS
@@ -273,4 +276,4 @@ The package client was a shell builtin, and the progenitor fetched packages, so 
 process parsed HTTP. It is now one program, `jig`, with apt's verbs where apt has one, an installer
 endpoint only the owner's console grants (§270), and grants chosen by verb. It fetches, so
 `Activation::Fetch` and `init`'s `http_response` exception are gone. `update` and the index copy
-are left.
+are built (milestone 801); `list -u`, `add-repository` and item 8's index half are left.
