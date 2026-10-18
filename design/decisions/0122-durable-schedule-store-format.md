@@ -10,9 +10,9 @@ ratified_by: calef
 calef, 2026-08-24, ratified option 1: reuse `timetable::parse`'s document format unchanged. Store
 one file per identity inside that identity's own subtree. Write and read it through ordinary
 `filesystem_proto` verbs. Confirmed this is a persistence-format decision only, not an invitation to
-adopt cron's calendar syntax. That syntax stays milestone 129's own deliberately deferred question.
-It answers milestone 152 (durable delegation)'s own BUGS section: "the on-disk, per-user schedule
-store has no format, no write path, and no read-at-boot path."
+adopt cron's calendar syntax. That syntax stays milestone 129 (scheduled execution)'s own
+deliberately deferred question. It answers milestone 152 (durable delegation)'s own BUGS section:
+"the on-disk, per-user schedule store has no format, no write path, and no read-at-boot path."
 
 ## The problem
 
@@ -48,8 +48,9 @@ schedule store might also want. It is not prior art for on-disk persistence. Cit
 were would have this decision reach the wrong analog. There is, as of this writing, no durable
 on-disk store of any kind in this tree built by a userspace service. The only thing on disk is what
 `RedoxFS` holds through `filesystem_proto`. Several other things already write and read that back
-across reboots (the SMB share's own files, the provisioning fixtures milestone 63's gate reads
-back). That is the tree's actual closest analog, and it is named as Option 1 below.
+across reboots (the SMB share's own files, the provisioning fixtures milestone 63 (directory and
+package names)'s gate reads back). That is the tree's actual closest analog, and it is named as
+Option 1 below.
 
 ## What else was considered, and prior art outside the tree
 
@@ -59,12 +60,12 @@ allocator, fixed field widths, a round-trip test). Considered and folded into Op
 bytes live and who may write them, not whether they are text or binary.
 
 **crontab's on-disk shape**: one file per user in `/var/spool/cron/crontabs/`, permission-gated by
-the directory rather than by the file format. `crontab -e` is the only sanctioned writer. This
-tree's own equivalent of "one file per user" is already how milestone 117 (DECISIONS §117) scopes a
-principal's subtree: "a principal's subtree is named by its identity string, created at provisioning
-time." A per-user schedule file living inside that same subtree, rather than in a shared system
-location, gets per-user scoping for free. It gets it from a mechanism this tree already has, rather
-than needing a new one.
+the directory rather than by the file format. `crontab -e` is the only sanctioned writer. This tree's
+own equivalent of "one file per user" is already how milestone 117 (DECISIONS §117) scopes a principal's
+subtree: "a principal's subtree is named by its identity string, created at provisioning time." A
+per-user schedule file living inside that same subtree, rather than in a shared system location,
+gets per-user scoping for free. It gets it from a mechanism this tree already has, rather than
+needing a new one.
 
 **systemd timer units**: one `.timer` unit file per job in `/etc/systemd/system/` or a user's own
 `~/.config/systemd/user/`, `INI`-shaped. `systemd` reads them at boot by walking the directory.
@@ -85,7 +86,7 @@ does not answer where the bytes underneath that parser come from at boot, or how
 during a live session. That is what has no precedent (see "Is the premise true?" above).
 
 `filesystem_proto` plus RedoxFS is the tree's only real durable store, proven repeatedly. The proofs
-are milestone 55's write path, the durability-under-crash tests
+are milestone 55 (Time Machine)'s write path, the durability-under-crash tests
 (`filesystem_proto::fixture::durability`), and every SMB write the gate makes durable through
 `fs::SYNC`. Nothing about a schedule entry needs a new persistence primitive. It needs a place in
 the one that already exists.
@@ -98,13 +99,13 @@ durable session. It is read at boot by whatever process performs re-derivation.
 
 - *Format*: reuse `crates/timetable::parse` byte-for-byte. Zero new parsing code. The crate is
   already `no_std` and host-tested. Its own doc already states the reason calendar syntax is
-  deliberately excluded (§123-adjacent: same crate, same restraint). A schedule registered at
-  runtime is exactly the same two words a compile-time `timetable.conf` line is. So the parser does
-  not need to learn a second dialect.
-- *Location*: `<identity's own subtree>/schedule` (exact path a detail for whoever builds it). It
-  uses milestone 117's existing per-identity subtree rather than a shared system directory. This is
-  what buys per-user scoping for free. A directory capability narrowed to one identity's subtree
-  cannot read or write any other identity's file, with no new access-control mechanism to write.
+  deliberately excluded (§123 (boot-time re-derivation)-adjacent: same crate, same restraint). A
+  schedule registered at runtime is exactly the same two words a compile-time `timetable.conf` line
+  is. So the parser does not need to learn a second dialect.
+- *Location*: `<identity's own subtree>/schedule` (exact path a detail for whoever builds it), using
+  milestone 117's existing per-identity subtree rather than a shared system directory. This is what
+  buys per-user scoping for free. A directory capability narrowed to one identity's subtree cannot
+  read or write any other identity's file, with no new access-control mechanism to write.
   `login.rs`'s `mint()` already knows how to build such a capability.
 - *Write path*: an ordinary `fs::CREATE`/`fs::WRITE` through the directory capability the durable
   session already holds a narrowing of. A full rewrite can use `fs::TRUNCATE` + `fs::WRITE` instead.
@@ -150,12 +151,12 @@ dedicated "schedule store" service, mirroring the credentialer's provision/serve
 ## The recommendation
 
 **Option 1.** Reuse `crates/timetable::parse`'s document format unchanged. Store one file per
-identity inside that identity's own subtree (milestone 117's existing per-user scoping). Write and
-read it through ordinary `filesystem_proto` verbs. Do so under capabilities that the writer (a live
-session registering a job) and the reader (boot-time re-derivation, §123) already need to hold for
-other reasons. This is the cheapest of the three by a wide margin because it is not really a new
-mechanism. It is gluing two already-built, already-proven pieces (the parser and the filesystem)
-together with two IPC call sites.
+identity inside that identity's own subtree (milestone 117 (the stranger test)'s existing per-user
+scoping). Write and read it through ordinary `filesystem_proto` verbs. Do so under capabilities that
+the writer (a live session registering a job) and the reader (boot-time re-derivation, §123) already
+need to hold for other reasons. This is the cheapest of the three by a wide margin because it is not
+really a new mechanism. It is gluing two already-built, already-proven pieces (the parser and the
+filesystem) together with two IPC call sites.
 
 ## How reversible is this, and who has already acted on it
 

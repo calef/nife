@@ -223,8 +223,8 @@ the console endpoint hides the migration." calef ruled straight to the port capa
 that this project is not built out of convenience. The endpoint would have let userspace stay
 unchanged, but the driver would have sat in the kernel until someone did the expensive work anyway.
 And the only thing "later" bought was a faster prompt and a chance to measure the switch cost first.
-He accepted both give-ups. See DECISIONS §149, now resolved by this reversal, and milestone 299,
-which builds it.
+He accepted both give-ups. See DECISIONS §149 (may the kernel answer on an endpoint), now resolved
+by this reversal, and milestone 299 (the x86 port-range capability), which builds it.
 
 Build the lazy write, not the naive one this file measured. The "Refined 2026-08-25" section is now
 load-bearing rather than a footnote. The ~2,682 ns/switch release figure is the worst-case

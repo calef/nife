@@ -47,8 +47,9 @@ Checked rather than designed, for whoever revisits this:
   opaque term in and opaque term out. The mechanism is generic; the content is the component's own
   business. CRIU and VM live migration are memory-page-level and assume identical layout between old
   and new. That does not hold here (a swap can cross versions, and can be to a different
-  implementation entirely, over §31's C seam). They are worth ruling out explicitly rather than
-  citing uncritically, since the roadmap block's own prior-art list named them without this caveat.
+  implementation entirely, over §31 (the foreign-language seam)'s C seam). They are worth ruling out
+  explicitly rather than citing uncritically, since the roadmap block's own prior-art list named
+  them without this caveat.
 - Nothing today needs this. `notes/fs-server.md`'s only mention of hot-swap is a passing
   observation that endpoint-only naming makes it possible in principle, not a live requirement.
 

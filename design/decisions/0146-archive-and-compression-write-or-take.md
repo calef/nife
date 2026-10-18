@@ -161,7 +161,7 @@ a quieter way: it is `NOT-STARTED`, and its block currently claims a dependency 
 - The stored-block deflate idea is untested here. It is correct by the specification and this
   tree has not written a byte of it, so "tiny and provable" is a prediction.
 - No measurement supports "inflate is small". It is a judgment from the shape of RFC 1951, not a
-  line count. §92's test applies to it: if the real reason to write it turns out to be that it
-  looked fun, that has to be said out loud.
+  line count. §92 (a caretaker is supervised)'s test applies to it: if the real reason to write it
+  turns out to be that it looked fun, that has to be said out loud.
 - Nobody has checked what `git` actually requires of the compressor. The claim that stored
   blocks suffice rests on zlib's specification rather than on reading git's object reader.

@@ -18,11 +18,12 @@ a decision and the code, rather than authorizing new work.
 
 It answers a gap in milestone 152 (durable delegation), pieces 2 and 3: the boot-time re-deriver and
 its connection to the schedule store. Neither [§122 (the on-disk, per-user schedule
-store)](0122-durable-schedule-store-format.md) nor [§123](0123-boot-time-rederivation-privilege.md)
-fully specifies what tells boot-time re-derivation which identities have a durable session with
-pending work at all. §122 is about one identity's own schedule file. §123 assumes "the store names"
-a set of sessions to re-derive. It does not say how that set is discovered without falling into
-milestone 126's refusal (enumeration is itself authority).
+store)](0122-durable-schedule-store-format.md) nor [§123 (boot-time
+re-derivation)](0123-boot-time-rederivation-privilege.md) fully specifies what tells boot-time
+re-derivation which identities have a durable session with pending work at all. §122 is about one
+identity's own schedule file. §123 assumes "the store names" a set of sessions to re-derive. It does
+not say how that set is discovered without falling into milestone 126 (the `procps` package)'s
+refusal (enumeration is itself authority).
 
 ## The question
 
@@ -66,11 +67,11 @@ ever provisions. For each one it simply attempts to open that identity's `schedu
 `ENOENT` as "nothing pending" rather than a failure. Considered and rejected. This pushes the "which
 identities" question out of the store and into whoever builds the re-deriver's own spawn site (a
 literal list baked into `crates/system_initializer` or wherever it is wired). That does not scale
-past a fixed, rebuild-to-change roster. It reintroduces exactly the coupling §117's per-identity
-subtree scheme was built to avoid (a principal's own resources need no central table to exist). It
-is also strictly worse than (b) for cost: (b) is one small read; (c) is one read *per provisioned
-identity*, most of which will be `ENOENT`. That is what deployment size actually determines rather
-than schedule-holder count.
+past a fixed, rebuild-to-change roster. It reintroduces exactly the coupling §117 (a principal's
+subtree is named by its identity)'s per-identity subtree scheme was built to avoid (a principal's
+own resources need no central table to exist). It is also strictly worse than (b) for cost: (b) is
+one small read; (c) is one read *per provisioned identity*, most of which will be `ENOENT`. That is
+what deployment size actually determines rather than schedule-holder count.
 
 ## What this tree already does in the analogous case
 
@@ -95,11 +96,12 @@ identical pattern one layer down: a document naming what exists, consulted rathe
 systemd's own answer to "which users have pending timers" is `loginctl list-users` plus a directory
 walk of `/etc/systemd/system/` and every user's `~/.config/systemd/user/`, i.e., enumeration. That
 walk is gated by ordinary Unix file permissions rather than a capability boundary. That approach is
-not available here on this tree's own terms (no ambient identity, DECISIONS §10, §82). It is the
-same gap milestone 126 already found when it named "enumeration is authority" as a refusal rather
-than an oversight. cron's own `/var/spool/cron/crontabs/` is the same shape (one file per user,
-discovered by listing the spool directory) and has the identical property. It works because Unix
-treats directory listing as an ordinary, ungated operation, which this tree deliberately does not.
+not available here on this tree's own terms (no ambient identity, DECISIONS §10 (process model), §82
+(ambient authority is the problem)). It is the same gap milestone 126 already found when it named
+"enumeration is authority" as a refusal rather than an oversight. cron's own
+`/var/spool/cron/crontabs/` is the same shape (one file per user, discovered by listing the spool
+directory) and has the identical property. It works because Unix treats directory listing as an
+ordinary, ungated operation, which this tree deliberately does not.
 
 ## What each option costs
 

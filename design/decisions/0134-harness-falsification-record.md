@@ -100,11 +100,11 @@ why the registry lost:
 
 The full argument there is worth reading and does not quote cleanly. A multi-line quote out of a
 shell comment carries its own `#` markers into `script/citations`' normalized text, which is a
-limitation of that check worth knowing before writing one. In summary: milestone 115's first draft
-proposed a single ratified-names table in `design/naming.md`, and calef rejected it on 2026-08-04
-for scaling the way the original `DECISIONS.md` and `design/roadmap.md` scaled. The decisive half
-was collisions rather than size, since every lane adding a name would edit one file and that is
-exactly what produced three section-number collisions in a day.
+limitation of that check worth knowing before writing one. In summary: milestone 115 (the names that
+were ratified)'s first draft proposed a single ratified-names table in `design/naming.md`, and calef
+rejected it on 2026-08-04 for scaling the way the original `DECISIONS.md` and `design/roadmap.md`
+scaled. The decisive half was collisions rather than size, since every lane adding a name would edit
+one file and that is exactly what produced three section-number collisions in a day.
 
 Same argument, same shape: a `Falsification:` block immediately above the harness, beside `Name:`
 in the same family, and a script derives the report. Same family as `script/names`, `script/roadmap` and `script/decisions`, and for the
@@ -224,9 +224,10 @@ compare it against the transcript and fail a record whose red arrived somewhere 
 **What it buys, and what it does not.** It closes the wrong-reason red. Milestone 202's break of
 [§31](0031-foreign-language-seam.md) surfaced as a 234-second watchdog timeout reading *"a livelock,
 not a lost wakeup"*, which is the right answer with a diagnostic containing no word about
-confinement. Milestone 305 hit the same edge and swapped the patch rather than record a red for the
-wrong reason. It buys nothing against an unreachable assertion, which is milestone 307's subject and
-a different hole: there the patch's prose and the transcript simply agree on some other line. Saying
+confinement. Milestone 305 (the six kernel confinement rows get a falsification) hit the same edge
+and swapped the patch rather than record a red for the wrong reason. It buys nothing against an
+unreachable assertion, which is milestone 307 (which assertion actually fires)'s subject and a
+different hole: there the patch's prose and the transcript simply agree on some other line. Saying
 so here is the point, because a gate that looks like it covers both would be worse than one that
 covers one.
 

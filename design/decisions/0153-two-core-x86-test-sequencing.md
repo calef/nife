@@ -114,12 +114,12 @@ untested for longer, which is the same trade that let the `U`-bit test sit vacuo
 
 ## The recommendation as written, superseded
 
-Option 3, weakly held, and the weakness is worth stating rather than hidden. The reason to
-prefer it is that the test's value is diagnostic rather than regression-catching on day one. The
-test is the first thing in this tree that can observe the revocation window at all, and measuring
-the window's width would replace milestone 313's reasoned "at most one tick" with a number. The
-reason to distrust the recommendation is that a two-tier suite is a thing somebody must keep honest,
-and this tree's own evidence is that the lower tier is where tests go quiet.
+Option 3, weakly held, and the weakness is worth stating rather than hidden. The reason to prefer it
+is that the test's value is diagnostic rather than regression-catching on day one. The test is the
+first thing in this tree that can observe the revocation window at all, and measuring the window's
+width would replace milestone 313 (the security audit)'s reasoned "at most one tick" with a number.
+The reason to distrust the recommendation is that a two-tier suite is a thing somebody must keep
+honest, and this tree's own evidence is that the lower tier is where tests go quiet.
 
 ## What was blocked, and what is unblocked
 

@@ -67,12 +67,12 @@ The one that stays here:
 
 A feature-gated kernel affordance built only to make an experiment possible is established practice.
 `kernel/Cargo.toml` carries `fastpath_pad`, which adds a large reachable-but-never-taken function to
-the IPC fast path so milestone 134's footprint experiment has something to compare, and
-`watchdog_probe`, which adds a test that deliberately livelocks and is expected to fail the run.
-Neither ships. `soak` itself is the third. So an affordance that exists only under `--features soak`
-crosses no line this tree has not already crossed on purpose. Milestone 219 established the hygiene
-that goes with it: `script/lint` clippies the feature, and `script/fastpath-footprint` proves the
-production binary is byte-identical.
+the IPC fast path so milestone 134 (the register of measures)'s footprint experiment has something
+to compare. It also carries `watchdog_probe`, which adds a test that deliberately livelocks and is
+expected to fail the run. Neither ships. `soak` itself is the third. So an affordance that exists
+only under `--features soak` crosses no line this tree has not already crossed on purpose. Milestone
+219 established the hygiene that goes with it: `script/lint` clippies the feature, and
+`script/fastpath-footprint` proves the production binary is byte-identical.
 
 ## The prior art, read rather than recalled
 
@@ -93,8 +93,9 @@ points plus a push is what it takes to keep an arbitrary workload spread without
 a harder scheduling problem than nife has, and the machinery is proportionate to it rather than
 excessive. The contrast with seL4 and Barrelfish is about the premise, not about the quality of
 either answer. They assume the application knows where its threads belong and make that a right it
-holds, so there is nothing left for the kernel to infer. nife's §28 sits on the second premise, and
-milestone 219's frozen counter is what the second premise looks like from a bench.
+holds, so there is nothing left for the kernel to infer. nife's §28 (SMP placement) sits on the
+second premise, and milestone 219's frozen counter is what the second premise looks like from a
+bench.
 
 ### What the prior art decides, and what it leaves open
 

@@ -8,11 +8,11 @@ ratified_by: calef
 # 128. What enforces the git-clobber rule, now that it has crossed its own threshold
 
 calef, 2026-08-25, in conversation, on the evidence below: "No repeat in three weeks seems like it
-isn't a problem any longer." Milestone 118's own violation ledger (`notes/rule-violations.md`) said
-the git-clobber rule sat at four open strikes, one past its own three-strike threshold, with no
-enforcement mechanism decided. It named this "calef's or the integrator's call, not this lane's."
-This entry lays out the real options researched for that call, and the decision: accept, no new
-mechanism, the ledger row marked `resolved`.
+isn't a problem any longer." Milestone 118 (CLAUDE.md has a budget)'s own violation ledger
+(`notes/rule-violations.md`) said the git-clobber rule sat at four open strikes, one past its own
+three-strike threshold, with no enforcement mechanism decided. It named this "calef's or the
+integrator's call, not this lane's." This entry lays out the real options researched for that call,
+and the decision: accept, no new mechanism, the ledger row marked `resolved`.
 
 ## The real incidents, precisely
 

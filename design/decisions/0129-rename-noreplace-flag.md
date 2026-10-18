@@ -7,13 +7,14 @@ ratified_by: calef
 
 # 129. Whether `filesystem_proto::fs::RENAME` grows a `NOREPLACE` flag, revisiting §42
 
-calef, 2026-08-25, in conversation: "Build it when we have a customer."
-[DECISIONS §42](0042-truthful-filesystem.md) declined `renameat2`-shaped `NOREPLACE`/`EXCHANGE`
-rename flags, giving two reasons. They are not portable (native support is Linux-only). And
-emulating `NOREPLACE` via separate `link`+`unlink` calls is racy. Milestone 55's own SMB work found
-that the second reason does not describe `redoxfs_server`'s actual implementation. It named
-revisiting §42 as calef's call rather than a lane's, "however cheap the change measures." This entry
-is that revisit, and §42 itself is amended in place to carry the correction.
+calef, 2026-08-25, in conversation: "Build it when we have a customer." [DECISIONS
+§42](0042-truthful-filesystem.md) declined `renameat2`-shaped `NOREPLACE`/`EXCHANGE` rename flags,
+giving two reasons. They are not portable (native support is Linux-only). And emulating `NOREPLACE`
+via separate `link`+`unlink` calls is racy. Milestone 55 (Time Machine)'s own SMB work found that
+the second reason does not describe `redoxfs_server`'s actual implementation. It named revisiting
+§42 (a filesystem declares what it offers) as calef's call rather than a lane's, "however cheap the
+change measures." This entry is that revisit, and §42 itself is amended in place to carry the
+correction.
 
 ## What changed since §42
 
@@ -68,9 +69,10 @@ customer path, not "would be racy to build") rather than the original one.
 
 Build the flag only when a specific client failure is observed on the actual customer path (a real
 macOS Time Machine or general SMB client operation that needs it). This matches this tree's own
-"wait for the customer" pattern elsewhere (DECISIONS §105's `std::thread::spawn`, "we will likely do
-A when there is such a customer"). Recorded here as a known, named, cheap-to-close gap rather than a
-silent one. So the next reader who hits it does not have to re-derive that it is easy.
+"wait for the customer" pattern elsewhere (DECISIONS §105 (`std::thread::spawn` stays declined)'s
+`std::thread::spawn`, "we will likely do A when there is such a customer"). Recorded here as a
+known, named, cheap-to-close gap rather than a silent one. So the next reader who hits it does not
+have to re-derive that it is easy.
 
 ## What this does not decide
 

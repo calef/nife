@@ -48,7 +48,8 @@ variants (matching `timetable`'s `Unbacked`/`Refusal` shape and POSIX's `EMFILE`
 the better-supported option, over a separate diagnostic-only query or leaving it collapsed forever.
 This is non-binding guidance for whoever eventually has a real customer, not a commitment. Re-check
 it against what that customer's failures actually look like rather than building to a description
-with nothing to correct it. That is the same caveat §116 attached to its own guidance.
+with nothing to correct it. That is the same caveat §116 (live component state handoff is declined)
+attached to its own guidance.
 
 ## What this does not decide
 

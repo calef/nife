@@ -105,12 +105,12 @@ word this tree's own prose reaches for independently: `crates/compositor/src/lib
 its own IPC, "is a rendezvous, so a compositor that narrated each frame would block."
 
 `Frame` -> `PageFrame`. `Frame` is generic on its own and collides in-tree the same way bare
-`Region` did: `crates/compositor` uses "frame" throughout for a rendered screen update ("per frame,"
+`Region` did. `crates/compositor` uses "frame" throughout for a rendered screen update ("per frame,"
 "the frame's damage," "a compositor that narrated each frame"), which is an unrelated concept from
-the kernel's `Frame` object (one physical page, DECISIONS §102). `PageFrame` is not invented
-vocabulary: "page frame" is the standard OS term for a physical page in a virtual memory system. It
-is used across the field regardless of kernel lineage. So the fix is the same shape as `Aspace` and
-`Tcb`: stop truncating the standard term.
+the kernel's `Frame` object (one physical page, DECISIONS §102 (a Frame names a run of pages)).
+`PageFrame` is not invented vocabulary: "page frame" is the standard OS term for a physical page in
+a virtual memory system. It is used across the field regardless of kernel lineage. So the fix is the
+same shape as `Aspace` and `Tcb`: stop truncating the standard term.
 
 `Tcb` -> `ThreadControlBlock`. The clean case: "Thread Control Block" is standard OS terminology
 taught in essentially every operating systems course. So a reader who already knows the acronym

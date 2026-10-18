@@ -20,13 +20,14 @@ breath.
 [`design/competitor-question.md`](../competitor-question.md) parked one decision: when the
 demonstrator becomes a competitor, if ever. §14 keeps a general-purpose competitor as an explicit
 later optionality, triggered by two conditions holding together. One is a verified core running a
-real workload (milestone 19, BUILT). The other is a reason the world needs another OS that the
-demonstrator has by then proved. The display ladder's own governance note is explicit about rungs
-three (real applications: iced, cosmic-text) and four (milestone 34: GPU acceleration via virtio-gpu
-3D, the Venus path). They are exactly the competitor-shaped work this parks: "broad driver coverage,
-a full Linux ABI, a package ecosystem" is what the ladder's next two rungs start pulling toward.
-Rung two's completion made the first half of the trigger real. The second half, a market or product
-reason, is not something more code produces. Nothing in the tree was positioned to answer it.
+real workload (milestone 19 (run a real workload), BUILT). The other is a reason the world needs
+another OS that the demonstrator has by then proved. The display ladder's own governance note is
+explicit about rungs three (real applications: iced, cosmic-text) and four (milestone 34 (GPU
+acceleration via virtio-gpu 3D): GPU acceleration via virtio-gpu 3D, the Venus path). They are
+exactly the competitor-shaped work this parks: "broad driver coverage, a full Linux ABI, a package
+ecosystem" is what the ladder's next two rungs start pulling toward. Rung two's completion made the
+first half of the trigger real. The second half, a market or product reason, is not something more
+code produces. Nothing in the tree was positioned to answer it.
 
 ## The decision
 
@@ -55,8 +56,8 @@ it.
 
 `design/roadmap/0142-a-text-display-worth-living-in.md` ("a sibling of rung three that rung three
 then consumes") is the adjacent case worth naming for the same reason it is named in "what this does
-not decide" below. It is good typography on this system's own terms, gated on milestone 141 and a
-smaller decision of its own, not on this one.
+not decide" below. It is good typography on this system's own terms, gated on milestone 141 (a
+palette worth looking at) and a smaller decision of its own, not on this one.
 
 ## What this does not decide
 

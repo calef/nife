@@ -14,8 +14,8 @@ below: *"Yes, pmap first."*
 
 Milestone 126's gate named one open decision blocking `pmap`. The decision is whether
 `Rights::ENUMERATE` extends to the address-space object (`Aspace`, renamed `AddressSpace` by
-DECISIONS §113), the same way it already extends to `Endpoint`/`Rendezvous` for `ps`/`pgrep`'s
-survey.
+DECISIONS §113 (eleven kernel object and identifier names)), the same way it already extends to
+`Endpoint`/`Rendezvous` for `ps`/`pgrep`'s survey.
 
 ## The decision
 

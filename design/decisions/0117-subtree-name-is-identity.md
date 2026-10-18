@@ -56,8 +56,9 @@ Provision-time creation requires a provisioning tool that does two things (crede
 subtree creation), and none exists. Checked: nothing outside test harness code
 (`credentialer_test_client.rs`, `kernel/src/user/credential_tests.rs`) calls the credential
 service's `PROVISION` endpoint today. This decision assumes that tool into existence rather than
-leaving the assumption implicit. Milestone 155, a provisioning tool that creates an identity and its
-home subtree together (minted alongside this decision, provisional), is where it is tracked.
+leaving the assumption implicit. Milestone 155 (a provisioning tool), a provisioning tool that
+creates an identity and its home subtree together (minted alongside this decision, provisional), is
+where it is tracked.
 
 ## What this does not decide
 

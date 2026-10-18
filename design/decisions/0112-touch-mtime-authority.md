@@ -34,11 +34,11 @@ assertion nothing bounds. [utime(3p) POSIX](https://www.unix.com/man_page/posix/
 [utime(2) Linux](https://www.man7.org/linux//man-pages/man2/utime.2.html).
 
 And it lands exactly on this tree's own precedent, one level down. The milestone's own text
-predicted this ("that is §43's asymmetry again... one level down"). §43 already treats reading the
-clock as broadly grantable. It treats setting it as a separate, more tightly held authority (a
-distinct writable page from the read-only one). `touch`'s two behaviors are the same shape applied
-to one file's timestamp. "now" is bounded by what the clock already says and cannot lie; "arbitrary"
-is bounded by nothing.
+predicted this ("that is §43 (reading the clock is a page)'s asymmetry again... one level down").
+§43 already treats reading the clock as broadly grantable. It treats setting it as a separate, more
+tightly held authority (a distinct writable page from the read-only one). `touch`'s two behaviors
+are the same shape applied to one file's timestamp. "now" is bounded by what the clock already says
+and cannot lie; "arbitrary" is bounded by nothing.
 
 ## The shape of the fix
 

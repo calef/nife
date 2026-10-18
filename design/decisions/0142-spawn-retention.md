@@ -57,9 +57,9 @@ ending.
 
 The authority is a property of the *caller*, not of anything the caller was handed, and the target
 is named by a global pid. A parent retains nothing in particular; it is simply one of the processes
-that may signal. This is the model §82 and this whole tree exist to refuse. It is included because
-it is the one that makes the shape of the others visible: everybody else's answer is a held object,
-and the only disagreement is which object.
+that may signal. This is the model §82 (ambient authority is the problem) and this whole tree exist
+to refuse. It is included because it is the one that makes the shape of the others visible:
+everybody else's answer is a held object, and the only disagreement is which object.
 
 ## The five answers, and what each costs
 
@@ -122,11 +122,12 @@ Cost. No new capability, and no slots at all: one endpoint per supervisor covers
 (process model: capability-based, microkernel).
 
 **What it costs that is not code.** Three recorded decisions push against it, and the note that
-surveyed this said so first. §32 draws its line at the corpse in as many words, milestone 126 ruled
-that a domain names its members and does not act on them, and §26.2 deferred even *reattaching*
-supervision as a new decision. It also concentrates: the supervisor's one endpoint becomes authority
-over every child that ever named it. The identity separating them is a tid the kernel stamped, which
-is fine for `REAP` on a corpse and is a wider blast radius on a live thread.
+surveyed this said so first. §32 (a supervisor may collect a corpse) draws its line at the corpse in
+as many words. Milestone 126 (the `procps` package) ruled that a domain names its members and does
+not act on them. And §26.2 deferred even *reattaching* supervision as a new decision. It also
+concentrates: the supervisor's one endpoint becomes authority over every child that ever named it.
+The identity separating them is a tid the kernel stamped, which is fine for `REAP` on a corpse and
+is a wider blast radius on a live thread.
 
 The asymmetry worth noticing. This is the answer a reader expects, because the supervisor is the
 party that notices a hang. It is also the one that overturns the most.
@@ -178,9 +179,10 @@ pays a slot it did not ask for.
 
 **What it costs that is not code.** A third noun for a reader to learn in the area a newcomer
 already finds hardest, and the one place this tree has explicitly warned against spending an
-irreversible number. §139 declined a method whose successor was already visible on the roadmap, and
-the same question applies here, since milestone 147's profiler wants cross-thread authority with a
-named target and nobody has priced its shape.
+irreversible number. §139 (who may read the cycle counter) declined a method whose successor was
+already visible on the roadmap. The same question applies here, since milestone 147 (a
+profiler)'s profiler wants cross-thread authority with a named target and nobody has priced its
+shape.
 
 ---
 

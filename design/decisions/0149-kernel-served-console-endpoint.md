@@ -90,9 +90,9 @@ currently assumes. The framebuffer is MMIO, so the existing mapping model works 
 
 ## Recommendation
 
-Option 1, and the effort test (§92, and the seventh question) comes out the same way. If all
-three cost the same, option 1 is still the one to pick, because it is the only one where the
-interface does not diverge. It is not the cheapest to build; option 2 is.
+Option 1, and the effort test (§92 (a caretaker is supervised), and the seventh question) comes out
+the same way. If all three cost the same, option 1 is still the one to pick, because it is the only
+one where the interface does not diverge. It is not the cheapest to build; option 2 is.
 
 The denial-of-service objection is real and is the part that wants designing rather than assuming.
 The shape that answers it is a service thread that **never blocks on a client**: it may block
@@ -147,12 +147,13 @@ on x86 exactly as it does on aarch64 and riscv64, and this section's recommended
 thread) is **not** built.
 
 Why the recommendation here lost, recorded because it was argued for. This section recommended the
-kernel thread on the strength of the interface-does-not-diverge test, and it was right that the client
-stays identical. What it undervalued is that the kernel thread keeps a device driver in the kernel,
-which is the one thing §14's thesis says userspace should hold. It also undervalued that the
-endpoint's ability to hide the driver's location is a reason to *migrate* later, not a reason to
-build the kernel version first.
-calef ruled straight to the userspace driver (DECISIONS §121, milestone 299), accepting a slower path
-to the x86 prompt in exchange for not shipping a kernel-resident driver at all. The BUGS below, about a
-kernel-resident IPC server's denial-of-service surface and its place in the trusted computing base, are
-retired by that choice rather than answered: there is no kernel-resident server.
+kernel thread on the strength of the interface-does-not-diverge test, and it was right that the
+client stays identical. What it undervalued is that the kernel thread keeps a device driver in the
+kernel, which is the one thing §14 (the project's direction)'s thesis says userspace should hold. It
+also undervalued that the endpoint's ability to hide the driver's location is a reason to *migrate*
+later, not a reason to build the kernel version first. calef ruled straight to the userspace driver
+(DECISIONS §121 (what a device capability is), milestone 299 (the x86 port-range capability)),
+accepting a slower path to the x86 prompt in exchange for not shipping a kernel-resident driver at
+all. The BUGS below, about a kernel-resident IPC server's denial-of-service surface and its place in
+the trusted computing base, are retired by that choice rather than answered: there is no
+kernel-resident server.

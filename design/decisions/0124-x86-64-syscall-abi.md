@@ -8,12 +8,12 @@ ratified_by: calef
 # 124. Ratify the x86_64 syscall ABI
 
 calef, 2026-08-24, ratified as written: `rax` carries the syscall number; arguments ride `rdi`,
-`rsi`, `rdx`, `r10`, `r8`, `r9`. Raised the same day by calef, after milestone 161's ring-3 lane
-(pull request #464, merged) made the x86_64 syscall ABI genuinely **spoken** rather than only
-written down. A real `syscall` executed from CPL 3 reaches the portable dispatcher through
-`TrapFrame::{syscall_nr, arg, set_arg}` and a real answer comes back. The ABI itself had never been
-formally decided, and #464 had already merged. So there was no open pull request left to carry a
-`needs-architect` label. The number is **provisional**, minted against the current
+`rsi`, `rdx`, `r10`, `r8`, `r9`. Raised the same day by calef, after milestone 161 (the x86_64
+port)'s ring-3 lane (pull request #464, merged) made the x86_64 syscall ABI genuinely **spoken**
+rather than only written down. A real `syscall` executed from CPL 3 reaches the portable dispatcher
+through `TrapFrame::{syscall_nr, arg, set_arg}` and a real answer comes back. The ABI itself had
+never been formally decided, and #464 had already merged. So there was no open pull request left to
+carry a `needs-architect` label. The number is **provisional**, minted against the current
 `design/decisions/` index (highest existing was 123 at the time of writing).
 
 What is blocked: nothing today. Milestone 161's item 4, the kernel test suite, has not started. What
@@ -26,8 +26,9 @@ first.
 Whether the x86_64 syscall ABI is ratified as written: `rax` carries the syscall number; arguments
 ride in `rdi`, `rsi`, `rdx`, `r10`, `r8`, `r9`. This is exactly what's already implemented in
 `kernel/src/arch/x86_64/exceptions.rs`'s `TrapFrame::{syscall_nr, arg, set_arg}`. It is also the
-syscall surface. DECISIONS §10 and §16 already establish that surface as "a boundary rather than a
-habit," not an implementation detail a lane settles on the way past.
+syscall surface. DECISIONS §10 (process model) and §16 (object revocation) already establish that
+surface as "a boundary rather than a habit," not an implementation detail a lane settles on the way
+past.
 
 ## What this tree already does in the analogous case
 

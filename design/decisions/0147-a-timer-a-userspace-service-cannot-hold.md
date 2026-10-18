@@ -15,7 +15,7 @@ calef, 2026-09-05: option 1, the new object. Option 2 was ruled out first
 is not the thing a scope note is for). Between 1 and 3 his reason was one sentence: *"A new object
 seems like the winner. A deadline argument seems like a work around to reduce effort."*
 
-That is [§92 (a caretaker is supervised by the client it serves)](0092-caretaker-lifetime.md)'s test
+That is [§92 (a caretaker is supervised)](0092-caretaker-lifetime.md)'s test
 applied, and it is worth recording as such because §92 exists for exactly this shape: *"the failure
 mode is not laziness, it is a recommendation that sounds like design."* Milestone 51 (wall-clock
 time, the `date` command, and an NTP service) called the deadline argument strongest on "three
@@ -111,11 +111,11 @@ Measured (milestone 263's scaffold, built, gated green with `script/test`, and d
 | kernel symbol bytes | +738 B / +2,266 B / +1,386 B, all under 0.25% |
 | per-tick bookkeeping | already priced in `notes/timed-wait.md`: one comparison per idle tick |
 
-What it costs that is not bytes. A syscall-surface addition, permanent, that every future program
-is written against. And a dependency on milestone 151, which is unbuilt. Without §101's TCB binding
-this buys a thread a timer it can block on and no way to block on a timer *and* a message at once,
-which is milestone 106's actual complaint. Option 1 is 151 plus one object, and pricing it any
-other way understates it.
+What it costs that is not bytes. A syscall-surface addition, permanent, that every future program is
+written against. And a dependency on milestone 151, which is unbuilt. Without §101 (notification
+objects)'s TCB binding this buys a thread a timer it can block on and no way to block on a timer
+*and* a message at once, which is milestone 106's actual complaint. Option 1 is 151 plus one object,
+and pricing it any other way understates it.
 
 ### Option 2: a userspace service on aarch64 and x86_64, with a riscv64 scope note
 

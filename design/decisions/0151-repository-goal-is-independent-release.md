@@ -27,9 +27,10 @@ structure is for. This decides that:
   is a package manager and a trivial install."*
 
 So the endpoint is the decoupled ecosystem, not the monorepo held forever. Milestone 39's own
-recommendation is consistent with this: get there through option B (workspaces inside one repository)
-and let the distribution be a manifest repository (`basalt`, reserved by milestone 120). That
-recommendation reaches the split when the seams exist rather than by directory surgery up front.
+recommendation is consistent with this: get there through option B (workspaces inside one
+repository) and let the distribution be a manifest repository (`basalt`, reserved by milestone 120
+(the rename)). That recommendation reaches the split when the seams exist rather than by directory
+surgery up front.
 
 ## What this does not settle, and it is deliberately separate
 

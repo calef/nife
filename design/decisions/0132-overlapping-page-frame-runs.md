@@ -123,7 +123,7 @@ never changes the object). `LOG_ENTRIES` falls from 255 to 170 per log page, so 
 1.5x the log pages it pays now. `revoke.rs`'s existing `assert!(size_of::<LogPage>() == FRAME_SIZE)`
 keeps that honest at compile time. "Or its derivatives" is free under this encoding and only under
 it. A narrowed derivative has the same object, so matching on the object matches the whole family
-without §13's derivation tree.
+without §13 (capability revocation and untyped reclamation)'s derivation tree.
 
 Consequence: it does not close the device half (question 3), and it is a change to what
 `REVOKE` means, which is the syscall surface.
@@ -211,7 +211,7 @@ What shipped, on `milestone/132-capability-scoped-revocation`:
 
 - `revoke::LogEntry` carries the object each mapping was made under. `revoke::record_mapping` takes
   a required `PageMapSource` saying which capability that was, or `NoCapability` for a page nothing
-  names. That type was ratified 2026-08-27 and landed as `MappedUnder`; it was renamed since
+  names. That type was ratified 2026-08-27 and landed as `MappedUnder`, and renamed since
   "mapping" alone is overloaded across this tree and `pmap` is already this tree's word for a page
   mapping. A required argument with no default is the ladder's rung one: a mapping that cannot say
   what authority made it no longer compiles.

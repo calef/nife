@@ -25,8 +25,8 @@ authority. It can only rebuild it fresh, the way a login would, but with no live
 credentials at that moment. The roadmap doc says this should be "a privileged, boot-only operation,
 in the same shape as `root_supervisor` handing out its authority once at boot and never again, not a
 standing 'impersonate any user' capability left lying around afterward." It does not say what object
-holds that privilege or what it is granted. Nor does it say what mechanism actually prevents it from
-being invoked a second time. That is what this decision answers.
+holds that privilege, what it is granted, or what mechanism actually prevents it from being invoked a
+second time. That is what this decision answers.
 
 This is worth being careful about because of what the operation actually is. It can stand up a
 durable session for any user named in the on-disk schedule store. That session is a bundle of
@@ -123,9 +123,9 @@ The recommended shape (a), concretely:
 - **What it must NOT be granted.** Network access (nothing about re-deriving local sessions needs
   it). The ability to re-derive on demand after the boot window closes. That is the entire scoping
   question and is answered below, not by omission here. Anything that would let it enumerate users
-  rather than iterate the store it was hard-wired to read at construction. This is milestone 126's
-  enumeration-is-authority rule, already invoked by 152's own reattachment design for the same
-  reason.
+  rather than iterate the store it was hard-wired to read at construction. This is milestone 126
+  (the `procps` package)'s enumeration-is-authority rule, already invoked by 152's own reattachment
+  design for the same reason.
 - Whether it needs a new dedicated process or folds into an existing one. Either is viable and this
   decision does not need to pick. One shape is a small dedicated boot-only process (provisional name
   only, something like `session_reviver`; naming is calef's call per AGENTS.md, not this lane's). It
@@ -169,17 +169,17 @@ It is cheap to change: no code exists yet that depends on the answer, no wire fo
 secret.
 
 But the shape recommended here (a) needs zero new kernel primitives. `cap_delete`, `Untyped::SPLIT`,
-and ordinary capability derivation are all §16's existing mechanism. Nothing about re-deriving a
-session at boot requires a new syscall, a new object type, or a change to the capability model. That
-is a strong point in its favor independent of the scoping argument above. It is buildable today, on
-the mechanism this tree already has and has already proven correct (§16's amendments, and the Kani
-harness pinning `SPLIT`'s rights-inheritance invariant). It does not need a new primitive designed,
-proved, and added to the syscall surface first. Option (b) or (c), by contrast, would each need
-exactly that: (b) a new kind of kernel-checked runtime state, (c) a new capability method. Both are
-the expensive kind of decision under AGENTS.md's "move fast on what can be undone" tenet (the
-syscall surface is named there explicitly as a boundary, not a habit). So even setting the scoping
-argument aside, (a) is the only option of the three that does not itself require a further, slower
-decision before it could be built.
+and ordinary capability derivation are all §16 (object revocation)'s existing mechanism. Nothing
+about re-deriving a session at boot requires a new syscall, a new object type, or a change to the
+capability model. That is a strong point in its favor independent of the scoping argument above. It
+is buildable today, on the mechanism this tree already has and has already proven correct (§16's
+amendments, and the Kani harness pinning `SPLIT`'s rights-inheritance invariant). It does not need a
+new primitive designed, proved, and added to the syscall surface first. Option (b) or (c), by
+contrast, would each need exactly that: (b) a new kind of kernel-checked runtime state, (c) a new
+capability method. Both are the expensive kind of decision under AGENTS.md's "move fast on what can
+be undone" tenet (the syscall surface is named there explicitly as a boundary, not a habit). So even
+setting the scoping argument aside, (a) is the only option of the three that does not itself require
+a further, slower decision before it could be built.
 
 ## The recommendation
 

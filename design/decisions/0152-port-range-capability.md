@@ -7,15 +7,16 @@ ratified_by: calef
 
 # 152. The port-range capability: object and method semantics on the syscall surface
 
-calef, 2026-09-15, ratified the object, its one method, and the x86-only scope together. He
-ratified them when milestone 299 (the x86 port-range capability) landed the working driver behind
-them. This section records the one thing milestone 299 puts on the capability surface. The reason
-is that a new object type there is calef's to ratify (§10, §16). The *move fast on what can be
-undone* tenet also files the syscall surface under the irreversible category. **The provisional
-names for the object, its method, and their fields are not ratified here.** They stay on the
-worklist (`script/names`); calef takes those separately. DECISIONS §121 decided *that* x86 gets a
-port capability and *why* (the reversal at the end of that file). This decides *what the object is
-and what invoking it does*, the part §121 named but left for the milestone.
+calef, 2026-09-15, ratified the object, its one method, and the x86-only scope together. He ratified
+them when milestone 299 (the x86 port-range capability) landed the working driver behind them. This
+section records the one thing milestone 299 puts on the capability surface. The reason is that a new
+object type there is calef's to ratify (§10 (process model), §16 (object revocation)). The *move
+fast on what can be undone* tenet also files the syscall surface under the irreversible category.
+**The provisional names for the object, its method, and their fields are not ratified here.** They
+stay on the worklist (`script/names`); calef takes those separately. DECISIONS §121 (what a device
+capability is) decided *that* x86 gets a port capability and *why* (the reversal at the end of that
+file). This decides *what the object is and what invoking it does*, the part §121 named but left for
+the milestone.
 
 ## What it names
 
@@ -36,13 +37,13 @@ by the CPU's TSS I/O permission bitmap.
 - It is minted by the kernel, once, at boot, the way a `DeviceFrame` is. Only the kernel knows a
   machine's device ports. The progenitor is handed COM1's `PortRange(0x3F8, 8)` with `GRANT` and
   delegates it to the console and input drivers it builds.
-- The object is `x86_64`-only, unlike `DeviceFrame` (which every architecture has, because MMIO
-  is universal). Port I/O exists on no other architecture, so omitting it there is not a parity gap
-  (§19). It is the absence of the hardware. Compiling the variant only where it exists also keeps a
-  new enum arm off the other two architectures' syscall dispatcher. The IPC round trip's
-  instruction-footprint bound is measured against that dispatcher (`script/fastpath-footprint`). A
-  variant present everywhere grew riscv64's dispatcher past that bound for hardware it can never
-  name.
+- The object is `x86_64`-only, unlike `DeviceFrame` (which every architecture has, because MMIO is
+  universal). Port I/O exists on no other architecture, so omitting it there is not a parity gap
+  (§19 (architectural parity is a tenet)). It is the absence of the hardware. Compiling the variant
+  only where it exists also keeps a new enum arm off the other two architectures' syscall
+  dispatcher. The IPC round trip's instruction-footprint bound is measured against that dispatcher
+  (`script/fastpath-footprint`). A variant present everywhere grew riscv64's dispatcher past that
+  bound for hardware it can never name.
 
 ## What invoking it does
 
@@ -106,14 +107,14 @@ setter and constructor together.
   creation-time fact, set when an embryo is endowed, the same posture `cycle_counter_grant` takes.
   Runtime delegation to a live thread would leave the switch installing the old grant until the next
   insert-through-the-choke-point. No consumer does this.
-- Revocation reaches one core, and since 2026-09-17 that is a window rather than a non-issue.
-  This entry used to end *"the stale-bitmap window a multi-core machine would have does not exist"*,
-  on the premise that x86 runs a single core because `smp::bring_up_secondaries` refuses there.
-  `smp::seat_cpus_from_acpi` made that premise false, and the conclusion inverted with it.
-  Milestone 313's security audit found the reset still core-local while the tour boots two cores
-  under OVMF and four on xenon. So a revoked holder running on another core keeps that core's TSS
-  bitmap until its next context switch, at most one tick. During that window its `in`/`out`
-  succeed against a capability that no longer exists.
+- Revocation reaches one core, and since 2026-09-17 that is a window rather than a non-issue. This
+  entry used to end *"the stale-bitmap window a multi-core machine would have does not exist"*, on
+  the premise that x86 runs a single core because `smp::bring_up_secondaries` refuses there.
+  `smp::seat_cpus_from_acpi` made that premise false, and the conclusion inverted with it. Milestone
+  313 (the security audit)'s security audit found the reset still core-local while the tour boots
+  two cores under OVMF and four on xenon. So a revoked holder running on another core keeps that
+  core's TSS bitmap until its next context switch, at most one tick. During that window its
+  `in`/`out` succeed against a capability that no longer exists.
 
   The audit accepted the window rather than fixing it, with its reason. The window is bounded, it
   cannot reopen, and no consumer holds a port on two cores today. The limitation is recorded where

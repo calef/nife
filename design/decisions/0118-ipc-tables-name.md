@@ -27,14 +27,14 @@ a replacement, deliberately reserving the call for calef.
 
 Milestone 98's own doc had already ruled out two names. `ObjectRegistry` claims more generality than
 the type has: there are two kinds held, not any kind. `Objects` is too vague, exactly what DECISIONS
-§39 warns a generic word does. `IpcState` was proposed and considered next but rejected for the same
-underlying weakness one level down: "state" says *that* IPC-relevant data lives here without saying
-*what*. So a reader still has to open the file to learn it's a thread table and an endpoint
-registry. Milestone 98's own instruction is explicit: "Propose with what it holds, and wait". That
-is a naming rule, not a suggestion: name the type for its concrete contents, the pattern already
-used this session for `AddressSpace`, `MemoryRegion`, `ThreadControlBlock`. `IpcTables` passes that
-test where `IpcState` does not. It says, correctly, that there are tables (plural) inside, and a
-reader expects to find exactly what is there.
+§39 (a component is named for what it is) warns a generic word does. `IpcState` was proposed and
+considered next but rejected for the same underlying weakness one level down: "state" says *that*
+IPC-relevant data lives here without saying *what*. So a reader still has to open the file to learn
+it's a thread table and an endpoint registry. Milestone 98's own instruction is explicit: "Propose
+with what it holds, and wait". That is a naming rule, not a suggestion: name the type for its
+concrete contents, the pattern already used this session for `AddressSpace`, `MemoryRegion`,
+`ThreadControlBlock`. `IpcTables` passes that test where `IpcState` does not. It says, correctly,
+that there are tables (plural) inside, and a reader expects to find exactly what is there.
 
 The `Ipc` half is not invented for this decision; it is already this tree's own finding.
 `notes/sched-lock-inventory.md` classified every `SCHED.lock()` call site by reading, not guessing,
@@ -64,9 +64,9 @@ IPC-capable syscall needs is a real, named thing in the field.
 
 The exact rename mechanics (order of edits, whether `notes/sched-lock-inventory.md` gets renamed in
 the same commit or a following one) are milestone 98's own scope note's to follow, not this entry's.
-That note already specifies pure rename and no behaviour change. It says milestone 69's proof
-obligation applies and the lock rank keeps its position. It also specifies that the type/static must
-be renamed together in one commit ("do not do half of it").
+That note already specifies pure rename and no behaviour change. It says milestone 69 (split
+`kernel/src/user.rs` by service)'s proof obligation applies and the lock rank keeps its position. It
+also specifies that the type/static must be renamed together in one commit ("do not do half of it").
 
 ## What it unblocks
 

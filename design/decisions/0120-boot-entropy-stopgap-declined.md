@@ -19,12 +19,13 @@ kept in full above it, unedited, because it was correct on the premise it had.
 
 ## The question
 
-Milestone 49's boot-wiring lane traced "not wired into the interactive boot" down to a real blocker.
-`login` needs `credentialer`, which refuses to start without the entropy service (DECISIONS §42, no
-silent degradation). The entropy service needs a `Virtio` capability onto a virtio-rng device.
-Neither aarch64's `spawn_init` nor riscv64's `riscv_shell_boot`, both `boot_progenitor` since
-milestone 166 (one boot loader), grants one. The interactive boot's QEMU invocation does not attach
-the device either. That is a deliberate, existing minimal-device-surface choice (`NIFE_RNG`, like
+Milestone 49 (users, login, and attribution)'s boot-wiring lane traced "not wired into the
+interactive boot" down to a real blocker. `login` needs `credentialer`, which refuses to start
+without the entropy service (DECISIONS §42 (a filesystem declares what it offers), no silent
+degradation). The entropy service needs a `Virtio` capability onto a virtio-rng device. Neither
+aarch64's `spawn_init` nor riscv64's `riscv_shell_boot`, both `boot_progenitor` since milestone 166
+(one boot loader), grants one. The interactive boot's QEMU invocation does not attach the device
+either. That is a deliberate, existing minimal-device-surface choice (`NIFE_RNG`, like
 `NIFE_GPU`/`NIFE_KBD`/`NIFE_NVME`, is test-leg only). The fork the lane surfaced rather than
 decided: add virtio-rng to the interactive boot now, as a QEMU-only stopgap, or wait.
 
@@ -38,12 +39,12 @@ sorted. Same shape as `std::thread::spawn` (§105), hard links (§110), state ha
 
 **This was never really "add entropy or not," it was two separable questions wearing one fork.**
 Checked before accepting the lane's framing: the JH7110's TRNG is already named as the real hardware
-answer in two places (`notes/entropy.md`, milestone 56's own doc). It is verified nowhere and
-tracked by no milestone. That is the same shape of gap milestones 53 (board network/storage) and 157
-(board display) already carry: virtio only exists in QEMU, real silicon needs its own driver.
-Milestone 159, a real hardware entropy source (the JH7110's TRNG, minted alongside this decision),
-tracks the real answer. This decision covers only the second, separable question: whether to grant a
-QEMU-only stand-in *before* that real answer lands.
+answer in two places (`notes/entropy.md`, milestone 56 (secrets, credentials, and the entropy)'s own
+doc). It is verified nowhere and tracked by no milestone. That is the same shape of gap milestones
+53 (board network/storage) and 157 (board display) already carry: virtio only exists in QEMU, real
+silicon needs its own driver. Milestone 159, a real hardware entropy source (the JH7110's TRNG,
+minted alongside this decision), tracks the real answer. This decision covers only the second,
+separable question: whether to grant a QEMU-only stand-in *before* that real answer lands.
 
 **The lane's own cost accounting holds up and is the real reason to wait, not just "no customer."**
 Granting virtio-rng in the interactive QEMU boot is cheap by itself (one flag, matching the three
@@ -57,9 +58,9 @@ expensive category. And there is no customer forcing the question yet.
 
 ## What this does not decide
 
-Milestone 159's real-hardware TRNG driver is not blocked by this decision either way. Building it
-does not require revisiting this fork: the two were only coupled by both routing through
-`entropy_service`, not by any shared mechanism.
+Milestone 159 (a real hardware entropy source)'s real-hardware TRNG driver is not blocked by this
+decision either way. Building it does not require revisiting this fork: the two were only coupled by
+both routing through `entropy_service`, not by any shared mechanism.
 
 ## The amendment, 2026-08-26: reversed
 
@@ -80,10 +81,10 @@ sixteen. Fitting a new permanent virtio-rng grant is still a restructuring, not 
 The honest candidates the doc comment names for buying the slot (the readiness endpoint retyped
 later, or the file page's second frame retired) are unchanged. That is real work, owed to whoever
 builds this, and this amendment does not do it. The second cost, that granting it answers "what does
-the interactive boot represent" as the demonstrator's own boot rather than milestone 55's real
-Pi-class target, is the claim calef is the right person to make and has now made. The interactive
-boot is the demonstrator's. A real customer target with no virtio-rng is a fact for whoever
-eventually ships against real hardware, not a reason to block development velocity today.
+the interactive boot represent" as the demonstrator's own boot rather than milestone 55 (Time
+Machine)'s real Pi-class target, is the claim calef is the right person to make and has now made.
+The interactive boot is the demonstrator's. A real customer target with no virtio-rng is a fact for
+whoever eventually ships against real hardware, not a reason to block development velocity today.
 
 ## What it unblocks
 
