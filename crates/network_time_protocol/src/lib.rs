@@ -31,11 +31,11 @@
 //!                                       └── Reject: the response is not an answer to our question
 //! ```
 //!
-//! Name: provisional. calef ruled the stem **`network_time`** on 2026-09-13, which deratifies the
-//! 2026-08-23 ratification of `ntp_proto`: a standard's name stays whole for a format or hardware
-//! and expands for a network protocol. `_protocol` is milestone 265 (`_proto` is a truncation)'s
-//! suffix. The program `ntp` became `network_time_client` and its siblings. It stays provisional
-//! until calef sees the whole name.
+//! Name: ratified 2026-10-18 (calef, a crate-naming session). Kept: the NTPv4 standard's own full
+//! name, so its `_protocol` is the standard's word and not nife's contract suffix. His answer was
+//! "`network_time_protocol`". The stem `network_time` was ruled 2026-09-13: a standard's name stays
+//! whole for a format or hardware and expands for a network protocol. Refused `ntp_proto` (milestone
+//! 265 (`_proto` is a truncation)). The program `ntp` is `network_time_client` and its siblings.
 
 #![no_std]
 
