@@ -3,7 +3,7 @@ use super::*;
 /// Reassemble a std program's stdout off its endpoint until the writer says the stream is over,
 /// and compare byte for byte.
 ///
-/// The framing is the sink contract's (`crates/byte_sink_contract`, milestone 50), which for bytes is
+/// The framing is the sink contract's (`crates/byte_sink_contract`, milestone 50 (pipes and redirection: one sink protocol, and `|` turns out to be an endpoint)), which for bytes is
 /// bit-for-bit the framing the PAL used before that contract existed: `w0` is the count, `w1`
 /// and `w2` are the bytes, little-endian. `SEND` blocks until a receiver takes it, so the
 /// program is somewhere between its last `println!` and `SYS_EXIT` when the bytes land.

@@ -9,7 +9,7 @@ use super::*;
 /// later verify, and its other three checks (a wrong password, an unknown identity, another
 /// identity's password against this one) are unaffected by which store they run against.
 ///
-/// **Taken from `credential_contract::fixture` rather than matched to it by hand** (milestone 293).
+/// **Taken from `credential_contract::fixture` rather than matched to it by hand** (milestone 293 (a role that differs only in its credentials is an argument)).
 /// The comment that used to sit here said this suite had *chosen* `alice`/`correct horse battery
 /// staple` to line up with a constant in a fixture program, which is a coupling with nothing holding
 /// it: the next person to edit either copy would have had no way to know the other existed.

@@ -44,7 +44,7 @@ const NET_CLIENT_DIGEST_REFUSED: u64 = 3;
 /// exactly this one, and the client asks for `fixture::DENIED_PORT` as well to prove the grant
 /// refuses. Named here because the *spawn service* is what grants it, which is the point.
 ///
-/// Taken from `socket_contract::fixture` rather than spelled again (milestone 64): three binaries and
+/// Taken from `socket_contract::fixture` rather than spelled again (milestone 64 (enough `std` to run somebody else's crate)): three binaries and
 /// this test have to agree on the number, and a literal repeated per call site is the shape rule 7
 /// exists to retire. The runners' `hostfwd` spells it a second time because a shell script cannot
 /// read a Rust crate, and that drift is loud (the prober reports the guest served none).

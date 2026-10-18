@@ -20,7 +20,7 @@ pub(crate) const FILE: u64 = 0;
 pub(crate) const REPORT: u64 = 1;
 /// The base of the client's mapping of the channel it shares with the FS server.
 ///
-/// **It is `filesystem_contract::fs::TRANSFER_MAX` bytes wide, not one page** (milestone 138 step 3), and the
+/// **It is `filesystem_contract::fs::TRANSFER_MAX` bytes wide, not one page** (milestone 138 (close the read gap: a 4 KiB request must stop moving 128 KiB) step 3), and the
 /// kernel's wiring maps every page of it here (`kernel/src/user/fs_service/channel.rs`, `map_channel`). A
 /// client may not ask for more than it mapped, and this one maps all of it, which is what lets the
 /// throughput role measure the contract's own ceiling rather than a page.

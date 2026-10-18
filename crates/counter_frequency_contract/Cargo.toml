@@ -5,7 +5,7 @@ edition = "2024"
 publish = false     # the default; the allowlist lint holds the exception (crates/publish-allowlist.txt)
 license.workspace = true
 
-# The x86_64 counter frequency page (milestone 161's cntfrq follow-up, DECISIONS §121's calibration path):
+# The x86_64 counter frequency page (milestone 161 (the x86_64 kernel port: bring up the HAL's third architecture)'s cntfrq follow-up, DECISIONS §121 (what a device capability is when the device has no page: x86 port I/O)'s calibration path):
 # one definition of the read-only page that carries the TSC's calibrated rate into every
 # ELF-loaded x86_64 process, so the kernel (which computes the number once, at boot) and
 # `user_mode_runtime::cntfrq` (which reads it, ambiently, once per process) cannot drift on the page's

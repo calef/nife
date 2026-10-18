@@ -73,7 +73,7 @@ Everything above is the guest as a client. The TCP gate connects out to a slirp 
 UDP gate sends a request, DHCP is a client protocol. nife could reach the network and could not
 be reached, and the contract had no listen verb to fix that with.
 
-Milestone 107 adds `LISTEN` and `ACCEPT` (`crates/socket_contract`, opcodes 9 and 10, **names
+Milestone 107 (the socket contract learns to accept) adds `LISTEN` and `ACCEPT` (`crates/socket_contract`, opcodes 9 and 10, **names
 provisional**), the smoltcp side in `components/src/net_stack.rs`, and a gate in which a **host process
 connects into the guest** and gets an answer the guest composed. Two design questions came with the
 verbs, and neither was copied from POSIX.

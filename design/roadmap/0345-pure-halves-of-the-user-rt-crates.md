@@ -35,7 +35,7 @@ so. That is the exact failure the milestone was built against, living in the mil
 blind spot.
 
 The tree has already paid for this class of gap once, and the block records the bill. When five
-crates went missing from the host selection by milestone 51, `filesystem_contract`, `compositor`,
+crates went missing from the host selection by milestone 51 (wall-clock time, the `date` command, and an NTP service), `filesystem_contract`, `compositor`,
 `video_terminal`, `bitmap_font` and `grant_plan` carried **82 host tests the gate never ran**. All
 82 passed when they were finally run, which is the point: nothing failed, so nobody noticed, and a
 gate that quietly covers less than it claims is worse than no gate because it is trusted.
@@ -58,7 +58,7 @@ of success is mechanical and already automated: a crate leaves the `--exclude` l
 
 ## Where it came from
 
-Milestone 68's block: *"Split the pure half from the syscall half in `user_rt`, `hot_swap_contract`,
+Milestone 68 (code-quality gates: one lint policy, and the lints that lost)'s block: *"Split the pure half from the syscall half in `user_rt`, `hot_swap_contract`,
 `virtio`, `supervision_protocol` and `system_initializer`. Each takes an unconditional `user_rt`
 dependency, so the host test selection excludes it and nothing in CI ever runs its doctests. That is
 five crates whose examples can rot unnoticed inside the gate milestone 68 exists to be."*

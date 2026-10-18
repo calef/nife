@@ -49,8 +49,8 @@ pub(crate) static HEAP: user_mode_runtime::heap::MemoryRegionHeap =
 /// binary, so the initial ramdisk stays under its 15-file directory limit).
 ///
 /// `a2` is the server's **grant word**, both port authorities in one spawn argument: the TCP
-/// listen range in the low half (milestone 107, `socket_contract::listen_grant`) and the fixed-UDP
-/// bind range in the high half (milestone 55's stack half, `socket_contract::udp_bind_grant`).
+/// listen range in the low half (milestone 107 (the socket contract learns to accept), `socket_contract::listen_grant`) and the fixed-UDP
+/// bind range in the high half (milestone 55 (time Machine: SMB3 with Apple's extensions, and mDNS)'s stack half, `socket_contract::udp_bind_grant`).
 /// Whoever spawns the server decides both; a server spawned with zero (`NO_LISTEN_GRANT`, which
 /// every outbound-only test uses) refuses every `LISTEN` and every `BIND_UDP`. The client half
 /// ignores it.

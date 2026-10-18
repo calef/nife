@@ -141,7 +141,7 @@ pub fn now() -> u64 {
 }
 
 /// The counter frequency in Hz (`x86_64`), read from the **timebase page** the kernel maps
-/// read-only into every process at [`counter_frequency_contract::PAGE_VA`] (milestone 161's `cntfrq`
+/// read-only into every process at [`counter_frequency_contract::PAGE_VA`] (milestone 161 (the x86_64 kernel port: bring up the HAL's third architecture)'s `cntfrq`
 /// follow-up).
 ///
 /// x86 has **no architected rate a ring-3 program can ask for**: `CPUID` leaf `0x15` is absent on

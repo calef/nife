@@ -111,7 +111,7 @@ fn next_offset(state: &mut u64, unit: usize) -> i64 {
 /// medium before it returns). The two are separate because **nife sits between them**: the FS
 /// server puts every write through a RedoxFS transaction that commits to the header ring before it
 /// replies, so there is no dirty state anywhere above the device, but it issues no
-/// `VIRTIO_BLK_T_FLUSH` unless a client asks for one (`filesystem_contract::fs::SYNC`, milestone 55). So
+/// `VIRTIO_BLK_T_FLUSH` unless a client asks for one (`filesystem_contract::fs::SYNC`, milestone 55 (time Machine: SMB3 with Apple's extensions, and mDNS)). So
 /// `direct` alone is the closest analogue for where the bytes are, and `direct` plus `dsync` is the
 /// closest analogue for the metadata commit, and quoting only one of them would be picking the
 /// answer.

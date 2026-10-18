@@ -346,7 +346,7 @@ impl Disk for IpcDisk {
 }
 
 impl IpcDisk {
-    /// **Make the device durable** (milestone 55): one `filesystem_contract::blk::FLUSH`, and the block
+    /// **Make the device durable** (milestone 55 (time Machine: SMB3 with Apple's extensions, and mDNS)): one `filesystem_contract::blk::FLUSH`, and the block
     /// server's answer handed back untouched.
     ///
     /// Not part of the `Disk` trait, because RedoxFS's `Disk` has no sync method and this tree does

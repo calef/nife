@@ -625,7 +625,7 @@ impl<D: Disk> Server<D> {
     }
 
     /// **Set `name`'s modification time to a caller-supplied Unix-seconds value**
-    /// (`filesystem_contract::fs::SETMTIME_AT`, `touch -t`; DECISIONS §112: the ability to *lie about
+    /// (`filesystem_contract::fs::SETMTIME_AT`, `touch -t`; DECISIONS §112 (`touch`'s two behaviors need two rights: write covers "now", a separate right covers "arbitrary"): the ability to *lie about
     /// history*).
     ///
     /// Needs [`dir::WRITE`] **and** [`dir::SETTIME`], refused with [`dir::EROFS`] for either
@@ -810,7 +810,7 @@ impl<D: Disk> Server<D> {
         Ok(())
     }
 
-    /// **How much room the image has** ([`filesystem_contract::fs::STATFS`], milestone 54), as
+    /// **How much room the image has** ([`filesystem_contract::fs::STATFS`], milestone 54 (a network file service a Mac can actually mount)), as
     /// `(block_size, total_blocks, free_blocks)`.
     ///
     /// The handle is validated and then not used, which looks odd and is the point: it is the

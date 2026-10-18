@@ -325,7 +325,7 @@ pub(super) fn degauge(text: &str) -> String {
 /// A kernel line that reaches the console mid-line waits for the line to end. If it is still
 /// waiting when the system log service's flush timer fires (`components/src/system_log.rs`'s
 /// `FLUSH_NANOS`), the console writes a line end, the kernel line, and the partial line again
-/// (`system_log_contract::console::Inserter::flush`), which is milestone 342's design and what a
+/// (`system_log_contract::console::Inserter::flush`), which is milestone 342 (the kernel and the `console` server drive one UART from two address spaces, and nothing arbitrates)'s design and what a
 /// person at the terminal should see. With the gauge taken out, a flush that fell after the echo
 /// of a typed line's last character and before the echo of its Enter leaves `$ line\n$ line\n`,
 /// and [`swish_check_answer`] read the first copy as a command that printed nothing.

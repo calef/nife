@@ -542,7 +542,7 @@ const STD_NET_STACK_PAGES: u64 = 32;
 /// some full runs)), or `None` if no NIC is attached.
 ///
 /// `listen_grant` is the **inbound authority** the std program gets, and it is decided here rather
-/// than asked for (milestone 64, `socket_contract::listen_grant`). It is the difference between a std
+/// than asked for (milestone 64 (enough `std` to run somebody else's crate), `socket_contract::listen_grant`). It is the difference between a std
 /// program that may accept connections and one that may not, and it is visible at this call site
 /// before the program exists: `socket_contract::NO_LISTEN_GRANT` is a `std::net::TcpListener::bind`
 /// that answers `PermissionDenied` for every port there is. This parameter used to be a hardcoded

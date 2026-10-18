@@ -394,7 +394,7 @@ pub const GETMTIME: u64 = 20;
 /// records): "now" is this server's own advancing logical clock, the exact mechanism that
 /// already timestamps
 /// every [`WRITE`], [`CREATE`], [`TRUNCATE`], [`SETXATTR`] and [`REMOVEXATTR`], not a reading
-/// of the wall clock milestone 51 landed (`clock_contract`, DECISIONS §43). A `touch` on two
+/// of the wall clock milestone 51 (wall-clock time, the `date` command, and an NTP service) landed (`clock_contract`, DECISIONS §43 (reading the clock is a page, setting it is a page you may write, proposing is an endpoint)). A `touch` on two
 /// files one after another is guaranteed to observe the second mtime greater than the first,
 /// which is what every caller of `touch` actually depends on (make-style staleness checks
 /// included); it is not guaranteed to match a wall-clock reading taken at the same instant.

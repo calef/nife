@@ -171,7 +171,7 @@ const NAME_SERVER_CASES: [(&str, Expect); 6] = [
 /// spawn service hands this stack, so asking for it proves the grant refuses rather than that
 /// nothing happened to bind.
 ///
-/// Both come from `socket_contract::fixture` since milestone 64, when `std_exerciser` became a second
+/// Both come from `socket_contract::fixture` since milestone 64 (enough `std` to run somebody else's crate), when `std_exerciser` became a second
 /// binary that has to agree with this one about which port is granted and which is not. Rule 7:
 /// what two binaries agree on is a crate.
 const LISTEN_PORT: u64 = socket_contract::fixture::LISTEN_PORT as u64;

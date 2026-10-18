@@ -2724,7 +2724,7 @@ rm -f "/tmp/nife-fixed-tmp-paths.$$"
 # 3. One spelling for contract crates: `*_contract`. The tree had four spellings of "the wire
 #    contract" when this was written (`fs_proto`, `gfx_proto`, `netproto`, `line_editor::proto`);
 #    `*_proto` won because both existing habits already were it, and a second habit is how the first
-#    one rots. Milestone 265 made the suffix `_protocol` (`_proto` is a truncation). calef ruled on
+#    one rots. Milestone 265 (`_proto` is a truncation, and it collides with the other word it could be short for) made the suffix `_protocol` (`_proto` is a truncation). calef ruled on
 #    2026-10-18 (UTC) that nife's own wire-contract crates take `_contract`, because his 2026-09-13
 #    rule spells out network standards, so external standards keep producing `*_protocol` names that
 #    collided with the suffix. The tree already said "wire contract" and "service contract".

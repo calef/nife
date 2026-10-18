@@ -461,7 +461,7 @@ fn host_tests() -> bool {
     //
     // This was a hand-maintained list of twenty `-p` flags, and it drifted exactly the way a
     // hand-maintained list does. It was written because `paging`, `heap` and `slab` were silently not
-    // run for four milestones; by milestone 51 it had five crates missing again, and `filesystem_contract`,
+    // run for four milestones; by milestone 51 (wall-clock time, the `date` command, and an NTP service) it had five crates missing again, and `filesystem_contract`,
     // `compositor`, `video_terminal`, `bitmap_font` and `grant_plan` carried **82 host tests that this gate never ran**. All
     // 82 passed when finally run, which is the point: nobody noticed because nothing failed, and a
     // gate that quietly covers less than it claims is the failure mode script/fmt's `--check` bug

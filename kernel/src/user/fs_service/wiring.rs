@@ -343,7 +343,7 @@ pub(super) fn spawn_fs_server(fs_server_image: &'static [u8], cfg: FsServer) {
     crate::sched::spawn(move || {
         // Build the mapping list: the two shared channels, then the extra stack pages. The FS
         // server maps the whole of both, the one party that must for each: it drives every block
-        // the blk channel can carry (up to `filesystem_contract::blk::TRANSFER_BLOCKS`, milestone 138 step 4)
+        // the blk channel can carry (up to `filesystem_contract::blk::TRANSFER_BLOCKS`, milestone 138 (close the read gap: a 4 KiB request must stop moving 128 KiB) step 4)
         // and serves whatever length a client asks for on the file channel, up to
         // `filesystem_contract::fs::TRANSFER_MAX` (step 3). A client maps only what it uses of the file
         // channel; nothing else maps the blk channel at all.

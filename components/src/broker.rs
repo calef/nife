@@ -55,7 +55,7 @@ use user_mode_runtime::{call, reply, send};
 
 /// What `swapper` endowed us with, in order. No budget, no device, no way to build anything: a
 /// compromised broker can reorder or drop the one channel it was placed on, and nothing else.
-// Derived from this program's own declaration (`hot_swap_contract::BROKER`, milestone 23's manifest), so
+// Derived from this program's own declaration (`hot_swap_contract::BROKER`, milestone 23 (a capability-routed component OS with live replacement)'s manifest), so
 // the slot a name lands in and the slot this code reads are one number rather than two that agree.
 // `requests` is the only `Serve` here: a broker answers producers and asks its backend, and those
 // two directions on one hop are the whole of what a queue rung is.
