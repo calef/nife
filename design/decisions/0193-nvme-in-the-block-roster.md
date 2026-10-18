@@ -122,4 +122,4 @@ Milestone 421, which is gate `DECISION` for exactly this and nothing else. Its o
 is closed: QEMU's NVMe is attached on every leg of all three runners (`NIFE_NVME`) and the
 surveyor's two clients run there today. The roster is correct as it stands for the two transports
 it names; what it cannot do is name the one device in this tree whose driver is a confined process,
-which is the irony milestone 421 (a block roster that can name an NVMe disk) records.
+which is the irony milestone 421 (the block roster cannot name an NVMe disk) records.
