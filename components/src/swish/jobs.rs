@@ -77,7 +77,7 @@ pub(super) fn spawn_interruptible(jobs: &mut Jobs, e: Endowment) {
     };
     print(b"  running ");
     print(h.program.name().as_bytes());
-    print(b" in the foreground. ^C interrupts it, ^Z suspends it.\n");
+    print(b" in the foreground. ^C interrupts it. ^Z suspends it.\n");
     watch_to_the_end(jobs, h);
 }
 
@@ -695,7 +695,7 @@ pub(super) fn foreground(jobs: &mut Jobs, tail: &[u8]) {
     }
     print(b"  running ");
     print(h.program.name().as_bytes());
-    print(b" in the foreground. ^C interrupts it, ^Z suspends it.\n");
+    print(b" in the foreground. ^C interrupts it. ^Z suspends it.\n");
     watch_to_the_end(jobs, h);
 }
 

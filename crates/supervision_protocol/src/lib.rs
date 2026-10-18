@@ -984,14 +984,13 @@ pub fn start_child(child: Child, a0: u64, a1: u64, a2: u64) -> bool {
 /// [`Retention::Requester`] (DECISIONS §309 (a supervised job's `ThreadControlBlock` goes to the
 /// shell that asked for it)). The capability goes on `endpoint` narrowed to `WRITE`, which is what
 /// `SUSPEND` and `RESUME` need, and without `GRANT`, so the requester can pause the child and
-/// cannot pass that on. The builder's own slot is deleted whether or not the send succeeded. Returns
-/// whether it did.
+/// cannot pass that on. The builder's own slot is deleted whether or not the send succeeded: a
+/// send fails only when nobody is left on `endpoint` to want the capability.
 ///
 /// Name: provisional, minted 2026-10-18 (UTC) by lane/48-ctrl-z.
-pub fn hand_to_requester(tcb: u64, endpoint: u64) -> bool {
-    let sent = send_capability(endpoint, tcb, abi::rights::WRITE, 0) >= 0;
+pub fn hand_to_requester(tcb: u64, endpoint: u64) {
+    let _ = send_capability(endpoint, tcb, abi::rights::WRITE, 0);
     forget_thread_control_block(tcb);
-    sent
 }
 
 /// **Delete the builder's slot for a child's TCB**: [`start_child`]'s [`Retention::Nothing`],
