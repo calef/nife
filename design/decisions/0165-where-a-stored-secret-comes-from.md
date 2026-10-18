@@ -5,11 +5,12 @@ raised: 2026-09-19
 
 # 165. Where a stored secret comes from on a boot that is not a test
 
-Raised 2026-09-19 by milestone 435 (forty-five milestones are gated on a decision nobody wrote down)'s lane, which found milestone 131 (a share is configured, not compiled, and its secret arrives from somewhere) gated on
-`DECISION` with no decision anywhere a reader can open. The block has carried the fork with four
-options and no recommendation since it was filed, and says outright that *"the choice is calef's,
-it is a fact that leaves the machine."* *(Section number provisional until the merge queue lands
-it.)*
+Raised 2026-09-19 by milestone 435 (forty-five milestones are gated on a decision nobody wrote
+down)'s lane. That lane found milestone 131 (a share is configured, not compiled, and its secret
+arrives from somewhere) gated on `DECISION` with no decision anywhere a reader can open. The block
+has carried the fork with four options and no recommendation since it was filed, and says outright
+that *"the choice is calef's, it is a fact that leaves the machine."* *(Section number provisional
+until the merge queue lands it.)*
 
 ## Two questions, because the block's subject was removed under it
 

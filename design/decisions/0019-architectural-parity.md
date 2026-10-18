@@ -10,8 +10,8 @@ ratified_by: calef
 **Decided 2026-07-27** (calef), promoting what practice had already become. The RISC-V work began as
 a portability proof and ended at full parity (notes/riscv-parity-scope.md). That parity covers SMP,
 the suite, the shell, the benchmarks, the disk, the DMA confinement, and now the §18 (the PCIe
-transport) transport and the coming §16b (object revocation) IOMMU work, all on both ISAs. The tenet
-makes that the standing rule rather than a happy outcome:
+transport) transport and the coming milestone 16b (IOMMU-backed driver isolation) IOMMU work, all on
+both ISAs. The tenet makes that the standing rule rather than a happy outcome:
 
 Parity is a gate, not an aspiration. A kernel capability ships on every supported
 architecture, proven by the same test suite, or the gap is recorded in a scope note with what

@@ -30,7 +30,7 @@ does not apply.
 *(Dated note, 2026-09-26, decisions-hygiene lane.)* The runner economics this section prices were
 reversed on 2026-09-24. Milestone 587 (most CI jobs do not need an arm64 host), on calef's ruling
 that day, moved fifteen jobs to `ubuntu-24.04` (commit `0695ab7d8`) because the arm64 pool was where
-every run waited: in same-run pairs the x86_64 job waited less, often by an order of magnitude. So
+every run waited. In same-run pairs the x86_64 job waited less, often by an order of magnitude. So
 option 1's cost, "one runner slot per pull request, competing with group builds", is now a slot in
 the less contended pool. And one host pass already runs on x86_64 as a side effect: the `coverage`
 job moved with the rest, and `script/coverage` runs `cargo llvm-cov --workspace`, the workspace's host
@@ -42,9 +42,9 @@ to close the class is the question this note leaves to calef, and it narrows opt
 
 Every machine that has ever run this suite is aarch64: the development machine is Apple Silicon and
 CI is `ubuntu-24.04-arm`. Milestone 288 made the class unrepresentable where it could
-(`FOREIGN_MACHINES` is derived, a never-a-nife-machine number is checked in a `const`) and the
-residue is plain: `b.e_machine = 183` still compiles on every host, as does any other literal
-standing in for a host-relative fact, and nothing in this repository would notice.
+(`FOREIGN_MACHINES` is derived, a never-a-nife-machine number is checked in a `const`). The residue
+is plain: `b.e_machine = 183` still compiles on every host, as does any other literal standing in
+for a host-relative fact, and nothing in this repository would notice.
 
 Three instances, each found by a stranger rather than by a gate:
 

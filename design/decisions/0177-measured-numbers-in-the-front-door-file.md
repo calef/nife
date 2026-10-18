@@ -58,8 +58,8 @@ AGENTS.md lines 106 to 111, measured 2026-08-30 and unchanged since. Against
 
 Eight figures, and the series recomputes four of them. That is the finding that shapes this
 decision, and it is not in milestone 350's block: "point at the series" is rung one for half the
-sentence and answers nothing for the other half, because the series carries no crate count, no
-program count, no commit count and no elapsed days.
+sentence and answers nothing for the other half. The reason is that the series carries no crate
+count, no program count, no commit count and no elapsed days.
 
 One figure cannot be corrected at all, which is the sharper version of the same problem. "69
 user programs" does not say what it counted, and the tree offers no single answer: `components` and

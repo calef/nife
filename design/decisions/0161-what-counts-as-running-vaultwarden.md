@@ -24,10 +24,10 @@ other people will repeat, and it cannot be narrowed afterwards without looking l
 Deciding it late means deciding it from whatever the effort produced, which is the failure the
 block predicted in its own words.
 
-And this tree has already been bitten by the milder version. Milestone 66's own gap table said
-TCP listen and accept were missing for three weeks after the gate line had been corrected to say
-they were not, because a status was fixed where somebody looked and left wrong where they did not.
-A definition of done nobody wrote is the same defect with nothing to correct against.
+And this tree has already been bitten by the milder version. Milestone 66's own gap table said TCP
+listen and accept were missing for three weeks after the gate line had been corrected to say they
+were not. That happened because a status was fixed where somebody looked and left wrong where they
+did not. A definition of done nobody wrote is the same defect with nothing to correct against.
 
 ## What the tree already does in the analogous case
 
