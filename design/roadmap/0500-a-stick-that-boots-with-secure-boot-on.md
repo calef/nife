@@ -74,10 +74,10 @@ firmware revocation lists nife does not control. K3 is reversible per owner.
 K1 is by far the cheapest. At equal cost K2 would be preferred for the stranger's experience, and
 K1 for having no key to lose, so this is a judgment about who carries the risk, not about effort.
 
-## What it blocks
+## What it gates
 
-Rung 4 (publishing the page) cannot go up without an answer, because the page's first instruction
-depends on it. Rungs 1 to 3 on xenon do not: xenon's Secure Boot is already off.
+Rung 4 (publishing the page) needs the page's first instruction, which is K1's per-vendor steps.
+Rungs 1 to 3 on xenon do not: xenon's Secure Boot is already off.
 
 ## BUGS
 
