@@ -58,7 +58,7 @@ of a red check meets it.
   failure names `sendkey` and the monitor socket, both of which the table above shows behaving
   differently across versions. A UEFI failure line classifies the exit status without the version,
   though [notes/uefi-test-exit-rate.md](../../notes/uefi-test-exit-rate.md) exists because of a
-  QEMU-version theory. The work is milestone 930 (a red swish-check or UEFI line does not say which QEMU ran it), where the next lane can claim it:
+  QEMU-version theory. The work is milestone 930 (a red swish-check or UEFI line does not say which QEMU ran it). A lane can claim it:
   `design/roadmap/0930-a-red-swish-or-uefi-line-does-not-say-which-qemu-ran-it.md`.
 
 ## What was measured
