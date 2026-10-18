@@ -16,18 +16,18 @@ git, which is what lets a historical tree be counted without a checkout.
 and does not is still a named thing, so `script/metrics` counts it toward `names_total` and toward
 no status (the "No provenance block" band). On a tree that passes `script/names --check` it is zero.
 
-**`unblocked` is every module or document with no block, and each is a file, not a block.** Every
-`.rs` file under a `src/` directory is a module (`is_module_file`), and every document directly
-under `design/`, `notes/` or `briefs/` is a document (`is_top_document`; one in a subdirectory is
-already a `--check` failure without its block). So the count is a fact of the tree, and writing a
-block moves a name from `unblocked` to a status without changing the total. Counting only the modules that carried a block would make the total a count of annotation,
-rising whenever a block is written on code that already existed. `helpers/module_block_ratchet.py`
-holds the unblocked list to a baseline that only shrinks, so new code arrives with its block.
-
-**Items are the exception, and it is a foot gun.** An item is counted when it carries a `/// Name:`
-block, because "item" has no definition yet that a tree can be enumerated by (every `pub` item, or
-only the ones another package reaches, is calef's to choose). Until then an item block written on
-old code raises `names_total` as a module block once did.
+**`unblocked` is every module, document and `pub` item with no block, each found in the tree, not
+by its block.** Every `.rs` file under a `src/` directory is a module (`is_module_file`), every
+document directly under `design/`, `notes/` or `briefs/` is a document (`is_top_document`; one in a
+subdirectory is already a `--check` failure without its block), and every `pub` function, method,
+constant, static, type and trait in a module is an item (`pub_items`; calef, 2026-10-18 UTC). So
+the count is a fact of the tree, and writing a block moves a name from `unblocked` to a status
+without changing the total. Counting only the names that carried a block would make the total a
+count of annotation, rising whenever a block is written on code that already existed.
+`helpers/module_block_ratchet.py` holds the unblocked list to a baseline that only shrinks, so new
+code arrives with its block. A module or document is listed by its path, an item as
+`path::name`. A private item, or one outside a `src/` directory, still counts where it carries a
+block.
 
 Name: provisional, minted 2026-10-18 (UTC) by lane maintainer/metrics-names-series. A shared helper
 under `helpers/`, which `script/names` puts out of its own scope, so this paragraph is the record.
@@ -35,6 +35,7 @@ It takes `name_` for the family beside `name_provenance.py`; `census` because it
 tree, where `name_provenance` parses one block. calef has not named it.
 """
 
+import collections
 import os
 import re
 
@@ -177,8 +178,27 @@ def is_top_document(path):
             and parts[1] != "README.md" and not _RECORD_STEM.match(parts[1]))
 
 
+def pub_items(text):
+    """The name of every `pub` item in one Rust file, in order, a name once per item.
+
+    `pub` exactly: `pub(crate)` and its kin are not public. `mod` is out because a module is
+    counted as its file, and `macro_rules!` cannot be `pub`. The grammar is `name_provenance`'s, so
+    an item a block documents and an item this finds are the same thing. Known misses, all rare
+    here: an item a macro generates, and a `pub` line inside a block comment or a raw string, which
+    this counts.
+    """
+    out = []
+    for line in text.split("\n"):
+        if not line.lstrip().startswith("pub "):
+            continue
+        m = name_provenance._ITEM.match(line)
+        if m and m.group(1) not in ("mod", "macro_rules!"):
+            out.append(m.group(2))
+    return out
+
+
 def _rust_records(paths, read, surface_files, problems):
-    """`(records, unblocked)`: every item and module block, and every module file with none."""
+    """`(records, unblocked)`: every item and module block, and every module and `pub` item with none."""
     out, unblocked = [], []
     for rel in paths:
         if not rel.endswith(".rs") or rel.startswith(("vendor/", "patches/")):
@@ -187,10 +207,14 @@ def _rust_records(paths, read, surface_files, problems):
         if text is None:
             continue
         module = is_module_file(rel) and rel not in surface_files
+        # Matched by name within the file, as a multiset: a `pub fn new` in each of three impls is
+        # three items, and a block on one of them leaves two.
+        items = collections.Counter(pub_items(text) if is_module_file(rel) else [])
         if ("Name:" not in text and "Provisional name" not in text
                 and "Name provisional" not in text):
             if module:
                 unblocked.append(rel)
+            unblocked.extend(f"{rel}::{name}" for name in items.elements())
             continue
         for it in name_provenance.rust_items(text):
             for number, line, why in it["strays"]:
@@ -207,6 +231,8 @@ def _rust_records(paths, read, surface_files, problems):
                                 f"that documents nothing the parse can name")
                 continue
             out.append(("item", it["name"], f"{rel}:{it['line']}", it["block"], it["what"]))
+            items[it["name"]] -= 1
+        unblocked.extend(f"{rel}::{name}" for name in items.elements())
         if rel in surface_files:
             continue
         # A module's own `//!` block. Strays are read over `//!` lines only: a `///` header belongs
