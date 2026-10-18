@@ -145,8 +145,8 @@ Its four details are all ruled:
    `jig add-repository <url>` takes only a URL, and a refusal names the root the server needed.
    He first ruled that the index is checked against the roots the image pins for basalt (ISRG Root
    X1 today). §306 (the web's authority list is a package and a capability), decided 2026-10-18,
-   replaces that set: an added index is trusted at the channel as a website is, by the list's
-   authorities, and basalt's own channel never depends on the list.
+   replaces that set. An added index is trusted at the channel as a website is, by the list's
+   authorities; basalt's own channel never depends on the list.
 2. The same name in two indexes: ruled 2026-10-17 (UTC). calef chose *"A"*: a bare name offered by
    two indexes is refused as `Ambiguous`, as milestone 614 (two installed versions of one program, each runnable) does for versions, and an
    index-qualified name picks one. First-index-wins is refused as the dependency-confusion shape.
