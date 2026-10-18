@@ -47,11 +47,11 @@ runs one harness, not all of them. `script/verify` costs about 42 minutes for 14
 full sweep of one recorded falsification per harness is the same order of magnitude as a single
 verify run, not 145 times it.
 
-Its posture is `script/mutation`'s, deliberately copied: a scheduled report with a baseline, not
-a per-commit gate, because the run costs too much to block a commit on and a regression is a worklist
-entry rather than a defect in whatever landed that day. A survivor here is a harness whose own
-recorded falsification failed to make it fail, which is exactly the signal nothing in this tree can
-currently detect.
+Its posture is `script/mutation`'s, deliberately copied: a scheduled report with a baseline, not a
+per-commit gate. That is because the run costs too much to block a commit on and a regression is a
+worklist entry rather than a defect in whatever landed that day. A survivor here is a harness whose
+own recorded falsification failed to make it fail, which is exactly the signal nothing in this tree
+can currently detect.
 
 B is refused rather than skipped, because it is the tempting middle and it is the precise failure
 this section exists to end: a written claim standing in for evidence. It would also pass its own lint
@@ -70,13 +70,13 @@ flow. That is a different category and a decade of work. nife does bounded model
 properties over selected crates, and after milestone 193 (put `kernel/src` within reach of the
 prover) it will do that over some of the kernel too.
 
-Parity on the assumption discipline is available now, and it is most of what makes seL4 trusted.
-The seL4 Foundation publishes *What the Proofs Assume* as a first-class page with eight numbered
-assumptions: assembly code (about 340 lines, assumed correct), hardware functionality, cache and TLB
-management, boot code (about 1,200 lines, outside the proof), virtual memory (where they say plainly
-that the proof is not from first principles and there is potential for human error), DMA devices,
-information side-channels, and the compiler except where binary verification covers it. They also
-keep test suites specifically for the code left as an assumption.
+Parity on the assumption discipline is available now, and it is most of what makes seL4 trusted. The
+seL4 Foundation publishes *What the Proofs Assume* as a first-class page with eight numbered
+assumptions. They are assembly code (about 340 lines, assumed correct), hardware functionality,
+cache and TLB management, boot code (about 1,200 lines, outside the proof), virtual memory, DMA
+devices, information side-channels, and the compiler except where binary verification covers it. On
+virtual memory they say plainly that the proof is not from first principles and there is potential
+for human error. They also keep test suites specifically for the code left as an assumption.
 
 And they name this section's exact problem as their hardest assumption: **one can never be sure that
 a formal specification means what we think it should mean.**
@@ -98,13 +98,13 @@ why the registry lost:
 >
 > -- script/names
 
-The full argument there is worth reading and does not quote cleanly (a multi-line quote out of a
+The full argument there is worth reading and does not quote cleanly. A multi-line quote out of a
 shell comment carries its own `#` markers into `script/citations`' normalized text, which is a
-limitation of that check worth knowing before writing one). In summary: milestone 115's first draft
-proposed a single ratified-names table in `design/naming.md`, calef rejected it on 2026-08-04 for
-scaling the way the original `DECISIONS.md` and `design/roadmap.md` scaled, and the decisive half was
-collisions rather than size, since every lane adding a name would edit one file and that is exactly
-what produced three section-number collisions in a day.
+limitation of that check worth knowing before writing one. In summary: milestone 115's first draft
+proposed a single ratified-names table in `design/naming.md`, and calef rejected it on 2026-08-04
+for scaling the way the original `DECISIONS.md` and `design/roadmap.md` scaled. The decisive half
+was collisions rather than size, since every lane adding a name would edit one file and that is
+exactly what produced three section-number collisions in a day.
 
 Same argument, same shape: a `Falsification:` block immediately above the harness, beside `Name:`
 in the same family, and a script derives the report. Same family as `script/names`, `script/roadmap` and `script/decisions`, and for the
@@ -140,8 +140,8 @@ The spellings weighed are in
 
 ### Cadence: weekly, plus per-PR for touched harnesses
 
-calef, 2026-08-30. The full sweep is `script/mutation`'s posture, deliberately copied: a
-scheduled report against a baseline, not a per-commit gate, because a full run costs about one
+calef, 2026-08-30. The full sweep is `script/mutation`'s posture, deliberately copied: a scheduled
+report against a baseline, not a per-commit gate. That is because a full run costs about one
 `script/verify` and a regression is a worklist entry rather than a defect in whatever landed that
 day.
 
@@ -162,12 +162,12 @@ replayable <path>`. Refused `Falsified:`, which reads more naturally at the site
 parallel; refused `Evidence:` as too broad, since every block in this tree is evidence of something;
 refused `Coverage:`, which collides with what `script/coverage` already owns.
 
-`replayable` / `attested` / `unfalsified` are the three states. `attested` is the load-bearing
-one: it says a person asserts this, and an assertion is not evidence, which is the distinction this
-whole section exists to draw. `unfalsified` mirrors what `unrecorded` does in `script/names`, the
-honest negative, greppable, first-class rather than a gap. Refused `witnessed`, reluctantly, because
+`replayable` / `attested` / `unfalsified` are the three states. `attested` is the load-bearing one:
+it says a person asserts this, and an assertion is not evidence, which is the distinction this whole
+section exists to draw. `unfalsified` mirrors what `unrecorded` does in `script/names`, the honest
+negative, greppable, first-class rather than a gap. Refused `witnessed`, reluctantly, because
 DECISIONS §31 (the foreign-language seam) already spends "witness" on the confinement pages and a
-second sense would cost a reader the recognition; refused `manual` (says how, not what), `never` (a
+second sense would cost a reader the recognition. Refused `manual` (says how, not what), `never` (a
 bare adverb reads as a verdict on the harness rather than a state of the record), and `by hand` (two
 tokens, worse to grep and worse to align).
 
@@ -189,27 +189,28 @@ names table on 2026-08-04.
 
 **Clarified 2026-09-01: the path is beside the *package*, not under `crates/`.** The ratified
 wording said `crates/<crate>/`, which was true of every case that existed when it was written and is
-not the rule. `kernel/` and `user/` are packages at the repository root, and within a day of the
-mechanism landing both had falsification patches: milestone 202 (every confinement test is a ritual until somebody breaks the confinement)
-created `kernel/falsifications/` and milestone 197 (`user/` and `xtask` are out of reach of the
-prover) created `user/falsifications/`. Both follow this section's stated reason, which is per-package
-rather than central so that two lanes touching two packages cannot collide; both were outside its
-words. A rule three of whose own instances violate it teaches the next reader to guess whether that
-was sloppiness or intent, so the words now say what the reason always meant.
+not the rule. `kernel/` and `user/` are packages at the repository root. Within a day of the
+mechanism landing both had falsification patches. Milestone 202 (every confinement test is a ritual
+until somebody breaks the confinement) created `kernel/falsifications/`, and milestone 197 (`user/`
+and `xtask` are out of reach of the prover) created `user/falsifications/`. Both follow this
+section's stated reason, which is per-package rather than central so that two lanes touching two
+packages cannot collide; both were outside its words. A rule three of whose own instances violate it
+teaches the next reader to guess whether that was sloppiness or intent, so the words now say what
+the reason always meant.
 
 The module path is always included, with no branch. The reason is the one this section used to
 choose a unified diff: fewest moving parts and fewest places to be wrong. It is unique by
-construction, it is stable (a harness added elsewhere cannot retroactively invalidate an existing
-path), and it is already the string the tooling needs, since Kani's `--exact` takes the fully
-qualified harness name, so the path is the sweep's own filter with the separators changed.
+construction, and it is stable (a harness added elsewhere cannot retroactively invalidate an
+existing path). It is also already the string the tooling needs, since Kani's `--exact` takes the
+fully qualified harness name, so the path is the sweep's own filter with the separators changed.
 
 Refused, and this one matters more than the others: **unqualified when unique, module-qualified when
 not.** That is a branch keyed on an *unstable* property, since adding a harness elsewhere would
 retroactively invalidate an existing path, and it is the same shape as the two-tier program-naming
 rule calef rejected on 2026-08-01 one domain over. Also refused a subdirectory per module, which
-turns `filesystem_proto`'s three-deep nesting into a tree of near-empty directories, and renaming the
-eighteen harnesses to make a filename work, which would put the ISA in a function name the module
-already states and is a naming decision driven by a path.
+turns `filesystem_proto`'s three-deep nesting into a tree of near-empty directories. Also refused
+renaming the eighteen harnesses to make a filename work, which would put the ISA in a function name
+the module already states and is a naming decision driven by a path.
 
 ## `Expected to fail:`, ratified 2026-09-18
 
@@ -220,14 +221,14 @@ A falsification record names the assertion it expects to fail, on a line beginni
 `Expected to fail:` in the patch's prose head, beside `Falsifies`. `script/falsifications` may then
 compare it against the transcript and fail a record whose red arrived somewhere else.
 
-**What it buys, and what it does not.** It closes the wrong-reason red: milestone 202's break of
-[§31](0031-foreign-language-seam.md) surfaced as a 234-second watchdog timeout reading *"a livelock, not a lost
-wakeup"*, which is the right answer with a diagnostic containing no word about confinement, and
-milestone 305 hit the same edge and swapped the patch rather than record a red for the wrong reason.
-It buys nothing against an unreachable assertion, which is milestone 307's subject and a
-different hole: there the patch's prose and the transcript simply agree on some other line. Saying so
-here is the point, because a gate that looks like it covers both would be worse than one that covers
-one.
+**What it buys, and what it does not.** It closes the wrong-reason red. Milestone 202's break of
+[§31](0031-foreign-language-seam.md) surfaced as a 234-second watchdog timeout reading *"a livelock,
+not a lost wakeup"*, which is the right answer with a diagnostic containing no word about
+confinement. Milestone 305 hit the same edge and swapped the patch rather than record a red for the
+wrong reason. It buys nothing against an unreachable assertion, which is milestone 307's subject and
+a different hole: there the patch's prose and the transcript simply agree on some other line. Saying
+so here is the point, because a gate that looks like it covers both would be worse than one that
+covers one.
 
 ## "Harness" covers a kernel test too, widened 2026-09-19
 
@@ -235,17 +236,17 @@ Read every "harness" in this section as "a claim the sweep can replay". Today th
 `#[kani::proof]`, replayed with `cargo kani --harness <name> --exact`, or a kernel `#[test_case]`,
 replayed with milestone 210's `cargo xtask test --arch <a> --test <name>`. The `Falsification:`
 block, the three states, the patch path and the cadence are the same for both, and were the same for
-both before this paragraph existed: milestone 305 built the second replay verb on 2026-09-16 without
+both before this paragraph existed. Milestone 305 built the second replay verb on 2026-09-16 without
 needing a word here changed, and milestone 202's patch obeyed the ratified path spelling with no
-special case on 2026-08-31, sixteen days before that. This widens the words to what the convention already does,
-which is the same job the 2026-09-01 clarification did for the path.
+special case on 2026-08-31, sixteen days before that. This widens the words to what the convention
+already does, which is the same job the 2026-09-01 clarification did for the path.
 
 **The one deliberate asymmetry is not a wording question and is not widened.** A `#[kani::proof]`
-that carries no block fails `script/falsifications --check`, because the denominator is the point and
-on 2026-09-19 the sweep counted 170 harnesses in 26 packages. A kernel `#[test_case]` is opt-in,
-because the tree carries 427 of them and almost none is a confinement claim, so requiring a block
-on all of them would buy a wall of `unfalsified` and teach nobody anything; 14 carry one today and
-13 of those are replayable. A kernel test is counted when it carries a block. The both-directions patch
+that carries no block fails `script/falsifications --check`, because the denominator is the point
+and on 2026-09-19 the sweep counted 170 harnesses in 26 packages. A kernel `#[test_case]` is opt-in,
+because the tree carries 427 of them and almost none is a confinement claim, so requiring a block on
+all of them would buy a wall of `unfalsified` and teach nobody anything. Today 14 carry one, and 13
+of those are replayable. A kernel test is counted when it carries a block. The both-directions patch
 check is what keeps that honest: a patch under a package's `falsifications/` must be claimed by a
 proof or by a test, and an unclaimed one is reported as rot.
 

@@ -14,7 +14,7 @@ was gathered rather than before.
 instruction with no syscall inside the measured operation, it is what Linux arm64 converged on for
 the same reason, and it costs the compare that `switch_user_root` already pays for `TTBR0_EL1`.
 Option 2 (a first-class capability object) was declined for now on the ground this tree already
-applies elsewhere: it buys a new object type before there is a second consumer, and seL4's own
+applies elsewhere. It buys a new object type before there is a second consumer, and seL4's own
 RFC-16 for that shape has been unmerged since 2024-02-02. New methods are allowed within the
 established model (AGENTS.md), so option 2 remains reachable if a consumer appears.
 
@@ -35,9 +35,9 @@ was meant to beat, with an in-kernel minor page fault at 1,219 ns as the floor a
 aspire to.
 
 The deciding cost is not the one this document first named. smoltcp would not notice a coarse clock:
-`net_stack.rs`'s `instant()` divides to `Instant::from_millis` and discards the resolution. The
-wall clock would notice. `components/src/network_time_client.rs` advances `local.now()` between syncs by
-`monotonic_nanos().saturating_sub(self.mono0)`, and `monotonic_nanos` reads the cycle counter, so on
+`net_stack.rs`'s `instant()` divides to `Instant::from_millis` and discards the resolution. The wall
+clock would notice. `components/src/network_time_client.rs` advances `local.now()` between syncs by
+`monotonic_nanos().saturating_sub(self.mono0)`, and `monotonic_nanos` reads the cycle counter. So on
 `x86_64` a tick-resolution page would make every timestamp between NTP syncs step in tick-sized
 jumps, with NTP computing corrections against a clock coarser than the corrections. aarch64 and
 riscv64 never meet this, because gating the cycle counter leaves them a generic timer.
@@ -50,7 +50,7 @@ the kernel knows which threads hold it. It does not buy timing confinement, and 
 claim it does.
 
 **The number is provisional.** This lane could not see the other lanes running beside it, so 139 is
-a claim on the next free slot rather than a mint; the integrator assigns the real one at merge, and
+a claim on the next free slot rather than a mint. The integrator assigns the real one at merge, and
 two lanes collided on a number the day before this was written. Cite it as
 `design/decisions/0139-cycle-counter-authority.md` until it lands.
 
@@ -211,11 +211,11 @@ at init, plus a `BUGS` line where the reader meets it. It is three small writes,
 decision, and it is the difference between a claim and a fact on argon.
 
 Recommended, and calef's to confirm because it touches the syscall surface: option 4. It is the
-only option that keeps the measured path free of a syscall while making the authority checkable, it
+only option that keeps the measured path free of a syscall while making the authority checkable. It
 is what Linux arm64 converged on for the same reason, and it costs a compare on a path that already
 does exactly this compare for `TTBR0_EL1`. Option 2 is the more seL4-shaped answer and is what
-milestone 147 would eventually want; it is also unbuilt in seL4 after two and a half years, and
-choosing it now buys a new object type before there is a second consumer, which is the speculative
+milestone 147 would eventually want. It is also unbuilt in seL4 after two and a half years. Choosing
+it now buys a new object type before there is a second consumer, which is the speculative
 abstraction both 74's and 147's scope notes already refuse.
 
 Options rather than a recommendation, because it is irreversible: how the grant is expressed.

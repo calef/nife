@@ -15,7 +15,7 @@ Milestone 247 built a gate: every `BUILT` or `REMOVED` roadmap block now carries
 section saying what became of the work it named on its way out, and `script/roadmap --check` fails a
 block that does not. **The mechanism is not in question here.** What is in question is the seven
 words a bullet may open with, because a vocabulary is a thing readers learn and a thing every future
-block is written against, and this tree treats status vocabulary as an architect's: calef minted
+block is written against, and this tree treats status vocabulary as an architect's. calef minted
 `REMOVED` himself on 2026-08-30 when the six words then available could only lie about milestone 54.
 
 The words, as shipped:
@@ -43,7 +43,7 @@ decisions live in a file rather than in a conversation.
 
 **`Proposed.` and `Done.` were added by the sweep, not designed.** Twelve lanes read all 139
 finished blocks. Three reported, independently and within the same hour, that there is no word for
-work a block named honestly that nobody has taken; four reported that there is no word for work a
+work a block named honestly that nobody has taken. Four reported that there is no word for work a
 block named that two ordinary commits then finished. The evidence that this is the right call rather
 than a convenience is what those lanes did while the words were missing: they left the items out.
 That is the exact silence milestone 247 exists to stop, arriving through milestone 247's own
@@ -58,9 +58,9 @@ bucket did not have to be argued down to a small number.
 
 ## The recommendation, and it is a ratification rather than a fork
 
-Take the seven as they stand, and the argument is that they were derived from the corpus rather
-than guessed at: four were designed, three were forced by 139 blocks of real prose, and the sweep
-that forced them is the largest read of this roadmap anyone has done.
+Take the seven as they stand, and the argument is that they were derived from the corpus rather than
+guessed at. Four were designed, three were forced by 139 blocks of real prose, and the sweep that
+forced them is the largest read of this roadmap anyone has done.
 
 What is genuinely open, and is smaller than the vocabulary:
 
@@ -78,7 +78,7 @@ What is genuinely open, and is smaller than the vocabulary:
 
 Nothing. The gate is live, all 139 blocks are swept, and the words work. A rename is a mechanical
 edit across the sections plus one regex in `script/roadmap`, which is why this is `PROPOSED` rather
-than held: the *move fast on what can be undone* tenet puts a vocabulary on the expensive side, but
+than held. The *move fast on what can be undone* tenet puts a vocabulary on the expensive side, but
 this one is early enough that nobody outside the tree has learned it yet.
 
 The cost of saying nothing is that the words harden by use. Every block written from here is
