@@ -2469,7 +2469,6 @@ crates/filesystem_fixture/src/lib.rs::SUB
 crates/filesystem_fixture/src/lib.rs::SUCCESS
 crates/filesystem_fixture/src/lib.rs::SURVIVED_RENAME
 crates/filesystem_fixture/src/lib.rs::TEXT_UNTOUCHED
-crates/filesystem_fixture/src/lib.rs::TOTAL
 crates/filesystem_fixture/src/lib.rs::TOUCH_AT_REFUSED_WITHOUT_SETTIME
 crates/filesystem_fixture/src/lib.rs::TOUCH_AT_ROUND_TRIPPED
 crates/filesystem_fixture/src/lib.rs::TOUCH_CREATED
