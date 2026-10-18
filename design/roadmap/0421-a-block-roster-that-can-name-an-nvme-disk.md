@@ -39,6 +39,7 @@ confined process (milestone 261).
   NVMe entry, last in the roster, at ordinal 0 and printed `nvme`, whenever `NIFE_NVME` was set
   for the build. `cargo xtask test` sets it on all three legs. `system_tests/build.rs` bakes it in
   as `NON_VOLATILE_MEMORY_EXPRESS_ATTACHED`, since the guest cannot read the host's environment.
+  So any leg where the block roster cannot name an NVMe disk that is attached goes red.
 
 ## What it settles
 
