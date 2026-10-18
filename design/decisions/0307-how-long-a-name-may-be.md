@@ -80,36 +80,37 @@ calef, 2026-10-18 (02:16 to 02:35 UTC), on the measurements in
 *"tar with a manifest"*, and on compression, *"Yes"*. The format is a jig package, named for its
 client as RPM and apk are (*"Yes"*), in a file `<name>-<version>-<architecture>.jig.tar.zst`.
 
-1. **The container is ustar** of regular files, read by upstream `tar-no-std` unpatched (*"Yes"*),
+1. The container is ustar of regular files, read by upstream `tar-no-std` unpatched (*"Yes"*),
    with `package_archive`'s Kani harnesses proving properties through its public API. The build
    and the installer refuse a member path over 255 bytes split at a `/`, or a last component over
    100. That is rule 1's recorded exception, as rule 5's 16 bytes is, until pax `path` support
    lands as its own milestone. That milestone offers `tar-no-std` a patch first, and forks or
    writes a reader only if it is refused or Kani cannot prove it.
-2. **The first member is `package_measurements`**, pairing with the boot archive's
+2. The first member is `package_measurements`, pairing with the boot archive's
    `program_measurements` (*"Yes"*). Its first line names the format and its version, for example
    `jig-package 1`, then identity lines, then one `<path> sha256:<hex>` line per member: the
    catalog-line shape `measured_boot` parses (calef: *"I believe we already debated the
    catalog-line format and aligned on what we have."*). Nothing else identifies a jig package: no
    pax global header and no zstd skippable frame (*"Yes"*).
-3. **The file that travels is that tar compressed whole with zstd.** `jig` decompresses it at
+3. The file that travels is that tar compressed whole with zstd. `jig` decompresses it at
    install. The compressor's version, level and flags are pinned, because the same input at the
    same level gave different bytes from zstd 1.5.5 and 1.5.7, and milestone 917 (basalt's packages
    build reproducibly) needs identical bytes.
-4. **§195 (a reviewed recipe vouches for a package)'s digest covers the compressed file as
-   fetched**, and `jig` checks it before decompressing.
-5. **The installer reads the uncompressed tar once.** `system_initializer`'s activation step parses
+4. §195 (a reviewed recipe vouches for a package)'s digest covers the compressed file as
+   fetched, and `jig` checks it before decompressing.
+5. The installer reads the uncompressed tar once. `system_initializer`'s activation step parses
    it at install, and `place_program` writes each program to `packages/<name>/<version>/<program>`.
    At spawn the progenitor reads that placed file and looks its digest up in the activation set
    (§208 (installing a package is granting it)), never the tar.
+6. The installer checks a digest of the uncompressed tar. The recipe and the index carry it
+   too, and the activation step checks it before parsing, never trusting
+   `jig`'s check (*"Yes"*). The fetcher and the granter are separate parties, so the granter
+   verifies what it grants, as containerd checks an image's uncompressed `diff_ids`. And it does
+   not move with the compressor, as Nix signs `NarHash` and RPM 4.16 carries `PAYLOADDIGESTALT`.
 
 zstd over gzip and xz, which stock macOS and Ubuntu read unaided, was kept. calef: *"It seems like we have a much smaller sample size than the distributions that moved to
 zstd. And they moved there for a reason."* On basalt's 18 packages, level 19 gives 35.1% of their
 uncompressed size.
-
-What it costs, measured in the note: `tar-no-std` with a text-manifest parser is 7.4 KB of aarch64
-`.text`, about three times the NIFEPKG1 reader's. `jig` takes a zstd decoder
-(`ruzstd` 0.9.1, MIT, 25.8 to 56.9 KB). tar's alignment adds 0.07% compressed.
 
 basalt's package blobs gain an OCI registry location once nife's OCI registry client exists
 (calef: *"We will be delivering container serving on nife"*, then *"Yes"* to this order). That
@@ -129,12 +130,8 @@ Why: nife carries an OCI client for container serving regardless, so this costs 
 packages. JSON is not a cost, since TUF brings it. What remains is a token request before each
 anonymous ghcr.io pull and one or two more connections.
 
-Still calef's, each a fork on the pull request that records this amendment:
-
-- what the installer checks the uncompressed form against, now that the recipe's digest covers the
-  compressed file;
-- which root authenticates a registry location: §250's clause 11 takes it from the image's roots,
-  and ghcr.io chains to Sectigo R46, which the image lacks.
+Still calef's, waiting on milestone 621: which root authenticates a registry location, since §250's
+clause 11 takes it from the image's roots and ghcr.io chains to Sectigo R46.
 
 ## Why these
 
