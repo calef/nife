@@ -14,7 +14,7 @@ use super::*;
 use crate::arch::exceptions::USER_FAULTS;
 use crate::sched;
 
-/// The `least_authority_demo` program's ELF bytes (milestone 19f.2 (run a real workload)). `_start(x0, x1, x2)` reads its
+/// The `least_authority_demo` program's ELF bytes (step 19f.2 of milestone 19f (run a real workload)). `_start(x0, x1, x2)` reads its
 /// input in `x1` and needs no role selector.
 fn least_authority_demo_image() -> &'static [u8] {
     program("least_authority_demo").expect("no least_authority_demo program in the initial ramdisk")

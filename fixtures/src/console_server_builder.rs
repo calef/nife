@@ -1,4 +1,4 @@
-//! **Builds the real console server and then plays its client** (milestone 19d.2b (run a real workload)).
+//! **Builds the real console server and then plays its client** (step 19d.2b of milestone 19d (run a real workload)).
 //! `kernel::user::spawn_elf_child_builder` enters this program holding a building budget (slot 0),
 //! a report endpoint (slot 1) and the console UART's registers as a device capability (slot 2). It
 //! reads `console` out of the archive by name and builds it with the four things a console server

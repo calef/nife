@@ -1,4 +1,4 @@
-//! **Builds a driver out of an ELF and hands it a device's registers** (milestone 19d.2 (run a real workload)).
+//! **Builds a driver out of an ELF and hands it a device's registers** (step 19d.2 of milestone 19d (run a real workload)).
 //! `kernel::user::spawn_elf_child_builder` enters this program holding a building budget (slot 0),
 //! a report endpoint (slot 1) and the console UART's registers as a device capability (slot 2). It
 //! reads `device_child` out of the archive by name, builds it, grants it the report endpoint and

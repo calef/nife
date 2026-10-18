@@ -1,5 +1,5 @@
 //! **Reads a device's identity registers through a mapping it was handed, and reports them**
-//! (milestone 19d.2 (run a real workload)). `device_child_builder` maps the PL011 UART's registers, device-typed, at
+//! (step 19d.2 of milestone 19d (run a real workload)). `device_child_builder` maps the PL011 UART's registers, device-typed, at
 //! [`UART_VA`] before starting this program, and grants it a report endpoint in slot 0. The four
 //! PrimeCell identification bytes of every real PL011 read `0xB105F00D`, so sending that word
 //! proves the mapping is a real view of the UART rather than normal memory or the wrong page.

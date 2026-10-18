@@ -1,4 +1,4 @@
-//! **Waits for an interrupt it was delegated, then reports** (milestone 19d.2b (run a real workload)).
+//! **Waits for an interrupt it was delegated, then reports** (step 19d.2b of milestone 19d (run a real workload)).
 //! `interrupt_child_builder` grants this program a report endpoint (slot 0) and an interrupt
 //! capability (slot 1). It blocks in the interrupt's `WAIT` and sends
 //! [`capability_witness_contract::INTERRUPT_CHILD_WORD`] once the interrupt arrives as a message.

@@ -1,4 +1,4 @@
-//! **Builds a driver out of an ELF and delegates it an interrupt** (milestone 19d.2b (run a real workload)), the third
+//! **Builds a driver out of an ELF and delegates it an interrupt** (step 19d.2b of milestone 19d (run a real workload)), the third
 //! delegatable device authority after endpoints and device memory.
 //! `kernel::user::spawn_elf_child_builder` enters this program holding a building budget (slot 0),
 //! a report endpoint (slot 1) and an interrupt capability for the test interrupt the kernel routed
