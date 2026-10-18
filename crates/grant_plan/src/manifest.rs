@@ -244,11 +244,11 @@ pub const NETWORK_SLOT: u64 = 10;
 
 /// **Where the boot shell holds the inert-configuration page** (milestone 47 (navigation and
 /// naming), DECISIONS §111 (inert configuration is a validated page)), so `caps` can print the
-/// values a child declaring [`Manifest::config`] would read rather than only that it would read
+/// values a child declaring [`Manifest::configuration`] would read rather than only that it would read
 /// some.
 ///
 /// The progenitor places the **same frame** it endows every such child with here, `READ` only, and
-/// maps it at [`SHELL_CONFIG_VA`]. The same frame is the point: a preview that printed values from a
+/// maps it at [`SHELL_CONFIGURATION_VIRTUAL_ADDRESS`]. The same frame is the point: a preview that printed values from a
 /// copy of the defaults would agree with the child by coincidence and drift from it the first time
 /// either changed, while a second holder of one page cannot disagree with the first.
 ///
@@ -257,17 +257,17 @@ pub const NETWORK_SLOT: u64 = 10;
 /// what its builder placed. A shell built by anything else (a `login` session, a kernel test role)
 /// finds it empty and says it cannot see the values, which is true.
 ///
-/// Name: provisional (milestone 47, 2026-09-26).
-pub const SHELL_CONFIG_SLOT: u64 = 21;
+/// Name: ratified 2026-10-18 (calef: "Approve the family").
+pub const SHELL_CONFIGURATION_SLOT: u64 = 21;
 
 /// **Where the boot shell's view of the inert-configuration page is mapped**, read-only
-/// ([`SHELL_CONFIG_SLOT`]). One page above the shell's clock (`0x00d0_0000`), so both share one page
+/// ([`SHELL_CONFIGURATION_SLOT`]). One page above the shell's clock (`0x00d0_0000`), so both share one page
 /// table and this mapping costs the builder no table page of its own. A constant here rather than
 /// one in each binary, because the progenitor maps it and the shell reads through it, and rule 7 of
 /// the codebase rules says an address two binaries agree on is a crate's.
 ///
-/// Name: provisional (milestone 47, 2026-09-26).
-pub const SHELL_CONFIG_VA: u64 = 0x0000_0000_00d0_1000;
+/// Name: ratified 2026-10-18 (calef: "Approve the family", with `VIRTUAL_ADDRESS` spelled out).
+pub const SHELL_CONFIGURATION_VIRTUAL_ADDRESS: u64 = 0x0000_0000_00d0_1000;
 
 /// **Where a program that declares [`Manifest::installer`] finds the installer endpoint**
 /// (milestone 809 (the package client becomes a program), DECISIONS §270 (a package manager holds
@@ -353,10 +353,10 @@ pub const SYNC_SLOT: u64 = 14;
 ///
 /// Name: provisional (milestone 198 rung 3a, 2026-09-26).
 pub const UNVOUCHED_MANIFEST: Manifest = Manifest {
-    arg: ProgramArgumentDeclaration::Forbidden,
-    mem: MemoryGrantDeclaration::Forbidden,
+    program_argument: ProgramArgumentDeclaration::Forbidden,
+    memory_grant: MemoryGrantDeclaration::Forbidden,
     file: FileGrantDeclaration::Forbidden,
-    dir: DirectoryGrantDeclaration::Forbidden,
+    directory: DirectoryGrantDeclaration::Forbidden,
     short_options: NO_SHORT_OPTIONS,
     output: OutputDeclaration::Bytes,
     input: InputDeclaration::Forbidden,
@@ -364,7 +364,7 @@ pub const UNVOUCHED_MANIFEST: Manifest = Manifest {
     interruptible: false,
     clock: true,
     domain: false,
-    config: true,
+    configuration: true,
     entropy: false,
     network: false,
     machine: false,
@@ -382,7 +382,7 @@ pub const UNVOUCHED_MANIFEST: Manifest = Manifest {
 /// configuration at slot 7), plus the line's words at slot 8, which §170 ruled carry no authority.
 /// No entropy, network or domain, whatever the note asks. Name: provisional.
 pub const UNVOUCHED_STD_MANIFEST: Manifest = Manifest {
-    arg: ProgramArgumentDeclaration::Words(WordGrant::ReadOnly),
+    program_argument: ProgramArgumentDeclaration::Words(WordGrant::ReadOnly),
     startup: StartupContract::Std,
     ..UNVOUCHED_MANIFEST
 };
@@ -392,9 +392,9 @@ pub const UNVOUCHED_STD_MANIFEST: Manifest = Manifest {
 /// Name: ratified 2026-10-18 (calef: "Approve the family"), with the suffix `Declaration`.
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub enum ProgramArgumentDeclaration {
-    /// The program consumes an argument; omitting it is [`Refusal::ArgRequired`](crate::Refusal::ArgRequired).
+    /// The program consumes an argument; omitting it is [`Refusal::ProgramArgumentRequired`](crate::Refusal::ProgramArgumentRequired).
     Required,
-    /// The program takes no argument; supplying one is [`Refusal::ArgForbidden`](crate::Refusal::ArgForbidden).
+    /// The program takes no argument; supplying one is [`Refusal::ProgramArgumentForbidden`](crate::Refusal::ProgramArgumentForbidden).
     Forbidden,
     /// **The program hears the line's words as its argv, as bytes** (milestone 205 (how a foreign
     /// program is told what to do), DECISIONS §170). Everything typed after the program's name, up
@@ -469,10 +469,10 @@ impl WordGrant {
 /// Name: ratified 2026-10-18 (calef: "Approve the family"), with the suffix `Declaration`.
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub enum MemoryGrantDeclaration {
-    /// The program takes no memory grant; supplying one is [`Refusal::MemForbidden`](crate::Refusal::MemForbidden).
+    /// The program takes no memory grant; supplying one is [`Refusal::MemoryGrantForbidden`](crate::Refusal::MemoryGrantForbidden).
     Forbidden,
     /// The program must be granted a budget in `[min, max]` pages. Omitting it is
-    /// [`Refusal::MemRequired`](crate::Refusal::MemRequired); out of range is [`Refusal::MemOutOfRange`](crate::Refusal::MemOutOfRange).
+    /// [`Refusal::MemoryGrantRequired`](crate::Refusal::MemoryGrantRequired); out of range is [`Refusal::MemoryGrantOutOfRange`](crate::Refusal::MemoryGrantOutOfRange).
     Required { min: u64, max: u64 },
 }
 
@@ -549,15 +549,15 @@ pub enum DirectoryGrantDeclaration {
 /// mystery hang inside a program that did not get what it needed. See notes/program-manifest.md.
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub struct Manifest {
-    pub arg: ProgramArgumentDeclaration,
-    pub mem: MemoryGrantDeclaration,
+    pub program_argument: ProgramArgumentDeclaration,
+    pub memory_grant: MemoryGrantDeclaration,
     /// A per-file grant, milestone 31 phase 2. See [`FileGrantDeclaration`] for why the direction lives here
     /// and the name lives on the command line.
     pub file: FileGrantDeclaration,
     /// A per-**directory** grant, milestone 47's `rm -r`. See [`DirectoryGrantDeclaration`]: the program is handed a
     /// capability to the directory holding what the command names, because what it does (taking a
     /// name out) is an operation on a directory and not on a file.
-    pub dir: DirectoryGrantDeclaration,
+    pub directory: DirectoryGrantDeclaration,
     /// **The short options this program accepts**, as their letters, in the order their bits are
     /// numbered ([`Endowment::short_options`](crate::Endowment::short_options)). Empty for a program that takes none, which is every program
     /// but `rm` today.
@@ -632,8 +632,10 @@ pub struct Manifest {
     ///
     /// It is a *read-only* mapping, the same rung [`clock`](Manifest::clock) uses: a program
     /// declaring this can read the three inert values and has no object through which it could
-    /// change what a shell hands its children. **Provisional field name.**
-    pub config: bool,
+    /// change what a shell hands its children.
+    ///
+    /// Name: ratified 2026-10-18 (calef: "Approve the family").
+    pub configuration: bool,
     /// **Endowed a client view of the entropy service** (milestone 111; DECISIONS §44,
     /// `crates/entropy_contract`, notes/entropy.md).
     ///

@@ -29,10 +29,10 @@ pub(crate) fn plan_against(
 /// [`plan_against`] so the `FileGrantDeclaration::Required` logic is live and tested rather than a branch
 /// nothing reaches, which is the same door milestone 23 will come through.
 pub(crate) const READS_A_FILE: Manifest = Manifest {
-    arg: ProgramArgumentDeclaration::Forbidden,
-    mem: MemoryGrantDeclaration::Forbidden,
+    program_argument: ProgramArgumentDeclaration::Forbidden,
+    memory_grant: MemoryGrantDeclaration::Forbidden,
     file: FileGrantDeclaration::Required { writable: false },
-    dir: DirectoryGrantDeclaration::Forbidden,
+    directory: DirectoryGrantDeclaration::Forbidden,
     short_options: NO_SHORT_OPTIONS,
     output: OutputDeclaration::Words,
     input: InputDeclaration::Forbidden,
@@ -40,7 +40,7 @@ pub(crate) const READS_A_FILE: Manifest = Manifest {
     interruptible: false,
     clock: false,
     domain: false,
-    config: false,
+    configuration: false,
     entropy: false,
     network: false,
     machine: false,

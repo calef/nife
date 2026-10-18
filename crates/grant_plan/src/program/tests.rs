@@ -83,7 +83,7 @@ fn a_std_program_declares_only_what_the_std_layout_can_hold() {
             "{name}: no std slot carries an input"
         );
         assert_eq!(
-            m.mem,
+            m.memory_grant,
             MemoryGrantDeclaration::Forbidden,
             "{name}: slot 0 is the heap"
         );

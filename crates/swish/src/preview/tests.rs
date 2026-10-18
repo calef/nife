@@ -550,9 +550,9 @@ fn the_arg_line_follows_the_manifest_for_every_program() {
     };
     for &prog in Prog::ALL {
         let m = prog.manifest();
-        let takes_arg = m.arg == ProgramArgumentDeclaration::Required;
+        let takes_arg = m.program_argument == ProgramArgumentDeclaration::Required;
         let mut line = String::from(prog.name());
-        if let MemoryGrantDeclaration::Required { min, .. } = m.mem {
+        if let MemoryGrantDeclaration::Required { min, .. } = m.memory_grant {
             line.push_str(&std::format!(" --mem {min}"));
         }
         line.push_str(" 21");

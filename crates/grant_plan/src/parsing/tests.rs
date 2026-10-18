@@ -355,7 +355,10 @@ fn mem_flag_must_have_a_numeric_value() {
         panic!()
     };
     assert_eq!(r.memory_grant, None);
-    assert_eq!(plan(&r, Holdings::default()), Err(Refusal::MemRequired));
+    assert_eq!(
+        plan(&r, Holdings::default()),
+        Err(Refusal::MemoryGrantRequired)
+    );
 }
 
 #[test]

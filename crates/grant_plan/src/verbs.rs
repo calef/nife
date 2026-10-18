@@ -25,7 +25,7 @@ impl ManifestAuthorities {
     pub const NONE: ManifestAuthorities = ManifestAuthorities(0);
     /// [`Manifest::clock`].
     pub const CLOCK: ManifestAuthorities = ManifestAuthorities(1 << 0);
-    /// [`Manifest::config`].
+    /// [`Manifest::configuration`].
     pub const CONFIGURATION: ManifestAuthorities = ManifestAuthorities(1 << 1);
     /// [`Manifest::entropy`].
     pub const ENTROPY: ManifestAuthorities = ManifestAuthorities(1 << 2);
@@ -152,7 +152,7 @@ pub fn narrow_by_verb(m: &Manifest, verbs: &[VerbGrant], verb: Option<&[u8]>) ->
         .map_or(ManifestAuthorities::NONE, |v| v.authorities);
     Manifest {
         clock: m.clock && g.contains(ManifestAuthorities::CLOCK),
-        config: m.config && g.contains(ManifestAuthorities::CONFIGURATION),
+        configuration: m.configuration && g.contains(ManifestAuthorities::CONFIGURATION),
         entropy: m.entropy && g.contains(ManifestAuthorities::ENTROPY),
         network: m.network && g.contains(ManifestAuthorities::NETWORK),
         domain: m.domain && g.contains(ManifestAuthorities::DOMAIN),
@@ -248,7 +248,7 @@ mod tests {
         assert_eq!(nothing.indexes, IndexStoreDeclaration::Forbidden);
         assert_eq!(as_typed(b"jig"), nothing);
         // Everything else about the manifest is untouched.
-        assert_eq!(list.arg, jig.arg);
+        assert_eq!(list.program_argument, jig.program_argument);
         assert_eq!(list.startup, jig.startup);
         for &p in Prog::ALL {
             let m = p.manifest();
@@ -259,7 +259,7 @@ mod tests {
                 let narrowed = narrow_by_verb(&m, p.verbs(), Some(v.verb.as_bytes()));
                 let kept = [
                     (narrowed.clock, ManifestAuthorities::CLOCK),
-                    (narrowed.config, ManifestAuthorities::CONFIGURATION),
+                    (narrowed.configuration, ManifestAuthorities::CONFIGURATION),
                     (narrowed.entropy, ManifestAuthorities::ENTROPY),
                     (narrowed.network, ManifestAuthorities::NETWORK),
                     (narrowed.domain, ManifestAuthorities::DOMAIN),
@@ -299,7 +299,7 @@ mod tests {
     fn each_field_is_narrowed_by_its_own_bit() {
         let all = Manifest {
             clock: true,
-            config: true,
+            configuration: true,
             entropy: true,
             network: true,
             domain: true,
@@ -331,7 +331,7 @@ mod tests {
             let n = narrow_by_verb(&all, &table, Some(v.verb.as_bytes()));
             let held = [
                 n.clock,
-                n.config,
+                n.configuration,
                 n.entropy,
                 n.network,
                 n.domain,
