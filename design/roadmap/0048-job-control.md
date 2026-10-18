@@ -26,11 +26,11 @@ question answers itself.
 Structural rather than conventional. Unix's process group is a *number* with inherited, mutable
 membership; "what I hold" cannot drift. What the shell holds depends on how the job was built:
 
-- A **supervised job** (`interrupt_heeder` and its kind) is built by the progenitor out of a region
+- A supervised job (`interrupt_heeder` and its kind) is built by the progenitor out of a region
   the shell split off its own budget, and shares a job frame with the shell. The shell holds the
   region, so `DESTROY` tears the job down, and the frame, whose flags interrupt it and say it is
   done. That is everything job control needs short of pausing.
-- **Every other job** is built in the progenitor's pool. The progenitor deletes its TCB at `START`
+- Every other job is built in the progenitor's pool. The progenitor deletes its TCB at `START`
   ([§142 (what a spawner retains over a child after
   `START`)](../decisions/0142-spawn-retention.md)), it answers on the one result rendezvous every
   job shares, and `job_undertaker` holds its supervision endpoint. The shell holds nothing for it

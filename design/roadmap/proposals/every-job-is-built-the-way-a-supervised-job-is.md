@@ -18,9 +18,9 @@ code applies, since the question is this kernel's spawn protocol.
 
 A supervised job is built by the progenitor out of a region the shell holds, so the shell can tear
 it down, and shares a frame with the shell, so the shell can interrupt it and see it finish. Every
-other job is built in the progenitor's pool: the progenitor deletes its TCB at `START` (§142 (what a
-spawner retains over a child after `START`)), it answers on the one unbadged result rendezvous every
-job shares, and `job_undertaker` holds its supervision endpoint and reaps it. The shell holds
+other job is built in the progenitor's pool. The progenitor deletes its TCB at `START` (§142 (what
+a spawner retains over a child after `START`)). The job answers on the one unbadged result
+rendezvous every job shares, and `job_undertaker` holds its supervision endpoint and reaps it. The shell holds
 nothing for it once it is spawned.
 
 Suppose every job were built from a region the shell holds, with its exit delivered to an endpoint
@@ -32,7 +32,7 @@ the terminal's sink, `wait` would be a receive on that endpoint and a `REAP`, an
 What it costs, and why it is an architect's call rather than a lane's:
 
 - The spawn protocol changes. Who reaps a job moves from `job_undertaker` to the shell for these
-  jobs, and the progenitor learns that a job's file-service window is free from the undertaker's
+  jobs. The progenitor learns that a job's file-service window is free from the undertaker's
   "reaped" message (milestone 685 (a job is finished when its memory is back)), which a shell-reaped
   job would never send.
 - The pool's memory moves to the shell's budget, so the shell's endowment has to grow by what the
