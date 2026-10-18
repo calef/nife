@@ -375,6 +375,23 @@ pub mod listed {
         }
     }
 
+    /// **An I/O error as a client prints it**: its kind, then its message when it carries one.
+    /// The kind alone hides which of the name resolver's four network steps refused it
+    /// (`NetworkUnreachable` covers all four, and the std PAL names the step in the message), and
+    /// a bench transcript is often the only evidence there is. A caller prefixes a failed lookup
+    /// with `not resolved: `, so a `TimedOut` says whether the name server or the peer was silent.
+    ///
+    /// Name: provisional, minted 2026-10-18 (UTC) by lane `lane/jig-resolves-by-name`.
+    pub fn reason(e: &std::io::Error) -> String {
+        let kind = format!("{:?}", e.kind());
+        let text = e.to_string();
+        if text == e.kind().to_string() {
+            kind
+        } else {
+            format!("{kind} ({text})")
+        }
+    }
+
     /// Where the bytes came from.
     #[derive(Clone, Debug, PartialEq, Eq)]
     pub struct Fetched {
@@ -448,14 +465,14 @@ pub mod listed {
     ) -> Result<Hop, String> {
         let resolved: Vec<SocketAddr> = (at.host, at.port)
             .to_socket_addrs()
-            .map_err(|e| format!("{:?}", e.kind()))?
+            .map_err(|e| format!("not resolved: {}", reason(&e)))?
             .collect();
         let checked = at.check_by(&resolved, public).map_err(|why| match why {
             AddressRefusal::Private(ip) => format!("a private address ({ip})"),
             other => format!("{other:?}"),
         })?;
         let peer = PinnedPeer::new(checked.host(), root).map_err(|e| format!("{e:?}"))?;
-        let tcp = TcpStream::connect(checked.addresses()).map_err(|e| format!("{:?}", e.kind()))?;
+        let tcp = TcpStream::connect(checked.addresses()).map_err(|e| reason(&e))?;
         let session = Session::handshake(&peer, tcp).map_err(|e| format!("{e:?}"))?;
         let reply = session
             .fetch(checked.path(), |part| body(part))
