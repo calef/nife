@@ -12,11 +12,11 @@ The fork this was researching was answered while it was being researched. calef 
 on 2026-08-20 (§102, a `Frame` names a run), which is the same answer L4 reached and which this
 survey found Barrelfish had already built. So nothing here is waiting on anybody.
 
-**It is kept**, because the four recalled claims it
-checked are the reason a reader should trust §102 rather than merely obey it. Two of the four
-framings a maintainer offered from memory turned out to be wrong, and finding that out is what
-separates a decision from a guess. The pricing in section 3 is also the closest thing this tree has
-to a cost model for the syscall surface, and §102 does not restate it.
+**It is kept**, because the four recalled claims it checked are the reason a reader should trust
+§102 (a Frame names a run of pages) rather than merely obey it. Two of the four framings a
+maintainer offered from memory turned out to be wrong, and finding that out is what separates a
+decision from a guess. The pricing in section 3 is also the closest thing this tree has to a cost
+model for the syscall surface, and §102 does not restate it.
 
 This section was salvaged from a lane the account's spend limit killed mid-run, with 214 lines
 uncommitted in its worktree. What follows is the lane's own text, unedited.

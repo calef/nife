@@ -17,9 +17,10 @@ Milestone 68's own remaining open policy question: should `missing_docs` move fr
 `[workspace.lints.rust]` with an explicit `#![allow(missing_docs)]` per crate not yet ready? The
 roadmap doc already named the tradeoff. Opt-out is higher on this file's own ladder (the default
 becomes on, and the opt-out list is a worklist that can only shrink) and is the only version that
-covers a crate created tomorrow. But it inverts a rule §61 itself states: *"adding a lint to this
-table is a decision to fix every existing violation first,"* which is why §61 recorded `missing_docs`
-as deliberately absent from the table rather than present with `#[allow]`s underneath it.
+covers a crate created tomorrow. But it inverts a rule §61 (a lint is adopted on evidence) itself
+states: *"adding a lint to this table is a decision to fix every existing violation first,"* which
+is why §61 recorded `missing_docs` as deliberately absent from the table rather than present with
+`#[allow]`s underneath it.
 
 ## Why this is a considered exception to §61, not a quiet reversal of it
 
@@ -46,10 +47,11 @@ this decision and their own item count. So the opt-out is visible at the crate r
 by its absence from a list. The 50 per-crate `#![warn(missing_docs)]` opt-ins are removed as
 redundant. The workspace default covers them.
 
-What this buys, per the roadmap doc's own framing: a crate added tomorrow is checked by
-default. That closes the gap the doc's own BUGS section named ("nothing requires a new crate to
-adopt it"). The opt-out list can only shrink from here. It is the same ratchet shape §38 already
-uses for dead code, now recreated properly for docs instead of being deferred a second time.
+What this buys, per the roadmap doc's own framing: a crate added tomorrow is checked by default.
+That closes the gap the doc's own BUGS section named ("nothing requires a new crate to adopt it").
+The opt-out list can only shrink from here. It is the same ratchet shape §38 (a suppression is
+scoped) already uses for dead code, now recreated properly for docs instead of being deferred a
+second time.
 
 ## What this does not decide
 

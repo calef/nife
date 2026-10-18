@@ -11,12 +11,13 @@ calef, 2026-08-16: option 1, a fourth state. `script/names` accepts
 `provisional`, `script/names --provisional` lists them, and they sort first in `--unratified`
 because a name its own author has called wrong is the shortest conversation available.
 
-The reason option 1 beat the cheaper ones is milestone 115's own. A backlog a machine can list is a
-backlog that gets worked. The alternatives put intent back into prose or into a lane's report,
-which is where naming decisions were dying before that milestone existed. `provisional` is also
-the word AGENTS.md already uses in four places. A mechanism that spells its rule differently from
-the person who wrote the rule is a mechanism people get wrong. That is exactly how this defect was
-found: a newcomer wrote what the file told them to and the gate refused it.
+The reason option 1 beat the cheaper ones is milestone 115 (the names that were ratified)'s own. A
+backlog a machine can list is a backlog that gets worked. The alternatives put intent back into
+prose or into a lane's report, which is where naming decisions were dying before that milestone
+existed. `provisional` is also the word AGENTS.md already uses in four places. A mechanism that
+spells its rule differently from the person who wrote the rule is a mechanism people get wrong. That
+is exactly how this defect was found: a newcomer wrote what the file told them to and the gate
+refused it.
 
 The cost, accepted with eyes open and worth restating because the entry named it: a lane can
 now write `provisional` forever and never confront that nothing recorded its reasoning. What

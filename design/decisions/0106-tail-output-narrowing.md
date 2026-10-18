@@ -36,7 +36,8 @@ ahead of the notification object. But it explicitly declined to take milestone 4
 **Take it.** An unredirected tail stage's primary output (no `>`, no `|` on the line, the same
 condition `Wiring::sink == false` already tests) is delegated to `terminal_sink_caretaker` by
 default instead of to the shell's own synchronous read loop. That is the same adapter a program's
-*declared second* stream already reaches by default under §67.
+*declared second* stream already reaches by default under §67 (a program's second stream is a
+declaration).
 
 This is cheaper than the fork's own write-up estimated, and that mattered to the decision.
 `SINK_BIT`'s existing contract (`crates/grant_plan/src/spawnproto.rs`) already makes the child's
@@ -54,10 +55,11 @@ enough to catch this.
 What ships alongside it, reusing proven mechanism rather than inventing new:
 
 - **The completion signal.** The shell loses its "read the child's `OP_EOF`" signal for a
-  caretaker-routed child. It gains DECISIONS §26's already-built, already-proven fault/exit
-  endpoint instead (built at milestone 22, today wired only for supervised/interruptible foreground
-  jobs). Wiring it for ordinary sink-declaring children is shell-side plumbing comparable in size to
-  the existing `spawn_interruptible` job-watching path, not a new kernel primitive.
+  caretaker-routed child. It gains DECISIONS §26 (the fault endpoint)'s already-built,
+  already-proven fault/exit endpoint instead (built at milestone 22 (trusted init), today wired only
+  for supervised/interruptible foreground jobs). Wiring it for ordinary sink-declaring children is
+  shell-side plumbing comparable in size to the existing `spawn_interruptible` job-watching path,
+  not a new kernel primitive.
 - The narrowing rule. Applies only when the line has no `>` and no `|`, decidable from the plan
   before anything spawns. So redirected or piped output is completely unaffected.
 
@@ -86,4 +88,4 @@ specified its shape in full. Phase 3, the graphical viewer, still waits on the d
 
 Milestone 40 phase 3's caretaker-narrowing increment is now buildable to a concrete spec. It
 covers the narrowing rule, the §26 fault-endpoint reuse, and the caretaker-hop race recorded as a
-known, accepted interim carried until milestone 151 lands.
+known, accepted interim carried until milestone 151 (notification objects) lands.

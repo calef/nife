@@ -72,10 +72,10 @@ Channel: no kernel change, reuses proven machinery (§26's fault endpoint, caret
 supervision, `SINK_BIT`-shaped delegation). The cost lands on server structure (one endpoint or
 region per principal) rather than on the kernel.
 
-Badging would touch the IPC fast path (the single most gated, most measured surface in this
-kernel: `fastpath-footprint`, milestone 132's L1i-sized budget) for the first time in the project.
-It would also need new, proven kernel semantics for how a badge interacts with capability
-derivation, copying and revocation. Real cost, for a feature with no current consumer.
+Badging would touch the IPC fast path (the single most gated, most measured surface in this kernel:
+`fastpath-footprint`, milestone 132 (the fast path's footprint)'s L1i-sized budget) for the first
+time in the project. It would also need new, proven kernel semantics for how a badge interacts with
+capability derivation, copying and revocation. Real cost, for a feature with no current consumer.
 
 Where the channel model's own cost eventually bites, named rather than assumed away: each durable
 session, as milestone 152 designs it, plausibly owns at least one kernel region (`MAX_REGIONS = 256`,
@@ -99,14 +99,14 @@ built-in ceiling since the 1970s. Shared systems have run that for accounts numb
 hundreds as ordinary practice, though this note does not have a single precise citation for a
 figure and should not be read as claiming one.
 
-seL4 itself supplies no comparison at all, and that is worth being precise about too. seL4 has
-no user, login, or account concept anywhere in the kernel; badging distinguishes *senders on a
-shared endpoint*, for whatever a downstream system builds (VMs in a hypervisor, components in a
-CAmkES system), never "logged-in end users" as such. Citing seL4 as having solved "how many users"
-would be citing an answer it does not give. The honest version of the earlier reasoning (§2, §3
-above) is narrower and still holds. seL4 supports cheap many-sender fan-out for whatever a
-downstream system needs it for. This tree has never needed that, and every prior case here needed
-confinement rather than identity regardless.
+seL4 itself supplies no comparison at all, and that is worth being precise about too. seL4 has no
+user, login, or account concept anywhere in the kernel; badging distinguishes *senders on a shared
+endpoint*, for whatever a downstream system builds (VMs in a hypervisor, components in a CAmkES
+system), never "logged-in end users" as such. Citing seL4 as having solved "how many users" would be
+citing an answer it does not give. The honest version of the earlier reasoning (§2 (primary target),
+§3 (use the crate ecosystem) above) is narrower and still holds. seL4 supports cheap many-sender
+fan-out for whatever a downstream system needs it for. This tree has never needed that, and every
+prior case here needed confinement rather than identity regardless.
 
 **So the number that actually matters is `MAX_REGIONS` itself, not a borrowed desktop-OS throttle.**
 The 50-70-concurrently-durable-session estimate above is the real headroom question for a tree that

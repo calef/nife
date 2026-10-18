@@ -89,9 +89,10 @@ first to save three minutes.
 ## The coupling that does hurt today, and it is not the build
 
 It is runtime. Every program in the initrd is a live process during tests, and that has already
-caused failures twice. Milestone 107's lane found the aarch64 boot out of frames, with ten
-`net_stack` regions held for the whole boot because nothing reaps a net server. Milestone 67's lane
-found `script/test` failing intermittently because **"a scripted-shell witness is not free"**.
+caused failures twice. Milestone 107 (the socket contract learns to accept)'s lane found the aarch64
+boot out of frames, with ten `net_stack` regions held for the whole boot because nothing reaps a net
+server. Milestone 67 (`swish` the language)'s lane found `script/test` failing intermittently
+because **"a scripted-shell witness is not free"**.
 
 **The pressure is not that we build too much; it is that we boot too much**, and nothing reclaims
 what a finished service held. Milestone 107 already named that as the binding constraint on the whole
@@ -137,10 +138,12 @@ So the number to watch is non-arch, non-test kernel logic. That is the thing tha
 Arch lines are a parity tax, not kernel growth, and counting them into the trend makes the
 architecture look like it is failing when it is doing what it claims.
 
-The kernel is also not finished growing. Milestone 106's deadline wait, milestone 108's frame
+The kernel is also not finished growing. Milestone 106 (a wait that ends on either the interrupt or
+the deadline)'s deadline wait, milestone 108 (the drivers move onto frame capabilities)'s frame
 capabilities for drivers, and above all reclaiming what a finished service held are all mechanisms.
-Reclaiming is milestone 107's binding constraint, and a §16 fork about what a capability *is* when
-its holder dies. So they belong in the kernel *by* the thesis rather than despite it.
+Reclaiming is milestone 107's binding constraint, and a §16 (object revocation) fork about what a
+capability *is* when its holder dies. So they belong in the kernel *by* the thesis rather than
+despite it.
 
 Where the prediction is clearest is what comes after: milestone 55's SMB3 server, 66's Vaultwarden,
 99's git, 40's documentation service, 65's secrets service. Every one is pure userspace, and 55 alone

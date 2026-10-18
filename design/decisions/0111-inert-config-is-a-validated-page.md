@@ -13,13 +13,13 @@ calef, 2026-08-23, on milestone 47 (`cd`, `pwd`, `ls`, `mkdir`, `rm`, paths, and
 
 Milestone 47 splits what Unix puts in one string-to-string map into three parts. They are inert
 configuration (`TZ`, `LANG`, `TERM`, "genuinely just data, no authority in it"), names (`PATH`,
-`HOME`, already answered by the namespace work), and secrets (already answered, §41's broker). Only
-the inert third's wire encoding was undecided. It was priced as three options: more `SEND`s on the
-spawn endpoint, a read-only page (§15's `BootInfo` shape), or an endpoint to a configuration
-service. The doc's own recommendation was the page. It called the choice of encoding reversible (a
-userspace spawn-protocol change between two programs). But it flagged the page's *layout* as the one
-piece that needs care before anything is built, since both `user_rt` and the `std` PAL will depend
-on it once shipped.
+`HOME`, already answered by the namespace work), and secrets (already answered, §41 (the endpoint is
+the broker)'s broker). Only the inert third's wire encoding was undecided. It was priced as three
+options: more `SEND`s on the spawn endpoint, a read-only page (§15 (the native ABI)'s `BootInfo`
+shape), or an endpoint to a configuration service. The doc's own recommendation was the page. It
+called the choice of encoding reversible (a userspace spawn-protocol change between two programs).
+But it flagged the page's *layout* as the one piece that needs care before anything is built, since
+both `user_rt` and the `std` PAL will depend on it once shipped.
 
 ## The decision
 
@@ -61,12 +61,12 @@ nobody looks at again.
 
 ## What this does not claim
 
-Neither mechanism prevents someone from *inventing* a new inert-config key with a deliberately loose,
-unvalidated shape and putting a secret in it. What they remove is the two most likely accidents.
-One is reusing a well-known key for something it was never meant to carry. The other is an
-unreviewed launch silently carrying a wrong value. A new config key's validated shape is a decision
-made on purpose when it's added. That is the same discipline milestone 129 already applies to
-widening a scheduler's `Held`.
+Neither mechanism prevents someone from *inventing* a new inert-config key with a deliberately
+loose, unvalidated shape and putting a secret in it. What they remove is the two most likely
+accidents. One is reusing a well-known key for something it was never meant to carry. The other is
+an unreviewed launch silently carrying a wrong value. A new config key's validated shape is a
+decision made on purpose when it's added. That is the same discipline milestone 129 (scheduled
+execution) already applies to widening a scheduler's `Held`.
 
 **This does not reproduce, and is not meant to reproduce, milestone 56's actual secrets mechanism**
 (checked but never readable back, `PROVISION` then `SEAL`). Nothing here builds a second way to hold

@@ -51,24 +51,25 @@ the kernel, or does the syscall surface grow whatever lets it leave?
 ## Recommendation
 
 Option 2, **but not yet**. The recommendation is to hold this PROPOSED until the board-side work
-(the JH7110's PLDA XpressRICH root complex, tracked as milestone 163, NOT-STARTED) exists. §23 built
-multi-queue confinement only after single-queue worked for the same reason: the second data point
-tells you which parts of the contract are QEMU artifacts. A second, possibly faster path to the same
-data point may exist through milestone 87's x86 machine instead; see milestone 163's own text for
+(the JH7110's PLDA XpressRICH root complex, tracked as milestone 163 (the JH7110's root
+complex), NOT-STARTED) exists. §23 (multi-queue DMA confinement) built multi-queue confinement only
+after single-queue worked for the same reason: the second data point tells you which parts of the
+contract are QEMU artifacts. A second, possibly faster path to the same data point may exist through
+milestone 87 (the x86_64 bare-metal machine)'s x86 machine instead; see milestone 163's own text for
 why that does not make 163 unnecessary. Option 1 is honest in the meantime because the limitation is
 recorded in notes/non-volatile-memory-express.md's BUGS section rather than implied away.
 
-A scoping lane has now reported on x86_64 (milestone 165, PARTIAL), and it is half an answer
-rather than a whole one. Milestone 165 wired real PCI enumeration on x86_64 through ACPI's MCFG
-and proved it under QEMU's `q35`. That is stronger evidence than an equivalent RISC-V QEMU proof
-would be, because x86's discovery mechanism (ACPI tables naming an ECAM window) is the same one
-real x86 hardware uses, unlike RISC-V's QEMU-only fake ECAM device. That closes the *discovery*
-half of what a real data point needs. It does not close the *confinement* half this decision turns
-on. x86 has no IOMMU driver at all (VT-d, roadmap item 6 of milestone 161, unbuilt), so a real
-NVMe-behind-IOMMU controller cannot yet be brought up confined on either machine this tree targets.
-This stays PROPOSED, pending either the JH7110 board bring-up or VT-d, whichever lands first. (A
-separate lane was scoping a dedicated milestone for the JH7110 driver as this report was being
-written; check the roadmap index for its number before citing it.)
+A scoping lane has now reported on x86_64 (milestone 165 (x86_64 PCI enumeration), PARTIAL), and it
+is half an answer rather than a whole one. Milestone 165 wired real PCI enumeration on x86_64
+through ACPI's MCFG and proved it under QEMU's `q35`. That is stronger evidence than an equivalent
+RISC-V QEMU proof would be, because x86's discovery mechanism (ACPI tables naming an ECAM window) is
+the same one real x86 hardware uses, unlike RISC-V's QEMU-only fake ECAM device. That closes the
+*discovery* half of what a real data point needs. It does not close the *confinement* half this
+decision turns on. x86 has no IOMMU driver at all (VT-d, roadmap item 6 of milestone 161 (the x86_64
+port), unbuilt), so a real NVMe-behind-IOMMU controller cannot yet be brought up confined on
+either machine this tree targets. This stays PROPOSED, pending either the JH7110 board bring-up or
+VT-d, whichever lands first. (A separate lane was scoping a dedicated milestone for the JH7110
+driver as this report was being written; check the roadmap index for its number before citing it.)
 
 The VT-d half has now landed and been exercised against this driver (2026-08-25), and the
 *confinement* gap this section named is closed on x86_64. VT-d itself landed earlier this session
@@ -78,12 +79,12 @@ aarch64 and riscv64 runners do (no `iommu_platform` flag, same as the other two,
 device's DMA is not virtio's opt-in).
 `kernel/src/nvme.rs::tests::the_nvme_disk_serves_the_block_interface_end_to_end` now runs for real
 on all three architectures instead of skipping on x86_64. (An account: that module is
-`kernel/src/non_volatile_memory_express.rs` since 2026-09-18, and milestone 261 replaced that test
-with the EL0 one, so neither the path nor the symbol resolves today.) The result: the confinement
-claim holds under VT-d exactly as it does under SMMUv3 and the RISC-V IOMMU. The existing driver,
-unmodified in shape, enumerates the controller over ACPI's real MCFG, confines its requester id to
-its six-page DMA region before enabling it, and serves SIZE/WRITE/READ over the blk-IPC verbs, on
-QEMU's `q35` with `-device intel-iommu`.
+`kernel/src/non_volatile_memory_express.rs` since 2026-09-18, and milestone 261 (the NVMe driver
+leaves the kernel) replaced that test with the EL0 one, so neither the path nor the symbol resolves
+today.) The result: the confinement claim holds under VT-d exactly as it does under SMMUv3 and the
+RISC-V IOMMU. The existing driver, unmodified in shape, enumerates the controller over ACPI's real
+MCFG, confines its requester id to its six-page DMA region before enabling it, and serves
+SIZE/WRITE/READ over the blk-IPC verbs, on QEMU's `q35` with `-device intel-iommu`.
 
 Moved to [`vt-d-and-interrupts.md`](0086-el0-nvme-driver/vt-d-and-interrupts.md): the fixes the VT-d
 exercise needed, and the paragraphs that closed this section.

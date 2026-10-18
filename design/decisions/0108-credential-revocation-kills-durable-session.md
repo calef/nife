@@ -14,12 +14,12 @@ session. That seems like the right consequence."*
 ## The question
 
 Milestone 152 gives a scheduled job's authority a durable supervisor: the user's own login session.
-The session is kept alive past a disconnect by the same rule `Untyped::DESTROY` already has (§16).
-A parent refuses to be destroyed while it has live children, and becomes destroyable once it does
-not. That answers what keeps a durable session alive. It does not answer what should tear one down.
-If a user's login credentials are disabled, should their already-running durable session, and every
-job it supervises, stop? Or should already-registered work keep running on the authority it was
-granted at registration time until something explicitly sweeps it?
+The session is kept alive past a disconnect by the same rule `Untyped::DESTROY` already has (§16
+(object revocation)). A parent refuses to be destroyed while it has live children, and becomes
+destroyable once it does not. That answers what keeps a durable session alive. It does not answer
+what should tear one down. If a user's login credentials are disabled, should their already-running
+durable session, and every job it supervises, stop? Or should already-registered work keep running
+on the authority it was granted at registration time until something explicitly sweeps it?
 
 Both are defensible. Revoking credentials could plausibly mean only "you may not authenticate
 again," leaving existing delegated work alone; disabling an account is also plausibly meant to stop

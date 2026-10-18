@@ -144,8 +144,8 @@ the renaming party is the client that wrote both files.
 
 Optional additions are each independently cheap, and none is required. Filter `._*` from
 `QUERY_DIRECTORY` (roughly 10 lines in `smb_proto::server`, and it makes the share lie about its own
-contents, which is a §42 question). Or refuse to create `._*` (which would break the client rather
-than tidy it).
+contents, which is a §42 (a filesystem declares what it offers) question). Or refuse to create `._*`
+(which would break the client rather than tidy it).
 
 ### Option 2: named streams, stored as extended attributes
 

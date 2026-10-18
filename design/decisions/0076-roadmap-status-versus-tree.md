@@ -29,11 +29,12 @@ Two candidate signals, both measured rather than assumed.
 - A merged PR titled `milestone N...`. Caught all nine. Needs `gh` and the network, so it
   cannot live in `script/lint`; it would be a CI-only check, or a periodic one the steward runs.
 
-The recommendation. A CI-only check, because the signal that works needs the network and CI has
-it: fail (or warn) when a milestone reads `NOT-STARTED` and a merged PR names it in the
-implementation form. Pair it with the convention that the integrator sets status in the merge,
-but do not rely on the convention alone. Milestone 92's own argument is that a practice living in
-memory gets skipped exactly when it matters, and this one was skipped nine times in one day.
+The recommendation. A CI-only check, because the signal that works needs the network and CI has it:
+fail (or warn) when a milestone reads `NOT-STARTED` and a merged PR names it in the implementation
+form. Pair it with the convention that the integrator sets status in the merge, but do not rely on
+the convention alone. Milestone 92 (security audits as a mechanism)'s own argument is that a
+practice living in memory gets skipped exactly when it matters, and this one was skipped nine times
+in one day.
 
 The argument against. Both signals key on a title convention that nothing enforces, so the
 check is only as good as how people write PR titles, and a lane that titles its PR differently is
