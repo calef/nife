@@ -130,7 +130,7 @@ publishing only, with no fallback to the token. A missing secret on an absent cr
 it. Built in nifeos/crate-workflows #8 (`3a2160b`), after the newest release, `v5`. The secret is
 `CRATES_IO_FIRST_PUBLISH_TOKEN`, a provisional name.
 
-A first publish waits on the crate's soak (milestone 818 (`jh7110_entropy`: proven JH7110 TRNG logic, released on its own) is the pilot).
+A first publish waits on its soak (milestone 818 (`jh7110_entropy`: proven JH7110 TRNG logic, released on its own) is the pilot).
 
 ## Each nife gate, kept, adapted or dropped
 
@@ -228,7 +228,7 @@ being on the list, and `helpers/ci_job_times.py` reads a crate repository by arg
 - The semver half of the labeler never fired against a real baseline: the test crate is
   unpublished, so `cargo-semver-checks` has nothing to compare. The first published crate is the test.
 - The settings-drift check's security rows and ruleset read want an administration-scoped token;
-  with the caller's `GITHUB_TOKEN` they report what was unreadable.
+  with `GITHUB_TOKEN` they report what was unreadable.
 
 ## Follow-on
 
