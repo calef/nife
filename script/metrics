@@ -3095,6 +3095,7 @@ SERIES_FROM = {'ci-jobs.svg': build_job_series}
 TRENDS = {'velocity.svg': ('milestones_built_this_week', 10),
           'interface-stability.svg': ('interface_breaking', 4),
           'pull-requests.svg': ('merged_pull_requests', 10),
+          'unsafe.svg': ('unsafe_density', 10),
           # A share's trend is pooled, not a mean of shares: the line is ten weeks' labeled pull
           # requests over ten weeks' merged ones, so a quiet week weighs what it merged, for
           # `queue_by_week`'s reason. A (numerator, denominator) pair asks `trailing_mean` for that.
