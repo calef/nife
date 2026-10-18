@@ -40,7 +40,7 @@ pub fn expansion(
     // `grant_plan::check_words` refuses an unquoted one; a word that names something here is
     // granted it, by [`designation`].
     if let Some(ProgramArgumentDeclaration::Words(grant)) =
-        Prog::from_name(spec.program).map(|p| p.manifest().program_argument)
+        Program::from_name(spec.program).map(|p| p.manifest().program_argument)
     {
         return designation(spec.line(), grant, expand);
     }

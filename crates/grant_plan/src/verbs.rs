@@ -1,7 +1,7 @@
 //! **Authorities by verb** (milestone 809 (the package client becomes a program), its option V2): a
 //! program's manifest narrowed by the word a line gives after its name, so one program holds, per
 //! line, only what that verb needs. `jig list` reads the catalog; `jig install` also holds the
-//! installer and the network. [`crate::Prog::verbs`] holds each program's table, and
+//! installer and the network. [`crate::Program::verbs`] holds each program's table, and
 //! `capability_manifest_note`'s verb record is the same list as bytes.
 //!
 //! Name: provisional (milestone 809), as are the module, the types and the bit positions.
@@ -77,7 +77,7 @@ impl ManifestAuthorities {
 
 /// **One verb and what it is granted** (milestone 809, option V2): `jig list` reads the catalog and
 /// nothing else; `jig install` also holds the installer and the network. A list of these pairs is
-/// the whole of a verb table, in a program's row ([`Prog::verbs`](crate::Prog::verbs)) or in its note (`capability_manifest_note`'s
+/// the whole of a verb table, in a program's row ([`Program::verbs`](crate::Program::verbs)) or in its note (`capability_manifest_note`'s
 /// verb record, which is the same list as bytes). Name: provisional.
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub struct VerbGrant {
@@ -209,7 +209,7 @@ pub fn verb_of_page(page: &[u8]) -> Option<&[u8]> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{Prog, StartupContract, argv, image_can_carry};
+    use crate::{Program, StartupContract, argv, image_can_carry};
 
     /// **A verb narrows and never widens** (milestone 809, option V2). `jig list` holds the catalog
     /// alone, `jig remove` the installer alone, `jig install` all three, and a word that is no verb
@@ -218,10 +218,10 @@ mod tests {
     /// progenitor, so a shell that read the unnarrowed manifest could not send it a page.
     #[test]
     fn a_verb_narrows_and_never_widens() {
-        let jig = Prog::Jig.manifest();
+        let jig = Program::Jig.manifest();
         let as_typed = |line: &[u8]| {
             let mut buf = [0u8; MAX_VERB];
-            narrow_by_verb(&jig, Prog::Jig.verbs(), verb_of(line, &mut buf))
+            narrow_by_verb(&jig, Program::Jig.verbs(), verb_of(line, &mut buf))
         };
         let list = as_typed(b"jig list");
         assert!(list.catalog && !list.installer && !list.network);
@@ -250,7 +250,7 @@ mod tests {
         // Everything else about the manifest is untouched.
         assert_eq!(list.program_argument, jig.program_argument);
         assert_eq!(list.startup, jig.startup);
-        for &p in Prog::ALL {
+        for &p in Program::ALL {
             let m = p.manifest();
             for v in p.verbs() {
                 assert!(v.verb.len() <= MAX_VERB, "{}", v.verb);
@@ -308,7 +308,7 @@ mod tests {
             installer: true,
             catalog: true,
             indexes: IndexStoreDeclaration::ReadWrite,
-            ..Prog::Jig.manifest()
+            ..Program::Jig.manifest()
         };
         let one = |verb: &'static str, authorities| VerbGrant { verb, authorities };
         let table = [
@@ -376,12 +376,12 @@ mod tests {
     /// either would be planned and not delivered; and no image may declare them.
     #[test]
     fn only_jig_holds_the_installer_and_the_catalog() {
-        for &p in Prog::ALL {
+        for &p in Program::ALL {
             let m = p.manifest();
-            assert_eq!(m.installer, p == Prog::Jig, "{}", p.name());
+            assert_eq!(m.installer, p == Program::Jig, "{}", p.name());
             assert_eq!(
                 m.indexes != IndexStoreDeclaration::Forbidden,
-                p == Prog::Jig,
+                p == Program::Jig,
                 "{}",
                 p.name()
             );
@@ -389,7 +389,7 @@ mod tests {
                 assert_eq!(m.startup, StartupContract::Std, "{}", p.name());
             }
         }
-        let jig = Prog::Jig.manifest();
+        let jig = Program::Jig.manifest();
         assert!(!image_can_carry(&jig));
         assert!(!image_can_carry(&Manifest {
             installer: false,

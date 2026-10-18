@@ -12,7 +12,7 @@ use crate::line::{Sink, Source};
 use crate::{
     CapabilityKind, DirectoryGrant, DirectoryGrantDeclaration, Endowment, FileGrant,
     FileGrantDeclaration, Holdings, InputDeclaration, Manifest, MemoryGrantDeclaration,
-    ParsedInvocation, Prog, ProgramArgumentDeclaration, Refusal, check_words, expand, line, nav,
+    ParsedInvocation, Program, ProgramArgumentDeclaration, Refusal, check_words, expand, line, nav,
     parse_u64,
 };
 
@@ -68,7 +68,7 @@ pub fn plan_stage(
     if let Some(r) = run.misquoted {
         return Err(r);
     }
-    let prog = Prog::from_name(run.program).ok_or(Refusal::NoSuchProgram)?;
+    let prog = Program::from_name(run.program).ok_or(Refusal::NoSuchProgram)?;
     plan_against_with(run, prog, prog.manifest(), holds, expanded, streams)
 }
 
@@ -100,7 +100,7 @@ pub fn plan_stage(
 ///   designates itself.
 pub fn plan_against(
     run: &ParsedInvocation<'_>,
-    prog: Prog,
+    prog: Program,
     m: Manifest,
     holds: Holdings,
     expanded: Expansion,
@@ -112,7 +112,7 @@ pub fn plan_against(
 /// spellings without a pipeline on the line.
 pub fn plan_against_with(
     run: &ParsedInvocation<'_>,
-    prog: Prog,
+    prog: Program,
     m: Manifest,
     holds: Holdings,
     expanded: Expansion,
@@ -221,7 +221,7 @@ pub fn plan_against_with(
     let diagnostics = check_streams(m, streams)?;
 
     Ok(Endowment {
-        prog,
+        program: prog,
         program_argument: arg,
         memory_grant_pages: mem_pages,
         file,
@@ -566,9 +566,9 @@ pub fn check_chain(shell_feeds_head: bool, plans: &[Option<Endowment>]) -> Resul
         // **The tail's own output goes to the terminal's sink adapter, not back to this shell.**
         //
         // This trusts that `writes_while_reading` never rides on anything but a byte-stream output,
-        // rather than re-checking `is_byte_stream` here off `e.prog.manifest()`: `e` may have been
-        // planned against an explicit manifest that differs from `e.prog`'s real one
-        // ([`plan_against_with`]'s whole reason to exist), so re-deriving from `e.prog` would answer
+        // rather than re-checking `is_byte_stream` here off `e.program.manifest()`: `e` may have been
+        // planned against an explicit manifest that differs from `e.program`'s real one
+        // ([`plan_against_with`]'s whole reason to exist), so re-deriving from `e.program` would answer
         // a question about the wrong manifest. No shipped program declares
         // `writes_while_reading: true` next to anything but `OutputDeclaration::Bytes` today, and a
         // filter's whole shape (writing before it has read to the end) presupposes the streaming

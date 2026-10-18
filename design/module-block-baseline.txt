@@ -3001,10 +3001,6 @@ crates/grant_plan/src/planning/tests/designation.rs
 crates/grant_plan/src/planning/tests/operands.rs
 crates/grant_plan/src/planning/tests/streams.rs
 crates/grant_plan/src/program/catalog.rs::ALL
-crates/grant_plan/src/program/catalog.rs::PROG_COUNT
-crates/grant_plan/src/program/catalog.rs::Prog
-crates/grant_plan/src/program/catalog.rs::Prog
-crates/grant_plan/src/program/catalog.rs::Prog
 crates/grant_plan/src/program/catalog.rs::from_id
 crates/grant_plan/src/program/catalog.rs::from_name
 crates/grant_plan/src/program/catalog.rs::id

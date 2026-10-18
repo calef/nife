@@ -8,7 +8,7 @@
 
 use crate::{
     DirectoryGrantDeclaration, FileGrantDeclaration, IndexStoreDeclaration, InputDeclaration,
-    Manifest, MemoryGrantDeclaration, OutputDeclaration, Prog, ProgramArgumentDeclaration,
+    Manifest, MemoryGrantDeclaration, OutputDeclaration, Program, ProgramArgumentDeclaration,
     StartupContract, UNVOUCHED_MANIFEST, UNVOUCHED_STD_MANIFEST,
 };
 
@@ -23,20 +23,20 @@ use crate::{
 /// more carries a note ([`image_manifest`]).
 ///
 /// Name: provisional (milestone 597, 2026-09-26).
-pub const NO_NOTE_MANIFEST: Manifest = Prog::Uptime.manifest();
+pub const NO_NOTE_MANIFEST: Manifest = Program::Uptime.manifest();
 
-/// **The row an image's [`Endowment`](crate::Endowment) is filed under**, because an endowment names a `Prog` and
+/// **The row an image's [`Endowment`](crate::Endowment) is filed under**, because an endowment names a `Program` and
 /// a file's bytes have none.
 ///
 /// An exception, and a foot gun: nothing about an image may be decided from this row. Every
 /// decision is made from the manifest [`image_manifest`] returns, which is what the shell binds
 /// the line against and what the progenitor endows from. A reader who calls
-/// `e.prog.manifest()` on an image's endowment gets `uptime`'s manifest, which is the wrong one
+/// `e.program.manifest()` on an image's endowment gets `uptime`'s manifest, which is the wrong one
 /// whenever the program carries a note. The fix is an endowment that holds its manifest rather
 /// than its row; that is wider than this milestone, and `spawnproto`'s BUGS records it.
 ///
 /// Name: provisional (milestone 597, 2026-09-26).
-pub const IMAGE_ROW: Prog = Prog::Uptime;
+pub const IMAGE_ROW: Program = Program::Uptime;
 
 /// **Why a file's bytes are not run with the manifest they carry.** Provisional names.
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]

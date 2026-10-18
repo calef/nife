@@ -18,7 +18,7 @@ fn a_bare_program_name_spawns_it() {
     assert_eq!(r.positionals(), [&b"9"[..]]);
     assert_eq!(r.memory_grant, None);
     let e = plan(&r, Holdings::default()).unwrap();
-    assert_eq!(e.prog, Prog::LeastAuthorityDemo);
+    assert_eq!(e.program, Program::LeastAuthorityDemo);
     assert_eq!(e.program_argument, 9);
     assert_eq!(e.memory_grant_pages, 0);
     assert!(e.reports);
@@ -83,7 +83,7 @@ fn memory_grant_depleter_with_mem_plans_the_grant() {
         panic!()
     };
     let e = plan(&r, Holdings::default()).unwrap();
-    assert_eq!(e.prog, Prog::MemoryGrantDepleter);
+    assert_eq!(e.program, Program::MemoryGrantDepleter);
     assert_eq!(e.memory_grant_pages, 16);
     assert_eq!(e.program_argument, 0);
 }
@@ -180,8 +180,8 @@ fn the_manifest_refuses_a_file_to_a_program_that_declares_none() {
     assert_eq!(
         plan_against(
             &r,
-            Prog::InterruptHeeder,
-            Prog::InterruptHeeder.manifest(),
+            Program::InterruptHeeder,
+            Program::InterruptHeeder.manifest(),
             WITH_DIRECTORY
         ),
         Err(Refusal::FileForbidden),
@@ -203,7 +203,12 @@ fn an_unknown_flag_never_reaches_the_file_position() {
     };
     assert_eq!(r.unexpected, Some(&b"--secret"[..]));
     assert_eq!(
-        plan_against(&r, Prog::LeastAuthorityDemo, READS_A_FILE, WITH_DIRECTORY),
+        plan_against(
+            &r,
+            Program::LeastAuthorityDemo,
+            READS_A_FILE,
+            WITH_DIRECTORY
+        ),
         Err(Refusal::Unexpected),
     );
 }
@@ -251,7 +256,7 @@ fn wc_source(line: &[u8], holds: Holdings) -> Result<FileGrant, Refusal> {
     let Command::Run(r) = parse(line) else {
         panic!("not a run: {line:?}")
     };
-    match plan_against(&r, Prog::Wc, Prog::Wc.manifest(), holds)?.source {
+    match plan_against(&r, Program::Wc, Program::Wc.manifest(), holds)?.source {
         Source::File(g) => Ok(g),
         other => panic!("wc's operand planned as {other:?}"),
     }
@@ -348,7 +353,13 @@ fn a_bare_name_is_the_grant_and_the_manifest_is_the_direction() {
         panic!()
     };
     assert_eq!(r.positionals(), [&b"report.txt"[..]]);
-    let e = plan_against(&r, Prog::LeastAuthorityDemo, READS_A_FILE, WITH_DIRECTORY).unwrap();
+    let e = plan_against(
+        &r,
+        Program::LeastAuthorityDemo,
+        READS_A_FILE,
+        WITH_DIRECTORY,
+    )
+    .unwrap();
     let g = e.file.expect("the name did not become a grant");
     assert_eq!(g.name.as_bytes(), b"report.txt");
     assert!(
@@ -356,7 +367,13 @@ fn a_bare_name_is_the_grant_and_the_manifest_is_the_direction() {
         "the manifest declared a read, so the grant reads"
     );
 
-    let e = plan_against(&r, Prog::LeastAuthorityDemo, WRITES_A_FILE, WITH_DIRECTORY).unwrap();
+    let e = plan_against(
+        &r,
+        Program::LeastAuthorityDemo,
+        WRITES_A_FILE,
+        WITH_DIRECTORY,
+    )
+    .unwrap();
     assert!(
         e.file.unwrap().writable,
         "the same command line against a writing program grants a writable file",
@@ -372,7 +389,13 @@ fn a_file_whose_name_is_all_digits_is_still_a_file() {
     let Command::Run(r) = parse(b"wc 2026") else {
         panic!()
     };
-    let e = plan_against(&r, Prog::LeastAuthorityDemo, READS_A_FILE, WITH_DIRECTORY).unwrap();
+    let e = plan_against(
+        &r,
+        Program::LeastAuthorityDemo,
+        READS_A_FILE,
+        WITH_DIRECTORY,
+    )
+    .unwrap();
     assert_eq!(e.file.unwrap().name.as_bytes(), b"2026");
 }
 
@@ -384,7 +407,13 @@ fn positionals_fill_the_manifest_slots_in_the_order_typed() {
     let Command::Run(r) = parse(b"stamp 7 report.txt") else {
         panic!()
     };
-    let e = plan_against(&r, Prog::LeastAuthorityDemo, STAMPS_A_FILE, WITH_DIRECTORY).unwrap();
+    let e = plan_against(
+        &r,
+        Program::LeastAuthorityDemo,
+        STAMPS_A_FILE,
+        WITH_DIRECTORY,
+    )
+    .unwrap();
     assert_eq!(e.program_argument, 7);
     assert_eq!(e.file.unwrap().name.as_bytes(), b"report.txt");
     assert!(e.file.unwrap().writable);
@@ -395,7 +424,7 @@ fn positionals_fill_the_manifest_slots_in_the_order_typed() {
     assert_eq!(
         plan_against(
             &swapped,
-            Prog::LeastAuthorityDemo,
+            Program::LeastAuthorityDemo,
             STAMPS_A_FILE,
             WITH_DIRECTORY
         ),
@@ -423,7 +452,7 @@ fn an_argument_and_an_input_stream_compose_by_the_same_fixed_order() {
     };
     let e = plan_against(
         &r,
-        Prog::LeastAuthorityDemo,
+        Program::LeastAuthorityDemo,
         TAKES_ARG_AND_READS,
         WITH_DIRECTORY,
     )
@@ -449,7 +478,7 @@ fn an_argument_and_an_input_stream_compose_by_the_same_fixed_order() {
     assert_eq!(
         plan_against(
             &missing_input,
-            Prog::LeastAuthorityDemo,
+            Program::LeastAuthorityDemo,
             TAKES_ARG_AND_READS,
             WITH_DIRECTORY
         ),
@@ -465,7 +494,12 @@ fn a_program_endowed_a_file_is_refused_when_the_command_names_none() {
         panic!()
     };
     assert_eq!(
-        plan_against(&r, Prog::LeastAuthorityDemo, READS_A_FILE, WITH_DIRECTORY),
+        plan_against(
+            &r,
+            Program::LeastAuthorityDemo,
+            READS_A_FILE,
+            WITH_DIRECTORY
+        ),
         Err(Refusal::FileRequired)
     );
     assert_eq!(
@@ -485,7 +519,12 @@ fn a_name_that_cannot_travel_as_a_grant_is_refused_at_the_prompt() {
             panic!()
         };
         assert_eq!(
-            plan_against(&r, Prog::LeastAuthorityDemo, READS_A_FILE, WITH_DIRECTORY),
+            plan_against(
+                &r,
+                Program::LeastAuthorityDemo,
+                READS_A_FILE,
+                WITH_DIRECTORY
+            ),
             Err(Refusal::FileNotNameable),
             "{}",
             core::str::from_utf8(line).unwrap(),
@@ -501,7 +540,7 @@ fn a_name_that_cannot_travel_as_a_grant_is_refused_at_the_prompt() {
     let Command::Run(r) = parse(b"wc /etc/passwd") else {
         panic!()
     };
-    let g = plan_against(&r, Prog::LeastAuthorityDemo, READS_A_FILE, deep)
+    let g = plan_against(&r, Program::LeastAuthorityDemo, READS_A_FILE, deep)
         .unwrap()
         .file
         .unwrap();
@@ -515,7 +554,7 @@ fn a_name_that_cannot_travel_as_a_grant_is_refused_at_the_prompt() {
     let Command::Run(r) = parse(b"wc /../passwd") else {
         panic!()
     };
-    let refused = plan_against(&r, Prog::LeastAuthorityDemo, READS_A_FILE, deep);
+    let refused = plan_against(&r, Program::LeastAuthorityDemo, READS_A_FILE, deep);
     assert_eq!(refused, Err(Refusal::FileNotNameable));
     assert!(!refused.unwrap_err().message().contains("denied"));
 }
@@ -532,7 +571,7 @@ fn a_name_is_resolved_against_the_shells_position_at_grant_time() {
     let Command::Run(r) = parse(b"wc report.txt") else {
         panic!()
     };
-    let here = plan_against(&r, Prog::LeastAuthorityDemo, READS_A_FILE, holds)
+    let here = plan_against(&r, Program::LeastAuthorityDemo, READS_A_FILE, holds)
         .unwrap()
         .file
         .unwrap();
@@ -548,7 +587,7 @@ fn a_name_is_resolved_against_the_shells_position_at_grant_time() {
     let Command::Run(r) = parse(b"wc 2026/report.txt") else {
         panic!()
     };
-    let deeper = plan_against(&r, Prog::LeastAuthorityDemo, READS_A_FILE, holds)
+    let deeper = plan_against(&r, Program::LeastAuthorityDemo, READS_A_FILE, holds)
         .unwrap()
         .file
         .unwrap();
@@ -573,7 +612,12 @@ fn a_name_is_resolved_against_the_shells_position_at_grant_time() {
         panic!()
     };
     assert_eq!(
-        plan_against(&r, Prog::LeastAuthorityDemo, READS_A_FILE, WITH_DIRECTORY),
+        plan_against(
+            &r,
+            Program::LeastAuthorityDemo,
+            READS_A_FILE,
+            WITH_DIRECTORY
+        ),
         Err(Refusal::FileNotNameable),
         "a grant cannot name its way out of the shell's root",
     );
@@ -588,15 +632,20 @@ fn the_no_such_capability_refusal_is_about_what_the_shell_holds() {
         panic!()
     };
     assert_eq!(
-        plan_against(&r, Prog::LeastAuthorityDemo, READS_A_FILE, WITH_DIRECTORY)
-            .map(|e| e.file.map(|g| g.name.as_bytes().to_vec()))
-            .unwrap(),
+        plan_against(
+            &r,
+            Program::LeastAuthorityDemo,
+            READS_A_FILE,
+            WITH_DIRECTORY
+        )
+        .map(|e| e.file.map(|g| g.name.as_bytes().to_vec()))
+        .unwrap(),
         Some(b"report.txt".to_vec()),
         "with a directory in hand, the same line is a grant",
     );
     let refused = plan_against(
         &r,
-        Prog::LeastAuthorityDemo,
+        Program::LeastAuthorityDemo,
         READS_A_FILE,
         Holdings::default(),
     );
@@ -641,7 +690,7 @@ fn date_takes_nothing_from_the_command_line() {
         panic!()
     };
     let e = plan(&r, Holdings::default()).unwrap();
-    assert_eq!(e.prog, Prog::Date);
+    assert_eq!(e.program, Program::Date);
     assert_eq!((e.program_argument, e.memory_grant_pages), (0, 0));
     assert!(e.file.is_none());
     assert!(e.reports, "it answers with a line of text");
@@ -679,8 +728,8 @@ fn a_designation_becomes_one_grant_at_the_current_directory() {
     d.name(b"src", true).unwrap();
     let e = super::plan_against(
         &run,
-        Prog::StdExerciser,
-        Prog::StdExerciser.manifest(),
+        Program::StdExerciser,
+        Program::StdExerciser.manifest(),
         WITH_DIRECTORY,
         Expansion::designated(d),
     )
@@ -692,8 +741,8 @@ fn a_designation_becomes_one_grant_at_the_current_directory() {
 
     let none = super::plan_against(
         &parse_run(b"std_exerciser needle"),
-        Prog::StdExerciser,
-        Prog::StdExerciser.manifest(),
+        Program::StdExerciser,
+        Program::StdExerciser.manifest(),
         WITH_DIRECTORY,
         Expansion::designated(Designation::none()),
     )
@@ -707,8 +756,8 @@ fn a_designation_becomes_one_grant_at_the_current_directory() {
     here.here();
     let e = super::plan_against(
         &parse_run(b"std_exerciser needle ."),
-        Prog::StdExerciser,
-        Prog::StdExerciser.manifest(),
+        Program::StdExerciser,
+        Program::StdExerciser.manifest(),
         WITH_DIRECTORY,
         Expansion::designated(here),
     )
@@ -725,8 +774,8 @@ fn a_designation_becomes_one_grant_at_the_current_directory() {
     assert_eq!(
         super::plan_against(
             &run,
-            Prog::StdExerciser,
-            Prog::StdExerciser.manifest(),
+            Program::StdExerciser,
+            Program::StdExerciser.manifest(),
             holds_none,
             Expansion::designated(d)
         ),

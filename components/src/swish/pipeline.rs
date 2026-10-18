@@ -320,7 +320,7 @@ fn say_chain_refused(plans: &[Option<Endowment>], r: Refusal) {
     // Named after the first stage that answers while it reads, which is the one a person would
     // reach for `| wc` about. The sentence itself is about the *line* and says so.
     if let Some(e) = plans.iter().flatten().find(|e| e.writes_while_reading) {
-        print(e.prog.name().as_bytes());
+        print(e.program.name().as_bytes());
         print(b": ");
     }
     print(r.message().as_bytes());
@@ -450,13 +450,13 @@ fn write_stage_words(
     head_builtin: bool,
     argvs: &mut [Option<Argv>],
     sets: &mut [Option<WordsGrant>],
-) -> Result<(), (grant_plan::Prog, Option<&'static [u8]>)> {
+) -> Result<(), (grant_plan::Program, Option<&'static [u8]>)> {
     for i in 0..plans.len() {
         let Some(e) = plans[i].filter(|_| !(i == 0 && head_builtin)) else {
             continue;
         };
         let grant_plan::ProgramArgumentDeclaration::Words(grant) =
-            e.prog.manifest().program_argument
+            e.program.manifest().program_argument
         else {
             continue;
         };
@@ -472,7 +472,7 @@ fn write_stage_words(
                 }
             });
         if let Err(why) = assembled {
-            return Err((e.prog, why));
+            return Err((e.program, why));
         }
     }
     Ok(())
@@ -480,7 +480,7 @@ fn write_stage_words(
 
 /// Say why [`write_stage_words`] could not write `prog`'s words: its sentence, or that the
 /// budget ran out.
-fn say_stage_words_failed(prog: grant_plan::Prog, why: Option<&[u8]>) {
+fn say_stage_words_failed(prog: grant_plan::Program, why: Option<&[u8]>) {
     match why {
         Some(sentence) => {
             refused();
@@ -1014,7 +1014,7 @@ fn spawn_stage(
         keyboard: false,
     };
     let (w0, w1, w2) = spawnproto::request(
-        e.prog.id(),
+        e.program.id(),
         e.program_argument,
         e.memory_grant_pages,
         wiring,

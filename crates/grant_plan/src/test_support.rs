@@ -18,7 +18,7 @@ pub(crate) fn plan(run: &ParsedInvocation<'_>, holds: Holdings) -> Result<Endowm
 
 pub(crate) fn plan_against(
     run: &ParsedInvocation<'_>,
-    prog: Prog,
+    prog: Program,
     m: Manifest,
     holds: Holdings,
 ) -> Result<Endowment, Refusal> {

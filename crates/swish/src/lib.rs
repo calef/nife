@@ -62,7 +62,7 @@ use grant_plan::expand::{Expansion, NameSet};
 use grant_plan::line::{self, Line};
 use grant_plan::nav::{self, Refused};
 use grant_plan::{
-    Command, Endowment, Holdings, OutputDeclaration, ParsedInvocation, Prog,
+    Command, Endowment, Holdings, OutputDeclaration, ParsedInvocation, Program,
     ProgramArgumentDeclaration, Refusal, Streams, spawnproto,
 };
 pub use number::write_num;
