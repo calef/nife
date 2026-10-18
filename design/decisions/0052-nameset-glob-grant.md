@@ -47,7 +47,7 @@ operands by enumerating the capability it holds, which reveals exactly what the 
 already printed and nothing more.
 
 The set frame needs none of the ordering care the shared page needs, and the reason is structural
-rather than careful coding: it is written before the caretaker is spawned, into a frame nothing
+rather than careful coding. It is written before the caretaker is spawned, into a frame nothing
 else has ever held, so there is no reader to race.
 
 ## One consequence worth keeping

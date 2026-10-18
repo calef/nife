@@ -40,10 +40,10 @@ device here whose DMA addresses do not all arrive in descriptors. A virtio-gpu's
 ride in a `RESOURCE_ATTACH_BACKING` command payload; the kernel bounds the descriptor carrying
 that command, but the addresses inside it are bytes it does not parse. It should not start parsing
 them, because that would put device knowledge in the transport, which is the line §18 draws, and it
-would be a per-device arms race. So the IOMMU (§20) is the barrier for this class of address, and
-it is proved rather than assumed: `the_iommu_refuses_the_gpu_a_framebuffer_outside_the_drivers_grant`
-gives an attacker exactly the honest driver's authority, points a resource's backing at a frame the
-kernel left out of its domain, and asserts the IOMMU recorded a fault there. Both ISAs.
+would be a per-device arms race. So the IOMMU (§20) is the barrier for this class of address, and it
+is proved rather than assumed. `the_iommu_refuses_the_gpu_a_framebuffer_outside_the_drivers_grant`
+gives an attacker exactly the honest driver's authority and points a resource's backing at a frame
+the kernel left out of its domain. It then asserts the IOMMU recorded a fault there. Both ISAs.
 
 Two consequences follow and are recorded so they are not discovered later. `iommu_platform=on` carries
 more weight for the GPU than for the disk (drop it and the disk still has the shadow ring; the GPU has
@@ -58,8 +58,8 @@ so the command returns OK while the bytes the device gets are not the victim fra
 held; only the error reporting did not survive the trip. The test now asserts on the IOMMU's fault
 queue, the hardware's own account, and the response code is printed for the record. An earlier
 iteration also aimed the escape at "the frame just past my region", which was wrong because the
-kernel's shadow page is allocated immediately after the region and *is* in the domain; the kernel now
-picks the victim frame and hands it to the attacker.
+kernel's shadow page is allocated immediately after the region and *is* in the domain. The kernel
+now picks the victim frame and hands it to the attacker.
 
 A found limit, recorded for whoever handles faults in production: the RISC-V IOMMU's fault queue
 overflows silently. The driver gives it 128 records and never clears the queue's overflow bit, so a
@@ -86,27 +86,29 @@ two copies that can drift.
 
 What the pixels are proven by, in two halves, because one half cannot reach the whole path.
 
-*In the guest, the framebuffer.* The pattern is a per-coordinate function rather than a fill (a blank,
-filled, transposed, one-row-shifted, or one-pixel-shifted surface all fail), the digest is position
-sensitive, and two independent witnesses in two address spaces report it (the client from its mapping
-after the flush, the driver from a different mapping after the device reported the transfer complete),
-both compared against a value the kernel computed itself.
+*In the guest, the framebuffer.* The pattern is a per-coordinate function rather than a fill (a
+blank, filled, transposed, one-row-shifted, or one-pixel-shifted surface all fail). The digest is
+position sensitive. Two independent witnesses in two address spaces report it (the client from its
+mapping after the flush, the driver from a different mapping after the device reported the transfer
+complete). Both are compared against a value the kernel computed itself.
 
 *From the host, the scanout.* An in-guest test cannot go further: `-display none`, and nothing in the
 guest can read QEMU's host-side surface back, so a wrong pixel format or scanout rectangle would pass
 the guest's half while showing garbage on a screen. So the host proves that half. QEMU's monitor
-works headlessly, and `cargo xtask` drives it beside the ordinary test run (no second boot: the pattern
-stays on the scanout until QEMU exits, so nothing needs synchronizing), dumps the scanout with
-`screendump`, and compares the PPM against `gfx_proto::pixel` pixel for pixel. Both ISAs, and the
-checker has its own negative control (`cargo test -p xtask`: it must reject black, red/blue-swapped,
-row-shifted, one-pixel-wrong, and the default 640x480 console). The geometry is part of the assertion,
-which means a dump that is 128x64 at all is evidence `SET_SCANOUT` reached the device.
+works headlessly, and `cargo xtask` drives it beside the ordinary test run (no second boot: the
+pattern stays on the scanout until QEMU exits, so nothing needs synchronizing). It then dumps the
+scanout with `screendump` and compares the PPM against `gfx_proto::pixel` pixel for pixel. Both
+ISAs, and the checker has its own negative control (`cargo test -p xtask`: it must reject black,
+red/blue-swapped, row-shifted, one-pixel-wrong, and the default 640x480 console). The geometry is
+part of the assertion, which means a dump that is 128x64 at all is evidence `SET_SCANOUT` reached
+the device.
 
-One ordering fact is load-bearing and deliberately fail-loud: the confinement test resets the device,
-which destroys the scanout, so it must run before the pixel test; it is named
-`a_backing_outside_the_grant_is_refused_by_the_iommu` to sort first, and a reordering fails the scanout
-check rather than quietly skipping it. What remains unproven is only what QEMU cannot answer: that a
-physical panel would show this, which is a silicon question. See notes/framebuffer-contract.md.
+One ordering fact is load-bearing and deliberately fail-loud. The confinement test resets the
+device, which destroys the scanout, so it must run before the pixel test. It is named
+`a_backing_outside_the_grant_is_refused_by_the_iommu` to sort first, and a reordering fails the
+scanout check rather than quietly skipping it. What remains unproven is only what QEMU cannot
+answer: that a physical panel would show this, which is a silicon question. See
+notes/framebuffer-contract.md.
 
 Deferred, untouched: the VT engine's language (libghostty-vt in Zig through its C ABI, or `vte` in
 Rust as the single-toolchain fallback). This rung needs neither, and the contract carries pixels, not
