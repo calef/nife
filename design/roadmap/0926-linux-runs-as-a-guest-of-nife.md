@@ -14,7 +14,7 @@ Raised on 2026-10-12 (UTC) by the lane `maintainer/proposal-linux-guests`. calef
 "What would it take to be able to host Linux on nife?", and chose the hypervisor answer: an
 unmodified Linux kernel boots as a guest virtual machine, and nife owns the hardware underneath it.
 
-The other answer is [milestone 621 (a Linux persona server)](../0621-a-linux-persona-server.md),
+The other answer is [milestone 621 (a Linux persona server)](0621-a-linux-persona-server.md),
 which runs Linux programs by translating their system calls onto nife capabilities. It is not this
 proposal. How the two relate is below.
 
@@ -28,27 +28,27 @@ were not re-read for this proposal. The guest is stock upstream Linux, unmodifie
 
 Each of these was read on 2026-10-12, not taken from the brief.
 
-- [design/driver-domains.md](../../driver-domains.md) sketches nife at EL2 running one driver per
+- [design/driver-domains.md](../driver-domains.md) sketches nife at EL2 running one driver per
   virtual machine, and sizes it as "comparable in size to the whole EL0 story we already built". Its
   list of required mechanism is this proposal's rungs 1, 2 and 4: EL2 setup, stage-2 tables, exit
   handling, a virtual GIC and a vCPU model.
-- [Milestone 127 (the seL4 machine)](../0127-the-sel4-machine.md) built the EL2 entry on
+- [Milestone 127 (the seL4 machine)](0127-the-sel4-machine.md) built the EL2 entry on
   2026-09-02, as its prerequisite 1. `boot.s` reads `CurrentEL`, and if it is EL2 it configures the
   EL2 registers and drops to EL1. `NIFE_EL2=1` in `helpers/qemu-runner-aarch64.sh` rehearses it on
   QEMU with `virtualization=on`. Nothing in CI or `script/` sets `NIFE_EL2`, so the EL2 entry is
   tested only when somebody runs it by hand.
-- [Milestone 227 (GICv3 driver)](../0227-gicv3-driver.md) is BUILT. It drives the distributor,
+- [Milestone 227 (GICv3 driver)](0227-gicv3-driver.md) is BUILT. It drives the distributor,
   the redistributors and the `ICC_*` CPU interface. It writes `ICH_HCR_EL2 = 0` on the way down
   from EL2 and nothing else in the virtualization half. No list registers, no maintenance interrupt.
-- [Milestone 16 (real hardware and IOMMU)](../0016-real-hardware-iommu.md) is BUILT, with an SMMUv3
+- [Milestone 16 (real hardware and IOMMU)](0016-real-hardware-iommu.md) is BUILT, with an SMMUv3
   driver in `kernel/src/arch/aarch64/iommu.rs`. Every stream table entry it writes is stage-1
   translate. On x86_64, VT-d confinement exists too; [milestone 612 (the IOMMU escape-fault test
-  could lose its fault to an unconfined neighbor disk)](../0612-x86-iommu-first-dma.md) is BUILT
+  could lose its fault to an unconfined neighbor disk)](0612-x86-iommu-first-dma.md) is BUILT
   on it.
 
 ### Milestone 449's refusal was stale when it was written
 
-[Milestone 449 (the EL2 to EL1 drop)](../0449-the-el2-to-el1-drop.md) is REFUSED. It was backfilled
+[Milestone 449 (the EL2 to EL1 drop)](0449-the-el2-to-el1-drop.md) is REFUSED. It was backfilled
 on 2026-09-20 from a 2026-09-03 bullet in milestone 2 (exception vectors, and a fault that tells
 you what it was), which said QEMU's `virt` enters at EL1 and so
 the drop would have no caller. The drop had been built and rehearsed on 2026-09-02, by milestone
@@ -185,7 +185,7 @@ A guest drives a real device itself, and the SMMU confines that device's DMA to 
 This rung and rung 1 are the whole of driver domains.
 
 The brief named milestone 143 as this rung's dependency, and that is wrong.
-[Milestone 143 (silicon IOMMU)](../0143-silicon-iommu.md) is the RISC-V IOMMU on a RISC-V board, and
+[Milestone 143 (silicon IOMMU)](0143-silicon-iommu.md) is the RISC-V IOMMU on a RISC-V board, and
 it says outright that SMMUv3 on aarch64 silicon is not in it. The real dependency is milestone 16's
 SMMUv3 driver, which needs stage-2 stream table entries pointing at a `GuestAddressSpace`. QEMU's
 SMMUv3 only fronts the PCIe bus, so the passed-through device is a virtio-pci or e1000e function on
