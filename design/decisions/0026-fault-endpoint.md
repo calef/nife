@@ -159,7 +159,7 @@ real and reachable, just a bigger TCB. It becomes worth paying for when init is 
 independently of the kernel; today they are built by one command in one tree in one sequence, so
 the hash is strictly better.
 The natural sequence if it is ever wanted: signature verification *in addition to* the
-measured root (so the hash stays the floor if key handling fails), and the verification code proved
+measured root (so the hash stays the floor if key handling fails). The verification code is proved
 with Kani, the prover §14 (the project's direction) chose, before it is trusted.
 
 Proven on both ISAs (`kernel/src/user/measured_boot_tests.rs`): the boot program in RAM measures to
