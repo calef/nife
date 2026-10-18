@@ -5,6 +5,9 @@ filename carries its number zero-padded to four digits, `0007-user-mode.md`, so 
 milestone order. Prose and headings keep the plain number. calef ruled this on 2026-10-07 (UTC),
 choosing four digits over three so the rename is never redone at a thousand blocks, and
 `script/lint` fails any other width.
+A number carries no letter: a block's addendum is an appendix in its directory,
+`0020-portable-hal/name-the-seams.md`, and `script/roadmap --check` refuses a lettered file (calef,
+2026-10-18 UTC: "Yes, please").
 A block opens with frontmatter holding its status, dates and dependencies, then its number and
 title, and its `## Follow-on` bullets each carry a disposition. [`notes/roadmap.md`](../../notes/roadmap.md) has the
 keys, `script/roadmap --check` says which forms it accepts, and

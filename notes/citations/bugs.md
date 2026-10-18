@@ -31,10 +31,9 @@ exactly that reason.
 
 ## Lettered citations
 
-A lettered citation is glossed against its parent unless the letter has a file. Milestone 20a (name
-the seams) is read against `design/roadmap/0020a-name-the-seams.md`, which is a block of its own.
-The letters with no file (7a, 9a, 16a, 16b, and milestone 19 (run a real workload)'s 19a through
-19f) are read against their parent block, which is where those sub-parts are actually described.
+A lettered citation is glossed against its parent block, which is where the sub-part is described:
+7a, 9a, 16a, 16b, and milestone 19 (run a real workload)'s 19a through 19f. The roadmap refuses a
+lettered block file, so no letter has a title of its own to be read against.
 The ratchet's per-file key drops the letter either way. So a file that glosses milestone 19 has
 answered for milestone 19d as well. That matches the per-number rule the ratchet is built on, and it
 means a sub-part can ride on its parent's gloss.

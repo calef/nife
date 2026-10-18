@@ -570,7 +570,7 @@ fn handoff(fs: &nifefs::Fs, w: &Wiring) -> ! {
 
     // The handoff run, as many pages as the contract declares, minted as one frame capability
     // (`MemoryRegion::RETYPE`'s page count). A contract with no handoff would not reach this role.
-    let Some(declared) = hot_swap_contract::TALLY.state_handoff else {
+    let Some(declared) = hot_swap_contract::STATEFUL_BACKEND.state_handoff else {
         bail(90)
     };
     let state = match user_mode_runtime::retype_page_frame_run(ROOT_UT, declared.pages) {
@@ -690,15 +690,18 @@ fn plan_handoff(
     // table is such a supervisor, so asking it for the stateful contract is a real refusal.
     // ------------------------------------------------------------------------------------------
 
-    match component_plan::plan(&hot_swap_contract::TALLY, &to_client) {
+    match component_plan::plan(&hot_swap_contract::STATEFUL_BACKEND, &to_client) {
         Ok(_) => bail(92),
         Err(refusal) => send(REPORT, hot_swap_contract::RPT_REFUSED, refusal.code(), 0),
     };
 
-    let Ok(incumbent) = component_plan::plan(&hot_swap_contract::TALLY, &to_incumbent) else {
+    let Ok(incumbent) = component_plan::plan(&hot_swap_contract::STATEFUL_BACKEND, &to_incumbent)
+    else {
         bail(93)
     };
-    let Ok(replacement) = component_plan::plan(&hot_swap_contract::TALLY, &to_replacement) else {
+    let Ok(replacement) =
+        component_plan::plan(&hot_swap_contract::STATEFUL_BACKEND, &to_replacement)
+    else {
         bail(94)
     };
     let Ok(client) = component_plan::plan(&hot_swap_contract::CLIENT, &to_client) else {
@@ -725,7 +728,7 @@ fn attempt_refused(w: &Wiring, refuser: Unstarted, v2: &elf::Elf, corpses: &mut 
         98,
     );
     let (kind, _, found) = receive(w.note);
-    if kind != hot_swap_contract::NOTE_REFUSED {
+    if kind != hot_swap_contract::NOTE_NOT_ABSORBED {
         bail(100)
     }
     // The refuser's exit is the only death possible here: the incumbent is quiesced and alive, and

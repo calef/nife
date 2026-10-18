@@ -1,5 +1,5 @@
 //! **What a parsed line is, and what a grant holds**: `Command`, `Endowment`, the file and
-//! directory grants, `rm`'s option bits, and the shell's `Holdings`. `RunSpec` is in `parsing`,
+//! directory grants, `rm`'s option bits, and the shell's `Holdings`. `ParsedInvocation` is in `parsing`,
 //! beside the one function that builds it (§272, fork 3).
 //!
 //! Moved out of the crate's root unchanged by milestone 842 (the grant-plan crate root is split
@@ -9,7 +9,7 @@
 //! Name: provisional (milestone 842, 2026-10-11), as are its sibling modules' names.
 
 use crate::expand::{Name, NameSet};
-use crate::{Prog, RunSpec, line, nav};
+use crate::{ParsedInvocation, Prog, line, nav};
 
 /// A parsed command line. The shell dispatches on this; only [`Command::Run`] carries a grant
 /// expression that must be planned against a manifest.
@@ -81,7 +81,7 @@ pub enum Command<'a> {
     /// which `mkdir` and the create half already established as the model, so there is nothing to
     /// attenuate and nothing gained by confining it to a program.
     ///
-    /// **This parser does not interpret the `-t` text.** [`TouchArgs::at`] carries the token
+    /// **This parser does not interpret the `-t` text.** [`TouchOperands::at`] carries the token
     /// exactly as typed; `date`'s own `FMT_RFC3339` output is a valid input to it, so
     /// `touch -t "$(date)" name` (RFC 3339 mode) round-trips through this shell without either
     /// side inventing a format. Converting it to a Unix-seconds value is `calendar`'s job and
@@ -90,7 +90,7 @@ pub enum Command<'a> {
     ///
     /// See notes/touch.md for what is still not built (Unix's compact `[[CC]YY]MMDDhhmm[.ss]`
     /// `-t` format is not accepted, only RFC 3339) and the wire verbs this dispatches to.
-    Touch(TouchArgs<'a>),
+    Touch(TouchOperands<'a>),
     /// `bind <target> <name>`: name a position this shell already reached some other way, so
     /// `/<name>/...` reaches it too (milestone 47, "`bind` is not blocked on a mount table. It
     /// is blocked on a second grant"; milestone 154 supplied the second grant, [`nav::Bindings`]
@@ -135,7 +135,7 @@ pub enum Command<'a> {
     /// a builtin lands here even when no such program exists, and [`plan`](crate::plan) answers
     /// [`Refusal::NoSuchProgram`](crate::Refusal::NoSuchProgram), which is the "there is nothing there to name" shape of
     /// no-ambient-authority applied to programs.
-    Run(RunSpec<'a>),
+    Run(ParsedInvocation<'a>),
 }
 
 /// [`Command::Touch`]'s operand: the name, and (with `-t`) the instant asserted for it.
@@ -143,8 +143,10 @@ pub enum Command<'a> {
 /// `at` carries the `-t` token's bytes exactly as typed, unparsed: this crate classifies which
 /// token is which, it does not know what an RFC 3339 instant is. `None` is bare `touch`, which
 /// bumps `name`'s mtime to now with no assertion at all.
+///
+/// Name: ratified 2026-10-18 (calef: "Approve the family").
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
-pub struct TouchArgs<'a> {
+pub struct TouchOperands<'a> {
     /// The `-t` operand's text, unparsed. `None` for bare `touch`.
     pub at: Option<&'a [u8]>,
     /// The name to create-if-absent and then touch.
@@ -163,15 +165,15 @@ pub const MAX_FLAGS: usize = 8;
 /// **It borrows nothing from the command line**, and that stopped being an accident with milestone
 /// 47's globbing lane: a name a pattern produced comes out of a directory listing rather than out of
 /// the line, so the grant has to own it. What falls out is the rule the rest of a grant already
-/// followed by hand ([`FileGrant::dir`] is a value, not a pointer at the shell): once an endowment
+/// followed by hand ([`FileGrant::directory`] is a value, not a pointer at the shell): once an endowment
 /// is planned, nothing that happens afterwards can change what it means.
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub struct Endowment {
     pub prog: Prog,
     /// The integer argument to start it with (0 when the program takes none).
-    pub arg: u64,
+    pub program_argument: u64,
     /// Pages of untyped to split from the shell's own budget and grant (0 = none).
-    pub mem_pages: u64,
+    pub memory_grant_pages: u64,
     /// The one file to narrow a directory capability down to, and the direction, or `None`.
     /// Delivered as an endpoint served by a file caretaker (`components/src/fs_file_caretaker.rs`), so
     /// what the child ends up holding designates this name and nothing else.
@@ -180,7 +182,7 @@ pub struct Endowment {
     /// `None`. Delivered as an endpoint served by a caretaker, so what the child ends up holding
     /// reaches that directory and nothing above or beside it: `components/src/fs_subtree_caretaker.rs`
     /// for a set of one, `components/src/fs_nameset_caretaker.rs` for the set a pattern matched.
-    pub dir: Option<DirGrant>,
+    pub directory: Option<DirectoryGrant>,
     /// **The short options that were on the line**, as a bitmask: bit `i` is set when the manifest's
     /// `flags[i]` was typed. Numbered by position in the manifest rather than by letter, so nothing
     /// here has to know what any option means; the program and the manifest agree on the order, and
@@ -227,7 +229,7 @@ pub struct Endowment {
 /// nothing, and cannot re-resolve anything, which is the point: a child that could re-resolve a name
 /// later would have ambient authority smuggled in through a string.
 ///
-/// That [`dir`](FileGrant::dir) is a **value** rather than a reference to the shell's position is
+/// That [`dir`](FileGrant::directory) is a **value** rather than a reference to the shell's position is
 /// what makes it structural instead of a promise. A `cd` after this grant is planned cannot change
 /// what the grant means, because there is nothing here that points at the shell any more.
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
@@ -240,7 +242,7 @@ pub struct FileGrant {
     pub which: nav::Which,
     /// The directory the name was resolved in, relative to the root of [`FileGrant::which`]'s
     /// tree, fixed at plan time.
-    pub dir: nav::Cwd,
+    pub directory: nav::Cwd,
     /// The final component. Always a single component: a path was resolved into `dir`, not passed
     /// on, because the FS contract takes one component per request and no server here walks a path.
     ///
@@ -269,7 +271,7 @@ pub struct FileGrant {
 /// directory, which is the thing this model refuses); making `rm` a builtin dodges the question and
 /// costs `rm` as a program.
 ///
-/// So [`names`](DirGrant::names) is a set, a literal operand is the set of one, and the
+/// So [`names`](DirectoryGrant::names) is a set, a literal operand is the set of one, and the
 /// generalization is smaller than it looks: `fs_file_caretaker` already serves a namespace of
 /// exactly one name, and `components/src/fs_nameset_caretaker.rs` serves the same protocol over a wider
 /// one. **Nothing new in the kernel.**
@@ -277,13 +279,15 @@ pub struct FileGrant {
 /// **These three together are the whole authority**, which is what makes `caps rm -r logs` worth
 /// typing: the names at risk are printed before anything happens, and a bug in the program's
 /// recursion can only reach what this designates.
+///
+/// Name: ratified 2026-10-18 (calef: "Approve the family").
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
-pub struct DirGrant {
+pub struct DirectoryGrant {
     /// **Which of the shell's trees `dir` is in**, [`FileGrant::which`]'s reason (milestone 154).
     pub which: nav::Which,
-    /// The directory the capability designates, relative to the root of [`DirGrant::which`]'s
+    /// The directory the capability designates, relative to the root of [`DirectoryGrant::which`]'s
     /// tree, fixed at plan time.
-    pub dir: nav::Cwd,
+    pub directory: nav::Cwd,
     /// The names in it the program is to act on: exactly one for a literal operand, the matched set
     /// for a pattern. Each is a single component, for [`FileGrant`]'s reason: a path was resolved
     /// into `dir` rather than passed on.
@@ -320,11 +324,13 @@ pub mod rmopt {
 #[derive(Clone, Copy, PartialEq, Eq, Debug, Default)]
 pub struct Holdings {
     /// The shell holds a directory capability it can narrow into a per-file grant.
-    pub dir: bool,
+    pub directory: bool,
     /// **A second directory capability, mounted at a position in the first** (milestone 154, a
     /// process that holds two directory capabilities). `None` for a one-grant shell, which
-    /// resolves and prints exactly as it always has. Provisional name and shape.
-    pub second: Option<SecondDir>,
+    /// resolves and prints exactly as it always has.
+    ///
+    /// Name: ratified 2026-10-18 (calef: "Yes"). The shape is provisional.
+    pub mounted: Option<MountedTree>,
     /// **Where the shell stands, in the one tree it presents**: a path from its root, through a
     /// mount point when it stands in the second tree ([`Holdings::locate`] says which tree that
     /// is and where inside it). A working directory is a directory capability used as the default
@@ -338,24 +344,25 @@ pub struct Holdings {
     pub binds: nav::Bindings,
 }
 
-/// **A second tree, and where it is mounted in the first** (milestone 154). Provisional name and
-/// shape.
+/// **A second tree, and where it is mounted in the first** (milestone 154).
 ///
 /// calef ruled the presentation on 2026-09-26: *"One tree with other trees mounted at names in
 /// it."* The user sees one root; the second tree appears at a mount point, like a Unix mount or a
 /// Plan 9 `bind`, and which capability serves a name is bookkeeping the shell keeps to itself. So
 /// the whole of what this records is the mount point. Where the shell stands is a path in the one
 /// tree ([`Holdings::cwd`]); which tree that is follows from whether the path runs through here.
+///
+/// Name: ratified 2026-10-18 (calef: "Yes"). The shape is provisional.
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
-pub struct SecondDir {
+pub struct MountedTree {
     mount: nav::Cwd,
 }
 
-impl SecondDir {
+impl MountedTree {
     /// A second tree mounted at `mount`. `None` at the root: the root is the first tree's, and a
     /// mount there would hide all of it.
     pub fn mounted_at(mount: nav::Cwd) -> Option<Self> {
-        (!mount.is_root()).then_some(SecondDir { mount })
+        (!mount.is_root()).then_some(MountedTree { mount })
     }
 
     /// Where the second tree is mounted, as a path in the one tree.
@@ -429,7 +436,7 @@ impl Holdings {
     /// everything else. This is the bookkeeping calef's ruling keeps out of sight: a path never
     /// says which tree it is in, and this is the one place that decides.
     pub fn locate(&self, place: &nav::Cwd) -> (nav::Which, nav::Cwd) {
-        if let Some(sd) = &self.second {
+        if let Some(sd) = &self.mounted {
             let m = &sd.mount;
             if place.depth() >= m.depth()
                 && (0..m.depth()).all(|l| place.component(l) == m.component(l))
@@ -448,7 +455,7 @@ impl Holdings {
     /// `caps` prints for a planned grant, which records the tree and the position rather than the
     /// path it came from.
     pub fn place(&self, which: nav::Which, pos: &nav::Cwd) -> nav::Cwd {
-        match (which, &self.second) {
+        match (which, &self.mounted) {
             (nav::Which::B, Some(sd)) => {
                 let mut place = sd.mount;
                 for l in 0..pos.depth() {
@@ -465,7 +472,7 @@ impl Holdings {
     /// the bind table itself refuses, a name that would hide the path to the mount point: a bound
     /// name wins over the literal first component of an absolute path.
     pub fn bind(&mut self, name: &[u8], pos: nav::Cwd) -> Result<(), nav::BindRefused> {
-        if let Some(sd) = &self.second
+        if let Some(sd) = &self.mounted
             && name == sd.mount.component(0)
         {
             return Err(nav::BindRefused::ReservedLabel);

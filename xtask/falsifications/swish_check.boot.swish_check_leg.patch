@@ -32,9 +32,9 @@ diff --git a/crates/system_initializer/src/boot_sequence.rs b/crates/system_init
 --- a/crates/system_initializer/src/boot_sequence.rs
 +++ b/crates/system_initializer/src/boot_sequence.rs
 @@ -98,6 +98,18 @@ pub fn boot(
-     let second_dir_ep = start_second_dir_caretaker(&w, second_dir, p.care_elf.as_ref());
-     let (shell, sh_clock_slot) = build_shell(&w, &sh_elf, chan, sh_budget, second_dir_ep);
-     finish_shell_endowment(g, shell.tcb, second_dir_ep);
+     let mounted_tree_ep = start_mounted_tree_caretaker(&w, mounted_tree, p.care_elf.as_ref());
+     let (shell, sh_clock_slot) = build_shell(&w, &sh_elf, chan, sh_budget, mounted_tree_ep);
+     finish_shell_endowment(g, shell.tcb, mounted_tree_ep);
 +    if devices.screen.held {
 +        let t = &devices.screen;
 +        let lent = [t.gpu[0], t.gpu[1], t.gpu[2], t.gpu[3], t.kbd[0], t.kbd[1], t.kbd[2]];

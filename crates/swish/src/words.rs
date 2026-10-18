@@ -31,7 +31,7 @@ pub fn is_pattern(token: &[u8]) -> Result<bool, Refusal> {
 ///
 /// `expand` is the shell's directory read, which is the only part of this that needs a capability.
 pub fn expansion(
-    spec: &RunSpec,
+    spec: &ParsedInvocation,
     expand: &mut dyn FnMut(&[u8]) -> Result<NameSet, Say>,
 ) -> Result<Expansion, Say> {
     // **A program that hears words has nothing expanded; its words are designated instead**
@@ -39,7 +39,7 @@ pub fn expansion(
     // program is told what to do)). A pattern would designate names and grant nothing they name, so
     // `grant_plan::check_words` refuses an unquoted one; a word that names something here is
     // granted it, by [`designation`].
-    if let Some(ArgSpec::Words(grant)) = Prog::from_name(spec.prog).map(|p| p.manifest().arg) {
+    if let Some(ArgSpec::Words(grant)) = Prog::from_name(spec.program).map(|p| p.manifest().arg) {
         return designation(spec.line(), grant, expand);
     }
     for (i, token) in spec.positionals().iter().enumerate() {

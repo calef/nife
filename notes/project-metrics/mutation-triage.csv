@@ -33,8 +33,8 @@ grant_plan,Flags::try_new,replace > with >=,killed,killed; the ledger's grant_pl
 grant_plan,NameSet::keep_smallest,replace - with /,killed,killed; the ledger's grant_plan section (census-2026-10-03-triage-part-3.md) says the sweep afterwards reports only that section's equivalents and gaps
 grant_plan,NameSet::keep_smallest,replace > with >=,equivalent,differs only for two equal names and a directory lists a name once
 grant_plan,NameSet::last,replace > with >=,killed,killed; the ledger's grant_plan section (census-2026-10-03-triage-part-3.md) says the sweep afterwards reports only that section's equivalents and gaps
-grant_plan,RunSpec<'a>::is_quoted,replace < with <=,killed,killed; the ledger's grant_plan section (census-2026-10-03-triage-part-3.md) says the sweep afterwards reports only that section's equivalents and gaps
-grant_plan,SecondDir::mount,replace SecondDir::mount -> nav::Cwd with Default::default(),killed,killed; the ledger's grant_plan section (census-2026-10-03-triage-part-3.md) says the sweep afterwards reports only that section's equivalents and gaps
+grant_plan,ParsedInvocation<'a>::is_quoted,replace < with <=,killed,killed; the ledger's grant_plan section (census-2026-10-03-triage-part-3.md) says the sweep afterwards reports only that section's equivalents and gaps
+grant_plan,MountedTree::mount,replace MountedTree::mount -> nav::Cwd with Default::default(),killed,killed; the ledger's grant_plan section (census-2026-10-03-triage-part-3.md) says the sweep afterwards reports only that section's equivalents and gaps
 grant_plan,WordGrant::rights,replace << with >>,equivalent,the rights bits are disjoint; 1 << 0 as 1 >> 0 is the same number
 grant_plan,WordGrant::rights,replace | with ^,equivalent,the rights bits are disjoint; 1 << 0 as 1 >> 0 is the same number
 grant_plan,all_distinct_ids,replace < with <=,equivalent,at i == len the inner loop has nothing to compare

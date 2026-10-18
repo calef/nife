@@ -136,22 +136,22 @@ fn write_grant(e: &Endowment, command: &[u8], report: bool, out: &mut dyn FnMut(
     out(b"    grants ");
     // The word typed, not `e.prog`'s name: an installed program's endowment is filed under
     // `grant_plan::IMAGE_ROW`, whose name is not the program's.
-    out(grant_plan::parse_run(command).prog);
+    out(grant_plan::parse_run(command).program);
     out(b" exactly:\n");
     if report {
         out(b"      cap 0  endpoint  report its answer to this timetable\n");
     }
-    if e.mem_pages > 0 {
+    if e.memory_grant_pages > 0 {
         out(b"      cap 1  untyped   ");
         let mut buf = [0u8; 20];
-        let n = write_u64(e.mem_pages, &mut buf);
+        let n = write_u64(e.memory_grant_pages, &mut buf);
         out(&buf[..n]);
         out(b" pages  split from this timetable's budget\n");
     }
-    if e.arg != 0 {
+    if e.program_argument != 0 {
         out(b"      arg      ");
         let mut buf = [0u8; 20];
-        let n = write_u64(e.arg, &mut buf);
+        let n = write_u64(e.program_argument, &mut buf);
         out(&buf[..n]);
         out(b"\n");
     }
