@@ -407,7 +407,9 @@ pub const ROLE_PLANT: u64 = 4;
 /// nothing ends a caller parked on a sender queue or awaiting a reply. So the operator delegates the
 /// one call it needs to bound, and waits on the forwarded answer with a deadline instead. When the
 /// deadline wins, this instance is still queued on the endpoint holding a quiesce request, and the
-/// operator destroys its region before any replacement can receive that request. Name: provisional.
+/// operator destroys its region before any replacement can receive that request.
+///
+/// Name: provisional, minted 2026-10-18 (UTC) by milestone/23-reclaim-a-hung-incumbent.
 pub const ROLE_QUIESCER: u64 = 5;
 
 /// `swapper`'s roles. Three systems, one operator, because they share every helper: the loader, the
@@ -450,7 +452,9 @@ pub const ROLE_DEPUTY: u64 = 6;
 /// **The hung component, on a machine with no device page** (`x86_64`, whose console is in the I/O
 /// port space). [`ROLE_HUNG`]'s system with the [`BACKEND`] contract in place of [`CONSOLE`]: no
 /// device to lend, revoke or probe, and everything else identical, so the detection and the
-/// reclamation run on all three architectures. Name: provisional.
+/// reclamation run on all three architectures.
+///
+/// Name: provisional, minted 2026-10-18 (UTC) by milestone/23-reclaim-a-hung-incumbent.
 pub const ROLE_HUNG_WITHOUT_DEVICE: u64 = 7;
 
 /// **How the operator starts a stateful instance** (the first `_start` argument, where the other
