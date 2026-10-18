@@ -20,8 +20,11 @@ Deliverable, with where each item stands.
 2. The arch contract, written down. `arch/mod.rs` enforces its surface only by failing to
    compile. Document the required surface as a doc comment: the functions and types every arch module
    must provide. A list, not a trait, naming the seam without shaping the abstraction across it.
-   *Not written as a list. `arch/mod.rs` states the boundary, and three architectures compiling
-   against one re-exported surface is still what enforces it.*
+   *Done as a list in [notes/portability.md, "The arch contract"](../../../notes/portability.md#the-arch-contract).
+   It lives there rather than in `arch/mod.rs` because
+   [§267 (a comment states the constraint as it is now)](../../decisions/0267-a-comment-states-the-constraint-as-it-is-now.md)
+   caps a comment block at 40 lines, and the module doc points at it. The compiler still enforces
+   the surface; nothing checks the list against it, a gap the module doc's `BUGS` records.*
 3. Isolate the aarch64 format inside `paging`. Group the descriptor-bit encoding and the `Flags`
    constructors into one clearly-labeled module ("this is the aarch64 format; a second arch replaces
    this file"), beside the table/index/walk code. One crate, one arch, no generic interface yet: a
