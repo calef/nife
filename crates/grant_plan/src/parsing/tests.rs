@@ -504,3 +504,23 @@ fn a_line_that_exactly_fills_the_argument_page_is_taken() {
     two[1100] = b' ';
     assert_eq!(check_words(&two), Ok(()));
 }
+
+/// A job number is read in base ten and bounded at two digits, so `%12` is job twelve and `%123`
+/// names no job rather than wrapping or being truncated to one. Each case here is one an
+/// off-by-one in the bound or the digit sum would get wrong (milestone 48 (job control)).
+#[test]
+fn a_job_operand_is_two_decimal_digits_at_most() {
+    assert_eq!(job_operand(b"%12"), Ok(Some(12)));
+    assert_eq!(job_operand(b"99"), Ok(Some(99)));
+    assert_eq!(job_operand(b"%123"), Err(()));
+    assert_eq!(job_operand(b"%"), Err(()));
+    assert_eq!(job_operand(b"%1a"), Err(()));
+}
+
+/// `-9` is the forcible tier only as a word of its own: `kill -9%1` names no job, rather than
+/// being read as `kill -9 %1`.
+#[test]
+fn kill_reads_dash_nine_only_as_its_own_word() {
+    assert_eq!(kill_operands(b"-9 %1"), Ok((true, 1)));
+    assert_eq!(kill_operands(b"-9%1"), Err(()));
+}
