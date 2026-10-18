@@ -39,7 +39,7 @@ are kept off-tree by the maintainers.
 
 ## What stands between this card and the evening
 
-Two things, neither a bench step.
+Two things, neither a bench step nor a ruling.
 
 - Step 3 needs #2370 (the name resolver gets a budget it can lend from) on main. Rehearsed under
   QEMU on its branch at `3ed3256c9`, from an installed disk, the whole of step 3 passes:
@@ -50,10 +50,12 @@ Two things, neither a bench step.
 - Step 4's nife row does not yet measure the device. In the same rehearsal, `ioping -c 20 -i 0 -s
   4k ioping/1.3/ioping` runs but prints `non-cached I/O not supported by this platform`. It sees
   the file as `0 B`, so every request reads offset 0, and steady reads take 41 to 42 us. That is a
-  cached read of one 4 KiB block, not the NVMe, so it cannot explain or correct the 2.16x. What
-  nife's target is and what direct I/O means on nife are milestone 834 (ioping on nife and Linux)'s
-  open questions, and they want answers before the evening. Until then the nife row is recorded as
-  what it is, beside the Linux row.
+  cached read of one 4 KiB block, not the NVMe, so it cannot explain or correct the 2.16x.
+  Milestone 834 (ioping on nife and Linux) already says what follows: "If the file path goes
+  through a cache, the run uses the block window instead, and the row says so", and Linux makes
+  the same choice. So the nife row waits on engineering, not a ruling: why nife reports the file
+  as 0 B, why ioping cannot do non-cached I/O there, and a direct-I/O target in the block window.
+  The step 4 commands below change when that lands.
 
 ## What calef needs at the bench
 
