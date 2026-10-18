@@ -24,9 +24,9 @@ const ROOT_BUDGET_PAGES: u64 = 1024;
 /// **Spawn the tree's root the way the kernel spawns the progenitor**, and return the report endpoint every
 /// process in the tree holds a WRITE view of.
 ///
-/// Deliberately the same endowment `spawn_elf_child_builder` gives (`INITIAL_RAMDISK_VA`, an untyped in slot 0,
-/// a report endpoint in slot 1) so what is being tested is `root_supervisor`'s *choices*, not a
-/// privileged shortcut.
+/// Deliberately the same endowment `spawn_elf_child_builder` gives (`INITIAL_RAMDISK_VA`, an
+/// untyped in slot 0, a report endpoint in slot 1) so what is being tested is `root_supervisor`'s
+/// *choices*, not a privileged shortcut.
 fn spawn_tree() -> (sched::RendezvousId, u64) {
     // From a region the run owns and reclaims, as `live_swap_tests::spawn_swapper` does.
     let report_region = crate::memory_region::create(1).expect("no region for the report endpoint");

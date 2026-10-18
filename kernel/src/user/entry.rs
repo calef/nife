@@ -1,5 +1,5 @@
-//! **Entering user mode**: the spawn description, the ELF child builders' loader, and the `run` family that
-//! fakes a trap frame and returns into a program.
+//! **Entering user mode**: the spawn description, the ELF child builders' loader, and the `run`
+//! family that fakes a trap frame and returns into a program.
 //!
 //! Cut out of `user.rs` unchanged by milestone 872 (the kernel's user-mode file is split along its
 //! seams), which left the parent an index.
@@ -51,9 +51,9 @@ pub struct Spawn<'a> {
 /// RISC-V has no software-generated interrupt a test can raise on itself at all (the SBI IPI
 /// arrives down the *software*-interrupt arm, never touching `irq_route`), so it names the console
 /// UART's own line, which is the one interrupt this ISA can assert by hand. That makes it the same
-/// number as [`UART_RX_INTID`] there, deliberately; [`spawn_elf_child_builder`] binds the route once
-/// and grants two capabilities naming it. See `sched::tests`' `DELIVERY_IRQ`, which reached the same
-/// conclusion.
+/// number as [`UART_RX_INTID`] there, deliberately; [`spawn_elf_child_builder`] binds the route
+/// once and grants two capabilities naming it. See `sched::tests`' `DELIVERY_IRQ`, which reached
+/// the same conclusion.
 ///
 /// Name: ratified 2026-10-18 (calef), with the rule that took `init` out of nife's own names. It is
 /// an SGI only on aarch64, which the name no longer claims.
@@ -76,8 +76,9 @@ pub const DELEGATED_TEST_INTERRUPT: u32 = 10;
 #[cfg(target_arch = "x86_64")]
 pub const DELEGATED_TEST_INTERRUPT: u32 = crate::arch::irq::SELF_TEST_VECTOR as u32;
 
-/// **Spawn one of milestone 19d (run a real workload)'s and 19e's ELF child builders**, the archive entry `entry`
-/// (milestone 19d.2c; the boot half of this function became [`boot_progenitor`] at milestone 166 (one boot loader, reached two inconsistent ways)).
+/// **Spawn one of milestone 19d (run a real workload)'s and 19e's ELF child builders**, the archive
+/// entry `entry` (milestone 19d.2c; the boot half of this function became [`boot_progenitor`] at
+/// milestone 166 (one boot loader, reached two inconsistent ways)).
 ///
 /// A builder is a userspace parent: it reads its child out of the archive by name, builds it out of
 /// an ELF it parsed and reports. There are six (`report_child_builder`, `device_child_builder`,
@@ -113,22 +114,22 @@ pub fn spawn_elf_child_builder(
     report: crate::sched::RendezvousId,
 ) -> holding::Holding {
     let (initial_ramdisk_start, initial_ramdisk_len) =
-        memory::initial_ramdisk_region().expect("no initial ramdisk to hand the progenitor");
+        memory::initial_ramdisk_region().expect("no initial ramdisk to hand the builder");
     let initial_ramdisk_pages = initial_ramdisk_len.div_ceil(FRAME_SIZE);
 
-    // Route the test interrupt (19d.2b) BEFORE spawning the progenitor: the test raises the SGI as soon as
-    // this returns, and an interrupt that fires before it is routed is dropped ("unexpected
+    // Route the test interrupt (19d.2b) BEFORE spawning the builder: the test raises the SGI as soon
+    // as this returns, and an interrupt that fires before it is routed is dropped ("unexpected
     // interrupt"), not queued. Setting up the route here means the fire is counted on the routed
-    // endpoint even though the progenitor-built child is not yet waiting; the child's WAIT drains it.
+    // endpoint even though the built child is not yet waiting; the child's WAIT drains it.
     crate::sched::bind_irq(DELEGATED_TEST_INTERRUPT, crate::sched::create_rendezvous());
     crate::arch::irq::enable(DELEGATED_TEST_INTERRUPT);
-    // And the UART receive interrupt (19d.2c): the input driver the progenitor builds waits on it. Route and
-    // enable it here, so the progenitor can delegate the Irq cap to that driver. The number is the machine's
-    // (uart_irq_and_source; on the JH7110 the QEMU constant armed the wrong PLIC source, see its
-    // doc), and the line names the source so a transcript is diagnosable. On QEMU RISC-V the
-    // discovered line and DELEGATED_TEST_INTERRUPT are the SAME source (see DELEGATED_TEST_INTERRUPT), and binding it
-    // twice would leave the first endpoint routed to nothing while the test waits on it, so bind
-    // once and grant twice.
+    // And the UART receive interrupt (19d.2c), which an input driver waits on. Route and enable it
+    // here, so a builder could delegate the Irq cap to one. The
+    // number is the machine's (uart_irq_and_source; on the JH7110 the QEMU constant armed the wrong
+    // PLIC source, see its doc), and the line names the source so a transcript is diagnosable. On
+    // QEMU RISC-V the discovered line and DELEGATED_TEST_INTERRUPT are the SAME source (see
+    // DELEGATED_TEST_INTERRUPT), and binding it twice would leave the first endpoint routed to
+    // nothing while the test waits on it, so bind once and grant twice.
     let (uart_rx_intid, uart_irq_source) = uart_irq_and_source();
     crate::println!("  uart irq  : {uart_rx_intid} ({uart_irq_source})");
     if uart_rx_intid != DELEGATED_TEST_INTERRUPT {
@@ -136,11 +137,12 @@ pub fn spawn_elf_child_builder(
         crate::arch::irq::enable(uart_rx_intid);
     }
 
-    // Read and MEASURE the builder here, before the thread is created (milestone 22 (trusted init) phase B.1): the
-    // check has to be the thing that decides whether a thread is created at all, not something the
-    // new thread does to itself. `trust::require` halts on a mismatch, so past this line the bytes
-    // are the ones this kernel image was built against. The program-measurement table (milestone
-    // 104) is required for the same reason: the whole archive is mapped into the builder.
+    // Read and MEASURE the builder here, before the thread is created (milestone 22 (trusted init)
+    // phase B.1): the check has to be the thing that decides whether a thread is created at all,
+    // not something the new thread does to itself. `trust::require` halts on a mismatch, so past
+    // this line the bytes are the ones this kernel image was built against. The program-measurement
+    // table (milestone 104) is required for the same reason: the whole archive is mapped into the
+    // builder.
     let boot_fs = match nifefs::Fs::parse(image) {
         Ok(fs) => fs,
         Err(e) => {
@@ -154,10 +156,11 @@ pub fn spawn_elf_child_builder(
     crate::trust::require(entry, builder_bytes);
     crate::trust::require_program_measurements(&boot_fs);
 
-    // **The building budget is carved here, not inside the thread**, so the caller has a name for it
-    // and can reclaim it: a large untyped a builder retypes its child's address space, frames and TCB
-    // from. Carving it out here changes nothing about what the builder gets; it changes who can name it
-    // afterwards, the whole difference between 8 MiB spent and 8 MiB lent. See notes/frames.md.
+    // **The building budget is carved here, not inside the thread**, so the caller has a name for
+    // it and can reclaim it: a large untyped a builder retypes its child's address space, frames
+    // and TCB from. Carving it out here changes nothing about what the builder gets; it changes who
+    // can name it afterwards, the whole difference between 8 MiB spent and 8 MiB lent. See
+    // notes/frames.md.
     let build_region =
         crate::memory_region::create(12288).expect("no building budget for the builder");
 
@@ -169,8 +172,8 @@ pub fn spawn_elf_child_builder(
                 crate::sched::exit();
             }
         };
-        // A region big enough for the builder's own segments, the initial ramdisk's page tables, and
-        // slack: a builder loads whole ELFs with deep call chains.
+        // A region big enough for the builder's own segments, the initial ramdisk's page tables,
+        // and slack: a builder loads whole ELFs with deep call chains.
         let content: u64 = elf
             .segments()
             .map(|seg| {
@@ -185,9 +188,9 @@ pub fn spawn_elf_child_builder(
             + 8;
         let mut space = AddressSpace::new(content).expect("no memory for the builder");
         map_segments(&mut space, &elf).expect("could not lay out the builder");
-        // A multi-page stack: a builder that parses and builds a child ELF has deep call chains (the
-        // loader loop, copy_from_slice, the elf parser), so one page overflows. Map INIT_STACK_PAGES
-        // down from USER_STACK_TOP; the entry sp is unchanged (USER_STACK_TOP).
+        // A multi-page stack: a builder that parses and builds a child ELF has deep call chains
+        // (the loader loop, copy_from_slice, the elf parser), so one page overflows. Map
+        // INIT_STACK_PAGES down from USER_STACK_TOP; the entry sp is unchanged (USER_STACK_TOP).
         for k in 0..INIT_STACK_PAGES {
             space
                 .map_new(USER_STACK_VA - k * FRAME_SIZE, Flags::user_data())

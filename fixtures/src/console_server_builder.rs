@@ -1,9 +1,9 @@
-//! **Builds the real console server and then plays its client** (step 19d.2b of milestone 19d (run a real workload)).
-//! `kernel::user::spawn_elf_child_builder` enters this program holding a building budget (slot 0),
-//! a report endpoint (slot 1) and the console UART's registers as a device capability (slot 2). It
-//! reads `console` out of the archive by name and builds it with the four things a console server
-//! needs, all out of this program's own budget and capabilities: a request endpoint, a reply
-//! endpoint, a shared page and the UART's registers. Then it writes
+//! **Builds the real console server and then plays its client** (step 19d.2b of milestone 19d (run
+//! a real workload)). `kernel::user::spawn_elf_child_builder` enters this program holding a
+//! building budget (slot 0), a report endpoint (slot 1) and the console UART's registers as a
+//! device capability (slot 2). It reads `console` out of the archive by name and builds it with the
+//! four things a console server needs, all out of this program's own budget and capabilities: a
+//! request endpoint, a reply endpoint, a shared page and the UART's registers. Then it writes
 //! [`capability_witness_contract::CONSOLE_SERVER_BUILDER_LINE`] into the shared page, sends its
 //! length, and reports the length the server acknowledges after printing it. That report proves a
 //! userspace-built console works end to end: a driver this program constructed, on a channel it

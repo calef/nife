@@ -14,8 +14,8 @@ use super::*;
 use crate::arch::exceptions::USER_FAULTS;
 use crate::sched;
 
-/// The `least_authority_demo` program's ELF bytes (step 19f.2 of milestone 19f (run a real workload)). `_start(x0, x1, x2)` reads its
-/// input in `x1` and needs no role selector.
+/// The `least_authority_demo` program's ELF bytes (step 19f.2 of milestone 19f (run a real
+/// workload)). `_start(x0, x1, x2)` reads its input in `x1` and needs no role selector.
 fn least_authority_demo_image() -> &'static [u8] {
     program("least_authority_demo").expect("no least_authority_demo program in the initial ramdisk")
 }
@@ -132,14 +132,14 @@ fn a_process_spends_memory_region_and_the_kernel_never_allocates() {
 /// built child, so a passing test is the proof. Completes the "userspace delegates every authority
 /// kind" story the interrupt-driven drivers (input, virtio) rest on.
 ///
-/// **aarch64-only, because RISC-V has no second interrupt to raise.** It has no
-/// software-generated interrupt a test can assert on itself at all (the SBI IPI arrives down the
-/// software-interrupt arm and never reaches `irq_route`), so the only line it can raise by hand
-/// is the console UART's own, which `spawn_elf_child_builder` is already routing as the UART receive
-/// interrupt. A twin would have to share that one source between the builder's UART capability and the
-/// test's delegated one, and would then prove delivery through whichever route was bound last
-/// rather than through the delegated capability, which is the entire claim. The *property*
-/// (an interrupt arriving as a message through a delegated Irq cap) is proved on RISC-V by
+/// **aarch64-only, because RISC-V has no second interrupt to raise.** It has no software-generated
+/// interrupt a test can assert on itself at all (the SBI IPI arrives down the software-interrupt
+/// arm and never reaches `irq_route`), so the only line it can raise by hand is the console UART's
+/// own, which `spawn_elf_child_builder` is already routing as the UART receive interrupt. A twin
+/// would have to share that one source between the builder's UART capability and the test's
+/// delegated one, and would then prove delivery through whichever route was bound last rather than
+/// through the delegated capability, which is the entire claim. The *property* (an interrupt
+/// arriving as a message through a delegated Irq cap) is proved on RISC-V by
 /// `riscv_virtio_tests::a_userspace_driver_reads_a_file_from_a_virtio_disk`, which asserts
 /// `ROUTED_IRQS` rises while a userspace driver waits on its own Irq cap, and by
 /// `sched::tests::an_interrupt_becomes_a_message`. See notes/interrupts.md.
@@ -205,14 +205,14 @@ fn userspace_init_brings_up_the_console_server() {
         .expect("the builder's report region would not reclaim");
 }
 
-/// **Milestone 19d.2: a userspace builder builds a device driver and hands it the hardware.**
-/// The step beyond 19d.1: not just a child, but a child that touches a *device*.
-/// `device_child_builder` holds a UART **device capability** (a delegatable authority to map MMIO
-/// device-typed), builds `device_child`, and maps the UART's registers into it. The child reads the PL011's
-/// PrimeCell identification registers, whose value is the fixed `0xB105F00D` every real PL011
-/// returns. Receiving that constant proves the whole chain: device access is a capability the
-/// kernel minted and the builder delegated, `MAP_INTO` mapped it device-typed (not cached normal
-/// memory, which would corrupt MMIO), and a userspace-built driver drove real hardware.
+/// **Milestone 19d.2: a userspace builder builds a device driver and hands it the hardware.** The
+/// step beyond 19d.1: not just a child, but a child that touches a *device*. `device_child_builder`
+/// holds a UART **device capability** (a delegatable authority to map MMIO device-typed), builds
+/// `device_child`, and maps the UART's registers into it. The child reads the PL011's PrimeCell
+/// identification registers, whose value is the fixed `0xB105F00D` every real PL011 returns.
+/// Receiving that constant proves the whole chain: device access is a capability the kernel minted
+/// and the builder delegated, `MAP_INTO` mapped it device-typed (not cached normal memory, which
+/// would corrupt MMIO), and a userspace-built driver drove real hardware.
 ///
 /// **aarch64-only, because the assertion is a PL011 register and RISC-V `virt` has no PL011.**
 /// `0xB105F00D` in the PrimeCell identification registers is what makes this test exact rather
@@ -250,10 +250,11 @@ fn userspace_init_builds_a_driver_that_reads_real_hardware() {
 /// The kernel loads exactly one program, `report_child_builder`, and hands it the initial ramdisk
 /// mapped read-only plus a building budget and a report rendezvous. The builder reads
 /// `report_child` out of it and parses that ELF *in userspace* (the `elf` crate, no longer in the
-/// kernel's trusted core), then loads it as a child through the granular verbs: retype an address space, copy each segment into
-/// retyped frames and map them, retype and endow a TCB, configure, start. The child runs code
-/// the kernel never parsed and reports the agreed word. Receiving it is the whole thesis of
-/// milestone 19 working end to end: a verified kernel that runs a workload it did not load.
+/// kernel's trusted core), then loads it as a child through the granular verbs: retype an address
+/// space, copy each segment into retyped frames and map them, retype and endow a TCB, configure,
+/// start. The child runs code the kernel never parsed and reports the agreed word. Receiving it is
+/// the whole thesis of milestone 19 working end to end: a verified kernel that runs a workload it
+/// did not load.
 #[test_case]
 fn userspace_init_parses_an_elf_and_builds_a_running_child() {
     let report_region =
@@ -280,9 +281,10 @@ fn userspace_init_parses_an_elf_and_builds_a_running_child() {
 /// **Milestone 19e: a userspace builder builds a `least_authority_demo`, passes it an argument, and
 /// gets the answer back.** Every child before this took only its role in `x0`. A
 /// `least_authority_demo` computes on an input, so 19e widened `START` to carry three initial
-/// registers. `least_authority_demo_builder` builds one, starts it with the input in `x1`, and the `least_authority_demo` squares it and reports. Receiving `n*n` (not `n`, not garbage)
-/// proves the argument crossed `START` into a fresh EL0 thread's registers intact. This is the
-/// mechanism a real spawn service runs on: a workload parameterized by data, not just identity.
+/// registers. `least_authority_demo_builder` builds one, starts it with the input in `x1`, and the
+/// `least_authority_demo` squares it and reports. Receiving `n*n` (not `n`, not garbage) proves the
+/// argument crossed `START` into a fresh EL0 thread's registers intact. This is the mechanism a
+/// real spawn service runs on: a workload parameterized by data, not just identity.
 #[test_case]
 fn init_builds_the_demo_and_passes_it_an_argument() {
     let input = capability_witness_contract::LEAST_AUTHORITY_DEMO_INPUT;

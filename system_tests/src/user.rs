@@ -502,7 +502,8 @@ mod network_tests;
 #[cfg(all(test, initial_ramdisk))]
 mod block_driver_tests;
 
-/// **The ELF child builders**, the least-authority demo, and a process spending its own memory region.
+/// **The ELF child builders**, the least-authority demo, and a process spending its own memory
+/// region.
 #[cfg(all(test, initial_ramdisk))]
 mod elf_child_builder_tests;
 

@@ -184,13 +184,14 @@ fn el0_cycle_counter_is_known_to_run() -> bool {
     }
 }
 
-/// **Milestone 19e (run a real workload): a userspace builder runs a real compute workload and it comes out right.** The
-/// `least_authority_demo`'s `n*n` proved the mechanism; this proves a *substantial* program.
-/// `coremark_builder` builds the `"coremark"` binary (a CoreMark-derived run: list sort, matrix
-/// multiply, state machine, folded into a CRC), starts it, and the workload SENDs the run's checksum home. Receiving `coremark::PINNED_CRC_64`
-/// (`0x7954`, the value the host `coremark` test also pins) proves a real workload ran correctly
-/// against the native ABI, and that the same computation gives the same answer on the kernel's
-/// target as on the host, which is the property a cross-OS comparison will rest on.
+/// **Milestone 19e (run a real workload): a userspace builder runs a real compute workload and it
+/// comes out right.** The `least_authority_demo`'s `n*n` proved the mechanism; this proves a
+/// *substantial* program. `coremark_builder` builds the `"coremark"` binary (a CoreMark-derived
+/// run: list sort, matrix multiply, state machine, folded into a CRC), starts it, and the workload
+/// SENDs the run's checksum home. Receiving `coremark::PINNED_CRC_64` (`0x7954`, the value the host
+/// `coremark` test also pins) proves a real workload ran correctly against the native ABI, and that
+/// the same computation gives the same answer on the kernel's target as on the host, which is the
+/// property a cross-OS comparison will rest on.
 #[test_case]
 fn init_runs_the_coremark_workload_and_it_checks_out() {
     let report_region =

@@ -70,12 +70,13 @@ pub const CYCLE_COUNTER_WORD: u64 = 0xC1C1E;
 /// The builder parsed the child's ELF and built its process in userspace, so this word reaching
 /// the kernel's test is the evidence that the build produced a running thread.
 ///
-/// Name: provisional (milestone 405 (the nine init roles and the entry the kernel picks)), after the program
-/// that sends it.
+/// Name: provisional (milestone 405 (the nine init roles and the entry the kernel picks)), after
+/// the program that sends it.
 pub const REPORT_CHILD_WORD: u64 = 0xC0FFEE;
 
-/// The word `interrupt_child` sends once the interrupt `interrupt_child_builder` delegated to it has
-/// arrived as a message. Any fixed value would do; the child sends nothing before the interrupt.
+/// The word `interrupt_child` sends once the interrupt `interrupt_child_builder` delegated to it
+/// has arrived as a message. Any fixed value would do; the child sends nothing before the
+/// interrupt.
 ///
 /// Name: provisional (milestone 405), after the program that sends it.
 pub const INTERRUPT_CHILD_WORD: u64 = 0x1590;

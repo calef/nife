@@ -183,15 +183,15 @@ pub(super) fn lay_out_program(space: &mut AddressSpace, elf: &Elf, stack_pages: 
 /// The four copies it replaced (`authority_tests::spawn_tree`, `c_seam_tests::spawn_confiner`,
 /// `live_swap_tests::spawn_swapper`, `process_composition_service::wire`) agreed line for line
 /// apart from the names inside their `.expect` messages, and every one of them carried the space
-/// budget's `log_pages_for(initial_ramdisk_pages)` term, so a change to that accounting was an
-/// edit to each. The kernel's own `spawn_elf_child_builder` is still a sixth copy and is
-/// deliberately not folded here: it also measures the program and routes the boot interrupts, which no test
+/// budget's `log_pages_for(initial_ramdisk_pages)` term, so a change to that accounting was an edit
+/// to each. The kernel's own `spawn_elf_child_builder` is still a sixth copy and is deliberately
+/// not folded here: it also measures the program and routes the boot interrupts, which no test
 /// harness wants. `timetable_tests::spawn_timetable_with` is the call site that stayed whole: its
 /// slots are its own four-slot contract (output, budget, child report, deaths), its archive is a
-/// narrowed copy it builds rather than the initial ramdisk, and its stack, extra mappings and
-/// start arguments are its own. It shares [`segment_pages`] and [`lay_out_program`] with this
-/// function and nothing else; a helper parameterized to cover the rest would be
-/// `spawn_timetable_with` wearing this one's name.
+/// narrowed copy it builds rather than the initial ramdisk, and its stack, extra mappings and start
+/// arguments are its own. It shares [`segment_pages`] and [`lay_out_program`] with this function
+/// and nothing else; a helper parameterized to cover the rest would be `spawn_timetable_with`
+/// wearing this one's name.
 ///
 /// [`crate::user::run`] cannot serve these callers: its extra mapped pages arrive as a slice,
 /// and the archive is a few thousand pages the suite has no allocator to build a slice from.

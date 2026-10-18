@@ -232,11 +232,11 @@ pub fn map_timebase_page(space: &mut AddressSpace) -> Result<(), MapError> {
     Ok(())
 }
 
-/// Lay an ELF's loadable segments into `space`, honouring their permissions exactly (milestone
-/// 19d factored this out of `load` so [`spawn_elf_child_builder`] shares it; the progenitor's userspace
-/// loader mirrors it).
-/// A read-only segment gets `user_rodata`, not `user_data`: a loader that widens permissions is
-/// a loader you cannot reason about. `.bss` is free because `map_new` zeroes every page.
+/// Lay an ELF's loadable segments into `space`, honouring their permissions exactly (milestone 19d
+/// factored this out of `load` so [`spawn_elf_child_builder`] shares it; the progenitor's userspace
+/// loader mirrors it). A read-only segment gets `user_rodata`, not `user_data`: a loader that
+/// widens permissions is a loader you cannot reason about. `.bss` is free because `map_new` zeroes
+/// every page.
 pub fn map_segments(space: &mut AddressSpace, elf: &Elf) -> Result<(), LoadError> {
     // Every kernel path that lays out an image comes through here, so the map is enforced here as
     // well as early in [`load`] (which checks before it sizes a region, so a huge image is told it
