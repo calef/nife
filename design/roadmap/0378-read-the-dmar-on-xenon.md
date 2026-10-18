@@ -11,8 +11,9 @@ needs_person: no
 # 378. Read the DMAR, because a firmware checkbox is not an IOMMU
 
 A boot on a VT-d machine prints, on each unit's `iommu` line, both claims about interrupt
-remapping: the unit's own (`ECAP.IR`) and the platform's (the `INTR_REMAP` flag in the DMA Remapping Reporting table (DMAR), bit 0 of
-the table's Flags field). A boot log shows at a glance whether firmware and hardware agree.
+remapping: the unit's own (`ECAP.IR`) and the platform's (the `INTR_REMAP` flag, bit 0 of the
+Flags field in the DMA Remapping Reporting table (DMAR)). A boot log shows at a glance whether
+firmware and hardware agree.
 
 ```
   iommu           : VT-d drhd at 0x00000000fed90000, root table default-deny, translating, interrupt remapping offered (unused), dmar INTR_REMAP set
@@ -100,8 +101,8 @@ when it finds a DMAR it did not expect, and the answer for this proposal is noth
   remapping unit or changes a driver. `kernel/src/arch/x86_64/iommu.rs`'s header says `ECAP.IR` is
   read to report and never to act on, and `crates/machine_discovery/src/acpi.rs`'s `BUGS` says the
   same of `INTR_REMAP`. Turning a unit on is a much larger piece of work.
-- **None.** xenon's own pair is unread. The next xenon boot under a kernel carrying this change
-  prints both values on its `iommu` lines; reading them needs no further work here.
+- **Recorded.** xenon's own pair is unread until a xenon boot of a kernel carrying this change,
+  which prints both on its `iommu` lines; `notes/xenon-firmware.md` says so beside the unit's half.
 
 ## Index row
 
