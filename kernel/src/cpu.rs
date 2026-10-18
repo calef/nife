@@ -193,7 +193,7 @@ pub struct PerCpu {
 
 /// See [`PerCpu::x86_trap`].
 #[cfg(target_arch = "x86_64")]
-pub struct X86TrapPerCpu {
+pub(crate) struct X86TrapPerCpu {
     /// This core's own `TSS.rsp0` field's address (a pointer, not a stack top): `isr_restore`
     /// writes the outgoing thread's kernel-stack top through it on every return to ring 3.
     /// Written once, by `segments::init`, from that CPU's own per-CPU TSS.
@@ -266,7 +266,7 @@ impl PerCpu {
     /// standard per-CPU pattern; the `UnsafeCell` is sound precisely because of that invariant.
     /// Every caller today already holds `IPC_TABLES` (which masks interrupts) or has masked them
     /// explicitly in `schedule()`.
-    pub fn with_runq<R>(&self, f: impl FnOnce(&mut Fifo<Thread>) -> R) -> R {
+    pub(crate) fn with_runq<R>(&self, f: impl FnOnce(&mut Fifo<Thread>) -> R) -> R {
         debug_assert!(
             !crate::arch::interrupts::is_enabled(),
             "run queue touched with interrupts enabled: single-owner safety needs them masked",
@@ -283,7 +283,7 @@ impl PerCpu {
 
     /// Record this core's inbox length after a push or drain. Called with the inbox lock held, by
     /// the remote core that pushed or by this core's drain, so the store is serialised by the lock.
-    pub fn note_inbox_len(&self, len: usize) {
+    pub(crate) fn note_inbox_len(&self, len: usize) {
         self.inbox_len.store(len, Ordering::Relaxed);
     }
 
@@ -296,7 +296,7 @@ impl PerCpu {
 
     /// Count `n` threads adopted from this core's inbox onto its run queue. Called by the owning
     /// core's drain, under the inbox lock.
-    pub fn note_adopted(&self, n: u64) {
+    pub(crate) fn note_adopted(&self, n: u64) {
         ADOPTED[self.index()].fetch_add(n, Ordering::Relaxed);
     }
 
@@ -311,7 +311,7 @@ impl PerCpu {
 
     /// This core's total load, for a **placement** decision (DECISIONS §28.1): queued threads plus
     /// inbox threads not yet drained. Relaxed and possibly stale by design.
-    pub fn runnable(&self) -> usize {
+    pub(crate) fn runnable(&self) -> usize {
         self.runq_len.load(Ordering::Relaxed) + self.inbox_len.load(Ordering::Relaxed)
     }
 
@@ -326,7 +326,7 @@ impl PerCpu {
     /// Advance this core's placement PRNG (xorshift32) and return the next value. Only the owning
     /// core calls this, on the spawn path with interrupts masked, so the relaxed load/store pair is
     /// interior mutability rather than cross-core synchronisation.
-    pub fn rng_next(&self) -> u32 {
+    pub(crate) fn rng_next(&self) -> u32 {
         let mut x = self.rng.load(Ordering::Relaxed);
         x ^= x << 13;
         x ^= x >> 17;
@@ -427,7 +427,7 @@ const _: () = assert!(
 /// Call once, on each core, **before that core takes its first lock**, because the lock path
 /// reads `current().held_rank`. On the boot core that means before `console::init` in
 /// `kernel_main`; on a secondary it is the first thing the bring-up entry does.
-pub fn init_this_cpu(id: usize) {
+pub(crate) fn init_this_cpu(id: usize) {
     assert!(id < MAX_CPUS, "cpu id {id} exceeds MAX_CPUS {MAX_CPUS}");
     crate::arch::set_percpu(&PERCPU[id] as *const PerCpu as usize);
     // Seed this core's placement PRNG (§28). A per-core deterministic seed: the same boot always
@@ -466,7 +466,7 @@ pub fn id() -> usize {
 
 /// Another core's migration inbox, by id. This is the one place a core reaches into a *different*
 /// core's `PerCpu` block, and only the inbox (a real lock), never the run queue. See DECISIONS §11.
-pub fn inbox_of(id: usize) -> &'static IrqSafeMutex<Fifo<Thread>> {
+pub(crate) fn inbox_of(id: usize) -> &'static IrqSafeMutex<Fifo<Thread>> {
     &PERCPU[id].inbox
 }
 

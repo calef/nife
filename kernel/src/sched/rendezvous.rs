@@ -498,7 +498,7 @@ pub fn ipc_send_cap(ep: RendezvousId, data: u64, capability: crate::cap::Cap, ba
 /// revocation sweep can fall between the read and the filing ([`Delegation`]). `Err` is the source's
 /// answer (`NoSuchSlot`, `NotPermitted`), with nothing sent; a stale or refusing rendezvous is
 /// reported as before, through `take_ipc_aborted`. Name provisional.
-pub fn ipc_delegate_cap(
+pub(crate) fn ipc_delegate_cap(
     ep: RendezvousId,
     data: u64,
     delegation: Delegation,
@@ -911,7 +911,7 @@ pub fn ipc_reply(caller: ThreadId, msg: [u64; 2]) {
 /// **Out of line and off the round trip**: plain `REPLY` does not reach this, so `ipc_call_reply`'s
 /// footprint and `ipc_rtt` are unchanged by its existence.
 #[inline(never)]
-pub fn ipc_reply_capability(
+pub(crate) fn ipc_reply_capability(
     caller: ThreadId,
     msg: [u64; 2],
     slot: u64,

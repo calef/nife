@@ -250,7 +250,7 @@ pub fn draw_random_seed() -> Option<u64> {
 /// **Whatever answer this gives, the rate it describes is a constant only because [`init`]
 /// refused to boot without the invariant TSC.** That gate is what makes "the TSC's rate" a
 /// quantity at all, here and in the calibration path both.
-pub fn tsc_crystal_hz() -> Option<u64> {
+pub(crate) fn tsc_crystal_hz() -> Option<u64> {
     if get().max_leaf < 0x15 {
         return None;
     }
@@ -268,7 +268,7 @@ pub fn tsc_crystal_hz() -> Option<u64> {
 /// Two lines, the same split the RISC-V summary uses: what the part is, and what it can do. The
 /// feature line prints every row of [`TABLE`], present or absent, because "invariant-tsc" missing
 /// from a list of things that are present is not something a reader notices.
-pub fn print_summary() {
+pub(crate) fn print_summary() {
     let cpu = get();
     let vendor = core::str::from_utf8(&cpu.vendor).unwrap_or("<not utf-8>");
     println!(

@@ -129,7 +129,7 @@ fn burn_port(rounds: u64) {
 
 /// Run the measurement and print one line per window. Called from the x86 tour when the kernel is
 /// built with the `tsc_probe` feature; absent from every other build.
-pub fn probe() {
+pub(crate) fn probe() {
     BINARY.store(
         cmos(CMOS_STATUS_B) & STATUS_B_BINARY != 0,
         core::sync::atomic::Ordering::Relaxed,

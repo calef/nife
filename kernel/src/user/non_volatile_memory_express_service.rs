@@ -123,7 +123,7 @@ static BLOCKS_PER: core::sync::atomic::AtomicU16 = core::sync::atomic::AtomicU16
 /// Wire the NVMe server if this boot has not already, else hand back what is already running.
 /// `None` when there is no NVMe controller on the bus, or when one is present and failed
 /// bring-up. For a caller that must tell those two apart (a test, a bench), [`ensure_or_why`].
-pub fn ensure(image: &'static [u8]) -> Option<Wiring> {
+pub(crate) fn ensure(image: &'static [u8]) -> Option<Wiring> {
     ensure_or_why(image).ok()
 }
 

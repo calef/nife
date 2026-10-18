@@ -94,11 +94,11 @@ pub(super) fn count_tick() {
     );
 }
 
-pub fn take_need_resched() -> bool {
+pub(crate) fn take_need_resched() -> bool {
     cpu::current().need_resched.swap(false, Ordering::Relaxed)
 }
 
-pub fn count_preemption() {
+pub(crate) fn count_preemption() {
     PREEMPTIONS.fetch_add(1, Ordering::Relaxed);
     PREEMPTIONS_PER_CPU[cpu::id()].fetch_add(1, Ordering::Relaxed);
 }

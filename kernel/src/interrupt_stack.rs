@@ -68,7 +68,7 @@ use crate::cpu::MAX_CPUS;
 /// on both ISAs) and gates this number against it, so growth is caught by a build rather than by a
 /// fault. The extra room over that is for the fatal path, which prints a register dump and scans a
 /// dead stack from here.
-pub const SIZE: usize = 4 * 4096;
+pub(crate) const SIZE: usize = 4 * 4096;
 
 /// The unmapped page below each interrupt stack. `map_everything` skips exactly this page per core,
 /// and `verify` refuses to install a map in which it translates. Same mechanism as the boot stack's
@@ -111,7 +111,7 @@ static ARMED: AtomicBool = AtomicBool::new(false);
 /// The multiply's overflow check refused only an `id` near `2^52`, and an `id` of `MAX_CPUS` slipped
 /// past it to name memory past the region. Indexing the array place bounds-checks `id` against
 /// `MAX_CPUS` instead, which is the check that matters, in fewer bytes on the trap path.
-pub fn guard(id: usize) -> u64 {
+pub(crate) fn guard(id: usize) -> u64 {
     // SAFETY: `STACKS.0.get()` points at the live static. `&raw const` of an element place projects
     // the address (bounds-checked) and neither reads the slot nor makes a reference to memory a
     // core may be running on as its stack.
@@ -119,7 +119,7 @@ pub fn guard(id: usize) -> u64 {
 }
 
 /// Core `id`'s usable stack as `(bottom, top)`: the slot above its guard page.
-pub fn span(id: usize) -> (u64, u64) {
+pub(crate) fn span(id: usize) -> (u64, u64) {
     // Wrapping, because the wrap cannot happen: `guard` refused any `id` past the array, so both
     // sums stay inside slot `id` or at its one-past-the-end, and the static they lie in does not
     // run past the top of the address space.
@@ -180,7 +180,7 @@ pub fn init() {
 /// question whose answer on that path is the first branch. Inlined, the syscall path pays one test.
 /// The two callers are the two architectures' dispatchers, so nothing is duplicated in one binary.
 #[inline(always)]
-pub fn top_for_trap(from_user: bool) -> u64 {
+pub(crate) fn top_for_trap(from_user: bool) -> u64 {
     if from_user || !ARMED.load(Ordering::Acquire) {
         return 0;
     }
@@ -201,13 +201,13 @@ pub fn top_for_trap(from_user: bool) -> u64 {
 /// non-inlined helpers, per context switch, in the debug build the tripwire measures. A debug build
 /// inlines nothing, so "cheap enough" has to be counted in operations rather than in lines.
 #[inline(always)]
-pub fn contains(addr: u64) -> bool {
+pub(crate) fn contains(addr: u64) -> bool {
     addr.wrapping_sub(STACKS.0.get() as u64) < (MAX_CPUS * SLOT) as u64
 }
 
 /// Which core's interrupt-stack guard page `addr` falls in, if any. Used by `stack::guard_page_at`
 /// so a fault down here is named rather than reported as an address nothing recognises.
-pub fn guard_page_at(addr: u64) -> Option<usize> {
+pub(crate) fn guard_page_at(addr: u64) -> Option<usize> {
     (0..MAX_CPUS).find(|&id| {
         let g = guard(id);
         (g..g + GUARD as u64).contains(&addr)

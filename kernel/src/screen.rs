@@ -51,14 +51,14 @@ use machine_discovery::framebuffer::{Framebuffer, PixelOrder};
 use crate::drivers::ramfb::{self, FirmwareConfiguration, SCRATCH_LEN};
 
 /// The screen's width in pixels. See the module's BUGS for why it is a constant.
-pub const WIDTH: u32 = 800;
+pub(crate) const WIDTH: u32 = 800;
 /// The screen's height in pixels.
-pub const HEIGHT: u32 = 600;
+pub(crate) const HEIGHT: u32 = 600;
 /// Bytes from one row to the next. No padding: this kernel owns the memory, so there is no firmware
 /// pitch to respect, and `screen_console` reads this field rather than assuming it either way.
-pub const STRIDE: u32 = WIDTH * 4;
+pub(crate) const STRIDE: u32 = WIDTH * 4;
 /// The whole framebuffer, in bytes.
-pub const SPAN: usize = (STRIDE * HEIGHT) as usize;
+pub(crate) const SPAN: usize = (STRIDE * HEIGHT) as usize;
 
 /// **The pixels.**
 ///
@@ -88,7 +88,7 @@ static SCRATCH: SyncUnsafeCell<Scratch> = SyncUnsafeCell::new(Scratch([0; SCRATC
 /// Why there is no screen. A string rather than an enum because the only consumer is one boot line:
 /// nothing branches on this, a person reads it, and four of the five cases are already spelled by
 /// [`ramfb::Error`].
-pub type Why = &'static str;
+pub(crate) type Why = &'static str;
 
 /// **Bring up a `ramfb` and give it to the console.**
 ///
@@ -170,7 +170,7 @@ pub fn attach() -> Result<(Framebuffer, u32, u32), Why> {
 /// caller that arrives with a framebuffer from somewhere else, milestone 157's included: U-Boot's
 /// aperture is outside the kernel image and so passes, as it should.
 #[must_use]
-pub fn is_kernel_memory(screen: &Framebuffer) -> bool {
+pub(crate) fn is_kernel_memory(screen: &Framebuffer) -> bool {
     let lo = crate::memory::image_start();
     let hi = crate::memory::image_end();
     let start = screen.base;
@@ -188,7 +188,7 @@ pub fn is_kernel_memory(screen: &Framebuffer) -> bool {
 /// screen and a machine whose screen refused are different machines, and only this line tells them
 /// apart on a wire that both boots otherwise fill identically.
 #[cfg_attr(target_arch = "x86_64", allow(dead_code))]
-pub fn print_summary(screen: &Result<(Framebuffer, u32, u32), Why>) {
+pub(crate) fn print_summary(screen: &Result<(Framebuffer, u32, u32), Why>) {
     match screen {
         Ok((found, cols, rows)) => crate::println!(
             "  screen      : {}x{} {} at {:#x}, {cols}x{rows} cells (ramfb, this kernel's own memory)",

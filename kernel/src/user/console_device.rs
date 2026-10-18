@@ -47,7 +47,7 @@ pub const UART_RX_INTID: u32 = 4;
 /// [`UART_RX_INTID`], QEMU `virt`'s constant. The source string exists to be printed: a bench
 /// transcript that names the number's origin is diagnosable, and the one that did not already
 /// cost a boot (notes/visionfive2.md).
-pub fn uart_irq_and_source() -> (u32, &'static str) {
+pub(crate) fn uart_irq_and_source() -> (u32, &'static str) {
     match crate::memory::uart_irq() {
         Some(n) => (n, "machine description"),
         None => (UART_RX_INTID, "QEMU-virt fallback; the machine did not say"),

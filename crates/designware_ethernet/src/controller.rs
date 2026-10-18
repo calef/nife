@@ -28,7 +28,7 @@ pub enum Error {
 }
 
 /// How long the software reset may take: OpenBSD's 30000 polls 10 µs apart.
-pub const RESET_LIMIT_US: u64 = 300_000;
+pub(crate) const RESET_LIMIT_US: u64 = 300_000;
 
 /// What the controller says it is.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -67,12 +67,12 @@ impl Identity {
     }
 
     /// The transmit FIFO's size in bytes, `128 << TXFIFOSIZE`.
-    pub const fn tx_fifo_bytes(&self) -> u32 {
+    pub(crate) const fn tx_fifo_bytes(&self) -> u32 {
         fifo_bytes((self.features[1] >> 6) & 0x1f)
     }
 
     /// The receive FIFO's size in bytes, `128 << RXFIFOSIZE`.
-    pub const fn rx_fifo_bytes(&self) -> u32 {
+    pub(crate) const fn rx_fifo_bytes(&self) -> u32 {
         fifo_bytes(self.features[1] & 0x1f)
     }
 }
@@ -115,7 +115,7 @@ pub fn station_address(hi: u32, lo: u32) -> Option<[u8; 6]> {
 }
 
 /// The two address register words for `mac`: `(high, low)`, OpenBSD's `dwqe_lladdr_write`.
-pub const fn address_words(mac: [u8; 6]) -> (u32, u32) {
+pub(crate) const fn address_words(mac: [u8; 6]) -> (u32, u32) {
     (
         u32::from_le_bytes([mac[4], mac[5], 0, 0]),
         u32::from_le_bytes([mac[0], mac[1], mac[2], mac[3]]),
@@ -147,7 +147,7 @@ pub struct Bus {
 /// The receive operation mode word for a FIFO of `fifo` bytes, OpenBSD's arithmetic: the queue
 /// size in 256-byte units less one, threshold or store-and-forward, and hardware flow control with
 /// its thresholds once the FIFO is large enough for them to mean anything.
-pub fn rx_queue_mode(current: u32, bus: &Bus, fifo: u32) -> u32 {
+pub(crate) fn rx_queue_mode(current: u32, bus: &Bus, fifo: u32) -> u32 {
     let mut mode = current;
     if bus.threshold_mode {
         mode &= !(regs::MTL_RXQ_OP_MODE_RSF | regs::MTL_RXQ_OP_MODE_RTC_MASK);
@@ -168,7 +168,7 @@ pub fn rx_queue_mode(current: u32, bus: &Bus, fifo: u32) -> u32 {
 }
 
 /// The transmit operation mode word for a FIFO of `fifo` bytes, OpenBSD's arithmetic.
-pub fn tx_queue_mode(current: u32, bus: &Bus, fifo: u32) -> u32 {
+pub(crate) fn tx_queue_mode(current: u32, bus: &Bus, fifo: u32) -> u32 {
     let mut mode = current;
     if bus.threshold_mode {
         mode &= !(regs::MTL_TXQ_OP_MODE_TSF | regs::MTL_TXQ_OP_MODE_TTC_MASK);
@@ -186,7 +186,7 @@ pub fn tx_queue_mode(current: u32, bus: &Bus, fifo: u32) -> u32 {
 
 /// Can a controller of `dma_bits` address a region of `bytes` at `phys`, with tail pointers
 /// that only carry the low 32 bits?
-pub const fn region_in_reach(phys: u64, bytes: u64, dma_bits: u8) -> bool {
+pub(crate) const fn region_in_reach(phys: u64, bytes: u64, dma_bits: u8) -> bool {
     let Some(end) = phys.checked_add(bytes) else {
         return false;
     };

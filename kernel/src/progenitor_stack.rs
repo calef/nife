@@ -46,7 +46,7 @@ use crate::user::PROGENITOR_STACK_PAGES;
 const PAGE: u64 = page_frames::FRAME_SIZE;
 
 /// The whole stack, in bytes: what the gauge's numbers are out of.
-pub const STACK_BYTES: u64 = PROGENITOR_STACK_PAGES * PAGE;
+pub(crate) const STACK_BYTES: u64 = PROGENITOR_STACK_PAGES * PAGE;
 
 /// **The least headroom a boot may leave**, in bytes. Below this, the gauge says `BELOW` and
 /// `script/swish-check` fails.
@@ -58,7 +58,7 @@ pub const STACK_BYTES: u64 = PROGENITOR_STACK_PAGES * PAGE;
 /// `swish-check` never types, and indirect calls, which put the measured peak about a kilobyte
 /// above the deepest chain a static walk of direct calls finds (32,440 against 31,424, aarch64
 /// debug). notes/stack/progenitor-stack.md has both measurements.
-pub const HEADROOM_FLOOR: u64 = 2 * PAGE;
+pub(crate) const HEADROOM_FLOOR: u64 = 2 * PAGE;
 
 /// The kernel view (direct-map address) of each stack page, by `k`, the page's distance below
 /// the top: `k = 0` is the page at `USER_STACK_VA`, and the highest `k` is the stack's bottom.
@@ -71,7 +71,7 @@ static PAGES: [AtomicU64; PROGENITOR_STACK_PAGES as usize] =
 /// Called by `boot_progenitor` for each page `map_new` hands back, before the progenitor exists,
 /// so nothing is using the page. `k` is the page's distance below the top, as the map loop counts
 /// it.
-pub fn paint_page(k: u64, page: &mut [u8]) {
+pub(crate) fn paint_page(k: u64, page: &mut [u8]) {
     let bottom = page.as_mut_ptr() as u64;
     // SAFETY: `page` is a whole, page-aligned, writable frame the caller just mapped and nothing
     // has run on yet, which is `paint`'s contract. The `&mut` is what proves nobody else holds it.
@@ -83,7 +83,7 @@ pub fn paint_page(k: u64, page: &mut [u8]) {
 ///
 /// Scans the lowest page first and stops at the first page with anything used, so its cost is the
 /// headroom rather than the stack: a few hundred words on a healthy boot.
-pub fn high_water() -> Option<u64> {
+pub(crate) fn high_water() -> Option<u64> {
     for k in (0..PROGENITOR_STACK_PAGES).rev() {
         let bottom = PAGES[k as usize].load(Ordering::Acquire);
         if bottom == 0 {
@@ -111,7 +111,7 @@ const STABLE_PASSES_NEEDED: u64 = 16;
 
 /// Say the progenitor's stack high-water mark once it has stopped moving. Called from the
 /// scheduler's idle loop; see this module's doc.
-pub fn report_peak() {
+pub(crate) fn report_peak() {
     let Some(used) = high_water() else {
         return;
     };

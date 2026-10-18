@@ -158,7 +158,7 @@ pub const fn report(word: u32) -> [u32; 8] {
 ///   ee                out dx, al       (#GP here if this thread holds no PortRange for `port`)
 ///   ...               <report(word)>   (SEND the word on slot 0, then SYS_EXIT)
 /// ```
-pub const fn port_out(port: u16, val: u8, word: u32) -> [u32; 9] {
+pub(crate) const fn port_out(port: u16, val: u8, word: u32) -> [u32; 9] {
     const {
         assert!(
             abi::rendezvous::SEND == 0,
@@ -470,7 +470,7 @@ pub const fn port_in_then_out(port: u16, val: u8) -> [u32; 4] {
 /// The faulting pc offset for [`port_in_then_out`]'s `out`: the four-byte `mov dx, port`, the
 /// one-byte `in`, and the two-byte `mov al, val` precede it.
 #[cfg(all(any(test, feature = "system_tests"), target_arch = "x86_64"))]
-pub const PORT_IN_THEN_OUT_OUT_PC_OFFSET: u64 = 7;
+pub(crate) const PORT_IN_THEN_OUT_OUT_PC_OFFSET: u64 = 7;
 
 /// **A child that deletes two capability slots, then writes one byte to a port, then exits.**
 /// [`cap_delete_then_port_out`]'s two-slot twin, for a child holding the same port range in two

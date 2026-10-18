@@ -55,7 +55,7 @@ pub fn thread_control_block_insert_cap(
 /// **`ThreadControlBlock::CAP_INSERT`'s body: endow an embryo with a narrowed copy of a capability
 /// the running thread holds**, the source read under the `IPC_TABLES` hold that files the copy
 /// ([`Delegation`]). Name provisional.
-pub fn thread_control_block_delegate_cap(
+pub(crate) fn thread_control_block_delegate_cap(
     tid: ThreadId,
     delegation: Delegation,
     target: Option<u64>,

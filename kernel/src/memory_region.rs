@@ -102,7 +102,7 @@ fn note_peak(table: &RegionTable<MAX_REGIONS>) {
 
 /// The high-water mark [`PEAK_REGIONS`] holds. Printed by the test suite's closing summary.
 #[cfg_attr(not(any(test, feature = "system_tests")), allow(dead_code))] // the closing summary is the only reader
-pub fn peak_region_count() -> usize {
+pub(crate) fn peak_region_count() -> usize {
     PEAK_REGIONS.load(core::sync::atomic::Ordering::Relaxed)
 }
 
@@ -249,7 +249,7 @@ pub fn retype_object_page(region: u64, kind: ObjectKind) -> Option<u64> {
 /// **One figure of a region's spending, for `MemoryRegion::USAGE`** (milestone 126 (the `procps` package), DECISIONS §225 (`free` sees the machine and your share)
 /// part 1). `record` is an `abi::usage` selector the caller has already checked with
 /// `abi::usage::is_known`; `None` for a dead region.
-pub fn usage_record(region: u64, record: u64) -> Option<u64> {
+pub(crate) fn usage_record(region: u64, record: u64) -> Option<u64> {
     let table = REGIONS.lock();
     let on = match record {
         abi::usage::SIZE => return table.usage(region).map(|(_, pages)| pages),

@@ -106,7 +106,7 @@ fn bump(counter: &AtomicU64, by: u64) {
 
 /// Called by `IrqSafeMutex::lock` when its first `try_lock` failed and it then spun `ticks` for the
 /// lock. Interrupts are masked, so this is the core that will hold the lock.
-pub fn contended(rank: u32, ticks: u64) {
+pub(crate) fn contended(rank: u32, ticks: u64) {
     if !ARMED.load(Ordering::Relaxed) {
         return;
     }
@@ -128,7 +128,7 @@ pub fn contended(rank: u32, ticks: u64) {
 /// was `IPC_TABLES` until 2026-10-04 UTC and is the running thread's own capability table since, so
 /// `site=current_cap` reads before and after the change with one meaning: how often the cheapest
 /// syscall waited for anything.
-pub fn enter_current_cap() {
+pub(crate) fn enter_current_cap() {
     if !ARMED.load(Ordering::Relaxed) {
         return;
     }
@@ -138,14 +138,14 @@ pub fn enter_current_cap() {
 }
 
 /// `sched::current_cap` holds its lock now: any later contended lock on this core is not its.
-pub fn leave_current_cap() {
+pub(crate) fn leave_current_cap() {
     here().in_current_cap.store(false, Ordering::Relaxed);
 }
 
 /// Called by `sched::reap_switched_out` after freeing a dead thread's kernel stack with no lock
 /// held: how long the free took. The reaper is cold (one call per thread exit), so reading the
 /// clock here costs the measured paths nothing.
-pub fn stack_freed(ticks: u64) {
+pub(crate) fn stack_freed(ticks: u64) {
     if !ARMED.load(Ordering::Relaxed) {
         return;
     }
@@ -156,7 +156,7 @@ pub fn stack_freed(ticks: u64) {
 
 /// Called by `sched::reap_switched_out` for its second critical section: how long removing the
 /// thread held `IPC_TABLES`.
-pub fn reaped(ticks: u64) {
+pub(crate) fn reaped(ticks: u64) {
     if !ARMED.load(Ordering::Relaxed) {
         return;
     }
@@ -164,12 +164,12 @@ pub fn reaped(ticks: u64) {
 }
 
 /// Start counting (the supervisor, just before it releases a subrun's tasks).
-pub fn arm() {
+pub(crate) fn arm() {
     ARMED.store(true, Ordering::Relaxed);
 }
 
 /// Stop counting (the supervisor, once the subrun's last task has reported).
-pub fn disarm() {
+pub(crate) fn disarm() {
     ARMED.store(false, Ordering::Relaxed);
 }
 
@@ -189,7 +189,7 @@ pub fn reset() {
 }
 
 /// Summed over every core: `(reaps, stack_free_ticks, remove_ticks)` for the reaper.
-pub fn reap_totals() -> (u64, u64, u64) {
+pub(crate) fn reap_totals() -> (u64, u64, u64) {
     CORES.iter().fold((0, 0, 0), |(n, f, r), core| {
         (
             n + core.reaps.load(Ordering::Relaxed),
@@ -200,7 +200,7 @@ pub fn reap_totals() -> (u64, u64, u64) {
 }
 
 /// Summed over every core: `(contended, wait_ticks)` for one rank.
-pub fn rank_totals(rank: usize) -> (u64, u64) {
+pub(crate) fn rank_totals(rank: usize) -> (u64, u64) {
     CORES.iter().fold((0, 0), |(c, w), core| {
         (
             c + core
@@ -216,7 +216,7 @@ pub fn rank_totals(rank: usize) -> (u64, u64) {
 }
 
 /// Summed over every core: `(calls, contended, wait_ticks)` for `current_cap`.
-pub fn current_cap_totals() -> (u64, u64, u64) {
+pub(crate) fn current_cap_totals() -> (u64, u64, u64) {
     CORES.iter().fold((0, 0, 0), |(n, c, w), core| {
         (
             n + core.cap_calls.load(Ordering::Relaxed),
@@ -229,7 +229,7 @@ pub fn current_cap_totals() -> (u64, u64, u64) {
 /// The word a rank is printed as. A rank `sync::rank` gives to more than one lock (59 is the
 /// inbox, the kernel heap and the mappings table) is printed by number only, because a name would
 /// claim an attribution the counter cannot make.
-pub fn rank_name(rank: usize) -> Option<&'static str> {
+pub(crate) fn rank_name(rank: usize) -> Option<&'static str> {
     use crate::sync::rank as r;
     match u32::try_from(rank).ok()? {
         r::IPC_TABLES => Some("ipc_tables"),
@@ -241,6 +241,6 @@ pub fn rank_name(rank: usize) -> Option<&'static str> {
 }
 
 /// How many ranks there are to walk when printing.
-pub const fn ranks() -> usize {
+pub(crate) const fn ranks() -> usize {
     RANKS
 }

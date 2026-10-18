@@ -44,7 +44,7 @@ pub(super) static BOOT_CPU_ID: core::sync::atomic::AtomicUsize =
 /// Still callable from the kernel's very first Rust statement, which is what
 /// `cpu::init_this_cpu(arch::boot_cpu_id())` needs: `boot.s` stamps the record before it calls
 /// `kernel_main`, so there is no window in which this reads the `AtomicUsize`'s zero default.
-pub fn boot_cpu_id() -> usize {
+pub(crate) fn boot_cpu_id() -> usize {
     BOOT_CPU_ID.load(core::sync::atomic::Ordering::Relaxed)
 }
 
@@ -54,7 +54,7 @@ pub(super) const PERCPU_SELF_OFF: usize =
 
 /// Set this CPU's per-CPU pointer, by writing the `gs` segment base, and then the block's own
 /// address into the block, through that base, for [`percpu`] to read back.
-pub fn set_percpu(ptr: usize) {
+pub(crate) fn set_percpu(ptr: usize) {
     // SAFETY: `IA32_GS_BASE` exists on every long-mode CPU, and this value is the per-CPU block
     // this kernel reserves the register for.
     unsafe { write_msr(IA32_GS_BASE, ptr as u64) };
@@ -134,6 +134,6 @@ pub fn read_current_thread() -> u64 {
 /// switch and does not travel with a thread, so there is nothing that could make it stale. The
 /// independent ground truth (the local APIC id) is not readable yet either way.
 #[cfg(any(test, feature = "system_tests"))]
-pub fn percpu_matches_hart() -> bool {
+pub(crate) fn percpu_matches_hart() -> bool {
     true
 }

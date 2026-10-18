@@ -60,7 +60,7 @@ const STATUS: u64 = 0x2020;
 /// **How much of the register file this driver maps**: 16 KiB, which covers every register above
 /// (the highest is `STATUS`, at `0x2020`). A unit with performance counters decodes up to 512 KiB
 /// (`0x80000`); nothing here reads them. QEMU's model is exactly 16 KiB (`AMDVI_MMIO_SIZE`).
-pub const REGISTER_SIZE: u64 = 0x4000;
+pub(crate) const REGISTER_SIZE: u64 = 0x4000;
 
 // Control register bits this driver sets or clears (section 3.3.1, MMIO 0018h).
 const CONTROL_IOMMU_EN: u64 = 1 << 0;
@@ -732,7 +732,7 @@ pub fn attach(rid: u32, root: u64) {
 /// bridge exactly where it was. If another device shares the alias, it loses its DMA too, which is
 /// unavoidable: the unit cannot tell the two apart.
 #[cfg_attr(not(test), allow(dead_code))]
-pub fn quarantine(rid: u32) {
+pub(crate) fn quarantine(rid: u32) {
     let Some(i) = owner_index(rid) else {
         return;
     };
@@ -750,7 +750,7 @@ pub fn quarantine(rid: u32) {
 }
 
 /// **Every IVMD the firmware declared for `rid`**, as regions its domain must also map.
-pub fn for_each_reserved_region(rid: u32, each: &mut dyn FnMut(paging::domain::DmaRegion)) {
+pub(crate) fn for_each_reserved_region(rid: u32, each: &mut dyn FnMut(paging::domain::DmaRegion)) {
     let Some(ivrs) = *IVRS.lock() else {
         return;
     };
@@ -765,7 +765,7 @@ pub fn for_each_reserved_region(rid: u32, each: &mut dyn FnMut(paging::domain::D
 
 /// **Which unit, if any, translates `rid`, and why?** The same answer VT-d's `scope_of` gives,
 /// from the IVRS's device ids rather than the DMAR's paths.
-pub fn scope_of(rid: u32) -> crate::iommu::Scope {
+pub(crate) fn scope_of(rid: u32) -> crate::iommu::Scope {
     use crate::iommu::Scope;
     let mut up = [None; MAX_IVHDS];
     let mut translating = None;
@@ -842,7 +842,7 @@ pub fn take_fault() -> Option<Fault> {
     any(test, feature = "system_tests", feature = "bench"),
     allow(dead_code)
 )]
-pub fn print_summary() -> bool {
+pub(crate) fn print_summary() -> bool {
     let g = UNITS.lock();
     let mut any = false;
     for s in g.iter() {
@@ -868,7 +868,7 @@ pub fn print_summary() -> bool {
 /// Bench diagnostic, the AMD-Vi side of VT-d's `print_faults`: the unit's status, the entry for
 /// `rid`, and how many events are waiting. Clears nothing.
 #[cfg(feature = "disk_throughput")]
-pub fn print_faults(rid: u32) {
+pub(crate) fn print_faults(rid: u32) {
     let owner = owner_index(rid);
     let g = UNITS.lock();
     let Some(Slot::Up(u)) = owner.map(|i| &g[i]) else {

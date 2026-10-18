@@ -43,7 +43,7 @@ fn write(value: u64) {
 /// is what the register holds. Called by `sched::schedule` with `IPC_TABLES` held and interrupts
 /// masked. Nothing is saved, because ring 3 cannot have changed it.
 #[inline(always)]
-pub fn hand_over(outgoing: &mut u64, incoming: u64) {
+pub(crate) fn hand_over(outgoing: &mut u64, incoming: u64) {
     if *outgoing != incoming {
         write(incoming);
     }
@@ -52,6 +52,6 @@ pub fn hand_over(outgoing: &mut u64, incoming: u64) {
 /// **Change the calling thread's `FS` base now**, for `SET_THREAD_POINTER` aimed at oneself. The
 /// caller is the thread this core runs, so the register becomes its new value, as the hand-over's
 /// invariant needs.
-pub fn set_live(_frame: &mut TrapFrame, value: u64) {
+pub(crate) fn set_live(_frame: &mut TrapFrame, value: u64) {
     write(value);
 }

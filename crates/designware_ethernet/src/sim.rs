@@ -36,7 +36,7 @@ enum Mode {
 }
 
 /// The DMA region's memory, seen from the CPU and from the device.
-pub struct Memory {
+pub(crate) struct Memory {
     base: u64,
     dram: RefCell<Vec<u8>>,
     cache: RefCell<BTreeMap<u64, [u8; LINE as usize]>>,
@@ -53,15 +53,15 @@ impl Memory {
         }
     }
     /// The machine every published source says the JH7110 is.
-    pub fn coherent(base: u64) -> Memory {
+    pub(crate) fn coherent(base: u64) -> Memory {
         Memory::new(base, Mode::Coherent)
     }
     /// A machine whose device cannot see the CPU's writes.
-    pub fn write_back_unsnooped(base: u64) -> Memory {
+    pub(crate) fn write_back_unsnooped(base: u64) -> Memory {
         Memory::new(base, Mode::WriteBackUnsnooped)
     }
     /// A machine whose CPU cannot see the device's writes.
-    pub fn write_through_unsnooped(base: u64) -> Memory {
+    pub(crate) fn write_through_unsnooped(base: u64) -> Memory {
         Memory::new(base, Mode::WriteThroughUnsnooped)
     }
 
@@ -120,7 +120,7 @@ impl Memory {
 }
 
 /// The CPU's handle on the region.
-pub struct Cpu<'a>(&'a Memory);
+pub(crate) struct Cpu<'a>(&'a Memory);
 
 impl Region for Cpu<'_> {
     fn read_u64(&self, off: u64) -> u64 {
@@ -152,7 +152,7 @@ impl Region for Cpu<'_> {
 }
 
 /// The tail registers and a barrier counter.
-pub struct TailRegs<'a> {
+pub(crate) struct TailRegs<'a> {
     regs: &'a mut BTreeMap<u32, u32>,
     barriers: &'a mut usize,
 }
@@ -172,7 +172,7 @@ impl Tails for TailRegs<'_> {
 }
 
 /// A YT8531 on the MDIO bus: clause 22 registers, the extended-register window, and a link.
-pub struct Phy {
+pub(crate) struct Phy {
     regs: [u16; 32],
     ext: BTreeMap<u16, u16>,
     link: Option<Link>,
@@ -181,7 +181,7 @@ pub struct Phy {
 impl Phy {
     /// A YT8531 strapped to 1.8 V I/O, with every bit this driver clears set, so a test sees
     /// each one cleared.
-    pub fn yt8531_at_1v8() -> Phy {
+    pub(crate) fn yt8531_at_1v8() -> Phy {
         let mut regs = [0; 32];
         regs[mdio::PHYSID1 as usize] = (motorcomm::YT8531_ID >> 16) as u16;
         regs[mdio::PHYSID2 as usize] = motorcomm::YT8531_ID as u16;
@@ -207,19 +207,19 @@ impl Phy {
         }
     }
     /// Set a clause 22 register directly.
-    pub fn write_raw(&mut self, reg: u8, v: u16) {
+    pub(crate) fn write_raw(&mut self, reg: u8, v: u16) {
         self.regs[reg as usize] = v;
     }
     /// Read a clause 22 register directly.
-    pub fn raw(&self, reg: u8) -> u16 {
+    pub(crate) fn raw(&self, reg: u8) -> u16 {
         self.regs[reg as usize]
     }
     /// An extended register's value.
-    pub fn ext(&self, addr: u16) -> u16 {
+    pub(crate) fn ext(&self, addr: u16) -> u16 {
         self.ext.get(&addr).copied().unwrap_or(0)
     }
     /// Plug a cable in, or pull it out.
-    pub fn set_link(&mut self, link: Option<Link>) {
+    pub(crate) fn set_link(&mut self, link: Option<Link>) {
         self.link = link;
     }
 }
@@ -270,7 +270,7 @@ impl Mdio for Phy {
 }
 
 /// The controller.
-pub struct Nic {
+pub(crate) struct Nic {
     regs: BTreeMap<u32, u32>,
     mem: Memory,
     /// The PHY behind the MDIO pair.
@@ -293,7 +293,7 @@ const FEATURE1: u32 = 1 << 14 | 4 << 6 | 4;
 impl Nic {
     /// A controller fresh out of reset over `mem`. `_region` is where the tests will put the rings;
     /// the controller learns it from the base registers like the real one.
-    pub fn new(_region: u64, mem: Memory) -> Nic {
+    pub(crate) fn new(_region: u64, mem: Memory) -> Nic {
         let mut nic = Nic {
             regs: BTreeMap::new(),
             mem,
@@ -323,35 +323,35 @@ impl Nic {
     }
 
     /// How many reads of the bus mode register the software reset takes to clear.
-    pub fn set_reset_polls(&mut self, n: u32) {
+    pub(crate) fn set_reset_polls(&mut self, n: u32) {
         self.reset_polls = n;
     }
     /// The PHY stops driving the receive clock, and the software reset never completes.
-    pub fn stop_receive_clock(&mut self) {
+    pub(crate) fn stop_receive_clock(&mut self) {
         self.rx_clock = false;
     }
     /// The transmit queue flush never completes.
-    pub fn wedge_transmit_flush(&mut self) {
+    pub(crate) fn wedge_transmit_flush(&mut self) {
         self.flush_wedged = true;
     }
     /// The MAC's loopback does nothing.
-    pub fn break_loopback(&mut self) {
+    pub(crate) fn break_loopback(&mut self) {
         self.loopback_broken = true;
     }
     /// A register's current value.
-    pub fn reg(&self, off: u32) -> u32 {
+    pub(crate) fn reg(&self, off: u32) -> u32 {
         self.regs.get(&off).copied().unwrap_or(0)
     }
     /// The receive tail register.
-    pub fn rx_tail(&self) -> u32 {
+    pub(crate) fn rx_tail(&self) -> u32 {
         self.reg(regs::CHAN_RX_TAIL)
     }
     /// How many barriers the data plane has taken.
-    pub fn barriers(&self) -> usize {
+    pub(crate) fn barriers(&self) -> usize {
         self.barriers
     }
     /// The frames the controller put on the wire, CRC not included.
-    pub fn wire_out(&self) -> Vec<Vec<u8>> {
+    pub(crate) fn wire_out(&self) -> Vec<Vec<u8>> {
         self.wire.clone()
     }
 
@@ -367,7 +367,7 @@ impl Nic {
 
     /// Configure the controller over rings at `region` and start it at 1000 Mbit/s, as the
     /// kernel does before handing the data plane over.
-    pub fn program_rings_and_start(&mut self, region: u64) {
+    pub(crate) fn program_rings_and_start(&mut self, region: u64) {
         let id = Identity::read(self);
         controller::configure(
             self,
@@ -416,7 +416,7 @@ impl Nic {
     }
 
     /// How many receive descriptors the device could fill right now.
-    pub fn rx_available(&self) -> usize {
+    pub(crate) fn rx_available(&self) -> usize {
         let (base, n) = self.ring(
             regs::CHAN_RX_BASE,
             regs::CHAN_RX_BASE_HI,
@@ -464,21 +464,21 @@ impl Nic {
     }
 
     /// A frame arrives off the wire (the simulation appends a CRC). True when it was delivered.
-    pub fn wire_in(&mut self, frame: &[u8]) -> bool {
+    pub(crate) fn wire_in(&mut self, frame: &[u8]) -> bool {
         let mut w = frame.to_vec();
         w.extend_from_slice(&[0xc0, 0xff, 0xee, 0x00]);
         self.deliver(&w, false)
     }
 
     /// A frame arrives with a receive error.
-    pub fn wire_in_with_error(&mut self, frame: &[u8]) -> bool {
+    pub(crate) fn wire_in_with_error(&mut self, frame: &[u8]) -> bool {
         let mut w = frame.to_vec();
         w.extend_from_slice(&[0; 4]);
         self.deliver(&w, true)
     }
 
     /// Run the transmit DMA until it suspends.
-    pub fn step(&mut self) {
+    pub(crate) fn step(&mut self) {
         if self.reg(regs::CHAN_TX_CONTROL) & regs::CHAN_TX_CONTROL_ST == 0 {
             return;
         }

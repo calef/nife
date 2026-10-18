@@ -89,7 +89,7 @@ impl BoundSpace {
 
     /// **This copy with a thread's own current-CPU page** (milestone 812): a member of a process
     /// takes the process's copy and replaces the page with the one its slot holds.
-    pub fn with_current_cpu_page(self, kernel_va: u64) -> Self {
+    pub(crate) fn with_current_cpu_page(self, kernel_va: u64) -> Self {
         BoundSpace {
             current_cpu_page: Some(kernel_va),
             ..self
@@ -97,7 +97,7 @@ impl BoundSpace {
     }
 
     /// Whether this copy carries a current-CPU page, which `CONFIGURE`'s result reports.
-    pub fn has_current_cpu_page(&self) -> bool {
+    pub(crate) fn has_current_cpu_page(&self) -> bool {
         self.current_cpu_page.is_some()
     }
 
@@ -112,13 +112,13 @@ impl BoundSpace {
     }
 
     /// The composed `TTBR0_EL1` (or `satp`, or `CR3`) value the context switch installs.
-    pub fn ttbr0(&self) -> u64 {
+    pub(crate) fn ttbr0(&self) -> u64 {
         self.ttbr0
     }
 
     /// `AddressSpace::publish_current_cpu`, from the copy: one branch and one relaxed store.
     #[inline]
-    pub fn publish_current_cpu(&self, cpu: u64) {
+    pub(crate) fn publish_current_cpu(&self, cpu: u64) {
         if let Some(kernel_va) = self.current_cpu_page {
             // SAFETY: the frame is the bound space's own, freed only by that space's `Drop`, and
             // the space is dropped only after its thread can never be switched in again (this
@@ -305,7 +305,7 @@ pub fn with_user_address_space<R>(name: u64, f: impl FnOnce(Option<&mut AddressS
 ///
 /// `bind` returns the holder to record: the embryo itself, or (milestone 812) the process that
 /// `RETYPE_OBJ` is creating around the space.
-pub fn bind_user_address_space(
+pub(crate) fn bind_user_address_space(
     name: u64,
     bind: impl FnOnce(BoundSpace) -> Result<Holder, abi::Error>,
 ) -> Result<(), abi::Error> {
@@ -332,7 +332,7 @@ pub fn bind_user_address_space(
 /// `(slot, user address, kernel address)`. `None` when every slot is taken, which is the
 /// per-process thread limit (`current_cpu_contract::THREAD_PAGE_SLOTS`), or no frame or table can
 /// be had.
-pub fn take_thread_page(name: u64) -> Option<(u8, u64, u64)> {
+pub(crate) fn take_thread_page(name: u64) -> Option<(u8, u64, u64)> {
     let mut spaces = USER_SPACES.lock();
     let space = &mut spaces.get_mut(name)?.space;
     let k = (!space.thread_pages_in_use).trailing_zeros() as usize;
@@ -376,7 +376,7 @@ pub fn take_thread_page(name: u64) -> Option<(u8, u64, u64)> {
 /// **Give a thread's current-CPU page slot back** when the thread is reaped (milestone 812). The
 /// frame stays mapped, read-only and unread, for the next thread to take the slot. Nothing if the
 /// space is gone.
-pub fn give_back_thread_page(name: u64, slot: u8) {
+pub(crate) fn give_back_thread_page(name: u64, slot: u8) {
     if let Some(entry) = USER_SPACES.lock().get_mut(name) {
         entry.space.thread_pages_in_use &= !(1u16 << slot);
     }
@@ -389,7 +389,7 @@ pub fn give_back_thread_page(name: u64, slot: u8) {
 /// registry can hold, and this one is registered there. A full table here is a broken invariant,
 /// not a resource limit, so it panics with that sentence rather than handing every kernel spawn
 /// path an error it could never act on.
-pub fn register_bound_address_space(
+pub(crate) fn register_bound_address_space(
     space: AddressSpace,
     tid: crate::thread::ThreadId,
 ) -> BoundSpace {
@@ -449,7 +449,7 @@ pub fn take_user_address_space(name: u64) -> Option<AddressSpace> {
 ///
 /// Takes the registry lock and, under it, `IPC_TABLES` once per scan to ask about the threads (61
 /// then 60, the rank order's direction). Never drops an `AddressSpace` under either.
-pub fn reap_address_spaces_in_region(base: u64, end: u64) {
+pub(crate) fn reap_address_spaces_in_region(base: u64, end: u64) {
     loop {
         let victim = {
             let spaces = USER_SPACES.lock();

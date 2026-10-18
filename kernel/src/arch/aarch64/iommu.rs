@@ -233,7 +233,7 @@ pub fn init(base: u64) {
     any(test, feature = "system_tests", feature = "bench"),
     allow(dead_code)
 )]
-pub fn print_summary() {
+pub(crate) fn print_summary() {
     match SMMU.lock().as_ref() {
         Some(s) => crate::println!(
             "  iommu           : SMMUv3 at {:#018x}, stream table default-deny, translating",
@@ -249,7 +249,7 @@ pub fn print_summary() {
 /// root. The SMMUv3's stage 1 translates with VMSAv8-64, the CPU's own format. One function per
 /// architecture rather than a type alias since lane `amd-vi`, because `x86_64` has two IOMMUs that
 /// walk two formats and only a running machine says which.
-pub fn build_domain(regions: &[paging::domain::DmaRegion]) -> u64 {
+pub(crate) fn build_domain(regions: &[paging::domain::DmaRegion]) -> u64 {
     crate::iommu::build_identity::<paging::Aarch64>(regions)
 }
 
@@ -261,7 +261,7 @@ pub fn is_active() -> bool {
 /// it is up. This tree brings the unit up against a device tree whose `iommu-map` is an identity
 /// over the whole bus, so there is no second unit for a device to belong to. VT-d is the
 /// architecture where that stops being true; see `arch::x86_64::iommu::scope_of`.
-pub fn scope_of(_rid: u32) -> crate::iommu::Scope {
+pub(crate) fn scope_of(_rid: u32) -> crate::iommu::Scope {
     if is_active() {
         crate::iommu::Scope::WholeBus
     } else {
@@ -272,7 +272,11 @@ pub fn scope_of(_rid: u32) -> crate::iommu::Scope {
 /// **Firmware-reserved DMA regions for requester `rid`: none on this architecture as this tree
 /// brings it up** (milestone 594 (every VT-d unit translates its own devices)). The VT-d driver reports its RMRRs here so
 /// [`crate::iommu::confine`] can map them into every domain. The SMMUv3 counterpart is an IORT RMR node or a device tree `reserved-memory` region with `iommu-addresses`; this tree reads neither, and no machine it boots publishes one.
-pub fn for_each_reserved_region(_rid: u32, _each: &mut dyn FnMut(paging::domain::DmaRegion)) {}
+pub(crate) fn for_each_reserved_region(
+    _rid: u32,
+    _each: &mut dyn FnMut(paging::domain::DmaRegion),
+) {
+}
 
 /// Push one 16-byte command and (for our uses) wait for the SMMU to consume it. The queue is far
 /// larger than any burst we issue, so treating every push as synchronous keeps the driver simple;

@@ -93,7 +93,7 @@ use crate::cpu::{self, MAX_CPUS};
 /// available at EL1 both on bare metal and under any hypervisor. So this is strictly more
 /// portable: it keeps working under QEMU/TCG, under HVF, and on a real board, with no
 /// per-environment branching. See notes/virtualization.md.
-pub const TIMER_INTID: u32 = 27;
+pub(crate) const TIMER_INTID: u32 = 27;
 
 /// 100 Hz. Ten milliseconds per tick.
 ///
@@ -297,7 +297,7 @@ pub fn is_cycle_counter_grantable() -> bool {
 /// a measurement build the way `soak_test` is. `kernel/Cargo.toml`'s feature block carries the
 /// reasoning and the measured cost. Milestone 228's closed default at `init` is NOT gated.
 #[cfg(any(test, feature = "system_tests", feature = "cycle_counter_grant"))]
-pub fn set_cycle_counter_grant(granted: bool) {
+pub(crate) fn set_cycle_counter_grant(granted: bool) {
     let cpu = cpu::id();
     if COUNTER_OPEN[cpu].load(Ordering::Relaxed) == granted {
         return;
@@ -380,7 +380,7 @@ fn rearm(interval: u64) {
 /// room for ordinary codegen movement, not a baseline; a change that halves it is not a failure and
 /// a change that doubles it is a fact worth stopping for.
 #[cfg(feature = "icount")]
-pub const ARRIVAL_BOUND: u64 = 2_000;
+pub(crate) const ARRIVAL_BOUND: u64 = 2_000;
 
 /// **Instructions from a deadline to the next one being armed** (milestone 78's instrument): the
 /// whole handler, which is [`ARRIVAL_BOUND`]'s span plus the tick bookkeeping and the `CNTV_CVAL_EL0`
@@ -396,7 +396,7 @@ pub const ARRIVAL_BOUND: u64 = 2_000;
 /// differ by that factor, and `script/icount` prints both side by side as `tick_interval 625000
 /// 10000000`. notes/instruction-clock.md carried the same slip and is fixed with it.)*
 #[cfg(feature = "icount")]
-pub const HANDLER_BOUND: u64 = 2_500;
+pub(crate) const HANDLER_BOUND: u64 = 2_500;
 
 /// Execute `2 * iters` instructions and return that count, so `icount::calibrate` can check the
 /// virtual clock against a known instruction count and refuse to measure anything if this boot is
@@ -413,7 +413,7 @@ pub const HANDLER_BOUND: u64 = 2_500;
 ///
 /// Here rather than in `icount.rs` because DECISIONS §3 puts every `asm!` under `arch/`.
 #[cfg(feature = "icount")]
-pub fn calibration_loop(iters: u64) -> u64 {
+pub(crate) fn calibration_loop(iters: u64) -> u64 {
     // SAFETY: a self-contained counted loop in a caller-saved scratch register. It touches no
     // memory, makes no call, and leaves the register dead, which is what the operand spec and
     // `nomem`/`nostack` state.
@@ -486,7 +486,7 @@ pub mod miss_detail {
 
     /// Record the counter and the deadline it had already passed. Called from `rearm`, in
     /// interrupt context, so this is three relaxed stores and nothing else.
-    pub fn record(now: u64, next: u64) {
+    pub(crate) fn record(now: u64, next: u64) {
         let id = cpu::id();
         NOW[id].store(now, Ordering::Relaxed);
         NEXT[id].store(next, Ordering::Relaxed);
@@ -513,7 +513,7 @@ pub mod miss_detail {
 /// countdown, return. DECISIONS §9: **interrupt handlers record and defer; they do not do
 /// work.** At milestone 6 this will also set a "reschedule wanted" flag, and the *scheduler*
 /// will act on it in normal context.
-pub fn tick() {
+pub(crate) fn tick() {
     TICKS[cpu::id()].fetch_add(1, Ordering::Relaxed);
     // Test builds only: watch for a hung test (a lost IPC wakeup) and fail fast with a diagnostic
     // instead of blocking the run forever. Costs a couple of atomic loads per tick.
@@ -536,7 +536,7 @@ pub fn ticks() -> u64 {
 /// an idle core at any preemption point (DECISIONS §28.3). Reading by index makes the pair name one
 /// core on purpose. See notes/load-sensitive-assertions.md.
 #[cfg_attr(not(any(test, feature = "system_tests")), allow(dead_code))]
-pub fn ticks_on(cpu: usize) -> u64 {
+pub(crate) fn ticks_on(cpu: usize) -> u64 {
     TICKS[cpu].load(Ordering::Relaxed)
 }
 
@@ -586,7 +586,7 @@ pub fn frequency() -> u64 {
 /// If the device tree states a rate and the register disagrees with it, naming both values. Also if
 /// the tree is unreadable, which is the same `expect` `isa::init` makes of the same pointer one
 /// call earlier.
-pub fn check_frequency_against_device_tree(dtb_ptr: usize) {
+pub(crate) fn check_frequency_against_device_tree(dtb_ptr: usize) {
     // SAFETY: the pointer firmware handed us, whose magic `memory::init` has already checked, named
     // through the boot map's direct region. Same read `isa::init` makes of the same pointer.
     let dt = unsafe {

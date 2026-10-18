@@ -61,7 +61,7 @@ use super::instructions;
 
 /// This core's affinity, packed the way `GICR_TYPER[63:32]` states a redistributor's owner:
 /// Aff3.Aff2.Aff1.Aff0, one byte each.
-pub fn redistributor_affinity() -> u32 {
+pub(crate) fn redistributor_affinity() -> u32 {
     let mpidr = instructions::read_mpidr();
     ((((mpidr >> 32) & 0xff) << 24) | (mpidr & 0xff_ffff)) as u32
 }
@@ -72,7 +72,7 @@ pub fn redistributor_affinity() -> u32 {
 /// If `ICC_SRE_EL1.SRE` will not set, which means an EL2 above us has the system-register interface
 /// disabled (`ICC_SRE_EL2.Enable` clear). `boot.s`'s EL2 drop sets it when this kernel was entered
 /// at EL2; a hypervisor we did not write might not.
-pub fn init_this_cpu() {
+pub(crate) fn init_this_cpu() {
     let sre: u64;
     // SAFETY: the adapter calls this only on a machine whose tree names a GICv3 and whose
     // distributor confirmed it. ICC_SRE_EL1 then exists, or its access is UNDEFINED and traps into
@@ -112,7 +112,7 @@ pub fn init_this_cpu() {
 /// Take the interrupt: read `ICC_IAR1_EL1`, which acknowledges it, and return its INTID. The four
 /// special INTIDs (1020-1023) are returned as read; the adapter treats them as spurious.
 #[inline]
-pub fn acknowledge() -> u32 {
+pub(crate) fn acknowledge() -> u32 {
     let iar: u64;
     // SAFETY: the interface is enabled (`init_this_cpu` ran on this core before interrupts were
     // unmasked). The read has a side effect on the GIC, which is the point, and `dsb sy` completes
@@ -130,7 +130,7 @@ pub fn acknowledge() -> u32 {
 
 /// "Finished with this one": drop the running priority and deactivate (`EOImode` 0).
 #[inline]
-pub fn end_of_interrupt(intid: u32) {
+pub(crate) fn end_of_interrupt(intid: u32) {
     // SAFETY: the interface is enabled; the write retires one interrupt this core acknowledged.
     // `isb` per Linux `gic_eoi_irq`.
     unsafe {
@@ -148,7 +148,7 @@ pub fn end_of_interrupt(intid: u32) {
 /// `ICC_SGI1R_EL1` names a target as a cluster (Aff3.Aff2.Aff1) plus a 16-bit list of Aff0 values
 /// in it, the encoding Linux's `gic_send_sgi` builds: Aff3 at bit 48, Aff2 at 32, INTID at 24, Aff1
 /// at 16, the target list in bits 15:0.
-pub fn send_sgi(intid: u32, mpidr: u64) {
+pub(crate) fn send_sgi(intid: u32, mpidr: u64) {
     assert!(intid < 16, "SGIs are INTID 0-15");
     let aff0 = mpidr & 0xff;
     assert!(

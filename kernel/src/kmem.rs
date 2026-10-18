@@ -121,7 +121,7 @@ pub fn page() -> Option<u64> {
 
 /// A dead object's page comes home. The caller guarantees nothing references it any more (the
 /// object was dropped in place, its mappings unmapped); the next `page()` may hand it out.
-pub fn recycle(phys: u64) {
+pub(crate) fn recycle(phys: u64) {
     let mut pool = POOL.lock();
     debug_assert!(
         pool.free_len < pool.free.len(),
