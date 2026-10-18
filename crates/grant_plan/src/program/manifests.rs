@@ -853,7 +853,7 @@ const fn std_exerciser_manifest() -> Manifest {
         // holding none and runs its offline transcript, the one that asserts the most slots.
         dir: DirSpec::Forbidden,
         flags: NO_FLAGS,
-        // std's `stdout` and `stderr` both send on `std_runtime_protocol::STDOUT_SLOT` in
+        // std's `stdout` and `stderr` both send on `std_runtime_contract::STDOUT_SLOT` in
         // the sink framing, so the program is one byte stream and `>` and `|` work on it.
         output: OutputSpec::Bytes,
         input: InputSpec::Forbidden,

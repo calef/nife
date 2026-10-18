@@ -14,7 +14,7 @@ pub(super) const LINES: &[Line] = &[
     // **A `std` program, spawned by the progenitor rather than by the kernel's test harness**
     // (milestone 595 (provisional)). Until this, every `std` program that ran on nife was built by
     // `system_tests/src/user/std_service.rs`, and the progenitor had never produced a child in the layout
-    // nife's `std` reads (`crates/std_runtime_protocol`): eight fixed slots, three shared pages,
+    // nife's `std` reads (`crates/std_runtime_contract`): eight fixed slots, three shared pages,
     // thirty-two stack pages. The preview first, because it is where a person learns the slots
     // moved, and slot 0 is not even the same kind of object as a native child's.
     line(

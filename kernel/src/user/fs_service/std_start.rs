@@ -15,7 +15,7 @@ use super::*;
 /// program: it is a full std program (formatting, `Vec`, `String`, `read_to_string`), so it
 /// needs the generous heap and the deep stack std's machinery wants.
 pub(super) const STD_FS_HEAP_PAGES: u64 = 256;
-pub(super) const STD_FS_STACK_PAGES: u64 = std_runtime_protocol::STACK_PAGES;
+pub(super) const STD_FS_STACK_PAGES: u64 = std_runtime_contract::STACK_PAGES;
 
 /// **Wire the service and endow a std program with a directory capability** (milestone 27 phase
 /// two, the FS half).
@@ -151,7 +151,7 @@ pub fn start_std_narrowed(
 }
 
 /// [`start_std_narrowed`], **and a wall clock**: `clock_page` is a clock service's page
-/// (`clock_service::Wiring::page_phys`), granted read-only at `std_runtime_protocol::CLOCK_SLOT`
+/// (`clock_service::Wiring::page_phys`), granted read-only at `std_runtime_contract::CLOCK_SLOT`
 /// and mapped at `CLOCK_PAGE`, so `SystemTime::now()` answers instead of refusing. Built for
 /// milestone 835 (a C library, stage 1: files, clock and memory): SQLite's `speedtest1` times every
 /// test with `gettimeofday`, which nife's C library answers from `SystemTime`.
@@ -219,7 +219,7 @@ impl BoundStd {
         let unbound = crate::sched::ipc_call(
             self.file_ep,
             [
-                filesystem_protocol::fs::req(filesystem_protocol::fs::UNBIND, 0, 0),
+                filesystem_contract::fs::req(filesystem_contract::fs::UNBIND, 0, 0),
                 self.window,
             ],
         )[0] == 0;
@@ -297,7 +297,7 @@ pub fn bind_subtree(
     name: &'static str,
     rights: u64,
 ) -> Option<BoundGrant> {
-    use filesystem_protocol::fs;
+    use filesystem_contract::fs;
     let (file_ep, shared, readiness) = ensure(blk_image, fs_server_image)?;
     wait_for_service(readiness);
     let (window, phys) = claim_window().expect("no free client window for a bound grant");

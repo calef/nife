@@ -102,7 +102,7 @@ pub(super) fn fs_read() {
 /// `fs_read`, every phase here is device- and interrupt-driven, so it self-skips off the
 /// `--real --smp` boot and could not be deterministic if it did not.
 ///
-/// **One transfer is 4096 bytes and cannot be more**, because a `filesystem_protocol` request carries its
+/// **One transfer is 4096 bytes and cannot be more**, because a `filesystem_contract` request carries its
 /// payload through the one page the client shares with the server. So these figures are a request
 /// rate in disguise, and any comparison against a system whose client may pass a 64 KiB buffer is
 /// comparing two different things. notes/benchmarks.md states that next to the numbers rather than
@@ -200,7 +200,7 @@ pub(super) fn fs_walk() {
         println!("bench-probe: fs_walk skipped (a program is missing from the archive)");
         return;
     };
-    use filesystem_protocol::dir;
+    use filesystem_contract::dir;
     let Some(spawned) = crate::user::fs_service::start_std_narrowed(
         blk,
         server,
@@ -230,7 +230,7 @@ pub(super) fn fs_walk_bound() {
     ) else {
         return;
     };
-    use filesystem_protocol::dir;
+    use filesystem_contract::dir;
     let Some(spawned) = crate::user::fs_service::start_std_bound(
         blk,
         server,
@@ -282,8 +282,8 @@ pub(super) fn rg_search() {
         println!("bench-probe: rg_search skipped (no rg in the archive; cargo xtask basalt-fetch)");
         return;
     };
+    use filesystem_contract::dir;
     use filesystem_fixture::walk as tree;
-    use filesystem_protocol::dir;
     let hz = crate::arch::timer::frequency();
     let mut searched = [0u64; RG_SEARCH_RUNS];
     let mut whole = [0u64; RG_SEARCH_RUNS];
@@ -364,14 +364,14 @@ fn drain_report(report: crate::sched::RendezvousId, out: &mut [u8]) -> usize {
     let mut len = 0usize;
     loop {
         let words = sched::ipc_receive(report);
-        let mut chunk = [0u8; byte_sink_protocol::INLINE_MAX];
-        match byte_sink_protocol::unpack(words[0], words[1], words[2], &mut chunk) {
-            byte_sink_protocol::Msg::Bytes(n) => {
+        let mut chunk = [0u8; byte_sink_contract::INLINE_MAX];
+        match byte_sink_contract::unpack(words[0], words[1], words[2], &mut chunk) {
+            byte_sink_contract::Msg::Bytes(n) => {
                 let take = n.min(out.len() - len);
                 out[len..len + take].copy_from_slice(&chunk[..take]);
                 len += take;
             }
-            byte_sink_protocol::Msg::Eof | byte_sink_protocol::Msg::Malformed => return len,
+            byte_sink_contract::Msg::Eof | byte_sink_contract::Msg::Malformed => return len,
         }
     }
 }
@@ -383,15 +383,15 @@ fn walk_rows(report: crate::sched::RendezvousId, row: &str) {
     let mut len = 0usize;
     loop {
         let words = sched::ipc_receive(report);
-        let mut chunk = [0u8; byte_sink_protocol::INLINE_MAX];
-        match byte_sink_protocol::unpack(words[0], words[1], words[2], &mut chunk) {
-            byte_sink_protocol::Msg::Bytes(n) => {
+        let mut chunk = [0u8; byte_sink_contract::INLINE_MAX];
+        match byte_sink_contract::unpack(words[0], words[1], words[2], &mut chunk) {
+            byte_sink_contract::Msg::Bytes(n) => {
                 let take = n.min(text.len() - len);
                 text[len..len + take].copy_from_slice(&chunk[..take]);
                 len += take;
             }
-            byte_sink_protocol::Msg::Eof => break,
-            byte_sink_protocol::Msg::Malformed => {
+            byte_sink_contract::Msg::Eof => break,
+            byte_sink_contract::Msg::Malformed => {
                 println!(
                     "bench-probe: fs_walk malformed sink message {:#x}",
                     words[0]

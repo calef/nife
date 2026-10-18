@@ -32,7 +32,7 @@
 use std::collections::HashMap;
 use std::sync::OnceLock;
 
-use filesystem_protocol::{dir, fs, xattr};
+use filesystem_contract::{dir, fs, xattr};
 use libfuzzer_sys::arbitrary::{Result as ArbResult, Unstructured};
 use libfuzzer_sys::fuzz_target;
 use redoxfs::{BLOCK_SIZE, Disk, FileSystem, Node, TreePtr};
@@ -317,7 +317,7 @@ impl Session {
         let (r0, _) = self
             .server
             .handle(badge, w0, w1, &mut self.window, &mut HostEdges);
-        let code = filesystem_protocol::operation(w0);
+        let code = filesystem_contract::operation(w0);
         let raw = fs::req_handle(w0);
         let ok = r0 >= 0;
         let model = self.model(badge);

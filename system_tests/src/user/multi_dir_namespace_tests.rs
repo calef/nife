@@ -1,5 +1,5 @@
+use filesystem_contract::dir;
 use filesystem_fixture::twodir as t;
-use filesystem_protocol::dir;
 
 use super::*;
 use crate::sched;
@@ -108,7 +108,7 @@ fn two_tree_shell() -> Option<u64> {
             a: (filesystem_fixture::tree::SUB, rights),
             b: (filesystem_fixture::tree::OTHER, rights),
             role: ROLE_TWO_TREES,
-            arg: filesystem_protocol::grant::spec(0, rights),
+            arg: filesystem_contract::grant::spec(0, rights),
             // **Seven, measured.** This script plans an `rm`, and the planner's own frames in a
             // debug build (`plan_against_with` alone is over 11 KiB) are the deepest chain it
             // reaches, about 26 KiB with the witness above them. Four overflowed there, presenting

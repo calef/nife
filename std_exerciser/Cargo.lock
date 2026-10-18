@@ -3,10 +3,6 @@
 version = 4
 
 [[package]]
-name = "argument_protocol"
-version = "0.1.0"
-
-[[package]]
 name = "crossbeam-deque"
 version = "0.8.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -32,6 +28,13 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a31eee39dddec8330830986fcd7625edb5a24ec90ea038215273bbc3adb08ac6"
 
 [[package]]
+name = "domain_name_resolution_contract"
+version = "0.1.0"
+dependencies = [
+ "domain_name_system",
+]
+
+[[package]]
 name = "domain_name_system"
 version = "0.1.0"
 
@@ -42,15 +45,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0e9c71c2167ca323c882b99918929403426e2373ea17242ff5653e0d5e1058be"
 
 [[package]]
+name = "filesystem_contract"
+version = "0.1.0"
+
+[[package]]
 name = "filesystem_fixture"
 version = "0.1.0"
 dependencies = [
- "filesystem_protocol",
+ "filesystem_contract",
 ]
-
-[[package]]
-name = "filesystem_protocol"
-version = "0.1.0"
 
 [[package]]
 name = "glob"
@@ -60,8 +63,8 @@ version = "0.1.0"
 name = "grant_plan"
 version = "0.1.0"
 dependencies = [
- "argument_protocol",
  "glob",
+ "program_argument_contract",
 ]
 
 [[package]]
@@ -72,11 +75,8 @@ dependencies = [
 ]
 
 [[package]]
-name = "name_resolution_protocol"
+name = "program_argument_contract"
 version = "0.1.0"
-dependencies = [
- "domain_name_system",
-]
 
 [[package]]
 name = "rayon"
@@ -99,20 +99,20 @@ dependencies = [
 ]
 
 [[package]]
-name = "socket_protocol"
+name = "socket_contract"
 version = "0.1.0"
 
 [[package]]
 name = "std_exerciser"
 version = "0.1.0"
 dependencies = [
+ "domain_name_resolution_contract",
+ "filesystem_contract",
  "filesystem_fixture",
- "filesystem_protocol",
  "grant_plan",
  "manifest_note",
- "name_resolution_protocol",
  "rayon",
- "socket_protocol",
+ "socket_contract",
  "walk_pricing",
 ]
 

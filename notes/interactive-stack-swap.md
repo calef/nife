@@ -33,7 +33,7 @@ milestone 661 (a terminal supervisor holds the line editor):
 - **A quiesce request is an additive `OPERATION_QUIESCE`** in `line_editor::proto`, which changes no
   existing opcode and which only a supervisor sends. The swap's drain step rides the served
   endpoint so its FIFO does the waiting, per §41 (the endpoint is the broker, and a device is
-  revoked by taking it back), as `swap_protocol` does. Not a second, supervisor-only control
+  revoked by taking it back), as `hot_swap_contract` does. Not a second, supervisor-only control
   endpoint, because that loses the FIFO property and makes the drain racy.
 - **A parked reader is told `FLAG_RETRY`**, meaning "ask again". At an idle prompt `swish` is always
   parked in `OPERATION_READLINE`, and its one-shot reply capability lives in `line_editor`'s

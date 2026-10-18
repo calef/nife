@@ -110,7 +110,7 @@ pub fn write_summary(rows: &[ps::Row], uptime_nanos: u64, out: &mut dyn FnMut(&[
 /// It widens `top`'s authority past `ps`'s by one read-only page, which also settles the question
 /// milestone 281's rule left open: `top` no longer holds exactly what `ps` holds.
 pub fn write_machine_line(
-    machine: Option<&machine_statistics_protocol::Snapshot>,
+    machine: Option<&machine_statistics_contract::Snapshot>,
     out: &mut dyn FnMut(&[u8]),
 ) {
     let Some(m) = machine else {
@@ -167,7 +167,7 @@ mod tests {
     /// difference between a sentence and a debug dump.
     #[test]
     fn the_machine_line_is_what_became_of_tload() {
-        use machine_statistics_protocol::{Snapshot, WORDS, build_header, word};
+        use machine_statistics_contract::{Snapshot, WORDS, build_header, word};
         let mut w = [0u64; WORDS];
         w[..word::LINE].copy_from_slice(&build_header(4096, 100));
         for (cpu, busy, idle, r) in [(1, 30, 70, 2), (3, 10, 90, 1)] {

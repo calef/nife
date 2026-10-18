@@ -206,7 +206,7 @@ meets a program, not a builtin.
 Items 1, 2, 3 and 5 wait on nothing. Every item is proved on aarch64, riscv64 and x86_64 by the
 same gate (rule 5).
 
-Reuse: all inside the tree (`package_archive`, `http_response`, `socket_protocol`'s fixture peer,
+Reuse: all inside the tree (`package_archive`, `http_response`, `socket_contract`'s fixture peer,
 `installed_programs`, `spawnproto`'s activation request, swish's frame sender, milestone 205's argv and
 designation). Writing the program was forced: no existing client speaks this capability ABI. The
 apt, pkg and Homebrew manuals §46 (thin primitives or whole subsystems) owed were read 2026-10-10;

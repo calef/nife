@@ -199,8 +199,8 @@ fn record_devices(dtb: &device_tree_blob::DeviceTreeBlob<'_>) {
     {
         let mut rtc = [Region { start: 0, size: 0 }; 1];
         for (compat, kind) in [
-            (&b"arm,pl031"[..], clock_protocol::rtc::PL031),
-            (&b"google,goldfish-rtc"[..], clock_protocol::rtc::GOLDFISH),
+            (&b"arm,pl031"[..], clock_contract::rtc::PL031),
+            (&b"google,goldfish-rtc"[..], clock_contract::rtc::GOLDFISH),
         ] {
             if let Ok(n) = dtb.node_reg_compatible(compat, &mut rtc)
                 && n >= 1
@@ -886,7 +886,7 @@ pub fn record_framebuffer(base: u64, size: u64) {
 }
 
 /// The real-time clock's register block and which binding it is: `(start, size, kind)`, the
-/// address **physical** and the kind one of `clock_protocol::rtc`. `None` on a machine whose device
+/// address **physical** and the kind one of `clock_contract::rtc`. `None` on a machine whose device
 /// tree describes no RTC we can drive, which is a state the clock service has an answer for rather
 /// than a case it papers over.
 ///

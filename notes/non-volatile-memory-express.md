@@ -30,7 +30,7 @@ Three pieces, in the tree's usual split:
   device.
 - **`components/src/non_volatile_memory_express.rs`**: the data plane's volatile half, at EL0
   since milestone 261. Copies commands into the I/O submission ring, rings the doorbell, polls the
-  completion ring's phase tag, and serves `filesystem_protocol::blk`. It shares the crate's name
+  completion ring's phase tag, and serves `filesystem_contract::blk`. It shares the crate's name
   rather than carrying a `_server` suffix, which calef ruled on 2026-09-18: the obvious spelling is
   34 bytes against `nifefs`'s 32-byte `NAME_LEN`, and the program's own header has the argument.
 - **`kernel/src/user/non_volatile_memory_express_service.rs`**: the wiring, and the whole of the
@@ -60,7 +60,7 @@ in the driver's space except what commands point it at.
    because an SQ names its CQ at creation). Admin commands and I/O commands are the same wire
    shape through the same rings, so bring-up itself exercises the transfer machinery.
 
-The driver serves whole 4096-byte filesystem blocks, `filesystem_protocol::blk`'s unit, and exposes exactly
+The driver serves whole 4096-byte filesystem blocks, `filesystem_contract::blk`'s unit, and exposes exactly
 the blk-IPC verbs as methods: `read_block`, `write_block`, `size_bytes`. A block is one to eight
 logical blocks depending on the namespace's LBA format (QEMU's default is 512-byte LBAs, so eight);
 IDENTIFY tells the driver the format and `IdentifyNamespace::blocks_per` does the arithmetic.

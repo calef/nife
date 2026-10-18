@@ -171,7 +171,7 @@ struct Table {
 ///
 /// [`Renderer::feed`] takes whatever bytes arrived and writes whatever output they completed. It
 /// never holds a document, builds a tree or allocates, because `doc` receives its input as
-/// sixteen-byte `byte_sink_protocol` messages, and holding a whole document would need a memory
+/// sixteen-byte `byte_sink_contract` messages, and holding a whole document would need a memory
 /// grant the program otherwise does without.
 ///
 /// It is about eight kilobytes, which is twice a user process's whole stack, so a program keeps one
@@ -1221,7 +1221,7 @@ fn is_delimiter(s: &[u8]) -> bool {
 /// The rule is deliberately narrower than `CommonMark`'s: a closer must not be preceded by a space,
 /// which is what stops a stray `*` mid-sentence from swallowing the rest of a paragraph. And `_` is
 /// **not** an emphasis delimiter in this renderer at all, because this repository writes
-/// `snake_case` identifiers in running prose constantly (`filesystem_protocol`, `line_editor`,
+/// `snake_case` identifiers in running prose constantly (`filesystem_contract`, `line_editor`,
 /// `__rust_alloc`) and treating them as markup would misrender far more than it would style.
 fn closer(s: &[u8], open: usize, ch: u8, double: bool) -> Option<usize> {
     let mut i = open;

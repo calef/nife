@@ -157,12 +157,12 @@ pub(super) fn package_manager_parts(
 
 /// **The image's package catalog, copied into a fresh page of the child's own region**, for a
 /// child that declares `grant_plan::Manifest::catalog` (milestone 809 (the package client becomes
-/// a program)), and mapped read-only at `std_runtime_protocol::CATALOG_PAGE`. The rest of the page
+/// a program)), and mapped read-only at `std_runtime_contract::CATALOG_PAGE`. The rest of the page
 /// is zero, which is where the text ends. `None` if the catalog does not fit in a page or the page
 /// could not be made; the spawn is then refused rather than started with half a catalog.
 ///
 /// The image's index sources travel the same way since milestone 801 (packages over the
-/// internet), to `std_runtime_protocol::INDEX_SOURCES_PAGE`.
+/// internet), to `std_runtime_contract::INDEX_SOURCES_PAGE`.
 pub(super) fn copy_text(own_ut: u64, region: u64, catalog: &str) -> Option<u64> {
     if catalog.len() >= spawnproto::IMAGE_PAGE as usize {
         return None;
@@ -241,11 +241,11 @@ pub(super) fn activate(
         Some(Activation::Install | Activation::Vouch) => Some(take_frames(spawn, w0, a.own_ut)),
         _ => None,
     };
-    let mut named = [0u8; filesystem_protocol::grant::MAX_NAME];
+    let mut named = [0u8; filesystem_contract::grant::MAX_NAME];
     // A vouch's name follows its frames, which `take_frames` has just taken.
     let named_len = if matches!(verb, Some(Activation::Remove | Activation::Vouch)) {
         let (lo, hi, len) = spawn.receive();
-        filesystem_protocol::grant::unpack_name(lo, hi, len as usize, &mut named)
+        filesystem_contract::grant::unpack_name(lo, hi, len as usize, &mut named)
     } else {
         0
     };

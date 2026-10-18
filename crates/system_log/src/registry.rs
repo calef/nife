@@ -5,7 +5,7 @@
 //! so a writer's first line is already attributed. A badge nobody registered is still stamped (its
 //! `source` is the badge itself) with no program and no user.
 
-use system_log_protocol::{control, severity};
+use system_log_contract::{control, severity};
 
 /// How many badges the service knows at once. A spawner forgets a badge when its process is
 /// reaped, so this bounds live writers and readers, not every process the boot ever ran.

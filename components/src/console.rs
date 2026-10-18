@@ -32,7 +32,7 @@
 //! address spaces))
 //!
 //! The system log service sends the kernel's lines here, sixteen bytes a message, opcode
-//! `system_log_protocol::console::OPERATION_KERNEL_LINE`, never acknowledged. They are written
+//! `system_log_contract::console::OPERATION_KERNEL_LINE`, never acknowledged. They are written
 //! only at the start of a terminal line: mid-line they wait for this console's own client to end
 //! the line, or for the service's `OPERATION_FLUSH`, which puts them on a line of their own and
 //! redraws the partial line beneath them.
@@ -186,8 +186,8 @@ pub extern "C" fn _start(mode: u64, _x1: u64, _x2: u64) -> ! {
         // acknowledged, because the acknowledgement on `REPLY` belongs to the client waiting for
         // it. `Inserter` writes the line at the start of a terminal line and holds it otherwise,
         // which is what keeps it out of the middle of an echo.
-        match system_log_protocol::console::operation(len) {
-            system_log_protocol::console::OPERATION_KERNEL_LINE => {
+        match system_log_contract::console::operation(len) {
+            system_log_contract::console::OPERATION_KERNEL_LINE => {
                 let mut bytes = [0u8; 16];
                 bytes[..8].copy_from_slice(&w1.to_le_bytes());
                 bytes[8..].copy_from_slice(&w2.to_le_bytes());
@@ -195,7 +195,7 @@ pub extern "C" fn _start(mode: u64, _x1: u64, _x2: u64) -> ! {
                 inserter().kernel_chunk(&bytes[..n], |b| emit(b, screen, &mut batch));
                 continue;
             }
-            system_log_protocol::console::OPERATION_FLUSH => {
+            system_log_contract::console::OPERATION_FLUSH => {
                 inserter().flush(|b| emit(b, screen, &mut batch));
                 continue;
             }
@@ -251,11 +251,11 @@ pub extern "C" fn _start(mode: u64, _x1: u64, _x2: u64) -> ! {
 }
 
 /// The kernel-line state, in `.bss`: three buffers that are too large for this program's stack.
-static mut INSERTER: system_log_protocol::console::Inserter =
-    system_log_protocol::console::Inserter::new();
+static mut INSERTER: system_log_contract::console::Inserter =
+    system_log_contract::console::Inserter::new();
 
 /// The one reference to [`INSERTER`].
-fn inserter() -> &'static mut system_log_protocol::console::Inserter {
+fn inserter() -> &'static mut system_log_contract::console::Inserter {
     // SAFETY: this program has one thread, and each caller uses the reference for one call and
     // drops it before the next.
     unsafe { &mut *core::ptr::addr_of_mut!(INSERTER) }

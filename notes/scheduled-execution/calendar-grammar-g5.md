@@ -38,7 +38,7 @@ maintainer's summary that follow from it and the one correction to the lane's no
 - Its Kani harnesses prove the day-number conversions inverse over its whole range.
 - `crates/timetable/src/proofs.rs` records that CBMC did not finish a second 64-bit modulo. That is
   the known risk for any next-occurrence proof.
-- `clock_protocol::state` separates `SET` (an operator) from `SYNCED` (an accepted proposal, bounded
+- `clock_contract::state` separates `SET` (an operator) from `SYNCED` (an accepted proposal, bounded
   to an hour forward and a second back). S3 can use that; see the finding under run policy.
 
 ## G5's shape: six rules

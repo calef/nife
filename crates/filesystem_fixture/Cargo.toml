@@ -10,7 +10,7 @@ license.workspace = true
 # the witnesses' verdict words, and the shapes of the walk and throughput benchmarks. It is test
 # data rather than wire contract, so it does not end in `_protocol`, and nothing that boots
 # depends on it. The protocol words that once lived beside it (`READY`, `DESCENT_REFUSED`, and the
-# `rm` status convention) stayed in `filesystem_protocol`, per calef's ruling on 886.
+# `rm` status convention) stayed in `filesystem_contract`, per calef's ruling on 886.
 #
 # Name: provisional (proposed by block 886); calef names crates.
 
@@ -18,4 +18,4 @@ license.workspace = true
 workspace = true
 
 [dependencies]
-filesystem_protocol = { version = "0.1.0", path = "../filesystem_protocol" }
+filesystem_contract = { version = "0.1.0", path = "../filesystem_contract" }

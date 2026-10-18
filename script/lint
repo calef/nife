@@ -2721,41 +2721,44 @@ if git grep -nE '[<>]>?[[:space:]]*"?/tmp/[A-Za-z0-9_.-]+"?' -- 'script/*' 'help
 fi
 rm -f "/tmp/nife-fixed-tmp-paths.$$"
 
-# 3. One spelling for contract crates. The tree had four spellings of "the wire contract" when this
-#    was written (`fs_proto`, `gfx_proto`, `netproto`, `line_editor::proto`); `*_proto` won for CRATES
-#    because it is what both of them already were, and a second habit is how the first one rots.
+# 3. One spelling for contract crates: `*_contract`. The tree had four spellings of "the wire
+#    contract" when this was written (`fs_proto`, `gfx_proto`, `netproto`, `line_editor::proto`);
+#    `*_proto` won because both existing habits already were it, and a second habit is how the first
+#    one rots. Milestone 265 (`_proto` is a truncation, and it collides with the other word it could be short for) made the suffix `_protocol` (`_proto` is a truncation). calef ruled on
+#    2026-10-18 (UTC) that nife's own wire-contract crates take `_contract`, because his 2026-09-13
+#    rule spells out network standards, so external standards keep producing `*_protocol` names that
+#    collided with the suffix. The tree already said "wire contract" and "service contract".
 #
-#    **The suffix became `_protocol` at milestone 265** (`_proto` is a truncation, and it collides
-#    with the other word it could be short for). calef ruled that on 2026-09-05. The check is
-#    the same check; only the string moved.
+#    **Two crates keep `_protocol`, by name, and the list is the exception.** `network_time_protocol`
+#    is the NTPv4 standard's own name (calef, 2026-10-18). `supervision_protocol` is waiting for its
+#    split into `supervision_contract` and `process_builder`. A new `*_protocol` crate fails.
 #
-#    **The glob is the whole hazard here and is why it is `*protocol` and not `*proto*`.** This loop
-#    selects the crates it then judges, so a glob that matches nothing passes by checking nothing,
-#    which is the `--exclude`-goes-stale failure design/naming.md lists. `crates/*proto` stopped
-#    matching any directory the moment 265 landed and would have reported clean forever.
-#    **The counter is milestone 401's mechanism and it is belt over braces here.** Measured against
-#    the tree at 51fee8248^, the commit before 265 landed, this loop shape does NOT go quiet on an
-#    empty glob: `sh` leaves the unexpanded word in place, `basename` yields the literal `*proto`,
-#    and that falls through the `case` to the failure branch. The historical claim that it "passed
-#    by checking nothing" is wrong; it would have failed loudly with a confusing message about a
-#    crate named `*proto`. The counter is here anyway because the property should not depend on a
-#    `case` arm somebody could reorder, and because the message it prints says what actually went
-#    wrong instead of naming a crate that does not exist.
-protocol_crates=0
-for dir in "$(dirname "$0")"/../crates/*protocol; do
+#    **The glob is the whole hazard here**: this loop selects the crates it judges, so a glob that
+#    matches nothing passes by checking nothing. The counter makes an empty glob say so, and it
+#    does not depend on a `case` arm somebody could reorder.
+contract_crates=0
+for dir in "$(dirname "$0")"/../crates/*contract; do
     [ -d "$dir" ] || continue
-    protocol_crates=$((protocol_crates + 1))
+    contract_crates=$((contract_crates + 1))
     name="$(basename "$dir")"
     case "$name" in
-        *_protocol) ;;
-        *) echo "lint: contract crate $name should be spelled *_protocol (design/naming.md)" >&2; exit 1 ;;
+        *_contract) ;;
+        *) echo "lint: contract crate $name should be spelled *_contract (design/naming.md)" >&2; exit 1 ;;
     esac
 done
-if [ "$protocol_crates" -eq 0 ]; then
-    echo "lint: crates/*protocol matched no directory, so the contract-crate spelling check" >&2
+if [ "$contract_crates" -eq 0 ]; then
+    echo "lint: crates/*contract matched no directory, so the contract-crate spelling check" >&2
     echo "judged nothing. The suffix moved again; move the glob with it (design/naming.md)." >&2
     exit 1
 fi
+for dir in "$(dirname "$0")"/../crates/*protocol; do
+    [ -d "$dir" ] || continue
+    name="$(basename "$dir")"
+    case "$name" in
+        network_time_protocol|supervision_protocol) ;;
+        *) echo "lint: crate $name ends in _protocol; nife's wire-contract crates end in _contract (design/naming.md)" >&2; exit 1 ;;
+    esac
+done
 
 # 4 and 4b (the branch-name shape, and a `milestone/N-*` branch touches its block) are in
 # script/lint-fleet since milestone 889 (the tree's gates stop depending on the fleet tooling),

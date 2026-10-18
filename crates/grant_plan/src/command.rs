@@ -70,14 +70,14 @@ pub enum Command<'a> {
     /// to hold the power to read everything it lists.
     Ls(&'a [u8]),
     /// `mkdir <path>`: make a directory and, in the same verb, obtain a capability to it
-    /// (`filesystem_protocol::fs::MKDIR` is descend-with-creation). Needs `CREATE` **and** `DESCEND`.
+    /// (`filesystem_contract::fs::MKDIR` is descend-with-creation). Needs `CREATE` **and** `DESCEND`.
     Mkdir(&'a [u8]),
     /// `touch <path>` or `touch -t <RFC-3339-instant> <path>`: create an empty file if the name is
     /// not there (a no-op if it already is), then bump its modification time. Bare `touch` sets it
     /// to now; `-t` asserts a caller-chosen instant (DECISIONS §112: the ability to *lie about
     /// history*). **A builtin, in [`Mkdir`](Command::Mkdir)'s category rather than [`Prog::Rm`]'s**:
     /// even the `-t` half takes no more than this shell's own directory capability
-    /// (`filesystem_protocol::dir::WRITE` for the bare form, `dir::WRITE | dir::SETTIME` for `-t`),
+    /// (`filesystem_contract::dir::WRITE` for the bare form, `dir::WRITE | dir::SETTIME` for `-t`),
     /// which `mkdir` and the create half already established as the model, so there is nothing to
     /// attenuate and nothing gained by confining it to a program.
     ///
@@ -216,7 +216,7 @@ pub struct Endowment {
 
 /// One resolved per-file grant: the directory it was resolved against, the name the command
 /// designated, and the direction the program's manifest declared. Those three are the whole
-/// authority; `filesystem_protocol::grant` packs the name and the direction into the file caretaker's start
+/// authority; `filesystem_contract::grant` packs the name and the direction into the file caretaker's start
 /// arguments, and the directory is which capability the caretaker is handed to narrow.
 ///
 /// # The cwd stops at the process boundary, and this value is where that is true

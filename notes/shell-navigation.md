@@ -12,7 +12,7 @@ every user forever. So the bar is not "is this more capability-pure", it is "doe
 actually force this", and three divergences clear it. The rest of Unix's surface survives.
 
 The pure half is `crates/grant_plan/src/nav.rs` (host-tested in milliseconds); the requests are
-`components/src/swish/navigation.rs`; the wire verb `rm` needed is `filesystem_protocol::fs::UNLINK` with `Server::unlink` behind
+`components/src/swish/navigation.rs`; the wire verb `rm` needed is `filesystem_contract::fs::UNLINK` with `Server::unlink` behind
 it; the guest proof is `system_tests/src/user/shell_navigation_tests.rs` and the host half is
 `xtask::shell_navigation_landed`.
 
@@ -136,7 +136,7 @@ server, exactly as a leaked fd does on Unix, and this table outlives its clients
 ### `rm` refuses a directory, and `rmdir` removes only an empty one
 
 `UNLINK` answers `EISDIR` for a directory, which is POSIX's own answer. The directory verb is
-`filesystem_protocol::fs::RMDIR`, from DECISIONS §49 (removal is a directory operation), which
+`filesystem_contract::fs::RMDIR`, from DECISIONS §49 (removal is a directory operation), which
 refuses a non-empty directory with `ENOTEMPTY`; `navscape::RMDIR_REFUSED_NON_EMPTY` and
 `RMDIR_REMOVED_EMPTY` prove the two halves. The reasoning that shaped it: a single call that removed
 whatever it found is how one word takes a subtree away. So the recursion in `rm -r` lives in
@@ -190,7 +190,7 @@ curiosity. `OPENDIR` refuses with `EPERM` when the intersection is smaller than 
 (deliberately, per the rule against silent degradation in §42 (a filesystem declares what it offers and must be truthful)). So a shell that asked for `dir::ALL` from
 a narrower capability could not `cd` at all. It has to ask for exactly what it holds.
 
-So the shell is **told** its rights at spawn, in the same `filesystem_protocol::grant::spec` word the
+So the shell is **told** its rights at spawn, in the same `filesystem_contract::grant::spec` word the
 caretaker's own grant rides in. That works and it is a gap. A program handed a directory capability
 by someone else has no way to ask what it can do with it. Its options are to be told out of band
 or to probe by attempting things. Reported rather than fixed, because widening the contract to suit
@@ -223,7 +223,7 @@ should be able to answer for every capability rather than a flag on one verb.
   interactive system, which is a wiring change and not a change here.
 - The shell tracks 8 levels and 16-byte components. Both are `grant_plan::nav`'s constants: the path
   stack is an array because this program has no allocator. 16 bytes is
-  `filesystem_protocol::grant::MAX_NAME` (a name that could be `cd`'d into but not granted would be
+  `filesystem_contract::grant::MAX_NAME` (a name that could be `cd`'d into but not granted would be
   a place you can reach and cannot talk
   about). Deeper is `TooDeep`, refused rather than truncated, because a truncated path names a
   different directory.

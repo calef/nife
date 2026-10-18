@@ -336,7 +336,7 @@ fn map_a_clock_page(space: &mut AddressSpace) -> u64 {
         .expect("no frame for a clock page")
         .addr();
     // SAFETY: a frame this test just allocated, named through the direct map.
-    unsafe { clock_protocol::ClockPage::new(mmu::phys_to_virt(phys)) }.init();
+    unsafe { clock_contract::ClockPage::new(mmu::phys_to_virt(phys)) }.init();
     space
         .map_physical(
             timetable::contract::CLOCK_VA,
@@ -389,18 +389,18 @@ fn install_the_fixed_slots(
     assert_eq!(s, 3, "the supervision endpoint must land in slot 3");
 }
 
-/// One line of `byte_sink_protocol` bytes off `ep`, without its newline. `None` at end of stream.
+/// One line of `byte_sink_contract` bytes off `ep`, without its newline. `None` at end of stream.
 fn line(ep: RendezvousId, buf: &mut [u8; 256]) -> Option<usize> {
     let mut len = 0usize;
     loop {
         let m = crate::sched::ipc_receive(ep);
-        let mut chunk = [0u8; byte_sink_protocol::INLINE_MAX];
-        match byte_sink_protocol::unpack(m[0], m[1], m[2], &mut chunk) {
-            byte_sink_protocol::Msg::Eof => return None,
-            byte_sink_protocol::Msg::Malformed => {
+        let mut chunk = [0u8; byte_sink_contract::INLINE_MAX];
+        match byte_sink_contract::unpack(m[0], m[1], m[2], &mut chunk) {
+            byte_sink_contract::Msg::Eof => return None,
+            byte_sink_contract::Msg::Malformed => {
                 panic!("the timetable wrote a malformed sink message")
             }
-            byte_sink_protocol::Msg::Bytes(n) => {
+            byte_sink_contract::Msg::Bytes(n) => {
                 for &b in &chunk[..n] {
                     if b == b'\n' {
                         return Some(len);
@@ -590,7 +590,7 @@ fn only_the_admitted_entries_fired(t: &Spawned) {
     // free to differ between aarch64 and riscv64, so the exact count is not this milestone's claim;
     // `MEM_GRANT_PAGES` bounds it rather than pinning it). **This is the negative control**: every
     // refused entry in the document is a program that would have written something else here (`date`
-    // and `wc` write `byte_sink_protocol` bytes), so a document whose refusals had leaked would fail on
+    // and `wc` write `byte_sink_contract` bytes), so a document whose refusals had leaked would fail on
     // the value rather than on a count.
     let mut nines = 0;
     let mut forty_nines = 0;
@@ -898,12 +898,12 @@ fn publish(t: &Spawned, set: bool, hh: u64, mm: u64, ss: u64) {
     publish_at(
         t,
         set,
-        ((TUESDAY * 86_400) + hh * 3600 + mm * 60 + ss) * clock_protocol::NANOS_PER_SEC,
+        ((TUESDAY * 86_400) + hh * 3600 + mm * 60 + ss) * clock_contract::NANOS_PER_SEC,
     );
 }
 
 /// 02:00:00 on [`TUESDAY`], in wall nanoseconds: the occurrence the calendar test waits on.
-const TWO_AM: u64 = (TUESDAY * 86_400 + 2 * 3600) * clock_protocol::NANOS_PER_SEC;
+const TWO_AM: u64 = (TUESDAY * 86_400 + 2 * 3600) * clock_contract::NANOS_PER_SEC;
 
 /// **How far before 02:00 the calendar test publishes**, and so how long it waits for real time.
 ///
@@ -912,25 +912,25 @@ const TWO_AM: u64 = (TUESDAY * 86_400 + 2 * 3600) * clock_protocol::NANOS_PER_SE
 /// next pass, since a pass that first reads the page at 02:00 or later arms the next day's
 /// occurrence instead. A pass is one yield of a loop that never blocks here, so a second covers it
 /// with room, and when it does not, [`fires_at_two`] publishes again instead of going red.
-const LEAD: u64 = clock_protocol::NANOS_PER_SEC;
+const LEAD: u64 = clock_contract::NANOS_PER_SEC;
 
 /// **How long after 02:00 to wait for the report before publishing again.** Four seconds, so a
 /// lead plus this is the five-second window the test always had for the timetable to read a
 /// publication; see [`fires_at_two`] for why step 4 depends on that window and step 2 does not.
-const MISSED: u64 = 4 * clock_protocol::NANOS_PER_SEC;
+const MISSED: u64 = 4 * clock_contract::NANOS_PER_SEC;
 
 /// **Publish `wall` (nanoseconds) to the clock page, and return the offset it published**, so a
 /// caller can turn any later wall time on that page into a reading of the same counter.
 fn publish_at(t: &Spawned, set: bool, wall: u64) -> u64 {
     let phys = t.clock.expect("a clock-granted spawn");
     let state = if set {
-        clock_protocol::state::SET
+        clock_contract::state::SET
     } else {
-        clock_protocol::state::SYNCED
+        clock_contract::state::SYNCED
     };
     // SAFETY: the frame `spawn_timetable_with` allocated for this test, through the direct map.
-    let page = unsafe { clock_protocol::ClockPage::new(mmu::phys_to_virt(phys)) };
-    let offset = clock_protocol::offset_for(wall, super::clock_service::monotonic_nanos());
+    let page = unsafe { clock_contract::ClockPage::new(mmu::phys_to_virt(phys)) };
+    let offset = clock_contract::offset_for(wall, super::clock_service::monotonic_nanos());
     page.publish(state, offset);
     offset
 }

@@ -3,7 +3,7 @@
 The first half of milestone 326 (nobody has been assigned to turn a mutation score upward)'s
 triage of the crates that regressed at the 2026-09-14 census. It verifies the per-crate figures
 that [notes/mutation-testing.md](../mutation-testing.md) summarizes. The second half is
-[regressions-clock-protocol-swish-filesystem-protocol](regressions-clock-protocol-swish-filesystem-protocol.md).
+[regressions-2026-09-14-clock-contract-swish-filesystem-contract](regressions-2026-09-14-clock-contract-swish-filesystem-contract.md).
 
 ## 2026-09-19: milestone 326, triaging the census's regressions
 
@@ -89,7 +89,7 @@ are the non-vacuity flags described in this crate's verification section. They s
 `mod interleavings`, which is `#[cfg(all(test, loom))]`. `cargo test` never compiles it, so a
 mutant there always survives. That is exactly why `verification::` and `proofs::` are already
 excluded, and the entry added to `.cargo/mutants.toml` says so. It covers all five loom models in
-the tree (`clock_protocol`, `memory_corruption_canary_gate`, `memory_regions`,
+the tree (`clock_contract`, `memory_corruption_canary_gate`, `memory_regions`,
 `thread_wake_handshake`, `work_steal_slot`), every one behind the same `cfg`. Their checker is
 `script/interleaving-check`; excluding them here does not make them proved.
 

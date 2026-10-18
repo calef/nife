@@ -59,11 +59,11 @@ SCRATCH = pathlib.Path('target/interface-stability')
 # other series on the metrics page.
 CONTRACTS = (
     'abi',
-    'byte_sink_protocol', 'capability_witness_protocol', 'clock_protocol',
-    'counter_frequency_protocol', 'credential_protocol', 'current_cpu_protocol',
-    'entropy_protocol', 'environment_protocol', 'filesystem_protocol', 'graphics_protocol',
-    'login_protocol', 'socket_protocol', 'std_runtime_protocol', 'supervision_protocol',
-    'swap_protocol',
+    'byte_sink_contract', 'capability_witness_contract', 'clock_contract',
+    'counter_frequency_contract', 'credential_contract', 'current_cpu_contract',
+    'entropy_contract', 'environment_contract', 'filesystem_contract', 'graphics_contract',
+    'login_contract', 'socket_contract', 'std_runtime_contract', 'supervision_protocol',
+    'hot_swap_contract',
     'elf', 'measured_boot', 'package_archive', 'installed_programs', 'boot_slot', 'nifefs',
     'globally_unique_identifier_partition_table', 'grant_plan', 'component_plan', 'compositor',
     'line_editor', 'manifest_note',
@@ -78,7 +78,7 @@ STD_ABI_GLOBS = ('xtask/src/farm.rs', 'xtask/src/farm/*.rs')
 STD_ABI_RE = re.compile(r'"crates/(\w+)/src/lib\.rs"')
 
 # A format identity: a public constant a reader checks before trusting the bytes after it. A value
-# change is a format bump. `BOTH_VERSIONS` is a flag bit in swap_protocol, not an identity.
+# change is a format bump. `BOTH_VERSIONS` is a flag bit in hot_swap_contract, not an identity.
 FORMAT_CONST = re.compile(r'(^|_)(VERSION|MAGIC|REVISION)($|_)')
 
 # The amendment ledger, kept at the format (AGENTS.md rung 3): a `# Amendments` section in the
@@ -219,7 +219,7 @@ def std_abi_source_texts():
 # compared with a fresh one from the new.
 SURFACE_VERSION = 'v4'
 # The interface as a nife program sees it: every contract crate is `no_std` and builds for the
-# kernel's own first target, and two (`supervision_protocol`, `swap_protocol`) link
+# kernel's own first target, and two (`supervision_protocol`, `hot_swap_contract`) link
 # `user_mode_runtime`, which does not build for the host at all. BUGS: items behind a
 # `cfg(target_arch)` for riscv64 or x86_64 are not read.
 TARGET = 'aarch64-unknown-none-softfloat'
@@ -1099,11 +1099,11 @@ def selftest():
         ('the ledger reads dated items under its heading only', ledger,
          ['2026-09-27', '2026-10-02']),
         ('lineage follows a chain of renames',
-         resolve_lineage({'fs': 'fs_proto', 'fs_proto': 'filesystem_protocol'}),
-         {'fs': 'filesystem_protocol', 'fs_proto': 'filesystem_protocol'}),
+         resolve_lineage({'fs': 'fs_proto', 'fs_proto': 'filesystem_contract'}),
+         {'fs': 'filesystem_contract', 'fs_proto': 'filesystem_contract'}),
         ('lineage survives a cycle', resolve_lineage({'a': 'b', 'b': 'a'})['a'] in ('a', 'b'), True),
         ('contract dirs include old names',
-         'crates/fs_proto/' in contract_dirs({'fs_proto': 'filesystem_protocol'}), True),
+         'crates/fs_proto/' in contract_dirs({'fs_proto': 'filesystem_contract'}), True),
         ('a docs-only companion does not cross',
          classify_commit('x', ['crates/abi/src/lib.rs', 'notes/abi.md', 'design/x.md'], dirs),
          (True, False, False)),
@@ -1134,8 +1134,8 @@ def selftest():
          .count('> - `c`: removed `X`'), 1),
         ('the std abi list comes from the copy',
          std_abi_crates('root.join("crates/abi/src/lib.rs"),\nroot.join("crates/abi/src/lib.rs"),'
-                        ' root.join("crates/clock_protocol/src/lib.rs")'),
-         ['abi', 'clock_protocol']),
+                        ' root.join("crates/clock_contract/src/lib.rs")'),
+         ['abi', 'clock_contract']),
     ]
     failed = [(name, got, want) for name, got, want in cases if got != want]
     for name, got, want in failed:

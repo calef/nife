@@ -10,7 +10,7 @@
 //! | | |
 //! |---|---|
 //! | Sector size | 512 ([`SECTOR`]); FAT32 permits others and nothing here has met one |
-//! | Sectors per cluster | 8, so a 4096-byte cluster, which is also `filesystem_protocol::blk`'s transfer unit |
+//! | Sectors per cluster | 8, so a 4096-byte cluster, which is also `filesystem_contract::blk`'s transfer unit |
 //! | Reserved sectors | 32, the usual FAT32 figure: boot sector, `FSInfo`, and the backup pair at 6 and 7 |
 //! | FATs | 2, because every tool writes two and a firmware that reads the second finds it |
 //! | Cluster 2 | the root directory: a volume label and `EFI` |
@@ -43,7 +43,7 @@ pub const SECTOR: usize = 512;
 
 /// Sectors per cluster, so 4096-byte clusters.
 ///
-/// The same number as `filesystem_protocol::blk`'s transfer unit, which is not a coincidence: a
+/// The same number as `filesystem_contract::blk`'s transfer unit, which is not a coincidence: a
 /// caller moving one blk block per request moves exactly one cluster.
 pub const CLUSTER_SECTORS: u32 = 8;
 
@@ -176,7 +176,7 @@ impl Volume {
         let per_fat_sector = (256 * CLUSTER_SECTORS + FATS) / 2;
         // **Rounded up until the data area starts on a cluster boundary**, which is what every
         // modern `mkfs.vfat` does and what this crate's caller depends on: an installer writing
-        // whole 4096-byte blocks through `filesystem_protocol::blk` can only put a cluster where a
+        // whole 4096-byte blocks through `filesystem_contract::blk` can only put a cluster where a
         // block goes. The specification's own sizing leaves the alignment to chance, and the run
         // that found this out wrote the boot file **six sectors early** onto a real disk, because
         // `32 + 2 * 1023` is not a multiple of eight. See this crate's
@@ -638,7 +638,7 @@ mod tests {
     }
 
     /// **Every cluster begins on a 4096-byte boundary of the partition**, which is what lets a
-    /// caller moving one `filesystem_protocol::blk` block per request write the volume at all. It
+    /// caller moving one `filesystem_contract::blk` block per request write the volume at all. It
     /// is not free: FAT32's own sizing arithmetic leaves the data area wherever it falls, and the
     /// first installed disk this crate produced had its boot file six sectors early because of it.
     #[test]

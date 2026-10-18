@@ -39,7 +39,7 @@ Refused, one line each:
 
 ## Fork 3: the protocol
 
-The client protocol is P1, the socket contract's shape, in `crates/name_resolution_protocol`. The
+The client protocol is P1, the socket contract's shape, in `crates/domain_name_resolution_contract`. The
 client attaches one page, writes the name into it, and makes one `CALL` carrying the name's length.
 The reply carries a status word and the TTL; the addresses, up to `MAX_ADDRESSES`, are in the page.
 One round trip, in the shape every network client here already speaks.

@@ -114,7 +114,7 @@ which §31 (the foreign-language seam) rule 4 keeps. The cache adapts glibc's `t
   the same four variants under HVF on Apple silicon (`notes/benchmarks.md`'s real-time instrument,
   aarch64 only) would put nanoseconds on the read, though not change the staleness or contention
   counts. The scratch patch makes it a rebuild.
-- **Recorded.** The page's CPU word has no reader outside tests, in `crates/current_cpu_protocol`'s
+- **Recorded.** The page's CPU word has no reader outside tests, in `crates/current_cpu_contract`'s
   `BUGS`. Whether the kernel keeps writing it is calef's question on #1904.
 - **Recorded.** Cross-thread frees (a producer freeing what a consumer allocated) were not
   measured, in `notes/std/allocation.md`'s `BUGS`.

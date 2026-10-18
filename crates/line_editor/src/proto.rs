@@ -29,7 +29,7 @@ pub const OPERATION_INTRCOUNT: u64 = 4;
 /// Eight, not sixteen, and that is the request shape rather than a choice: a served request
 /// here arrives through `receive_cap`, which hands the server the reply capability and **two** data
 /// words. [`OPERATION_BYTES`] carries eight for the same reason, from the other direction. So a
-/// sixteen-byte `byte_sink_protocol` message is two of these, which is the honest cost of a second
+/// sixteen-byte `byte_sink_contract` message is two of these, which is the honest cost of a second
 /// writer that needs no page.
 ///
 /// # Why this exists when `OPERATION_WRITE` already prints
@@ -37,12 +37,12 @@ pub const OPERATION_INTRCOUNT: u64 = 4;
 /// [`OPERATION_WRITE`] reads from **the client's output page**, and there is one of those: init maps a
 /// single frame into the terminal read-only and into the shell read/write. A second printing
 /// client would need a second frame, and the terminal would have to be told which one a request
-/// meant, which is a protocol change with a page-index in it. `filesystem_protocol` has the same shape and
+/// meant, which is a protocol change with a page-index in it. `filesystem_contract` has the same shape and
 /// the same problem (DECISIONS §55: two client processes staging into one page do not compose,
 /// and that is why the file behind a `>` is the shell itself).
 ///
 /// Register-only sidesteps it entirely, and the sixteen bytes are not a compromise: they are the
-/// three-word fastpath and the exact payload of a `byte_sink_protocol` message, so an adapter that turns
+/// three-word fastpath and the exact payload of a `byte_sink_contract` message, so an adapter that turns
 /// the sink contract into terminal output is one unpack and one `CALL` with **no page at all**.
 /// [`OPERATION_BYTES`] already proved the shape in the other direction, for the input driver.
 ///
@@ -116,7 +116,7 @@ pub const RAW_ONLY_BADGE: u64 = 1;
 /// Name: provisional (the lane for milestone 23, 2026-09-26).
 pub const OPERATION_QUIESCE: u64 = 8;
 
-/// The reply word to [`OPERATION_QUIESCE`]: "QUIT", the value `swap_protocol::QUIESCED` also uses.
+/// The reply word to [`OPERATION_QUIESCE`]: "QUIT", the value `hot_swap_contract::QUIESCED` also uses.
 pub const QUIESCED: u64 = 0x5155_4954;
 
 /// Supervisor → quiesced terminal, on its control endpoint: go back to serving. The swap did not

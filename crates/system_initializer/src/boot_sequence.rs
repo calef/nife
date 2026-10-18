@@ -15,7 +15,7 @@ use super::*;
 /// does is park in `RECEIVE` on the shell's spawn channel for the life of the boot.
 ///
 /// `initial_ramdisk_len` is the archive length the kernel passed at entry; `fs_rights` is the
-/// `filesystem_protocol::dir` rights the file-service endpoint carries, and 0 means this boot
+/// `filesystem_contract::dir` rights the file-service endpoint carries, and 0 means this boot
 /// attached no disk (so `fs_ep` and `fs_page` are empty). `second_dir`, when `Some`, hands the
 /// shell a second, disjoint directory capability (see [`SecondDirGrant`]); every real entry point
 /// passes `None`, because what that subtree should be is boot policy no call site decides.

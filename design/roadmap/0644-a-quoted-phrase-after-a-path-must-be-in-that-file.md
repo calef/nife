@@ -82,7 +82,7 @@ Measured at the lane's base `8fad33799`: 128 citations in the shape, 125 with a 
 
 - 10 were stale, and this lane fixed them. Six QEMU pointers and the lane-count pointer aimed at
   text the skills split had moved out of AGENTS.md and CLAUDE.md. A comment in
-  `crates/swap_protocol` quoted a sentence `notes/hung-component.md` no longer has. A census row
+  `crates/hot_swap_contract` quoted a sentence `notes/hung-component.md` no longer has. A census row
   quoted milestone 74 (cycle counters) with "M-74's" where the heading says "milestone 74's". And
   this block's example quoted a heading a later split had divided in two.
   The census row is also the ratchet's third excluded record, after the baseline-drift page. An

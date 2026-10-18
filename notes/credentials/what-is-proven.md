@@ -3,7 +3,7 @@
 An appendix to [`notes/credentials.md`](../credentials.md). It lists every host test, proof and
 guest test behind the credential service, and what each pins.
 
-Host tests (`cargo test -p credentialer -p credential_protocol`, milliseconds, no emulator):
+Host tests (`cargo test -p credentialer -p credential_contract`, milliseconds, no emulator):
 
 - RFC 9106's and the reference implementation's known-answer vectors, through the same entry
   point the service uses.
@@ -16,7 +16,7 @@ Host tests (`cargo test -p credentialer -p credential_protocol`, milliseconds, n
 - The lookup lands on the decoy for a miss and on the record for a hit, at every slot position.
 - A miss and a hit take comparable time.
 
-Proofs (`script/verify`, three Kani harnesses over `credential_protocol`, 30 checks, 0.2 s). Both
+Proofs (`script/verify`, three Kani harnesses over `credential_contract`, 30 checks, 0.2 s). Both
 properties are about what an adversary can send or receive, and an adversary is not limited to the
 values a test author thought of:
 

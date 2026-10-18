@@ -91,10 +91,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "argument_protocol"
-version = "0.1.0"
-
-[[package]]
 name = "base64ct"
 version = "1.8.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -159,7 +155,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1d07550c9036bf2ae0c684c4297d503f838287c83c53686d05370d0e139ae570"
 
 [[package]]
-name = "counter_frequency_protocol"
+name = "counter_frequency_contract"
 version = "0.1.0"
 
 [[package]]
@@ -182,7 +178,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "current_cpu_protocol"
+name = "current_cpu_contract"
 version = "0.1.0"
 dependencies = [
  "address_space_map",
@@ -237,7 +233,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f8f59926911ef34d1efb9ea1ee8ca78385df62ce700ccf2bcb149011bd226888"
 
 [[package]]
-name = "entropy_protocol"
+name = "entropy_contract"
 version = "0.1.0"
 
 [[package]]
@@ -264,15 +260,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "filesystem_contract"
+version = "0.1.0"
+
+[[package]]
 name = "filesystem_fixture"
 version = "0.1.0"
 dependencies = [
- "filesystem_protocol",
+ "filesystem_contract",
 ]
-
-[[package]]
-name = "filesystem_protocol"
-version = "0.1.0"
 
 [[package]]
 name = "generic-array"
@@ -321,8 +317,8 @@ dependencies = [
 name = "grant_plan"
 version = "0.1.0"
 dependencies = [
- "argument_protocol",
  "glob",
+ "program_argument_contract",
 ]
 
 [[package]]
@@ -483,6 +479,10 @@ dependencies = [
 ]
 
 [[package]]
+name = "program_argument_contract"
+version = "0.1.0"
+
+[[package]]
 name = "quote"
 version = "1.0.47"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -559,8 +559,8 @@ name = "redoxfs_server"
 version = "0.1.0"
 dependencies = [
  "address_space_map",
+ "filesystem_contract",
  "filesystem_fixture",
- "filesystem_protocol",
  "globally_unique_identifier_partition_table",
  "manifest_note",
  "redox_syscall",
@@ -626,7 +626,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "socket_protocol"
+name = "socket_contract"
 version = "0.1.0"
 
 [[package]]
@@ -639,7 +639,7 @@ checksum = "13c2bddecc57b384dee18652358fb23172facb8a2c51ccc10d74c157bdea3292"
 name = "subtree_scope"
 version = "0.1.0"
 dependencies = [
- "filesystem_protocol",
+ "filesystem_contract",
 ]
 
 [[package]]
@@ -720,10 +720,10 @@ version = "0.1.0"
 dependencies = [
  "abi",
  "address_space_map",
- "counter_frequency_protocol",
- "current_cpu_protocol",
- "entropy_protocol",
- "socket_protocol",
+ "counter_frequency_contract",
+ "current_cpu_contract",
+ "entropy_contract",
+ "socket_contract",
  "user_mode_heap",
 ]
 

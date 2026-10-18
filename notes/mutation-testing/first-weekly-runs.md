@@ -76,7 +76,7 @@ surface. The two that remain (`uefi_loader` at 15%, `manual` at 52%) are the rea
 ### Where the drop is
 
 The crates that existed at baseline are broadly stable or better: `gpt` 55/1, `elf` 12/0,
-`calendar` 46/0, `glob` 14/0, `cred` 14/0, `dtb` 43/3, `filesystem_protocol` 65/8, `grant_plan`
+`calendar` 46/0, `glob` 14/0, `cred` 14/0, `dtb` 43/3, `filesystem_contract` 65/8, `grant_plan`
 67/2. Three crates carry nearly all of the loss, and all three are new since the baseline:
 
 - `system_initializer`: 0 caught, 25 missed in the sample (0 of 191 in the `slice` run, which saw
@@ -161,11 +161,11 @@ one. These are the survivors to triage first, because each is a property that he
 |---|---|---|---|
 | `memory_regions` | 100.0% | 88.9% | 0 -> 8 |
 | `capability` | 97.4% | 88.2% | 1 -> 8 |
-| `clock_protocol` | 96.8% | 91.0% | 2 -> 6 |
+| `clock_contract` | 96.8% | 91.0% | 2 -> 6 |
 | `elf` | 100.0% | 94.2% | 0 -> 6 |
 | `swish` | 94.6% | 89.4% | 3 -> 20 |
 | `dtb` | 99.7% | 96.6% | 1 -> 14 |
-| `filesystem_protocol` | 93.1% | 90.1% | 37 -> 59 |
+| `filesystem_contract` | 93.1% | 90.1% | 37 -> 59 |
 
 `nifefs`, `dma_validator` and `bitmap_font` held at 100%. The largest gains are real too, mostly
 where a triage pass was spent: `intrusive_fifo` 57.1% to 100%, `line_editor` 80.1% to 98.5%, `pci`

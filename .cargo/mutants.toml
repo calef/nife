@@ -91,8 +91,8 @@ exclude_globs = [
 # Matched against mutant names ("replace X with Y in path::fn"). Entries arrive with reasons or
 # not at all.
 exclude_re = [
-    # The Kani harness modules: 18 `mod verification` blocks and 3 `mod proofs` (credential_protocol,
-    # filesystem_protocol, regions), every one behind `#[cfg(kani)]`, so `cargo test` never compiles them: a
+    # The Kani harness modules: 18 `mod verification` blocks and 3 `mod proofs` (credential_contract,
+    # filesystem_contract, regions), every one behind `#[cfg(kani)]`, so `cargo test` never compiles them: a
     # mutant there always "survives", and the first full run reported dozens of exactly that (every
     # one of calendar's harnesses, mutated to `()`, "missed"). Their checker is script/verify, not
     # the test suite, and mutating the proof rather than the code under proof measures nothing this
@@ -100,7 +100,7 @@ exclude_re = [
     "verification::",
     "proofs::",
 
-    # The loom models: 5 `mod interleavings` blocks (clock_protocol, memory_corruption_canary_gate,
+    # The loom models: 5 `mod interleavings` blocks (clock_contract, memory_corruption_canary_gate,
     # memory_regions, thread_wake_handshake, work_steal_slot), every one behind
     # `#[cfg(all(test, loom))]`, so `cargo test` never compiles them and a mutant there always
     # "survives". Exactly the case above wearing different clothes, and found the same way:

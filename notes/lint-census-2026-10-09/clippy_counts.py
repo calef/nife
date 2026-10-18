@@ -23,14 +23,14 @@ PARSERS = {
     'disk and image formats': ['redoxfs_server', 'nifefs', 'globally_unique_identifier_partition_table',
                                'file_allocation_table', 'package_archive', 'elf', 'manifest_note',
                                'boot_slot'],
-    'network': ['domain_name_system', 'http_response', 'network_time_protocol', 'socket_protocol',
-                'name_resolution_protocol'],
+    'network': ['domain_name_system', 'http_response', 'network_time_protocol', 'socket_contract',
+                'domain_name_resolution_contract'],
     'device-supplied': ['device_tree_blob', 'machine_discovery', 'pci', 'usb',
                         'extensible_host_controller_interface', 'e1000e', 'designware_ethernet',
                         'designware_mobile_storage', 'non_volatile_memory_express', 'virtio'],
-    'peer-process contracts': ['filesystem_protocol', 'system_log_protocol', 'byte_sink_protocol',
-                               'graphics_protocol', 'compositor', 'login_protocol',
-                               'credential_protocol', 'supervision_protocol', 'swap_protocol'],
+    'peer-process contracts': ['filesystem_contract', 'system_log_contract', 'byte_sink_contract',
+                               'graphics_contract', 'compositor', 'login_contract',
+                               'credential_contract', 'supervision_protocol', 'hot_swap_contract'],
 }
 PANICS = ('unwrap_used', 'expect_used', 'panic', 'unreachable', 'todo', 'unimplemented')
 

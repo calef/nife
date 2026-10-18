@@ -64,7 +64,7 @@ Argued in earlier appendices, and still reported by this re-run (39):
 
 - [regressions-2026-09-14-capability-to-device-tree-blob](regressions-2026-09-14-capability-to-device-tree-blob.md): `capability::note_peak` and
   `device_tree_blob::cells`.
-- [regressions-clock-protocol-swish-filesystem-protocol](regressions-clock-protocol-swish-filesystem-protocol.md):
+- [regressions-2026-09-14-clock-contract-swish-filesystem-contract](regressions-2026-09-14-clock-contract-swish-filesystem-contract.md):
   `clock_protocol`'s three. `publish` is killed by `script/interleaving-check`.
 - [baseline-survivors-abi-to-ipc](baseline-survivors-abi-to-ipc.md):
   `inter_process_communication::one_queue_invariant` and `page_frames::alloc_contiguous`.

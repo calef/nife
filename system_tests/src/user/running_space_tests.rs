@@ -145,7 +145,7 @@ fn start_reader(region: u64) -> (u64, u64, u64, u64, u64) {
             STACK_VA + page_frames::FRAME_SIZE,
             given,
         ),
-        Ok(current_cpu_protocol::PAGE_VA as i64),
+        Ok(current_cpu_contract::PAGE_VA as i64),
         "premise: CONFIGURE refused the reader's space, or did not answer its current-CPU page",
     );
     assert!(
@@ -231,7 +231,7 @@ fn unmap_on_another_core_faults_a_reader_spinning_on_the_page() {
             .expect("a bound space has no current-cpu page");
     // SAFETY: the reader's own current-CPU frame, through the direct map; it lives as long as the
     // space, which outlives this test's reads (the space dies with the reader, after them).
-    let reader_cpu = || unsafe { current_cpu_protocol::CurrentCpuPage::new(cpu_page) }.cpu();
+    let reader_cpu = || unsafe { current_cpu_contract::CurrentCpuPage::new(cpu_page) }.cpu();
     // **Placement is retried, not pinned, and a retry is weaker than pinning.** The kernel has no
     // affinity primitive (the syscall surface is an architect's call, and `cpu.rs` records why
     // tests are not pinned), so `spawn_on` is a hint: DECISIONS §28 (SMP placement: two random choices at spawn), idle stealing can pull the unmapper
@@ -255,7 +255,7 @@ fn unmap_on_another_core_faults_a_reader_spinning_on_the_page() {
         }
         sched::spawn_on(target, move || {
             // SAFETY: as above.
-            let theirs = unsafe { current_cpu_protocol::CurrentCpuPage::new(cpu_page) }.cpu();
+            let theirs = unsafe { current_cpu_contract::CurrentCpuPage::new(cpu_page) }.cpu();
             let me = crate::cpu::id();
             if theirs == Some(me) {
                 UNMAP_RESULT.store(STOOD_DOWN, Ordering::Release);
@@ -352,7 +352,7 @@ fn a_second_bind_of_a_bound_space_is_refused() {
 
     assert_eq!(
         configure(tcbs[0], first),
-        Ok(current_cpu_protocol::PAGE_VA as i64),
+        Ok(current_cpu_contract::PAGE_VA as i64),
         "premise: the first bind"
     );
     assert_eq!(

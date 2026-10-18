@@ -58,7 +58,7 @@ fn a_tls_client_speaks_to_its_pinned_peer_and_refuses_every_other() {
     let clock = program("clock").expect("no clock program in the initial ramdisk");
     let entropy = program("entropy").expect("no entropy program in the initial ramdisk");
 
-    let w = match e1000e_service::start_net_server(net_stack, socket_protocol::NO_LISTEN_GRANT) {
+    let w = match e1000e_service::start_net_server(net_stack, socket_contract::NO_LISTEN_GRANT) {
         Ok(w) => w,
         Err(e1000e_service::Absent::NoController) => {
             crate::testing::skip!("no e1000e NIC attached");

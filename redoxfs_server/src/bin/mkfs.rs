@@ -2,9 +2,9 @@
 //!
 //! The program that creates a filesystem, and the whole of its authority is two capabilities:
 //!
-//! - a **block-service endpoint** for **one** disk (`filesystem_protocol::blk`), which is the power
+//! - a **block-service endpoint** for **one** disk (`filesystem_contract::blk`), which is the power
 //!   to destroy that disk and nothing else; and
-//! - an **entropy endpoint** (`entropy_protocol`), which is the power to obtain random bytes and
+//! - an **entropy endpoint** (`entropy_contract`), which is the power to obtain random bytes and
 //!   nothing else.
 //!
 //! **That pair is sufficient and neither half is.** A filesystem carries a unique id, and the
@@ -57,8 +57,8 @@
 
 extern crate alloc;
 
+use filesystem_contract::{blk, req};
 use filesystem_fixture::blank;
-use filesystem_protocol::{blk, req};
 use globally_unique_identifier_partition_table::GloballyUniqueIdentifierPartitionTable;
 use globally_unique_identifier_partition_table::guid::types;
 use redoxfs::{BLOCK_SIZE, Disk, FileSystem};
@@ -197,7 +197,7 @@ pub extern "C" fn _start(role: u64, _a1: u64, _a2: u64) -> ! {
         }
     };
     let made = NameCopy::copy_in(blank::MADE_NAME.as_bytes())
-        .and_then(|name| server.create_file_at(filesystem_protocol::fs::ROOT as u32, &name))
+        .and_then(|name| server.create_file_at(filesystem_contract::fs::ROOT as u32, &name))
         .and_then(|h| server.write(h, 0, blank::MADE_BODY).map(|n| (h, n)));
     match made {
         Ok((h, n)) if n == blank::MADE_BODY.len() => {
@@ -255,7 +255,7 @@ fn check(first_block: u64, blocks: u64) -> ! {
     };
     let mut buf = [0u8; 128];
     let read = NameCopy::copy_in(blank::MADE_NAME.as_bytes())
-        .and_then(|name| server.open_file_at(filesystem_protocol::fs::ROOT as u32, &name))
+        .and_then(|name| server.open_file_at(filesystem_contract::fs::ROOT as u32, &name))
         .and_then(|h| server.read(h, 0, &mut buf[..blank::MADE_BODY.len()]));
     match read {
         Ok(n) if n == blank::MADE_BODY.len() && buf[..n] == *blank::MADE_BODY => {

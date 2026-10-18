@@ -89,7 +89,7 @@ limitation rather than a split.
 
 Recording these is not modesty: a sweep that reports only its hits is unfalsifiable prose.
 
-`credential_protocol::a_request_word_round_trips_every_field` is blind on its own, and covered by
+`credential_contract::a_request_word_round_trips_every_field` is blind on its own, and covered by
 its neighbor. It is an encoder round-tripped through its own decoder, which is 211's third
 family. Swapping the identity and secret length fields in `req` and in `id_len`/`secret_len`
 together leaves it verifying. Both sides move and the round trip is perfect, while a client using

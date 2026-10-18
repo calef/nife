@@ -1,7 +1,7 @@
 //! **A provisioning tool: create an identity and its home subtree together** (§117 (a principal's
 //! subtree is named by its identity string)). Unix's `useradd`, one level down: spawned once per
 //! identity by whoever holds the two administrative capabilities, it `PUT`s the identity and secret
-//! into the credential store ([`credential_protocol::provision::PUT`]) and `MKDIR`s the home subtree
+//! into the credential store ([`credential_contract::provision::PUT`]) and `MKDIR`s the home subtree
 //! named by the identity string.
 //!
 //! It authenticates no caller and needs not to: whoever is handed [`PROV`] and [`FS_EP`] may run it,
@@ -10,7 +10,7 @@
 //!
 //! **The subtree first.** The two calls go to two servers with no cross-server commit. If `MKDIR`
 //! fails, nothing was stored and the caller retries. If `PUT` then fails
-//! ([`credential_protocol::FULL`], [`credential_protocol::NO_ENTROPY`], a duplicate), the result is
+//! ([`credential_contract::FULL`], [`credential_contract::NO_ENTROPY`], a duplicate), the result is
 //! an orphaned, empty subtree with no identity: inert, and recovered by re-running. The other order
 //! risks a credential that verifies for an identity with no home. `MKDIR`'s [`EEXIST`] is therefore
 //! "already created, proceed", exactly the state a failed run leaves; any other `MKDIR` failure
@@ -20,14 +20,14 @@
 //!   the verify endpoint, so this cannot authenticate anybody even by mistake.
 //! - slot [`FS_EP`]: `WRITE` on the directory holding the principal tree, unnarrowed in this slice.
 //! - slot [`REPORT`]: `WRITE`; one report, then exit.
-//! - mapped [`REQ_VA`]: the caller's staged identity and secret, in [`credential_protocol::place`]'s
+//! - mapped [`REQ_VA`]: the caller's staged identity and secret, in [`credential_contract::place`]'s
 //!   layout, relayed and never chosen here.
 //! - mapped [`PROV_VA`]: the frame shared with the credential service (its own `PROV_VA`).
 //! - mapped [`FS_VA`]: the page shared with the file service, for the one `MKDIR`.
-//! - `a0`, `a1`: the identity's and secret's lengths, refused if [`credential_protocol::read`]
+//! - `a0`, `a1`: the identity's and secret's lengths, refused if [`credential_contract::read`]
 //!   would refuse them.
 //!
-//! No [`credential_protocol::provision::SEAL`]: sealing ends provisioning for the whole store, the
+//! No [`credential_contract::provision::SEAL`]: sealing ends provisioning for the whole store, the
 //! caller's decision once every identity is in. No deprovisioning.
 //!
 //! Name: ratified 2026-09-13 (calef). `identity` is the word the capability model manipulates, where
@@ -42,7 +42,7 @@
 #![allow(missing_docs)]
 #![no_main]
 
-use filesystem_protocol::fs;
+use filesystem_contract::fs;
 use user_mode_runtime::call;
 use user_mode_runtime::mapped_window::MappedWindow;
 
@@ -53,43 +53,43 @@ const FS_EP: u64 = 1;
 /// The report endpoint (slot 2), `WRITE`.
 const REPORT: u64 = 2;
 
-/// Where the caller stages the identity and secret, in [`credential_protocol::place`]'s layout. Numbered in
+/// Where the caller stages the identity and secret, in [`credential_contract::place`]'s layout. Numbered in
 /// the `0x...00eN_0000` family `credentialer.rs` and `login.rs` already use, one past `login.rs`'s
 /// highest (`CRED_VA`, `0xe3_0000`).
 const REQ_VA: u64 = address_space_map::pair_page(0x0000_0000_00e4_0000);
 // SAFETY: the wiring maps one page read/write at REQ_VA before this process runs (milestone 139
 // round 6).
 const REQ_WINDOW: MappedWindow =
-    unsafe { MappedWindow::new(REQ_VA, credential_protocol::PAGE as u64) };
+    unsafe { MappedWindow::new(REQ_VA, credential_contract::PAGE as u64) };
 /// The page shared with the credential service. Must match `components/src/credentialer.rs`'s `PROV_VA`.
 const PROV_VA: u64 = address_space_map::pair_page(0x0000_0000_00e0_0000);
 // SAFETY: the wiring maps one page read/write at PROV_VA before this process runs, the same
 // physical frame `credentialer.rs` maps at its own PROV_VA.
 const PROV_WINDOW: MappedWindow =
-    unsafe { MappedWindow::new(PROV_VA, credential_protocol::PAGE as u64) };
+    unsafe { MappedWindow::new(PROV_VA, credential_contract::PAGE as u64) };
 /// The page shared with the file service, for the one `MKDIR` request this process ever sends.
 const FS_VA: u64 = address_space_map::pair_page(0x0000_0000_00e5_0000);
 // SAFETY: the wiring maps one page read/write at FS_VA before this process runs, shared with the
 // file service and with nothing else.
 const FS_WINDOW: MappedWindow =
-    unsafe { MappedWindow::new(FS_VA, filesystem_protocol::PAGE as u64) };
+    unsafe { MappedWindow::new(FS_VA, filesystem_contract::PAGE as u64) };
 
 /// **Success**: the subtree exists (freshly made or already there) and the credential was stored.
 pub const RPT_OK: u64 = 1;
 /// **The staged request was not one this contract allows**: an identity or secret length outside
-/// [`credential_protocol`]'s bounds. Nothing was sent to either server.
+/// [`credential_contract`]'s bounds. Nothing was sent to either server.
 pub const RPT_MALFORMED: u64 = 2;
 /// **`MKDIR` failed for a reason other than the name already being there.** Word 1 of the report is
 /// the errno. Nothing was written to the credential store.
 pub const RPT_SUBTREE_FAILED: u64 = 3;
 /// **The subtree exists, but the credential `PUT` was refused.** Word 1 of the report is the raw
-/// [`credential_protocol`] verdict ([`credential_protocol::FULL`], [`credential_protocol::MALFORMED`] on a duplicate identity,
-/// or [`credential_protocol::NO_ENTROPY`]), or the raw kernel word if the provision endpoint could not be
+/// [`credential_contract`] verdict ([`credential_contract::FULL`], [`credential_contract::MALFORMED`] on a duplicate identity,
+/// or [`credential_contract::NO_ENTROPY`]), or the raw kernel word if the provision endpoint could not be
 /// reached at all. This is the accepted partial-failure state; see this program's module docs.
 pub const RPT_CRED_FAILED: u64 = 4;
 
 /// `EEXIST`: the standard value (matching `redoxfs`/`syscall`'s own, which `redoxfs_server` returns and
-/// nothing in `filesystem_protocol` re-exports under a name). The one `MKDIR` failure this process does not
+/// nothing in `filesystem_contract` re-exports under a name). The one `MKDIR` failure this process does not
 /// treat as a refusal.
 const EEXIST: i32 = 17;
 
@@ -98,12 +98,12 @@ pub extern "C" fn _start(id_len: u64, secret_len: u64, _a2: u64) -> ! {
     // SAFETY: forwarded from REQ_WINDOW's own contract; staged by the caller with the identity and
     // secret this run provisions.
     let req_page = unsafe { REQ_WINDOW.as_slice() };
-    let w0 = credential_protocol::req(
-        credential_protocol::provision::PUT,
+    let w0 = credential_contract::req(
+        credential_contract::provision::PUT,
         id_len as usize,
         secret_len as usize,
     );
-    let Some((identity, secret)) = credential_protocol::read(req_page, w0) else {
+    let Some((identity, secret)) = credential_contract::read(req_page, w0) else {
         wipe_req();
         report(RPT_MALFORMED, 0);
     };
@@ -123,13 +123,13 @@ pub extern "C" fn _start(id_len: u64, secret_len: u64, _a2: u64) -> ! {
 
     // SAFETY: forwarded from PROV_WINDOW's own contract.
     let prov_page = unsafe { PROV_WINDOW.as_mut_slice() };
-    let Some(cw0) = credential_protocol::place(
+    let Some(cw0) = credential_contract::place(
         prov_page,
         identity,
         secret,
-        credential_protocol::provision::PUT,
+        credential_contract::provision::PUT,
     ) else {
-        // Unreachable in practice: `identity` and `secret` already round-tripped `credential_protocol::read`
+        // Unreachable in practice: `identity` and `secret` already round-tripped `credential_contract::read`
         // with the same bounds `place` enforces. Refused rather than assumed, because a caller bug
         // here would otherwise be a silent no-op rather than a wrong-looking but honest report.
         wipe_req();
@@ -139,10 +139,10 @@ pub extern "C" fn _start(id_len: u64, secret_len: u64, _a2: u64) -> ! {
     // used by `mkdir_home` above, and both have now been copied to PROV_VA.
     wipe_req();
     let (cr0, _) = call(PROV, cw0, 0);
-    credential_protocol::wipe(prov_page);
+    credential_contract::wipe(prov_page);
 
-    match credential_protocol::code(cr0) {
-        Some(credential_protocol::OK) => report(RPT_OK, 0),
+    match credential_contract::code(cr0) {
+        Some(credential_contract::OK) => report(RPT_OK, 0),
         Some(other) => report(RPT_CRED_FAILED, other),
         // A kernel error (no such capability, the endpoint is dead) reads as a huge u64; carried
         // through rather than collapsed, so the report is still diagnosable from one word.
@@ -151,7 +151,7 @@ pub extern "C" fn _start(id_len: u64, secret_len: u64, _a2: u64) -> ! {
 }
 
 /// `MKDIR` the identity's home subtree under [`FS_EP`]'s root, asking for full rights on it
-/// ([`filesystem_protocol::dir::ALL`]), the same rights `login.rs` requests when it descends into the fixed
+/// ([`filesystem_contract::dir::ALL`]), the same rights `login.rs` requests when it descends into the fixed
 /// fixture subtree today. `None` on success (the handle this process minted is closed immediately;
 /// it has no further use for it), `Some(errno)` otherwise.
 fn mkdir_home(identity: &[u8]) -> Option<i32> {
@@ -162,9 +162,9 @@ fn mkdir_home(identity: &[u8]) -> Option<i32> {
     let (r0, _) = call(
         FS_EP,
         fs::req(fs::MKDIR, fs::ROOT, identity.len() as u64),
-        filesystem_protocol::dir::ALL,
+        filesystem_contract::dir::ALL,
     );
-    match filesystem_protocol::reply_errno(r0 as i64) {
+    match filesystem_contract::reply_errno(r0 as i64) {
         Some(errno) => Some(errno),
         None => {
             // A directory handle, minted and immediately released: this process confirms the
@@ -182,7 +182,7 @@ fn mkdir_home(identity: &[u8]) -> Option<i32> {
 fn wipe_req() {
     // SAFETY: forwarded from REQ_WINDOW's own contract, and this process is the only writer.
     let page = unsafe { REQ_WINDOW.as_mut_slice() };
-    credential_protocol::wipe(page);
+    credential_contract::wipe(page);
 }
 
 fn report(code: u64, detail: u64) -> ! {

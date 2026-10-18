@@ -112,7 +112,7 @@ directories that violated them are in
 [Directories](programs-scripts-and-directories.md#directories-milestone-63).
 
 Standard terms are already right and must not be touched. `elf`, `pci`, `paging`, `glob` and
-`socket_protocol` are names a reader knows from outside this project, so they cost nothing to learn.
+`socket_contract` are names a reader knows from outside this project, so they cost nothing to learn.
 This tenet is a naming authority, not a renaming mandate. Renaming `elf` would destroy the
 recognition the whole thing exists to buy.
 
@@ -172,10 +172,10 @@ known gap rather than a decision.
   `inter_process_communication`, `direct_memory_access_validator`, `measured_boot`,
   `user_mode_heap`.
 - Wire contracts, spelled `*_protocol` and checked for it by `script/lint`:
-  `filesystem_protocol`, `socket_protocol`, `byte_sink_protocol`, `credential_protocol`,
-  `clock_protocol`, `entropy_protocol`, `graphics_protocol`, `environment_protocol`,
-  `login_protocol`, `network_time_protocol`, `supervision_protocol`, `swap_protocol`,
-  `counter_frequency_protocol`, `capability_witness_protocol`. Plus `abi`, which is the syscall
+  `filesystem_contract`, `socket_contract`, `byte_sink_contract`, `credential_contract`,
+  `clock_contract`, `entropy_contract`, `graphics_contract`, `environment_contract`,
+  `login_contract`, `network_time_protocol`, `supervision_protocol`, `hot_swap_contract`,
+  `counter_frequency_contract`, `capability_witness_contract`. Plus `abi`, which is the syscall
   boundary and predates the suffix.
 
   The suffix is `_protocol`, not `_proto`, by milestone 265 (calef, 2026-09-05: *"I think `_proto`
@@ -210,8 +210,8 @@ those directories had that day.
 - One word where one word will do, which is 21 of the 39: `abi`, `capability`, `compositor`,
   `elf`, `frames`, `ipc`, `paging`, `regions`, `slots`, `virtio`.
 - Underscore when the two halves are separate concepts and the name reads as a qualifier applied to
-  a thing, which is the other 18. `filesystem_protocol` is the protocol *for* the filesystem,
-  `graphics_protocol` the protocol *for* graphics, `dma_validator` the validation *of* DMA.
+  a thing, which is the other 18. `filesystem_contract` is the protocol *for* the filesystem,
+  `graphics_contract` the protocol *for* graphics, `dma_validator` the validation *of* DMA.
   `user_rt` is the runtime *for* userspace, `user_heap` the heap *for* userspace, `measured_boot`
   the measurement *of* boot.
 
@@ -229,9 +229,9 @@ judgement. The guard rail is that a standard term keeps its standard spelling (s
 The one place it became a real inconsistency is fixed and checked. The wire contract was spelled
 four ways (`fs_proto`, `gfx_proto`, `netproto`, `line_editor::proto`) for one concept. `gfx_proto`
 was its name at the time; the 2026-08-23 review made it `graphics_proto`, and milestone 265
-(`_proto` is a truncation) made it `graphics_protocol` on 2026-09-14. `*_proto` won for crates,
+(`_proto` is a truncation) made it `graphics_contract` on 2026-09-14. `*_proto` won for crates,
 because it is what the actual crates already were. `socket_proto` has since graduated from a module
-inside `net_stack` into a crate (now `socket_protocol`). The suffix itself then lost, three weeks
+inside `net_stack` into a crate (now `socket_contract`). The suffix itself then lost, three weeks
 later and to its own author: see the `_protocol` note above.
 
 ### A crate that is a component's engine

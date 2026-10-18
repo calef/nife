@@ -189,7 +189,7 @@ So a userspace supervisor on the one board this milestone's number is taken on w
 `jpm_median` 2.5x too high, silently, while its `ticks_median` stayed correct. That is the
 failure mode this tree fears most: a number that looks right.
 
-The obvious fix is the timebase page `counter_frequency_protocol` already defines, extended from
+The obvious fix is the timebase page `counter_frequency_contract` already defines, extended from
 x86_64 to riscv64. It does not work here, and the reason is already on the roadmap. Milestone 167
 (handing a computed page to a userspace-built child: closing the x86_64 timebase page's delegation
 gap) records that a process built by `build_child_space` gets a zeroed placeholder, because

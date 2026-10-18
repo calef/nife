@@ -81,10 +81,10 @@ package_archive = { path = "../crates/package_archive" }
 # names no registry crate beyond `libfuzzer-sys`.
 redoxfs_server = { path = "../redoxfs_server" }
 redoxfs = { path = "../vendor/redoxfs", default-features = false, features = ["std"] }
-filesystem_protocol = { path = "../crates/filesystem_protocol" }
+filesystem_contract = { path = "../crates/filesystem_contract" }
 system_log = { path = "../crates/system_log" }
-system_log_protocol = { path = "../crates/system_log_protocol" }
-byte_sink_protocol = { path = "../crates/byte_sink_protocol" }
+system_log_contract = { path = "../crates/system_log_contract" }
+byte_sink_contract = { path = "../crates/byte_sink_contract" }
 compositor = { path = "../crates/compositor" }
 
 # **Overflow checks and debug assertions ON in an optimised build**, which is not cargo-fuzz's

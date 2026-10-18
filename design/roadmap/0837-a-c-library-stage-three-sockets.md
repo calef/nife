@@ -13,11 +13,11 @@ needs_person: no
 
 Stage 3 of §265 (a C library started from relibc): `socket`, `connect`, `bind`, `listen`, `accept`,
 `send`, `recv`, `setsockopt` for the options the consumers set, `getaddrinfo` for literal addresses,
-and `poll` or `select` over sockets and files. The platform layer speaks `socket_protocol` on slots
+and `poll` or `select` over sockets and files. The platform layer speaks `socket_contract` on slots
 2 and 3, the contract `std::net` already uses under §25 (socket identity). A refused connect and a
 port outside the listen grant map to `ECONNREFUSED` and `EACCES`, as `std` maps them to error kinds.
 
-Reuse: relibc's socket, `netdb` and `poll` header code (MIT), over `crates/socket_protocol`, the
+Reuse: relibc's socket, `netdb` and `poll` header code (MIT), over `crates/socket_contract`, the
 contract `std::net` and net_stack already share.
 
 ## First consumers

@@ -3,14 +3,14 @@
 //!
 //! `fs_file_caretaker` narrows a directory capability to one **file**. `fs_subtree_caretaker`
 //! narrows it to one **subtree**. This narrows it to a **set of names in one directory**, which is
-//! what `rm *.txt` designates. It speaks `filesystem_protocol` above and below, over a wider
+//! what `rm *.txt` designates. It speaks `filesystem_contract` above and below, over a wider
 //! namespace; nothing new in the kernel.
 //!
 //! It is a third caretaker rather than a mode of the others because `fs_subtree_caretaker`'s
 //! strength is performing no checks at all, and a name filter is a check on every name-taking verb;
 //! `fs_file_caretaker` serves the *file* protocol and refuses every directory verb; and a set does
 //! not fit in `START`'s argument words, so this one is started with a **frame**
-//! (`filesystem_protocol::nameset`).
+//! (`filesystem_contract::nameset`).
 //!
 //! # The rule, and the fact that there is only one
 //!
@@ -52,7 +52,7 @@
 #![allow(missing_docs)]
 #![no_main]
 
-use filesystem_protocol::{dirent, fs, grant, nameset, operation, reply_err, reply_errno, verb};
+use filesystem_contract::{dirent, fs, grant, nameset, operation, reply_err, reply_errno, verb};
 use user_mode_runtime::mapped_window::MappedWindow;
 use user_mode_runtime::{Reply, call, receive_request, send};
 
@@ -69,7 +69,7 @@ const PAGE_VA: u64 = address_space_map::pair_page(0x0000_0000_0060_0000);
 /// grant machinery that needs one: a set is the first thing a grant carries that registers cannot.
 const SET_VA: u64 = address_space_map::pair_page(0x0000_0000_0070_0000);
 /// The shared page's size, the contract's transfer unit.
-const PAGE: usize = filesystem_protocol::PAGE;
+const PAGE: usize = filesystem_contract::PAGE;
 
 // SAFETY: the wiring maps one page read/write at PAGE_VA before this program runs (milestone 139
 // round 2; see `user_mode_runtime::mapped_window`, which is what collapsed the hand-rolled read_volatile/
@@ -170,7 +170,7 @@ fn name_at(off: usize, len: usize, buf: &mut [u8; grant::MAX_NAME]) -> usize {
 /// Which verbs get asked the question used to be a list of match arms here, and the failure mode was
 /// the sharp one: a name-taking verb added to the contract would arrive **unfiltered**, so a set
 /// capability would quietly reach a name the pattern never matched. It is now
-/// [`verb::Verb::takes_name`], a row in `filesystem_protocol`'s verb table, so the filter covers a new verb
+/// [`verb::Verb::takes_name`], a row in `filesystem_contract`'s verb table, so the filter covers a new verb
 /// from the moment its row exists.
 ///
 /// The distinction that makes this safe is a variant of [`verb::Operand`]. An **attribute** name is
@@ -367,7 +367,7 @@ pub extern "C" fn _start(name_lo: u64, name_hi: u64, spec: u64) -> ! {
         panic!();
     }
 
-    send(REPORT, filesystem_protocol::READY, 0, 0);
+    send(REPORT, filesystem_contract::READY, 0, 0);
     serve(r0, &set);
 }
 

@@ -47,7 +47,7 @@
 #![allow(missing_docs)]
 
 use abi::rights;
-use socket_protocol::*;
+use socket_contract::*;
 use user_mode_runtime::mapped_window::{MappedWindow, PAGE};
 use user_mode_runtime::{
     badge, call, call_receiving, cap_delete, exit, map_page_frame, now, receive, receive_cap,
@@ -139,7 +139,7 @@ pub fn run() -> ! {
     //
     //    The two kernel-IPC probes are new ground, risk 7's fifth outsider pass (2026-10-10 UTC).
     //    The capability the stack mints for a socket is a copy of the stack's own serve endpoint,
-    //    carrying the socket's badge (`socket_protocol::stack_slots::MINT`). If that copy carried
+    //    carrying the socket's badge (`socket_contract::stack_slots::MINT`). If that copy carried
     //    `READ`, a kernel plain `RECEIVE` or `RECEIVE_CAP` on it would dequeue the stack's own
     //    incoming queue, every other client's request to the stack, which is the capture class
     //    milestone 649 closed reached by IPC rather than by a squatted page. The mint omits `READ`

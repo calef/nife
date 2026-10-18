@@ -111,7 +111,7 @@ interrupt signal now reads `[1, NO_CAP, 0, 0, 0]` on both orders, and a death me
 a spawner slot for `cap_delete` to clear; it is closed by the same receive-side rule.
 
 **The machine statistics page** (`kernel/src/machine_statistics.rs`,
-`crates/machine_statistics_protocol`). Minted once with `READ | GRANT` for the progenitor; the
+`crates/machine_statistics_contract`). Minted once with `READ | GRANT` for the progenitor; the
 shell gets it at `MACHINE_PAGE_SLOT` when `GRANT_MACHINE_PAGE` says the owner allows it, and a
 program that declares `machine` gets it mapped `MAP_RO`, which `page_frame_map` enforces by
 refusing `MAP_RW` without `WRITE`. Every per-core index is `word::cpu(cpu::id())` with `cpu::id()`

@@ -1,7 +1,7 @@
 //! **Drains `login`'s audit trail so the service never blocks on it** (milestone 49's terminal
 //! update, wiring the login stack into the real interactive boot).
 //!
-//! `components/src/login.rs` sends one [`login_protocol::ATTRIBUTED`] message per successful login
+//! `components/src/login.rs` sends one [`login_contract::ATTRIBUTED`] message per successful login
 //! on its `AUDIT` endpoint, a plain blocking rendezvous: with no receiver, `login`'s first
 //! successful login would park its whole thread inside that `send` forever. This process is the
 //! receiver, on `job_undertaker`'s pattern, and it **discards** each message: printing the record

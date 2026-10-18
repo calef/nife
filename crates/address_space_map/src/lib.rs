@@ -14,7 +14,7 @@
 //! ```
 //!
 //! The bands tile `[0, 2 GiB)` with no gap (a host test holds that); above 2 GiB only the timebase
-//! page (`counter_frequency_protocol::PAGE_VA`) is assigned. A new page goes in the first band that
+//! page (`counter_frequency_contract::PAGE_VA`) is assigned. A new page goes in the first band that
 //! fits: the program's code or data, [`IMAGE`] (a hand-built child's code page at [`IMAGE_BASE`]
 //! too); the stack, [`STACK`]; a page the kernel maps into every process unasked,
 //! [`PROCESS_PAGES`], sharing the stack's page tables; the heap, [`HEAP`]; a window a loader or
@@ -34,7 +34,7 @@
 //!
 //! - Pair pages are checked for membership, not for collisions within one process; fixtures with
 //!   several windows assert their own disjointness (`components/src/swish.rs`).
-//! - `std_runtime_protocol` and `counter_frequency_protocol` restate their numbers, pinned by tests.
+//! - `std_runtime_contract` and `counter_frequency_contract` restate their numbers, pinned by tests.
 //! - The userspace loader reports a too-large image as "could not spawn", not [`check_image`]'s why.
 //!
 //! Name: provisional: a map of one address space; `user_layout` and `address_space` were set aside.
@@ -92,14 +92,14 @@ pub const PAIR_PAGES: Band = Band {
 };
 
 /// **Windows a loader or runtime places on a program's behalf**: std's runtime pages
-/// (`std_runtime_protocol`), std's per-socket frames, a builder's scratch cursor, the initial
+/// (`std_runtime_contract`), std's per-socket frames, a builder's scratch cursor, the initial
 /// ramdisk window the kernel hands the progenitor, the swap image window.
 pub const RUNTIME_WINDOWS: Band = Band {
     start: PAIR_PAGES.end,
     end: 0x4000_0000,
 };
 
-/// **The heap.** `std_runtime_protocol::HEAP_BASE` and `user_mode_runtime::heap::DEFAULT_BASE` are
+/// **The heap.** `std_runtime_contract::HEAP_BASE` and `user_mode_runtime::heap::DEFAULT_BASE` are
 /// its start, and std's `HEAP_MAX` is its width. A program with no heap still leaves it empty.
 pub const HEAP: Band = Band {
     start: RUNTIME_WINDOWS.end,
@@ -164,7 +164,7 @@ pub const STACK_TOP_PAGE: u64 = STACK_TOP - PAGE;
 /// page of a maximal image.
 pub const MAX_STACK_PAGES: u64 = STACK.bytes() / PAGE - 1;
 
-/// **Where the kernel maps the current-CPU page** (`current_cpu_protocol::PAGE_VA`): the last page
+/// **Where the kernel maps the current-CPU page** (`current_cpu_contract::PAGE_VA`): the last page
 /// of [`PROCESS_PAGES`], in the same 2 MiB page-table window as [`STACK_TOP_PAGE`].
 pub const CURRENT_CPU_PAGE: u64 = PROCESS_PAGES.end - PAGE;
 

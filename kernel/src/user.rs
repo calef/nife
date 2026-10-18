@@ -203,7 +203,7 @@ pub mod disk_service;
 /// `Spawn` literal, and know nothing about what they do. It never sees a virtio-gpu command, a
 /// pixel, or a rectangle. What is new is the **size** of the DMA region, and that is the whole
 /// memory story: a framebuffer does not fit in the single page the disk and NIC drivers get, so the
-/// region is `1 + graphics_protocol::SURFACE_PAGE_FRAMES` **contiguous** frames, page 0 for the rings and the
+/// region is `1 + graphics_contract::SURFACE_PAGE_FRAMES` **contiguous** frames, page 0 for the rings and the
 /// control buffers and the rest for the surface. Registering the whole run as the driver's DMA region
 /// is what keeps the framebuffer inside the grant: the shadow-ring validator bounds every descriptor
 /// to it, and `iommu::confine` maps exactly it, so the device can reach the pixels and nothing else.
@@ -293,7 +293,7 @@ pub mod usb_keyboard_service;
 /// tree (by `compatible`, `memory::rtc_region`), allocate one frame for the clock page, and hand
 /// the service the registers, the page read/write, and an endpoint. It does not read the clock, does
 /// not know what time it is, and has no notion of an offset. Everything after the spawn is
-/// userspace agreeing with userspace over `clock_protocol`.
+/// userspace agreeing with userspace over `clock_contract`.
 ///
 /// Arch-neutral, like the display and compositor wiring: the component is one portable binary
 /// carrying both RTC drivers, and the *machine* says which one it has, so **both ISAs run literally
@@ -310,7 +310,7 @@ pub mod clock_service;
 /// whichever bus the caller named, confine it to one DMA page, and hand the service the transport,
 /// the interrupt, and two endpoints. **The kernel never reads the device and holds no entropy of
 /// its own.** Everything after the spawn is userspace agreeing with userspace over
-/// `entropy_protocol`.
+/// `entropy_contract`.
 ///
 /// The authority split is the point, and it is one sentence: the service holds the device; a client
 /// holds an endpoint that means *"you may obtain randomness"*. Those are different powers, and only
@@ -387,7 +387,7 @@ pub mod install_service;
 ///
 /// The kernel never sees a secret, holds no store, and computes no hash. It creates two endpoints,
 /// two frames, and a budget, and hands each process a different subset. Everything after the spawn
-/// is userspace agreeing with userspace over `credential_protocol`.
+/// is userspace agreeing with userspace over `credential_contract`.
 ///
 /// **Two frames and not one**, which is the detail worth stating: the provisioner writes plaintext
 /// secrets into its page, so a client sharing that frame would read them. The two pages are

@@ -42,7 +42,7 @@ The ceiling is 4 GiB, measured twice rather than picked. First, each child's own
 | | peak address space |
 |---|---|
 | largest (`board_console`) | 1,028 MiB |
-| next (`graphics_protocol`) | 481 MiB |
+| next (`graphics_contract`) | 481 MiB |
 | mean across 143 binaries | 169 MiB |
 
 So 4 GiB is 4.0x the largest honest test binary in the tree. The other half of the choice is the
