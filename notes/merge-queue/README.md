@@ -6,13 +6,13 @@ mechanism or one record each, at a length the main page's prose budget cannot ho
 - [prose-only.md](prose-only.md): a change that is only Markdown nobody reads skips the heavy CI
   jobs, and how the required checks stay satisfied.
 - [lane-claim-check.md](lane-claim-check.md): the claim check's gap, false positives and clock.
-- [before-the-queue.md](before-the-queue.md): what the queue took over, the drain's four earlier
+- [what-the-merge-queue-took-over.md](what-the-merge-queue-took-over.md): what the queue took over, the drain's four earlier
   shapes, and the prevention half.
 - [actions-migration.md](actions-migration.md): the move to Actions, the premise test, the
   `launchd` retirement, and what was lost.
 - [at-risk-check.md](at-risk-check.md): the at-risk watch in full.
 - [main-push-and-check-timeout.md](main-push-and-check-timeout.md): A′ and the 240-minute timeout.
-- [measured-2026-08-16.md](measured-2026-08-16.md): what the queue bought, measured.
+- [what-the-queue-bought.md](what-the-queue-bought.md): what the queue bought, measured.
 - [merge-methods-and-holds.md](merge-methods-and-holds.md): no squash at the repository, and
   `Blocked-by:`.
 - [limitations.md](limitations.md): the BUGS list in full.
@@ -24,10 +24,10 @@ the file name `prose-only.md` matches the classifier it documents and changes if
 Each stem below is named for its content, and calef names files.
 
 - `lane-claim-check` Name: provisional. After the script it documents.
-- `before-the-queue` Name: provisional.
+- `what-the-merge-queue-took-over` Name: ratified 2026-10-18 (calef, "Approve as a group"). Refused `before-the-queue`.
 - `actions-migration` Name: provisional.
 - `at-risk-check` Name: provisional. After the script it documents.
 - `main-push-and-check-timeout` Name: provisional.
-- `measured-2026-08-16` Name: provisional.
+- `what-the-queue-bought` Name: ratified 2026-10-18 (calef, "Approve as a group"). Refused `measured-2026-08-16`.
 - `merge-methods-and-holds` Name: provisional.
 - `limitations` Name: provisional.

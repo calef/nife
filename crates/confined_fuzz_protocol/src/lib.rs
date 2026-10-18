@@ -78,7 +78,7 @@ pub mod report {
 
 pub use abi::SYS_CAP_DELETE as SYS_CAPABILITY_DELETE;
 /// The ABI names these with `CAP` today. Both binaries this crate serves spell `capability` out
-/// (calef's ruling, 2026-10-06; see `design/naming/capability-worklist.md`), so each pre-sweep
+/// (calef's ruling, 2026-10-06; see `design/naming/capability-spelling-worklist.md`), so each pre-sweep
 /// name appears exactly once in this crate, aliased to the spelling the sweep itself proposes,
 /// and nowhere else in the milestone's code.
 pub use abi::rendezvous::{

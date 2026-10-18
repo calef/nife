@@ -39,7 +39,7 @@ An appendix to [notes/job-mix.md](../job-mix.md), whose BUGS section lists each 
   1.12% (the Results table in [notes/job-mix.md](../job-mix.md)). Step 6.1 of the procedure is the
   check on another machine, and if 21 is not enough the count is one constant (`job_mix::REPEATS`).
 - `--hvf` boots (milestone 227 (a GICv3 driver)), and the full mix completes there
-  ([`spawn-destroy-gone.md`](spawn-destroy-gone.md)).
+  ([`spawn-job-miscompiled-yield.md`](spawn-job-miscompiled-yield.md)).
 - The supervisor is in the kernel, and that is what makes the build special (milestone 523 (moving the job-mix supervisor into userspace, and the five permissions it turns out to need)). A userspace supervisor would delete the whole
   class of problem a diverted boot has, and would measure the more honest thing. Its
   own releases and drains would be real `svc` round trips inside the timed window. And it would be

@@ -174,7 +174,7 @@ controls, and two bits stop the result being vacuous. A host-side check then rea
 run left behind and confirms nothing escaped upward. The FS server's stack high-water mark went
 down by about 3.7 KB with `RENAME`, unattributed, and two thirds of its grant stays free. The runs,
 the host check and the stack table are in
-[dir-capability/tests-and-stack.md](dir-capability/tests-and-stack.md).
+[dir-capability/tests-and-stack-usage.md](dir-capability/tests-and-stack-usage.md).
 
 ## BUGS
 

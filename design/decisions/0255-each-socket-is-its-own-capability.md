@@ -39,7 +39,7 @@ The delivery fork, recorded on PR #1817 at 15:23Z:
 
 `invoke(reply, REPLY_CAPABILITY, r0, r1, capability_slot)`, method 1 on a Reply capability. Name
 ratified by calef on 2026-10-07 (UTC), recorded on #1817, to match `SEND_CAPABILITY`,
-`RECEIVE_CAPABILITY` and `NO_CAPABILITY` in design/naming/capability-worklist.md; the method number
+`RECEIVE_CAPABILITY` and `NO_CAPABILITY` in design/naming/capability-spelling-worklist.md; the method number
 is provisional. The runtime pair is `reply_capability` and `call_receiving`.
 `abi::reply::REPLY_CAPABILITY` carries the same contract at the definition.
 

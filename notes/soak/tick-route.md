@@ -33,7 +33,7 @@ Four properties, each of which was a requirement rather than a bonus:
 - No syscall is added. The userspace half already existed: `abi::interrupt::WAIT` is a method on an
   `Irq` capability, and `user_mode_runtime::interrupt_wait` calls it. Only the *raise* was
   missing, and the kernel is already the thing that raises interrupts.
-- Nothing exists in a production build. That is proved in [qemu-baselines.md](qemu-baselines.md),
+- Nothing exists in a production build. That is proved in [qemu-2026-09.md](qemu-2026-09.md),
   not asserted.
 - It is architecture-neutral, and that is load-bearing. riscv64 has no software-raisable line that
   reaches `irq_route` at all. So an aarch64 `send_sgi` or an x86 self-IPI would have left radon out.
@@ -95,7 +95,7 @@ tolerates the race and riscv64 does not, which is the ordinary shape of this cla
   on radon, argon or xenon. QEMU cannot show the defects this risk is about; that is the risk's
   premise, not a limitation of the tooling.
 - It says nothing about what a crossing rate should be. The numbers in
-  [qemu-baselines.md](qemu-baselines.md) are a shape. There is no baseline to compare a board
+  [qemu-2026-09.md](qemu-2026-09.md) are a shape. There is no baseline to compare a board
   against until a board has produced one, and the first board run is what creates it.
 - The hook fires on a timer, which is why it works and why it proves nothing about the machine
   without it. A soak with the tick route live is evidence about the wake path under sustained

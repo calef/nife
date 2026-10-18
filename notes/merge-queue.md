@@ -107,7 +107,7 @@ the drain had been reconstructing from outside. On 2026-08-16 the drain lost abo
 Turn the queue off and the four failures the drain went through before it return, because under the
 up-to-date rule a merge stales every other branch. The queue is also the prevention half: it tests a
 candidate against the tip, which catches two branches green alone and red together, and that is the
-better half. These scripts only detect. [`merge-queue/before-the-queue.md`](merge-queue/before-the-queue.md)
+better half. These scripts only detect. [`merge-queue/what-the-merge-queue-took-over.md`](merge-queue/what-the-merge-queue-took-over.md)
 has the four shapes and the evening that motivated it.
 
 ## How they run: in Actions, as `nife-smelter[bot]` (2026-09-24)
@@ -228,7 +228,7 @@ per elapsed hour went from 0.97 to 1.76, and enqueue-to-merged from 17.0 to 12.3
 minutes. The queue amortizes wall clock, not CI cost: it builds one candidate per entry, so job-minutes
 per landing stayed flat. The prover decides only the tail, and that tail was mostly changes the
 `--affected-since` predicate could not attribute. The samples are small, one afternoon each.
-[`merge-queue/measured-2026-08-16.md`](merge-queue/measured-2026-08-16.md) has the table, the five
+[`merge-queue/what-the-queue-bought.md`](merge-queue/what-the-queue-bought.md) has the table, the five
 caveats and the levers.
 
 ## Squash and rebase merging are disabled at the repository, not only in the queue

@@ -584,7 +584,7 @@ pub fn configure_from_dtb() {
 /// riscv-only: the aarch64 console stays polling, and its `ConsoleUart` (a PL011) has no such method.
 ///
 /// Name: provisional, flagged 2026-09-25 by the lane that re-derived the x86 port falsifications
-/// (design/naming/boolean-predicates-worklist.md, "`rx` and `tx`"). calef asked what `rx` stands
+/// (design/naming/functions-that-answer-yes-or-no-worklist.md, "`rx` and `tx`"). calef asked what `rx` stands
 /// for in his #1255 review; recommended `enable_receive_interrupt`, because it enables an
 /// interrupt, which `rx_enable` does not say, and matches the driver method it calls.
 #[cfg(target_arch = "riscv64")]
@@ -621,7 +621,7 @@ pub fn is_byte_waiting() -> bool {
 /// `Ns16550::discard_rx` for why U-Boot's leftovers are the thing being cleared.
 ///
 /// Name: provisional, flagged 2026-09-25 by the lane that re-derived the x86 port falsifications
-/// (design/naming/boolean-predicates-worklist.md, "`rx` and `tx`"). calef asked what `rx` stands
+/// (design/naming/functions-that-answer-yes-or-no-worklist.md, "`rx` and `tx`"). calef asked what `rx` stands
 /// for in his #1255 review; recommended `discard_waiting_bytes`, because it drops the bytes
 /// `is_byte_waiting` would have reported.
 #[cfg(any(feature = "reboot_soak_test", feature = "watchdog_soak_test"))]
@@ -806,7 +806,7 @@ static TX_BYTES: core::sync::atomic::AtomicU64 = core::sync::atomic::AtomicU64::
 /// written there.
 ///
 /// Name: provisional, flagged 2026-09-25 by the lane that re-derived the x86 port falsifications
-/// (design/naming/boolean-predicates-worklist.md, "`rx` and `tx`"). calef asked what `rx` stands
+/// (design/naming/functions-that-answer-yes-or-no-worklist.md, "`rx` and `tx`"). calef asked what `rx` stands
 /// for in his #1255 review; recommended `bytes_written`, because it counts what the kernel wrote to
 /// the console, and its static `TX_BYTES` becomes `BYTES_WRITTEN` with it.
 #[allow(dead_code)]
