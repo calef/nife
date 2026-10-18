@@ -313,7 +313,9 @@ pub(super) fn start_domain_name_resolver(
     let (stack, _, name_server) = network?;
     let server = socket_protocol::lease::word_ipv4(name_server)?;
     let program = measured(fs, table, "domain_name_resolver").elf?;
-    Some(build_domain_name_resolver(ut, &program, stack, entropy?, server))
+    Some(build_domain_name_resolver(
+        ut, &program, stack, entropy?, server,
+    ))
 }
 
 /// **What the boot says about its network** (milestones 590 (the booted system starts its network
