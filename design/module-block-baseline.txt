@@ -3031,7 +3031,6 @@ crates/jh7110_clock_and_reset/src/tests.rs
 crates/jh7110_entropy/src/lib.rs::AUTO_AGE
 crates/jh7110_entropy/src/lib.rs::AUTO_RQSTS
 crates/jh7110_entropy/src/lib.rs::BUILD_CONFIG
-crates/jh7110_entropy/src/lib.rs::COMPATIBLE
 crates/jh7110_entropy/src/lib.rs::COMPATIBLE_VENDOR
 crates/jh7110_entropy/src/lib.rs::CTRL
 crates/jh7110_entropy/src/lib.rs::CTRL_EXEC_NONCE_RESEED
@@ -3048,11 +3047,9 @@ crates/jh7110_entropy/src/lib.rs::IE_RAND_RDY_EN
 crates/jh7110_entropy/src/lib.rs::IE_RQST_ALARM_EN
 crates/jh7110_entropy/src/lib.rs::IE_SEED_DONE_EN
 crates/jh7110_entropy/src/lib.rs::ISTAT
-crates/jh7110_entropy/src/lib.rs::ISTAT_AGE_ALARM
 crates/jh7110_entropy/src/lib.rs::ISTAT_ALL
 crates/jh7110_entropy/src/lib.rs::ISTAT_LFSR_LOCKUP
 crates/jh7110_entropy/src/lib.rs::ISTAT_RAND_RDY
-crates/jh7110_entropy/src/lib.rs::ISTAT_RQST_ALARM
 crates/jh7110_entropy/src/lib.rs::ISTAT_SEED_DONE
 crates/jh7110_entropy/src/lib.rs::MODE
 crates/jh7110_entropy/src/lib.rs::MODE_R256
