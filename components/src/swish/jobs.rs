@@ -115,9 +115,14 @@ fn watch_to_the_end(jobs: &mut Jobs, mut h: Held) {
 /// Give back the slots this shell held for a job. If the job was reclaimed, every slot is already
 /// stale and deleting it only frees the slot.
 fn release(h: Held) {
-    cap_delete(h.job_fr);
-    cap_delete(h.job_ut);
+    give_back(h.job_fr, h.job_ut);
     supervision_protocol::forget_thread_control_block(h.tcb);
+}
+
+/// Delete this shell's slots for a job's frame and region, on every path that ends with them.
+fn give_back(job_fr: u64, job_ut: u64) {
+    cap_delete(job_fr);
+    cap_delete(job_ut);
 }
 
 /// **Mint, direct and start a supervised job**, and hand back what this shell holds for it once the
@@ -141,15 +146,13 @@ fn start_supervised(e: Endowment, foreground: bool) -> Option<Held> {
     // Map the shared frame into our own space so we can signal the job and read its status.
     let va = SH_JOBFRAME_NEXT.fetch_add(PAGE, core::sync::atomic::Ordering::Relaxed);
     if !JOBFRAME_WINDOWS.contains(&va) {
-        cap_delete(job_fr);
-        cap_delete(job_ut);
+        give_back(job_fr, job_ut);
         failed();
         print(b"  this shell has run as many supervised jobs as it has room to watch\n");
         return None;
     }
     if !map_page_frame(job_fr, va) {
-        cap_delete(job_fr);
-        cap_delete(job_ut);
+        give_back(job_fr, job_ut);
         failed();
         print(b"  could not map the job frame\n");
         return None;
@@ -224,8 +227,7 @@ fn start_supervised(e: Endowment, foreground: bool) -> Option<Held> {
     if receive(RESULT).0 != spawnproto::SPAWN_OK {
         failed();
         print(b"  could not spawn (the progenitor is out of memory)\n");
-        cap_delete(job_fr);
-        cap_delete(job_ut);
+        give_back(job_fr, job_ut);
         return None;
     }
     // **The job's TCB, the one message after `SPAWN_OK`** (DECISIONS §309 (a supervised job's
