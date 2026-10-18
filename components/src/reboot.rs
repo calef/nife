@@ -48,7 +48,8 @@
 //! - **Devices are not quiesced.** A DMA transfer in flight is cut off; after `SYNC` the block
 //!   servers are idle and nothing else writes to persistent storage.
 //!
-//! Name: provisional (milestone 805). A verb, which design/naming.md passes only as a term of art.
+//! Name: ratified 2026-10-17 (calef, a program-naming session). Kept: it is the Unix word, a verb
+//! that design/naming.md passes as a term of art. His answer to keeping it was "Yes".
 
 #![no_std]
 #![allow(missing_docs)]

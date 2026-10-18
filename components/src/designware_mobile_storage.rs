@@ -27,9 +27,10 @@
 //! controller. What the split keeps from it is everything else: no other device, no clock
 //! generator, and no card outside its window except through that one register page.
 //!
-//! Name: provisional (milestone 53's storage lane, 2026-10-06 UTC). The program shares its crate's
-//! name, the pairing `non_volatile_memory_express` has; an architect renaming the crate renames
-//! this with it.
+//! Name: ratified 2026-10-17 (calef, a program-naming session). Kept, paired with its crate as
+//! `non_volatile_memory_express` is; a rename of the crate renames this with it. He considered
+//! `designware_sd_storage` and `sd_and_emmc_storage`, then answered "designware_mobile_storage".
+//! Refused `designware_sd_storage` and `sd_and_emmc_storage` (considered against the crate's name).
 //!
 //! # BUGS
 //!

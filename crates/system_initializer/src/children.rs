@@ -298,22 +298,22 @@ pub(super) fn build_net_stack(ut: u64, program: &elf::Elf, g: &BootEndowment) ->
     (stack, lease, name_server)
 }
 
-/// **Measure `name_resolver` and build it**, or `None` when the table does not vouch for it. Never
+/// **Measure `domain_name_resolver` and build it**, or `None` when the table does not vouch for it. Never
 /// inlined, so the measured image stays out of [`boot`](crate::boot)'s frame, which the spawn
 /// service runs inside for the life of the boot ([`graphical_terminal_grants`]' reason).
 /// `None` too with no stack, no entropy (it asks nothing without unguessable ids), or a lease that
 /// named no name server. `network` is `(stack, lease, name server)`, the server in
 /// `socket_protocol::lease`'s encoding.
 #[inline(never)]
-pub(super) fn start_name_resolver(
+pub(super) fn start_domain_name_resolver(
     (fs, table, ut): (&nifefs::Fs<'static>, &str, u64),
     network: Option<(u64, u64, u64)>,
     entropy: Option<u64>,
 ) -> Option<u64> {
     let (stack, _, name_server) = network?;
     let server = socket_protocol::lease::word_ipv4(name_server)?;
-    let program = measured(fs, table, "name_resolver").elf?;
-    Some(build_name_resolver(ut, &program, stack, entropy?, server))
+    let program = measured(fs, table, "domain_name_resolver").elf?;
+    Some(build_domain_name_resolver(ut, &program, stack, entropy?, server))
 }
 
 /// **What the boot says about its network** (milestones 590 (the booted system starts its network
@@ -349,7 +349,7 @@ pub(super) fn announce_network(term_ep: u64, network: Option<(u64, u64, u64)>, r
     }
 }
 
-/// **Build `name_resolver` on the booted system's stack** (milestone 892 (a std program at the
+/// **Build `domain_name_resolver` on the booted system's stack** (milestone 892 (a std program at the
 /// prompt holds the network and a resolver)), told to ask `server`, the name server the DHCP
 /// lease named, on port 53 over UDP (and over TCP when a reply is truncated). Returns its unbadged
 /// endpoint, which this process keeps for the life of the boot: it mints each resolving job's
@@ -361,7 +361,7 @@ pub(super) fn announce_network(term_ep: u64, network: Option<(u64, u64, u64)>, r
 /// harness names the runners' peer, and this names whatever the lease said.
 ///
 /// Failures trap, [`build_net_stack`]'s reason.
-pub(super) fn build_name_resolver(
+pub(super) fn build_domain_name_resolver(
     ut: u64,
     program: &elf::Elf,
     stack: u64,

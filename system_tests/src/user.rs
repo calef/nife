@@ -155,7 +155,7 @@ mod e1000e_tests;
 
 /// **A host name resolves through a confined resolver, and only inside the zone the client was
 /// granted** (milestone 384 (in a capability system the resolver is a grant), §248 (the name
-/// resolver is its own confined program)): `net_stack` over the `e1000e`, `name_resolver` as its
+/// resolver is its own confined program)): `net_stack` over the `e1000e`, `domain_name_resolver` as its
 /// client, and a test client holding one badged capability to the resolver. All three architectures.
 #[cfg(all(test, initial_ramdisk))]
 mod name_resolver_tests;

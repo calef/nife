@@ -41,7 +41,7 @@ Three pieces exist and are not joined at the prompt.
 
 ## The work
 
-1. The progenitor starts `name_resolver` once the lease arrives, told the lease's name server
+1. The progenitor starts `domain_name_resolver` once the lease arrives, told the lease's name server
    (`socket_protocol::lease`'s second word), as the test harness does with the runners' peer.
 2. The progenitor mints a socket frames' budget for a std program whose manifest declares the
    network, and places it at slot 3. 595's `a_std_program_declares_only_what_the_std_layout_can_hold`
@@ -69,7 +69,7 @@ alone would have let the ninth `jig` of a boot be refused.
   `a_forgotten_badge_is_denied_and_its_window_serves_the_next_client` fills every other window,
   forgets one, and requires the next badge to resolve there; without the `UNMAP` it answers
   `NOT_ATTACHED` (falsification patch in `system_tests/falsifications/`).
-- Item 1. The progenitor starts `name_resolver` once the lease arrives, on either stack,
+- Item 1. The progenitor starts `domain_name_resolver` once the lease arrives, on either stack,
   told the lease's name server over UDP, and says so: `progenitor: name resolver up; asks
   10.0.2.3, the lease's name server`. `script/swish-check` requires that sentence on every boot
   with a network. One more resting capability slot: `CAPABILITY_TABLE_PEAK_MEASURED` is 34.

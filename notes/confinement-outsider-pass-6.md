@@ -26,7 +26,7 @@ address a listed host resolves to. The client
 (`pinned_tls_exerciser/src/bin/package_fetch_exerciser.rs`, `from_location`) does exactly that,
 on one resolution of the name, and then hands the name, not the checked address, to
 `TcpStream::connect((host, port))`, which resolves the name a second time inside the connect.
-The resolver has no cache (components/src/name_resolver.rs: "every resolve is a query"), so the
+The resolver has no cache (components/src/domain_name_resolver.rs: "every resolve is a query"), so the
 two resolutions are two independent queries, and a rebinding name server answers them
 differently: public for the check, private for the connect.
 

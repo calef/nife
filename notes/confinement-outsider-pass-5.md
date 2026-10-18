@@ -94,7 +94,7 @@ riscv64 and x86_64 were not replayed by hand.
   takes no capability on either order (§246 (a plain `RECEIVE` never takes a capability)). No new
   sibling found.
 - The redoxfs name-window TOCTOU (claims 19, 24). Read, not booted (refusal 1, milestone 825).
-  The `name_resolver` is the positive contrast and was checked as a variant. It copies the name out of the client's window into its own buffer before judging it against the badge's zone (`components/src/name_resolver.rs`, `resolve`). So the check-then-use race redoxfs has does not exist there. The resolver's one by-design limit is that it does not follow the CNAME chain (§252
+  The `name_resolver` is the positive contrast and was checked as a variant. It copies the name out of the client's window into its own buffer before judging it against the badge's zone (`components/src/domain_name_resolver.rs`, `resolve`). So the check-then-use race redoxfs has does not exist there. The resolver's one by-design limit is that it does not follow the CNAME chain (§252
   Fork 2), which is authority riding on the asked name, not an escape.
 
 ## Re-discoveries

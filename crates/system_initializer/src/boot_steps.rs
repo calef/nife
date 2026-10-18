@@ -493,10 +493,10 @@ pub(super) fn start_device_services(
     // **The name resolver** (milestone 892 (a std program at the prompt holds the network and a
     // resolver)), on the stack just built, asking the name server the lease named. Optional in the
     // stack's own sense: no stack, no lease name server, no entropy (it asks nothing without
-    // unguessable ids), or an archive whose table refuses `name_resolver`, and the prompt's
+    // unguessable ids), or an archive whose table refuses `domain_name_resolver`, and the prompt's
     // programs resolve no names, which each says when it tries. It serves nobody until the spawn
     // service grants a job a zone.
-    let resolver = start_name_resolver((fs, table, ut), network, entropy.client);
+    let resolver = start_domain_name_resolver((fs, table, ut), network, entropy.client);
     DeviceServices {
         screen,
         has_screen,
