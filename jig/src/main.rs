@@ -191,15 +191,18 @@ fn list_outdated() -> ExitCode {
 
 /// **The live generation's table**, read through the activation directory: `current` names it.
 fn live_generation() -> Result<String, String> {
+    const NO_VIEW: &str =
+        "this jig holds no view of what is installed; only the owner's console grants one";
+    // The sources page comes with the index store alone, so a line holding it was granted
+    // `activation/indexes` at the directory slot, not `activation/`: there `current` is absent,
+    // and reading on would report nothing installed rather than nothing granted.
+    if sources_text().is_some() {
+        return Err(NO_VIEW.into());
+    }
     let current = match std::fs::read_to_string(installed_programs::CURRENT) {
         Ok(text) => text,
         Err(e) if e.kind() == ErrorKind::NotFound => return Ok(String::new()),
-        Err(e) if e.kind() == ErrorKind::Unsupported => {
-            return Err(
-                "this jig holds no view of what is installed; only the owner's console grants one"
-                    .into(),
-            );
-        }
+        Err(e) if e.kind() == ErrorKind::Unsupported => return Err(NO_VIEW.into()),
         Err(e) => return Err(format!("could not read what is installed: {:?}", e.kind())),
     };
     let number = installed_programs::parse_current(&current)
