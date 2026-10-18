@@ -25,6 +25,9 @@ What that means concretely, so no lane has to infer it:
 | `nvme` | yes, "non-volatile memory"; "Express" is an ordinary word | `non_volatile_memory_express` |
 | `pcie` | yes, "PCI Express", and `pci` stays by the row above | `pci_express` |
 | `dma` | yes, "direct memory access" | `direct_memory_access` (already ruled 2026-09-05) |
+| `va`, `pa` | yes (2026-10-18) | `virtual_address`, `physical_address` |
+| `ipi`, `nmi`, `ist`, `msr` | yes (2026-10-18) | `inter_processor_interrupt`, `non_maskable_interrupt`, `interrupt_stack_table`, `model_specific_register` |
+| `usb`, `xor` | no (2026-10-18) | **stays** |
 | `usb` | no. People say "USB", and the expansion adds nothing a newcomer can use | **stays** (calef, 2026-10-17, ruling `usb_keyboard_driver`) |
 | `syscall` | no. It is the everyday word for "system call", and the tree uses it everywhere | **stays**, kept tree-wide as an abbreviation (calef, 2026-10-18: "Yes") |
 | `cpu` | no. It is the scheduling unit's word | **stays**, by the rule already in design/naming.md (2026-10-03); not a new ruling |
