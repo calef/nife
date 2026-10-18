@@ -86,7 +86,7 @@ pub const SET_THREAD_POINTER: u64 = 3;
 /// - Suspending a suspended thread is 0 and changes nothing. An embryo is `WrongObject` (`START`
 ///   it); a thread that has exited or died is `Gone`.
 ///
-/// *(Name and number provisional, lane/48-tcb-suspend-resume, 2026-10-18 UTC.)*
+/// Name: ratified 2026-10-18 (calef: "Yes"), as §300 rules.
 pub const SUSPEND: u64 = 4;
 
 /// `invoke(cap, RESUME, _, _, _)` -> 0 (DECISIONS §300; seL4's `TCB_Resume`). **Let a suspended
@@ -96,5 +96,5 @@ pub const SUSPEND: u64 = 4;
 /// Resuming a thread that is not suspended is 0 and changes nothing. An embryo is `WrongObject`; a thread that
 /// has exited or died is `Gone`.
 ///
-/// *(Name and number provisional, lane/48-tcb-suspend-resume, 2026-10-18 UTC.)*
+/// Name: ratified 2026-10-18 (calef: "Yes"), as §300 rules.
 pub const RESUME: u64 = 5;

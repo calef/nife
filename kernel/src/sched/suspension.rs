@@ -21,6 +21,8 @@ use super::*;
 
 /// **`ThreadControlBlock::SUSPEND`'s body.** Returns once `tid` is off every core, or has been
 /// resumed or has ended while this waited. See the ABI constant for the contract.
+///
+/// Name: provisional, minted 2026-10-18 (UTC) by lane/48-tcb-suspend-resume.
 pub fn suspend_thread_control_block(tid: ThreadId) -> Result<(), abi::Error> {
     let me = current_thread_id();
     let poke = {
@@ -57,6 +59,8 @@ pub fn suspend_thread_control_block(tid: ThreadId) -> Result<(), abi::Error> {
 
 /// **`ThreadControlBlock::RESUME`'s body**: withdraw the order, and if the thread has already
 /// parked on it, wake it onto a core.
+///
+/// Name: provisional, minted 2026-10-18 (UTC) by lane/48-tcb-suspend-resume.
 pub fn resume_thread_control_block(tid: ThreadId) -> Result<(), abi::Error> {
     let remote = {
         let mut guard = IPC_TABLES.lock();
