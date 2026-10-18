@@ -101,7 +101,7 @@ pub use planning::{
 };
 pub use program::{PROG_COUNT, Prog};
 pub use refusal::{CapabilityKind, Refusal};
-pub use verbs::{Grants, MAX_VERB, VerbGrant, narrow_by_verb, verb_of, verb_of_page};
+pub use verbs::{MAX_VERB, ManifestAuthorities, VerbGrant, narrow_by_verb, verb_of, verb_of_page};
 
 mod lexing;
 
