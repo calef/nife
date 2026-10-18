@@ -72,10 +72,10 @@ not is a fact about the tree rather than about the work.
 
 The tree already has capability-routed live replacement, and three quarters of it is built.
 Milestone 23 is `PARTIAL` with three of its four parts done: the component manifest
-(`crates/component_plan`), the hung-component case, and dependency-aware orchestration, where a
-supervisor asks the dependency graph who must be warned before a swap instead of hard-coding it per
-system. `kernel/src/user/live_swap_tests.rs` exercises a real protocol against a real swap, with
-`QUIESCED`, `DRAINED`, `PROBE_SURVIVED`, `REFUSED` and `DEATH` as reported steps.
+(`crates/component_plan`), the hung-component case, and dependency-aware orchestration. In the
+last, a supervisor asks the dependency graph who must be warned before a swap instead of hard-coding
+it per system. `kernel/src/user/live_swap_tests.rs` exercises a real protocol against a real swap,
+with `QUIESCED`, `DRAINED`, `PROBE_SURVIVED`, `REFUSED` and `DEATH` as reported steps.
 
 Under A3 an activation is a grant, and rolling one back is revoking one. That is §16 (object revocation)'s
 machinery, already built and already proven, pointed at a new kind of object. The supervisor that
@@ -132,6 +132,8 @@ lane recording a different ruling is not that.
 
 ## What is unblocked
 
-Installing onto a running system, which milestone 507 listed as blocked until this was answered, and
-with it rung 3 of milestone 198 (a package manager, and the trivial install that makes a second customer possible) under §157 (a trivial install is a web page, a USB drive, and packages over the internet), whose
-definition of a trivial install is growing the system by installing packages over the internet.
+Installing onto a running system, which milestone 507 listed as blocked until this was answered.
+With it, rung 3 of milestone 198 (a package manager, and the trivial install that makes a second
+customer possible) under §157 (a trivial install is a web page, a USB drive, and packages over the
+internet). That section's definition of a trivial install is growing the system by installing
+packages over the internet.

@@ -9,7 +9,7 @@ ratified_by: calef
 
 calef, 2026-09-23: this tree runs corrections of error, and an action item
 is a decision, a proposal, or a milestone. Nothing else counts. *(Section number provisional until
-the merge queue lands it: two other decision files, numbered 208 and 209, are open on
+the merge queue lands it. Two other decision files, numbered 208 and 209, are open on
 unmerged branches tonight, so 210 is the first free number as seen from `main` and may not be the
 number this gets.)*
 
@@ -37,10 +37,10 @@ first one written: *"Lets instead set a standard and this is the standard. The d
 standard is not part of this event."* A record that opens by explaining the form, the path, the
 blameless rule, or its own place in a sequence is spending the reader's first screen on this section
 rather than on what happened. So: a COE states its event and nothing else. It does not say it is
-blameless (every one is, and the rule is two sections down), does not say it is the first or the
-fourth, does not note that its times are UTC, and does not caption a table the reader can see. The
-one form-level citation it carries is the gloss the citations ratchet requires on this section's
-number.
+blameless (every one is, and the rule is two sections down), and does not say it is the first or
+the fourth. It does not note that its times are UTC, and does not caption a table the reader can
+see. The one form-level citation it carries is the gloss the citations ratchet requires on this
+section's number.
 
 **"Write it down" is not an action item.** It is what produced the problem. Every case in the next
 section but one was written down, correctly, in the right file, by someone who understood it, and
@@ -48,12 +48,12 @@ each recurred anyway.
 
 ## What a COE is
 
-Amazon's COE is a short document written after a failure, with a fixed shape: what happened, a
-timeline with times attached, the impact in the terms the affected party would use, a root
-cause reached by asking 5 Whys rather than stopping at the first plausible answer, and action
-items with owners and dates. It is blameless, and this tree requires it rather than
-recommending it: no COE names a person or a lane as a cause, and no COE says that it is blameless,
-because a property every record has is not news in any of them. The rule exists because
+Amazon's COE is a short document written after a failure, with a fixed shape. The shape is what
+happened, a timeline with times attached, and the impact in the terms the affected party would use.
+It also has a root cause reached by asking 5 Whys rather than stopping at the first plausible
+answer, and action items with owners and dates. It is blameless, and this tree requires it rather
+than recommending it. No COE names a person or a lane as a cause, and no COE says that it is
+blameless, because a property every record has is not news in any of them. The rule exists because
 a document that can end in "someone was careless" will end there, and that ending has no mechanism in
 it. Aiming at mechanisms rather than people is what makes the fifth Why reach something anyone can
 build.
@@ -75,7 +75,7 @@ RISC-V VisionFive 2) was read as having produced a receiver woken with nothing d
 harts. On 2026-08-15 `notes/visionfive2.md`'s fifth bench stop retracted it: the dumps were the
 terminal state of a completed boot tour, identified five independent ways. The retraction was
 written down, in the right file, the next day. It never propagated. Pull request #1135 swept eleven
-files on 2026-09-23 and #1136 took the two out of that lane's reach, thirteen in all, and one of them
+files on 2026-09-23 and #1136 took the two out of that lane's reach, thirteen in all. One of them
 was §203 (capacity is rented rather than bought), written on 2026-09-20, five weeks after the
 retraction, using the retracted reading as radon's justification. The gap between the correction and
 the sweep is thirty-nine days.
@@ -116,10 +116,10 @@ item is `notes/corrections.md` with a timeline stapled on.
 A COE's action items use the same disposition vocabulary that `## Follow-on` rows already use.
 `script/roadmap --check` carries that vocabulary and already validates it. The openers are
 `**None.**`, `**Milestone N.**`, `**Done.**`, `**Recorded.**`, `**Refused.**`, `**Decision.**`,
-`**Proposed.**`, `**Outstanding.**`, and each is resolved rather than read: `**Milestone N.**` must
-name a block that exists under `design/roadmap/` and must not be the block it is written in;
-`**Decision.**` must name a file under `design/decisions/` in backticks that exists; `**Proposed.**`
-must name a file under `design/roadmap/proposals/` in backticks that exists; `**Recorded.**` has its
+`**Proposed.**`, `**Outstanding.**`, and each is resolved rather than read. `**Milestone N.**` must
+name a block that exists under `design/roadmap/` and must not be the block it is written in.
+`**Decision.**` must name a file under `design/decisions/` in backticks that exists. `**Proposed.**`
+must name a file under `design/roadmap/proposals/` in backticks that exists. `**Recorded.**` has its
 backticked paths resolved against a `PATHISH` pattern derived from `git ls-tree` rather than a typed
 list.
 
@@ -140,16 +140,16 @@ is the document this section exists to prevent.
 
 Why reuse beats a second implementation, and this tree has already paid for the answer twice.
 `script/metrics`' `name_surfaces` and `script/names`' `SURFACES` enumerate the same thing in two
-places; milestone 175 (`components/` for services, `fixtures/` for test and benchmark programs)
-moved the programs on
-2026-09-13, `script/names` was told and `script/metrics` was not, and `names_total` showed a collapse
-from 204 to 133 that never happened until 2026-09-19. One level in, `script/roadmap`'s own path list,
+places. Milestone 175 (`components/` for services, `fixtures/` for test and benchmark programs)
+moved the programs on 2026-09-13. `script/names` was told and `script/metrics` was not, and
+`names_total` showed a collapse from 204 to 133 that never happened until 2026-09-19. One level in,
+`script/roadmap`'s own path list,
 typed out by hand, drifted the same way, still naming `user/` nineteen days after that split,
 and it was fixed by deriving the list from `git ls-tree` instead. A second copy of a
 vocabulary that eight openers wide and growing (`Done.`, `Proposed.` and `Outstanding.` were all
-added after the first draft) would drift on its next addition, and the drift is invisible: a COE
+added after the first draft) would drift on its next addition, and the drift is invisible. A COE
 bullet the second implementation does not recognize is not read as an action item at all, so it
-passes in silence, which is the failure this whole section is about.
+passes in silence. That is the failure this whole section is about.
 
 ## What triggers a COE
 
@@ -167,31 +167,31 @@ number is in the sweep's own commit. The COE is written by whoever ran the sweep
 have the list.
 
 Trigger 2: a gate passed something it should have caught. This project's safety argument is its
-gates. A gate that reported clean over a real defect is a falsified claim about a mechanism, and it
+gates. A gate that reported clean over a real defect is a falsified claim about a mechanism. It
 is the one class of failure where "write it down" is never the right answer, because the gate is
 already a rung-two artifact and the fix belongs at rung two or higher. The tree has instances on
-record: `script/roadmap`'s IN-PROGRESS check spent a day unable to fail in CI because
-`actions/checkout` clones to depth 1, and `script/citations` exists at all because two gates both
+record. `script/roadmap`'s IN-PROGRESS check spent a day unable to fail in CI because
+`actions/checkout` clones to depth 1. `script/citations` exists at all because two gates both
 reported clean on 23 comments that cited a milestone number when they meant the decision of the same
 number, since both existed.
 
 Rejected: work lost or nearly lost. It is the most severe thing that happens here, and
 `AGENTS.md` says so (disk is the only pressure that destroys rather than delays). It is the wrong
-trigger anyway, because its root cause has already been adjudicated several times over and reaches
-the same fifth Why each time: a command that reads as lane-local touches state shared across the
-whole `.git` or the whole machine. `git stash`, `git reset --soft origin/main`, the `nife-dev`
-symlink and `git checkout <file>` are four instances of one finding. A trigger that fires on a
-repeat produces a second document with the first document's root cause in it. The right response to
-a repeat is to move the existing action item up a rung, and that is an action item on the
-original COE rather than a new one.
+trigger anyway, because its root cause has already been adjudicated several times over. The root
+cause reaches the same fifth Why each time: a command that reads as lane-local touches state shared
+across the whole `.git` or the whole machine. `git stash`, `git reset --soft origin/main`, the
+`nife-dev` symlink and `git checkout <file>` are four instances of one finding. A trigger that
+fires on a repeat produces a second document with the first document's root cause in it. The right
+response to a repeat is to move the existing action item up a rung, and that is an action item on
+the original COE rather than a new one.
 
 Rejected: a decision whose premise expired. §116 is the cleanest evidence in this file and it
 still cannot be a trigger, which is worth stating because the two are easy to confuse. Expiry is a
 condition, not an event: no moment announces that `redoxfs_server` has just falsified a decision
 made yesterday. Something has to be watching, and "something is watching" is exactly rung zero. So
-expiry belongs as an action item on some other COE (a decision deferred for want of a customer
-carries the condition that would revive it, in a form a gate can check) rather than as a signal that
-can fire.
+expiry belongs as an action item on some other COE rather than as a signal that can fire. A
+decision deferred for want of a customer carries the condition that would revive it, in a form a
+gate can check.
 
 And the ceiling matters more than the floor. A trigger that fires on everything produces
 documents nobody reads, at which point the COE joins the index of scars it replaced.
@@ -219,9 +219,9 @@ what it indexes. Its three existing entries keep pointing at `notes/boot-protoco
 `notes/stack.md`; new entries point at COE records.
 
 COE records go in a directory, one file each, for the reasons `design/decisions/` was split into
-files by milestone 114 (split `DECISIONS.md`, and give a decision a status): a number cannot be
-claimed twice by accident, text cannot land under the
-wrong heading, and a status flip stops being a conflict.
+files by milestone 114 (split `DECISIONS.md`, and give a decision a status). A number cannot be
+claimed twice by accident, text cannot land under the wrong heading, and a status flip stops being
+a conflict.
 
 The path is `notes/corrections/<date>-<slug>.md`, and that is the standard rather than a
 suggestion (calef, 2026-09-23, reviewing the first COE written against this section). The date is
