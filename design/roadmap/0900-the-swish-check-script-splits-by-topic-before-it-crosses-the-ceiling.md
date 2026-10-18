@@ -49,7 +49,7 @@ its `FROM_BASALT` skip list. Every name below is provisional.
 | `script/line.rs` | 83 | `Line`, `line`, `keys`, `JOB_DID_NOT_RUN`, `interrupted_at_prompt` |
 | `script/after_reboot.rs` | 367 | the second boot's table, `HACKBENCH_LINE`, `IOPING_LINE`, `FROM_BASALT` |
 | `script/pipes_files.rs` | 123 | pipes, redirection, `wc`, the `mdr` viewer and the doc store |
-| `script/clock_config.rs` | 53 | `date`, `printenv`, and their `caps` previews |
+| `script/clock_configuration.rs` | 53 | `date`, `printenv`, and their `caps` previews |
 | `script/navigation.rs` | 32 | Tab completion, `^C` at the prompt |
 | `script/process_tools.rs` | 130 | `ps`, `pgrep`, `top`, `free`, `vmstat`, `slabtop`, `uptime` |
 | `script/installer.rs` | 149 | the installer, its refusals, generation 1, the unvouched run |

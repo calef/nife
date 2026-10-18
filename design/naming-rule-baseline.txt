@@ -33,7 +33,6 @@ crates/designware_mobile_storage/src/regs.rs::dma_64bit spelled-out
 crates/designware_mobile_storage/src/sd.rs::in_range question-shape
 crates/designware_mobile_storage/src/serve.rs::REGISTER_VA spelled-out
 crates/designware_mobile_storage/src/serve.rs::TRANSFER_VA spelled-out
-crates/direct_memory_access_validator/src/lib.rs::check_descriptor question-shape
 crates/documentation/src/index.rs::STORE_DIR spelled-out
 crates/e1000e/src/pch/flush.rs::required question-shape
 crates/e1000e/src/pch/ulp.rs::done question-shape
@@ -120,7 +119,6 @@ crates/timetable/src/contract.rs::CLOCK_VA spelled-out
 crates/timetable/src/contract.rs::E_CONFIG spelled-out
 crates/timetable/src/contract.rs::STORE_PAGE_VA spelled-out
 crates/user_mode_runtime/src/heap.rs::commit_all question-shape
-crates/user_mode_runtime/src/ipc.rs::ipc spelled-out
 crates/user_mode_runtime/src/objects.rs::map_page_frame question-shape
 crates/video_terminal/src/cell.rs::reverse question-shape
 crates/video_terminal/src/keymap.rs::shift question-shape
@@ -213,8 +211,6 @@ system_tests/src/user/multi_dir_namespace_tests.rs::multi_dir_namespace_tests sp
 uefi_loader/src/chooser.rs::booted_from_nvme question-shape
 uefi_loader/src/chooser.rs::booted_from_nvme spelled-out
 uefi_loader/src/device_path.rs::is_nvme spelled-out
-xtask/src/farm/exerciser.rs::exerciser_target_dir spelled-out
 xtask/src/suite.rs::aarch64 question-shape
 xtask/src/suite.rs::riscv64 question-shape
 xtask/src/suite.rs::x86_64 question-shape
-xtask/src/swish_check/script/clock_config.rs::clock_config spelled-out

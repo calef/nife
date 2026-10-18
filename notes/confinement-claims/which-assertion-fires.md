@@ -105,7 +105,7 @@ and cannot run:
 - Row 14. `an_accepted_descriptor_is_confined` kept `assert!(!d.is_indirect())` and
   `assert!(is_in_region(base, size, d.addr, d.buf_len()))` *below* the assertions that replaced them,
   from milestone 211 (a harness that states its property through the function under test cannot see
-  that function break). Inside `if check_descriptor(..)` those are the same two calls with the same
+  that function break). Inside `if is_descriptor_allowed(..)` those are the same two calls with the same
   arguments the guard returns false on, so neither can fail. 211 added the working phrasing and left
   the blind one underneath, holding both readable messages. Removed in 307.
 - Row 18. The inversion described in [breaking-the-harnesses.md](breaking-the-harnesses.md).
@@ -167,7 +167,7 @@ in a wire-format bitmap two programs agree on.
 The predicate class that produced 305's survivor was checked on every architecture and found sound
 elsewhere. aarch64's `user_can_read` asks the silicon (`AT S1E0R`) and has no half to get wrong.
 x86_64 has no such predicate at all. The DMA attackers' descriptors reach `is_in_region`, rather than
-being turned away by an earlier check. `check_descriptor` tries `is_indirect` first. The direct
+being turned away by an earlier check. `is_descriptor_allowed` tries `is_indirect` first. The direct
 attacker's descriptor is not indirect. The indirect attacker's *is*, and its own comment says so. The
 compositor test's vacuity guard, `neighbour_probe_phys(ATTACKER) == client[VICTIM] + FRAME_SIZE`,
 compares two different allocation records. It is a real fact about adjacency rather than a
