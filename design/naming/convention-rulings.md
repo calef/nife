@@ -117,7 +117,7 @@ owed", with the target and the age, and never in the plain provisional list. The
 worklist total. A `ruled the stem` block is not a rename and stays plain provisional.
 
 `script/names --check` fails when one is more than 45 days old. The limit is a measure, not a
-principle. The oldest owed rename was 34 days old on 2026-10-17 (UTC), so a shorter limit would
+principle. The oldest owed rename was 35 days old on 2026-10-18 (UTC), so a shorter limit would
 have failed on day one and blocked every unrelated merge behind a backlog nobody can clear at once.
 Forty-five days passes a backlog being worked and fails a ruling nobody acted on. The parse and the limit
 are `helpers/name_ruled.py`.

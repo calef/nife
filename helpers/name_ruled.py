@@ -6,7 +6,7 @@ listed it as plain provisional, so the maintainer re-asked calef three names he 
 This module reads the ruled form, so `--unratified` prints those names first under "ruled, rename
 owed", and `--check` fails once one has waited longer than `MAX_AGE_DAYS`.
 
-**The limit is 45 days.** Measured on 2026-10-17 (UTC), the oldest owed rename was 34 days old, so
+**The limit is 45 days.** Measured on 2026-10-18 (UTC), the oldest owed rename was 35 days old, so
 a shorter limit would fail on day one and block every unrelated merge behind a backlog nobody can
 clear at once. 45 passes today and fails a ruling nobody acted on within six weeks. An owed rename
 that must wait (it is blocked on another milestone) is listed with an end date under "Rename-owed
@@ -16,7 +16,7 @@ exceptions" in `design/naming/convention-rulings.md`; the exception expires on i
 after it. `ruled the stem` rulings are not renames (the name already carries the stem), and a block
 that says "and ruled" in a shape this cannot read is returned by `unparsed` so a reader sees it.
 
-Name: provisional, minted 2026-10-17 (UTC) by the lane that built the ruled-rename-owed check. A
+Name: provisional, minted 2026-10-18 (UTC) by the lane that built the ruled-rename-owed check. A
 shared helper under `helpers/`, which `script/names` puts out of its own scope, so this paragraph is
 the record. It sits beside `name_provenance.py` and `name_rules.py` and takes `name_` for the same
 family; `name_renames` was considered and names the act, where the subject is the ruling. calef has
