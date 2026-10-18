@@ -139,14 +139,28 @@ tree's build, so nothing about it can work on one target and not another.
 3. The package is version 0.1.0 with its own semver, states its minimum Rust version in
    `rust-version`, and ships its harnesses and falsification patches. `cargo package --list` shows
    them.
-4. At first publication, and not before, calef adds it to the lint-checked publish allowlist. A
-   `nifeos/file_allocation_table` repository is then created on the shared CI template (Kani
-   through `kani-github-action`, lint, release). Its release workflow refuses to publish unless the
-   proof job is green.
-5. crates.io trusted publishing from that workflow, owned by a `nifeos` team, with no stored token.
-6. calef approves this publication, as he does every one.
-7. nife then consumes the crates.io release, pinned with its checksum in `Cargo.lock`, and the copy
-   in this tree goes.
+4. At first publication, and not before, calef adds it to the lint-checked publish allowlist. The
+   `nifeos/file_allocation_table` repository is created when the crate moves, for the soak (step 5),
+   on the shared CI template (Kani through `kani-github-action`, lint, release). Its release
+   workflow refuses to publish unless the proof job is green.
+5. Soak, as its own repository (calef, 2026-10-17 UTC, replying "Agrred" (sic) to the maintainer's
+   proposal; §305 (git dependencies are allowed on `nifeos/*` only, pinned to a landed commit)).
+   Milestone 818 (`jh7110_entropy`: proven JH7110 TRNG logic, released on its own) is the pilot and
+   soaks first. Before publication the crate is moved, not copied: it leaves this tree, and nife
+   depends on `nifeos/file_allocation_table` by `rev`. A copy left behind does not count. The soak
+   is how the policy's "API stable" is measured. The soak ends on evidence, not a duration, when all
+   five hold:
+   1. nife builds and passes CI against the repository at a pinned commit, with no path dependency
+      left.
+   2. The shared template's weekly run (milestone 887) is green on the crate.
+   3. A release dry run is green.
+   4. The stranger test builds and proves the crate from its README alone.
+   5. The API has gone a set period with no change `cargo-semver-checks` calls breaking. The period
+      is not yet set.
+6. crates.io trusted publishing from that workflow, owned by a `nifeos` team, with no stored token.
+7. calef approves this publication, as he does every one.
+8. nife then consumes the crates.io release, pinned with its checksum in `Cargo.lock`, and the
+   soak's git dependency goes.
 
 ## Standalone, measured 2026-10-11 (UTC)
 
@@ -174,7 +188,8 @@ their recorded hashes, writes the tree above on FAT12, FAT16 and FAT32, and has 
 `fsck_msdos` (or `fsck.fat`) accept each. It formats a FAT32 EFI system partition holding
 `\EFI\BOOT\BOOTRISCV64.EFI`, a name the `mkfs` refuses today. `script/verify` proves the four
 properties, `script/falsifications` reports every harness `replayable`, and the crate builds for all
-three targets. Publication is the last step and not the exit, since it waits on calef.
+three targets. Publication is the last step and not the exit, since it waits on calef. The five soak
+criteria of release step 5 hold before it publishes.
 
 The name check of release step 1 passes first, so the repository, the package and every doc link
 carry a ratified name. Before the move, `script/crate-standalone file_allocation_table` exits 0 in
