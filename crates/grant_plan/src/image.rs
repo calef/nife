@@ -105,7 +105,7 @@ pub const fn image_hears_words(m: &Manifest) -> bool {
 }
 
 /// **The manifest a file's bytes are bound and endowed with** (milestone 597, provisional), given
-/// what their note declared (`None` for no note) and whether the activation set vouches for them.
+/// what their note declared (`None` for no note) and whether the installed-programs table vouches for them.
 ///
 /// Vouched bytes get what they declare, because the digest that vouched covers the note: a person
 /// who installed the package installed its manifest. Unvouched bytes get [`UNVOUCHED_MANIFEST`]

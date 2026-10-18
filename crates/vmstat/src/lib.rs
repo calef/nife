@@ -41,7 +41,7 @@
 
 #![cfg_attr(not(test), no_std)]
 
-use machine_statistics_protocol::Snapshot;
+use machine_statistics_contract::Snapshot;
 use number_writer::write_right;
 
 /// The two header lines and the one report line, or nothing if `machine` is `None`, since a
@@ -85,7 +85,7 @@ pub fn write_diagnostics(granted: bool, machine: Option<&Snapshot>, out: &mut dy
 
 #[cfg(test)]
 mod tests {
-    use machine_statistics_protocol::{WORDS, build_header, word};
+    use machine_statistics_contract::{WORDS, build_header, word};
 
     use super::*;
 

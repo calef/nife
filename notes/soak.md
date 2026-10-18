@@ -67,7 +67,7 @@ comparison, not a benchmark. aarch64 ran about 58,000 round trips a second and r
 The tick route cost aarch64 nothing measurable and riscv64 about 7%. Every figure comes from a
 `--features soak_test` kernel, whose `ipc_fastpath` is five to six percent larger than production's,
 so compare a soak number only with another soak number. A production build is byte-identical with
-and without milestone 221. [`soak/qemu-baselines.md`](soak/qemu-baselines.md) has the tables.
+and without milestone 221. [`soak/qemu-2026-09.md`](soak/qemu-2026-09.md) has the tables.
 
 ## The finding: a saturated workload does not migrate under this scheduler
 
@@ -79,7 +79,7 @@ device interrupt, a steal needs an idle core and a queued thread at once, and no
 So risk 5's "sustained multi-core stress" is two experiments. The soak sustains concurrent
 contention on shared kernel state. It does not sustain cross-core handoff, which is where the
 observed defect lived, and `script/soak-test` prints that gap on every run.
-[`soak/migration-finding.md`](soak/migration-finding.md) has the measurement, the instrument that
+[`soak/saturated-workload-does-not-migrate.md`](soak/saturated-workload-does-not-migrate.md) has the measurement, the instrument that
 found it, and why this extends `board_console` rather than the other load instruments.
 
 ## The tick route: how the soak was made to cross cores (milestone 221 (the soak never crosses cores, so build the hook that makes it))

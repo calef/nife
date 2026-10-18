@@ -27,7 +27,7 @@ impl Store {
                 .unwrap_or(entry.map_or(severity::INFO, |e| e.default_severity)),
             flags: if line.cut { record::flags::CUT } else { 0 },
             len: line.len as u16,
-            kind: byte_sink_protocol::KIND_TEXT,
+            kind: byte_sink_contract::KIND_TEXT,
         };
         let program = entry.map(|e| e.program);
         let user = entry.map(|e| e.user);

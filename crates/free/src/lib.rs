@@ -4,7 +4,7 @@
 //! The program's logic, lifted out so it runs on the host; `components/src/free.rs` is the two
 //! reads and the two sinks. Two lines, and they are §225's two answers:
 //!
-//! - `Mem:` is the machine, from the machine statistics page (`crates/machine_statistics_protocol`),
+//! - `Mem:` is the machine, from the machine statistics page (`crates/machine_statistics_contract`),
 //!   which the owner grants every login by default and can withhold.
 //! - `Yours:` is the job pool this prompt's jobs are carved from, read through
 //!   `MemoryRegion::USAGE` on a view narrowed to `ENUMERATE`. It is the limit that binds a program
@@ -56,7 +56,7 @@
 
 #![cfg_attr(not(test), no_std)]
 
-use machine_statistics_protocol::Snapshot;
+use machine_statistics_contract::Snapshot;
 use number_writer::{write_right, write_signed};
 
 /// The job pool this prompt's jobs are carved from (the machine's one pool; see BUGS), as
@@ -153,7 +153,7 @@ fn row(label: &[u8], total: u64, used: u64, free: u64, out: &mut dyn FnMut(&[u8]
 
 #[cfg(test)]
 mod tests {
-    use machine_statistics_protocol::{WORDS, build_header, word};
+    use machine_statistics_contract::{WORDS, build_header, word};
 
     use super::*;
 

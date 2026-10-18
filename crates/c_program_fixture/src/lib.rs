@@ -8,12 +8,11 @@
 //! grants it, so its name is a crate rather than two string literals (rule 7). The command lines
 //! and the expected hash live beside it because they describe the same runs.
 //!
-//! It is its own crate because `filesystem_protocol`, where the image's other fixtures live, is at
+//! It is its own crate because `filesystem_contract`, where the image's other fixtures live, is at
 //! its §266 (a Rust source file stays under 2,000 lines) ceiling and is copied whole into
 //! `std` by the farm, so it can neither grow nor split.
 //!
-//! Name: provisional, milestone 835's lane, 2026-10-10 (UTC). calef ruled on #1896 that this lane's
-//! names stay provisional.
+//! Name: ratified 2026-10-18 (calef), as it is. "Fixture" means test data here.
 
 #![no_std]
 

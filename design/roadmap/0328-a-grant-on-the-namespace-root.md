@@ -11,19 +11,19 @@ needs_person: no
 
 Filed 2026-09-03 as an unnumbered proposal by the milestone 247 sweep,
 from milestone 31's block; numbered 2026-09-19 by milestone 433. **Premise re-checked 2026-09-19 and
-it holds.** `crates/filesystem_protocol` carries verbs 0 through 22 and none of them means "the
+it holds.** `crates/filesystem_contract` carries verbs 0 through 22 and none of them means "the
 directory I already hold, with fewer rights": `dir::Rights::attenuate` is a pure client-side
 constructor that `OPENDIR` and `MKDIR` narrow *through*, not an operation on a held handle. Milestone
 31's block still records the refusal in "The two shapes a grant cannot take", and no interactive boot
 roots the shell below the image root.
 
 Both permanent answers are an architect's, and they are permanent in different ways. A
-narrowing verb is an addition to `filesystem_protocol`, which two programs agree on, so it cannot be
+narrowing verb is an addition to `filesystem_contract`, which two programs agree on, so it cannot be
 un-shipped. An interactive boot rooted one component below the image root changes what every other
 command at that prompt means, which cannot be un-taught. Nothing can start until one is chosen.
 
 **In brief.** A subtree caretaker attenuates by performing one `OPENDIR` *into* the directory it was
-granted. The root of the shell's namespace has no name to descend into, and `filesystem_protocol` has
+granted. The root of the shell's namespace has no name to descend into, and `filesystem_contract` has
 no verb meaning "the directory I already hold, with fewer rights". So `rm rmtree/rm-solo` works at
 the prompt and `rm gate.txt` is a refusal, and the only difference between them is one level of
 path. Closing it is either a narrowing verb on the contract (`Rights::attenuate`, no name
@@ -61,7 +61,7 @@ convention. This one does not, because it is a fork rather than a limitation.
 Milestone 31's whole claim is that typing a name is the grant, and at the top prompt that claim is
 false: `rm rmtree/rm-solo` works and `rm gate.txt` is a refusal, and the only difference is one level
 of path. A subtree caretaker attenuates by performing one `OPENDIR` into the directory it was
-granted, the root of the shell's namespace has no name to descend into, and `filesystem_protocol` has
+granted, the root of the shell's namespace has no name to descend into, and `filesystem_contract` has
 no verb meaning "the directory I already hold, with fewer rights". The two answers are not equal and
 neither is free. A narrowing verb (`Rights::attenuate` on the wire, no name resolution, small in the
 server) is an addition to something two programs agree on and cannot be un-shipped. An

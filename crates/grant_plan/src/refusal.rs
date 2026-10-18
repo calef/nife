@@ -38,7 +38,7 @@ pub enum Refusal {
     /// whose printed preview and actual transfer could disagree.
     NoSuchOption,
     /// The named file is not something this shell can express: empty, a component longer than the
-    /// two argument words a grant's name rides in (`filesystem_protocol::grant::MAX_NAME`), deeper than the
+    /// two argument words a grant's name rides in (`filesystem_contract::grant::MAX_NAME`), deeper than the
     /// shell tracks, or a path that designates a directory rather than a file.
     FileNotNameable,
     /// The program takes no memory grant, but `--mem` was given.
@@ -173,7 +173,7 @@ pub enum Refusal {
     /// expanded it, and a program searching a file called `*.rs` is a silent misreading. Quoting
     /// the word passes it as it is. Name: provisional.
     PatternInArguments,
-    /// **The words do not fit on one argument page** (`argument_protocol::CAPACITY`, 4,080 bytes
+    /// **The words do not fit on one argument page** (`program_argument_contract::CAPACITY`, 4,080 bytes
     /// with a four-byte length per word). Refused whole rather than truncated, for
     /// [`Refusal::TooManyNames`]'s reason. Name: provisional.
     ArgumentsTooLong,
@@ -183,7 +183,7 @@ pub enum Refusal {
 /// enum exists so milestone 32 (files) and later device/endpoint grants slot in without changing
 /// the refusal's shape.
 ///
-/// Name: recorded (design/naming/capability-worklist.md). `CapKind` until 2026-10-11 (UTC),
+/// Name: recorded (design/naming/capability-spelling-worklist.md). `CapKind` until 2026-10-11 (UTC),
 /// renamed by #1913 under calef's ruling of 2026-10-06 that capability is not abbreviated as cap.
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub enum CapabilityKind {

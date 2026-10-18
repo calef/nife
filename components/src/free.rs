@@ -2,7 +2,7 @@
 //! (`free` sees the machine and your share), `crates/free`).
 //!
 //! Two reads and two sinks. The machine line reads the machine statistics page the progenitor
-//! mapped at `machine_statistics_protocol::PAGE_VA`; the "yours" line asks `MemoryRegion::USAGE`
+//! mapped at `machine_statistics_contract::PAGE_VA`; the "yours" line asks `MemoryRegion::USAGE`
 //! twice of this prompt's job budget. Everything that decides what to print is `crates/free`.
 //!
 //! # Capability contract
@@ -42,7 +42,7 @@
 use core::sync::atomic::{AtomicBool, Ordering};
 
 use free::{MachineRefusal, Share, ShareRefusal};
-use machine_statistics_protocol::{PAGE_VA, Snapshot};
+use machine_statistics_contract::{PAGE_VA, Snapshot};
 use user_mode_runtime::{exit, invoke, is_granted, send};
 
 const REPORT: u64 = 0;
@@ -75,10 +75,10 @@ pub extern "C" fn _start(_a0: u64, _a1: u64, _a2: u64) -> ! {
 
     free::write_diagnostics(machine, share, &mut |b| write_on(diag_slot(), b));
     if HAS_DIAG.load(Ordering::Relaxed) {
-        send(DIAG_SLOT, byte_sink_protocol::eof(), 0, 0);
+        send(DIAG_SLOT, byte_sink_contract::eof(), 0, 0);
     }
     free::write_report(machine, share, &mut |b| write_on(REPORT, b));
-    send(REPORT, byte_sink_protocol::eof(), 0, 0);
+    send(REPORT, byte_sink_contract::eof(), 0, 0);
     exit();
 }
 
@@ -106,7 +106,7 @@ fn diag_slot() -> u64 {
 fn write_on(slot: u64, bytes: &[u8]) {
     let mut rest = bytes;
     while !rest.is_empty() {
-        let (w0, w1, w2, n) = byte_sink_protocol::pack(rest);
+        let (w0, w1, w2, n) = byte_sink_contract::pack(rest);
         send(slot, w0, w1, w2);
         rest = &rest[n..];
     }

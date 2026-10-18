@@ -122,7 +122,7 @@ every four seconds.
 `cntfrq()` is RISC-V's recorded gap, one architecture worse. There is no architected TSC rate.
 `CPUID` leaf 0x15 gives a ratio to a crystal that leaf 0x16 may not report, and neither leaf is
 universal. So the kernel measures it against the PIT at boot (`kernel/src/arch/x86_64/timer.rs`). It
-delivers the number through `counter_frequency_protocol::TimebasePage`, mapped read-only into every
+delivers the number through `counter_frequency_contract::TimebasePage`, mapped read-only into every
 process the kernel builds directly. That is the aux-vector-at-process-start shape riscv64's own
 `cntfrq` doc comment already predicted.
 
@@ -140,7 +140,7 @@ not a live design fork here.
 
 ### Three programs refuse rather than pretend
 
-`console::uart_put`, `input`'s `uart` module and `swap_protocol::probe_device` cannot reach a device
+`console::uart_put`, `input`'s `uart` module and `hot_swap_contract::probe_device` cannot reach a device
 from ring 3. Their x86 arms `trap()` rather than no-op. A silent no-op is a console that
 acknowledges every byte and prints none.
 

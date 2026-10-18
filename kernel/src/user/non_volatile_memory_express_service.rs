@@ -11,7 +11,7 @@
 //!
 //! Held:
 //!
-//! - slot 0, the **request** endpoint (RECEIVE): `filesystem_protocol::blk`'s wire format, the
+//! - slot 0, the **request** endpoint (RECEIVE): `filesystem_contract::blk`'s wire format, the
 //!   same one the virtio block server speaks;
 //! - slot 1, a **readiness** endpoint (WRITE): one message once the first command has
 //!   round-tripped, so a hang in bring-up is distinguishable from a hang in the first read;
@@ -427,7 +427,7 @@ pub fn start_dma_escape(image: &'static [u8]) -> Option<DmaEscape> {
 
 impl Wiring {
     /// Take the startup report, or `None` when this caller was not the one that wired the server.
-    /// Word 0 is [`filesystem_protocol::READY`] when the first command round-tripped, and
+    /// Word 0 is [`filesystem_contract::READY`] when the first command round-tripped, and
     /// a `0xDEAD_..` word naming the failing step otherwise; word 1 is the namespace size the
     /// server was handed, so a bench transcript can see the geometry reached ring 3 intact.
     pub fn wait_for_ready(&self) -> Option<[u64; 5]> {
@@ -438,7 +438,7 @@ impl Wiring {
     /// endpoint would. The kernel exercises the contract rather than reaching into the server,
     /// which is the whole point of the server being a process.
     pub fn blk(&self, operation: u64, block: u64) -> i64 {
-        crate::sched::ipc_call(self.request, [filesystem_protocol::req(operation), block])[0] as i64
+        crate::sched::ipc_call(self.request, [filesystem_contract::req(operation), block])[0] as i64
     }
 
     /// The transfer buffer's first block, through the direct map, for a caller staging a write or

@@ -18,7 +18,7 @@ use super::*;
 /// would hand the client every other client's channel, the bug the pool exists to fix. What a
 /// client maps is a slice, made here, mapped with `MAP_INTO`, and deleted by the caller as soon as
 /// the build is done. One page, not the window's sixteen, because a client of this contract maps
-/// one page (`filesystem_protocol::fs::TRANSFER_PAGES` says a client maps what it uses).
+/// one page (`filesystem_contract::fs::TRANSFER_PAGES` says a client maps what it uses).
 pub(super) fn window_page(pool: u64, w: u64) -> Option<u64> {
     let first = w * fs_operation::TRANSFER_PAGES as u64;
     // SAFETY: the syscall; the kernel validates the capability, the range and the right.
@@ -55,7 +55,7 @@ pub(super) fn window_zero(fs: Fs) -> Option<Fs> {
 }
 
 /// **The pool of windows directory-granted jobs get** (milestone 599, the rule since milestone 685
-/// (a job is finished when its memory is back)): windows `1..login_protocol::DURABLE_WINDOW`, each
+/// (a job is finished when its memory is back)): windows `1..login_contract::DURABLE_WINDOW`, each
 /// held by the job it was handed to until `job_undertaker` says that job is reaped. Window 0 is the
 /// boot's long-lived clients' (see [`window_zero`]), and the last is `login`'s durable sessions'
 /// (milestone 152).
@@ -80,7 +80,7 @@ pub(super) fn window_zero(fs: Fs) -> Option<Fs> {
 ///   `grant_plan::job_windows`'s `BUGS` (a screen-narrowed job behind a directory grant, which no
 ///   manifest asks for today).
 pub(super) const fn job_windows() -> Windows {
-    Windows::new(1, login_protocol::DURABLE_WINDOW)
+    Windows::new(1, login_contract::DURABLE_WINDOW)
 }
 
 /// **Whether a file server's image says it enforces subtree grants itself** (milestone 606, ruling
@@ -112,11 +112,11 @@ pub(super) fn bound_channel(
     (lo, hi, spec): (u64, u64, u64),
 ) -> Option<Fs> {
     let files = FsCalls::map(Some(fs), own_ut, mapped)?;
-    let mut buf = [0u8; filesystem_protocol::grant::MAX_NAME];
-    let n = filesystem_protocol::grant::unpack_name(
+    let mut buf = [0u8; filesystem_contract::grant::MAX_NAME];
+    let n = filesystem_contract::grant::unpack_name(
         lo,
         hi,
-        filesystem_protocol::grant::spec_len(spec),
+        filesystem_contract::grant::spec_len(spec),
         &mut buf,
     );
     let name = core::str::from_utf8(&buf[..n]).ok()?;
@@ -125,7 +125,7 @@ pub(super) fn bound_channel(
         fs_operation::OPENDIR,
         fs_operation::ROOT,
         name,
-        filesystem_protocol::grant::spec_rights(spec),
+        filesystem_contract::grant::spec_rights(spec),
     );
     bind_window(fs, &files, (windows, w), handle)
 }
@@ -187,7 +187,7 @@ pub(super) fn bound_index_store(
 ) -> Option<Fs> {
     let files = FsCalls::map(Some(fs), own_ut, mapped)?;
     files.unbind(windows, w);
-    let act = files.directory(fs_operation::ROOT, activation_set::DIRECTORY);
+    let act = files.directory(fs_operation::ROOT, installed_programs::DIRECTORY);
     if act < 0 {
         return None;
     }
@@ -261,7 +261,7 @@ pub(super) fn job_channel(
 }
 
 /// **The progenitor's calls on the file service**, through the page it maps at
-/// [`ACTIVATION_FS_VA`]. Shared by [`vouched`], which reads the activation set, and [`activate`](activation::activate),
+/// [`ACTIVATION_FS_VA`]. Shared by [`vouched`], which reads the installed-programs table, and [`activate`](activation::activate),
 /// which writes it (milestone 198 rung 3a).
 ///
 /// What is mapped there is the whole client-window pool (milestone 599), and these calls use its
@@ -390,7 +390,7 @@ impl FsCalls {
         let h = self.named(
             fs_operation::OPEN,
             act,
-            activation_set::generation_name(number, &mut name),
+            installed_programs::generation_name(number, &mut name),
             0,
         );
         if h >= 0 {
@@ -409,7 +409,7 @@ impl FsCalls {
         act: u64,
         out: &mut [u8; PAGE_BYTES],
     ) -> Result<(u32, usize), ()> {
-        let c = self.named(fs_operation::OPEN, act, activation_set::CURRENT, 0);
+        let c = self.named(fs_operation::OPEN, act, installed_programs::CURRENT, 0);
         if c < 0 {
             return Ok((0, 0));
         }
@@ -418,7 +418,7 @@ impl FsCalls {
         self.close(c);
         let number = got
             .and_then(|n| core::str::from_utf8(&line[..n]).ok())
-            .and_then(activation_set::parse_current)
+            .and_then(installed_programs::parse_current)
             .ok_or(())?;
         Ok((number, self.generation(act, number, out)?))
     }
@@ -466,7 +466,7 @@ impl FsCalls {
         let t = self.named(
             fs_operation::OPEN,
             act,
-            activation_set::generation_name(number, &mut name),
+            installed_programs::generation_name(number, &mut name),
             0,
         );
         if t < 0 {
@@ -475,7 +475,7 @@ impl FsCalls {
         let n = self.read(t as u64, &mut out[..]);
         self.close(t);
         // A page and not a byte more: a generation that fills one may have been cut short, and a
-        // table that ends mid-line vouches for nothing. `activation_set`'s BUGS: forty entries fit.
+        // table that ends mid-line vouches for nothing. `installed_programs`'s BUGS: forty entries fit.
         match n {
             Some(n) if n < PAGE_BYTES => Ok(n),
             _ => Err(()),
@@ -493,7 +493,7 @@ impl FsCalls {
             let g = self.named(
                 fs_operation::CREATE,
                 act,
-                activation_set::generation_name(number, &mut name),
+                installed_programs::generation_name(number, &mut name),
                 0,
             );
             if g < 0 {
@@ -506,10 +506,10 @@ impl FsCalls {
             }
         }
         let mut line = [0u8; 16];
-        let Ok(n) = activation_set::format_current(number, &mut line) else {
+        let Ok(n) = installed_programs::format_current(number, &mut line) else {
             return false;
         };
-        let staged = self.open_or_create(act, activation_set::CURRENT_STAGED);
+        let staged = self.open_or_create(act, installed_programs::CURRENT_STAGED);
         if staged < 0 {
             return false;
         }
@@ -520,8 +520,8 @@ impl FsCalls {
         }
         // RENAME: both names in the page, source first; the destination's handle and length ride
         // in the second word.
-        let src = activation_set::CURRENT_STAGED.as_bytes();
-        let dst = activation_set::CURRENT.as_bytes();
+        let src = installed_programs::CURRENT_STAGED.as_bytes();
+        let dst = installed_programs::CURRENT.as_bytes();
         // SAFETY: the page is mapped read/write and both names together are a few bytes.
         unsafe {
             core::ptr::copy_nonoverlapping(src.as_ptr(), Self::page(), src.len());

@@ -26,7 +26,7 @@ Two answers, and they are permanent in different ways:
 
 ## The tree as it stands, read rather than recalled
 
-`crates/filesystem_protocol` carries verbs 0 through 22 (`OPEN` through `SETMTIME_AT`) and none of
+`crates/filesystem_contract` carries verbs 0 through 22 (`OPEN` through `SETMTIME_AT`) and none of
 them means what option 1 needs. `dir::Rights::attenuate` exists and is client-side only:
 
 ```rust

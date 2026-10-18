@@ -37,7 +37,7 @@
 #![allow(missing_docs)]
 #![no_main]
 
-use machine_statistics_protocol::{PAGE_VA, Snapshot};
+use machine_statistics_contract::{PAGE_VA, Snapshot};
 use user_mode_runtime::{exit, is_granted, monotonic_nanos, send};
 
 const REPORT: u64 = 0;
@@ -59,10 +59,10 @@ pub extern "C" fn _start(_a0: u64, _a1: u64, _a2: u64) -> ! {
     let diag = if has_diag { DIAG_SLOT } else { REPORT };
     vmstat::write_diagnostics(granted, machine.as_ref(), &mut |b| write_on(diag, b));
     if has_diag {
-        send(DIAG_SLOT, byte_sink_protocol::eof(), 0, 0);
+        send(DIAG_SLOT, byte_sink_contract::eof(), 0, 0);
     }
     vmstat::write_report(machine.as_ref(), now, &mut |b| write_on(REPORT, b));
-    send(REPORT, byte_sink_protocol::eof(), 0, 0);
+    send(REPORT, byte_sink_contract::eof(), 0, 0);
     exit();
 }
 
@@ -70,7 +70,7 @@ pub extern "C" fn _start(_a0: u64, _a1: u64, _a2: u64) -> ! {
 fn write_on(slot: u64, bytes: &[u8]) {
     let mut rest = bytes;
     while !rest.is_empty() {
-        let (w0, w1, w2, n) = byte_sink_protocol::pack(rest);
+        let (w0, w1, w2, n) = byte_sink_contract::pack(rest);
         send(slot, w0, w1, w2);
         rest = &rest[n..];
     }

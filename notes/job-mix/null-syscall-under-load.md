@@ -262,7 +262,7 @@ itself ... half explained and half open") with:
   shifts of `main`. A level difference under that between two builds means nothing without a
   layout control. Proposed: `design/roadmap/0796-pin-the-hot-trap-paths-placement.md`.
 - ~~**aarch64's job mix wedges under TCG on `main`.**~~ Closed 2026-10-05: a miscompiled yield,
-  not a multicore hang ([`spawn-destroy-gone.md`](spawn-destroy-gone.md)).
+  not a multicore hang ([`spawn-job-miscompiled-yield.md`](spawn-job-miscompiled-yield.md)).
 - **`script/fastpath-footprint` leaves `exception_body` out of aarch64's `syscall_entry`**, though
   every aarch64 syscall runs it (riscv64's list has `riscv_trap_body`). Moving the counter from that
   symbol into `syscall::dispatch` once read as 44 bytes of growth when it was 20.

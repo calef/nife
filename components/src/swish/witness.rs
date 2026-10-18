@@ -243,8 +243,8 @@ const REPORT: u64 = 1;
 /// [`builtin`], which is the same path the prompt takes.
 pub(super) fn navigate(spec: u64) -> ! {
     use filesystem_fixture::{VERDICT, navscape as nb, tree};
-    let run = filesystem_protocol::grant::spec_len(spec) as u64;
-    let mut nav = Nav::rooted(filesystem_protocol::grant::spec_rights(spec));
+    let run = filesystem_contract::grant::spec_len(spec) as u64;
+    let mut nav = Nav::rooted(filesystem_contract::grant::spec_rights(spec));
     let mut v = 0u64;
 
     probe_root_and_reach(&mut nav, &mut v);
@@ -613,7 +613,7 @@ pub(super) fn two_trees(spec: u64) -> ! {
     const A: u64 = 0;
     const B: u64 = 1;
     const REPORT: u64 = 2;
-    let rights = filesystem_protocol::grant::spec_rights(spec);
+    let rights = filesystem_contract::grant::spec_rights(spec);
     let mount = nav::path(tt::MOUNT.as_bytes())
         .ok()
         .and_then(|p| grant_plan::Holdings::default().resolve_path(&p).ok())
@@ -834,7 +834,7 @@ impl Text {
 /// with no pattern in it at all.
 pub(super) fn globbing(spec: u64) -> ! {
     use filesystem_fixture::{VERDICT, globscape as gb, tree};
-    let mut nav = Nav::rooted(filesystem_protocol::grant::spec_rights(spec));
+    let mut nav = Nav::rooted(filesystem_contract::grant::spec_rights(spec));
     let mut v = 0u64;
 
     // 1. What `echo` shows.
@@ -1080,8 +1080,8 @@ fn touch_mtime_probes(nav: &mut Nav, touched: &([u8; 16], usize), v: &mut u64) {
 /// cannot exercise. A raw `fs::MKDIR` mints a **fresh** directory attenuated to `WRITE` and not
 /// `SETTIME`, one level below the shell's own root, and both mtime verbs are sent straight to it.
 fn touch_mtime_without_settime(nav: &Nav, name: &[u8], v: &mut u64) {
+    use filesystem_contract::dir;
     use filesystem_fixture::navscape as nb;
-    use filesystem_protocol::dir;
 
     let narrow_rights = dir::ALL & !dir::SETTIME;
     let r = nav.name_call(fs::MKDIR, nav.here(), name, narrow_rights);
@@ -1119,7 +1119,7 @@ fn touch_mtime_without_settime(nav: &Nav, name: &[u8], v: &mut u64) {
 /// own address space, holding its own attenuated grant.
 ///
 /// Name: provisional, flagged 2026-09-24 by the boolean-predicate pass
-/// (design/naming/boolean-predicates-worklist.md). It acts, so the Rust predicate rule calef
+/// (design/naming/functions-that-answer-yes-or-no-worklist.md). It acts, so the Rust predicate rule calef
 /// ratified 2026-09-24 exempts it, but it is a participle that reads as a question, on a function
 /// that sends the unlink; recommended `remove`.
 fn removed(nav: &Nav, verb: u64, name: &[u8]) -> bool {

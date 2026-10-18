@@ -1,7 +1,7 @@
 //! **Reach the network from a booted system's prompt** (milestone 590 (the booted system starts
 //! its network stack)).
 //!
-//! Opens a TCP connection to the QEMU runners' echo peer (`socket_protocol::fixture::ECHO_PEER_IP`,
+//! Opens a TCP connection to the QEMU runners' echo peer (`socket_contract::fixture::ECHO_PEER_IP`,
 //! port `ECHO_PEER_PORT`), sends [`MSG`], reads what comes back, and prints it:
 //!
 //! ```text
@@ -21,7 +21,7 @@
 //!
 //! # What this program holds
 //!
-//! - slot 0: its output, the sink contract (`crates/byte_sink_protocol`).
+//! - slot 0: its output, the sink contract (`crates/byte_sink_contract`).
 //! - slot 1: the `--mem` budget, which it mints the one page it trades bytes with the stack
 //!   through out of. The network grant carries no memory, so a socket client pays for its own page.
 //! - slot 10 ([`grant_plan::NETWORK_SLOT`]): `WRITE` on the stack's endpoint, the front door that
@@ -42,8 +42,8 @@
 #![no_main]
 
 use abi::rights;
-use socket_protocol::fixture::{ECHO_PEER_IP, ECHO_PEER_PORT};
-use socket_protocol::*;
+use socket_contract::fixture::{ECHO_PEER_IP, ECHO_PEER_PORT};
+use socket_contract::*;
 use user_mode_runtime::mapped_window::{MappedWindow, PAGE};
 use user_mode_runtime::{
     call, call_receiving, cap_delete, exit, is_granted, map_page_frame, retype_into_page_frame,
@@ -184,12 +184,12 @@ fn finish(pieces: &[&[u8]]) -> ! {
     for piece in pieces {
         let mut rest = *piece;
         while !rest.is_empty() {
-            let (w0, w1, w2, n) = byte_sink_protocol::pack(rest);
+            let (w0, w1, w2, n) = byte_sink_contract::pack(rest);
             send(OUT, w0, w1, w2);
             rest = &rest[n..];
         }
     }
-    send(OUT, byte_sink_protocol::eof(), 0, 0);
+    send(OUT, byte_sink_contract::eof(), 0, 0);
     exit();
 }
 

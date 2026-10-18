@@ -47,7 +47,7 @@ activation set. The note's fork 3 text is corrected in the same commit.
 | A. The slot's whole measured catalog as `jobs` | every program in the boot archive | the image build | 8.8 MB (`target/initial-ramdisk-riscv.img`, 2026-09-21), copied twice per session, against a 640-page (2.5 MiB) durable budget (`login.rs:846`) | yes | Refused: does not fit, and after the threadbare base the slot holds only the floor |
 | B. A named list, in the image | e.g. the 12 command-line tools | the image build | 926 KB (#1421's table), larger alone than the session's region (192 pages, `login.rs:849`) or the timetable's (224 pages, `user_timetable_keeper.rs:91`) | yes | Refused: does not fit, and names bytes the threadbare base moves out of the slot |
 | C. Owner-vouched programs only | `vouch ./x` rows | the owner, per digest | a schedule line would have to name a digest or path, since the bare-name ruling says a vouch claims no name | yes | Refused: excludes every installed package, which after the threadbare base is the whole userland |
-| D. The live activation generation, resolved at registration and re-checked at each fire | what a bare word runs at the prompt, minus D2 | the owner by installing (§208 (installing a package is granting it)), the user by naming it | not built. The timetable gains read access to `activation/` and `packages/`, and the `jobs` archive and its two copies go. Each fire reads one image into its 48-page instance (`timetable.rs:220`), a limit every option already has | yes: `login_protocol::user_timetable_keeper` is provisional and only this lane speaks it | **Recommended** |
+| D. The live activation generation, resolved at registration and re-checked at each fire | what a bare word runs at the prompt, minus D2 | the owner by installing (§208 (installing a package is granting it)), the user by naming it | not built. The timetable gains read access to `activation/` and `packages/`, and the `jobs` archive and its two copies go. Each fire reads one image into its 48-page instance (`timetable.rs:220`), a limit every option already has | yes: `login_contract::user_timetable_keeper` is provisional and only this lane speaks it | **Recommended** |
 | E. D's set, snapshotted by `login` at `SCHEDULE` and at boot | the programs the user's document names, as installed then | as D | copies stay, and a `REPLACE` naming a new program fails until the session is rebuilt, since the archive is fixed at spawn. A revoked key reaches a job at the next boot, not the next fire | yes | Refused, the runner-up: it keeps the timetable directory-free and pays for it with fork 3's property |
 | F. Status quo | nothing | nobody | zero | yes | What a no leaves |
 
@@ -105,7 +105,7 @@ nothing from it, since the timetable endows a job only with what its entry grant
 - That costs `login` a slot at rest, which leaves a 24-slot table exactly full at a login's
   peak with one durable session. The open stays inside it because `login` now builds the two store
   caretakers before the rest of the session, and the client's own caretaker after it. Counted from
-  the code, not measured, in `login_protocol::durable`.
+  the code, not measured, in `login_contract::durable`.
 - It first bound each entry to the digest registered, so an upgrade stopped the job until its
   document was re-sent. calef called that a foot gun and amended D the same day (#1377). Every
   fire now resolves the name and plans the line again against the current manifest, as a bare

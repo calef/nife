@@ -197,7 +197,7 @@ same one-shot window sets `APIC_TIMER_HZ`, which is why the APIC figure tracks i
 transcript, and through that the scheduler's own tick period.
 
 What reads the number: `bench --x86 --real`'s ns/iter, `Instant` and `uptime` through
-`counter_frequency_protocol`'s page, `coremark`'s self-reported rate, and every `wait_for` deadline
+`counter_frequency_contract`'s page, `coremark`'s self-reported rate, and every `wait_for` deadline
 in the x86 suite. Deadlines fail safe (an inflated rate makes a two-second timeout longer in real
 time, never shorter); the reported numbers do not.
 

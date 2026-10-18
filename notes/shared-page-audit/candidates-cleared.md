@@ -20,7 +20,7 @@ that sum is the line to revisit.
 `GETXATTR` copies the name to the stack before writing the reply over it, and says why. That is
 this audit's lens applied correctly, in the tree, before the audit existed.
 
-## `credential_protocol::read`
+## `credential_contract::read`
 
 Both lengths from the register word, checked against `MAX_IDENTITY` and
 `MAX_SECRET`, fixed offsets, one bound against the page. The returned slices alias the page and their
@@ -86,7 +86,7 @@ capability)); every payload length refused above `DATA_MAX`; receives
 staged through a `[0u8; DATA_MAX]` stack buffer and then copied into the page. No slice is ever
 formed over the shared mapping, in the server, in `std::net`'s PAL, or in `network_time_client`, so a concurrent
 writer can change the bytes that go out and can corrupt nothing. The PAL's half is generated from
-`crates/socket_protocol` by `xtask`, so the offsets cannot drift.
+`crates/socket_contract` by `xtask`, so the offsets cannot drift.
 
 One thing there is worth naming before somebody tidies it: `OFF_LEN` is a length field in the page
 that nothing reads. The server writes it on receive and no client consults it; every length that

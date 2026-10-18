@@ -17,7 +17,7 @@ it. Written by the milestone 64 (enough std to run somebody else's crate) lane
 (`milestone/64-std-filesystem-shim`), from milestone 64's block.
 
 Every option that closes this puts something on the file contract, which two
-programs agree on (`crates/filesystem_protocol`, the FS server, every caretaker and the `std` PAL),
+programs agree on (`crates/filesystem_contract`, the FS server, every caretaker and the `std` PAL),
 and so is an architect's. Declining is also an answer, and the PAL already implements it.
 
 In brief. The three mtime verbs milestone 47 (navigation and naming) added for `touch` (`GETMTIME`,
@@ -84,9 +84,9 @@ that a caller cannot get another way except restoring a timestamp through a hand
    mtime verbs are the exception, deliberately, because `touch` never opens what it acts on.
 3. Prior art: POSIX `fstat`/`futimens`; WASI's `fd_filestat_get`/`fd_filestat_set_times`, which
    `cap-std` binds to, are handle-first. Recalled rather than re-read for this proposal.
-4. Is the premise true? Checked: `filesystem_protocol::fs::GETMTIME`'s doc says name-taking on
+4. Is the premise true? Checked: `filesystem_contract::fs::GETMTIME`'s doc says name-taking on
    purpose, `redoxfs_server`'s dispatch reads the name from the page, and the per-file caretaker
-   refuses all three with `ENOTDIR` (`filesystem_protocol::grant::POLICY`).
+   refuses all three with `ENOTDIR` (`filesystem_contract::grant::POLICY`).
 5. Cost, measured: (a) is a line each in the server and the PAL plus a relay in every caretaker. (b) is three
    opcodes, three verb-table rows, three caretaker policy rows, server methods and host tests, plus
    the `SETTIME` question, which is the expensive part and is not code.

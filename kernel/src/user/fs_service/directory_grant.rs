@@ -23,18 +23,18 @@ use super::*;
 /// reach the parent directory or a sibling" a statement about its capability table rather than about a
 /// branch. That argument is `fs_file_caretaker`'s, and it is load-bearing here for an extra
 /// reason: the FS server's handle table is per *server*, so a rights-carrying handle on its own
-/// would not confine a program that could still name [`filesystem_protocol::fs::ROOT`].
+/// would not confine a program that could still name [`filesystem_contract::fs::ROOT`].
 ///
-/// `rights` is a [`filesystem_protocol::dir`] mask. It is what the caretaker *asks* for; the FS server
+/// `rights` is a [`filesystem_contract::dir`] mask. It is what the caretaker *asks* for; the FS server
 /// intersects it with the root's and refuses if the answer is smaller, so a wiring that asked
 /// for more than exists fails at the caretaker's first request rather than silently serving
 /// less.
 #[cfg_attr(not(any(test, feature = "system_tests")), allow(dead_code))]
 pub struct DirGrant {
     /// The directory the caretaker descends into, one component under the image root. Must fit
-    /// [`filesystem_protocol::grant::MAX_NAME`].
+    /// [`filesystem_contract::grant::MAX_NAME`].
     pub name: &'static str,
-    /// The [`filesystem_protocol::dir`] rights the subtree capability is to carry.
+    /// The [`filesystem_contract::dir`] rights the subtree capability is to carry.
     pub rights: u64,
     /// The confined program's `arg0` (its role) and `arg1`.
     pub role: u64,
@@ -159,13 +159,13 @@ fn spawn_caretaker(
     caretaker_ready: RendezvousId,
 ) -> Option<(u64, crate::thread::ThreadId)> {
     assert!(
-        filesystem_protocol::grant::fits(name.as_bytes()),
+        filesystem_contract::grant::fits(name.as_bytes()),
         "a granted name rides in two argument words; this one does not fit",
     );
     let (file_ep, file_shared, readiness) = ensure(blk_image, fs_server_image)?;
 
-    let (lo, hi) = filesystem_protocol::grant::pack_name(name.as_bytes());
-    let spec = filesystem_protocol::grant::spec(name.len(), rights);
+    let (lo, hi) = filesystem_contract::grant::pack_name(name.as_bytes());
+    let spec = filesystem_contract::grant::spec(name.len(), rights);
 
     let tid = crate::sched::spawn(move || {
         run(

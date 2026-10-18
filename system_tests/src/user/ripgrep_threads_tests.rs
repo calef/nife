@@ -65,11 +65,11 @@ fn run_rg_as_process(rights: u64, line: &str, out: &mut [u8]) -> Option<(usize, 
         out,
         &Setup {
             maps: &[
-                (std_runtime_protocol::FS_PAGE, file_page, true),
-                (std_runtime_protocol::ARGS_PAGE, args, false),
+                (std_runtime_contract::FS_PAGE, file_page, true),
+                (std_runtime_contract::ARGS_PAGE, args, false),
             ],
-            endpoints: &[(std_runtime_protocol::FS_DIR_SLOT, dir_ep)],
-            read_pages: &[(std_runtime_protocol::ARGS_SLOT, args)],
+            endpoints: &[(std_runtime_contract::FS_DIR_SLOT, dir_ep)],
+            read_pages: &[(std_runtime_contract::ARGS_SLOT, args)],
             report: Some(report),
             heap_pages: RG_HEAP_PAGES,
         },
@@ -155,7 +155,7 @@ impl Line {
 
 /// One threaded run and its verdict: the lines, and `1 + workers` threads started.
 fn threaded_run(line: &str, workers: usize, before_counting: impl FnOnce()) {
-    use filesystem_protocol::dir;
+    use filesystem_contract::dir;
     let mut got = [0u8; 8192];
     let Some((len, started, spent)) =
         run_rg_as_process(dir::ENUMERATE | dir::READ | dir::DESCEND, line, &mut got)

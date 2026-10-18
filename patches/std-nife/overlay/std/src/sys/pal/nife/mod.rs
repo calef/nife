@@ -20,59 +20,59 @@
 
 pub(crate) mod abi;
 // The net_stack socket-contract wire format (opcodes, frame offsets), generated verbatim from
-// `crates/socket_protocol` by `cargo xtask std-src` so the numbers cannot drift from the server.
+// `crates/socket_contract` by `cargo xtask std-src` so the numbers cannot drift from the server.
 // The net PAL (`sys/net`) is a client of it.
 pub(crate) mod netproto;
 // The FS-service wire format (opcodes, request packing, the errno convention), generated verbatim
-// from `crates/filesystem_protocol/src/lib.rs`, with each module file inlined, by the same xtask
+// from `crates/filesystem_contract/src/lib.rs`, with each module file inlined, by the same xtask
 // step. The fs PAL (`sys/fs`) is a client of it. `blk` in there belongs to the other party,
 // hence the allow.
 #[allow(dead_code)]
 pub(crate) mod fsproto;
 // The wall-clock contract (DECISIONS §43): the clock page's layout and its seqlock, the propose
-// protocol, and the policy, generated verbatim from `crates/clock_protocol/src/lib.rs` by the same
+// protocol, and the policy, generated verbatim from `crates/clock_contract/src/lib.rs` by the same
 // xtask step. The time PAL (`sys/time`) is a *reader* of the page and never a writer, so the
 // publish half and the propose half belong to the other parties; hence the allow.
 #[allow(dead_code)]
 pub(crate) mod clockproto;
 // The entropy contract (DECISIONS §44): the request packing and the reply's byte count, generated
-// verbatim from `crates/entropy_protocol/src/lib.rs` by the same xtask step. The random PAL
+// verbatim from `crates/entropy_contract/src/lib.rs` by the same xtask step. The random PAL
 // (`sys/random`) is a client of it; `READY` belongs to the service and its spawner, hence the allow.
 #[allow(dead_code)]
 pub(crate) mod entropyproto;
 // The byte-sink contract (milestone 50, notes/sink-protocol.md): the one framing every "write
-// these bytes there" destination speaks, generated verbatim from `crates/byte_sink_protocol/src/lib.rs` by
+// these bytes there" destination speaks, generated verbatim from `crates/byte_sink_contract/src/lib.rs` by
 // the same xtask step. `sys/stdio` is a *writer* of it, so the receiving half (`unpack`, `Msg`)
 // belongs to the sinks; hence the allow.
 #[allow(dead_code)]
 pub(crate) mod sinkproto;
 // The inert-configuration contract (milestone 47's environment-variable fork, DECISIONS §111):
 // the config page's layout and the closed, validated domains TZ/LANG/TERM are checked against,
-// generated verbatim from `crates/environment_protocol/src/lib.rs` by the same xtask step. `sys/env` is a
+// generated verbatim from `crates/environment_contract/src/lib.rs` by the same xtask step. `sys/env` is a
 // *reader* of the page; `PageBuilder` and the domain tables belong to whoever assembles one
 // (init, or today's kernel test harness standing in for it), hence the allow.
 #[allow(dead_code)]
 pub(crate) mod envproto;
 // The argument page (milestone 205 (how a foreign program is told what to do), DECISIONS §170):
-// the byte argv's layout, generated verbatim from `crates/argument_protocol/src/lib.rs` by the same
+// the byte argv's layout, generated verbatim from `crates/program_argument_contract/src/lib.rs` by the same
 // xtask step. `sys/args` is a *reader*; `PageBuilder` belongs to whoever assembles a page (the
 // shell), hence the allow.
 #[allow(dead_code)]
 pub(crate) mod argproto;
 // The name resolver's client wire (milestone 384 (in a capability system the resolver is a grant)),
-// generated verbatim from `crates/name_resolution_protocol/src/wire.rs` by the same xtask step.
+// generated verbatim from `crates/domain_name_resolution_contract/src/wire.rs` by the same xtask step.
 // `sys/net`'s `lookup_host` is a client of it; the grant words belong to the spawner, hence the allow.
 #[allow(dead_code)]
 pub(crate) mod resolveproto;
 // The std runtime contract itself (milestone 595 (provisional)): the fixed slots and the shared pages'
-// addresses, generated verbatim from `crates/std_runtime_protocol/src/lib.rs` by the
+// addresses, generated verbatim from `crates/std_runtime_contract/src/lib.rs` by the
 // same xtask step, so the progenitor that builds a std child and this PAL that reads one cannot
 // drift. `rt` re-exports what it reads; `SLOTS` and `STACK_PAGES` are the loader's, hence the allow.
 #[allow(dead_code)]
 pub(crate) mod runtimeproto;
 // The timebase page (milestone 184; riscv64 joined 2026-09-21): where `rt::cntfrq` reads the rate
 // on the two architectures that have no register stating it. Generated verbatim from
-// `crates/counter_frequency_protocol/src/lib.rs` by the same xtask step, so the page's address and
+// `crates/counter_frequency_contract/src/lib.rs` by the same xtask step, so the page's address and
 // layout cannot drift from the kernel that writes it. Compiled only where it is read; aarch64
 // states its rate in `CNTFRQ_EL0`. `build_page` is the kernel's half.
 #[cfg(any(target_arch = "x86_64", target_arch = "riscv64"))]
@@ -81,7 +81,7 @@ pub(crate) mod counterfreqproto;
 pub(crate) mod rt;
 // The user address-space map and the current-CPU page (milestone 812 (`std::thread::spawn` runs real
 // threads in one address space)): a thread's allowance is read from its page, whose layout is
-// `current_cpu_protocol`'s, generated here like every contract above and pointed at `addressmap`
+// `current_cpu_contract`'s, generated here like every contract above and pointed at `addressmap`
 // for the one constant it takes from the map.
 #[allow(dead_code)]
 pub(crate) mod addressmap;

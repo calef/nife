@@ -15,7 +15,7 @@ use super::*;
 /// straight from the contract so this wiring and the server agree. Window 0 is [`FILE_SHARED`], the
 /// unbadged default every legacy single-client path maps; windows 1.. are the pool [`claim_window`]
 /// hands out, one per additional live client, each its own frame and its own badge.
-pub(super) const CLIENT_WINDOWS: usize = filesystem_protocol::fs::CLIENT_WINDOWS;
+pub(super) const CLIENT_WINDOWS: usize = filesystem_contract::fs::CLIENT_WINDOWS;
 
 /// The physical base of each window's [`FILE_PAGES`]-frame run. `WINDOWS[0]` is [`FILE_SHARED`];
 /// the rest are allocated once when the service is wired and mapped into the FS server. Plain
@@ -37,7 +37,7 @@ pub(super) static WINDOW_TAKEN: core::sync::atomic::AtomicU64 =
 pub(super) fn claim_window() -> Option<(u64, u64)> {
     use core::sync::atomic::Ordering;
     // Never the last: that one is `login`'s, for its durable sessions ([`durable_window`]).
-    let pool = login_protocol::DURABLE_WINDOW as usize;
+    let pool = login_contract::DURABLE_WINDOW as usize;
     for (w, window) in WINDOWS.iter().enumerate().take(pool).skip(1) {
         let bit = 1u64 << w;
         if WINDOW_TAKEN.fetch_or(bit, Ordering::Relaxed) & bit == 0 {
@@ -48,14 +48,14 @@ pub(super) fn claim_window() -> Option<(u64, u64)> {
 }
 
 /// **The window `login` keeps for its durable sessions** (milestone 152, Fork 8 D):
-/// `login_protocol::DURABLE_WINDOW`, claimed once and handed to every `login` this boot starts, the
+/// `login_contract::DURABLE_WINDOW`, claimed once and handed to every `login` this boot starts, the
 /// way the progenitor reserves it. The physical base of its frame run, or `None` when the service is
 /// not wired.
 #[cfg_attr(not(any(test, feature = "system_tests")), allow(dead_code))]
 pub fn durable_window() -> Option<u64> {
     use core::sync::atomic::Ordering;
     // [`claim_window`] never hands this one out, so it is always free for `login`.
-    let w = login_protocol::DURABLE_WINDOW as usize;
+    let w = login_contract::DURABLE_WINDOW as usize;
     WINDOW_TAKEN.fetch_or(1u64 << w, Ordering::Relaxed);
     let phys = WINDOWS[w].load(Ordering::Relaxed);
     (phys != 0).then_some(phys)

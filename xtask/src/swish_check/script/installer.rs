@@ -12,7 +12,7 @@ use super::*;
 /// The installer rows of [`SWISH_CHECK_SCRIPT`], in table order.
 pub(super) const LINES: &[Line] = &[
     // **The installer** (milestone 198 (a package manager) rung 3a, DECISIONS §208 (installing a
-    // package is granting it, and the activation set is versioned)), asked by `jig` since milestone
+    // package is granting it, and the installed programs are versioned)), asked by `jig` since milestone
     // 809 (the package client becomes a program): a program holding an installer endpoint, where
     // this was the shell's `package` builtin. A package with one byte of its program flipped, and
     // its table of contents rewritten to agree, is refused by the image's catalog before anything

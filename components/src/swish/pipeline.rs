@@ -141,7 +141,7 @@ pub(super) fn pipeline(nav: &mut Nav, l: Line<'_>) {
 /// deliver what comes out of the tail. Everything above this decided; this moves capabilities.
 ///
 /// **The shell is the process behind a `>` and a `<`**, and that is milestone 50's one wiring
-/// decision that is not the obvious one. See notes/pipes.md: `filesystem_protocol` shares a single page between
+/// decision that is not the obvious one. See notes/pipes.md: `filesystem_contract` shares a single page between
 /// the FS server and its client, so two client processes racing to stage bytes in it is not sound,
 /// and `ls > out.txt` is precisely a line where the shell must read the filesystem *while* the
 /// redirection is being written. The shell already holds the directory capability, so it is the one
@@ -613,7 +613,7 @@ fn feed(nav: &mut Nav, stage: &[u8], w: &mut dyn ByteOut) {
 /// two words at a time; `fixtures/src/file_source.rs` is the same loop from the other side.
 struct SinkWriter {
     slot: u64,
-    buf: [u8; byte_sink_protocol::INLINE_MAX],
+    buf: [u8; byte_sink_contract::INLINE_MAX],
     n: usize,
     /// Set once a send has failed. Everything after is dropped rather than retried: `Gone` means the
     /// reader stopped caring, and there is nothing to report it to.
@@ -624,7 +624,7 @@ impl SinkWriter {
     fn new(slot: u64) -> Self {
         SinkWriter {
             slot,
-            buf: [0; byte_sink_protocol::INLINE_MAX],
+            buf: [0; byte_sink_contract::INLINE_MAX],
             n: 0,
             stopped: false,
         }
@@ -634,11 +634,11 @@ impl SinkWriter {
         if self.n == 0 || self.stopped {
             return;
         }
-        let (w0, w1, w2, _) = byte_sink_protocol::pack(&self.buf[..self.n]);
+        let (w0, w1, w2, _) = byte_sink_contract::pack(&self.buf[..self.n]);
         self.n = 0;
         if !matches!(
-            byte_sink_protocol::classify(send(self.slot, w0, w1, w2)),
-            byte_sink_protocol::Sent::Ok
+            byte_sink_contract::classify(send(self.slot, w0, w1, w2)),
+            byte_sink_contract::Sent::Ok
         ) {
             self.stopped = true;
         }
@@ -662,7 +662,7 @@ impl ByteOut for SinkWriter {
     fn finish(&mut self) {
         self.flush();
         if !self.stopped {
-            send(self.slot, byte_sink_protocol::eof(), 0, 0);
+            send(self.slot, byte_sink_contract::eof(), 0, 0);
         }
     }
 }
@@ -929,14 +929,14 @@ fn drain_into(f: &mut FileOut) {
             print(swish::FAULTED_SENTENCE);
             return;
         }
-        let mut buf = [0u8; byte_sink_protocol::INLINE_MAX];
-        match byte_sink_protocol::unpack(w0, w1, w2, &mut buf) {
-            byte_sink_protocol::Msg::Bytes(n) => f.push(&buf[..n]),
-            byte_sink_protocol::Msg::Eof => {
+        let mut buf = [0u8; byte_sink_contract::INLINE_MAX];
+        match byte_sink_contract::unpack(w0, w1, w2, &mut buf) {
+            byte_sink_contract::Msg::Bytes(n) => f.push(&buf[..n]),
+            byte_sink_contract::Msg::Eof => {
                 f.finish();
                 return;
             }
-            byte_sink_protocol::Msg::Malformed => {
+            byte_sink_contract::Msg::Malformed => {
                 f.finish();
                 print(b"  (that program sent something this shell cannot read as bytes)\n");
                 return;

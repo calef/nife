@@ -124,7 +124,7 @@ read-only share reports zero free whatever the image says. That is the same stat
 - Compounds are implemented: macOS stats files as CREATE + QUERY_INFO + CLOSE related chains. Credits
   are granted as asked and never accounted.
 - The `AAPL` create context is answered, and the bits it claims are the table in
-  [apple-half.md](apple-half.md), from milestone 55 (Time Machine). The chain is walked generically,
+  [apple-extensions.md](apple-extensions.md), from milestone 55 (Time Machine). The chain is walked generically,
   the tag is matched, and the answer echoes the request bitmap and carries exactly the answers it
   asked for. A context this server does not implement is walked past in silence, never refused. An
   unanswered context is how this mechanism says "not implemented", and refusing would trade a working
@@ -134,7 +134,7 @@ read-only share reports zero free whatever the image says. That is the same stat
   so a stale handle is `STATUS_FILE_CLOSED` rather than a blanket yes. Then `Share::sync` is called.
   On the fs-backed share that is `fs_proto::fs::SYNC` and, under that, a `VIRTIO_BLK_T_FLUSH` the
   device completes before the reply. A backing that cannot flush its storage returns an error, and
-  the client sees it. See [apple-half.md](apple-half.md) for why that mattered enough to be worth a
+  the client sees it. See [apple-extensions.md](apple-extensions.md) for why that mattered enough to be worth a
   milestone of its own.
 - The SMB1 probe. The machine overruled the assumption that a modern client opens with SMB2. macOS's
   `mount_smbfs` still opens with an SMB1 multi-protocol NEGOTIATE (`\xFFSMB`, command `0x72`, dialect

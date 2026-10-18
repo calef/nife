@@ -15,14 +15,14 @@
 //! so the attenuation lives in the handle the server minted, not in any branch here.
 //!
 //! What this process does is **translate a namespace**: the client numbers handles from
-//! [`filesystem_protocol::fs::ROOT`], which is the granted directory, and this maps each to the FS
+//! [`filesystem_contract::fs::ROOT`], which is the granted directory, and this maps each to the FS
 //! server's number and forwards. A handle this process never minted is `EBADF` from one check.
 //!
 //! - **The confined program holds an endpoint to this process and nothing that names the FS
 //!   server**, so "it cannot reach the parent directory" is a property of its capability table.
 //! - **A rights-carrying handle alone would not confine it.** The FS server's handle table is per
 //!   server, not per client, so a program holding the FS-service endpoint could name
-//!   [`filesystem_protocol::fs::ROOT`] and be back at the image root. The handle is the
+//!   [`filesystem_contract::fs::ROOT`] and be back at the image root. The handle is the
 //!   authority; the endpoint is the boundary.
 //!
 
@@ -31,15 +31,15 @@
 //! - **slot 0**: the FS-service endpoint, `WRITE`. The directory capability being attenuated.
 //! - **slot 1**: the narrowed endpoint, `READ`. The confined program `CALL`s here; this endpoint IS
 //!   the subtree capability.
-//! - **slot 2**: a report endpoint, `WRITE`. Readiness ([`filesystem_protocol::READY`])
-//!   once the descent has succeeded, or [`filesystem_protocol::DESCENT_REFUSED`] with the
+//! - **slot 2**: a report endpoint, `WRITE`. Readiness ([`filesystem_contract::READY`])
+//!   once the descent has succeeded, or [`filesystem_contract::DESCENT_REFUSED`] with the
 //!   errno, after which this process exits without serving.
 //! - **[`PAGE_VA`]**: the page shared with the FS server *and* with the client, sound because
 //!   every request on both hops is a blocking `CALL`, so the client is parked inside its own call
 //!   while this process uses the page.
 //!
 //! The granted name and the requested rights arrive in the three `START` argument words
-//! ([`filesystem_protocol::grant`]), so a subtree grant costs no extra frame.
+//! ([`filesystem_contract::grant`]), so a subtree grant costs no extra frame.
 //!
 //! # BUGS
 //!
@@ -58,7 +58,7 @@
 #![allow(missing_docs)]
 #![no_main]
 
-use filesystem_protocol::{fs, grant, operation, reply_err, reply_errno, verb};
+use filesystem_contract::{fs, grant, operation, reply_err, reply_errno, verb};
 use user_mode_runtime::mapped_window::MappedWindow;
 use user_mode_runtime::{Reply, call, exit, receive_request, send};
 
@@ -72,7 +72,7 @@ const REPORT: u64 = 2;
 /// The one page, shared with the FS server above and the client below.
 const PAGE_VA: u64 = address_space_map::pair_page(0x0000_0000_0060_0000);
 /// Its size, the contract's transfer unit.
-const PAGE: usize = filesystem_protocol::PAGE;
+const PAGE: usize = filesystem_contract::PAGE;
 
 // SAFETY: the wiring maps one page read/write at PAGE_VA before this program runs (milestone 139
 // round 2; see `user_mode_runtime::mapped_window`, which is what collapsed the hand-rolled write_volatile
@@ -116,7 +116,7 @@ fn reply(to: Reply, r0: i64, r1: u64) {
 
 /// The client's handle namespace: `table[i]` is the FS server's handle for the client's handle `i`,
 /// or `None` for a slot the client does not hold. Slot 0 is the granted directory and is never
-/// freed, which is what makes [`filesystem_protocol::fs::ROOT`] mean "the root of *your* namespace" on this
+/// freed, which is what makes [`filesystem_contract::fs::ROOT`] mean "the root of *your* namespace" on this
 /// endpoint exactly as it does on the FS server's.
 struct Table([Option<u64>; SLOTS]);
 
@@ -146,7 +146,7 @@ impl Table {
 ///
 /// # Milestone 61: the shape comes from the contract, and there is still no check
 ///
-/// The `match` over opcodes is gone, replaced by [`filesystem_protocol::verb`], which says for each verb
+/// The `match` over opcodes is gone, replaced by [`filesystem_contract::verb`], which says for each verb
 /// whether the request's length field counts anything and whether its second word means something.
 /// **That is dispatch, not attenuation, and the distinction is the whole reason this program can be
 /// trusted.** A name filter or a rights test here would be a branch that could be wrong; a table
@@ -279,14 +279,14 @@ pub extern "C" fn _start(name_lo: u64, name_hi: u64, spec: u64) -> ! {
     if let Some(errno) = reply_errno(r0 as i64) {
         send(
             REPORT,
-            filesystem_protocol::DESCENT_REFUSED,
+            filesystem_contract::DESCENT_REFUSED,
             errno as i64 as u64,
             0,
         );
         exit();
     }
 
-    send(REPORT, filesystem_protocol::READY, 0, 0);
+    send(REPORT, filesystem_contract::READY, 0, 0);
     serve(r0);
 }
 

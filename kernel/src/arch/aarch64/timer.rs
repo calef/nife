@@ -141,7 +141,7 @@ static COUNTER_OPEN: [AtomicBool; MAX_CPUS] = [const { AtomicBool::new(false) };
 pub fn init() {
     let freq = CNTFRQ_EL0.get();
     assert!(
-        counter_frequency_protocol::is_plausible(freq),
+        counter_frequency_contract::is_plausible(freq),
         "CNTFRQ_EL0 reports {freq} Hz, which no real part does: firmware never wrote it, or wrote \
          nonsense"
     );

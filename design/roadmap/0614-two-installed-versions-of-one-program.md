@@ -16,7 +16,7 @@ different packages have different dependencies on upgrading a dependency. We sho
 to address that."* *(Number provisional until the merge queue lands it. Title and slug are drafts.)*
 
 Built 2026-09-29 (UTC) on `milestone/614-every-version-live`, against the five rulings below.
-`crates/activation_set` carries the ruled shape: rows `<digest> <program> <version> <package>`
+`crates/installed_programs` carries the ruled shape: rows `<digest> <program> <version> <package>`
 keyed on the digest, and the default pointer inside the generation file. Install appends and moves
 the pointer, so the bare word still means the newest install. Removal follows ruling 5: bare remove
 takes every live version and the pointer; `package@version` removes one, moving the pointer to the
@@ -202,7 +202,7 @@ the reasoning is kept to one line each so a reader can check the rule against it
   §242's building lane landing the capability an install would hold; revisit there, and do not
   build a second log to fill it.
 - **A remove operand shares the sixteen bytes a packed name carries** with its version
-  (`filesystem_protocol::grant::MAX_NAME`). A package whose name plus `@` plus the version exceeds
+  (`filesystem_contract::grant::MAX_NAME`). A package whose name plus `@` plus the version exceeds
   sixteen bytes cannot be removed by the qualified form; it is still removable bare, which
   removes every version. Recorded 2026-09-29 when the qualified form was spelled. If a real
   package hits it, the wire grows a second packed name rather than widening the first.

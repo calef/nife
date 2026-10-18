@@ -2,7 +2,7 @@
 
 Milestone 29, rung one of the display ladder. The contract a client speaks to get pixels on a
 screen, written down so rung two (the compositor, milestone 33) implements against a contract
-instead of inventing one. The code half is `crates/graphics_protocol`; this is the prose half, the same
+instead of inventing one. The code half is `crates/graphics_contract`; this is the prose half, the same
 split `notes/fs-server.md` makes for the filesystem and `notes/terminal-contract.md` for the
 terminal. The evidence behind it is in [framebuffer-contract/](framebuffer-contract/README.md).
 
@@ -60,7 +60,7 @@ Two verbs, and that is the whole surface today:
 
 A rectangle outside the surface is refused, not clamped. A clamp hides a client's coordinate bug,
 and the client is the only party that can tell the difference. `EINVAL` (-22), the same
-negative-is-an-error convention `filesystem_protocol` sets.
+negative-is-an-error convention `filesystem_contract` sets.
 
 Why two device commands per flush, in this order: `TRANSFER_TO_HOST_2D` is what reads the
 guest pixels (the device DMAs them out of the backing into its own host-side image), and
@@ -81,7 +81,7 @@ So the region is wider, not special:
   pages 1..8    the surface, 32 KiB of pixels                                           shared with the client
 ```
 
-`1 + graphics_protocol::SURFACE_FRAMES` contiguous frames, allocated with `alloc_contiguous` and
+`1 + graphics_contract::SURFACE_FRAMES` contiguous frames, allocated with `alloc_contiguous` and
 registered whole as the driver's DMA region. Three things follow, and they are the reason this is the
 right shape:
 
@@ -157,7 +157,7 @@ Proven:
 - The pattern is a per-coordinate function, not a fill: red rises with `x` five times faster than
   with `y`, green rises with `y`, blue is `x xor 2y` times an odd number. A blank buffer, a solid
   fill, a loop that never advanced, a transposed surface, a one-row stride error, and a one-pixel
-  shift all fail it. `crates/graphics_protocol`'s host tests assert those properties of the pattern itself,
+  shift all fail it. `crates/graphics_contract`'s host tests assert those properties of the pattern itself,
   so the pattern's fitness is checked in milliseconds rather than trusted.
 - The digest is position sensitive (FNV-1a over the pixel words in row-major order), so the same
   pixels in the wrong order is a different answer.
@@ -184,13 +184,13 @@ QEMU's monitor works headlessly: `screendump FILE` writes a PPM of the scanout e
 `-display none` (verified against QEMU 11.0.2). So the runners take a monitor socket
 (`NIFE_GPU_MON`), and `cargo xtask`'s `cargo_test_with_scanout_check` drives it while the ordinary
 test run is happening. It spawns the suite, and beside it polls the monitor every 100 ms, dumps the
-scanout, and compares the PPM against `graphics_protocol::pixel`, the same definition the client
+scanout, and compares the PPM against `graphics_contract::pixel`, the same definition the client
 painted from. The first match ends the polling. Both ISAs. Every command goes over one monitor
 connection and waits for QEMU's prompt, so a dump is whole when it is read. On success it prints:
 
 ```text
 scanout check (aarch64): the 128x64 pattern reached the DEVICE's scanout, verified pixel for pixel
-against graphics_protocol::pixel (target/gpu-scanout-aarch64.ppm)
+against graphics_contract::pixel (target/gpu-scanout-aarch64.ppm)
 ```
 
 So the pixels are proven all the way to the device, not just to our own frames. The guest's two
@@ -219,7 +219,7 @@ died before its "UP" report. The investigation, a false lead, is in
 
 Rung two's compositor (milestone 33 (a compositor)) and the display terminal (milestone 29 (a display
 terminal)'s text increment) each
-took `painter`'s place at this seam with exactly `painter`'s authority. `crates/graphics_protocol` and
+took `painter`'s place at this seam with exactly `painter`'s authority. `crates/graphics_contract` and
 `gpu_driver` stayed byte-for-byte the same both times. A kernel stand-in for the driver made the
 damage rectangle observable. The scanout check grew to three pictures over one boot. How each
 prediction below came out is in [framebuffer-contract/later-rungs.md](framebuffer-contract/later-rungs.md).
@@ -278,7 +278,7 @@ The boot evidence is in [framebuffer-contract/flushed-hang.md](framebuffer-contr
 
 | piece | file |
 |---|---|
-| the contract, host-tested | `crates/graphics_protocol/src/lib.rs` |
+| the contract, host-tested | `crates/graphics_contract/src/lib.rs` |
 | the display driver | `components/src/gpu_driver.rs` |
 | the second driver: a screen the firmware already set up (milestone 400) | `components/src/framebuffer_driver.rs`, its arithmetic in `screen_console::Aperture` |
 | the client that draws | `fixtures/src/painter.rs` |

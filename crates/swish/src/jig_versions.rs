@@ -43,7 +43,7 @@
 pub const FILE: &str = ".jig-versions";
 
 /// **The version the set asks for `program`**: its first `<program> <version>` line. Blank lines
-/// and `#` comments are skipped, as in the activation set; a line that is not two words is skipped,
+/// and `#` comments are skipped, as in the installed-programs table; a line that is not two words is skipped,
 /// because a set that cannot be read selects nothing rather than refusing what the table already
 /// answers for.
 pub fn entry<'a>(set: &'a str, program: &str) -> Option<&'a str> {

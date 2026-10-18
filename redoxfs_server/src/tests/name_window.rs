@@ -22,7 +22,7 @@
 //! type is what closes it: the resolve reads the server's copy, which no thread of the client can
 //! write.
 
-use filesystem_protocol::fs;
+use filesystem_contract::fs;
 
 use super::*;
 
@@ -46,7 +46,7 @@ const REFUSED: &[&[u8]] = &[
     b"a/../b",
     b"a\\b",
     b"a:b",
-    filesystem_protocol::xattr::STORE_DIR.as_bytes(),
+    filesystem_contract::xattr::STORE_DIR.as_bytes(),
     &[0xff, 0xfe],
 ];
 
@@ -107,7 +107,7 @@ fn opendir_refuses_every_refused_name_and_descends_a_legal_one() {
         let (r0, _) = srv.handle(
             0,
             fs::req(fs::OPENDIR, fs::ROOT, len),
-            filesystem_protocol::dir::ALL,
+            filesystem_contract::dir::ALL,
             &mut window,
             &mut NoEdges,
         );
@@ -121,7 +121,7 @@ fn opendir_refuses_every_refused_name_and_descends_a_legal_one() {
     let (r0, _) = srv.handle(
         0,
         fs::req(fs::OPENDIR, fs::ROOT, len),
-        filesystem_protocol::dir::ALL,
+        filesystem_contract::dir::ALL,
         &mut window,
         &mut NoEdges,
     );

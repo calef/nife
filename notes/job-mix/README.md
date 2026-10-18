@@ -16,7 +16,7 @@ the parent's Results row points to it.
 - [`null-syscall-hvf-full-mix.md`](null-syscall-hvf-full-mix.md): the same, spawning included.
 - [`radon-2026-10-05.md`](radon-2026-10-05.md): milestones 761 and 766 on radon, and a bisect
   that found the single crossing moves about 8 ticks with code placement alone.
-- [`spawn-destroy-gone.md`](spawn-destroy-gone.md): why the full mix failed under HVF. A yield
+- [`spawn-job-miscompiled-yield.md`](spawn-job-miscompiled-yield.md): why the full mix failed under HVF. A yield
   wrapper declared no output. The spawn job then trapped with stale arguments.
 - [`warton-aim7.md`](warton-aim7.md): what Warton ran AIM7 on, and why the 20% is not a target.
 - [`instrument-change-2026-09-19.md`](instrument-change-2026-09-19.md): the statistic and the mix
@@ -28,3 +28,5 @@ the parent's Results row points to it.
 *Name: provisional, for the directory and every stem in it. Naming is an architect's;
 `script/names --unratified` lists each stem. Each stem is named for its content, and
 `instrument-change-2026-09-19` is dated like `radon-2026-10-04`.*
+
+- `spawn-job-miscompiled-yield` Name: ratified 2026-10-18 (calef, "Approve as a group"). Refused `spawn-destroy-gone`.

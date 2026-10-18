@@ -6,7 +6,7 @@ use crate::*;
 /// `WordGrant::rights` spells them as numbers because this crate does not link the contract.
 #[test]
 fn word_rights_are_the_filesystem_contracts() {
-    use filesystem_protocol::dir;
+    use filesystem_contract::dir;
     let read = dir::ENUMERATE | dir::READ | dir::DESCEND;
     assert_eq!(WordGrant::ReadOnly.rights(), read);
     assert_eq!(WordGrant::ReadWrite.rights(), read | dir::WRITE);
@@ -19,7 +19,7 @@ fn word_rights_are_the_filesystem_contracts() {
 /// that could write, or a writing one that could not create, fails here.
 #[test]
 fn the_index_store_opens_with_a_word_grants_rights() {
-    use filesystem_protocol::dir;
+    use filesystem_contract::dir;
     let read = dir::ENUMERATE | dir::READ | dir::DESCEND;
     assert_eq!(IndexStore::Forbidden.rights(), None);
     assert_eq!(IndexStore::ReadOnly.rights(), Some(read));

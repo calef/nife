@@ -47,7 +47,7 @@ the head's input off the `Line`, which has no `<` on it, so a planned `Source::F
 and the stage was spawned with an empty input slot.
 
 It did not hang, and that is the part worth keeping. A `receive` on an empty slot answers `NoSuchSlot`
-rather than blocking. The error word's top byte is an opcode `byte_sink_protocol` does not define,
+rather than blocking. The error word's top byte is an opcode `byte_sink_contract` does not define,
 so it decodes as `Msg::Malformed`. And every reader in this tree treats a malformed message as the
 end of the document, because a page silently missing a paragraph is worse than a page that stops.
 Three correct local decisions compose into a stage that runs to completion over nothing and reports
@@ -217,7 +217,7 @@ What is not a way out is an adapter process at the file end. The obvious move fo
 out.txt` is to give the writing end to a component so the shell is only the producer. It does not
 work, for the reason ["The file behind a `>` is this
 shell"](the-file-end.md#the-file-behind-a--is-this-shell-and-that-was-not-the-plan) already gives:
-`filesystem_protocol` shares one page between the FS server and its clients, and this line has the
+`filesystem_contract` shares one page between the FS server and its clients, and this line has the
 shell reading the filesystem while the adapter writes it. Same race, same page, and no ordering fix.
 
 The way that was taken: hand an unredirected tail's output to an adapter that already exists

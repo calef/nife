@@ -93,7 +93,7 @@ fn the_disk_surveyor_reads_a_table_gptfdisk_wrote() {
     }
     // Past device bring-up, so a hang below is a hang in a read rather than in the driver.
     let [ready, ..] = crate::sched::ipc_receive(w.ready);
-    assert_eq!(ready, filesystem_protocol::READY);
+    assert_eq!(ready, filesystem_contract::READY);
 
     // Message one: the roster, which is the authority that does NOT involve the disk.
     let [total, mmio, pci, ..] = crate::sched::ipc_receive(w.report);
@@ -312,7 +312,7 @@ fn entropy_rendezvous() -> Option<crate::sched::RendezvousId> {
     if let Some(report) = w.wait_for_ready() {
         assert_eq!(
             report[0],
-            entropy_protocol::READY,
+            entropy_contract::READY,
             "the entropy service did not come up (it reported {:#x})",
             report[0],
         );
@@ -363,7 +363,7 @@ fn the_write_half_needs_a_disk_and_an_entropy_rendezvous_and_holds_nothing_else(
     if let Some(ready) = disk.blk_ready {
         // Past device bring-up, so a hang below is a hang in a write rather than in the driver.
         let [word, ..] = crate::sched::ipc_receive(ready);
-        assert_eq!(word, filesystem_protocol::READY);
+        assert_eq!(word, filesystem_contract::READY);
     }
     let Some(entropy) = entropy_rendezvous() else {
         skip_unless_required!(
@@ -480,11 +480,11 @@ fn mkfs_phase(
         "mkfs failed at step {blocks} with errno {first}",
     );
     let want_blocks = (blank::DATA.1 - blank::DATA.0 + 1) * blank::LBA
-        / filesystem_protocol::blk::BLOCK_SIZE as u64;
+        / filesystem_contract::blk::BLOCK_SIZE as u64;
     assert_eq!(blocks, want_blocks, "the filesystem covers the partition");
     assert_eq!(
         first,
-        blank::DATA.0 * blank::LBA / filesystem_protocol::blk::BLOCK_SIZE as u64,
+        blank::DATA.0 * blank::LBA / filesystem_contract::blk::BLOCK_SIZE as u64,
         "and starts at the partition's first block",
     );
 

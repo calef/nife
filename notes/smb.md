@@ -14,16 +14,16 @@ what this system did.
 | date | what a machine did, not what a test asserted |
 |---|---|
 | 2026-08-15 | **A real Mac mounted it.** macOS 26's own `mount_smbfs` against the QEMU guest: the share mounted, `ls` listed it, both fixture files read back byte-correct, the volume arrived read-only (macOS honored `READ_ONLY_VOLUME` and refused a write client-side), a clean unmount worked, and a second mount proved the listener re-armed for a real client rather than only for the test prober. |
-| 2026-08-15 | The `filesystem_protocol`-backed share: bytes a *different in-guest process* had put on RedoxFS came back over TCP, so the chain RedoxFS -> `filesystem_protocol` -> `Share` -> SMB2 -> TCP was checkable rather than asserted. |
+| 2026-08-15 | The `filesystem_contract`-backed share: bytes a *different in-guest process* had put on RedoxFS came back over TCP, so the chain RedoxFS -> `filesystem_contract` -> `Share` -> SMB2 -> TCP was checkable rather than asserted. |
 | 2026-08-16 | The write path, gated on both ISAs by a file the host wrote over SMB2 and a different in-guest process read back through the FS server. Never met a real Mac (see BUGS). |
-| 2026-08-16 | `filesystem_protocol` grew `STATFS` (op 18); subdirectories, with `smb_proto::path` parsing a share-relative path once at the wire's edge. |
+| 2026-08-16 | `filesystem_contract` grew `STATFS` (op 18); subdirectories, with `smb_proto::path` parsing a share-relative path once at the wire's edge. |
 | 2026-08-17 | The `AAPL` create context and the `FULL_SYNC` Time Machine flag. Never met a real Mac. |
 | 2026-08-17 | **Identity**: an NTLMv2 proof verified against milestone 65's credential service, with the kernel reading the shared frame through the direct map afterwards and requiring the key to be absent. |
 | 2026-08-19 | Throughput measured through a real SMB client: **write 4.8x, read 2.4x** from raising the file transfer from 4 KiB to 64 KiB. See the throughput section. |
 | 2026-08-24 | The session/connection split (milestone 152's first buildable piece), the shape `session_reviver` still carries. |
 
 The one number that survives the removal is there because it was measured rather than argued.
-Raising `filesystem_protocol`'s transfer from one page to sixteen took an SMB write from 0.065 to 0.31 MiB/s
+Raising `filesystem_contract`'s transfer from one page to sixteen took an SMB write from 0.065 to 0.31 MiB/s
 and a read from 0.15 to 0.36 MiB/s, debug build under QEMU. The ratio transfers; the rate does
 not, and the note refused to convert it into a backup's wall clock for that reason. That refusal is
 still the right call and is worth copying.
@@ -65,13 +65,13 @@ What was deliberately kept, and why, because the boundary is the interesting par
   answers an authentication without ever holding the key) is proven by `credentialer_test_client`
   against the password verifier and never needed the SMB adapter.
 - Milestone 107 (socket)'s socket work, which is what lets anything accept a connection.
-- `filesystem_protocol`'s `STATFS`, `SYNC` and `RENAME`, and the block server's
+- `filesystem_contract`'s `STATFS`, `SYNC` and `RENAME`, and the block server's
   `VIRTIO_BLK_T_FLUSH`. SMB is what motivated them; they are file-service verbs and stand on their
   own.
 
 ## The NTLM half went with it, and that is the transferable lesson
 
-`crates/ntlm`, the NTLM path through `crates/credentialer`, two `credential_protocol` opcodes, and
+`crates/ntlm`, the NTLM path through `crates/credentialer`, two `credential_contract` opcodes, and
 `md4`, `md-5`, `hmac` and `digest` were removed in the same pass. DECISIONS §79 (holding
 password-equivalent material) had approved them, and two known-broken hash functions, for NTLMv2
 compliance. That reason was sound and entirely contingent on there being a protocol to comply with.
@@ -114,7 +114,7 @@ every present tense in it as "as of `685900ec`".
 - [`smb/wire-decisions.md`](smb/wire-decisions.md): every expensive-to-reverse wire choice and its
   reason, from SMB 2.1 only and NTLMv2 to refusing read-only at the protocol layer, parsing a path
   once, and the SMB1 probe a real Mac sent.
-- [`smb/apple-half.md`](smb/apple-half.md): the `AAPL` create context, the bits claimed, and the
+- [`smb/apple-extensions.md`](smb/apple-extensions.md): the `AAPL` create context, the bits claimed, and the
   durability gap `FULL_SYNC` exposed and milestone 55 (Time Machine) closed with a real device flush.
 - [`smb/throughput.md`](smb/throughput.md): the 64 KiB transfer, measured through a real client, and
   the socket contract's 4080-byte chunk that remained.

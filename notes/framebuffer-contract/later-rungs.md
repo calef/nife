@@ -11,7 +11,7 @@ predicted change turned into. The predictions are the main page's list of seams 
 Written back here on 2026-07-29, because a contract's real test is what happened when the next thing
 implemented against it. The answer is worth recording: nothing in this rung changed.
 
-`crates/graphics_protocol` and `components/src/gpu_driver.rs` are byte-for-byte the same. The
+`crates/graphics_contract` and `components/src/gpu_driver.rs` are byte-for-byte the same. The
 compositor (`components/src/compositor.rs`) took `painter`'s place at this seam. It holds the display
 endpoint and the scanout frames with exactly `painter`'s authority, and the driver cannot tell the
 difference. The only addition on this side of the seam is a kernel wiring entry point that starts
@@ -46,7 +46,7 @@ composed screen first and this rung's pattern second, both on both ISAs.
 Written back here on 2026-07-30, for the same reason rung two's section exists: a contract's real
 test is what happened when the next thing implemented against it. Nothing in this rung changed.
 
-`crates/graphics_protocol` and `components/src/gpu_driver.rs` are byte-for-byte the same again. The
+`crates/graphics_contract` and `components/src/gpu_driver.rs` are byte-for-byte the same again. The
 display terminal (`components/src/display_terminal.rs`) takes `painter`'s place at this seam with
 exactly `painter`'s authority: a report endpoint, the display endpoint, and the surface frames. It
 draws glyphs instead of a coordinate pattern. It calls `FLUSH` with the rectangle of cells that

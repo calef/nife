@@ -18,8 +18,8 @@
 //! The numbers are Linux's generic ones, which `c_library`'s `errno.h` also uses (`c_library` checks
 //! at compile time that its constants equal these, so the two cannot drift).
 //!
-//! Name: provisional 2026-10-10 (UTC), milestone 835's lane. The C library's crate name (also
-//! provisional) plus the one thing this holds. calef has not ruled.
+//! Name: ratified 2026-10-18 (calef). The C library's crate name plus the one thing this holds.
+//! `errno` is C's own identifier, kept whole as a foreign name (design/decisions/0154's table).
 
 #![forbid(unsafe_code)]
 // The kinds `std`'s Unix port already decodes `ELOOP`, `EINPROGRESS` and `EMFILE` into are unstable

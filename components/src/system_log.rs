@@ -60,7 +60,7 @@
 //! - **At boot it serves the kernel and nobody else.** The progenitor starts it for the kernel's
 //!   ring but keeps no unbadged intake, mints no writer badges and wires no reader windows, so a
 //!   program's output does not reach it yet and nothing at the prompt can read it.
-//! - **Four readers at most** (`system_log_protocol::read::WINDOWS`), because each is a page and
+//! - **Four readers at most** (`system_log_contract::read::WINDOWS`), because each is a page and
 //!   a notification the spawner provides at spawn.
 //! - **Its stack depth is measured only on the paths the QEMU test drives.** A program the kernel
 //!   spawns gets one 4 KiB stack page, and this one is built unoptimized in a debug image, so
@@ -88,9 +88,9 @@
 
 use system_log::registry::Name;
 use system_log::{Handled, Log};
-use system_log_protocol::kernel_ring::{self, Cursor, DETACHED, Read, Ring};
-use system_log_protocol::record::{self, flags};
-use system_log_protocol::{console, read};
+use system_log_contract::kernel_ring::{self, Cursor, DETACHED, Read, Ring};
+use system_log_contract::record::{self, flags};
+use system_log_contract::{console, read};
 use user_mode_runtime::{
     cntfrq, exit, monotonic_nanos, notification_signal, now, receive_badged, receive_badged_bound,
     send, timer_arm,

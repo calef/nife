@@ -9,7 +9,7 @@
 use super::*;
 
 /// **Who vouched for an image's digest**, for [`write_image_capabilities`]: the live generation that lists
-/// it, and whether its entry is the owner's own vouch (`activation_set::OWNER`) rather than an
+/// it, and whether its entry is the owner's own vouch (`installed_programs::OWNER`) rather than an
 /// installed package's. Name: provisional (2026-09-26).
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct Vouched {
@@ -23,7 +23,7 @@ pub struct Vouched {
 /// (DECISIONS §219 option D and gate D2, milestone 198 rung 3a; the manifest note, milestone 597,
 /// provisional).
 ///
-/// The shell computes every input from the bytes it read and the activation set it can read:
+/// The shell computes every input from the bytes it read and the installed-programs table it can read:
 /// `digest` is the file's SHA-256 in its text form, `sha256:<hex>` (`measured_boot::digest_text`), `vouched_by` is the live generation that lists
 /// that digest and whether that entry is the owner's own vouch (DECISIONS §221 (the boot prompt
 /// is the owner's console)), or `None`, `declared` is the manifest the file's note carries (`None` for no note),
@@ -289,7 +289,7 @@ fn write_preview_rows(
     out: &mut dyn FnMut(&[u8]),
 ) {
     // **A `std` program's slots are fixed by its runtime, not by the order they are listed in**
-    // (milestone 595 (provisional), `crates/std_runtime_protocol`). The same grants land somewhere
+    // (milestone 595 (provisional), `crates/std_runtime_contract`). The same grants land somewhere
     // else, and slot 0 is not even the same kind of object, so a preview that printed the native
     // positions for one would be describing a child the progenitor does not build.
     let std = m.runtime == grant_plan::Runtime::Std;
@@ -314,7 +314,7 @@ fn write_preview_rows(
         out(b"\n");
     } else if m.arg.hears_words() {
         out(b"(the words on the line, at cap ");
-        write_num(std_runtime_protocol::ARGS_SLOT, out);
+        write_num(std_runtime_contract::ARGS_SLOT, out);
         out(b")\n");
     } else {
         out(b"(none)\n");
@@ -341,7 +341,7 @@ fn write_result_and_memory_rows(
     out: &mut dyn FnMut(&[u8]),
 ) {
     if std {
-        write_slot(std_runtime_protocol::MEMORY_REGION_SLOT, out);
+        write_slot(std_runtime_contract::MEMORY_REGION_SLOT, out);
         out(b"untyped   heap. the ");
         write_num(grant_plan::named_std_region_pages(m), out);
         out(b"-page region it is built in, less the\n");
@@ -352,7 +352,7 @@ fn write_result_and_memory_rows(
                 .as_slice()
         });
         out(b"                              shell's budget, and all of it goes back at exit\n");
-        write_slot(std_runtime_protocol::STDOUT_SLOT, out);
+        write_slot(std_runtime_contract::STDOUT_SLOT, out);
         out(b"endpoint  result   stdout and stderr, both\n");
     } else {
         out(b"    cap 0  endpoint  result   report its answer back\n");
@@ -393,7 +393,7 @@ fn write_file_and_directory_rows(
     if let Some(g) = e.dir {
         write_slot(
             if std {
-                std_runtime_protocol::FS_DIR_SLOT
+                std_runtime_contract::FS_DIR_SLOT
             } else {
                 2
             },
@@ -458,7 +458,7 @@ fn write_page_rows(
     if m.clock {
         write_slot(
             if std {
-                std_runtime_protocol::CLOCK_SLOT
+                std_runtime_contract::CLOCK_SLOT
             } else {
                 1
             },
@@ -480,7 +480,7 @@ fn write_page_rows(
     if m.config {
         write_slot(
             if std {
-                std_runtime_protocol::CONFIG_SLOT
+                std_runtime_contract::CONFIG_SLOT
             } else {
                 1
             },
@@ -504,7 +504,7 @@ fn write_page_rows(
     // because it is a capability the child holds, and worded so nobody reads it as more: a path
     // among these words reaches only what a directory row above already granted.
     if m.arg.hears_words() {
-        write_slot(std_runtime_protocol::ARGS_SLOT, out);
+        write_slot(std_runtime_contract::ARGS_SLOT, out);
         out(b"frame     args     read-only. the words on the line, as bytes; they\n");
         out(b"                              name things and grant none of them\n");
     }
@@ -526,7 +526,7 @@ fn write_service_rows(m: &grant_plan::Manifest, std: bool, out: &mut dyn FnMut(&
     if m.entropy {
         write_slot(
             if std {
-                std_runtime_protocol::ENTROPY_SLOT
+                std_runtime_contract::ENTROPY_SLOT
             } else {
                 grant_plan::ENTROPY_SLOT
             },
@@ -552,9 +552,9 @@ fn write_service_rows(m: &grant_plan::Manifest, std: bool, out: &mut dyn FnMut(&
         if std {
             // The stack at slot 2 and, at slot 3, the region the program is built in, which the
             // net PAL retypes each socket's shared page from (milestone 809).
-            write_slot(std_runtime_protocol::STACK_SLOT, out);
+            write_slot(std_runtime_contract::STACK_SLOT, out);
             out(b"endpoint  network  WRITE. it may open outbound sockets through the network\n");
-            write_slot(std_runtime_protocol::NET_MEMORY_REGION_SLOT, out);
+            write_slot(std_runtime_contract::NET_MEMORY_REGION_SLOT, out);
             out(b"untyped   sockets. the heap's region again, which each socket's page is\n");
             out(b"                              made from\n");
         } else {
@@ -608,7 +608,7 @@ fn write_resolver_row(
     let (true, true, Some(zone)) = (m.network, std, e.prog.resolver_zone()) else {
         return;
     };
-    write_slot(std_runtime_protocol::RESOLVER_SLOT, out);
+    write_slot(std_runtime_contract::RESOLVER_SLOT, out);
     out(b"endpoint  resolver  WRITE. it may look up the addresses of ");
     if zone.is_empty() {
         out(b"any name\n");
@@ -683,7 +683,7 @@ fn write_index_rows(e: &Endowment, m: &grant_plan::Manifest, out: &mut dyn FnMut
         grant_plan::IndexStore::ReadOnly => false,
         grant_plan::IndexStore::ReadWrite => true,
     };
-    write_slot(std_runtime_protocol::FS_DIR_SLOT, out);
+    write_slot(std_runtime_contract::FS_DIR_SLOT, out);
     out(if write {
         b"endpoint  dir      /activation/indexes  read and write. the index copy this
 "

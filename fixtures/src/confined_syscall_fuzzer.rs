@@ -2,13 +2,13 @@
 //! 779 (fuzz the surface a confined process can reach), provisional).
 //!
 //! `system_tests/src/user/confined_fuzzer_tests.rs` spawns three of these with the endowment
-//! `confined_fuzz_protocol` lays out, and between every two calls it checks that none of them holds
+//! `confined_syscall_fuzzer_contract` lays out, and between every two calls it checks that none of them holds
 //! a capability, or maps a page, that it was never granted. This program is the generator half: it
 //! waits on [`GO`], makes one call drawn from its seed, writes what it did to the report page, and
 //! waits again. It never interprets an answer, so a wrong answer cannot steer it anywhere a right
 //! one would not; the oracle is entirely the conductor's.
 //!
-//! `arg0` is the seed and `arg1` the role (`confined_fuzz_protocol::ROLE_*`). The seed alone
+//! `arg0` is the seed and `arg1` the role (`confined_syscall_fuzzer_contract::ROLE_*`). The seed alone
 //! decides every call, so a run replays from it.
 //!
 //! **Why an EL0 program and not milestone 752 (a seeded syscall driver with a shadow model)'s kernel threads.** 752's driver enters through
@@ -46,7 +46,7 @@
 #![no_main]
 
 use abi::{SYS_EXIT, SYS_INVOKE, SYS_YIELD};
-use confined_fuzz_protocol::{
+use confined_syscall_fuzzer_contract::{
     ENDOWED, GO, GO_EXIT, NO_CAPABILITY, PLAYGROUND_PAGES, PLAYGROUND_VA, REPORT_VA,
     SYS_CAPABILITY_DELETE, report,
 };

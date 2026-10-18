@@ -27,7 +27,7 @@ own, kept because its four syscall-surface questions are where a reopening shoul
 
 ## The word was taken
 
-In this tree "swap" already means live replacement of a running component: `crates/swap_protocol`,
+In this tree "swap" already means live replacement of a running component: `crates/hot_swap_contract`,
 the `swapper` fixture and `kernel/src/user/live_swap_tests.rs`, all from milestone 23 (a
 capability-routed component OS with live replacement). `swap_protocol` is a ratified name. So this
 file said "paging out" and "a pager" and left the name to calef, who ratified "paging out" on
@@ -219,7 +219,7 @@ condition below carries forward.
 
 ## What it changes for `free` and `vmstat`
 
-Milestone 126's open fork (the lane's appendix, `notes/process-view/what-is-left.md` on the branch
+Milestone 126's open fork (the lane's appendix, `notes/process-view/remaining-procps-programs.md` on the branch
 `milestone/126-procps`, pull request #1349) is whether memory is reported per region under a
 capability or as a machine-wide figure. Paging out follows whichever wins. Under option 1 a
 region's figure grows a paged-out count beside its committed count, read with the same right, and

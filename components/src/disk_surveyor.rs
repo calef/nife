@@ -6,7 +6,7 @@
 //! - a **`READ`-only `PageFrame` capability on the roster page**, which says what block devices
 //!   exist (`block_roster`), so a writable mapping cannot be obtained at all (see [`probe`]); and
 //! - a **block-service endpoint**, which lets it read and write the blocks of **one** device
-//!   (`filesystem_protocol::blk`).
+//!   (`filesystem_contract::blk`).
 //!
 //! On Linux a tool that can see a disk can usually be pointed at it (`parted /dev/sda` as root
 //! reaches every disk). Here that is structural: this program was handed one disk, with no path to
@@ -49,7 +49,7 @@
 //! - **The logical block size is assumed to be 512.** The block service does not carry the
 //!   device's logical block size on the wire, so a 4Kn disk would be read as though its LBA 1 were
 //!   at byte 512: a wrong answer rather than an error. The fix is a field in
-//!   `filesystem_protocol::blk`, not a change here.
+//!   `filesystem_contract::blk`, not a change here.
 //! - **It does not write.** Writing the table is `components/src/disk_partitioner.rs`.
 //! - **No hot plug.** The roster is written once at wiring time and never again.
 //!
@@ -65,7 +65,7 @@
 #![no_main]
 
 use block_roster::{Roster, TRANSPORT_MMIO, TRANSPORT_PCI};
-use filesystem_protocol::{blk, req};
+use filesystem_contract::{blk, req};
 use globally_unique_identifier_partition_table::entry::NAME_UNITS;
 use globally_unique_identifier_partition_table::guid::types;
 use globally_unique_identifier_partition_table::span::Span;
@@ -178,7 +178,7 @@ fn holder() -> ! {
     // SAFETY: ROSTER_VA is mapped read-only from the frame in slot 4, on the line above: the
     // program's own `PageFrame::MAP` succeeded first, which is exactly the case
     // `user_mode_runtime::mapped_window::MappedWindow::new`'s own doc names (milestone 139 round 3).
-    let roster = unsafe { MappedWindow::new(ROSTER_VA, filesystem_protocol::PAGE as u64) };
+    let roster = unsafe { MappedWindow::new(ROSTER_VA, filesystem_contract::PAGE as u64) };
     let word = roster.read::<u64>(0);
     send(REPORT, R_HOLDING, word, 0);
 
@@ -368,7 +368,7 @@ fn probe() -> ! {
     // `PageFrame::MAP` succeeded). Not safe to write through, and that is the test: as in `holder`'s
     // second read, `MappedWindow`'s bounds check passes (offset 0 is inside the window) and the
     // kernel refuses the write itself, at the same volatile access the hand-written version made.
-    let roster = unsafe { MappedWindow::new(ROSTER_VA, filesystem_protocol::PAGE as u64) };
+    let roster = unsafe { MappedWindow::new(ROSTER_VA, filesystem_contract::PAGE as u64) };
     roster.write(0u64, 0u64);
     // Unreachable in a working kernel; if we get here the write was allowed and the test's
     // fault-count assertion is what says so.
@@ -379,9 +379,9 @@ fn probe() -> ! {
 /// refuses a page nobody wrote and a count larger than the page can hold.
 fn roster_page() -> &'static [u8] {
     // SAFETY: a page this program mapped read-only from a frame it holds `READ` on, of exactly
-    // `filesystem_protocol::PAGE` bytes, and never written by anybody after that (the roster is built once at
+    // `filesystem_contract::PAGE` bytes, and never written by anybody after that (the roster is built once at
     // wiring time).
-    unsafe { core::slice::from_raw_parts(ROSTER_VA as *const u8, filesystem_protocol::PAGE) }
+    unsafe { core::slice::from_raw_parts(ROSTER_VA as *const u8, filesystem_contract::PAGE) }
 }
 
 /// The primary table buffer.

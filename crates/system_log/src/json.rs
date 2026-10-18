@@ -10,8 +10,8 @@
 //! still works. Text that is not UTF-8 is not passed through: each byte that does not decode
 //! becomes U+FFFD, so every line the service emits is valid JSON.
 
-use system_log_protocol::record::{Header, TEXT_MAX, flags};
-use system_log_protocol::{control, severity};
+use system_log_contract::record::{Header, TEXT_MAX, flags};
+use system_log_contract::{control, severity};
 
 /// The longest line [`render`] can produce, newline included, with room to spare: every text byte
 /// and every name byte escaped to six characters, and every number at twenty digits, is 1,901.

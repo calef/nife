@@ -81,7 +81,7 @@ build, not a fact this section now retracts.
 A `READ` or `WRITE` moves its bytes through the region the client and the FS server share, and that
 region was one page. Nothing in the wire word ever required that: `fs::req` has carried a 40-bit
 length since milestone 32. So the multi-page transfer milestone 38's `BUGS` entry called for turned
-out to be one constant, `filesystem_protocol::fs::TRANSFER_PAGES`. There was no new opcode, reply
+out to be one constant, `filesystem_contract::fs::TRANSFER_PAGES`. There was no new opcode, reply
 word, descriptor or changed field.
 
 What a party maps, and the one rule that makes old clients safe. The FS server maps the whole channel,
@@ -112,12 +112,12 @@ loop rather than a signature change. The block server's DMA region was already w
 
 - A 4 KiB request no longer moves 128 KiB, and the transfer unit is no longer 4 KiB. This entry used
   to record a 32x amplification. The client's transfer unit was one page, because that is what a
-  `filesystem_protocol` request could carry, and RedoxFS's record was 128 KiB. So a read fetched 32
+  `filesystem_contract` request could carry, and RedoxFS's record was 128 KiB. So a read fetched 32
   blocks, and a write read 32, changed one and wrote 32 back. Both halves are gone.
 
   Milestone 138 step 1 took the record to 8 KiB (`RECORD_LEVEL` 1, vendor/README.md divergence 5).
   It measured 5.13x on a 4 KiB read and 3.01x on a 4 KiB write: 1,458 us to 284 us, and 2,400 us to
-  797 us. Step 3 then took the transfer unit to 64 KiB (`filesystem_protocol::fs::TRANSFER_PAGES`,
+  797 us. Step 3 then took the transfer unit to 64 KiB (`filesystem_contract::fs::TRANSFER_PAGES`,
   above). It measured 5.67x on a read and 8.02x on a sequential write against the same harness:
   80.30 MiB/s and 42.77, from 14.16 and 5.33.
 
@@ -132,7 +132,7 @@ loop rather than a signature change. The block server's DMA region was already w
   twice from two different variables, and the residual.
 - Closed 2026-08-19 (milestone 138 step 4). This entry recorded that the block contract had the
   one-page limit the file contract used to have, and had become the binding constraint rather than
-  the wall behind one. `IpcDisk::read_at` chunked every record into one `filesystem_protocol::blk`
+  the wall behind one. `IpcDisk::read_at` chunked every record into one `filesystem_contract::blk`
   request per 4 KiB block, so a 64 KiB read was 16 device round trips rather than one.
   `blk::TRANSFER_BLOCKS` (16, mirroring `fs::TRANSFER_PAGES`) and batched `IpcDisk` calls close it. A
   `Disk::read_at`/`write_at` call now moves up to 16 contiguous blocks in one blk `CALL` and one

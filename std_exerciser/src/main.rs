@@ -51,7 +51,7 @@ use std::path::PathBuf;
 use std::random::{Rng, SystemRng};
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
-use socket_protocol::fixture;
+use socket_contract::fixture;
 
 fn main() {
     // `thread::sleep` blocks on a kernel timer (milestone 106 (a wait that ends on either the
@@ -333,7 +333,7 @@ fn paths_answer_or_refuse_honestly() {
     println!("paths ok");
 }
 
-/// The same sanity window `clock_protocol::policy` applies, restated here because a std program links
+/// The same sanity window `clock_contract::policy` applies, restated here because a std program links
 /// std and not the contract crate. 2026-01-01 and 2100-01-01.
 const NOT_BEFORE: Duration = Duration::from_secs(1_767_225_600);
 const NOT_AFTER: Duration = Duration::from_secs(4_102_444_800);

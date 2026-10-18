@@ -130,7 +130,7 @@ const _: () = {
     let fixed: [(u64, u64); 6] = [
         (OUT_VA, PAGE),
         (LINE_VA, PAGE),
-        (FS_VA, filesystem_protocol::PAGE as u64),
+        (FS_VA, filesystem_contract::PAGE as u64),
         (SH_CLOCK_VA, PAGE),
         (grant_plan::SHELL_CONFIG_VA, PAGE),
         // The argv and name-set pages, and the image window above them (DECISIONS §219 option D).

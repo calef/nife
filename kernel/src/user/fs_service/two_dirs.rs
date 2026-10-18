@@ -53,7 +53,7 @@ static TWO_DIRS: spin::Mutex<
 #[cfg_attr(not(any(test, feature = "system_tests")), allow(dead_code))]
 pub struct TwoDirGrant {
     /// The first grant: the directory (one component under the image root) and the
-    /// [`filesystem_protocol::dir`] rights, delivered at the confined program's capability table slot 0.
+    /// [`filesystem_contract::dir`] rights, delivered at the confined program's capability table slot 0.
     pub a: (&'static str, u64),
     /// The second grant, at slot 1.
     pub b: (&'static str, u64),

@@ -9,12 +9,12 @@ attempt knew it had not solved, written while the code was in front of someone.
 ## Throughput
 
 - A 64 KiB SMB message still crosses the socket contract seventeen times in each direction.
-  `socket_protocol::DATA_MAX` is 4080 bytes, because a client and `net_stack` share one frame. So
+  `socket_contract::DATA_MAX` is 4080 bytes, because a client and `net_stack` share one frame. So
   `smb_server`'s `send_all` and `recv_into` chunk every message through it. Since milestone 55 (Time
   Machine) put the file transfer at 64 KiB, this is the dominant cost of a transfer. An SMB write went
   from ~985 ms to ~206 ms per 64 KiB message, and the filesystem is no longer what is left. It is the
   defect of milestone 138 (close the read gap) step 3, one contract over, and its fix is demonstrated.
-  The shared region is one page because nobody declared it otherwise, `socket_protocol`'s request
+  The shared region is one page because nobody declared it otherwise, `socket_contract`'s request
   word already carries a length, and growing the region is the whole change.
 
   Promotion trigger (§71 (a limitation is promoted when it stops being a fact and becomes a plan)):
@@ -51,7 +51,7 @@ attempt knew it had not solved, written while the code was in front of someone.
 ## Durability and Apple metadata
 
 - `FULL_SYNC`'s durability is now backed, and here is what it still is not. The device is flushed
-  (see [apple-half.md](apple-half.md)), so that entry is closed. What remains:
+  (see [apple-extensions.md](apple-extensions.md)), so that entry is closed. What remains:
   the sync is device-wide, never per file. A client that flushes one handle makes the whole image
   durable. That is more work than it asked for, and is the only thing anything below here can do. And
   nothing fences: there is no ordering primitive on `fs_proto`. So a client issuing a write and a

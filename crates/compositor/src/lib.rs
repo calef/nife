@@ -39,14 +39,14 @@
 // The screen.
 // ================================================================================================
 
-/// The screen's width. **The screen is rung one's surface**, so this is `graphics_protocol`'s geometry rather
+/// The screen's width. **The screen is rung one's surface**, so this is `graphics_contract`'s geometry rather
 /// than a second declaration of it: the compositor composites into the very frames `painter` used to
 /// paint, and flushes them through the same `FLUSH(rect)` the GPU driver already honours.
-pub const SCREEN_W: u32 = graphics_protocol::WIDTH;
+pub const SCREEN_W: u32 = graphics_contract::WIDTH;
 /// The screen's height. See [`SCREEN_W`].
-pub const SCREEN_H: u32 = graphics_protocol::HEIGHT;
+pub const SCREEN_H: u32 = graphics_contract::HEIGHT;
 /// Pixels in the screen.
-pub const SCREEN_PIXELS: usize = graphics_protocol::PIXELS;
+pub const SCREEN_PIXELS: usize = graphics_contract::PIXELS;
 
 /// The most windows a scene may hold. Fixed because the compositor has no allocator and builds its
 /// window table as an array; four is what [`SCENE`] needs and what the kernel wires.
@@ -186,7 +186,7 @@ impl Rect {
         (self.w as u64) * (self.h as u64)
     }
 
-    /// This rectangle as unsigned screen coordinates, for [`graphics_protocol::rect`]. `None` if it is empty
+    /// This rectangle as unsigned screen coordinates, for [`graphics_contract::rect`]. `None` if it is empty
     /// or not wholly on the screen, because the GPU driver **refuses** an out-of-surface flush
     /// rather than clamping it (rung one's rule), so handing it one is a bug we should not paper over.
     pub const fn as_flush_rect(&self) -> Option<(u32, u32, u32, u32)> {
@@ -311,7 +311,7 @@ pub const MAX_SURFACE_BYTES: u32 = {
 pub const SMALL_DAMAGE: Rect = Rect::new(4, 5, 9, 7);
 
 /// **What window `id` paints at its own `(x, y)`.** A per-coordinate, per-window function, for the
-/// reason `graphics_protocol::pixel` is one: a fill proves nothing. A blank surface, a surface painted by the
+/// reason `graphics_contract::pixel` is one: a fill proves nothing. A blank surface, a surface painted by the
 /// wrong client, a surface blitted at the wrong offset, and a transposed surface all have to be
 /// visibly wrong, and they are, because no two windows agree on any pixel and no window is constant.
 ///
@@ -421,7 +421,7 @@ pub fn expected_screen_pixel_with(
 /// The digest of the whole composed screen, using rung one's position-sensitive checksum so the
 /// guest-side witnesses and the kernel speak one language about "is the screen right".
 pub fn expected_screen_checksum(n: usize) -> u64 {
-    graphics_protocol::checksum(|i| {
+    graphics_contract::checksum(|i| {
         let x = (i % SCREEN_W as usize) as u32;
         let y = (i / SCREEN_W as usize) as u32;
         expected_screen_pixel(n, x, y)
@@ -557,10 +557,10 @@ pub fn composite(screen: &mut [u32], sources: &[&[u32]], n: usize, damage: Rect)
 /// The IPC the compositor serves, and the shared-memory layouts that carry everything the IPC
 /// deliberately does not.
 ///
-/// Request words are packed the way `graphics_protocol` and `line_editor::proto` pack theirs (opcode in bits
+/// Request words are packed the way `graphics_contract` and `line_editor::proto` pack theirs (opcode in bits
 /// 63:56), and the helpers are re-exported rather than redefined so all three contracts read alike.
 pub mod proto {
-    pub use graphics_protocol::{operand, operation, req};
+    pub use graphics_contract::{operand, operation, req};
 
     /// `CALL(req(HELLO, 0), 0)` -> `(0, 0)`. "I have started." Carries nothing, and its reply
     /// carries nothing: the client's geometry is in its own control page, which the compositor has
@@ -588,7 +588,7 @@ pub mod proto {
     // as a limit and the served-copy path as what would fix it.
 
     /// The reply to a word whose opcode the compositor does not implement. Negative-is-an-error, the
-    /// convention `filesystem_protocol` set and `graphics_protocol` follows.
+    /// convention `filesystem_contract` set and `graphics_contract` follows.
     pub const EBADOP: i64 = -22;
 
     /// **A client's control page**: the per-client channel that carries everything the shared

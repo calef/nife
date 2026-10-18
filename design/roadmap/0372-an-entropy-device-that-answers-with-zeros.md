@@ -11,7 +11,7 @@ needs_person: no
 
 Filed as a proposal on 2026-09-04 by the
 `maintainer/ready-on-a-dead-device` lane; promoted by milestone 433 on 2026-09-19. Checked against
-the tree that day and unchanged in both directions. `entropy_protocol::readiness` still refuses
+the tree that day and unchanged in both directions. `entropy_contract::readiness` still refuses
 `READY` on an all-zero first bufferful and still has that decision tested only on the host
 (`an_all_zero_first_bufferful_is_never_ready`). No QEMU runner attaches an `rng-random` backend
 of any kind: the aarch64 runner's only mention of one is a comment saying QEMU defaults to the
@@ -21,9 +21,9 @@ host's `/dev/urandom`. The two consumers of the readiness word, `components/src/
 QEMU already has the device (`-object rng-random,filename=/dev/zero`), the service
 already has the check, and the only new thinking is how a wiring names *which* virtio-rng it wants.
 
-**What the work is.** `entropy_protocol::readiness` decides the readiness word from the first bufferful,
+**What the work is.** `entropy_contract::readiness` decides the readiness word from the first bufferful,
 and refuses `READY` when every byte of it is zero (milestone 159's block, "Fixed 2026-09-04"). That
-decision is host-tested in `crates/entropy_protocol`, and the drivers' three calls to it are not tested
+decision is host-tested in `crates/entropy_contract`, and the drivers' three calls to it are not tested
 anywhere: no machine this repository boots can produce a device that answers with zeros. The one that
 did was radon, whose TRNG has a gated clock, and it is not a machine CI can run.
 
@@ -45,7 +45,7 @@ What it would also unlock. The same lever tests the *dry* device path (`filename
 
 ## Index row
 
-`entropy_protocol::readiness` refuses `READY` when the first bufferful is all zeros, which is the
+`entropy_contract::readiness` refuses `READY` when the first bufferful is all zeros, which is the
 check that caught radon's gated-clock TRNG. No machine this repository boots can produce a
 device that answers that way, so the drivers' three calls to it are tested nowhere. QEMU can make
 one with `-object rng-random,filename=/dev/zero` behind a second `virtio-rng-device`. What is

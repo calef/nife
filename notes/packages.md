@@ -22,7 +22,7 @@ scoped per source the owner opted into, and the owner may overrule. That is Home
 and Homebrew is also §197's worked example of the pairing.
 
 What installing one does was the third fork, and DECISIONS §208 (installing a package is granting it, and
-the activation set is versioned) ruled it on 2026-09-23.
+the installed programs are versioned) ruled it on 2026-09-23.
 
 ## The format
 
@@ -149,7 +149,7 @@ same test as a twin in `system_tests/src/user/riscv_virtio_tests.rs`.
 
 ### The versioned table, as logic
 
-`crates/activation_set` (provisional name) is §208's second clause as a pure, host-tested crate. A
+`crates/installed_programs` (provisional name) is §208's second clause as a pure, host-tested crate. A
 generation is a text file of digest-keyed rows, `<digest> <program> <version> <package>`, and
 `default` pointer lines, never rewritten. A one-line `current` names the live one, and install,
 upgrade and remove each produce the next generation. Its test `a_rollback_restores_the_whole_set`
@@ -168,7 +168,7 @@ one `SEND_CAP` per page narrowed to `READ`, then the grants as today, holding on
 The progenitor maps each frame through the loader's scratch window (`supervision_protocol::map_scratch`), copies it into a
 page of its own, and deletes the capability before taking the next. It copies because the caller could change its frames between a hash and a build. It hashes the copy,
 reads `activation/current` and then that generation through the file service it already held, and
-looks the digest up (`activation_set::lookup_digest`). A hit is built from the copy and endowed from
+looks the digest up (`installed_programs::lookup_digest`). A hit is built from the copy and endowed from
 its note. A miss runs only for a session presenting D2's capability, with its grants and two pages;
 otherwise it gets `SPAWN_UNVOUCHED`. D2 is [packages/running-unvouched.md](packages/running-unvouched.md).
 
@@ -282,7 +282,7 @@ removed) is met, and so is §219's gate D2. The boot prompt is the owner's conso
   a program name and is refused as "no such program", and `caps <path>` prints no `provenance:`
   row. `crates/grant_plan/src/spawnproto.rs`'s `BUGS` has the full list.
 - The package source is compiled into `jig`: the runners' peer at 10.0.2.9:8080
-  (`socket_protocol::fixture`). A booted system outside QEMU has no source to fetch from, and §195's
+  (`socket_contract::fixture`). A booted system outside QEMU has no source to fetch from, and §195's
   per-source trust needs a way to name one.
 - A slow source makes the prompt wait.
 - An HTTP reader runs in `jig` before its digest check. Its head grammar is `httparse`'s (fuzzed

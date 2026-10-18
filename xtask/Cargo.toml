@@ -57,7 +57,7 @@ sealed_pair = { version = "0.1.0", path = "../crates/sealed_pair" }
 portable_executable = { version = "0.1.0", path = "../crates/portable_executable" }
 # The framebuffer contract (milestone 29): the host-side scanout check compares QEMU's screendump
 # against the same pattern the guest painted, from the same definition, so the two cannot drift.
-graphics_protocol = { version = "0.1.0", path = "../crates/graphics_protocol" }
+graphics_contract = { version = "0.1.0", path = "../crates/graphics_contract" }
 # The real board's serial console (milestone 216): the recogniser that says how far a boot got, and
 # the loop that stops instead of hanging. A crate rather than code in here for the reason every
 # host-logic crate in this tree gives: the interesting half is text, and text is worth a thousand

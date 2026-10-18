@@ -47,7 +47,7 @@ fn the_wire_ids_already_shipped_never_move() {
 }
 
 /// **A `std` program declares only what the progenitor can place in the std layout**
-/// (milestone 595 (provisional)). `std_runtime_protocol` fixes eight slots, and the progenitor's
+/// (milestone 595 (provisional)). `std_runtime_contract` fixes eight slots, and the progenitor's
 /// std spawn fills the heap, the output, the clock, the configuration page, entropy and a
 /// directory. Everything else a manifest can ask for has no slot there or is not wired yet:
 ///

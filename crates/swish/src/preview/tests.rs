@@ -220,8 +220,8 @@ fn printenv_says_the_config_page_is_not_on_the_line() {
 
 /// A page assembled with values nobody boots with, so a test that passes cannot be reading the
 /// boot's defaults by coincidence. `LANG` is left out, so the unset spelling is exercised too.
-fn unusual_page() -> [u8; environment_protocol::PAGE_BYTES] {
-    environment_protocol::PageBuilder::new()
+fn unusual_page() -> [u8; environment_contract::PAGE_BYTES] {
+    environment_contract::PageBuilder::new()
         .tz("America/Los_Angeles")
         .unwrap()
         .term("xterm-256color")
@@ -364,7 +364,7 @@ fn exactly_three_programs_declare_entropy() {
     //
     // **The second was decided in milestone 595 (provisional)**: `std_exerciser` asserts that
     // two draws from `std::random::SystemRng` differ, which is `std`'s randomness working at
-    // the slot `std_runtime_protocol` fixes, and that is half of what the program is at the
+    // the slot `std_runtime_contract` fixes, and that is half of what the program is at the
     // prompt to prove. A `std` program that does not declare it still runs; its `SystemRng`
     // panics rather than inventing bytes, and its `HashMap` seeds best-effort.
     //
@@ -386,7 +386,7 @@ fn exactly_three_programs_declare_entropy() {
 }
 
 /// **`caps` names the slots the progenitor will use, and for a `std` program those are
-/// `std_runtime_protocol`'s** (milestone 595 (provisional)). A preview printing the native
+/// `std_runtime_contract`'s** (milestone 595 (provisional)). A preview printing the native
 /// positions would put the output at slot 0, where a `std` child holds its heap.
 #[test]
 fn a_std_program_previews_its_fixed_slots() {

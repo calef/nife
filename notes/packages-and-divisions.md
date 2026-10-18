@@ -26,7 +26,7 @@ and provisional.
 | division | packages | what is in it |
 |---|---|---|
 | kernel | 19 | `kernel` and the crates only it uses: `capability`, `paging`, `page_frames`, `pci`, `device_tree_blob`, `machine_discovery` and 13 more |
-| contracts | 27 | `abi`, every `*_protocol`, and the formats two programs agree on: `elf`, `measured_boot`, `package_archive`, `activation_set`, `boot_slot`, `nifefs`, the partition table, `grant_plan`, `component_plan`, `compositor`, `line_editor` |
+| contracts | 27 | `abi`, every `*_protocol`, and the formats two programs agree on: `elf`, `measured_boot`, `package_archive`, `installed_programs`, `boot_slot`, `nifefs`, the partition table, `grant_plan`, `component_plan`, `compositor`, `line_editor` |
 | runtime | 2 | `user_mode_runtime`, `user_mode_heap`; with them the `std` overlay (`patches/std-nife`, 4,486 lines) and `targets/` |
 | boot | 6 | `uefi_loader`, `boot_ladder`, the two consoles, `bitmap_font`, `sealed_pair` |
 | services | 22 | `components` (50 binaries), `system_initializer`, drivers, `swish`, `ps` and its siblings, `calendar`, `glob` |
@@ -50,7 +50,7 @@ Normal and build dependencies only, counted per package pair, dependent first.
 | kernel to services | 9 | not intended: `ps`, `pgrep`, `pmap`, `video_terminal`, `network_time_protocol`, `block_roster`, `non_volatile_memory_express`, `calendar`, `jh7110_entropy` |
 | kernel to fixtures | 3 | not intended: `coremark`, `job_mix`, `soak_page` |
 | fixtures to services | 3 | `system_initializer`, `schedule_store`, `network_time_protocol` |
-| contracts to runtime | 2 | `supervision_protocol` and `swap_protocol` link `user_mode_runtime` |
+| contracts to runtime | 2 | `supervision_protocol` and `hot_swap_contract` link `user_mode_runtime` |
 | boot to kernel | 3 | `device_tree_blob`, `machine_discovery`: leaf libraries, not the kernel |
 | boot to fixtures | 1 | `board_console` links `job_mix` |
 
@@ -109,8 +109,8 @@ packages, checked once and then pinned by digest, and it keeps them out of the b
 basalt's package build (`recipes/ripgrep.toml` and `helpers/packages.py` in `nifeos/basalt`) is
 the one out-of-tree build. It needs the target file, the linker
 script, the patched `nife-dev` toolchain made by `xtask std-src`, and `-Zbuild-std`. The `std`
-overlay reaches six crates: `abi`, `user_mode_runtime`, `filesystem_protocol`,
-`byte_sink_protocol`, `clock_protocol` and `counter_frequency_protocol`. With their own
+overlay reaches six crates: `abi`, `user_mode_runtime`, `filesystem_contract`,
+`byte_sink_contract`, `clock_contract` and `counter_frequency_contract`. With their own
 dependencies the closure is ten crates and about 24,400 lines, plus the 4,486-line overlay. That
 closure is the SDK. It is small, and it sits inside the two cleanest divisions.
 

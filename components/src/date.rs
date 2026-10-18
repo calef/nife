@@ -7,7 +7,7 @@
 //! read-only mapping, so there is no `date -s`: setting would be a different binary holding a
 //! different capability, recognisable by its wiring rather than its argument parsing.
 //!
-//! **An unknown clock is an answer.** `clock_protocol::state::UNKNOWN` is the default, so a machine
+//! **An unknown clock is an answer.** `clock_contract::state::UNKNOWN` is the default, so a machine
 //! that never learned the time says so rather than printing 1970. It reads the state word before
 //! the offset and names the cause on its second stream ([`DIAG_SLOT`]): no clock granted, or none
 //! the machine believes. That stream exists so `date > when.txt` on a clockless machine leaves the
@@ -49,7 +49,7 @@
 use core::sync::atomic::{AtomicBool, Ordering};
 
 use calendar::{DateTime, Format, UtcOffset};
-use clock_protocol::{ClockPage, state};
+use clock_contract::{ClockPage, state};
 use user_mode_runtime::{exit, is_granted, monotonic_nanos, send};
 
 /// Slot 0: where the output goes. An endpoint with `WRITE`, and the same 16-bytes-per-message
@@ -119,8 +119,8 @@ pub extern "C" fn _start(fmt: u64, offset_minutes: u64, provenance: u64) -> ! {
 
     // Nanoseconds to seconds, truncating towards zero, which is exact here: the wall clock is a
     // `u64` count of nanoseconds since 1970 and this calendar's second is the smallest unit it has.
-    let unix_secs = (clock_protocol::wall_nanos(r.offset_nanos, monotonic_nanos())
-        / clock_protocol::NANOS_PER_SEC) as i64;
+    let unix_secs = (clock_contract::wall_nanos(r.offset_nanos, monotonic_nanos())
+        / clock_contract::NANOS_PER_SEC) as i64;
 
     // Out of range is not reachable from a clock the service believed (its sanity window is 2026 to
     // 2100 and the calendar's is 0000 to 9999), and it is still an answer rather than a panic,
@@ -142,7 +142,7 @@ pub extern "C" fn _start(fmt: u64, offset_minutes: u64, provenance: u64) -> ! {
         // with the answer. That is also why the second stream is already closed above.
         source_line(REPORT, r.state, r.generation);
     }
-    send(REPORT, byte_sink_protocol::eof(), 0, 0);
+    send(REPORT, byte_sink_contract::eof(), 0, 0);
     exit();
 }
 
@@ -159,7 +159,7 @@ fn format_of(fmt: u64) -> Format {
     }
 }
 
-/// **Where the time came from**, which is the readable form of `clock_protocol`'s four states.
+/// **Where the time came from**, which is the readable form of `clock_contract`'s four states.
 ///
 /// Worth printing because the provenance is a real distinction this system makes and no `date` on a
 /// Unix can: "a human set it" and "an external source the service bounded accepted it" are
@@ -220,7 +220,7 @@ fn source_line(slot: u64, st: u64, generation: u64) {
 /// makes `date | wc` impossible.
 fn end() -> ! {
     diag_end();
-    send(REPORT, byte_sink_protocol::eof(), 0, 0);
+    send(REPORT, byte_sink_contract::eof(), 0, 0);
     exit();
 }
 
@@ -248,7 +248,7 @@ fn complain(bytes: &[u8]) {
 /// message nobody is going to send.
 fn diag_end() {
     if HAS_DIAG.load(Ordering::Relaxed) {
-        send(DIAG_SLOT, byte_sink_protocol::eof(), 0, 0);
+        send(DIAG_SLOT, byte_sink_contract::eof(), 0, 0);
     }
 }
 

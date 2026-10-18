@@ -15,7 +15,7 @@ goes to slirp's 10.0.2.3, which is the host's own resolver and not ours.
 
 The zone, and what each name is for. The guest side spells these names again
 in components/src/socket_test_client.rs on purpose: the claim is that two
-sides written independently agree, the split socket_protocol's fixture module
+sides written independently agree, the split socket_contract's fixture module
 describes for the inbound gate's prober.
 
   packages.nife.test   A 10.0.2.9, owner compressed to the question

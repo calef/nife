@@ -11,7 +11,7 @@ Naming is calef's; `script/names --unratified` lists each stem.*
 ## What is being decided
 
 How a person at the shell prompt gets a listing of what another running job has mapped. Section 5 of
-`notes/process-view/what-is-left.md` (pull request #1349, not yet on `main`) framed it as two
+`notes/process-view/remaining-procps-programs.md` (pull request #1349, not yet on `main`) framed it as two
 changes the tree has not made:
 
 1. A non-empty retention. A spawner keeps an `ENUMERATE`-narrowed view of its child's address space.

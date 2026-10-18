@@ -47,10 +47,10 @@ fn gpu_text_path(arch: &str) -> PathBuf {
 
 /// Does this PPM hold the pattern rung one's client painted (milestone 29)?
 ///
-/// Compares against `graphics_protocol::pixel`, the same definition the client painted from and the kernel
+/// Compares against `graphics_contract::pixel`, the same definition the client painted from and the kernel
 /// test digested against, so the host cannot disagree with the guest about what the pattern is.
 fn scanout_holds_the_pattern(ppm: &[u8]) -> Result<(), String> {
-    scanout_matches(ppm, graphics_protocol::pixel)
+    scanout_matches(ppm, graphics_contract::pixel)
 }
 
 /// Does this PPM hold the screen rung two's compositor composed (milestone 33)?
@@ -119,11 +119,11 @@ fn scanout_matches(ppm: &[u8], want_pixel: impl Fn(u32, u32) -> u32) -> Result<(
     if maxval != "255" {
         return Err(format!("maxval {maxval}, expected 255"));
     }
-    if (w, h) != (graphics_protocol::WIDTH, graphics_protocol::HEIGHT) {
+    if (w, h) != (graphics_contract::WIDTH, graphics_contract::HEIGHT) {
         return Err(format!(
             "scanout is {w}x{h}, the surface is {}x{}",
-            graphics_protocol::WIDTH,
-            graphics_protocol::HEIGHT
+            graphics_contract::WIDTH,
+            graphics_contract::HEIGHT
         ));
     }
     // The pixel data starts after the fourth whitespace-terminated field. Find it by walking the
@@ -792,9 +792,9 @@ impl ScanoutReferee {
         match matched {
             Some(path) => eprintln!(
                 "scanout check ({arch}): the {}x{} pattern reached the DEVICE's scanout, verified pixel \
-             for pixel against graphics_protocol::pixel ({path})",
-                graphics_protocol::WIDTH,
-                graphics_protocol::HEIGHT,
+             for pixel against graphics_contract::pixel ({path})",
+                graphics_contract::WIDTH,
+                graphics_contract::HEIGHT,
             ),
             None => {
                 eprintln!();
@@ -964,7 +964,7 @@ mod tests {
     /// Build a P6 PPM of the surface's geometry from a per-pixel function, the way QEMU's
     /// `screendump` writes one.
     fn ppm(pixel: impl Fn(u32, u32) -> (u8, u8, u8)) -> Vec<u8> {
-        let (w, h) = (graphics_protocol::WIDTH, graphics_protocol::HEIGHT);
+        let (w, h) = (graphics_contract::WIDTH, graphics_contract::HEIGHT);
         let mut v = format!("P6\n{w} {h}\n255\n").into_bytes();
         for y in 0..h {
             for x in 0..w {
@@ -976,7 +976,7 @@ mod tests {
     }
 
     fn pattern_rgb(x: u32, y: u32) -> (u8, u8, u8) {
-        let w = graphics_protocol::pixel(x, y);
+        let w = graphics_contract::pixel(x, y);
         (
             ((w >> 16) & 0xff) as u8,
             ((w >> 8) & 0xff) as u8,
@@ -1016,7 +1016,7 @@ mod tests {
         assert!(
             scanout_holds_the_pattern(&ppm(|x, y| pattern_rgb(
                 x,
-                (y + 1) % graphics_protocol::HEIGHT
+                (y + 1) % graphics_contract::HEIGHT
             )))
             .is_err(),
             "a scanout shifted by one row was accepted",

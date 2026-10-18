@@ -1152,12 +1152,12 @@ diff --git a/crates/nifefs/src/lib.rs b/crates/nifefs/src/lib.rs
 """, 'format-crate'),
 
     ("format-crate: an identifier renamed in a layout sentence stays quiet (#1255, #860)", """\
-diff --git a/crates/clock_protocol/src/lib.rs b/crates/clock_protocol/src/lib.rs
---- a/crates/clock_protocol/src/lib.rs
-+++ b/crates/clock_protocol/src/lib.rs
+diff --git a/crates/clock_contract/src/lib.rs b/crates/clock_contract/src/lib.rs
+--- a/crates/clock_contract/src/lib.rs
++++ b/crates/clock_contract/src/lib.rs
 @@ -1,3 +1,3 @@
 -/// Where the opcode sits: bits 63:56, the same position `filesystem_proto` uses.
-+/// Where the opcode sits: bits 63:56, the same position `filesystem_protocol` uses.
++/// Where the opcode sits: bits 63:56, the same position `filesystem_contract` uses.
  pub const VERSION: u32 = 1;
 """, None),
 

@@ -1,0 +1,25 @@
+[package]
+name = "std_runtime_contract"
+version = "0.1.0"
+edition = "2024"
+publish = false     # the default; the allowlist lint holds the exception (crates/publish-allowlist.txt)
+license.workspace = true
+
+# The std runtime contract (milestone 595 (provisional)): which capability slot a `std` program's
+# PAL reads each authority from, and which virtual address its loader maps each shared page at.
+# Three programs agree on it: the std PAL (`patches/std-nife/overlay/std/src/sys/pal/nife/rt.rs`,
+# which gets this file generated into it verbatim by `cargo xtask std-src`), the progenitor's spawn
+# service (`crates/system_initializer`), and the kernel test harness that stood in for the
+# progenitor until this crate existed (`system_tests/src/user/std_service.rs`, `fs_service.rs`). Pure
+# constants, no_std, dependency-free, the split every other `*_protocol` crate the PAL reads makes.
+
+[lints]
+workspace = true
+
+[dependencies]
+
+# The address-space map (milestone 206 (a program image has under 896 KiB)) is a DEV-dependency on purpose, for the reason
+# `byte_sink_contract` gives for `abi`: this file is copied verbatim into std's PAL, where there is no
+# crate to name, so the numbers are restated and the test that pins them to the map never travels.
+[dev-dependencies]
+address_space_map = { version = "0.1.0", path = "../address_space_map" }

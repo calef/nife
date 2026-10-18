@@ -121,17 +121,17 @@ pub(super) fn words_grant(
             ));
         }
     };
-    if !filesystem_protocol::grant::fits(dir) {
+    if !filesystem_contract::grant::fits(dir) {
         return Err(Some(
             b"  that name does not fit in a grant's two argument words\n",
         ));
     }
-    let (dir_lo, dir_hi) = filesystem_protocol::grant::pack_name(dir);
+    let (dir_lo, dir_hi) = filesystem_contract::grant::pack_name(dir);
     let words = DirWords {
         caretaker: (
             dir_lo,
             dir_hi,
-            filesystem_protocol::grant::spec(dir.len(), grant.rights()),
+            filesystem_contract::grant::spec(dir.len(), grant.rights()),
         ),
         child: (0, 0, 0),
     };
@@ -140,7 +140,7 @@ pub(super) fn words_grant(
     }
     let va = SET_VA + stage as u64 * spawnproto::IMAGE_PAGE;
     let page = fresh_page(va).ok_or(None)?;
-    let mut list = [(&b""[..], false); filesystem_protocol::nameset::MAX_NAMES];
+    let mut list = [(&b""[..], false); filesystem_contract::nameset::MAX_NAMES];
     let mut n = 0;
     for (name, is_dir) in g.names.iter() {
         list[n] = (name, is_dir);
@@ -149,7 +149,7 @@ pub(super) fn words_grant(
     // SAFETY: `va` is one page this shell just mapped read/write, fresh, and nothing else reaches
     // it until the frame is sent; the borrow ends before this function returns.
     let out = unsafe { &mut *(va as *mut [u8; spawnproto::IMAGE_PAGE as usize]) };
-    match filesystem_protocol::nameset::encode(&list[..n], out) {
+    match filesystem_contract::nameset::encode(&list[..n], out) {
         Some(_) => Ok(WordsGrant {
             words,
             set: Some(page),
@@ -224,7 +224,7 @@ static IMAGE_TABLES: core::sync::atomic::AtomicU64 = core::sync::atomic::AtomicU
 ///
 /// The shell reads the file through the file service it already holds, into frames split from its
 /// own budget, and sends them on the spawn endpoint under `IMAGE_BIT`. The progenitor hashes its own
-/// copy and looks the digest up in the activation set: a hit runs with the manifest the bytes
+/// copy and looks the digest up in the installed-programs table: a hit runs with the manifest the bytes
 /// carry. A miss runs only if this session holds the run-unvouched capability
 /// ([`HOLDS_RUN_UNVOUCHED`], §219's gate D2), which this request then claims and presents as its
 /// last message; the child gets what the line granted and the clock and configuration pages.
@@ -518,8 +518,8 @@ fn carve_image_grants(
 /// The first page of a file whose manifest note is being read, and the note segment it points at.
 /// Statics rather than locals for [`GENERATION_TABLE`]'s reason: two pages on the stack would take
 /// the frame past the guard page `script/stack-frame-check` holds every frame to.
-static mut NOTE_HEAD: [u8; filesystem_protocol::PAGE] = [0; filesystem_protocol::PAGE];
-static mut NOTE_SEGMENT: [u8; filesystem_protocol::PAGE] = [0; filesystem_protocol::PAGE];
+static mut NOTE_HEAD: [u8; filesystem_contract::PAGE] = [0; filesystem_contract::PAGE];
+static mut NOTE_SEGMENT: [u8; filesystem_contract::PAGE] = [0; filesystem_contract::PAGE];
 
 /// **The manifest the open file `handle` carries in its own bytes** (milestone 597, provisional),
 /// read the way the progenitor reads its copy: the `PT_NOTE` headers from the file's first page
@@ -741,7 +741,7 @@ pub(super) fn vouch(nav: &mut Nav, path: Option<&[u8]>) {
     send(SPAWN, w0, w1, w2);
     let read_ok = send_frames(t.slot, handle, pages, staging);
     nav.close_in(t, handle);
-    let (lo, hi) = filesystem_protocol::grant::pack_name(name);
+    let (lo, hi) = filesystem_contract::grant::pack_name(name);
     send(SPAWN, lo, hi, name.len() as u64);
     let (r0, r1, _) = receive(RESULT);
     user_mode_runtime::destroy_memory_region(staging);
@@ -766,7 +766,7 @@ pub(super) fn refuse(spec: RunSpec, refusal: Refusal) {
 }
 
 /// One process's three `START` argument words, packed by this shell and forwarded by the progenitor without
-/// being read. `filesystem_protocol::grant`'s layout: two words of name, and a spec carrying the length plus
+/// being read. `filesystem_contract::grant`'s layout: two words of name, and a spec carrying the length plus
 /// either a rights mask (a caretaker's) or an option mask (a program's).
 type StartWords = (u64, u64, u64);
 
@@ -788,7 +788,7 @@ pub(super) struct DirWords {
 /// says why this one cannot be delivered (milestone 31 phase 3).
 ///
 /// The `Ok` half is the whole of the delivery: `(the caretaker's START words, the program's)`. The
-/// caretaker is told the directory and the `filesystem_protocol::dir` rights to ask for; the program is told
+/// caretaker is told the directory and the `filesystem_contract::dir` rights to ask for; the program is told
 /// the operand and the options that were typed. Neither triple is decoded by anything between here
 /// and the process it starts, which is why `spawnproto` can carry them without linking the
 /// filesystem contract.
@@ -805,7 +805,7 @@ pub(super) struct DirWords {
 /// spawned rather than half-granted.
 ///
 /// **A grant on the root of this shell's namespace.** A caretaker's whole attenuation is one
-/// `OPENDIR` *into* the granted directory, and the root has no name to descend into: `filesystem_protocol`'s
+/// `OPENDIR` *into* the granted directory, and the root has no name to descend into: `filesystem_contract`'s
 /// contract resolves a single component under a handle, and there is no verb for "the directory I
 /// already hold, with fewer rights". So `rm gate.txt` typed at the top prompt cannot be narrowed at
 /// all, and handing the program the unnarrowed service would be granting it the whole disk. The
@@ -848,29 +848,29 @@ pub(super) fn dir_grant(g: &GrantDir, flags: u64) -> Result<DirWords, &'static [
             b"  a set of names is delivered by a nameset caretaker, and the progenitor builds the subtree \n  one; name a single file\n",
         );
     };
-    if !filesystem_protocol::grant::fits(dir) || !filesystem_protocol::grant::fits(name) {
+    if !filesystem_contract::grant::fits(dir) || !filesystem_contract::grant::fits(name) {
         return Err(b"  that name does not fit in a grant's two argument words\n");
     }
     // What `-r` buys, stated as the difference between two capabilities rather than as a branch in
     // the program: REMOVE alone cannot even look at what is under the directory.
     let rights = if g.subtree {
-        filesystem_protocol::dir::REMOVE_TREE
+        filesystem_contract::dir::REMOVE_TREE
     } else {
-        filesystem_protocol::dir::REMOVE
+        filesystem_contract::dir::REMOVE
     };
-    let (dir_lo, dir_hi) = filesystem_protocol::grant::pack_name(dir);
-    let (name_lo, name_hi) = filesystem_protocol::grant::pack_name(name);
+    let (dir_lo, dir_hi) = filesystem_contract::grant::pack_name(dir);
+    let (name_lo, name_hi) = filesystem_contract::grant::pack_name(name);
     Ok(DirWords {
         // `fs_subtree_caretaker::_start(name_lo, name_hi, spec)`.
         caretaker: (
             dir_lo,
             dir_hi,
-            filesystem_protocol::grant::spec(dir.len(), rights),
+            filesystem_contract::grant::spec(dir.len(), rights),
         ),
         // `rm::_start(spec, name_lo, name_hi)`, whose spec carries the options where a caretaker's
         // carries rights: both are "what this process was started with".
         child: (
-            filesystem_protocol::grant::spec(name.len(), flags),
+            filesystem_contract::grant::spec(name.len(), flags),
             name_lo,
             name_hi,
         ),
@@ -1118,11 +1118,11 @@ pub(super) fn drain_text() {
             print(swish::FAULTED_SENTENCE);
             return;
         }
-        let mut buf = [0u8; byte_sink_protocol::INLINE_MAX];
-        match byte_sink_protocol::unpack(w0, w1, w2, &mut buf) {
-            byte_sink_protocol::Msg::Bytes(n) => print(&buf[..n]),
-            byte_sink_protocol::Msg::Eof => return,
-            byte_sink_protocol::Msg::Malformed => {
+        let mut buf = [0u8; byte_sink_contract::INLINE_MAX];
+        match byte_sink_contract::unpack(w0, w1, w2, &mut buf) {
+            byte_sink_contract::Msg::Bytes(n) => print(&buf[..n]),
+            byte_sink_contract::Msg::Eof => return,
+            byte_sink_contract::Msg::Malformed => {
                 print(b"\n  (that program sent something this shell cannot read as bytes)\n");
                 return;
             }
@@ -1237,13 +1237,13 @@ pub(super) fn drain_diagnostics(dest: &mut dyn ByteOut, writers: usize) {
             break;
         }
         let (w0, w1, w2) = receive(ep);
-        let mut buf = [0u8; byte_sink_protocol::INLINE_MAX];
-        match byte_sink_protocol::unpack(w0, w1, w2, &mut buf) {
-            byte_sink_protocol::Msg::Bytes(n) => dest.push(&buf[..n]),
-            byte_sink_protocol::Msg::Eof => done += 1,
+        let mut buf = [0u8; byte_sink_contract::INLINE_MAX];
+        match byte_sink_contract::unpack(w0, w1, w2, &mut buf) {
+            byte_sink_contract::Msg::Bytes(n) => dest.push(&buf[..n]),
+            byte_sink_contract::Msg::Eof => done += 1,
             // The progenitor's failure sentinel arrives here too, as an `OPERATION_EOF` it sends on this rendezvous so
             // this drain can end; anything else is a program that cannot spell the contract.
-            byte_sink_protocol::Msg::Malformed => done += 1,
+            byte_sink_contract::Msg::Malformed => done += 1,
         }
     }
     dest.finish();

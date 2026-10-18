@@ -1,7 +1,7 @@
-//! **The installer's half of the spawn service**: an edit to the activation set, asked on the spawn
+//! **The installer's half of the spawn service**: an edit to the installed-programs table, asked on the spawn
 //! endpoint by the owner's console or on an installer endpoint by a package manager (milestone 198
 //! (a package manager) rung 3a, DECISIONS §208 (installing a package is granting it, and the
-//! activation set is versioned), §270 (a package manager holds an installer endpoint, not the spawn
+//! installed programs are versioned), §270 (a package manager holds an installer endpoint, not the spawn
 //! endpoint)). Moved out of the crate's root by milestone 809 (the package client becomes a
 //! program), when the root outgrew §266 (a Rust source file stays under 2,000 lines)'s
 //! ratchet; the spawn loop calls in.
@@ -73,17 +73,17 @@ impl Answer {
         core::str::from_utf8(&self.holder[..self.holder_len]).unwrap_or("")
     }
 
-    /// An install `activation_set::with_entries` refused, said with the program's member index
+    /// An install `installed_programs::with_entries` refused, said with the program's member index
     /// in `got` and the holder's name.
     fn refused(
-        refused: &activation_set::Refused,
+        refused: &installed_programs::Refused,
         got: &package_archive::Installable,
         live: u32,
     ) -> Self {
         use spawnproto::ActivationStatus as S;
         let status = match refused.error {
-            activation_set::Error::ImageName => S::ImageName,
-            activation_set::Error::Taken => S::NameTaken,
+            installed_programs::Error::ImageName => S::ImageName,
+            installed_programs::Error::Taken => S::NameTaken,
             _ => S::StoreFailed,
         };
         let member = got
@@ -157,12 +157,12 @@ pub(super) fn package_manager_parts(
 
 /// **The image's package catalog, copied into a fresh page of the child's own region**, for a
 /// child that declares `grant_plan::Manifest::catalog` (milestone 809 (the package client becomes
-/// a program)), and mapped read-only at `std_runtime_protocol::CATALOG_PAGE`. The rest of the page
+/// a program)), and mapped read-only at `std_runtime_contract::CATALOG_PAGE`. The rest of the page
 /// is zero, which is where the text ends. `None` if the catalog does not fit in a page or the page
 /// could not be made; the spawn is then refused rather than started with half a catalog.
 ///
 /// The image's index sources travel the same way since milestone 801 (packages over the
-/// internet), to `std_runtime_protocol::INDEX_SOURCES_PAGE`.
+/// internet), to `std_runtime_contract::INDEX_SOURCES_PAGE`.
 pub(super) fn copy_text(own_ut: u64, region: u64, catalog: &str) -> Option<u64> {
     if catalog.len() >= spawnproto::IMAGE_PAGE as usize {
         return None;
@@ -189,13 +189,13 @@ pub(super) struct Activating {
     pub(super) fs: Option<Fs>,
     pub(super) catalog: &'static str,
     /// **Who is asking, as a row's manager column records it** (milestone 809 (the package client
-    /// becomes a program)): `activation_set::OWNER` on the spawn endpoint, the holder's program
+    /// becomes a program)): `installed_programs::OWNER` on the spawn endpoint, the holder's program
     /// name on an installer endpoint.
     pub(super) manager: &'static str,
 }
 
 /// **Serve one activation request** (milestone 198 (a package manager) rung 3a's installer,
-/// DECISIONS §208 (installing a package is granting it, and the activation set is versioned)).
+/// DECISIONS §208 (installing a package is granting it, and the installed programs are versioned)).
 /// Returns the reply's status and the generation live afterwards.
 ///
 /// - **Install**: the package's frames are staged exactly as an image's are ([`take_frames`], [`stage_frames`]), so
@@ -209,7 +209,7 @@ pub(super) struct Activating {
 /// - **Rollback**: `current` names the generation one below the live one. Nothing else is written.
 /// - **Vouch** (DECISIONS §221 (the boot prompt is the owner's console)): the executable's frames
 ///   are staged as an install's are, and a new generation records this process's hash of its own
-///   copy under the name that follows, marked `activation_set::OWNER`. Nothing is placed: the
+///   copy under the name that follows, marked `installed_programs::OWNER`. Nothing is placed: the
 ///   digest vouches for the bytes wherever they are, and a rollback undoes it.
 ///
 /// Each of the four ends in [`FsCalls::commit`], so the only thing that ever changes what runs is
@@ -241,11 +241,11 @@ pub(super) fn activate(
         Some(Activation::Install | Activation::Vouch) => Some(take_frames(spawn, w0, a.own_ut)),
         _ => None,
     };
-    let mut named = [0u8; filesystem_protocol::grant::MAX_NAME];
+    let mut named = [0u8; filesystem_contract::grant::MAX_NAME];
     // A vouch's name follows its frames, which `take_frames` has just taken.
     let named_len = if matches!(verb, Some(Activation::Remove | Activation::Vouch)) {
         let (lo, hi, len) = spawn.receive();
-        filesystem_protocol::grant::unpack_name(lo, hi, len as usize, &mut named)
+        filesystem_contract::grant::unpack_name(lo, hi, len as usize, &mut named)
     } else {
         0
     };
@@ -264,7 +264,7 @@ pub(super) fn activate(
         let Some(files) = FsCalls::map(a.fs, a.own_ut, fs_mapped) else {
             return Answer::from((S::StoreFailed, 0));
         };
-        let act = files.directory(fs_operation::ROOT, activation_set::DIRECTORY);
+        let act = files.directory(fs_operation::ROOT, installed_programs::DIRECTORY);
         if act < 0 {
             return Answer::from((S::StoreFailed, 0));
         }
@@ -366,7 +366,7 @@ fn rollback(cx: &EditContext, new: &mut [u8; PAGE_BYTES]) -> (spawnproto::Activa
     }
     let back = live - 1;
     // **A rollback undoes rows; a manager may undo only its own and the owner's**
-    // (`activation_set::foreign_change`, calef's 2026-10-06 ruling on milestone 809). The
+    // (`installed_programs::foreign_change`, calef's 2026-10-06 ruling on milestone 809). The
     // generation below is read into the page the next generation would have used, since a
     // rollback writes none.
     let Ok(n) = files.generation(act, back, new) else {
@@ -375,7 +375,7 @@ fn rollback(cx: &EditContext, new: &mut [u8; PAGE_BYTES]) -> (spawnproto::Activa
     let Ok(older) = core::str::from_utf8(&new[..n]) else {
         return (S::StoreFailed, live);
     };
-    match activation_set::foreign_change(older, table, manager) {
+    match installed_programs::foreign_change(older, table, manager) {
         Ok(None) => {}
         Ok(Some(_)) => return (S::NotYours, live),
         Err(_) => return (S::StoreFailed, live),
@@ -413,19 +413,19 @@ fn remove(
     };
     // **Another manager's rows are not this one's to remove** (calef, 2026-10-06; milestone
     // 809). Checked over every row the edit would take, before anything is written.
-    let foreign = activation_set::entries(table).flatten().any(|e| {
+    let foreign = installed_programs::entries(table).flatten().any(|e| {
         e.package == package
-            && e.package != activation_set::OWNER
+            && e.package != installed_programs::OWNER
             && version.is_none_or(|v| e.version == v)
-            && !activation_set::may_edit(e.manager, manager)
+            && !installed_programs::may_edit(e.manager, manager)
     });
     if foreign {
         return (S::NotYours, live);
     }
-    let n = match activation_set::without_package(table, package, version, new) {
+    let n = match installed_programs::without_package(table, package, version, new) {
         Ok(n) => n,
-        Err(activation_set::Error::NotInstalled) => return (S::NotInstalled, live),
-        Err(activation_set::Error::SeveralVersions) => return (S::Ambiguous, live),
+        Err(installed_programs::Error::NotInstalled) => return (S::NotInstalled, live),
+        Err(installed_programs::Error::SeveralVersions) => return (S::Ambiguous, live),
         Err(_) => return (S::StoreFailed, live),
     };
     let m = cx.next();
@@ -436,7 +436,7 @@ fn remove(
 }
 
 /// **Vouch**: write a new generation recording this process's hash of the staged executable under
-/// the name that followed it, marked `activation_set::OWNER`.
+/// the name that followed it, marked `installed_programs::OWNER`.
 fn vouch(
     cx: &EditContext,
     staging: Option<(u64, u64)>,
@@ -461,20 +461,20 @@ fn vouch(
     if elf::Elf::parse(bytes).is_err() {
         return (S::NotExecutable, live);
     }
-    let entry = activation_set::Entry {
+    let entry = installed_programs::Entry {
         program,
         // **A vouch claims no version**: the owner vouches for bytes (DECISIONS §221
         // (the boot prompt is the owner's console), ruling 1), so the version column
-        // carries `activation_set::NO_VERSION` and no pointer names the row.
-        version: activation_set::NO_VERSION,
-        package: activation_set::OWNER,
+        // carries `installed_programs::NO_VERSION` and no pointer names the row.
+        version: installed_programs::NO_VERSION,
+        package: installed_programs::OWNER,
         digest: measured_boot::sha256(bytes),
         manager,
     };
     // A vouch claims no name, so whether the image carries one does not matter to it.
-    let n = match activation_set::with_entry(table, &entry, false, new) {
+    let n = match installed_programs::with_entry(table, &entry, false, new) {
         Ok(n) => n,
-        Err(activation_set::Error::BadName) => return (S::NotExecutable, live),
+        Err(installed_programs::Error::BadName) => return (S::NotExecutable, live),
         Err(_) => return (S::StoreFailed, live),
     };
     let m = cx.next();
@@ -531,7 +531,7 @@ fn install(
     // the version has a column of its own and no row carries the architecture. Who asked
     // (milestone 809): `jig`, or the owner's console.
     let rows = || {
-        got.programs().map(|p| activation_set::Entry {
+        got.programs().map(|p| installed_programs::Entry {
             program: p.name,
             version: package.version(),
             package: package.name(),
@@ -548,7 +548,7 @@ fn install(
     // image refusal blocks no update. The prompt still refuses a name that is both, because a
     // later base can add a name a package already holds.
     let image = |program: &str| Prog::from_name(program.as_bytes()).is_some();
-    let n = match activation_set::with_entries(table, rows, image, new) {
+    let n = match installed_programs::with_entries(table, rows, image, new) {
         Ok(n) => n,
         Err(refused) => return Answer::refused(&refused, &got, live),
     };
@@ -599,7 +599,7 @@ fn place_program(
 ) -> bool {
     // The program's bytes, where a person can run them (DECISIONS §219 option D hashes
     // whatever they run, so where they live is a convenience, not a trust decision).
-    let packages = files.directory(fs_operation::ROOT, activation_set::PACKAGES);
+    let packages = files.directory(fs_operation::ROOT, installed_programs::PACKAGES);
     if packages < 0 {
         return false;
     }

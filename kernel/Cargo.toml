@@ -65,21 +65,21 @@ grant_plan = { version = "0.1.0", path = "../crates/grant_plan" }
 # The wall-clock contract (milestone 51, DECISIONS §43). The kernel discovers the RTC by
 # `compatible` and names the binding with these constants, and its clock tests read the shared page
 # through the same seqlock the service publishes with, so no party has its own copy of the layout.
-clock_protocol = { version = "0.1.0", path = "../crates/clock_protocol" }
+clock_contract = { version = "0.1.0", path = "../crates/clock_contract" }
 # The inert-configuration contract (milestone 47's environment-variable fork, DECISIONS §111). The
 # kernel-side std program wiring assembles the page (`PageBuilder`) and maps it read-only into a
 # std program the same way it does the clock page, so no party has its own copy of the layout or
 # the validated domains.
-environment_protocol = { version = "0.1.0", path = "../crates/environment_protocol" }
+environment_contract = { version = "0.1.0", path = "../crates/environment_contract" }
 # The std runtime contract (milestone 595 (provisional)): the slot numbers and page addresses the
 # kernel-side std wiring (`user::std_service`, `user::fs_service`) builds a std program with. The
 # progenitor builds std children from the same crate, and the std PAL has it generated in.
-std_runtime_protocol = { version = "0.1.0", path = "../crates/std_runtime_protocol" }
+std_runtime_contract = { version = "0.1.0", path = "../crates/std_runtime_contract" }
 # The x86_64 timebase page (milestone 161's `cntfrq` follow-up). The kernel writes the calibrated
 # TSC rate into a frame once, at boot, and `kernel::user::load` maps it read-only into every
 # x86_64 process; `user_mode_runtime::cntfrq` is the reader, through this same crate, so neither side keeps
 # its own copy of the page's layout or its fixed address.
-counter_frequency_protocol = { version = "0.1.0", path = "../crates/counter_frequency_protocol" }
+counter_frequency_contract = { version = "0.1.0", path = "../crates/counter_frequency_contract" }
 # The block-device roster (milestone 57). The kernel writes the page and the surveyor reads it, and
 # the kernel's own tests read it back through this crate rather than by trusting the count the
 # program sent home, so no party has its own copy of the layout.
@@ -105,42 +105,42 @@ compositor = { version = "0.1.0", path = "../crates/compositor" }
 # `smp::online_cpus`/`nth_online` add only the live mask; the non-contiguous {1,2,3} shape the QEMU
 # suite cannot boot is host-proven in this crate instead.
 cpu_set = { version = "0.1.0", path = "../crates/cpu_set" }
-current_cpu_protocol = { version = "0.1.0", path = "../crates/current_cpu_protocol" }
+current_cpu_contract = { version = "0.1.0", path = "../crates/current_cpu_contract" }
 # The user address-space map (milestone 206 (a program image has under 896 KiB), DECISIONS §171 (where a program image starts) option D): where the loader puts a
 # program's image and stack, and the check that refuses an image that does not fit, shared with the
 # userspace loader so the two cannot disagree about either.
 address_space_map = { version = "0.1.0", path = "../crates/address_space_map" }
-machine_statistics_protocol = { version = "0.1.0", path = "../crates/machine_statistics_protocol" }
+machine_statistics_contract = { version = "0.1.0", path = "../crates/machine_statistics_contract" }
 # The credential contract (milestone 56, the credential half). The kernel wires the credential
 # service and its provisioner, and its tests read the reply codes the userspace clients report, so
 # no party has its own copy of what a verdict means.
-credential_protocol = { version = "0.1.0", path = "../crates/credential_protocol" }
+credential_contract = { version = "0.1.0", path = "../crates/credential_contract" }
 # The login contract (milestone 49). The kernel wires the login service and `login_test_client`'s
 # roles, and the tests read the same reply and attribution codes the service sends, so no party has
 # its own copy of what a verdict or an attribution record means.
-login_protocol = { version = "0.1.0", path = "../crates/login_protocol" }
+login_contract = { version = "0.1.0", path = "../crates/login_contract" }
 coremark = { version = "0.1.0", path = "../crates/coremark", optional = true }
 # The byte-sink contract, for the release bench's walk (milestone 606 (a directory walk costs what it
 # does on Linux)): the bench reads a std program's transcript through the same framing the PAL packs
 # with. Only `bench` uses it; the system tests have their own copy of the dependency (milestone 609
 # (the system tests leave the kernel crate)).
-byte_sink_protocol = { version = "0.1.0", path = "../crates/byte_sink_protocol", optional = true }
+byte_sink_contract = { version = "0.1.0", path = "../crates/byte_sink_contract", optional = true }
 # The kernel's ring layout and the F3 record (milestone 342 (the kernel and the `console` server
 # drive one UART from two address spaces)): the kernel writes what the log service reads, so both
 # link one definition. no_std, no dependencies.
-system_log_protocol = { version = "0.1.0", path = "../crates/system_log_protocol" }
+system_log_contract = { version = "0.1.0", path = "../crates/system_log_contract" }
 nifefs = { version = "0.1.0", path = "../crates/nifefs" }
 direct_memory_access_validator = { version = "0.1.0", path = "../crates/direct_memory_access_validator" }
-filesystem_protocol = { version = "0.1.0", path = "../crates/filesystem_protocol" }
+filesystem_contract = { version = "0.1.0", path = "../crates/filesystem_contract" }
 # Optional, and only for the `bench` feature's filesystem benchmark (see the feature below):
 # the throughput and walk shapes are test data since milestone 886 (the filesystem test fixture
 # moves to its own crate), and nothing that boots links them.
 filesystem_fixture = { version = "0.1.0", path = "../crates/filesystem_fixture", optional = true }
-graphics_protocol = { version = "0.1.0", path = "../crates/graphics_protocol" }
+graphics_contract = { version = "0.1.0", path = "../crates/graphics_contract" }
 # The entropy contract (milestone 56, DECISIONS §44). The kernel wires the entropy service and its
 # tests are its clients, speaking the same request/reply the std PAL does, so no party has its own
 # copy of the wire format.
-entropy_protocol = { version = "0.1.0", path = "../crates/entropy_protocol" }
+entropy_contract = { version = "0.1.0", path = "../crates/entropy_contract" }
 # The JH7110 TRNG's register logic and DTB discovery (milestone 159), the same
 # pure-logic/volatile-shell split `pci` and `non_volatile_memory_express` below already use. The kernel takes it for one
 # thing only: `discover`, the device-tree query that says whether this machine has a TRNG at all,
@@ -193,10 +193,10 @@ machine_discovery = { version = "0.1.0", path = "../crates/machine_discovery" }
 # serial terminal's clients and drivers do rather than a second one invented for a test.
 line_editor = { version = "0.1.0", path = "../crates/line_editor" }
 measured_boot = { version = "0.1.0", path = "../crates/measured_boot" }
-# The activation set's names and line format (milestone 198 (a package manager)), which the harness
+# The installed-programs table's names and line format (milestone 198 (a package manager)), which the harness
 # writes when a test installs a program the way an installer would: milestone 152 (durable
 # delegation) runs a scheduled job from it. Only the system tests do, so only their feature links it.
-activation_set = { version = "0.1.0", path = "../crates/activation_set", optional = true }
+installed_programs = { version = "0.1.0", path = "../crates/installed_programs", optional = true }
 # **Text on a screen for a machine with no serial port** (milestone 243). The painter and the cursor
 # are pure logic over a `&mut [u8]`, so they are proved on the host in milliseconds rather than by
 # looking at a monitor, which is the one thing nobody in this project can do from a lane. The kernel
@@ -207,7 +207,7 @@ memory_regions = { version = "0.1.0", path = "../crates/memory_regions" }
 # The socket contract (milestone 30, and 107's inbound half). The kernel's spawn service is what
 # *grants* a net server its listen ports, so it packs the grant with the same `listen_grant` the
 # server checks against rather than open-coding the layout of a word two programs must agree on.
-socket_protocol = { version = "0.1.0", path = "../crates/socket_protocol" }
+socket_contract = { version = "0.1.0", path = "../crates/socket_contract" }
 generational_table = { version = "0.1.0", path = "../crates/generational_table" }
 spin = { version = "0.12", default-features = false, features = ["spin_mutex"] }
 # The work-steal handshake (milestone 80): the one lock-free cross-core protocol in the scheduler,
@@ -240,7 +240,7 @@ soak_page = { version = "0.1.0", path = "../crates/soak_page" }
 # for `cargo test -p kernel`, exposes `system_test_access` (lib.rs), and calls the suite that crate
 # defines. A kernel binary built with it fails to link, on purpose; lib.rs says why. Name provisional.
 system_tests = [
-    "dep:activation_set",
+    "dep:installed_programs",
     # The DMA-escape wiring writes `ESCAPE_MAGIC` (milestone 261); see that crate's feature.
     "non_volatile_memory_express/confinement_attackers",
 ]
@@ -259,7 +259,7 @@ board_th1520 = ["board"]
 # `filesystem_fixture` joins it optional (milestone 886 (the filesystem test fixture moves to its
 # own crate)): the filesystem bench speaks the
 # throughput benchmark's shape, which is test data, so the booting kernel never links it.
-bench = ["dep:coremark", "dep:byte_sink_protocol", "dep:filesystem_fixture"]
+bench = ["dep:coremark", "dep:byte_sink_contract", "dep:filesystem_fixture"]
 # The instruction-count instrument (milestone 78): boot under `-icount shift=0,sleep=off`, where
 # virtual time is a deterministic function of instructions retired, and assert the two timing claims
 # no wall-clock test can make. See script/icount and kernel/src/icount.rs. Name provisional.

@@ -50,6 +50,6 @@ pub use render::{Attr, LINE_MAX, MAX_DEPTH, Renderer, Style, TABLE_COLS, TABLE_R
 /// **An implementation may be called with an empty slice** and must tolerate it.
 pub trait Sink {
     /// Take these bytes. There is no partial acceptance and no error: a sink that cannot take them
-    /// drops them, which is the same choice `byte_sink_protocol` makes for a destination that has gone.
+    /// drops them, which is the same choice `byte_sink_contract` makes for a destination that has gone.
     fn put(&mut self, bytes: &[u8]);
 }

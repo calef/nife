@@ -8,7 +8,7 @@ use super::*;
 #[test]
 fn a_rename_moves_a_name_within_a_directory_and_between_two() {
     let mut srv = server_with_tree();
-    let root = filesystem_protocol::fs::ROOT as u32;
+    let root = filesystem_contract::fs::ROOT as u32;
     let sub = srv.open_dir(root, &named("sub"), dir::ALL).unwrap();
     let deeper = srv.open_dir(sub, &named("deeper"), dir::ALL).unwrap();
 
@@ -56,7 +56,7 @@ fn a_rename_moves_a_name_within_a_directory_and_between_two() {
 #[test]
 fn a_rename_needs_remove_where_it_takes_from_and_create_where_it_puts() {
     let mut srv = server_with_tree();
-    let root = filesystem_protocol::fs::ROOT as u32;
+    let root = filesystem_contract::fs::ROOT as u32;
     // Everything but REMOVE: milestone 47's motivating sentence, "add to this, destroy nothing".
     let append = srv
         .open_dir(root, &named("sub"), dir::ALL & !dir::REMOVE)
@@ -103,7 +103,7 @@ fn a_rename_needs_remove_where_it_takes_from_and_create_where_it_puts() {
 #[test]
 fn a_cross_directory_rename_consults_both_directories_rights() {
     let mut srv = server_with_tree();
-    let root = filesystem_protocol::fs::ROOT as u32;
+    let root = filesystem_contract::fs::ROOT as u32;
     let src = srv.open_dir(root, &named("sub"), dir::ALL).unwrap();
     // A destination with no CREATE. Reached by descending twice so it is a genuinely different
     // capability rather than the same handle spelled differently.
@@ -132,7 +132,7 @@ fn a_cross_directory_rename_consults_both_directories_rights() {
 #[test]
 fn a_rename_replaces_a_file_and_refuses_to_cross_kinds() {
     let mut srv = server_with_tree();
-    let root = filesystem_protocol::fs::ROOT as u32;
+    let root = filesystem_contract::fs::ROOT as u32;
     let sub = srv.open_dir(root, &named("sub"), dir::ALL).unwrap();
     let tmp = srv.create_file_at(sub, &named("tmp")).unwrap();
     srv.write(tmp, 0, b"the new contents").unwrap();
@@ -186,7 +186,7 @@ fn a_rename_replaces_a_file_and_refuses_to_cross_kinds() {
 #[test]
 fn a_directory_renames_in_place_and_refuses_to_move_between_directories() {
     let mut srv = server_with_tree();
-    let root = filesystem_protocol::fs::ROOT as u32;
+    let root = filesystem_contract::fs::ROOT as u32;
     let sub = srv.open_dir(root, &named("sub"), dir::ALL).unwrap();
 
     srv.rename(sub, &named("deeper"), sub, &named("renamed-dir"))
@@ -220,7 +220,7 @@ fn a_directory_renames_in_place_and_refuses_to_move_between_directories() {
 #[test]
 fn a_rename_refuses_what_every_other_name_taking_verb_refuses() {
     let mut srv = server_with_tree();
-    let root = filesystem_protocol::fs::ROOT as u32;
+    let root = filesystem_contract::fs::ROOT as u32;
     let sub = srv.open_dir(root, &named("sub"), dir::ALL).unwrap();
 
     for bad in ["..", ".", "", "a/b", "/abs", "with:colon"] {
@@ -276,7 +276,7 @@ fn a_rename_survives_a_reopen() {
         let mut srv = Server::open(disk).expect("open");
         let sub = srv
             .open_dir(
-                filesystem_protocol::fs::ROOT as u32,
+                filesystem_contract::fs::ROOT as u32,
                 &named("sub"),
                 dir::ALL,
             )
@@ -288,7 +288,7 @@ fn a_rename_survives_a_reopen() {
     let mut srv = Server::open(disk).expect("reopen");
     let sub = srv
         .open_dir(
-            filesystem_protocol::fs::ROOT as u32,
+            filesystem_contract::fs::ROOT as u32,
             &named("sub"),
             dir::ALL,
         )
@@ -316,7 +316,7 @@ fn a_subtree_built_through_directory_handles_survives_a_reopen() {
         let mut srv = Server::open(disk).expect("open");
         let sub = srv
             .open_dir(
-                filesystem_protocol::fs::ROOT as u32,
+                filesystem_contract::fs::ROOT as u32,
                 &named("sub"),
                 dir::ALL,
             )
@@ -329,7 +329,7 @@ fn a_subtree_built_through_directory_handles_survives_a_reopen() {
     let mut srv = Server::open(disk).expect("reopen");
     let sub = srv
         .open_dir(
-            filesystem_protocol::fs::ROOT as u32,
+            filesystem_contract::fs::ROOT as u32,
             &named("sub"),
             dir::ALL,
         )
@@ -356,7 +356,7 @@ fn a_subtree_built_through_directory_handles_survives_a_reopen() {
 fn statfs_reports_the_image_and_a_write_takes_space_out_of_it() {
     let mut srv = server_with(&[("small", b"x")]);
 
-    let (block, total, free) = srv.statfs(filesystem_protocol::fs::ROOT as u32).unwrap();
+    let (block, total, free) = srv.statfs(filesystem_contract::fs::ROOT as u32).unwrap();
     assert_eq!(
         block,
         redoxfs::BLOCK_SIZE,
@@ -364,7 +364,7 @@ fn statfs_reports_the_image_and_a_write_takes_space_out_of_it() {
     );
     // `server_with` builds a 16 MiB DiskMemory; the filesystem is that minus the reservation
     // RedoxFS makes at the front, so the assertion is a range rather than an equality.
-    let bytes = filesystem_protocol::statfs::total_bytes(block, total);
+    let bytes = filesystem_contract::statfs::total_bytes(block, total);
     assert!(
         (8 * 1024 * 1024..=16 * 1024 * 1024).contains(&bytes),
         "a 16 MiB image reported {bytes} bytes",
@@ -373,7 +373,7 @@ fn statfs_reports_the_image_and_a_write_takes_space_out_of_it() {
 
     let h = srv.create_file(&named("big")).unwrap();
     srv.write(h, 0, &[7u8; 1024 * 1024]).unwrap();
-    let (_, after_total, after_free) = srv.statfs(filesystem_protocol::fs::ROOT as u32).unwrap();
+    let (_, after_total, after_free) = srv.statfs(filesystem_contract::fs::ROOT as u32).unwrap();
     assert_eq!(after_total, total, "the image did not change size");
     assert!(
         after_free < free,
@@ -386,13 +386,13 @@ fn statfs_reports_the_image_and_a_write_takes_space_out_of_it() {
     assert_eq!(srv.statfs(9999).err().map(|e| e.errno), Some(EBADF));
 }
 
-/// **No right is demanded**, which is the row `filesystem_protocol::verb::TABLE` carries and the thing a
+/// **No right is demanded**, which is the row `filesystem_contract::verb::TABLE` carries and the thing a
 /// narrowed capability depends on: a grant that may write but not read still has to be able to
 /// find out whether its next write fits.
 #[test]
 fn statfs_answers_through_a_capability_that_carries_nothing() {
     let mut srv = server_with_tree();
-    let root = filesystem_protocol::fs::ROOT as u32;
+    let root = filesystem_contract::fs::ROOT as u32;
     // A child directory holding one right, and not one of the ones a read would need.
     let narrow = srv.open_dir(root, &named("sub"), dir::DESCEND).unwrap();
     assert!(
@@ -402,7 +402,7 @@ fn statfs_answers_through_a_capability_that_carries_nothing() {
     assert_eq!(
         srv.statfs(narrow).unwrap().0,
         redoxfs::BLOCK_SIZE,
-        "STATFS asks for no right; see filesystem_protocol::fs::STATFS",
+        "STATFS asks for no right; see filesystem_contract::fs::STATFS",
     );
 }
 

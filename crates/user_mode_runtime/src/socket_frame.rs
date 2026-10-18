@@ -1,5 +1,5 @@
 //! **The socket contract's shared frame, as a value** (milestone 410 (six copies of the
-//! shared-frame accessors)): one mapped page laid out by [`socket_protocol`], with the header
+//! shared-frame accessors)): one mapped page laid out by [`socket_contract`], with the header
 //! fields and the payload reachable as methods over offsets instead of as per-program accessor
 //! functions over absolute addresses. Every access is bounds-checked, because every access goes
 //! through [`MappedWindow`](crate::mapped_window::MappedWindow).
@@ -8,9 +8,9 @@
 //! its own image leaves room, and the two sides of the contract share the layout, never the
 //! address. So the type is constructed with its base, and nothing here names one.
 //!
-//! The type is here rather than in `crates/socket_protocol`, beside the offsets it reads,
+//! The type is here rather than in `crates/socket_contract`, beside the offsets it reads,
 //! because it is built on [`MappedWindow`](crate::mapped_window::MappedWindow), which cannot
-//! compile for the host, and `socket_protocol`'s wire format is host-tested: a dependency from
+//! compile for the host, and `socket_contract`'s wire format is host-tested: a dependency from
 //! that crate to this one would drag it out of the host pass, whose exclusion set the tree
 //! derives rather than maintains. This crate is already excluded everywhere, and its opt-in
 //! modules are the §94 (what may live in a library) shape, as [`super::mapped_window`] is.
@@ -32,24 +32,24 @@
 //! ```
 //!
 //! Name: provisional (milestone 410's lane, 2026-10-16 UTC), module and type. `Frame` over
-//! `SharedFrame`, which doubles a word `socket_protocol`'s docs already put on "frame"; over
+//! `SharedFrame`, which doubles a word `socket_contract`'s docs already put on "frame"; over
 //! `PageFrame`, which names the kernel object a frame is minted from rather than the layout read
 //! through it; and over holding a second `base: u64` field beside the window, which would
 //! duplicate the base [`MappedWindow`](crate::mapped_window::MappedWindow) already carries and
 //! give the two copies a way to disagree. The module takes its name from the contract it reads,
-//! `socket_frame`, so `socket_protocol::` stays the one place a reader looks for the wire.
+//! `socket_frame`, so `socket_contract::` stays the one place a reader looks for the wire.
 
-use socket_protocol::{OFF_DST_IP, OFF_DST_PORT, OFF_LEN, OFF_PAYLOAD};
+use socket_contract::{OFF_DST_IP, OFF_DST_PORT, OFF_LEN, OFF_PAYLOAD};
 
 use crate::mapped_window::{MappedWindow, PAGE};
 
-/// **The shared frame as a value**: one mapped page carrying `socket_protocol`'s layout.
+/// **The shared frame as a value**: one mapped page carrying `socket_contract`'s layout.
 ///
 /// # Safety of `Frame::new`
 ///
 /// `MappedWindow::new`'s contract, forwarded once: `base .. base + PAGE` must be a range the
 /// kernel has mapped read/write-accessible into this process for as long as the `Frame` is used.
-/// One page, which is what [`socket_protocol::DATA_MAX`] already assumes.
+/// One page, which is what [`socket_contract::DATA_MAX`] already assumes.
 #[derive(Clone, Copy)]
 pub struct Frame {
     window: MappedWindow,
@@ -62,13 +62,13 @@ impl Frame {
     /// `base .. base + PAGE` must be a range the kernel has mapped read/write-accessible into
     /// this process for as long as the returned `Frame` is used: the program's own
     /// `PageFrame::MAP` succeeded first (the mint-and-map behind
-    /// `socket_protocol::OPERATION_ATTACH_PAGE_FRAME`), or the wiring mapped it before `_start`
+    /// `socket_contract::OPERATION_ATTACH_PAGE_FRAME`), or the wiring mapped it before `_start`
     /// ran. `MappedWindow::new`'s contract, forwarded.
     pub const unsafe fn new(base: u64) -> Self {
         Self {
             // SAFETY: forwarded from this function's own contract, verbatim: `base .. base +
             // PAGE` is mapped for as long as the `Frame` is used, and one page is what
-            // `socket_protocol::DATA_MAX` assumes.
+            // `socket_contract::DATA_MAX` assumes.
             window: unsafe { MappedWindow::new(base, PAGE) },
         }
     }
@@ -83,7 +83,7 @@ impl Frame {
     }
 
     /// The destination address, or the sender's after a UDP `RECEIVE` (the layout note on
-    /// `OFF_DST_IP` in `socket_protocol`).
+    /// `OFF_DST_IP` in `socket_contract`).
     pub fn dst_ip(&self) -> [u8; 4] {
         let mut ip = [0u8; 4];
         for (i, b) in ip.iter_mut().enumerate() {
@@ -93,7 +93,7 @@ impl Frame {
     }
 
     /// The destination port, or the sender's after a UDP `RECEIVE` (the layout note on
-    /// `OFF_DST_PORT` in `socket_protocol`).
+    /// `OFF_DST_PORT` in `socket_contract`).
     pub fn dst_port(&self) -> u16 {
         self.window.r16(OFF_DST_PORT)
     }

@@ -17,7 +17,7 @@
 ///
 /// `jobs` is how many children the progenitor builds from its bounded job pool for this line: one
 /// per program stage that runs. **Zero** for a builtin (`echo`, `ls`, `apropos`, `package`), a
-/// `caps` preview, a line refused at the prompt with nothing spawned, an image the activation set
+/// `caps` preview, a line refused at the prompt with nothing spawned, an image the installed-programs table
 /// refuses, and a supervised job (`interrupt_heeder` and `interrupt_ignorer`, built from the
 /// shell's own untyped rather than the pool). A pipeline counts each program stage, so
 /// `wc gate.txt | wc` is two; a `builtin | program` pipeline is one. `rm` with its caretaker is one

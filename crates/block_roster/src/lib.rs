@@ -5,7 +5,7 @@
 //! **Listing the drives and holding one are different authorities.** The roster says a device
 //! exists, its bus and its ordinal; a block-service endpoint lets you use one device's blocks. So
 //! the roster carries **no capacity**: size is learned by asking the device
-//! (`filesystem_protocol::blk::SIZE`), which takes the endpoint, and finding it would mean bringing
+//! (`filesystem_contract::blk::SIZE`), which takes the endpoint, and finding it would mean bringing
 //! a PCI function up on behalf of a listing. Like the compositor's window list (§33 (the
 //! compositor's authority is memory, not messages)), it is a read-only mapping, not a verb: nothing
 //! to forge or confuse, because the authorization happened when the mapping was made. Hence no

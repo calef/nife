@@ -46,7 +46,7 @@ one line.
   when calef ruled that a domain names its members and does not act on them. There was no second
   decision to wait for, and the deferral was buying nothing.
 
-  The fix is `capability::Rights::ENUMERATE`, the kernel-level twin of `filesystem_protocol`'s directory
+  The fix is `capability::Rights::ENUMERATE`, the kernel-level twin of `filesystem_contract`'s directory
   `ENUMERATE`, and it is the same argument one layer down. `SURVEY` takes it; `RECEIVE` and `REAP`
   still take `READ`; `system_initializer` grants a viewer `ENUMERATE` alone. So a `ps` does not
   get refused a reap, it cannot name one, which is the ladder's top rung in place of an argument
@@ -104,7 +104,7 @@ one line.
   already learns a member's tid and state, and a name is more about a member already named.
 
 - A survey is a sequence of snapshots. See "why one entry per call" in
-  [survey-method.md](survey-method.md). A member born into an
+  [survey-design.md](survey-design.md). A member born into an
   already-passed slot is missed until the next survey, and a row read early may be stale by the time
   the table prints. Fuchsia handles a process dying mid-enumeration and this does not; their answer
   is worth reading when somebody needs one.
@@ -151,7 +151,7 @@ one line.
   method minimal, and the moment something wants to watch a `^C` land is the moment to add it.
 
 - `pmap` cannot be reached from the interactive prompt against any real process. See "What
-  building it found" in [pmap-listing.md](pmap-listing.md). Every `Object::AddressSpace` capability
+  building it found" in [address-space-enumeration.md](address-space-enumeration.md). Every `Object::AddressSpace` capability
   is minted and consumed within its own builder's thread, `ThreadControlBlock::CONFIGURE` removes the space from the registry
   the instant it binds to a thread, and nothing shipped here delegates one to a second program.
   `ps`'s `Manifest::domain` has no analogue because there is nothing alive to wire it to. Fixing

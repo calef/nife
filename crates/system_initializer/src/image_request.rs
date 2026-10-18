@@ -12,7 +12,7 @@ use super::*;
 // ruled 2026-09-26; milestone 198 (a package manager) rung 3a).
 // -------------------------------------------------------------------------------------------
 
-/// Where the progenitor maps the file service's shared page to read the activation set. Mapped
+/// Where the progenitor maps the file service's shared page to read the installed-programs table. Mapped
 /// once, on the first image request, with page tables from its own budget. Clear of every other
 /// window this process maps (`INIT_OUT_VA` and the three peek pages below it, and the loader's
 /// scratch window, `supervision_protocol::SCRATCH_WINDOW`, which starts at `0x1000_0000`).
@@ -150,7 +150,7 @@ pub(super) struct SpawnEndpoint {
     /// The label of the job each resolver badge is granted to: badge `i + 1` for entry `i`, so a
     /// badge names its entry and no two live jobs share one. Forgotten at the job's reap, which is
     /// when nothing holds the badge any more.
-    resolving: [Option<u64>; name_resolution_protocol::GRANTS_MAX],
+    resolving: [Option<u64>; domain_name_resolution_contract::GRANTS_MAX],
 }
 
 /// How many first messages [`SpawnEndpoint`] keeps from senders it is not serving.
@@ -173,7 +173,7 @@ impl SpawnEndpoint {
             replies: [None; INSTALLER_HOLDERS],
             next_label: 1,
             resolver,
-            resolving: [None; name_resolution_protocol::GRANTS_MAX],
+            resolving: [None; domain_name_resolution_contract::GRANTS_MAX],
         }
     }
 
@@ -188,7 +188,7 @@ impl SpawnEndpoint {
         let ep = self.resolver?;
         let entry = self.resolving.iter().position(Option::is_none)?;
         let badge = entry as u32 + 1;
-        for (w0, w1) in name_resolution_protocol::grant_messages(badge, zone.as_bytes())? {
+        for (w0, w1) in domain_name_resolution_contract::grant_messages(badge, zone.as_bytes())? {
             send(ep, w0, w1, 0);
         }
         self.resolving[entry] = Some(label);
@@ -227,7 +227,7 @@ impl SpawnEndpoint {
         ) else {
             return;
         };
-        if let Some((w0, w1)) = name_resolution_protocol::forget_message(entry as u32 + 1) {
+        if let Some((w0, w1)) = domain_name_resolution_contract::forget_message(entry as u32 + 1) {
             send(ep, w0, w1, 0);
         }
         self.resolving[entry] = None;
@@ -572,7 +572,7 @@ pub(super) fn staged_image(len: u64) -> &'static [u8] {
 }
 
 /// **Is this image vouched for?** Its SHA-256, looked up in the live generation of the activation
-/// set on the file service (`activation_set`). `false` on a miss, and on every way of failing to
+/// set on the file service (`installed_programs`). `false` on a miss, and on every way of failing to
 /// read the table: no disk, no `activation` directory, a `current` that does not parse, a
 /// generation that is malformed or larger than a page. A table that cannot be read vouches for
 /// nothing, which is `measured_boot`'s rule one table over.
@@ -588,7 +588,7 @@ pub(super) fn vouched(bytes: &[u8], fs: Option<Fs>, own_ut: u64, fs_mapped: &mut
     let d = files.named(
         fs_operation::OPENDIR,
         fs_operation::ROOT,
-        activation_set::DIRECTORY,
+        installed_programs::DIRECTORY,
         dir::READ,
     );
     if d < 0 {
@@ -597,7 +597,10 @@ pub(super) fn vouched(bytes: &[u8], fs: Option<Fs>, own_ut: u64, fs_mapped: &mut
     let mut table = [0u8; PAGE_BYTES];
     let hit = match files.live_generation(d as u64, &mut table) {
         Ok((_, n)) => core::str::from_utf8(&table[..n]).is_ok_and(|table| {
-            matches!(activation_set::lookup_digest(table, &digest), Ok(Some(_)))
+            matches!(
+                installed_programs::lookup_digest(table, &digest),
+                Ok(Some(_))
+            )
         }),
         Err(()) => false,
     };

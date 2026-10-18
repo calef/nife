@@ -56,7 +56,7 @@ and a write to `motd` should move the host's stamp; those three are the test of 
 ## What it would take, measured against the tree
 
 - The authority exists. §43's clock page, a `Frame` with `READ`, is what `std_service` grants a
-  std program (slot 5, mapped at `0x1200_0000`), and `crates/clock_protocol` is the reader and its
+  std program (slot 5, mapped at `0x1200_0000`), and `crates/clock_contract` is the reader and its
   seqlock, which the time PAL already uses (generated into `sys/pal/nife/clockproto.rs`).
 - Spawn sites. `redoxfs_server` is spawned from `kernel/src/user/fs_service.rs` and from
   about eight test harnesses, and by `crates/system_initializer` on a booted system. Each would pass

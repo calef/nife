@@ -55,7 +55,7 @@ pub const MAX_IDENTITIES: usize = 8;
 
 /// The longest one identity name this crate will carry.
 ///
-/// Matches `login_protocol::MAX_IDENTITY` (64 bytes) by convention rather than by a shared type: the
+/// Matches `login_contract::MAX_IDENTITY` (64 bytes) by convention rather than by a shared type: the
 /// manifest names the same identities a login authenticates, so a name too long to ever log in with
 /// is not a name this store needs to carry either. Not enforced by a shared dependency (this crate
 /// takes none), only by this constant and the comment naming why it was chosen.
@@ -157,7 +157,7 @@ fn strip_comment(line: &str) -> &str {
 
 /// **Render a manifest**, one identity name per line: the write-path half of this crate, used by
 /// whoever records that an identity now has a durable session with pending work. `login` edits the
-/// manifest a line at a time instead (`login_protocol::with_listed`, the same format), so this is
+/// manifest a line at a time instead (`login_contract::with_listed`, the same format), so this is
 /// the whole-document form, host-tested against [`parse_manifest`].
 ///
 /// A fixed buffer rather than a `String`, because this crate is `no_std` with no `alloc`
@@ -209,7 +209,7 @@ pub mod fixture {
     ///
     /// The commands name the suite's installed fixture program (provisional `scheduled_demo`,
     /// `login_tests`'s `install_scheduled_program`), because a durable session's timetable resolves
-    /// them in the activation set, where §229 (how a bare name at the prompt reaches an installed
+    /// them in the installed-programs table, where §229 (how a bare name at the prompt reaches an installed
     /// program) forbids a package from taking a name the image
     /// carries. `timetable_tests`'s registrar control copies this document's shape with an image
     /// program's name back in, because an archive-mode timetable plans against `grant_plan`'s

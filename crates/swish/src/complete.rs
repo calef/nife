@@ -52,7 +52,7 @@
 //!   offers directories and files alike. Manifest-aware completion is a proposed follow-on.
 //! - An installed program (§219 (how the shell names an installed program to the spawner)) is
 //!   offered by its bare name since §229 (how a bare name reaches an installed program) was built,
-//!   read from the live activation set on each Tab. A name that is both the image's and installed
+//!   read from the live installed-programs table on each Tab. A name that is both the image's and installed
 //!   is offered once and refused when run.
 //!
 //! Name: provisional (milestone 47, 2026-09-26).

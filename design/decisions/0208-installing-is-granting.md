@@ -5,7 +5,7 @@ decided: 2026-09-23
 ratified_by: calef
 ---
 
-# 208. Installing a package is granting it, and the activation set is versioned
+# 208. Installing a package is granting it, and the installed programs are versioned
 
 Ruled by calef on 2026-09-23, reading milestone 507 (installing a package: mutate shared directories, compose a view, or only widen what can be spawned)'s three options with the maintainer: A3, with
 rollback. *(Section number provisional until the merge queue lands it.)*
@@ -16,7 +16,7 @@ Installing records that a package exists. Its digest and manifest become spawnab
 a read-only directory a session binds by name. Installing changes only what may be granted. Nothing
 is written into shared space, and uninstalling is removing the entry.
 
-And the table of entries is versioned, so an activation set can be selected and rolled back as a
+And the table of entries is versioned, so the installed programs can be selected and rolled back as a
 whole rather than one package at a time. That second clause is the half A3 does not get for free,
 and it is the half calef asked for by name.
 
@@ -106,7 +106,7 @@ Three things, stated plainly so nobody reads A3 as free:
   the progenitor cannot fetch, so the progenitor hands over a copy of the one program it needs as a
   blob (milestone 233 (login dies on every boot)). That precedent is a hand-wired special case for one program, and A3
   needs it generalized.
-- **Versioning the activation set is the piece A3 does not get for free.** A1 and A2 were each
+- **Versioning the installed programs is the piece A3 does not get for free.** A1 and A2 were each
   weighed with an undo story attached; A3's is an addition, and it is what "with rollback" buys. It
   is also the smallest of the three, which is a fact about this option rather than an argument for
   it.

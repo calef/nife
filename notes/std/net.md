@@ -15,7 +15,7 @@ The records this file cites by number:
 ## `std::net` over the socket contract (milestone 27 phase two)
 
 `sys/net/connection/nife.rs` binds std's `TcpStream` and outbound `UdpSocket` to net_stack's socket
-contract (DECISIONS §25, notes/net.md, `crates/socket_protocol/src/lib.rs`). The PAL is a client of
+contract (DECISIONS §25, notes/net.md, `crates/socket_contract/src/lib.rs`). The PAL is a client of
 the frozen contract, nothing more. It holds the `Stack` endpoint (slot 2) and a frame untyped (slot
 3). An open is a `CALL` on the `Stack` rendezvous, answered with the socket's own capability (§255
 (each socket is its own capability), since 2026-10-07 UTC). The PAL hands that socket a shared
@@ -25,7 +25,7 @@ PAL's socket ids are its own registry's indices and never reach net_stack. This 
 `socket_test_client` client walks, reached through std's blocking API instead.
 
 The wire constants are not restated: `netproto.rs` is generated verbatim from
-`crates/socket_protocol/src/lib.rs` into `sys/pal/nife/netproto.rs` by `std-src`, the same
+`crates/socket_contract/src/lib.rs` into `sys/pal/nife/netproto.rs` by `std-src`, the same
 anti-drift discipline as `abi.rs` and `user_mode_heap.rs`. If the contract changes, the PAL's
 numbers change with it, because there is one source.
 

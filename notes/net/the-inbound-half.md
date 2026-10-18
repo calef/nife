@@ -49,7 +49,7 @@ name in a shared namespace. That is the same property that makes a directory a c
 rather than a path (milestone 32's FS server) and the same reason `bind` (§50) is a grant.
 
 So the port is not the client's to pick. `wire_net_server` spawns `net_stack` with a listen
-grant, an inclusive range packed by `socket_protocol::listen_grant` and carried in the spawn's `arg2`;
+grant, an inclusive range packed by `socket_contract::listen_grant` and carried in the spawn's `arg2`;
 `LISTEN` outside it replies `LISTEN_DENIED`. Every outbound test passes `NO_LISTEN_GRANT`, which is
 also the default, so a net server that was never told which ports it may serve refuses all of
 them. Inbound authority is granted, never assumed. `LISTEN_DENIED` is deliberately a different

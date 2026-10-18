@@ -268,7 +268,7 @@ pub(super) const NET_STACK_STACK_PAGES: u64 = 9;
 
 /// **`domain_name_resolver`'s untyped budget** (milestone 892 (a std program at the prompt holds the
 /// network and a resolver)): its socket page and the page tables for up to
-/// `name_resolution_protocol::GRANTS_MAX` client pages. The kernel harness's
+/// `domain_name_resolution_contract::GRANTS_MAX` client pages. The kernel harness's
 /// `name_resolver_tests::BUDGET_PAGES`, which every resolver test runs under.
 ///
 /// Name: provisional, milestone 892's lane (#2011), 2026-10-12 (UTC).
@@ -379,8 +379,8 @@ pub(super) const CRED_STACK_PAGES: u64 = 16;
 /// **Plus one durable session's budget** (milestone 152 (durable delegation)), which `login` splits
 /// at start-up whenever it is handed `user_timetable_keeper` and `timetable`, before it serves anyone. Without it,
 /// 768 pages less `login`'s 128 + 32 + the durable budget is less than nothing, and `login` stopped at
-/// `fail(2)`. Derived from `login_protocol::durable::BUDGET_PAGES` so the two cannot drift.
-pub(super) const LOGIN_CONSTRUCTION_PAGES: u64 = 768 + login_protocol::durable::BUDGET_PAGES;
+/// `fail(2)`. Derived from `login_contract::durable::BUDGET_PAGES` so the two cannot drift.
+pub(super) const LOGIN_CONSTRUCTION_PAGES: u64 = 768 + login_contract::durable::BUDGET_PAGES;
 /// Extra stack pages `login` needs, beyond the one page `build_child` maps: matches
 /// `kernel::user::login_service::LOGIN_STACK_PAGES`, "sized against `credentialer.rs`'s own lesson"
 /// (that file's own comment).

@@ -125,8 +125,8 @@ fn a_quoted_limit_is_the_constant_behind_it() {
         (
             Refusal::ArgumentsTooLong,
             "({} bytes",
-            argument_protocol::CAPACITY,
-            "argument_protocol::CAPACITY",
+            program_argument_contract::CAPACITY,
+            "program_argument_contract::CAPACITY",
         ),
     ];
     for &(refusal, shape, limit, name) in cases {

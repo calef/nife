@@ -72,7 +72,7 @@ private channel after `OK`. `login` cannot wait for a word after `OK` unless eve
 sends one. So the lane made the request the login itself: `SCHEDULE` is a login request that also
 builds the session process, and its reply announces the `REPLACE` endpoint as a following
 capability (`SCHEDULE_FOLLOWS`), the way `RUN_UNVOUCHED_FOLLOWS` announces one in
-`crates/login_protocol`. The substance of the ruling is unchanged. The build is draft pull request
+`crates/login_contract`. The substance of the ruling is unchanged. The build is draft pull request
 #1377 (`milestone/152-session`).
 
 Refused:

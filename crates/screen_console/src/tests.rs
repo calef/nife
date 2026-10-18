@@ -827,7 +827,7 @@ fn every_qword_store_is_eight_aligned_in_the_apertures_own_address_space() {
 /// most one head word and one tail word, never a narrower pair.
 #[test]
 fn the_wide_copy_uses_one_qword_per_pair_and_never_more_than_two_edge_words() {
-    use graphics_protocol as gfx;
+    use graphics_contract as gfx;
 
     use super::Aperture;
     let found = Framebuffer {

@@ -65,12 +65,16 @@ depth rather than a backlog.
 
 ## Names by what the tree records about them
 
-From the provenance block in each named thing's own header. Milestone 115 (the names that were
-ratified, and the ones that were refused) put it there: a crate's `src/lib.rs`, a program's, a
-`script/` entry point's comment, a Cargo package's manifest. `script/names` derives the same four
-counts by walking the working tree; this series derives them from git history. They share the parse
-(`helpers/name_provenance.py`) but not the file walk, so the two agree by construction. At 2026W36
-they do: 204 names, 104 `ratified`, 37 `recorded`, 63 `provisional`, 0 `unrecorded`.
+From the provenance block in each named thing's own header, for every name `script/names` tracks.
+Milestone 115 (the names that were ratified, and the ones that were refused) put the block there: a
+crate's `src/lib.rs`, a program's, a `script/` entry point's comment, a Cargo package's manifest.
+Since 2026-09-24 an item or module carrying a `Name:` paragraph is tracked too, and so is each
+documentation directory and document under `design/`, `notes/` and `briefs/`. A name a rule on
+`design/naming/convention-rulings.md` covers counts as `ratified`.
+
+Both scripts enumerate through `helpers/name_census.py`, `script/names` over the working tree and
+this series over each week's commit, and `script/metrics` fails when the current week's totals
+disagree. At 2026W42 both say 1,793 names.
 
 The four words are what a block *says*:
 
@@ -79,33 +83,36 @@ The four words are what a block *says*:
 - `Provisional` is whoever coined it saying out loud that they expect it to change.
 - `Unrecorded` is nothing outside the block saying why the name is what it is.
 
-The total is every named thing, and the four statuses do not have to add up to it. The pale band is
-the difference: named things carrying no block at all. That differs from `Unrecorded`, which is a
-block saying the history is silent. The two are kept apart for the same reason the decisions chart
-above will not read a statusless decision as `DECIDED`.
+`Ruled, rename owed` is a `provisional` block saying calef has ruled and the rename has not landed
+(`helpers/name_ruled.py`). It is no longer his question, so it is drawn apart.
+
+The total is every named thing, and the statuses do not have to add up to it. The pale band is the
+difference: named things with no block, or a block that fails `script/names`' form checks. That
+differs from `Unrecorded`, which is a block saying the history is silent. The two are kept apart for
+the same reason the decisions chart above will not read a statusless decision as `DECIDED`.
 
 In the first three weeks the pale band is the whole bar. There were 16 named things at 2026W29 and
 119 at 2026W31, none carrying provenance, because the convention that records it did not exist
-until 2026-08-04. This is the sharpest restatement artifact in the deck. Read those bars as "nobody
-was writing this down yet". Read the first blue bar as a convention arriving, not as 72 names being
-ratified in a week. Backfilling them was considered and refused. A ratification invented to fill a
-cell would put a false claim in the one record whose job is saying who claimed what.
+until 2026-08-04. Read those bars as "nobody was writing this down yet", and the first blue bar as a
+convention arriving, not as 72 names being ratified in a week. Backfilling them was considered and
+refused. A ratification invented to fill a cell would put a false claim in the one record whose job
+is saying who claimed what.
 
-The band that survives into 2026W32 and 2026W33 is not an artifact. It is seven names, all Cargo
-packages: `kernel`, `user`, `xtask`, `redoxfs_server`, `redoxfs_host`, `std_exerciser` and the fuzz
-package. Milestone 115 covered three surfaces, and a package was not one of them. So for two weeks
-`script/names std_exerciser` answered "neither a name in the tree nor a recorded refusal". That
-answer looked exactly as authoritative as a true one. calef found it on 2026-08-18, the `package`
-kind closed it, and the band goes to zero in 2026W34. Nothing told this series about that hole. It
-walks four kinds today and finds the fourth missing from the weeks before it existed. A registry
-with a hole answering confidently is the failure `script/names`' own header records.
+Every week is counted with today's enumeration, so the pale band from 2026W32 to 2026W38 is names
+that week's gate did not yet ask about. In 2026W32 and 2026W33 seven of them are Cargo packages
+(`kernel`, `user`, `xtask` and four more), which milestone 115 did not cover until calef found the
+hole on 2026-08-18. The rest, and all of them from 2026W34 (7 to 13 a week), are directory
+READMEs and doc comments that mention `Name:` in prose before the 2026-09-24 kinds made such a
+paragraph a block. From 2026W39 the band is zero.
 
-2026W36 is one milestone doing one thing. `Unrecorded` goes from 60 to zero, `Recorded` from 9 to 37
-and `Provisional` from 18 to 63. That is milestone 264 (sixty names git history cannot justify, and
+The bar jumps from 257 at 2026W38 to 695 at 2026W39 because the item, module, directory and
+document kinds arrived that week, mostly `provisional`.
+
+2026W36 is one milestone doing one thing. `Unrecorded` goes from 64 to 2, `Recorded` from 9 to 37
+and `Provisional` from 26 to 66. That is milestone 264 (sixty names git history cannot justify, and
 the research that would let calef rule on them). It gave every name nobody had written a reason for
-one that says something. Where the history supplies the reasoning, the block records it; where it
-does not, the block carries an argued proposal. The bar is the height it would have been without
-it. What changed is what the tree can say about the names in it.
+one that says something. The bar is the height it would have been without it. What changed is what
+the tree can say about the names in it.
 
 ### A rising `Provisional` band is not debt
 
@@ -124,11 +131,11 @@ lane that coins a name, argues it, records what it refused and marks it provisio
 convention asks. A lane that quietly ships a name without saying it is unsigned has not. That lane
 will not show up on this chart at all, which is the limit of what a count of signatures can see.
 
-So the green band going up means lanes are naming things and being honest that nobody ruled. It is a
+So the `Provisional` band going up means lanes are naming things and being honest that nobody ruled. It is a
 queue depth against one person's attention, the project's scarcest resource. A growing queue says
 the tree is growing faster than one reviewer rules on it. It says nothing about the names being
 wrong. The band worth an alarm is `Unrecorded`, a name nobody anywhere argued for, and this chart
-has it at zero.
+has it in single digits.
 
 ## Unnumbered proposals
 

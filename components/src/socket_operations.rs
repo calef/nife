@@ -102,7 +102,7 @@ pub(crate) fn sock_receive(
         match sockets.get_mut::<udp::Socket>(handle).recv_slice(&mut buf) {
             Ok((n, meta)) => {
                 // The datagram's source endpoint rides back in the frame's dst fields, which are
-                // dead space on a reply (socket_protocol's layout note). A responder needs it to answer
+                // dead space on a reply (socket_contract's layout note). A responder needs it to answer
                 // whoever asked (TFTP's transfer ids use it today, and mDNS's legacy-unicast rule
                 // did until milestone 298), and this used to be discarded with `.map(|(n, _)| n)`.
                 let IpAddress::Ipv4(src) = meta.endpoint.addr;
@@ -181,7 +181,7 @@ pub(crate) fn arm_listener(sockets: &mut SocketSet, port: u16) -> Option<SocketH
 
 /// **`LISTEN`: claim a port, if this stack was granted it** (milestone 107).
 ///
-/// Three refusals, and they are deliberately distinguishable (`socket_protocol`): outside the grant is
+/// Three refusals, and they are deliberately distinguishable (`socket_contract`): outside the grant is
 /// a refusal of *authority* and no retry will fix it; already-listening is a collision on an
 /// exclusive name and another port would work; `REP_ERR` is a full table. A granted listen is
 /// answered with the listener's own capability (§255 (each socket is its own capability)).

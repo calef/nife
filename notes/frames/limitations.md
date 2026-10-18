@@ -90,7 +90,7 @@ count (`user_mode_runtime::mapped_window::MappedWindow`).
 It is recorded because a capability that names more than the thing it stands for is exactly the
 kind of fact this convention exists to write down. It is also recorded because the
 `SURFACE_BYTES % 4096 == 0` assertion that used to hide the question by construction was deleted
-this milestone. `crates/graphics_protocol/src/lib.rs` has the search that justified deleting it.
+this milestone. `crates/graphics_contract/src/lib.rs` has the search that justified deleting it.
 
 ## Not everything migrated
 

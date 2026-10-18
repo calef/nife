@@ -23,7 +23,7 @@ authority. In this tree it is not:
 - A compromised timetable already runs arbitrary code with its own capabilities. Loading a second
   image adds code, and code is not authority. Whatever program X could do with the timetable's
   capabilities, the attacker's own instructions could do directly.
-- The one place an image's identity does carry authority is the progenitor's vouching under §219 (how the shell names an installed program to the spawner). A digest in the activation set picks the
+- The one place an image's identity does carry authority is the progenitor's vouching under §219 (how the shell names an installed program to the spawner). A digest in the installed-programs table picks the
   manifest a spawn runs with. The timetable never asks the progenitor for anything. Its images come
   from an archive the spawn site assembled, so vouching happens when the archive is built, which is
   the spawn site's job either way.

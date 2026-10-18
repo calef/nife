@@ -47,7 +47,7 @@ the search: this kernel puts almost everything behind a ranked interrupt-safe lo
 and fetch-op outside test code:
 
 - `crates/work_steal_slot` (new, milestone 80 (loom)): the work-steal request slot. The pilot.
-- `crates/clock_protocol`: the clock page's seqlock. Cross-*address-space*, hand-rolled, with an
+- `crates/clock_contract`: the clock page's seqlock. Cross-*address-space*, hand-rolled, with an
   explicit fence in the reader. This one the roadmap did not name, and it is where the bug was.
 - `kernel/src/smp.rs`: the boot roster. `HWID`/`STARTABLE` written relaxed, then `ROSTER` stored
   with a release; readers acquire `ROSTER` and then read the arrays. A textbook array publication,
@@ -78,7 +78,7 @@ timing table already said "all four crates".
 | Crate | Protocol | What the model holds |
 |---|---|---|
 | `crates/work_steal_slot` | the work-steal request slot, a compare-exchange mailbox; the pilot | one steal per victim per round, each request served exactly once, release/acquire publication, and a relaxed pairing that must fail |
-| `crates/clock_protocol` | the clock page's seqlock, across address spaces | no torn reading, a generation that matches its pair, serialized writers; this is where the bug was |
+| `crates/clock_contract` | the clock page's seqlock, across address spaces | no torn reading, a generation that matches its pair, serialized writers; this is where the bug was |
 | `crates/thread_wake_handshake` | block/wake, in the gaps between `SCHED` critical sections (2026-08-14) | a wake racing a switch-out resumes on a saved context; three historical races rebuilt as `#[should_panic]` reconstructions |
 | `crates/memory_corruption_canary_gate` | the corruption canary's arm/check/disarm (2026-08-15) | armer and checker exclusion, disarm's quiescence, single-flight checking; the old two-flag protocol failed on the first run |
 | `crates/memory_regions` | the untyped region claim (2026-08-18) | exactly one destroyer reclaims; a witness harness asserts the pre-#316 protocol double-frees |
@@ -132,7 +132,7 @@ argued.
 
 Why nothing else caught it. It is unreachable on x86 (total store order gives the missing
 barrier for free). QEMU's TCG explores almost none of the orderings that produce it. The ten host
-tests in `clock_protocol`, the kernel's clock tests on both ISAs, `script/verify`, `script/fuzz` and
+tests in `clock_contract`, the kernel's clock tests on both ISAs, `script/verify`, `script/fuzz` and
 `script/undefined-behavior-check` all passed before the fix and all pass after it: none of them asks
 a question this could answer. The failure mode it would have produced on the VisionFive 2 is a
 timestamp that is wrong by however far the clock last stepped, at a rate too low to reproduce and
@@ -212,8 +212,8 @@ Reproduce the clock bug, to see what a loom failure looks like before trusting a
 the `fence(Ordering::Release)` from `ClockPage::publish` and:
 
 ```
-$ script/interleaving-check -p clock_protocol
-thread '...a_reader_never_sees_half_a_publish' panicked at crates/clock_protocol/src/lib.rs:738:26:
+$ script/interleaving-check -p clock_contract
+thread '...a_reader_never_sees_half_a_publish' panicked at crates/clock_contract/src/lib.rs:738:26:
 a torn reading: (1, 2000) is neither publish
 ```
 
@@ -231,7 +231,7 @@ Add a protocol of your own. Four steps, and the third is the one that is easy to
    and add `[target.'cfg(loom)'.dependencies] loom = "0.7"` to the crate's manifest.
 3. Give every spin loop a yield. Loom's scheduler is cooperative, so a thread spinning on
    `core::hint::spin_loop()` can starve the writer whose progress it is waiting for and the model
-   never terminates. `clock_protocol` has a `spin_hint()` helper that is `loom::thread::yield_now()`
+   never terminates. `clock_contract` has a `spin_hint()` helper that is `loom::thread::yield_now()`
    under the cfg and the hint otherwise; copy that shape.
 4. Add the crate to `script/interleaving-check`'s package list, write the harnesses, and falsify
    each one before believing it.
@@ -248,7 +248,7 @@ from the public API alone. `script/lint`'s "the region claim protocol has one de
 pins the crate's public surface and requires each free loop to make its entitling call first. The
 other four loom crates have the same exposure and are not gated. The rebuilt gap, the two halves of
 the check and the `compile_fail` doctests are in
-[interleaving/lift-and-caller.md](interleaving/lift-and-caller.md).
+[interleaving/lift-is-only-worth-what-its-caller-does.md](interleaving/lift-is-only-worth-what-its-caller-does.md).
 
 ## The cost, measured
 

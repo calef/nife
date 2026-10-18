@@ -47,7 +47,7 @@ one of 32. Severity medium: a denial of service on any `CALL` server, not an esc
   `fs_file_caretaker`, `fs_nameset_caretaker`, `fs_subtree_caretaker`, `display_terminal`,
   `framebuffer_driver`, `gpu_driver`, `entropy`, `jh7110_entropy`, `non_volatile_memory_express`,
   `line_editor`, `clock`, `credentialer`, `broker`, `terminal_supervisor` and `swapper`. Outside
-  them: `redoxfs_server`, `crates/virtio`'s block server, `crates/swap_protocol`'s two services,
+  them: `redoxfs_server`, `crates/virtio`'s block server, `crates/hot_swap_contract`'s two services,
   and the fixtures `call_server`, `job_mix_task`, `network_time_test_server`, `soaker` and
   `window`. `reply` accepts only a `Reply`, so the compiler is the census: a slot-typed call left
   anywhere would not build. Outside the runtime, a grep for `abi::reply::REPLY` finds one raw use,

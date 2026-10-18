@@ -30,7 +30,7 @@ takes under OVMF.
   bits.
 - Milestone 554 (a good upgrade sticks: what marks a trial boot successful) built the
   confirmation.
-- §208 (installing a package is granting it, and the activation set is versioned) gives the
+- §208 (installing a package is granting it, and the installed programs are versioned) gives the
   generations. §159 (lab machines upgrade like user machines, and only a new kernel needs a reboot)
   says only the kernel reboots. §244 (the installed disk has four partitions, and a boot slot is 64
   MiB) gives the slots their space.

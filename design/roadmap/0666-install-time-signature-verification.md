@@ -26,7 +26,7 @@ workload running.
 
 ## What gets built
 
-1. Trust lines. A table beside the activation set, versioned the same way (§208 (installing a
+1. Trust lines. A table beside the installed-programs table, versioned the same way (§208 (installing a
    package is granting it)), one line per key: `key ed25519 <public key hex> <ceiling> <label>`,
    where the ceiling is a subset of `domain entropy network`. Owner-written. No key in any image,
    and a test that proves the image carries none.
@@ -37,7 +37,7 @@ workload running.
 3. Refusal, not narrowing. A manifest asking for more than the key's ceiling is refused, and the
    refusal names the missing grant.
 4. The vouching key per entry. Each activation entry records which key vouched it, or that a digest
-   did. That is a new column in `activation_set`'s entry line.
+   did. That is a new column in `installed_programs`'s entry line.
 5. Removing a trust line writes a new generation without that key's programs. They fall to
    unvouched, runnable only under the D2 capability of §219 (how the shell names an installed
    program to the spawner), and rollback restores them.

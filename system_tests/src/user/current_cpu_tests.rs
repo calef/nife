@@ -10,7 +10,7 @@ fn current_cpu_reader_image() -> &'static [u8] {
 /// architectures.**
 ///
 /// This is the whole of calef's 2026-09-21 ruling that a thread observing itself reads a page,
-/// proved end to end: `crates/current_cpu_protocol` lays the page out, `AddressSpace::new` maps it
+/// proved end to end: `crates/current_cpu_contract` lays the page out, `AddressSpace::new` maps it
 /// read-only, `schedule()` writes the core at switch-in, and `user_mode_runtime::current_cpu`
 /// reads it. (The ruling's `design/decisions/` section is on another branch and is named here
 /// rather than cited.)
@@ -55,12 +55,12 @@ fn a_userspace_thread_reads_a_cpu_that_is_really_online() {
     for (which, cpu) in [("first", first), ("second", second)] {
         assert_ne!(
             cpu,
-            current_cpu_protocol::UNSCHEDULED,
+            current_cpu_contract::UNSCHEDULED,
             "the {which} read came back unknown: a running thread's page was never mapped or \
              never written",
         );
         assert!(
-            cpu < current_cpu_protocol::CPU_ID_BOUND as u64,
+            cpu < current_cpu_contract::CPU_ID_BOUND as u64,
             "the {which} read is cpu {cpu}, past the bound userspace sizes its arrays by",
         );
         assert!(
@@ -100,7 +100,7 @@ fn a_space_that_never_ran_has_no_answer_and_then_has_the_right_one() {
 
     // SAFETY: `va` is this space's own frame through the direct map, `PAGE_BYTES` wide, and this
     // is the only thread that can reach it: no thread has been bound to the space.
-    let page = unsafe { current_cpu_protocol::CurrentCpuPage::new(va) };
+    let page = unsafe { current_cpu_contract::CurrentCpuPage::new(va) };
     assert_eq!(
         page.cpu(),
         None,

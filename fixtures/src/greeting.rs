@@ -4,7 +4,7 @@
 //! lists it in `packaged_only`, so no archive packs it (`script/swish-check` reads the archive to
 //! make sure), and the only way onto a machine is the
 //! package `packages/greeting.recipe.toml` builds. So when it runs at the prompt, the image's catalogue,
-//! the fetch, the digest check and the activation set are the only things that could have put it
+//! the fetch, the digest check and the installed-programs table are the only things that could have put it
 //! there. Every earlier install line ran a copy of the image's own `uptime`, which proved the path
 //! and not novelty.
 //!
@@ -17,7 +17,7 @@
 //!
 //! # What this program holds
 //!
-//! Slot 0, its output: the sink contract (`crates/byte_sink_protocol`). Slot 1, the clock page,
+//! Slot 0, its output: the sink contract (`crates/byte_sink_contract`). Slot 1, the clock page,
 //! because its manifest asks for one, and that is the second line it prints.
 //!
 //! **The manifest travels in its own bytes** (milestone 597 (a program carries its manifest in an
@@ -73,13 +73,13 @@ pub extern "C" fn _start(_a0: u64, _a1: u64, _a2: u64) -> ! {
     } else {
         b"clock: not held; slot 1 is empty\n"
     });
-    send(OUT, byte_sink_protocol::eof(), 0, 0);
+    send(OUT, byte_sink_contract::eof(), 0, 0);
     exit();
 }
 
 fn say(mut rest: &[u8]) {
     while !rest.is_empty() {
-        let (w0, w1, w2, n) = byte_sink_protocol::pack(rest);
+        let (w0, w1, w2, n) = byte_sink_contract::pack(rest);
         send(OUT, w0, w1, w2);
         rest = &rest[n..];
     }

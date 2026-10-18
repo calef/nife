@@ -15,7 +15,7 @@
 //! is this program's only caller.
 //!
 //! ```
-//! use byte_sink_protocol::{eof, pack};
+//! use byte_sink_contract::{eof, pack};
 //!
 //! let (w0, w1, w2, n) = pack(b"hello\n"); // SEND these three words: append n bytes
 //! assert_eq!(n, 6);
@@ -44,8 +44,8 @@
 #![allow(missing_docs)]
 #![no_main]
 
-use byte_sink_protocol::fixture;
-use filesystem_protocol::fs;
+use byte_sink_contract::fixture;
+use filesystem_contract::fs;
 use user_mode_runtime::mapped_window::MappedWindow;
 use user_mode_runtime::{call, exit, receive, send};
 
@@ -61,7 +61,7 @@ const REPORT: u64 = 2;
 /// The page shared with the FS server. Matches `fs_service`'s `FILE_VA_CLIENT`.
 const PAGE_VA: u64 = address_space_map::pair_page(0x0000_0000_0060_0000);
 /// Its size, the FS contract's transfer unit.
-const PAGE: usize = filesystem_protocol::PAGE;
+const PAGE: usize = filesystem_contract::PAGE;
 
 // SAFETY: the wiring maps one page read/write at PAGE_VA before this program runs (milestone 139
 // round 2; see `user_mode_runtime::mapped_window`, which is what collapsed the hand-rolled read_volatile/
@@ -117,10 +117,10 @@ pub extern "C" fn _start(_a0: u64, _a1: u64, _a2: u64) -> ! {
     let mut off = 0u64;
     loop {
         let (w0, w1, w2) = receive(SINK);
-        let mut buf = [0u8; byte_sink_protocol::INLINE_MAX];
-        match byte_sink_protocol::unpack(w0, w1, w2, &mut buf) {
-            byte_sink_protocol::Msg::Bytes(0) => {}
-            byte_sink_protocol::Msg::Bytes(n) => {
+        let mut buf = [0u8; byte_sink_contract::INLINE_MAX];
+        match byte_sink_contract::unpack(w0, w1, w2, &mut buf) {
+            byte_sink_contract::Msg::Bytes(0) => {}
+            byte_sink_contract::Msg::Bytes(n) => {
                 put(&buf[..n]);
                 let wrote = fs_call(fs::req(fs::WRITE, handle, n as u64), off);
                 if wrote != n as i64 {
@@ -131,8 +131,8 @@ pub extern "C" fn _start(_a0: u64, _a1: u64, _a2: u64) -> ! {
                 }
                 off += n as u64;
             }
-            byte_sink_protocol::Msg::Eof => break,
-            byte_sink_protocol::Msg::Malformed => {
+            byte_sink_contract::Msg::Eof => break,
+            byte_sink_contract::Msg::Malformed => {
                 send(REPORT, fixture::BAD, w0, off);
                 exit();
             }

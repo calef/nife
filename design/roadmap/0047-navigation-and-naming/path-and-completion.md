@@ -31,7 +31,7 @@ it in practice. Ambient authority means everyone can read `/usr/bin`, so `PATH` 
 facto security boundary. Here it cannot be, because naming and access are separate things.
 
 Installing a program is granting it into a namespace, per §208 (installing a package is granting
-it, and the activation set is versioned). Milestone 49 (users, login, and attribution) is what hands
+it, and the installed programs are versioned). Milestone 49 (users, login, and attribution) is what hands
 a session its program namespace, so "who gets which capabilities at startup" includes which
 programs. Milestone 39 (repository structure for a loosely-coupled OS, and the road to a
 distribution) owns the packaging consequence.

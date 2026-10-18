@@ -2,7 +2,7 @@ extern crate std;
 use std::string::String;
 use std::vec::Vec;
 
-use byte_sink_protocol::{eof, pack, with_severity};
+use byte_sink_contract::{eof, pack, with_severity};
 
 use super::*;
 
@@ -261,7 +261,7 @@ fn a_forgotten_badge_is_nobody() {
 #[test]
 fn a_message_of_another_kind_is_counted_every_time() {
     let mut log = Log::new();
-    let other_kind = 1u64 << byte_sink_protocol::KIND_SHIFT;
+    let other_kind = 1u64 << byte_sink_contract::KIND_SHIFT;
     log.handle(7, other_kind, 0, 0, 0);
     assert_eq!(log.refused, 1);
     log.handle(7, other_kind, 0, 0, 0);

@@ -150,7 +150,7 @@ concurrency:
 # was false, and it was measured rather than argued**: across the host crates exactly one test outside
 # loom spawns a real thread (`memory_corruption_canary_gate`'s `bounded`, which checks liveness through
 # a channel, not ordering), and the protocols that do depend on ordering (`work_steal_slot`,
-# `thread_wake_handshake`, `memory_regions`, `clock_protocol`, `memory_corruption_canary_gate`) are
+# `thread_wake_handshake`, `memory_regions`, `clock_contract`, `memory_corruption_canary_gate`) are
 # checked by loom, which models C11 on any host and runs as the `interleavings` job below. A host
 # test that races no threads cannot observe a reordering on any host.
 #

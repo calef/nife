@@ -34,13 +34,13 @@ checked below.
 
 | precondition | source | met? | measured |
 |---|---|---|---|
-| Protocols carry version numbers | §151, milestone 39 (repository structure for a loosely-coupled OS) | no | All 93 crates in the tree are `version = "0.1.0"`. Of 19 `*_protocol` crates, 5 carry a numbered magic on a shared-page layout (`TIMEBAS1`, `CURRCPU1`, `ENVCONF1`, `MACHSTA1`, `CLOCKv01`) and 2 an unnumbered one (`nifeargv`, `nifeklog`). None of the IPC operation sets (`filesystem_protocol`, `socket_protocol`, `login_protocol`, `swap_protocol` and the rest) carries a version a peer could check. Formats do better: `capability_manifest_note` (`VERSION = 1`), `boot_slot` (`SLOT_VERSION = 1`), `package_archive` (`NIFEPKG1`), `nifefs` (`CRKR0002`). |
+| Protocols carry version numbers | §151, milestone 39 (repository structure for a loosely-coupled OS) | no | All 93 crates in the tree are `version = "0.1.0"`. Of 19 `*_protocol` crates, 5 carry a numbered magic on a shared-page layout (`TIMEBAS1`, `CURRCPU1`, `ENVCONF1`, `MACHSTA1`, `CLOCKv01`) and 2 an unnumbered one (`nifeargv`, `nifeklog`). None of the IPC operation sets (`filesystem_contract`, `socket_contract`, `login_contract`, `hot_swap_contract` and the rest) carries a version a peer could check. Formats do better: `capability_manifest_note` (`VERSION = 1`), `boot_slot` (`SLOT_VERSION = 1`), `package_archive` (`NIFEPKG1`), `nifefs` (`CRKR0002`). |
 | Protocols stopped churning weekly | §151 | no | Milestone 610's own series, last four weeks (2026W37 to W40): 6, 44, 46 and 61 breaking changes to the contract crates, 157 in all against the proposed threshold of four. Co-change excluding mass commits: 66.7%, 51.9%, 74.4%, 74.4%, against the proposed 50% line. Syscall surface: 3 changed and 1 renamed in W40. |
 | A package format exists | §151, milestone 198 (a package manager) | yes | §197 (a package is one archive file)'s archive (`crates/package_archive`), `cargo xtask package` from a reviewed recipe, and `package install`, `remove` and `rollback` at the prompt on all three architectures (milestone 198, rung 3a, built 2026-09-26). |
 | No package moves before a per-package co-change column exists | §235 Fork 3 amendment | no | Milestone 610 is BUILT and its own Follow-on records the column as owed and not built. Section 2 below is a one-off reading of it, which is not the column. |
 | The image is assembled from base packages by digest | §235 P1, milestone 607 (nife is built and updated from packages) item 1 | no | Not started. `xtask/src/archive.rs` packs ELFs out of `target/`, not packages by digest. This is the thing `basalt` would assemble from. |
 | An SDK archive (S2) | §235 Fork 4, milestone 607 item 4 | no | No `xtask` command builds one. A program outside the tree has no way to get `abi` and its protocols except a clone. |
-| A contract never links the runtime | §235 P3, milestone 607 item 3 | no | Four contract crates still depend on `user_mode_runtime`: `counter_frequency_protocol`, `current_cpu_protocol`, `supervision_protocol`, `swap_protocol`. |
+| A contract never links the runtime | §235 P3, milestone 607 item 3 | no | Four contract crates still depend on `user_mode_runtime`: `counter_frequency_contract`, `current_cpu_contract`, `supervision_protocol`, `hot_swap_contract`. |
 | `components` split into one crate per package | milestone 691 (packages move out, one per pull request) | no | One crate, `components`, holds 56 binaries from 18 packages. A crate cannot live in two repositories, so no package with a program in it can move. |
 | A ratified home | milestone 611 (every program and crate belongs to a package), §235 Fork 3 | no | 0 of 27 packages ratified; 26 provisional, 1 undecided (`redoxfs`). |
 
@@ -58,22 +58,22 @@ merged 2026-10-04T05:32Z) is broken out because the brief named it. It touched 1
 | crate | commits | #1599 | sweeps | alone | breaking, 4 weeks |
 |---|---|---|---|---|---|
 | `abi` | 29 | 0 | 6 | 1 | 4 |
-| `filesystem_protocol` | 23 | 1 | 6 | 1 | 10 |
-| `login_protocol` | 15 | 1 | 5 | 0 | 1 |
-| `swap_protocol` | 14 | 1 | 7 | 0 | 10 |
+| `filesystem_contract` | 23 | 1 | 6 | 1 | 10 |
+| `login_contract` | 15 | 1 | 5 | 0 | 1 |
+| `hot_swap_contract` | 14 | 1 | 7 | 0 | 10 |
 | `supervision_protocol` | 10 | 0 | 4 | 0 | 2 |
-| `socket_protocol` | 8 | 1 | 5 | 0 | 13 |
-| `byte_sink_protocol`, `credential_protocol`, `std_runtime_protocol` | 6 each | 1, 1, 0 | 4, 3, 2 | 0 | 5, 4, 0 |
+| `socket_contract` | 8 | 1 | 5 | 0 | 13 |
+| `byte_sink_contract`, `credential_contract`, `std_runtime_contract` | 6 each | 1, 1, 0 | 4, 3, 2 | 0 | 5, 4, 0 |
 | the other ten | 2 to 5 each | | | 0 to 2 | 0 to 5 |
 
-Even net of sweeps and `#1599`, `abi` moved 23 times and `filesystem_protocol` 17 times in thirty
+Even net of sweeps and `#1599`, `abi` moved 23 times and `filesystem_contract` 17 times in thirty
 days, and **six commits in thirty days changed a protocol crate and nothing else**. A protocol here
 changes together with its server and its client, which is what a monorepo is good at and a split
 makes into two or three pull requests.
 
-Settled by 610's proposed rule (four weeks with no breaking change): `argument_protocol`,
-`boot_slot`, `capability_witness_protocol`, `compositor`, `current_cpu_protocol`, `elf`,
-`capability_manifest_note`, `measured_boot`, `std_runtime_protocol`. Nine of the 30 crates 610 measures.
+Settled by 610's proposed rule (four weeks with no breaking change): `program_argument_contract`,
+`boot_slot`, `capability_witness_contract`, `compositor`, `current_cpu_contract`, `elf`,
+`capability_manifest_note`, `measured_boot`, `std_runtime_contract`. Nine of the 30 crates 610 measures.
 
 ## 2. Which division could go first: coupling by candidate
 
@@ -112,9 +112,9 @@ What the table says, read rather than summarized:
 - **`redoxfs` is the most separable build and among the most coupled code.** It is already three
   workspaces of its own, outside the root workspace, with its own `Cargo.lock` files, gated by
   `--manifest-path`, and nothing links it. But 12 of its 17 focused commits crossed, almost all
-  milestone 606 (a directory walk costs what it does on Linux)'s subtree-grant work against `filesystem_protocol`, `subtree_scope` and
-  `capability_manifest_note`. Its interfaces are the least settled ones: `filesystem_protocol` 10 breaking
-  changes in four weeks, the partition table 27, `entropy_protocol` 3. Every QEMU runner starts it,
+  milestone 606 (a directory walk costs what it does on Linux)'s subtree-grant work against `filesystem_contract`, `subtree_scope` and
+  `capability_manifest_note`. Its interfaces are the least settled ones: `filesystem_contract` 10 breaking
+  changes in four weeks, the partition table 27, `entropy_contract` 3. Every QEMU runner starts it,
   which is the 254 path references.
 - **Programs in `components` cannot move at all yet.** `rmle`, `mdr`, `demos`, `core-tools`,
   `disk-tools`, `entropy`, `installer`, and the programs of `process-tools`, `login`, `init`, `terminal`
@@ -128,7 +128,7 @@ What the table says, read rather than summarized:
 - The dependents column counts Cargo links. A program named by a gate (`swish-check`'s `ps`
   line, a QEMU runner starting `redoxfs_server`) is a dependency the split must also carry, and
   the path-reference column only half catches it.
-- 610's per-crate view measures 30 crates. `machine_statistics_protocol`, `glob`,
+- 610's per-crate view measures 30 crates. `machine_statistics_contract`, `glob`,
   `address_space_map` and `subtree_scope`, which the candidate cuts link, have no row, so their
   stability is unmeasured. The proposal carries this as a precondition rather than a BUGS line on
   610, because a lane does not edit another milestone's block.

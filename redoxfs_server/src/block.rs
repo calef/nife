@@ -25,7 +25,7 @@ pub const BLOCK: usize = 4096;
 pub const CACHE_SLOTS: usize = 256;
 
 /// **The one place in this tree that sees both the wire protocol and the store**, which is what
-/// makes the two assertions below possible at all: `filesystem_protocol` deliberately depends on nothing, and
+/// makes the two assertions below possible at all: `filesystem_contract` deliberately depends on nothing, and
 /// the vendored engine has never heard of it. Milestone 138 wrote them because it moved the record
 /// level, and `filesystem_fixture::throughput::RECORD`'s own comment named itself the soft spot a
 /// change like that would break silently.
@@ -53,10 +53,10 @@ const _: () = {
     // now carries up to `fs::TRANSFER_MAX` bytes straight into the shared region, and RedoxFS reads
     // and writes it a record at a time from there; a channel that ended part way through a block
     // would make the last chunk of every full-channel request a partial one, which is the shape the
-    // repeat-write bug had. Nothing else in the tree can check this: `filesystem_protocol` has never heard of
-    // the store and the store has never heard of `filesystem_protocol`.
-    assert!(filesystem_protocol::fs::TRANSFER_MAX.is_multiple_of(BLOCK));
-    assert!(filesystem_protocol::fs::TRANSFER_MAX >= BLOCK);
+    // repeat-write bug had. Nothing else in the tree can check this: `filesystem_contract` has never heard of
+    // the store and the store has never heard of `filesystem_contract`.
+    assert!(filesystem_contract::fs::TRANSFER_MAX.is_multiple_of(BLOCK));
+    assert!(filesystem_contract::fs::TRANSFER_MAX >= BLOCK);
 };
 
 /// A block-granular transport: read or write one whole filesystem block, or report the disk size.

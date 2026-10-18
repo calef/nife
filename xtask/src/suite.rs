@@ -100,21 +100,21 @@ impl ArchLegs {
     }
 
     /// Name: provisional, flagged 2026-09-24 by the boolean-predicate pass
-    /// (design/naming/boolean-predicates-worklist.md). It does not yet follow the Rust predicate
+    /// (design/naming/functions-that-answer-yes-or-no-worklist.md). It does not yet follow the Rust predicate
     /// rule calef ratified 2026-09-24; recommended `includes_aarch64`, because `is_aarch64` would
     /// be false for `ALL`, which also answers yes.
     pub(crate) fn aarch64(self) -> bool {
         self.aarch64
     }
     /// Name: provisional, flagged 2026-09-24 by the boolean-predicate pass
-    /// (design/naming/boolean-predicates-worklist.md). It does not yet follow the Rust predicate
+    /// (design/naming/functions-that-answer-yes-or-no-worklist.md). It does not yet follow the Rust predicate
     /// rule calef ratified 2026-09-24; recommended `includes_riscv64`, because `is_riscv64` would
     /// be false for `ALL`, which also answers yes.
     pub(crate) fn riscv64(self) -> bool {
         self.riscv64
     }
     /// Name: provisional, flagged 2026-09-24 by the boolean-predicate pass
-    /// (design/naming/boolean-predicates-worklist.md). It does not yet follow the Rust predicate
+    /// (design/naming/functions-that-answer-yes-or-no-worklist.md). It does not yet follow the Rust predicate
     /// rule calef ratified 2026-09-24; recommended `includes_x86_64`, because `is_x86_64` would be
     /// false for `ALL`, which also answers yes.
     pub(crate) fn x86_64(self) -> bool {
@@ -461,7 +461,7 @@ fn host_tests() -> bool {
     //
     // This was a hand-maintained list of twenty `-p` flags, and it drifted exactly the way a
     // hand-maintained list does. It was written because `paging`, `heap` and `slab` were silently not
-    // run for four milestones; by milestone 51 it had five crates missing again, and `filesystem_protocol`,
+    // run for four milestones; by milestone 51 (wall-clock time, the `date` command, and an NTP service) it had five crates missing again, and `filesystem_contract`,
     // `compositor`, `video_terminal`, `bitmap_font` and `grant_plan` carried **82 host tests that this gate never ran**. All
     // 82 passed when finally run, which is the point: nobody noticed because nothing failed, and a
     // gate that quietly covers less than it claims is the failure mode script/fmt's `--check` bug

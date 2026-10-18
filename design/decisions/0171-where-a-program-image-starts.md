@@ -57,7 +57,7 @@ derived from the linker script by substitution so the two cannot drift.
 One correction to the block, from re-measuring: it says `USER_STACK_VA` is *"a protocol constant
 in two `_proto` crates"* and names `supervision_protocol` and `c_seam`. Today it appears in 23
 files, and among the crates the protocol-side reference is
-`crates/counter_frequency_protocol`, whose own documentation places its page *"deliberately far above
+`crates/counter_frequency_contract`, whose own documentation places its page *"deliberately far above
 every other low-half address this tree hands out"* and reasons explicitly against `0x40_0000` and
 `0x50_0000`. `crates/line_editor` and four files under `components/` refer to it in documentation
 when explaining why their buffers live in `.bss`. The conclusion is unchanged and the shape is

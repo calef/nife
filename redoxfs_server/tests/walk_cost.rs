@@ -6,8 +6,8 @@
 //! deterministic: the requests a walk sends and the device reads they cost. `walk_model` replays
 //! the walk `std`'s PAL sends; this asserts on what it cost.
 
+use filesystem_contract::dir;
 use filesystem_fixture::walk as tree;
-use filesystem_protocol::dir;
 use redoxfs::{DiskMemory, FileSystem};
 use redoxfs_server::walk_model::{self, Counting};
 use redoxfs_server::{CachedDisk, NameCopy, Server};
@@ -22,7 +22,7 @@ fn staged() -> Server<CachedDisk<Counting<DiskMemory>>> {
     let disk = DiskMemory::new(32 * 1024 * 1024);
     let fs = FileSystem::create(disk, None, 0, 0).expect("create");
     let mut srv = Server::open(fs.disk).expect("open the fresh image");
-    walk_model::stage(&mut srv, filesystem_protocol::fs::ROOT as u32).expect("stage the tree");
+    walk_model::stage(&mut srv, filesystem_contract::fs::ROOT as u32).expect("stage the tree");
     let disk = srv.into_disk();
     Server::open(CachedDisk::new(
         Counting::new(disk),

@@ -10,7 +10,7 @@
 //!    the kernel's DMA region                                and a transfer buffer
 //! ```
 //!
-//! Held, the complete list: slot 0, the request endpoint (`filesystem_protocol::blk`, as the virtio
+//! Held, the complete list: slot 0, the request endpoint (`filesystem_contract::blk`, as the virtio
 //! block server speaks); slot 1, a readiness endpoint; the data plane's pages at [`DATA_PLANE_VA`]
 //! (the I/O rings and [`TRANSFER_BLOCKS`] pages of buffer); and one page of BAR0, the doorbells, at
 //! [`DOORBELL_VA`]. Denied, each by decision: BAR0's register page (`CC`, `CSTS`, the admin ring
@@ -46,7 +46,7 @@
 #![allow(missing_docs)]
 #![no_main]
 
-use filesystem_protocol::blk;
+use filesystem_contract::blk;
 use non_volatile_memory_express::{Command, Completion, CqState, Doorbell, Handoff, SqState};
 use user_mode_runtime::mapped_window::{MappedWindow, PAGE};
 use user_mode_runtime::{exit, receive_request, reply, send};
@@ -100,8 +100,8 @@ const NSID: u32 = 1;
 const SPIN_BOUND: u32 = 50_000_000;
 
 /// The bring-up step words this server reports on its readiness endpoint, in the `0xDEAD_..`
-/// shape `entropy_protocol::bringup_failure` established, so a boot transcript reads the same way
-/// across services. A report of [`filesystem_protocol::READY`] means a command went to
+/// shape `entropy_contract::bringup_failure` established, so a boot transcript reads the same way
+/// across services. A report of [`filesystem_contract::READY`] means a command went to
 /// the controller and came back.
 const STEP_BAD_HANDOFF: u64 = 0xDEAD_0001;
 const STEP_FIRST_READ: u64 = 0xDEAD_0002;
@@ -133,7 +133,7 @@ struct Plane {
     cid: u16,
     /// How many device flushes have completed, answered back on every successful `blk::FLUSH`.
     /// A strictly increasing count is what makes that verb's success falsifiable; see the
-    /// contract's own argument at `filesystem_protocol::blk::FLUSH`.
+    /// contract's own argument at `filesystem_contract::blk::FLUSH`.
     flushes: i64,
 }
 
@@ -265,7 +265,7 @@ pub extern "C" fn _start(arg0: u64, arg1: u64, arg2: u64) -> ! {
     // the controller how it is.
     let first = plane.transfer(0, 0, false);
     let report = if first.is_ok() {
-        filesystem_protocol::READY
+        filesystem_contract::READY
     } else {
         STEP_FIRST_READ
     };
@@ -282,7 +282,7 @@ pub extern "C" fn _start(arg0: u64, arg1: u64, arg2: u64) -> ! {
     serve(plane)
 }
 
-/// The serve loop: one endpoint, one wait point, forever. `filesystem_protocol::blk`, the same
+/// The serve loop: one endpoint, one wait point, forever. `filesystem_contract::blk`, the same
 /// four verbs the virtio block server answers, so the FS server and the disk tools cannot tell
 /// which kind of disk is underneath.
 fn serve(mut plane: Plane) -> ! {
@@ -300,7 +300,7 @@ fn serve(mut plane: Plane) -> ! {
         // request is never trusted to stay inside the region it shares just because the packing
         // allows a larger number to be spelled.
         let count = blk::req_blocks(w0).min(TRANSFER_BLOCKS);
-        let r0: i64 = match filesystem_protocol::operation(w0) {
+        let r0: i64 = match filesystem_contract::operation(w0) {
             blk::READ => transfer_range(&mut plane, block, count, false),
             blk::WRITE => transfer_range(&mut plane, block, count, true),
             blk::SIZE => plane.handoff.size_bytes as i64,
@@ -316,10 +316,10 @@ fn serve(mut plane: Plane) -> ! {
                         plane.flushes += 1;
                         plane.flushes
                     }
-                    Err(_) => filesystem_protocol::reply_err(5), // EIO
+                    Err(_) => filesystem_contract::reply_err(5), // EIO
                 }
             }
-            _ => filesystem_protocol::reply_err(22), // EINVAL: an opcode this server has no verb for
+            _ => filesystem_contract::reply_err(22), // EINVAL: an opcode this server has no verb for
         };
         reply(reply_cap, r0 as u64, 0);
     }
@@ -369,7 +369,7 @@ fn transfer_range(plane: &mut Plane, block: u64, count: usize, write: bool) -> i
             .transfer(block.saturating_add(i as u64), i, write)
             .is_err()
         {
-            return filesystem_protocol::reply_err(5); // EIO
+            return filesystem_contract::reply_err(5); // EIO
         }
     }
     0

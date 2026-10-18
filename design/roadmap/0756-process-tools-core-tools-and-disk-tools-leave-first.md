@@ -64,7 +64,7 @@ a two-repo change.
 |---|---|---|---|
 | A. basalt v0 | nothing; basalt pins `nife` at a commit and runs its image build and system test | zero cross-repository changes; one scheduled basalt run per pin bump | recommended now |
 | B. `procps` with `coreutils` and `util-linux` | 8 crates and 15 programs | 32 commits in thirty days, 26 crossing; 21 of those were sweeps; 1 Cargo dependent; 0 path references | recommended as the first code cut, once its preconditions hold |
-| C. `redoxfs` | the vendored engine, server and host tool | 31 commits, 26 crossing, 12 of 17 focused ones crossing; 0 Cargo dependents; 254 path references; links the least settled interfaces (`filesystem_protocol` 10 breaking in four weeks, the partition table 27) | second; cheapest to move today, which is an effort argument |
+| C. `redoxfs` | the vendored engine, server and host tool | 31 commits, 26 crossing, 12 of 17 focused ones crossing; 0 Cargo dependents; 254 path references; links the least settled interfaces (`filesystem_contract` 10 breaking in four weeks, the partition table 27) | second; cheapest to move today, which is an effort argument |
 | D. `contracts` and `runtime` (milestone 691 (packages move out of this repository, one per pull request)'s order) | 42 crates | 298 commits, 187 crossing; 35 dependents | refused for the first cut |
 | E. `host-tools` | `xtask` and friends | 227 commits, 139 crossing; 276 references in 152 files | refused |
 | F. Wait for every precondition before doing anything | nothing | the integration gate is still unbuilt when the first cut arrives | refused |
@@ -83,7 +83,7 @@ a two-repo change.
    - The moving repository builds without a clone of this one: §235's S2 archive (milestone 607 (nife is built and updated from packages)
      item 4), or a dated, recorded exception for a git dependency on `nife` at a commit.
    - Every interface the cut links (`abi`, `address_space_map`, `glob`,
-     `machine_statistics_protocol`) has a row in 610's per-crate view and is settled by its rule
+     `machine_statistics_contract`) has a row in 610's per-crate view and is settled by its rule
      for four weeks. Three of the four have no row today.
    - basalt can take a component's output as a package by digest: §235's P1, milestone 607 item 1.
    - The home and its repository name are ratified, and §201's citation identity is ruled, since
