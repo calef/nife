@@ -43,7 +43,7 @@ commit (the same commit `script/metrics` picks) is compared with the previous we
 
 | column | counts |
 |---|---|
-| `interface_breaking` | boundary moves: `abi` constants and enum variants (the `Error::*` codes) renumbered, removed, or renamed with the number kept, and format identity value changes |
+| `interface_breaking` | boundary moves: `abi` constants and enum variants (the `Error::*` codes) renumbered, removed, or renamed with the number kept. Format identity value changes count too |
 | `interface_additions` | `abi` constants and enum variants added |
 | `interface_std_abi_breaking`, `_additions` | item-level churn in the std copy set; reported, not thresholded |
 | `interface_contract_api_breaking`, `_additions` | item-level churn in the contract crates beyond the boundary; reported, not thresholded |
