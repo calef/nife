@@ -23,7 +23,7 @@ The rest of this block is the plan as written on 2026-09-23. What is left is und
 
 ## What this is, and why it is not a purchasing problem
 
-The pricing lane priced aarch64 cloud compute against four requirements and found that **every
+The pricing lane priced aarch64 cloud compute against four requirements. It found that **every
 aarch64 offer qualifies and nife boots none of them**: AWS Graviton at $0.073 an hour, Oracle's
 Always Free Ampere A1 at nothing at all, Azure Cobalt, Google Axion. They take a custom image, they
 have a serial console, they have a power API, they have cores. What they hand a kernel is ACPI, and
@@ -35,14 +35,14 @@ the firmware. PR #1153 replaced that entry with "An ACPI machine is described se
 same section.
 
 **Every aarch64 server cloud is such a machine by specification.** Arm's Server Base Boot
-Requirements make UEFI and ACPI the boot contract for Arm servers, and the clouds comply: AWS
+Requirements make UEFI and ACPI the boot contract for Arm servers, and the clouds comply. AWS
 resolves an arm64 instance with no boot mode specified to UEFI, Azure's Cobalt 100 Arm series is
 Generation 2 only, and Google's image-import requirements say the boot disk must support ACPI. The
 sources and the dates they were read are in notes/rented-metal.md, which PR #1152 holds.
 
 **This unblocks the whole aarch64 column, not one machine.** Milestone 88 (nife
 on rented silicon: Oracle's free tier first, Graviton metal for the PMU) budgeted "a UEFI boot path
-and an ACPI front door" in 2026-08-03 and got the UEFI half; milestone 100 (read the machine's PSCI
+and an ACPI front door" in 2026-08-03 and got the UEFI half. Milestone 100 (read the machine's PSCI
 and its CPU list, not QEMU `virt`'s) said in its own scope note that it "gets the DTB path right and
 leaves a clean seam for the second source; it does not build ACPI." This block is that second
 source, which both named and neither built.
@@ -88,11 +88,11 @@ machine's firmware offers, which QEMU's EDK2 only approximates. It corroborates;
 
 ## What `crates/machine_discovery/src/acpi.rs` already covers
 
-Read in full on 2026-09-23. It is 1,598 lines, it has no architecture in its name and none in its
-code, and it is host-tested and Kani-proved (milestone 319 (the crate that parses firmware had no
-proofs, and three of its first ones were false), milestone 431 (the ACPI walk is reachable by the
-prover for the first time, and proved by nothing)). The generic half is done; add to it, do not
-start beside it.
+Read in full on 2026-09-23. It is 1,598 lines, and it has no architecture in its name and none in
+its code. It is host-tested and Kani-proved. For the proofs, see milestone 319 (the crate that
+parses firmware had no proofs, and three of its first ones were false). See also milestone 431 (the
+ACPI walk is reachable by the prover for the first time, and proved by nothing). The generic half
+is done; add to it, do not start beside it.
 
 | What | Where | aarch64 needs it |
 |---|---|---|
@@ -109,10 +109,11 @@ start beside it.
 Nothing in this tree reads any of these today. Checked by grep on 2026-09-23: `GTDT`, `FADT` and `SPCR` appear nowhere in any `.rs` file in this repository.
 
 1. MADT entry types 0x0B through 0x0F, which are where aarch64's CPUs and interrupt controller
-   live. On x86 the CPU list is type 0 and the interrupt controller is type 1; on aarch64 they are
-   GICC (0x0B, one per CPU, carrying the MPIDR and the ACPI processor UID and an enabled flag),
-   GICD (0x0C, the distributor's base address and the GIC version), GIC MSI frame (0x0D),
-   GICR (0x0E, the redistributor array a GICv3 needs) and GIC ITS (0x0F). Today all five fall
+   live. On x86 the CPU list is type 0 and the interrupt controller is type 1. On aarch64 they are
+   five entry types. GICC (0x0B) is one per CPU, carrying the MPIDR and the ACPI processor UID and
+   an enabled flag. GICD (0x0C) carries the distributor's base address and the GIC version. GICR
+   (0x0E) is the redistributor array a GICv3 needs. The other two are GIC MSI frame (0x0D) and GIC
+   ITS (0x0F). Today all five fall
    through `madt_entries`' final arm to `MadtEntry::Other(kind)`: correct, and telling you nothing. This is the direct counterpart of what
    `machine_discovery::gic::discover` reads out of the device tree, including the GICv2-versus-GICv3
    distinction whose cost `kernel/src/memory.rs` records beside that call: a kernel that booted,
@@ -120,9 +121,9 @@ Nothing in this tree reads any of these today. Checked by grep on 2026-09-23: `G
 2. GTDT, the generic timer description, which has no decoder at all. It is the table that carries
    the secure EL1, non-secure EL1, virtual and non-secure EL2 timer interrupt numbers and their
    flags, plus `CntControlBase` and `CntReadBase`. A device tree states the same four interrupts in
-   `arm,armv8-timer`. This is the gap the pricing lane's Graviton anecdote names precisely: an
-   ACPI machine has no timer node, so the generic-timer interrupt IDs have to come from the GTDT or
-   the kernel arms nothing and sees no interrupts and no error.
+   `arm,armv8-timer`. This is the gap the pricing lane's Graviton anecdote names precisely. An
+   ACPI machine has no timer node, so the generic-timer interrupt IDs have to come from the GTDT.
+   Otherwise the kernel arms nothing and sees no interrupts and no error.
 3. The FADT's Arm boot architecture flags, for PSCI. Milestone 100 (read the machine's PSCI and
    its CPU list, not QEMU `virt`'s) already recorded the shape of this: "an ACPI machine has no
    device tree at all and states PSCI in the FADT". Two bits decide whether PSCI exists and whether
@@ -215,9 +216,9 @@ path and cannot prove the placement.
 Each ships independently and none needs hardware. The QEMU A/B above tests all of them.
 
 1. The aarch64 MADT entries, in `crates/machine_discovery/src/acpi.rs`. GICC, GICD, GICR, GIC
-   MSI frame and ITS as new `MadtEntry` arms, host-tested against a table dumped from QEMU's own
-   `virt` with `acpi=on` (which is how the x86 decoders were checked against `q35`), and proved the
-   way milestone 319 proved the rest. Touches no kernel and no loader; merges on its own.
+   MSI frame and ITS become new `MadtEntry` arms. Each is host-tested against a table dumped from
+   QEMU's own `virt` with `acpi=on` (which is how the x86 decoders were checked against `q35`), and
+   proved the way milestone 319 proved the rest. Touches no kernel and no loader; merges on its own.
 2. GTDT, in the same crate, the same way: a table decoder with no entry list, the smallest of
    these. Items 1 and 2 can be one lane or two; they collide in one file.
 3. FADT's Arm boot flags and SPCR, in the same crate. Smaller still: each is a header plus a

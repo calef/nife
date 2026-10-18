@@ -52,10 +52,10 @@ And it is the input `design/fatal-risks/README.md`'s counter-theses need in the 
 These are the questions, not the answers. A lane taking this should expect to argue for a rule and
 record the refusals.
 
-1. What counts as a lane's work. A branch prefix and a number in the slug is the obvious rule and
-   it is not obviously right: a lane that gates from the main checkout, a session that answers a
-   question about a milestone from `main`, and a maintainer branch that finishes a lane's work are
-   three different cases and only one of them is easy.
+1. What counts as a lane's work. A branch prefix and a number in the slug is the obvious rule, and
+   it is not obviously right. Take a lane that gates from the main checkout, a session that answers
+   a question about a milestone from `main`, and a maintainer branch that finishes a lane's work.
+   Those are three different cases and only one of them is easy.
 2. Where the unattributable goes. The honest options are a named bucket (`main`, `maintainer/`,
    unattributed) carried beside the attributed total, or nothing. It must not be spread across
    milestones pro rata, which would manufacture a number for every block in the tree.
@@ -78,5 +78,5 @@ failure 519 spends a section refusing.
 ## Index row
 
 Every session record already carries the branch a lane worked on, so the join from machine effort to
-milestone is on disk; what is missing is a rule for the cases where a branch is not a milestone, and
-a wrong per-component cost is worse than none.
+milestone is on disk. What is missing is a rule for the cases where a branch is not a milestone. A
+wrong per-component cost is worse than none.
