@@ -34,7 +34,7 @@ process holding one device rather than a facility inside every program.
 ## The service passes bytes through, and computes nothing
 
 **No pool, no whitening, no mixing, no DRBG.** There is no cryptographic primitive in this tree
-(vendoring one is milestone 56's other half and its own decision), and without a one-way function
+(vendoring one is milestone 56's other half and its own decision). Without a one-way function,
 every transformation available here is a *reversible permutation*: it would change the bytes without
 adding an unpredictability an attacker could not undo, while making the security property harder to
 state. So the property stays one sentence: these are the device's bytes.
@@ -58,7 +58,7 @@ the one payload where degrading quietly is worst.
 [§10](0010-capability-microkernel.md) says bulk rides in a page and control rides in
 the message, and this contract deliberately does not. A page shared with a client is a place the
 bytes persist and a second party can read, and random bytes are the payload whose entire value
-is that nobody else has seen them; registers and the client's own stack are a smaller footprint than
+is that nobody else has seen them. Registers and the client's own stack are a smaller footprint than
 a page both parties map. The cost is one round trip per eight bytes, which is a real cost and is
 recorded rather than waved away: a 32-byte key is four round trips.
 
@@ -82,7 +82,7 @@ refusing rather than by degrading. The two callers split where std already split
 Explicit was tempting and is the wrong trade here. A nife-only "ask for a real RNG" API means
 every program that wants entropy is a program that will not build anywhere else, which is a real
 cost against a demonstration OS whose claim is that ordinary Rust runs on it. And it would not have
-bought the honesty: the thing that makes a caller safe is that the weak path **cannot be reached
+bought the honesty. The thing that makes a caller safe is that the weak path **cannot be reached
 from the strong one**, and that is a property of this file's structure, not of the caller's spelling.
 
 `fill_bytes` has no error channel, so the only loud refusal available is a panic. That is §43's

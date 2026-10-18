@@ -11,16 +11,6 @@
 # two counts). Median and bold are not asked of documents under 200 words.
 # measure: 3
 path	words	median	longest	bold_lead	bold_inline
-design/decisions/0035-scanner-findings.md	-	-	59	-	-
-design/decisions/0036-repository-in-the-tcb.md	-	22	62	-	-
-design/decisions/0037-text-as-a-value.md	-	-	82	-	-
-design/decisions/0038-scoped-suppressions.md	-	-	46	-	-
-design/decisions/0039-component-names.md	-	-	56	-	-
-design/decisions/0041-endpoint-as-broker.md	-	-	52	-	-
-design/decisions/0042-truthful-filesystem.md	-	-	45	-	-
-design/decisions/0043-clock-authority.md	-	20.5	46	-	-
-design/decisions/0044-entropy-capability.md	-	-	54	-	-
-design/decisions/0046-dependency-rule.md	-	-	59	-	-
 design/decisions/0047-directory-rights.md	-	-	45	-	-
 design/decisions/0049-removal-and-recursion.md	-	-	48	-	-
 design/decisions/0052-nameset-glob-grant.md	-	-	45	-	-
