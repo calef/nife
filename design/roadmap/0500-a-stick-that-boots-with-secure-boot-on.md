@@ -19,7 +19,15 @@ rung 1 of the trivial install DECISIONS §157 (a trivial install is a web page,)
 "Secure Boot off"; nothing owns what a stranger does about it.
 
 Signing is a fact that leaves the machine (a key trusted by other people's
-firmware), which is AGENTS.md's irreversible category. **Options, no winner.**
+firmware), which is AGENTS.md's irreversible category.
+
+## The ruling
+
+calef, 2026-10-18 (UTC), recorded by the maintainer at 23:10Z: K1. The trivial-install page tells
+the stranger to turn Secure Boot off, first and not in a footnote, with per-vendor steps and the
+BitLocker recovery-key warning. nife holds no boot key, which keeps §195 (a recipe vouches, and the
+owner may overrule) rule 4: no long-lived signing key is held by anyone. K2 and K3 are not built.
+Either one would reopen that rule, and K2 cannot be undone once a signed shim is public.
 
 ## The gap
 
