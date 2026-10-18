@@ -21,11 +21,11 @@ firmware and hardware agree.
 
 ## What is built
 
-- **The table is parsed at boot** (milestone 161): `crates/machine_discovery`'s `parse_dmar` checks
+- **The table is parsed at boot** (milestone 161 (the x86_64 kernel port)): `crates/machine_discovery`'s `parse_dmar` checks
   the fixed part, and `DmarUnits::parse` decodes every DRHD, RMRR and PCI scope. Milestone 594
   brings up every unit it names.
 - **The unit's claim**, `ECAP.IR`, is read from each unit in `kernel/src/arch/x86_64/iommu.rs`
-  (milestone 317). xenon's tour (`bench/xenon-2026-09-17/tour-display-225100.log`, line 119)
+  (milestone 317 (the interrupt-remapping flags)). xenon's tour (`bench/xenon-2026-09-17/tour-display-225100.log`, line 119)
   printed `interrupt remapping offered (unused)` from its first unit, so
   `notes/confinement-claims.md`'s fifth claim is answered there as offered by the unit and unused by
   this kernel.
