@@ -27,7 +27,7 @@ first figure, 955,223 bytes/s, has no committed transcript; #1495).
 
 **The path back to GREEN (proposed 2026-10-08; item 1's benchmark ruled 2026-10-18).**
 
-1. The same unmodified storage benchmark, run on nife and on Linux on xenon, with real logs (not photographs), repeated passes and per-request latency, so the 2.16x read is either explained or corrected. The benchmark is `ioping`: asked "Should `ioping`, run unmodified on nife and on Linux on xenon with real logs and repeated passes, be the benchmark that explains or corrects risk 6's 2.16x read?", calef answered "Yes." (2026-10-18, about 18:00 UTC).
+1. The same unmodified storage benchmark, run on nife and on Linux on xenon, with real logs (not photographs), repeated passes and per-request latency, so the 2.16x read is either explained or corrected. The benchmark is `ioping`: asked "Should `ioping`, run unmodified on nife and on Linux on xenon with real logs and repeated passes, be the benchmark that explains or corrects risk 6's 2.16x read?", calef answered "Yes." (2026-10-18 UTC).
 2. `fio` at queue depths 1, 4 and 32, one job file on both systems, per milestone 833 (the same storage benchmark on nife and Linux, by porting real fio). It waits on packaging, not threads: milestones 812 and 836 are built, and ports wait on 809 and 801 (calef, 2026-10-12 UTC).
 3. Still open from the caveats: one device, one board (xenon).
 
