@@ -70,7 +70,7 @@ static BAR_LIMIT: AtomicU64 = AtomicU64::new(0);
 /// The compiled-in `PCI_ECAM_BUSES` until [`survey`] has run, and what the survey found afterwards.
 /// On both `virt` boards no survey runs and this is 1 forever, which is the truth there: their
 /// device trees describe a flat bus and QEMU puts nothing behind a bridge.
-pub fn ecam_buses() -> u16 {
+pub(crate) fn ecam_buses() -> u16 {
     match ECAM_BUSES.load(Ordering::Relaxed) {
         0 => PCI_ECAM_BUSES,
         n => n,
@@ -123,7 +123,7 @@ pub fn ecam_bytes() -> u64 {
 /// cost is bounded by what a flat map of the whole MCFG window would have cost anyway, so the set
 /// version is not built until a machine asks for it.
 #[cfg_attr(not(target_arch = "x86_64"), allow(dead_code))]
-pub fn survey() -> usize {
+pub(crate) fn survey() -> usize {
     if !is_host_bridge_present() {
         return 0;
     }
@@ -356,7 +356,7 @@ fn cfg_read32(bdf: Bdf, off: u64) -> u32 {
 /// naming a device by the route to it rather than by its number (milestone 261 (the NVMe driver leaves the kernel)'s bench rehearsal;
 /// `machine_discovery::acpi::DmarUnits::owner`).
 #[cfg_attr(not(target_arch = "x86_64"), allow(dead_code))]
-pub fn bridge_bus_range(bus: u8, dev: u8, func: u8) -> Option<(u8, u8)> {
+pub(crate) fn bridge_bus_range(bus: u8, dev: u8, func: u8) -> Option<(u8, u8)> {
     if !is_host_bridge_present() || dev > 31 || func > 7 {
         return None;
     }
@@ -378,7 +378,7 @@ pub fn bridge_bus_range(bus: u8, dev: u8, func: u8) -> Option<(u8, u8)> {
 /// Bus-Master on the endpoint only; status bits name an abort the endpoint saw. Two short lines,
 /// at most, so the photograph holds them.
 #[cfg(feature = "disk_throughput")]
-pub fn print_dma_path(rid: u32) {
+pub(crate) fn print_dma_path(rid: u32) {
     let ep = Bdf {
         bus: (rid >> 8) as u8,
         dev: ((rid >> 3) & 0x1f) as u8,
@@ -427,7 +427,7 @@ fn cfg_write32(bdf: Bdf, off: u64, v: u32) {
 /// (a disk and a NIC differ only in the driver above this), so both `find_block_device` and
 /// `find_net_device` return it.
 #[derive(Debug, Clone, Copy)]
-pub struct PciVirtioDevice {
+pub(crate) struct PciVirtioDevice {
     /// Which function this is, for the boot tours' prints; every other build (tests, the shell
     /// and bench boots) drives the device without ever naming it, so the lint is quieted rather
     /// than chased through four cfg combinations.
@@ -476,7 +476,7 @@ pub struct PciVirtioDevice {
 
 /// Find the first modern virtio-blk function on the bus and bring it up. `None` if there is no
 /// PCI disk (an empty bus reads all-ones and enumerates nothing).
-pub fn find_block_device() -> Option<PciVirtioDevice> {
+pub(crate) fn find_block_device() -> Option<PciVirtioDevice> {
     let bdf = find_virtio_bdf(
         pci::VIRTIO_BLK_MODERN,
         Some(pci::VIRTIO_BLK_TRANSITIONAL),
@@ -497,7 +497,7 @@ pub fn find_block_device() -> Option<PciVirtioDevice> {
 /// transport tests (`virtio_service::start_role_pci`) want "the PCI disk" rather than an ordinal
 /// into an ordering that spans a bus they are deliberately not on.
 #[cfg_attr(not(any(test, feature = "system_tests")), allow(dead_code))] // the mmio half answers first on both virt boards
-pub fn find_block_device_n(n: usize) -> Option<PciVirtioDevice> {
+pub(crate) fn find_block_device_n(n: usize) -> Option<PciVirtioDevice> {
     if !is_host_bridge_present() {
         return None;
     }
@@ -521,7 +521,7 @@ pub fn find_block_device_n(n: usize) -> Option<PciVirtioDevice> {
 /// Find the first modern virtio-net function on the bus and bring it up. `None` if there is no
 /// PCI NIC. Same bring-up as the disk; the transport seam and the DMA confinement do not know or
 /// care that a NIC sits behind them (milestone 30).
-pub fn find_net_device() -> Option<PciVirtioDevice> {
+pub(crate) fn find_net_device() -> Option<PciVirtioDevice> {
     let bdf = find_virtio_bdf(
         pci::VIRTIO_NET_MODERN,
         Some(pci::VIRTIO_NET_TRANSITIONAL),
@@ -538,7 +538,7 @@ pub fn find_net_device() -> Option<PciVirtioDevice> {
 /// twin to prove parity over; the parity that matters here is aarch64 `virt` and riscv `virt`, both
 /// of which carry `virtio-gpu-pci` over the §18 transport. Same bring-up as the disk, and the same
 /// hardware confinement: the device is entered behind the IOMMU at `virtio::register`.
-pub fn find_gpu_device() -> Option<PciVirtioDevice> {
+pub(crate) fn find_gpu_device() -> Option<PciVirtioDevice> {
     // No transitional twin exists for virtio-gpu (the legacy id range predates the device), so this
     // asks for the modern id and nothing else rather than warning about a legacy device that cannot
     // be on the bus.
@@ -554,7 +554,7 @@ pub fn find_gpu_device() -> Option<PciVirtioDevice> {
 /// anyway so it sits behind the same IOMMU domain the GPU does and the display's two devices are
 /// confined the same way. A keyboard is the one device whose DMA a user would least like
 /// unconfined: its buffers are where every keystroke lands.
-pub fn find_input_device() -> Option<PciVirtioDevice> {
+pub(crate) fn find_input_device() -> Option<PciVirtioDevice> {
     let bdf = find_virtio_bdf(pci::VIRTIO_INPUT_MODERN, None, "virtio-input")?;
     bring_up(bdf, pci::VIRTIO_TYPE_INPUT)
 }
@@ -568,7 +568,7 @@ pub fn find_input_device() -> Option<PciVirtioDevice> {
 /// same reason a keyboard is: its buffer is the one place in memory whose contents must not be
 /// guessable, and an unconfined device could write it anywhere and read the rest.
 #[cfg_attr(not(any(test, feature = "system_tests")), allow(dead_code))] // entropy_service is the caller, and the m56 tests drive it
-pub fn find_rng_device() -> Option<PciVirtioDevice> {
+pub(crate) fn find_rng_device() -> Option<PciVirtioDevice> {
     let bdf = find_virtio_bdf(
         pci::VIRTIO_RNG_MODERN,
         Some(pci::VIRTIO_RNG_TRANSITIONAL),
@@ -639,7 +639,7 @@ pub fn count_block_devices() -> usize {
 // boards every BAR arrives zero and there would be nothing to report. The function itself is
 // arch-neutral and stays here rather than in `arch/`, so this allow is the cost of that.
 #[cfg_attr(not(target_arch = "x86_64"), allow(dead_code))]
-pub fn bar_census() -> (usize, usize) {
+pub(crate) fn bar_census() -> (usize, usize) {
     if !is_host_bridge_present() {
         return (0, 0);
     }
@@ -948,7 +948,7 @@ fn program_msix(bdf: Bdf, bars: &[Option<Bar>; 6], target: pci::MsiTarget) -> Op
 /// controller. No INTx line, on purpose: the milestone-53 driver completes by polling the phase
 /// tag (`kernel/src/non_volatile_memory_express.rs`), so wiring an interrupt here would record a fact nothing checks.
 #[derive(Debug, Clone, Copy)]
-pub struct PciNvmeDevice {
+pub(crate) struct PciNvmeDevice {
     /// The register file's physical base (BAR0; the doorbells live in it too).
     pub bar0: u64,
     /// The PCIe requester id, the key the IOMMU confines DMA by (as `PciVirtioDevice::rid`).
@@ -964,7 +964,7 @@ pub struct PciNvmeDevice {
 /// capabilities) and the INTx resolution (the driver polls). Bus-Master last, as everywhere: DMA
 /// permission is granted at the final moment, and on a machine with an IOMMU the device still
 /// cannot reach a byte until `iommu::confine` maps its region (denied by default, milestone 16b).
-pub fn find_nvme_device() -> Option<PciNvmeDevice> {
+pub(crate) fn find_nvme_device() -> Option<PciNvmeDevice> {
     if !is_host_bridge_present() {
         return None;
     }
@@ -1005,7 +1005,7 @@ pub fn find_nvme_device() -> Option<PciNvmeDevice> {
 /// file placed and decoding, bus mastering on, its interrupt resolved, and the byte ranges of BAR0
 /// its MSI-X structures occupy, which the driver must never be mapped.
 #[derive(Debug, Clone, Copy)]
-pub struct PciXhciDevice {
+pub(crate) struct PciXhciDevice {
     /// The register file's physical base (BAR0).
     pub bar0: u64,
     /// BAR0's size in bytes.
@@ -1026,7 +1026,7 @@ pub struct PciXhciDevice {
 ///
 /// Bus-Master before confinement, as [`find_nvme_device`] does and for its reason: on a machine
 /// with an IOMMU the controller cannot reach a byte until `iommu::confine` maps its region.
-pub fn find_xhci_device() -> Option<PciXhciDevice> {
+pub(crate) fn find_xhci_device() -> Option<PciXhciDevice> {
     if !is_host_bridge_present() {
         return None;
     }
@@ -1090,7 +1090,7 @@ pub fn find_xhci_device() -> Option<PciXhciDevice> {
 /// caller can confine its DMA before the device is told where any ring is. No INTx line, for the
 /// reason [`PciNvmeDevice`] has none: the data plane polls.
 #[derive(Debug, Clone, Copy)]
-pub struct PciE1000eDevice {
+pub(crate) struct PciE1000eDevice {
     /// The register file's physical base (BAR0, 128 KiB on the 82574L).
     pub bar0: u64,
     /// The PCIe requester id, the key the IOMMU confines DMA by.
@@ -1104,7 +1104,7 @@ impl PciE1000eDevice {
     /// Read a dword of this function's configuration space. The I219's descriptor-ring flush
     /// reads its status word at `0xe4` (`e1000e::pch::flush`), which is the one reason a NIC
     /// driver here needs configuration space after bring-up.
-    pub fn config_read32(&self, off: u64) -> u32 {
+    pub(crate) fn config_read32(&self, off: u64) -> u32 {
         cfg_read32(self.bdf, off)
     }
 }
@@ -1116,7 +1116,7 @@ impl PciE1000eDevice {
 /// **The same shape as `find_nvme_device` with a different predicate**, and a third copy is where
 /// a shared `find_function(predicate)` should be lifted rather than written (milestone 242 (USB host and a keyboard that is not a UART)'s xHCI
 /// lane is in the same position). Not lifted here, so this lane does not edit the NVMe path.
-pub fn find_e1000e_device() -> Option<PciE1000eDevice> {
+pub(crate) fn find_e1000e_device() -> Option<PciE1000eDevice> {
     if !is_host_bridge_present() {
         return None;
     }
@@ -1172,7 +1172,7 @@ const IOMMU_DEVICE: u16 = 0x0014;
 /// Its own registers are reached by the CPU as MMIO, so it needs Memory-Space Enable but not
 /// Bus-Master: the IOMMU is not a DMA initiator, it is the thing that polices them.
 #[cfg(target_arch = "riscv64")]
-pub fn init_iommu() {
+pub(crate) fn init_iommu() {
     if !is_host_bridge_present() {
         return;
     }

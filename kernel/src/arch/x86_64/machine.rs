@@ -37,7 +37,7 @@ const MAX_ENTRIES: usize = 64;
 /// `None` when the magic does not match or the structure is unreadable, which covers the case that
 /// matters: this kernel booted some other way and `ebx` held something else. Reporting `None` lets
 /// the caller say so; reading on would produce a plausible memory map out of unrelated bytes.
-pub fn boot_info(at: usize) -> Option<BootInfo> {
+pub(crate) fn boot_info(at: usize) -> Option<BootInfo> {
     if at == 0 {
         return None;
     }
@@ -108,7 +108,7 @@ fn boot_slot(info: &BootInfo) -> Option<u8> {
 ///
 /// **It must run before `arch::mmu::init`**, and it does, by a wide margin: it is the first thing
 /// the boot tour does. See `memory::record_framebuffer`.
-pub fn attach_screen(at: usize) -> Option<(Framebuffer, u32, u32)> {
+pub(crate) fn attach_screen(at: usize) -> Option<(Framebuffer, u32, u32)> {
     let info = boot_info(at)?;
     let cmdline = cmdline(&info)?;
     let found = Framebuffer::parse(cmdline)?;
@@ -138,7 +138,7 @@ pub fn attach_screen(at: usize) -> Option<(Framebuffer, u32, u32)> {
 }
 
 /// Read memory-map entry `index` of the map `info` describes.
-pub fn memory_map_entry(info: &BootInfo, index: usize) -> Option<MemoryEntry> {
+pub(crate) fn memory_map_entry(info: &BootInfo, index: usize) -> Option<MemoryEntry> {
     if info.memmap == 0 || index >= info.memmap_entries as usize {
         return None;
     }
@@ -184,7 +184,7 @@ pub fn initial_ramdisk(info: &BootInfo) -> Option<Module> {
 ///
 /// `None` on every boot that did not come from a file a loader could re-read, which includes
 /// QEMU's own `-kernel` PVH path.
-pub fn boot_file(info: &BootInfo) -> Option<Module> {
+pub(crate) fn boot_file(info: &BootInfo) -> Option<Module> {
     nth_module(info, 1)
 }
 
@@ -205,7 +205,7 @@ fn nth_module(info: &BootInfo, index: usize) -> Option<Module> {
 
 /// Print the memory map, one line per entry plus a usable total. The x86 stand-in for the device
 /// tree's RAM regions, and for now the only thing that reads the map at all.
-pub fn print_memory_map(info: &BootInfo) {
+pub(crate) fn print_memory_map(info: &BootInfo) {
     if info.memmap_entries == 0 {
         crate::println!(
             "  memory      : the loader described no memory map (version {})",
@@ -286,7 +286,7 @@ const MAX_ACPI_CPUS: usize = 32;
 /// "the firmware did not say" has to be distinguishable from "the firmware said zero". That is the
 /// same posture `memory::uart_irq` takes on the other two architectures.
 #[derive(Debug, Clone, Copy)]
-pub struct Acpi {
+pub(crate) struct Acpi {
     /// The local APIC's physical address, from the MADT (with any address-override applied).
     pub local_apic: Option<u64>,
     /// The first IO APIC's id, physical address and global-interrupt base.
@@ -405,7 +405,7 @@ fn is_reachable(at: u64, len: usize) -> bool {
 /// 2 and 3 are a scan for an eight-byte string, so the checksum inside `parse_rsdp` is the only
 /// thing separating a real hit from a coincidence. That is why nothing here does its own comparison
 /// and calls it found.
-pub fn find_rsdp(hint: u64) -> Option<(u64, Rsdp)> {
+pub(crate) fn find_rsdp(hint: u64) -> Option<(u64, Rsdp)> {
     if is_reachable(hint, 36)
         // SAFETY: `reachable` checked the range is in the direct map, and firmware places this
         // structure in ordinary memory.
@@ -484,7 +484,7 @@ fn table_at(at: u64) -> Option<(SdtHeader, &'static [u8])> {
 /// Printing during the walk rather than after is deliberate: this is the first code in the boot that
 /// follows pointers firmware wrote, so if one of them is wrong the last line printed says which
 /// table was being read.
-pub fn read_acpi(hint: u64) -> Acpi {
+pub(crate) fn read_acpi(hint: u64) -> Acpi {
     let mut found = Acpi::default();
 
     let Some((at, rsdp)) = find_rsdp(hint) else {
@@ -614,7 +614,7 @@ const PCIEXBAR_CONFIG_ADDRESS: u32 = 0x8000_0060;
 /// What [`enable_pcie_ecam`] found, so the boot line can say which machine it is on rather than
 /// claiming credit for work firmware had already done.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum EcamDecode {
+pub(crate) enum EcamDecode {
     /// The register already carried the MCFG's own base with the enable bit set, and nothing was
     /// written. Measured on both paths this kernel boots: OVMF programs it while bringing PCIe up,
     /// and QEMU's `q35` arrives at reset with it already set (see [`enable_pcie_ecam`]).
@@ -674,7 +674,7 @@ fn pciexbar_length_bits(bus_count: u32) -> Option<u32> {
 ///
 /// Uses the legacy configuration mechanism rather than the ECAM window itself, which is the only
 /// way to bootstrap: nothing can read the ECAM window to turn the ECAM window on.
-pub fn enable_pcie_ecam(base: u64, bus_count: u32) -> EcamDecode {
+pub(crate) fn enable_pcie_ecam(base: u64, bus_count: u32) -> EcamDecode {
     // SAFETY: 0xcf8/0xcfc are the legacy PCI configuration ports, present on every PC-compatible
     // machine independent of ECAM, and reading the host bridge's own configuration space through
     // them is what firmware does before handing control to an OS.
@@ -703,7 +703,7 @@ pub fn enable_pcie_ecam(base: u64, bus_count: u32) -> EcamDecode {
 }
 
 /// Print what the tables said, after [`read_acpi`] has walked them.
-pub fn print_acpi_summary(found: &Acpi) {
+pub(crate) fn print_acpi_summary(found: &Acpi) {
     match found.local_apic {
         Some(pa) => crate::println!(
             "                local apic {pa:#x}, {} cpu(s) enabled, {} disabled, 8259s {}",
@@ -876,7 +876,7 @@ const LOW_MEGABYTE: u64 = 0x0010_0000;
 /// Returns how many RAM regions were used, which the boot print reports; a machine describing more
 /// than [`MAX_RAM_REGIONS`] gets the first that many, and saying how many were taken is what makes
 /// that visible rather than silent.
-pub fn bring_up_memory(info: &BootInfo) -> usize {
+pub(crate) fn bring_up_memory(info: &BootInfo) -> usize {
     let mut ram = [device_tree_blob::Region { start: 0, size: 0 }; MAX_RAM_REGIONS];
     let mut count = 0;
 

@@ -49,7 +49,7 @@ impl Context {
     /// `thread_trampoline`, which reads the closure pointer out of `x19` and the monomorphized
     /// caller out of `x20` (the closure's concrete type was erased, so the address says *where* and
     /// the shim says *how*). See `Thread::spawn_into` and context.s.
-    pub fn for_kernel_thread(closure_at: u64, call_shim: u64) -> Self {
+    pub(crate) fn for_kernel_thread(closure_at: u64, call_shim: u64) -> Self {
         Context {
             x19: closure_at,
             x20: call_shim,
@@ -70,7 +70,7 @@ impl Context {
     /// `ret` lands in `user_entry_trampoline`, which moves `x19` to the EL0 entry, `x20` to the user
     /// `sp`, and `x21`..`x23` to the child's initial `x0`..`x2`, then drops to EL0. See
     /// `Thread::arm_for_start`.
-    pub fn for_user_thread(entry: u64, user_sp: u64, args: [u64; 3]) -> Self {
+    pub(crate) fn for_user_thread(entry: u64, user_sp: u64, args: [u64; 3]) -> Self {
         Context {
             x19: entry,
             x20: user_sp,

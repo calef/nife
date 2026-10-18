@@ -55,7 +55,7 @@ assumed. The refusal is about who maintains the glue, not about whether it works
 
 **The honest caveat**: `p256`'s own README says its curve arithmetic *"has never been independently
 audited"*, so the audit argument covers the AEADs and not the whole graph. Eight crates in the graph
-runtime-detect SIMD; five need an explicit force-soft flag on nife's targets, `curve25519-dalek`
+runtime-detect SIMD. Five need an explicit force-soft flag on nife's targets, `curve25519-dalek`
 needs a backend selector, and on `x86_64-unknown-nife` a crate that detects AVX2 executes it in ring
 3 and dies with `vector 6 (invalid opcode)` before printing anything. That hazard is a property of
 the targets rather than of this ruling, and `notes/cryptography-provider.md` carries it.

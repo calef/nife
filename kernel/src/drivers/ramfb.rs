@@ -57,7 +57,7 @@ const DMA_REGISTER: u64 = 0x10;
 
 /// How much scratch this driver needs, in bytes: a command and the largest buffer any one command
 /// moves (a directory entry, at [`ENTRY_LEN`]).
-pub const SCRATCH_LEN: usize = 128;
+pub(crate) const SCRATCH_LEN: usize = 128;
 
 /// Where the data buffer starts inside the scratch. The command occupies the first sixteen bytes.
 const DATA_AT: usize = 64;
@@ -89,7 +89,7 @@ pub enum Error {
 }
 
 /// A `fw_cfg` register block, with a scratch region to talk through.
-pub struct FirmwareConfiguration {
+pub(crate) struct FirmwareConfiguration {
     /// The register block, as the caller can address it now.
     registers: u64,
     /// [`SCRATCH_LEN`] bytes the caller owns, as the caller can address them now.
@@ -242,7 +242,7 @@ impl FirmwareConfiguration {
     ///
     /// See [`Error`]. The common one by far is [`Error::NoSuchFile`], which is every QEMU started
     /// without `-device ramfb` and is not a failure.
-    pub fn point_ramfb(&mut self, screen: Framebuffer) -> Result<(), Error> {
+    pub(crate) fn point_ramfb(&mut self, screen: Framebuffer) -> Result<(), Error> {
         let key = self.file(RAMFB)?;
         self.put(&RamFramebuffer(screen).encode());
         self.run(DmaCommand::write(

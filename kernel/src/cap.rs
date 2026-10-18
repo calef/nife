@@ -259,7 +259,7 @@ const _: () = assert!(
 // is 2,060 bytes rounded to eight. It was 1,032 at 32 slots with a `u32` word. If this fires, the
 // layout moved and `crate::thread`'s page-fit check is the next thing to read.
 const _: () = assert!(core::mem::size_of::<CapabilityTable>() == 2064);
-pub type CapabilityTable = capability::CapabilityTable<Object, CAPABILITY_TABLE_SLOTS>;
+pub(crate) type CapabilityTable = capability::CapabilityTable<Object, CAPABILITY_TABLE_SLOTS>;
 
 /// **What a real interactive boot actually reaches**: the progenitor's peak capability count,
 /// measured on `script/swish-check`'s aarch64 leg. The highest is the gpu-and-keyboard boot, at 34
@@ -279,7 +279,7 @@ pub type CapabilityTable = capability::CapabilityTable<Object, CAPABILITY_TABLE_
 /// The check is against this record rather than the ceiling, which would only fire on a boot that
 /// had already died, or a fraction of it, which would be a margin picked out of the air. A
 /// recorded measurement going stale is a fact about the tree that stopped being true.
-pub const CAPABILITY_TABLE_PEAK_MEASURED: usize = 34;
+pub(crate) const CAPABILITY_TABLE_PEAK_MEASURED: usize = 34;
 
 // The headroom milestone 230 left is what this pair means, so the two cannot silently invert.
 const _: () = assert!(CAPABILITY_TABLE_PEAK_MEASURED < CAPABILITY_TABLE_SLOTS);
@@ -328,7 +328,7 @@ const PEAK_STABLE_PASSES_NEEDED: usize = 16;
 /// rather than any particular thread's. Finding the owning thread means walking every thread under
 /// the scheduler lock; that is a scan this deliberately does not do, and the omission is in this
 /// module's BUGS.
-pub fn report_peak() {
+pub(crate) fn report_peak() {
     use core::sync::atomic::Ordering;
     let (peak, ceiling) = capability::highest_seen();
     if peak == 0 {
@@ -569,7 +569,7 @@ pub fn memory_region_root_cap(region: u64) -> Cap {
 }
 
 /// A capability to a virtio device's transport. `WRITE` lets the holder operate it.
-pub fn virtio_cap(id: usize) -> Cap {
+pub(crate) fn virtio_cap(id: usize) -> Cap {
     Cap {
         object: Object::Virtio(id),
         rights: Rights::WRITE,
@@ -580,7 +580,7 @@ pub fn virtio_cap(id: usize) -> Cap {
 /// The progenitor holds one with `GRANT` so it can delegate the device to an entropy service it builds,
 /// [`irq_cap_rights`]'s own reason one object type over.
 #[cfg_attr(not(any(test, feature = "system_tests")), allow(dead_code))]
-pub fn virtio_cap_rights(id: usize, rights: Rights) -> Cap {
+pub(crate) fn virtio_cap_rights(id: usize, rights: Rights) -> Cap {
     Cap {
         object: Object::Virtio(id),
         rights,
@@ -662,7 +662,7 @@ pub fn address_space_cap(name: u64, rights: Rights) -> Cap {
 /// A one-shot reply capability naming the caller `tid` (milestone 12). Minted with `WRITE` (may
 /// answer) and **no `GRANT`** (cannot be delegated onward), so it is non-transferable as well as
 /// single-use. The kernel is the only minter, at a `CALL` rendezvous.
-pub fn reply_cap(tid: crate::thread::ThreadId) -> Cap {
+pub(crate) fn reply_cap(tid: crate::thread::ThreadId) -> Cap {
     Cap {
         object: Object::Reply(tid),
         rights: Rights::WRITE,

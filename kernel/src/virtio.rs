@@ -41,7 +41,7 @@ const REG_DEVICE_ID: u64 = 0x008;
 /// Device-neutral on purpose, because the fields the kernel hands a driver (a register base and an
 /// interrupt) are the same whether the device is a disk or a NIC; only the driver differs.
 #[derive(Debug, Clone, Copy)]
-pub struct VirtioMmioDevice {
+pub(crate) struct VirtioMmioDevice {
     /// Physical address of this slot's registers. Handed to the driver as a device mapping.
     pub mmio_phys: u64,
     /// The interrupt this device raises. Handed to the driver as an `Irq` capability.
@@ -83,7 +83,7 @@ fn find_by_device_id(device_id: u32) -> Option<VirtioMmioDevice> {
 }
 
 /// Scan the bus for the first virtio block device. `None` if there is no disk attached.
-pub fn find_block_device() -> Option<VirtioMmioDevice> {
+pub(crate) fn find_block_device() -> Option<VirtioMmioDevice> {
     find_by_device_id(DEVICE_ID_BLOCK)
 }
 
@@ -95,7 +95,7 @@ pub fn find_block_device() -> Option<VirtioMmioDevice> {
 ///
 /// [`find_block_device_n`] also calls it, to know where the mmio half of the ordering ends and the
 /// PCI half begins.
-pub fn count_block_devices() -> usize {
+pub(crate) fn count_block_devices() -> usize {
     let mut n = 0;
     for slot in 0..mmu::virtio_slots() {
         if read_reg(slot, REG_MAGIC) == MAGIC && read_reg(slot, REG_DEVICE_ID) == DEVICE_ID_BLOCK {
@@ -106,7 +106,7 @@ pub fn count_block_devices() -> usize {
 }
 
 /// Scan the bus for the first virtio network device. `None` if there is no NIC attached.
-pub fn find_net_device() -> Option<VirtioMmioDevice> {
+pub(crate) fn find_net_device() -> Option<VirtioMmioDevice> {
     find_by_device_id(DEVICE_ID_NET)
 }
 
@@ -116,7 +116,7 @@ pub fn find_net_device() -> Option<VirtioMmioDevice> {
 /// driver that works on one transport and silently not the other is the bug DECISIONS §18 exists
 /// to prevent.
 #[cfg_attr(not(any(test, feature = "system_tests")), allow(dead_code))] // entropy_service is the caller, and the m56 tests drive it
-pub fn find_entropy_device() -> Option<VirtioMmioDevice> {
+pub(crate) fn find_entropy_device() -> Option<VirtioMmioDevice> {
     find_by_device_id(DEVICE_ID_ENTROPY)
 }
 
@@ -128,7 +128,7 @@ pub fn find_entropy_device() -> Option<VirtioMmioDevice> {
 /// `rid` is `None` for a virtio-mmio device because neither `virt` board puts an IOMMU in front of
 /// that bus, and `Some` for a PCI function because the domain `virtio::register` builds is keyed on
 /// it. A caller that had to ask which bus it got would be a caller the seam failed.
-pub struct BlockDevice {
+pub(crate) struct BlockDevice {
     pub transport: Transport,
     pub intid: u32,
     pub rid: Option<u32>,
@@ -162,7 +162,7 @@ pub struct BlockDevice {
 /// (`fs_service::is_crash_disk_present`) should be read as "this ordinal exists", with the side
 /// effects of having asked.
 #[cfg_attr(not(any(test, feature = "system_tests")), allow(dead_code))] // fs_service is the caller, and the phase-2 test drives it
-pub fn find_block_device_n(n: usize) -> Option<BlockDevice> {
+pub(crate) fn find_block_device_n(n: usize) -> Option<BlockDevice> {
     if let Some(d) = mmio_block_device_n(n) {
         return Some(BlockDevice {
             transport: Transport::Mmio {
@@ -259,7 +259,7 @@ const REG_DEVICE_CONFIG: u64 = 0x100;
 /// The mmio vocabulary is the seam's canonical language on purpose: it is the vocabulary the ABI
 /// already exposes to drivers (`abi::virtio`), and it is flat (offset -> register), which makes
 /// the translation table below legible. Nothing about the choice is load-bearing beyond that.
-pub enum Transport {
+pub(crate) enum Transport {
     /// A virtio-mmio slot: the vocabulary IS this device's register block.
     Mmio { mmio_phys: u64 },
     /// A modern virtio-pci function, resolved by kernel/src/pci.rs: the common-config block, the
@@ -364,7 +364,7 @@ impl Transport {
     /// The PCI transport for an enumerated function (kernel/src/pci.rs). Every field copied out of
     /// one struct, in one place, so a new field (milestone 29's `device_type` was the second) is not
     /// a many-call-site edit and cannot be filled in differently at one of them.
-    pub fn pci(d: &crate::pci::PciVirtioDevice) -> Transport {
+    pub(crate) fn pci(d: &crate::pci::PciVirtioDevice) -> Transport {
         Transport::Pci {
             common: d.common,
             notify_base: d.notify_base,
@@ -547,7 +547,7 @@ impl Transport {
 /// the proof quantifying over constants this file could drift away from silently; aliasing makes the
 /// proved layout the layout that runs, the same discipline that has the kernel *call*
 /// `direct_memory_access_validator::validate_and_shadow` rather than keep a parallel copy of it.
-pub const QSIZE: u16 = direct_memory_access_validator::LAYOUT_QSIZE;
+pub(crate) const QSIZE: u16 = direct_memory_access_validator::LAYOUT_QSIZE;
 const DESC_OFF: u64 = direct_memory_access_validator::DESC_OFF; // 16 * QSIZE
 const AVAIL_OFF: u64 = direct_memory_access_validator::AVAIL_OFF; // 6 + 2*QSIZE
 const USED_OFF: u64 = direct_memory_access_validator::USED_OFF; // 6 + 8*QSIZE
@@ -558,7 +558,7 @@ const RING_END: u64 = direct_memory_access_validator::RING_END;
 /// queue 0, transmit = queue 1); the disk uses only queue 0. Fixed and small on purpose: one
 /// kernel-private shadow frame per device holds every queue's shadow rings, so the ceiling is what
 /// fits there (`MAX_QUEUES * RING_BLOCK <= FRAME_SIZE`), asserted below, not a policy dial.
-pub const MAX_QUEUES: usize = direct_memory_access_validator::MAX_QUEUES as usize;
+pub(crate) const MAX_QUEUES: usize = direct_memory_access_validator::MAX_QUEUES as usize;
 
 /// The stride between successive queues' ring areas, in **both** the driver's DMA region and the
 /// kernel-private shadow. Queue `q`'s descriptor table, available ring, and used ring sit at
@@ -670,7 +670,7 @@ static DEVICES: IrqSafeMutex<Devices> = IrqSafeMutex::new(
 /// reach (its DMA region plus the shadow page) before it is entered in the table: from that moment
 /// any other address it emits faults at the IOMMU. The software shadow ring stays either way, now
 /// as defence in depth (notes/dma.md).
-pub fn register(
+pub(crate) fn register(
     transport: Transport,
     direct_memory_access_base: u64,
     direct_memory_access_size: u64,
@@ -795,7 +795,7 @@ fn validate_and_shadow(
 
 /// Errors the transport can return to the driver.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum TransportError {
+pub(crate) enum TransportError {
     /// No such device id.
     NoDevice,
     /// The queue does not fit in the DMA region, `QUEUE_NUM_MAX` is too small, or the queue is in
@@ -806,7 +806,7 @@ pub enum TransportError {
 }
 
 /// Read a device register the driver is allowed to see (status, features, interrupt status).
-pub fn read_register(id: usize, off: u64) -> Option<u32> {
+pub(crate) fn read_register(id: usize, off: u64) -> Option<u32> {
     let devs = DEVICES.lock();
     let dev = devs.get(id)?;
     Some(dev.transport.read_reg(off))
@@ -814,7 +814,7 @@ pub fn read_register(id: usize, off: u64) -> Option<u32> {
 
 /// Write one of the DMA-*safe* registers (status, features selection, interrupt ack). Refuses the
 /// DMA-critical ones (queue addresses, notify), which have their own validated paths.
-pub fn write_register(id: usize, off: u64, val: u32) -> Result<(), TransportError> {
+pub(crate) fn write_register(id: usize, off: u64, val: u32) -> Result<(), TransportError> {
     // Only these offsets are safe to pass straight through. Everything to do with queue setup or
     // notification goes through setup_queue / notify, which validate.
     const SAFE: &[u64] = &[
@@ -888,7 +888,7 @@ fn sanitize_driver_features(sel: u32, val: u32) -> u32 {
 ///
 /// A device with several queues (virtio-net: receive on 0, transmit on 1) calls this once per
 /// queue; each queue's rings sit at `queue * RING_BLOCK` in both regions, so they never overlap.
-pub fn setup_queue(id: usize, num: u16, queue: u16) -> Result<(), TransportError> {
+pub(crate) fn setup_queue(id: usize, num: u16, queue: u16) -> Result<(), TransportError> {
     if queue as usize >= MAX_QUEUES {
         return Err(TransportError::BadQueue);
     }
@@ -917,7 +917,7 @@ pub fn setup_queue(id: usize, num: u16, queue: u16) -> Result<(), TransportError
 /// and only then ring the device. If any descriptor escapes the driver's DMA region, the shadow is
 /// not published, the device is NOT notified, and the driver gets `DmaEscape`. Each queue keeps its
 /// own last-validated index, so a receive submit and a transmit submit never interfere.
-pub fn notify(id: usize, queue: u16) -> Result<(), TransportError> {
+pub(crate) fn notify(id: usize, queue: u16) -> Result<(), TransportError> {
     if queue as usize >= MAX_QUEUES {
         return Err(TransportError::BadQueue);
     }

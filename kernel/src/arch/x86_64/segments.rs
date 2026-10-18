@@ -29,15 +29,15 @@ use core::cell::SyncUnsafeCell;
 
 /// Selector for the kernel code segment. Also `IA32_STAR[47:32]`, from which `syscall` derives the
 /// kernel SS as this + 8.
-pub const KERNEL_CODE: u16 = 0x08;
+pub(crate) const KERNEL_CODE: u16 = 0x08;
 /// Selector for the kernel data segment (ss/ds/es while in ring 0).
-pub const KERNEL_DATA: u16 = 0x10;
+pub(crate) const KERNEL_DATA: u16 = 0x10;
 /// Selector for the user data segment. `sysret` computes this as `IA32_STAR[63:48] + 8`.
 #[allow(dead_code)] // Referenced once user mode exists; see the module header for why it is here now.
-pub const USER_DATA: u16 = 0x18 | 3;
+pub(crate) const USER_DATA: u16 = 0x18 | 3;
 /// Selector for the user code segment. `sysret` computes this as `IA32_STAR[63:48] + 16`.
 #[allow(dead_code)]
-pub const USER_CODE: u16 = 0x20 | 3;
+pub(crate) const USER_CODE: u16 = 0x20 | 3;
 /// Selector for the TSS descriptor, which occupies **two** GDT slots (0x28 and 0x30) because a
 /// 64-bit system descriptor is 16 bytes rather than 8.
 const TSS_SELECTOR: u16 = 0x28;
@@ -168,7 +168,7 @@ const BASE_GDT: [u64; 7] = [
 /// `#[repr(C, packed)]` because the CPU reads exactly ten bytes and a Rust-chosen alignment hole
 /// between the two fields would make it read the base from the wrong offset.
 #[repr(C, packed)]
-pub struct DescriptorTablePointer {
+pub(crate) struct DescriptorTablePointer {
     pub limit: u16,
     pub base: u64,
 }
@@ -272,7 +272,12 @@ pub unsafe fn init() {
             code = in(reg) KERNEL_CODE as u64,
             data = in(reg) KERNEL_DATA as u32,
             tss = in(reg) TSS_SELECTOR,
-            tmp = lateout(reg) _,
+            // `out`, never `lateout`: the `lea` writes `tmp` while `data` and `tss` are still to
+            // be read, and `lateout` lets the compiler give `tmp` an input's register. A release
+            // build put `tss` and `tmp` both in `rcx`, so `ltr` loaded the low bits of a code
+            // address as a selector: `#GP`, then a double fault, right after the boot's `pat`
+            // line. Only a release boot shows it, which is `cargo xtask uefi-boot --release`.
+            tmp = out(reg) _,
             options(preserves_flags),
         );
     }
@@ -300,7 +305,7 @@ pub unsafe fn init() {
 /// `top` must be the top of a stack no other IST vector shares. Two vectors on one stack means a
 /// fault taken while handling the other overwrites its frame, which is precisely the situation IST
 /// exists to survive.
-pub unsafe fn set_interrupt_stack(slot: u8, top: u64) {
+pub(crate) unsafe fn set_interrupt_stack(slot: u8, top: u64) {
     assert!((1..=7).contains(&slot), "IST slots are 1..=7, not {slot}");
     let id = crate::cpu::id();
     // SAFETY: writes this CPU's own TSS `ist[slot - 1]`, in bounds by the assertion above. Through
@@ -316,7 +321,7 @@ pub unsafe fn set_interrupt_stack(slot: u8, top: u64) {
 /// Core `id`'s IST entry `slot` (one-based, as the IDT encodes it): the `rsp` the CPU loads for a
 /// gate that selects it. Read by the tests that check [`super::ist::install`].
 #[cfg(test)]
-pub fn interrupt_stack(id: usize, slot: u8) -> u64 {
+pub(crate) fn interrupt_stack(id: usize, slot: u8) -> u64 {
     assert!((1..=7).contains(&slot), "IST slots are 1..=7, not {slot}");
     // SAFETY: reads core `id`'s `ist[slot - 1]`, in bounds by the assertion above and by indexing,
     // unaligned because the TSS is `packed`. Written once at that core's bring-up and not after.
@@ -463,7 +468,7 @@ fn set_port_range_grant_on(id: usize, grant: Option<(u16, u16)>) {
 /// installed *here*, and a core's bitmap only ever permits the range for the thread currently
 /// running on it, so there is no second core to tell. A `PortRange::REVOKE` names a holder that may
 /// be running anywhere and calls [`revoke_port_grant_everywhere`] instead.
-pub fn revoke_installed_port_grant(base: u16, count: u16) {
+pub(crate) fn revoke_installed_port_grant(base: u16, count: u16) {
     revoke_installed_port_grant_on(crate::cpu::id(), base, count);
 }
 
@@ -510,7 +515,7 @@ pub(super) fn revoke_installed_port_grant_on(id: usize, base: u16, count: u16) {
 /// and latent, because nothing in the tree invokes the take-back yet; a whole-machine sweep
 /// (`keeper == None`) passes `false` and resets here too. The remote half is unaffected either way:
 /// no other core can be running the invoker.
-pub fn revoke_port_grant_everywhere(base: u16, count: u16, spare_this_cpu: bool) {
+pub(crate) fn revoke_port_grant_everywhere(base: u16, count: u16, spare_this_cpu: bool) {
     if !spare_this_cpu {
         revoke_installed_port_grant(base, count);
     }
@@ -573,7 +578,7 @@ static BENCH_IOMAP: SyncUnsafeCell<BenchIoBitmap> =
 /// Safe to call from anywhere: the internal `unsafe` is this CPU's own static, single-hart, no
 /// concurrent access, the same fact `bench.rs`'s single-threaded caller already relies on.
 #[cfg(feature = "bench")]
-pub fn bench_write_io_bitmap(pattern: u8) -> u8 {
+pub(crate) fn bench_write_io_bitmap(pattern: u8) -> u8 {
     // SAFETY: single-hart bench boot; writes and reads this CPU's own static, never aliased.
     unsafe {
         let base = (&raw mut (*BENCH_IOMAP.get()).0).cast::<u8>();

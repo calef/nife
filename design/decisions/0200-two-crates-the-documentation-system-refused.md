@@ -7,14 +7,15 @@ ratified_by: calef
 
 # 200. Two crates the documentation system refused, and why each loses on its own terms
 
-Milestone 40 (documentation as a system service), 2026-08-26, minted as a
-section on 2026-09-20 by the integrator, on the finding by milestone 448 (a refusal gets a number, a status, and a condition) that two
-dependency refusals were living as prose in a BUILT block where §46 (thin primitives or whole subsystems) is the record that
-judges them. *(Section number provisional until the merge queue lands it.)*
+Milestone 40 (documentation as a system service), 2026-08-26, minted as a section on 2026-09-20 by
+the integrator. The finding, by milestone 448 (a refusal gets a number, a status, and a condition),
+was that two dependency refusals were living as prose in a BUILT block.
+§46 (thin primitives or whole subsystems) is the record that judges them. *(Section number
+provisional until the merge queue lands it.)*
 
 Nothing here is new. Both refusals were made when the documentation system was built, by the lane
-that built it, and neither has been revisited. What changed is where they live: DECISIONS §46 says
-taking a dependency is a decision rather than a convenience, and a decision belongs where the next
+that built it, and neither has been revisited. What changed is where they live. DECISIONS §46 says
+taking a dependency is a decision rather than a convenience. A decision belongs where the next
 person reaching for that crate will look, rather than in the follow-on section of a milestone that
 finished a month ago.
 

@@ -19,9 +19,9 @@
 // nothing calls `exit` any more is a day the gate speaks up.
 
 #[cfg_attr(not(any(test, feature = "system_tests")), allow(dead_code))]
-pub const EXIT_SUCCESS: u32 = 0;
+pub(crate) const EXIT_SUCCESS: u32 = 0;
 #[cfg_attr(not(any(test, feature = "system_tests")), allow(dead_code))]
-pub const EXIT_FAILURE: u32 = 1;
+pub(crate) const EXIT_FAILURE: u32 = 1;
 
 /// Semihosting operation number for "terminate".
 #[cfg_attr(not(any(test, feature = "system_tests")), allow(dead_code))]

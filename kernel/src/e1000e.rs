@@ -40,7 +40,7 @@ use crate::arch::mmu;
 /// The longest bring-up waits for `CTRL.RST` to clear.
 const RESET_WAIT_MS: u64 = 1000;
 /// The longest bring-up waits for `STATUS.LU`.
-pub const LINK_WAIT_MS: u64 = 3000;
+pub(crate) const LINK_WAIT_MS: u64 = 3000;
 
 /// Why a controller that is on the bus was not brought up.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

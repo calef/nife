@@ -277,7 +277,7 @@ pub fn spawn_elf_child_builder(
 /// map it again, delegate it, or revoke it, which is the property `non_volatile_memory_express_service`
 /// and milestone 159's TRNG driver chose spawn-time mappings for. **Name provisional.**
 #[derive(Clone, Copy)]
-pub struct DeviceRun {
+pub(crate) struct DeviceRun {
     /// Where the first page lands in the new process.
     pub va: u64,
     /// The first page's physical address. Page-aligned.
@@ -300,7 +300,7 @@ pub fn run(image: &[u8], spawn: Spawn) -> ! {
 }
 
 /// [`run`], with one [`DeviceRun`] mapped as well. Never returns. **Name provisional.**
-pub fn run_with_device_run(image: &[u8], spawn: Spawn, device: DeviceRun) -> ! {
+pub(crate) fn run_with_device_run(image: &[u8], spawn: Spawn, device: DeviceRun) -> ! {
     run_with(image, spawn, Some(device), None)
 }
 
@@ -386,7 +386,7 @@ fn run_with(image: &[u8], spawn: Spawn, device: Option<DeviceRun>, own_space: Op
 /// scheduled thread rather than the one that called `START`. The address space is already
 /// installed (the context switch that scheduled us in used our `space` field). This is `enter_at`
 /// with a caller-chosen stack and zero args; `enter_at` is now the exec wrapper over it.
-pub fn enter_at_on_current(entry: u64, user_sp: u64, arg0: u64, arg1: u64, arg2: u64) -> ! {
+pub(crate) fn enter_at_on_current(entry: u64, user_sp: u64, arg0: u64, arg1: u64, arg2: u64) -> ! {
     enter_frame(entry, user_sp, arg0, arg1, arg2)
 }
 

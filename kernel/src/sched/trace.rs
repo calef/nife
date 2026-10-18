@@ -2,12 +2,12 @@ use core::sync::atomic::{AtomicU64, Ordering};
 
 /// Events per core. 16 is enough to see the whole final approach to a wedge (a block, the
 /// wakes around it, the switch that stranded something) without turning the dump into a log.
-pub const DEPTH: usize = 16;
+pub(crate) const DEPTH: usize = 16;
 
 /// What happened. The discriminant is packed into the entry's top byte.
 #[derive(Clone, Copy)]
 #[repr(u8)]
-pub enum Event {
+pub(crate) enum Event {
     /// `schedule()` picked `tid` and marked it Running on this core.
     SwitchTo = 1,
     /// The thread running here marked itself Blocked (aux = low byte of the rendezvous name).
@@ -56,7 +56,7 @@ pub enum Event {
 /// ring slot is distinguishable from a recorded `SwitchTo`. Read only by the `soak`-gated
 /// counter array; a `const` costs no bytes either way, so it stays visible to every build.
 #[cfg_attr(not(feature = "soak_test"), allow(dead_code))]
-pub const KINDS: usize = 12;
+pub(crate) const KINDS: usize = 12;
 
 struct Ring {
     seq: AtomicU64,
@@ -107,7 +107,7 @@ static RINGS: [Ring; crate::cpu::MAX_CPUS] = [EMPTY_RING; crate::cpu::MAX_CPUS];
     target_os = "none",
     unsafe(link_section = ".text.hot.sched.trace.record")
 )]
-pub fn record(kind: Event, tid: u64, aux: u8) {
+pub(crate) fn record(kind: Event, tid: u64, aux: u8) {
     let ring = &RINGS[crate::cpu::id()];
     let seq = ring.seq.fetch_add(1, Ordering::Relaxed);
     // kind in the top byte, aux below it, the tid's low 48 bits under that. A tid is
@@ -140,7 +140,7 @@ pub fn record(kind: Event, tid: u64, aux: u8) {
 /// still zero" and "how much did it grow since the last beat", and both survive a reader that
 /// is a few events behind.
 #[cfg(feature = "soak_test")]
-pub fn counted(kind: Event) -> u64 {
+pub(crate) fn counted(kind: Event) -> u64 {
     let mut total = 0u64;
     for ring in &RINGS {
         total = total.wrapping_add(ring.counts[kind as usize].load(Ordering::Relaxed));
@@ -149,7 +149,7 @@ pub fn counted(kind: Event) -> u64 {
 }
 
 /// Print core `cpu`'s ring, oldest first. Racy against that core's own writes, by design.
-pub fn dump(cpu: usize) {
+pub(crate) fn dump(cpu: usize) {
     let ring = &RINGS[cpu];
     let seq = ring.seq.load(Ordering::Relaxed);
     if seq == 0 {

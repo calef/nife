@@ -83,7 +83,7 @@ calef's ranking, confirmed against the records:
   `notes/scheduler.md` records that the gate built against it has never fired on a field failure.
   Risk 5 has no confirmed silicon-only defect, so
   radon's value here rests on reaching an architecture, not on evidence it has produced.
-- xenon is the least valuable bench to sit at, and the reason is sharper than "x86 is common": a
+- xenon is the least valuable bench to sit at, and the reason is sharper than "x86 is common". A
   rented machine does its job *better*, because it comes with a power API and a console instead of
   needing a person at a null modem.
 
@@ -102,9 +102,9 @@ quietly covers two of three architectures reads as full coverage six weeks later
 instead.
 
 And riscv64 rental does exist, which was checked rather than assumed. Scaleway's Elastic Metal
-RV1 is a T-Head TH1520 (C910, RV64GC), 4 cores at 1.85 GHz, 16 GB, 128 GB eMMC, at €0.042 an hour or
-€15.99 a month, with a serial console over SSH, command-line provisioning, and support for installing
-*"the most exotic operating systems"*. It is a Labs product with no SLA.
+RV1 is a T-Head TH1520 (C910, RV64GC), 4 cores at 1.85 GHz, 16 GB, 128 GB eMMC, at €0.042 an hour
+or €15.99 a month. It comes with a serial console over SSH, command-line provisioning, and support
+for installing *"the most exotic operating systems"*. It is a Labs product with no SLA.
 
 **It is not a radon substitute and is better than one in a different way.** The TH1520 is a different
 SoC from radon's JH7110, so booting nife there is a port (a UART at another address, its own device

@@ -23,10 +23,10 @@ use super::exceptions::TrapFrame;
 /// Nothing to switch: the outgoing thread's `tp` is in the frame it trapped through, and the
 /// incoming thread's is in its own.
 #[inline(always)]
-pub fn hand_over(_outgoing: &mut u64, _incoming: u64) {}
+pub(crate) fn hand_over(_outgoing: &mut u64, _incoming: u64) {}
 
 /// **Change the calling thread's `tp` now**, for `SET_THREAD_POINTER` aimed at oneself: the
 /// syscall returns through `frame`, and `trap_return` restores `x4` from it for a U-mode return.
-pub fn set_live(frame: &mut TrapFrame, value: u64) {
+pub(crate) fn set_live(frame: &mut TrapFrame, value: u64) {
     frame.set_thread_pointer(value);
 }

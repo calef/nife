@@ -16,7 +16,7 @@
 use designware_mobile_storage::host::Registers;
 
 /// A controller's register window in the direct map, and the counter as a microsecond clock.
-pub struct Window {
+pub(crate) struct Window {
     base: usize,
     hz: u64,
 }

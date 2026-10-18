@@ -5,12 +5,13 @@ raised: 2026-09-19
 
 # 160. What a subshell copies, given that a capability set cannot always be copied
 
-Raised 2026-09-19 by milestone 435 (forty-five milestones are gated on a decision nobody wrote down)'s lane, which found that milestone 52 (subshells without `fork`, and what copying an endowment means) has
-carried a `DECISION` gate since it was recorded and names no decision anywhere a reader can open.
-The fork itself is calef's and older: the block's own status line says *"calef asked for this to be
-captured as a milestone and explicitly asked to design it together."* This file is that ask moved
-from a paragraph inside a roadmap block into the place AGENTS.md says an open decision lives.
-*(Section number provisional until the merge queue lands it.)*
+Raised 2026-09-19 by milestone 435 (forty-five milestones are gated on a decision nobody wrote
+down)'s lane. That lane found that milestone 52 (subshells without `fork`, and what copying an
+endowment means) has carried a `DECISION` gate since it was recorded and names no decision anywhere
+a reader can open. The fork itself is calef's and older: the block's own status line says *"calef
+asked for this to be captured as a milestone and explicitly asked to design it together."* This file
+is that ask moved from a paragraph inside a roadmap block into the place AGENTS.md says an open
+decision lives. *(Section number provisional until the merge queue lands it.)*
 
 ## What is being decided
 
@@ -53,11 +54,11 @@ and this is measured rather than feared.
 | **C** | **Scoped bindings**, `with cwd = /tmp { ... }`, and no subshell at all. | Says what it means rather than reaching for duplication. Covers the scoping use completely and the isolation use not at all. Diverges from Unix spelling, which milestone 47's rule allows only when the divergence earns it. |
 | **D** | **Hybrid**: scoping by binding, isolation by an explicit verb. | Two mechanisms, each doing one thing, which is the shape §42 and milestone 47 both converged on. Two syntaxes to learn instead of one. |
 
-Recommendation: D, and derivation rather than duplication inside it. The argument is not that
-it is less work; it is more. It is that this tree has twice found a Unix verb doing two jobs and
-has twice been right to split them, and that the split is what makes question 3 answerable at all:
-a scoping construct never touches a capability, so the non-duplicable case simply does not arise
-there, and an explicit isolation verb is the one place that has to answer it.
+Recommendation: D, and derivation rather than duplication inside it. The argument is not that it is
+less work; it is more. It is that this tree has twice found a Unix verb doing two jobs and has twice
+been right to split them. It is also that the split is what makes question 3 answerable at all. A
+scoping construct never touches a capability, so the non-duplicable case simply does not arise
+there. An explicit isolation verb is the one place that has to answer it.
 
 And derivation beats duplication on machinery that already exists. If a child's capabilities
 are derived from the parent's, [§16](0016-object-revocation.md) (reclaim the objects a process built)'s revocation and the derivation tree
@@ -67,17 +68,17 @@ was both the better option and the smaller one once it was checked.
 
 ## Whether the premise is true
 
-Partly, and the part that is false matters. The block's framing is "what replaces `fork`", and
-the honest answer is that `fork` has a third use that has nothing to do with shells: Redis
-`BGSAVE`, the Android and Chrome zygotes, and PostgreSQL's backend-per-connection all want a copy
-of a running address space, frozen or warm. Checked 2026-08-17 and unchanged: there is no
-copy-on-write machinery in `kernel/src` or `crates/`, and no address-space-copy method on the ABI.
+Partly, and the part that is false matters. The block's framing is "what replaces `fork`". The
+honest answer is that `fork` has a third use that has nothing to do with shells. Redis `BGSAVE`, the
+Android and Chrome zygotes, and PostgreSQL's backend-per-connection all want a copy of a running
+address space, frozen or warm. Checked 2026-08-17 and unchanged: there is no copy-on-write machinery
+in `kernel/src` or `crates/`, and no address-space-copy method on the ABI.
 
 **That is a separate decision and should not be answered here.** It is a kernel question that would
 exist with no shell in the tree, and folding it in would design a shell feature around a mechanism
-the shell does not need. The two benchmark claims are both true at once and the pairing is the
-honest form: `spawn_el0` at ~7.7 us beats Linux `fork`+`exit` at ~19.7 us (notes/benchmarks.md) at
-making a *process*, and this system cannot do the thing those three programs use `fork` for.
+the shell does not need. The two benchmark claims are both true at once, and the pairing is the
+honest form. `spawn_el0` at ~7.7 us beats Linux `fork`+`exit` at ~19.7 us (notes/benchmarks.md) at
+making a *process*. This system cannot do the thing those three programs use `fork` for.
 
 ## How reversible it is
 

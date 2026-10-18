@@ -12,7 +12,7 @@ use super::instructions;
 const SIE: usize = 1 << 1;
 
 /// Are S-mode interrupts currently enabled?
-pub fn is_enabled() -> bool {
+pub(crate) fn is_enabled() -> bool {
     instructions::read_sstatus() as usize & SIE != 0
 }
 

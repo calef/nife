@@ -187,7 +187,7 @@ pub fn boot(
             fs,
             (p.catalog, p.index_sources),
         ),
-        &spawnable.progs,
+        &spawnable,
         Caretakers {
             subtree: p.care_elf,
             nameset: p.set_elf,

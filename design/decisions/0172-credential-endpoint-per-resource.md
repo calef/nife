@@ -76,7 +76,7 @@ Partly, and the part that is false is the part that would decide B. Milestone 32
 the change is cheap now because there are four callers, and that is right as far as the *request*
 goes. It does not price the minting side, and B is not a change to a message shape alone: it is a
 change to who hands out verify endpoints and on what basis. `login` currently takes an identity from
-a person at a prompt and asks the credentialer about it; under B it would have to obtain the
+a person at a prompt and asks the credentialer about it. Under B it would have to obtain the
 endpoint for that identity from somewhere, and that somewhere is a piece of design this block does
 not have.
 
@@ -87,7 +87,7 @@ Nothing in the tree today is visibly harmed by the extra authority.
 ## What is blocked until this is answered
 
 Milestone 327, and nothing else. No other block cites it. The argument for answering it anyway
-is the direction of the cost rather than a live defect: every program written against the current
+is the direction of the cost rather than a live defect. Every program written against the current
 shape makes B more expensive, and the next thing that authenticates anything gets written against
 whatever is there.
 

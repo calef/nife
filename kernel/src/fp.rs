@@ -59,7 +59,7 @@ use crate::arch::fp::FpState;
 /// no program in a soft-float userspace has ever needed the register file this kernel now carries
 /// for it, which is the measurement the target-flip proposal of milestone 447 (a thread's
 /// vector registers are its own) is weighed against.
-pub static ENABLES: AtomicUsize = AtomicUsize::new(0);
+pub(crate) static ENABLES: AtomicUsize = AtomicUsize::new(0);
 
 /// **Move the register file from the outgoing thread to the incoming one.**
 ///
@@ -85,7 +85,7 @@ pub static ENABLES: AtomicUsize = AtomicUsize::new(0);
 /// `next_ctx`: both threads are pinned (the outgoing one is running, the incoming one is `Running`
 /// with `on_cpu` set), interrupts are masked, and nothing can reap either.
 #[inline(always)]
-pub unsafe fn hand_over(prev: *mut FpState, next: *const FpState) {
+pub(crate) unsafe fn hand_over(prev: *mut FpState, next: *const FpState) {
     // SAFETY: the caller's, forwarded. Both reads are of one `u64` in a pinned allocation.
     let prev_live = unsafe { (*prev).is_live() };
     // SAFETY: the caller's, forwarded; one `u64` read in a pinned allocation, as above.
@@ -174,7 +174,7 @@ unsafe fn move_the_register_file(
 /// this kernel serves.
 #[cold]
 #[inline(never)]
-pub fn enable_for_current() -> bool {
+pub(crate) fn enable_for_current() -> bool {
     crate::arch::fp::enable();
     if !crate::arch::fp::is_enabled() {
         // **The machine has no unit to open.** RISC-V hardwires `sstatus.FS` to zero on a hart
@@ -212,7 +212,7 @@ pub fn register_pattern(seed: u64, index: usize) -> u64 {
 /// would be asking a function to fault on its first instruction as a matter of routine. One
 /// throwaway instruction does the job where a reader can see it.
 #[cfg(test)]
-pub fn load_pattern(seed: u64) {
+pub(crate) fn load_pattern(seed: u64) {
     crate::arch::fp::touch();
     let mut state = FpState::INITIAL;
     state.set_pattern(seed);
@@ -228,7 +228,7 @@ pub fn load_pattern(seed: u64) {
 /// found, with interrupts masked so no switch can land in the middle and find the core in a state
 /// its `live` flag does not describe.
 #[cfg(test)]
-pub fn peek_registers() -> FpState {
+pub(crate) fn peek_registers() -> FpState {
     let was_enabled_interrupts = crate::arch::interrupts::disable();
     let was_enabled_fp = crate::arch::fp::is_enabled();
     if !was_enabled_fp {

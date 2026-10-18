@@ -32,7 +32,7 @@ The maintainer put two options to calef and recommended the first:
 He chose 2, and the reason is the one a recommendation from inside a single branch could not see.
 This project's second demonstrator claim is that a system of this size can be built this way at
 all (AGENTS.md), by many agents in parallel lanes. A contributor who is told to wait so that
-somebody else's branch does not have to rebase is not a contributor; serializing on demand would
+somebody else's branch does not have to rebase is not a contributor. Serializing on demand would
 make the collisions disappear by removing the condition the method exists to prove it can handle.
 
 ## What it costs, stated rather than waved at

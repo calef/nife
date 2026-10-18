@@ -51,8 +51,8 @@ the installer and 344k for rung 2b. So the tail is roughly 18% of a day's tokens
 
 1. Max 20x renews. The binding constraint is a rate limit rather than a bill (§203), and
    downgrading tightens exactly the thing that hurts.
-2. The mechanical tail moves off Claude anyway, because it is nearly free: ~180 lanes a month at
-   $0.048 is about $9, a 4.5% spend increase that returns roughly 18% of Claude capacity,
+2. The mechanical tail moves off Claude anyway, because it is nearly free. ~180 lanes a month at
+   $0.048 is about $9. That is a 4.5% spend increase that returns roughly 18% of Claude capacity,
    or three to four more judgment lanes a day.
 3. Maintainer work is the next candidate and is unmeasured. Queue nannying, CI-log triage and
    rebase conflict resolution are mechanical, are done in the most expensive context available, and
@@ -76,9 +76,9 @@ the installer and 344k for rung 2b. So the tail is roughly 18% of a day's tokens
 calef pulled the manual limit reset that night, restoring capacity until Friday's weekly roll. He
 had one available before 2026-10-22 and now has none.
 
-He spent it on the criterion this section's own conversation set, which is worth recording
-because it is the difference between a decision and a reaction: the maintainer recommended holding
-it until the routing work landed, and named the single case for spending early as *hitting the
+He spent it on the criterion this section's own conversation set. That is worth recording because
+it is the difference between a decision and a reaction. The maintainer recommended holding it
+until the routing work landed, and named the single case for spending early as *hitting the
 weekly wall mid-build, where the alternative is idling until the window rolls*. That was the case.
 The projection was running out by the following morning.
 

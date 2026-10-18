@@ -30,7 +30,7 @@ impl HaltReason {
     /// The panic handler's. Only the panic handler is handed a `PanicInfo`, so nothing else can
     /// make one of these this way. A test image's panic exits through semihosting instead.
     #[cfg_attr(any(test, feature = "system_tests"), allow(dead_code))]
-    pub fn panicked(_info: &core::panic::PanicInfo<'_>) -> Self {
+    pub(crate) fn panicked(_info: &core::panic::PanicInfo<'_>) -> Self {
         HaltReason(())
     }
 
@@ -38,7 +38,7 @@ impl HaltReason {
     /// calling thread to be on. **Checked, not trusted**: called once the scheduler is up, this
     /// panics, and the panic is what halts.
     #[cfg_attr(not(target_arch = "x86_64"), allow(dead_code))]
-    pub fn before_scheduler() -> Self {
+    pub(crate) fn before_scheduler() -> Self {
         assert!(
             !crate::sched::is_running(),
             "HaltReason::before_scheduler with the scheduler running: this thread would halt while \
@@ -51,7 +51,7 @@ impl HaltReason {
     /// aarch64 boot has no halt after its suite (the runner's exit never returns), hence the allow.
     #[cfg(any(test, feature = "system_tests"))]
     #[cfg_attr(target_arch = "aarch64", allow(dead_code))]
-    pub fn test_build() -> Self {
+    pub(crate) fn test_build() -> Self {
         HaltReason(())
     }
 
@@ -68,7 +68,7 @@ impl HaltReason {
         feature = "storage_bench",
         feature = "tsc_probe"
     ))]
-    pub fn measurement_boot() -> Self {
+    pub(crate) fn measurement_boot() -> Self {
         HaltReason(())
     }
 }

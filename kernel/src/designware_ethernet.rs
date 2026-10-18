@@ -51,7 +51,7 @@ use crate::arch::mmu;
 
 /// The longest bring-up waits for the PHY to resolve a link after autonegotiation restarts. A
 /// gigabit negotiation takes about three seconds; five is slack, not a guess at a slow switch.
-pub const LINK_WAIT_MS: u64 = 5000;
+pub(crate) const LINK_WAIT_MS: u64 = 5000;
 
 /// Why a port the tree describes was not brought up.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -87,7 +87,7 @@ pub enum Error {
 
 /// Where the station address came from.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum AddressSource {
+pub(crate) enum AddressSource {
     /// The tree's `local-mac-address`, which U-Boot writes from the board's EEPROM.
     Tree,
     /// The controller's address registers, as firmware left them.
@@ -99,7 +99,7 @@ pub enum AddressSource {
 #[derive(Debug, Clone, Copy)]
 #[cfg_attr(not(feature = "network_bench"), allow(dead_code))]
 // read by the bench boot's lines; the booted system prints only `Debug`
-pub struct Report {
+pub(crate) struct Report {
     /// The controller's physical base.
     pub base: u64,
     /// Which `compatible` the tree used.
@@ -157,7 +157,7 @@ impl Report {
 /// Why there is no port to hand out. Small on purpose: how far a refused bring-up got is in
 /// [`last_report`], not carried through every `Result` on the way out.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum Absent {
+pub(crate) enum Absent {
     /// The tree names no JH7110 Ethernet port: every machine but a JH7110.
     NoController,
     /// It does, and bring-up refused it. A failure, never a skip.
@@ -166,7 +166,7 @@ pub enum Absent {
 
 /// A port brought up, programmed, and ready for a data plane.
 #[derive(Debug, Clone, Copy)]
-pub struct Found {
+pub(crate) struct Found {
     /// What the process is told: the station address and the region's physical base.
     pub handoff: Handoff,
     /// The controller's DMA page, physical: the one page of the window the process is mapped.
@@ -184,7 +184,7 @@ static LAST_REPORT: crate::sync::IrqSafeMutex<Option<Report>> =
 
 /// **What the last bring-up saw**, as far as it got. `None` before any.
 #[cfg_attr(not(feature = "network_bench"), allow(dead_code))] // the bench boot is its reader
-pub fn last_report() -> Option<Report> {
+pub(crate) fn last_report() -> Option<Report> {
     *LAST_REPORT.lock()
 }
 

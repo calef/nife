@@ -447,7 +447,7 @@ impl Wiring {
     ///
     /// The milestone tour uses it; the compositor tests all type something first.
     #[cfg_attr(any(test, feature = "system_tests"), allow(dead_code))]
-    pub fn ring_doorbell(&self, operation: u64) -> u64 {
+    pub(crate) fn ring_doorbell(&self, operation: u64) -> u64 {
         crate::sched::ipc_call(self.doorbell, [compositor::proto::req(operation, 0), 0])[0]
     }
 

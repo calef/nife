@@ -26,7 +26,7 @@ use super::*;
 /// open question (design/decisions/0132-*.md). Reclamation asks the stronger question, "may any
 /// capability still name a page this allocator is about to hand out", and only
 /// [`delete_page_frame_caps_overlapping`] answers it.
-pub fn delete_page_frame_caps(phys: u64, count: u64) {
+pub(crate) fn delete_page_frame_caps(phys: u64, count: u64) {
     let Some(count) = core::num::NonZeroU64::new(count) else {
         return;
     };
@@ -56,7 +56,7 @@ pub fn delete_page_frame_caps(phys: u64, count: u64) {
 /// Saturating arithmetic on the run's end: a `(phys, count)` near `u64::MAX` cannot wrap its way
 /// out of the comparison, and saturating to `u64::MAX` overlaps everything, which is the safe
 /// direction for a sweep whose failure mode is missing a holder.
-pub fn delete_page_frame_caps_overlapping(base: u64, size: u64) {
+pub(crate) fn delete_page_frame_caps_overlapping(base: u64, size: u64) {
     let end = base.saturating_add(size);
     delete_page_frame_caps_where(|object| match object {
         crate::cap::Object::PageFrame(phys, count) => {
@@ -109,7 +109,7 @@ pub(super) fn delete_page_frame_caps_where(matches: impl Fn(&crate::cap::Object)
 /// [`delete_page_frame_caps_where`]'s reason, which carries the whole finding: a capability in
 /// flight to a receiver is in no capability table, so a sweep that reads tables alone leaves one
 /// alive. Spared on the keeper, exactly as its table is.
-pub fn delete_device_frame_caps_from_others(phys: u64) {
+pub(crate) fn delete_device_frame_caps_from_others(phys: u64) {
     let mut guard = IPC_TABLES.lock();
     let Some(sched) = guard.as_mut() else {
         return;
@@ -357,7 +357,10 @@ pub fn grant_at(slot: u64, capability: crate::cap::Cap) -> Result<u64, crate::ca
 
 /// [`grant`], into the first free slot at or above `floor` (milestone 812): `RETYPE_OBJ`'s third
 /// word, so a `std` program can make objects without filling a fixed slot it was not given.
-pub fn grant_from(floor: u64, capability: crate::cap::Cap) -> Result<u64, crate::cap::Error> {
+pub(crate) fn grant_from(
+    floor: u64,
+    capability: crate::cap::Cap,
+) -> Result<u64, crate::cap::Error> {
     current_capabilities().map_or(Err(crate::cap::Error::NoFreeSlot), |mut t| {
         t.insert_at_or_above(floor, capability)
     })
@@ -394,7 +397,7 @@ pub fn grant_from(floor: u64, capability: crate::cap::Cap) -> Result<u64, crate:
 /// endpoint, and `MemoryRegion::SPLIT` a child of a region, and a copy minted after its object died
 /// names a dead generation and fails on use (`crates/slots`, §16 (object revocation)).
 #[derive(Clone, Copy)]
-pub struct Delegation {
+pub(crate) struct Delegation {
     /// The source's slot in the running thread's table.
     pub slot: u64,
     /// The rights the copy keeps: a subset of the source's.
@@ -427,7 +430,7 @@ impl Delegation {
 /// `derive` decides what the copy is from the source as it stands at that instant. `Err` is
 /// `derive`'s answer, `NoSuchSlot` for an empty slot, or `OutOfMemory` for a full table. Name
 /// provisional.
-pub fn grant_derived(
+pub(crate) fn grant_derived(
     slot: u64,
     derive: impl FnOnce(crate::cap::Cap) -> Result<crate::cap::Cap, abi::Error>,
 ) -> Result<u64, abi::Error> {

@@ -2475,7 +2475,47 @@ DERIVED = {
     'names_provisional_unruled': lambda row: max(
         0.0, _cell(row, 'names_provisional') - _cell(row, 'names_ruled_owed')),
     'tokens_per_milestone': _tokens_per_milestone,
+    # Three statuses in one band, because the milestones chart already fills the palette's eight
+    # slots. Not "unbuilt": a REMOVED milestone was built first. The CSV keeps the three apart.
+    'milestones_closed': lambda row: sum(_cell(row, _col('milestones', s))
+                                         for s in ('REMOVED', 'SUPERSEDED', 'REFUSED')),
 }
+
+
+# The column, or columns summed, that each stacked chart's bands must add up to. A chart whose
+# measure has a total and is not listed here can drop a band without anything noticing.
+CHART_TOTALS = {
+    'milestones.svg': ('milestones_total', 'proposals_unnumbered'),
+    'decisions.svg': ('decisions_total',),
+    'names.svg': ('names_total',),
+    'harnesses.svg': ('harnesses_total',),
+    'fatal-risks-colors.svg': ('fatal_risks_total',),
+    'models-commits.svg': ('model_commits_total',),
+    'homes-packages.svg': ('packages_total',),
+    'crate-proofs.svg': ('crate_properties_required',),
+}
+
+
+def check_chart_totals(rows, week):
+    """Fail when a chart in CHART_TOTALS draws `week` as anything but its total.
+
+    A week whose total cell is blank was not measured and is skipped, not failed.
+    """
+    columns = {entry[0]: entry[3] for entry in CHARTS}
+    wrong = []
+    for name, totals in CHART_TOTALS.items():
+        row = rows[week]
+        if any(row.get(field, '') in ('', None) for field in totals):
+            continue
+        want = sum(_cell(row, field) for field in totals)
+        drawn = sum((DERIVED[field](row) if field in DERIVED else _cell(row, field))
+                    for _label, field in columns[name])
+        if drawn != want:
+            wrong.append('%s draws %s for %s and %s is %s'
+                         % (name, _number(drawn), week, ' + '.join(totals), _number(want)))
+    if wrong:
+        raise SystemExit('metrics: a chart\'s bands do not add up to its total; add the missing '
+                         'band or fold it into one:\n  ' + '\n  '.join(wrong))
 
 
 def series_of(rows, weeks, columns, scale=1.0, hues=None):
@@ -2580,7 +2620,7 @@ CHARTS = [
      [('Built', 'milestones_built'), ('Partial', 'milestones_partial'),
       ('In progress', 'milestones_in_progress'), ('Not started', 'milestones_not_started'),
       ('Optional', 'milestones_optional'), ('Recorded', 'milestones_recorded'),
-      ('Removed', 'milestones_removed'),
+      ('Closed (removed, superseded or refused)', 'milestones_closed'),
       ('Proposal, no number yet', 'proposals_unnumbered')], 1.0, None, None),
     ('decisions.svg', 'Architecture decisions by status',
      'design/decisions/; before milestone 114 (split `DECISIONS.md`, and give a decision a status), '
@@ -3189,6 +3229,7 @@ def draw_charts(rows, only=None):
         write_interface_line(rows)
         write_week_notes_bullets()
     weeks = sorted(rows)[-CHART_WEEKS:]
+    check_chart_totals(rows, weeks[-1])
     DATA_DIR.mkdir(parents=True, exist_ok=True)
     for name, title, subtitle, columns, scale, ceiling, absent_field, *rest in CHARTS:
         if only is not None and not only & {column for _label, column in columns}:
@@ -3263,6 +3304,23 @@ def _decision_cases():
         ('a tree from before the split is UNRECORDED, not DECIDED',
          counted({'DECISIONS.md': '## 1. A\n\n## 2. B\n'}), {'UNRECORDED': 2}),
     ]
+
+
+def _chart_total_cases():
+    """check_chart_totals passes a week whose bands add up and refuses one that drops a status."""
+    def refused(row):
+        try:
+            check_chart_totals({'2026W01': row}, '2026W01')
+        except SystemExit:
+            return True
+        return False
+
+    whole = {'milestones_built': '2', 'milestones_refused': '1', 'milestones_total': '3',
+             'proposals_unnumbered': '1'}
+    # A status the chart has no band for: its count is in the total and in no column it draws.
+    unseen = dict(whole, milestones_total='4')
+    return [('a week whose bands add up to its total passes', refused(whole), False),
+            ('a status counted in the total and drawn by no band is refused', refused(unseen), True)]
 
 
 def _fatal_risk_cases():
@@ -3546,6 +3604,7 @@ def selftest():
         ('rendering twice writes the same bytes', twice, once),
         ('a chart with no notes left is back to its original bytes', gone, original_page),
     ]
+    cases += _chart_total_cases()
     cases += _fatal_risk_cases()
     cases += _decision_cases()
     cases += _ratchet_debt_cases()
