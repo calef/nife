@@ -190,6 +190,8 @@ fn a_confined_el0_process_serves_the_block_interface_end_to_end() {
 /// a read through the disk tree's window comes back in that window and nowhere else.
 ///
 /// Runs after the end-to-end case, whose wiring it reuses (`ensure` wires once per boot).
+///
+/// Falsification: replayable `system_tests/falsifications/user.non_volatile_memory_express_tests.each_client_stages_in_the_window_its_badge_names.patch`
 #[test_case]
 fn each_client_stages_in_the_window_its_badge_names() {
     use filesystem_contract::blk;

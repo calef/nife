@@ -1,0 +1,28 @@
+Falsifies `system_tests::user::non_volatile_memory_express_tests::each_client_stages_in_the_window_its_badge_names`.
+
+Architecture: aarch64
+
+The defect is the NVMe server staging every request in window 0, whatever its badge names: the
+shared transfer region the per-client windows replaced (milestone 834 (ioping on nife and Linux),
+calef's "Per-client window", 2026-10-18 UTC). A known badge is still admitted and an unknown one
+still refused, so the server comes up and answers every verb; only where the bytes go is wrong.
+
+The test needs an NVMe controller attached, which `cargo xtask test` does on every test leg
+(`NIFE_NVME`), so this replays with no extra setup.
+
+Expected to fail: `assert_eq!(call(blk::WRITE, INSTALLER_WINDOW), 0, ...)` passes, then
+"the installer's write touched window 0's staging": the write went out of window 0, so the disk
+holds 0x11 and the installer's pattern never left its window.
+diff --git a/components/src/non_volatile_memory_express.rs b/components/src/non_volatile_memory_express.rs
+index 6c0b5f157..8d742f355 100644
+--- a/components/src/non_volatile_memory_express.rs
++++ b/components/src/non_volatile_memory_express.rs
+@@ -321,7 +321,7 @@ fn serve(mut plane: Plane) -> ! {
+         // request is never trusted to stay inside the region it shares just because the packing
+         // allows a larger number to be spelled.
+         let count = blk::req_blocks(w0).min(TRANSFER_BLOCKS);
+-        let Some(window) = client_window(req.badge) else {
++        let Some(window) = client_window(req.badge).map(|_| 0) else {
+             reply(reply_cap, filesystem_contract::reply_err(22) as u64, 0); // EINVAL
+             continue;
+         };
