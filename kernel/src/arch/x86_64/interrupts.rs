@@ -26,7 +26,7 @@ fn flags() -> u64 {
 }
 
 /// Are interrupts currently enabled?
-pub fn is_enabled() -> bool {
+pub(crate) fn is_enabled() -> bool {
     flags() & IF != 0
 }
 
@@ -37,7 +37,7 @@ pub fn is_enabled() -> bool {
 /// interrupt landing between them is harmless: it is delivered while interrupts are still enabled,
 /// which is what the caller's own prior state already permitted, and the value read is still the
 /// state at the moment the caller asked. What would be a bug is the opposite order.
-pub fn disable() -> bool {
+pub(crate) fn disable() -> bool {
     let was = is_enabled();
     // SAFETY: clears RFLAGS.IF. No memory effect.
     unsafe { asm!("cli", options(nomem, nostack)) };
@@ -46,7 +46,7 @@ pub fn disable() -> bool {
 
 /// Restore the interrupt-enable state [`disable`] reported. Nesting composes because each `disable`
 /// returns the exact bit its `restore` puts back.
-pub fn restore(was_enabled: bool) {
+pub(crate) fn restore(was_enabled: bool) {
     if was_enabled {
         enable();
     } else {

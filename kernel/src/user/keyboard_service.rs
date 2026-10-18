@@ -25,7 +25,7 @@ pub struct Wiring {
 /// back. [`display_service::GpuDevice`]'s twin, one device over, and for the same two holders: the
 /// kernel's own test wiring ([`start`]) and, since milestone 600 (provisional), the progenitor,
 /// which `kernel::user::boot_progenitor` grants these to. Name: provisional.
-pub struct KeyboardDevice {
+pub(crate) struct KeyboardDevice {
     /// The `Virtio` capability's id.
     pub vid: usize,
     /// The event interrupt, routed and enabled.
@@ -37,7 +37,7 @@ pub struct KeyboardDevice {
 
 /// **Find the keyboard, build its DMA page, route its interrupt and register its confined
 /// transport**, and spawn nothing. `None` if no virtio-input function is on the bus.
-pub fn wire_device() -> Option<KeyboardDevice> {
+pub(crate) fn wire_device() -> Option<KeyboardDevice> {
     let d = crate::pci::find_input_device()?;
 
     // Zeroed so no stale descriptor and no stale event is ever visible to the device or to us.

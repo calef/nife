@@ -421,7 +421,7 @@ impl Registry {
 
 /// Enter a newly created address space into the registry, with the TLB tag it runs under.
 /// `false` (and the caller should fail creation) if the registry is full.
-pub fn register_space(root: u64, region: u64, asid: u16) -> bool {
+pub(crate) fn register_space(root: u64, region: u64, asid: u16) -> bool {
     let mut spaces = SPACES.lock();
     spaces.claim(SpaceLog {
         root,
@@ -435,7 +435,7 @@ pub fn register_space(root: u64, region: u64, asid: u16) -> bool {
 /// its page tables and its log pages are about to be freed, and a stale registry entry would send
 /// a later revoke walking memory that belongs to someone else. The records need no cleanup of
 /// their own; they are region pages, and the region is about to come back whole.
-pub fn forget_root(root: u64) {
+pub(crate) fn forget_root(root: u64) {
     let mut spaces = SPACES.lock();
     spaces.release(root);
 }
@@ -478,7 +478,7 @@ pub struct MappingHold {
 }
 
 /// Take the mapping registry. See [`MappingHold`]: hold it from the frame read through the record.
-pub fn hold() -> MappingHold {
+pub(crate) fn hold() -> MappingHold {
     MappingHold {
         spaces: SPACES.lock(),
     }
@@ -503,7 +503,13 @@ impl MappingHold {
     /// one): a mapping that cannot say which capability made it is exactly the record §132 found
     /// missing, and a caller must now answer the question to compile. See [`PageMapSource`].
     #[must_use]
-    pub fn record_mapping(&mut self, phys: u64, root: u64, va: u64, under: PageMapSource) -> bool {
+    pub(crate) fn record_mapping(
+        &mut self,
+        phys: u64,
+        root: u64,
+        va: u64,
+        under: PageMapSource,
+    ) -> bool {
         let object = under.object(phys);
         // The run's base is at or below the page it covers, and a whole number of pages below it. The
         // enum stops a caller confusing the two arguments; this catches a caller computing the base
@@ -528,7 +534,7 @@ impl MappingHold {
     /// `None` when the region is spent or the space cannot afford the record. In the second case the
     /// retyped page stays spent, the same loss a failed `MemoryRegion::MAP` already takes for its
     /// leaf: a region is spend-only until it is destroyed.
-    pub fn retype_table(&mut self, region: u64, root: u64, va: u64) -> Option<u64> {
+    pub(crate) fn retype_table(&mut self, region: u64, root: u64, va: u64) -> Option<u64> {
         let table = crate::memory_region::retype_page(region)?;
         self.file(
             root,
@@ -578,7 +584,7 @@ impl MappingHold {
     ///
     /// Silent when the space or the record is unknown, because both mean the same thing to a rollback:
     /// there is nothing left to undo.
-    pub fn forget_mapping(&mut self, phys: u64, root: u64, va: u64) {
+    pub(crate) fn forget_mapping(&mut self, phys: u64, root: u64, va: u64) {
         let Some(space) = self.spaces.live_mut().find(|s| s.root == root) else {
             return;
         };
@@ -610,7 +616,7 @@ impl MappingHold {
     ///
     /// A table record at the same `va` is left alone: tables stay linked until the space or the
     /// region paying for them dies (`notes/unmap.md`'s `BUGS`).
-    pub fn forget_mapping_at(&mut self, root: u64, va: u64) -> Option<u64> {
+    pub(crate) fn forget_mapping_at(&mut self, root: u64, va: u64) -> Option<u64> {
         let space = self.spaces.live_mut().find(|s| s.root == root)?;
         for (_, page) in space.log.pages_mut() {
             for e in page.used_mut() {
@@ -858,7 +864,7 @@ pub fn revoke_page_frame(phys: u64) {
 /// pages until the driver's virtio registration is itself torn down. Coupling `PageFrame` and
 /// `Virtio`, which are independent today, is a separate decision and remains an architect's call:
 /// see design/decisions/0132-overlapping-page-frame-runs.md.
-pub fn revoke_page_frame_run(phys: u64, count: u64) {
+pub(crate) fn revoke_page_frame_run(phys: u64, count: u64) {
     crate::sched::delete_page_frame_caps(phys, count);
     for k in 0..count {
         unmap_under_object(phys + k * page_frames::FRAME_SIZE, phys);
@@ -904,7 +910,7 @@ pub fn revoke_device_from_others(phys: u64) {
 /// makes the revoked holder fault on its next `in`/`out`. This is `PortRange::REVOKE`'s body.
 /// `x86_64` only, like the `PortRange` object it revokes ([`crate::cap::Object`]).
 #[cfg(target_arch = "x86_64")]
-pub fn revoke_port_range_from_others(base: u16, count: u16) {
+pub(crate) fn revoke_port_range_from_others(base: u16, count: u16) {
     crate::sched::delete_port_range_caps_from_others(base, count);
 }
 
@@ -917,7 +923,7 @@ pub fn revoke_port_range_from_others(base: u16, count: u16) {
     not(all(any(test, feature = "system_tests"), initial_ramdisk)),
     allow(dead_code)
 )]
-pub fn revoke_port_range(base: u16, count: u16) {
+pub(crate) fn revoke_port_range(base: u16, count: u16) {
     crate::sched::delete_port_range_caps(base, count);
 }
 

@@ -80,7 +80,7 @@ const FIXED_COUNTERS_NEEDED: u32 = 2;
 /// unreached [`init`] leaves behind.
 #[derive(Copy, Clone, PartialEq, Eq, Debug)]
 #[repr(u8)]
-pub enum CycleCounter {
+pub(crate) enum CycleCounter {
     /// [`init`] has not run.
     Unknown = 0,
     /// `CPUID` does not reach leaf `0x0A`, or the leaf reports version 0. This part has no
@@ -260,7 +260,7 @@ fn cycles_delta(c0: u64, c1: u64) -> u64 {
 }
 
 /// **Why there is or is not a usable cycle counter on this CPU.** See [`CycleCounter`].
-pub fn outcome() -> CycleCounter {
+pub(crate) fn outcome() -> CycleCounter {
     match OUTCOME.load(Ordering::Acquire) {
         x if x == CycleCounter::NoPerfmonLeaf as u8 => CycleCounter::NoPerfmonLeaf,
         x if x == CycleCounter::NoFixedCounter as u8 => CycleCounter::NoFixedCounter,
@@ -289,7 +289,7 @@ pub fn outcome() -> CycleCounter {
     not(any(test, feature = "system_tests", feature = "bench")),
     allow(dead_code)
 )]
-pub fn cycles() -> Option<u64> {
+pub(crate) fn cycles() -> Option<u64> {
     if outcome() != CycleCounter::Running {
         return None;
     }
@@ -298,7 +298,7 @@ pub fn cycles() -> Option<u64> {
 
 /// How wide the counter is, in bits, or `None` when there is none worth reading. For the boot line
 /// and for a reader differencing two reads by hand.
-pub fn cycle_counter_width() -> Option<u32> {
+pub(crate) fn cycle_counter_width() -> Option<u32> {
     if outcome() != CycleCounter::Running {
         return None;
     }
@@ -311,12 +311,12 @@ pub fn cycle_counter_width() -> Option<u32> {
     not(any(test, feature = "system_tests", feature = "bench")),
     allow(dead_code)
 )]
-pub fn elapsed_cycles(first: u64, second: u64) -> u64 {
+pub(crate) fn elapsed_cycles(first: u64, second: u64) -> u64 {
     cycles_delta(first, second)
 }
 
 /// The boot line, printed beside the ISA summary.
-pub fn print_summary() {
+pub(crate) fn print_summary() {
     let version = PERFMON_VERSION.load(Ordering::Relaxed);
     match outcome() {
         CycleCounter::Running => crate::println!(

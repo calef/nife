@@ -49,7 +49,7 @@ impl Context {
     /// `thread_trampoline`, which reads the closure pointer out of `s0` and the monomorphized caller
     /// out of `s1` (the closure's concrete type was erased, so the address says *where* and the shim
     /// says *how*), then calls the portable `thread_entry`. See context.s.
-    pub fn for_kernel_thread(closure_at: u64, call_shim: u64) -> Self {
+    pub(crate) fn for_kernel_thread(closure_at: u64, call_shim: u64) -> Self {
         Context {
             ra: thread_trampoline as *const () as u64,
             s0: closure_at,
@@ -72,7 +72,7 @@ impl Context {
     /// `user_entry_trampoline`, which moves `s0` to the U-mode entry, `s1` to the user `sp`, and
     /// `s2`..`s4` to the child's initial `a0`..`a2`, then drops to U-mode via the portable
     /// `user_thread_entry`.
-    pub fn for_user_thread(entry: u64, user_sp: u64, args: [u64; 3]) -> Self {
+    pub(crate) fn for_user_thread(entry: u64, user_sp: u64, args: [u64; 3]) -> Self {
         Context {
             ra: user_entry_trampoline as *const () as u64,
             s0: entry,

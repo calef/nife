@@ -6,7 +6,7 @@
 /// Mirrors the real module's [`Event`](super::trace::Event) variants; carried only so the
 /// call sites name the same paths in both configurations.
 #[derive(Clone, Copy)]
-pub enum Event {
+pub(crate) enum Event {
     SwitchTo,
     BlockSelf,
     Wake,
@@ -22,13 +22,13 @@ pub enum Event {
 }
 
 #[inline]
-pub fn record(_kind: Event, _tid: u64, _aux: u8) {}
+pub(crate) fn record(_kind: Event, _tid: u64, _aux: u8) {}
 
 /// Always zero here, because nothing is recorded. The bench boot runs no soak (both diverge
 /// before the other could start), so no caller can be misled by it.
 #[cfg(feature = "soak_test")]
-pub fn counted(_kind: Event) -> u64 {
+pub(crate) fn counted(_kind: Event) -> u64 {
     0
 }
 
-pub fn dump(_cpu: usize) {}
+pub(crate) fn dump(_cpu: usize) {}

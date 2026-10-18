@@ -144,7 +144,7 @@ pub fn psci() -> Option<(Conduit, u32)> {
 /// The whole `/psci` answer, for the boot line and the tests: `None` when the tree had no such node,
 /// otherwise the record with whatever it did and did not state. [`psci`] is the version the bring-up
 /// path wants, which is the two facts or nothing.
-pub fn psci_record() -> Option<Psci> {
+pub(crate) fn psci_record() -> Option<Psci> {
     if PSCI_CONDUIT.load(Ordering::Relaxed) == PSCI_ABSENT {
         return None;
     }
@@ -177,7 +177,7 @@ pub fn psci_record() -> Option<Psci> {
     any(test, feature = "system_tests", feature = "bench"),
     allow(dead_code)
 )]
-pub fn print_summary() {
+pub(crate) fn print_summary() {
     let cpu = get();
 
     match cpu.implementer_name() {

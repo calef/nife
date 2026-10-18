@@ -28,7 +28,7 @@ const PL011_PHYS: u64 = 0x0900_0000;
     )
 )]
 #[derive(Clone, Copy)]
-pub struct Console {
+pub(crate) struct Console {
     pub request: RendezvousId,
     pub reply: RendezvousId,
     pub shared_phys: u64,
@@ -40,7 +40,7 @@ pub struct Console {
 /// page mapped **read-only** (it only reads what clients wrote), and the **UART's registers**
 /// mapped as user device memory. That last mapping is the whole milestone: a driver, at EL0,
 /// holding its hardware.
-pub fn start() -> Console {
+pub(crate) fn start() -> Console {
     // The console server is its own binary now (19f.3), loaded from the archive by name rather
     // than entered as a role of hello.
     let image = program("console").expect("no console program in the initial ramdisk");

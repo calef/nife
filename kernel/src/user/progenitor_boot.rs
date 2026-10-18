@@ -55,7 +55,7 @@ const _: () = assert!(INIT_STACK_PAGES <= address_space_map::MAX_STACK_PAGES);
 /// The number is 27 because that is the role `hello`'s retired `init_boot` had, and every 19d role
 /// number around it is load-bearing to a test. **Name provisional** (milestone 266).
 #[cfg_attr(not(any(test, feature = "system_tests")), allow(dead_code))]
-pub const PROGENITOR_ROLE: u64 = 27;
+pub(crate) const PROGENITOR_ROLE: u64 = 27;
 
 /// **Boot the system: load the progenitor and start it as the first process, on every architecture**
 /// (milestone 166, which merged aarch64's `spawn_progenitor` boot half and `riscv64`/`x86_64`'s

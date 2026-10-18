@@ -36,17 +36,17 @@
 //! executes the same instructions. Names are provisional.
 
 /// The sled's length, in units of `UNIT_NOPS` (each arch's `fastpath_pad.rs`).
-pub const PAD_UNITS: usize = parse(env!("NIFE_FASTPATH_PAD"));
+pub(crate) const PAD_UNITS: usize = parse(env!("NIFE_FASTPATH_PAD"));
 
 /// Unreferenced zero bytes after the sled; non-zero only in a layout variant.
-pub const SHIFT_BYTES: usize = parse(env!("NIFE_FASTPATH_SHIFT"));
+pub(crate) const SHIFT_BYTES: usize = parse(env!("NIFE_FASTPATH_SHIFT"));
 
 /// The two numbers as data, for the bench boot to print (`bench-probe: fastpath_pad ...`), so a
 /// card can say which E3 image it is. Data rather than immediates on purpose: on riscv64 `li a0, 0`
 /// is two bytes and `li a0, 3280` is eight, so printing constants would change the length of the
 /// printing function and move everything linked after it, which is the variable being controlled.
 #[cfg(feature = "bench")]
-pub static BUILD: [usize; 2] = [PAD_UNITS, SHIFT_BYTES];
+pub(crate) static BUILD: [usize; 2] = [PAD_UNITS, SHIFT_BYTES];
 
 /// Decimal, checked by kernel/build.rs before it gets here; a const fn because `str::parse` is not.
 const fn parse(s: &str) -> usize {
@@ -71,7 +71,7 @@ const fn parse(s: &str) -> usize {
     target_os = "none",
     unsafe(link_section = ".text.hot.fastpath_pad.maybe_pad")
 )]
-pub fn maybe_pad() {
+pub(crate) fn maybe_pad() {
     if core::hint::black_box(false) {
         // SAFETY: the arch nop sled is a leaf function (no memory access, no stack frame beyond
         // its own `ret`) reached with the platform's ordinary call ABI; it touches nothing this

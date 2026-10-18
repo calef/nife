@@ -15,7 +15,7 @@
 /// can alias the first gigabyte into the high half with a single PDPT entry.
 ///
 /// This is deliberately **not** where physical memory is mapped; see [`DIRECT_MAP_BASE`].
-pub const KERNEL_VA_BASE: u64 = 0xffff_ffff_8000_0000;
+pub(crate) const KERNEL_VA_BASE: u64 = 0xffff_ffff_8000_0000;
 
 /// **The base of the direct map: where physical address `pa` is readable as `pa + this`.**
 ///
@@ -80,7 +80,7 @@ const _: () = {
 /// **Not for the kernel image's own frames.** The direct map skips them on purpose (a second,
 /// writable alias of `.text` would undo W^X; `claims::direct_map_claims` step 1), so the result for
 /// an image frame is unmapped and a read through it faults.
-pub const fn phys_to_virt(pa: u64) -> u64 {
+pub(crate) const fn phys_to_virt(pa: u64) -> u64 {
     pa + DIRECT_MAP_BASE
 }
 
@@ -94,7 +94,7 @@ pub const fn phys_to_virt(pa: u64) -> u64 {
 ///
 /// It is the exact inverse of [`phys_to_virt`] over the direct map, now for **all** of physical
 /// memory rather than the low 2 GiB the single-base arithmetic could reach.
-pub const fn virt_to_phys(va: u64) -> u64 {
+pub(crate) const fn virt_to_phys(va: u64) -> u64 {
     if va >= KERNEL_VA_BASE {
         va - KERNEL_VA_BASE
     } else {
@@ -105,18 +105,18 @@ pub const fn virt_to_phys(va: u64) -> u64 {
 /// COM1's I/O port on every x86 machine since the PC/AT, and on QEMU's `q35`. Not an address in the
 /// memory space at all; see `arch/x86_64/port.rs` for what that means and why the console reaches it
 /// through a different accessor than the other two architectures' UARTs.
-pub const COM1_PORT: usize = 0x3f8;
+pub(crate) const COM1_PORT: usize = 0x3f8;
 
 /// The local APIC's default physical base. Relocatable through `IA32_APIC_BASE`, and nothing
 /// relocates it; the constant is where the machine puts it at reset.
 #[cfg_attr(not(any(test, feature = "system_tests")), allow(dead_code))]
-pub const LOCAL_APIC_PHYS: u64 = 0xfee0_0000;
+pub(crate) const LOCAL_APIC_PHYS: u64 = 0xfee0_0000;
 
 /// The IO APIC's default physical base on a PC-compatible machine, used only when the ACPI MADT
 /// did not say. `irq::io_apic_phys()` is what the machine actually reported, and q35 reports
 /// exactly this.
 #[cfg_attr(not(any(test, feature = "system_tests")), allow(dead_code))]
-pub const IO_APIC_PHYS: u64 = 0xfec0_0000;
+pub(crate) const IO_APIC_PHYS: u64 = 0xfec0_0000;
 
 /// **Where q35 puts the PCIe ECAM window**, and QEMU's q35 default. `map_everything` no longer
 /// maps this constant directly: the real window is read from `memory::pci_regions()`, which
@@ -136,7 +136,7 @@ pub const IO_APIC_PHYS: u64 = 0xfec0_0000;
 /// (milestone 314); the earlier wording read as a defect report everywhere except the one firmware
 /// it was written against, and was eventually reported as one.
 #[cfg_attr(not(any(test, feature = "system_tests")), allow(dead_code))]
-pub const PCI_ECAM_PHYS: u64 = 0xb000_0000;
+pub(crate) const PCI_ECAM_PHYS: u64 = 0xb000_0000;
 
 /// How many PCI buses of the ECAM window the kernel maps **before it has asked the machine**. One
 /// bus is 1 MiB of configuration space, and the MCFG on the first real machine this port met
@@ -148,9 +148,9 @@ pub const PCI_ECAM_PHYS: u64 = 0xb000_0000;
 /// indiscriminately, which is the only window in the boot where every bus the MCFG describes is
 /// readable; `map_everything` runs after it and maps what it found.
 #[cfg_attr(not(any(test, feature = "system_tests")), allow(dead_code))]
-pub const PCI_ECAM_BUSES: u16 = 1;
+pub(crate) const PCI_ECAM_BUSES: u16 = 1;
 
 /// A page table at physical address `pa`, reached through the direct map.
-pub fn phys_to_ptr(pa: u64) -> *mut paging::PageTable {
+pub(crate) fn phys_to_ptr(pa: u64) -> *mut paging::PageTable {
     phys_to_virt(pa) as *mut paging::PageTable
 }

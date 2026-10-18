@@ -19,7 +19,7 @@ use crate::arch::{UserFault, UserFaultAccess};
 /// `x` is `pub` because the portable syscall dispatcher indexes it; the rest is arch-internal.
 #[repr(C)]
 #[derive(Debug, Clone, Copy)]
-pub struct TrapFrame {
+pub(crate) struct TrapFrame {
     /// The general registers `x0`..`x31`. `x0` is always zero; it is kept in the array so an index
     /// *is* a register number.
     pub x: [u64; 32],
@@ -45,7 +45,7 @@ impl TrapFrame {
     /// dispatcher reads it here so it never names a register directly. This, with `arg`/`set_arg`, is
     /// the resolution of the syscall-ABI leak flagged during the port (DECISIONS §17): aarch64 uses
     /// x8 + x0..x5, RISC-V uses a7 + a0..a5, and each maps its own registers.
-    pub fn syscall_nr(&self) -> u64 {
+    pub(crate) fn syscall_nr(&self) -> u64 {
         self.x[17] // a7
     }
 
@@ -56,7 +56,7 @@ impl TrapFrame {
 
     /// Set syscall argument/return register `i`. The return value and IPC message words ride in
     /// `a0`..`a2` (`x10`..`x12`).
-    pub fn set_arg(&mut self, i: usize, v: u64) {
+    pub(crate) fn set_arg(&mut self, i: usize, v: u64) {
         self.x[10 + i] = v;
     }
 
@@ -76,7 +76,7 @@ impl TrapFrame {
     /// The register indices are the RISC-V ABI: `a0`..`a2` are `x10`..`x12`, `sp` is `x2`. This is
     /// also where the syscall-ABI reconciliation (the traps step) will settle, since the dispatcher
     /// reads its arguments from this same frame.
-    pub fn for_user_entry(entry: u64, user_sp: u64, args: [u64; 3]) -> Self {
+    pub(crate) fn for_user_entry(entry: u64, user_sp: u64, args: [u64; 3]) -> Self {
         // sstatus for the sret: SPIE (interrupts on after the return), SPP left 0 (return to U-mode),
         // and UXL = 2 (U-mode is 64-bit, bits 33:32). UXL is load-bearing: the trap-return path
         // writes this whole value into sstatus, so omitting UXL would clear it to 0 and make the
@@ -140,7 +140,7 @@ unsafe extern "C" {
 /// `frame` must be a correctly-built, writable `TrapFrame` at the top of the current thread's kernel
 /// stack, with the user address space installed.
 #[inline(always)]
-pub unsafe fn enter_user(frame: *mut TrapFrame) -> ! {
+pub(crate) unsafe fn enter_user(frame: *mut TrapFrame) -> ! {
     // **Refuse to enter U-mode with no entry point.** A thread dispatched with `sepc == 0` fetches
     // its first instruction from address 0, takes an instruction page fault, and dies; whatever it
     // was supposed to serve then never answers, so every thread waiting on it blocks and the run
@@ -190,7 +190,7 @@ fn entered_user_with_no_entry_point(user_sp: u64) -> ! {
 /// ISA exactly as it does on aarch64, both on first entry and on every trap after it, so the dump
 /// can say *where* a wedged thread is rather than only that it is wedged. Meaningless for a pure
 /// kernel thread, which never builds one.
-pub fn user_pc(stack_top: u64) -> u64 {
+pub(crate) fn user_pc(stack_top: u64) -> u64 {
     let frame = (stack_top - size_of::<TrapFrame>() as u64) as *const TrapFrame;
     // SAFETY: a diagnostic read of the frame `trap_entry` writes at the stack top. Volatile because
     // the owning thread is running on another core while we read, and this must not be hoisted.
@@ -217,11 +217,11 @@ pub unsafe fn set_user_arg(stack_top: u64, i: usize, v: u64) {
 }
 
 /// Interrupts routed to a userspace handler (delegated IRQs). Bumped by the trap dispatcher.
-pub static ROUTED_IRQS: AtomicUsize = AtomicUsize::new(0);
+pub(crate) static ROUTED_IRQS: AtomicUsize = AtomicUsize::new(0);
 
 /// Interrupts taken with no source enabled to explain them (should stay zero until the timer/PLIC
 /// steps enable real sources).
-pub static SPURIOUS_IRQS: AtomicUsize = AtomicUsize::new(0);
+pub(crate) static SPURIOUS_IRQS: AtomicUsize = AtomicUsize::new(0);
 
 /// **System calls served, counted for the system tests only** (`system_tests/src/user/el0_boundary_tests.rs`
 /// proves a program reached user mode and came back by watching it rise). Every syscall on every
@@ -229,15 +229,15 @@ pub static SPURIOUS_IRQS: AtomicUsize = AtomicUsize::new(0);
 /// in all of them, and it was one of two shared writes on the cheapest syscall's path
 /// (notes/job-mix/null-syscall-under-load.md).
 #[cfg(any(test, feature = "system_tests"))]
-pub static SVC_COUNT: AtomicUsize = AtomicUsize::new(0);
+pub(crate) static SVC_COUNT: AtomicUsize = AtomicUsize::new(0);
 
 /// User faults taken (a page fault or illegal instruction from U-mode). Read by the boot tour;
 /// bumped by the trap dispatcher.
-pub static USER_FAULTS: AtomicUsize = AtomicUsize::new(0);
+pub(crate) static USER_FAULTS: AtomicUsize = AtomicUsize::new(0);
 
 /// Breakpoints (`ebreak`) caught. Exists so a test can prove the trap round-trip actually ran,
 /// rather than proving only that we did not crash. The aarch64 analog is its own `BRK_COUNT`.
-pub static BRK_COUNT: AtomicUsize = AtomicUsize::new(0);
+pub(crate) static BRK_COUNT: AtomicUsize = AtomicUsize::new(0);
 
 /// The `sstatus.SPP` bit: the privilege the trap came from (0 = U-mode, 1 = S-mode).
 const SPP: u64 = 1 << 8;
@@ -261,7 +261,7 @@ fn clear_software_interrupt() {
 /// hart when it becomes a scheduler participant, alongside the timer's `sie.STIE`. Without it a
 /// reschedule IPI sets `sip.SSIP` but is never taken, so a migrated thread would sit in the inbox
 /// until the target's next timer tick.
-pub fn enable_software_interrupts() {
+pub(crate) fn enable_software_interrupts() {
     const SSIE: u64 = 1 << 1;
     // Takes effect under sstatus.SIE.
     super::instructions::set_sie(SSIE);
@@ -293,7 +293,7 @@ static LAST_USER_FAULT_ADDR: AtomicU64 = AtomicU64::new(0);
 /// fault, so a test on this ISA could assert "something died" and nothing more. See [`classify`]
 /// for what "kind" costs here that it does not cost on aarch64.
 #[cfg_attr(not(feature = "system_tests"), allow(dead_code))]
-pub fn last_user_fault() -> Option<(UserFault, u64)> {
+pub(crate) fn last_user_fault() -> Option<(UserFault, u64)> {
     // Pairs with the `Release` on `USER_FAULTS` in [`user_fault`], so a caller that has seen the
     // counter rise reads the record the faulting hart wrote rather than something older.
     //
@@ -342,7 +342,7 @@ fn classify(frame: &TrapFrame, code: u64) -> UserFault {
 /// Unmask supervisor external interrupts (`sie.SEIE`, bit 9): the PLIC's deliveries. The caller must
 /// have `sstatus.SIE` on (the timer step turned it on) for these to actually be taken, exactly as for
 /// the timer's `sie.STIE`. Setting this is what lets a device interrupt reach [`riscv_trap_dispatch`].
-pub fn enable_external() {
+pub(crate) fn enable_external() {
     const SEIE: u64 = 1 << 9;
     // Setting sie.SEIE only unmasks the external-interrupt source; it takes effect under SIE.
     super::instructions::set_sie(SEIE);
@@ -670,7 +670,7 @@ fn user_fault(frame: &TrapFrame, scause: u64, code: u64) -> ! {
     any(test, feature = "system_tests", feature = "bench"),
     allow(dead_code)
 )]
-pub fn self_test() -> usize {
+pub(crate) fn self_test() -> usize {
     let before = BRK_COUNT.load(Ordering::Relaxed);
     super::instructions::ebreak();
     BRK_COUNT.load(Ordering::Relaxed) - before

@@ -15,9 +15,9 @@ const FS_VA: u64 = address_space_map::pair_page(0x0000_0000_00e5_0000);
 /// Report words `components/src/identity_provisioner.rs` sends; must match the same file.
 pub const RPT_OK: u64 = 1;
 #[allow(dead_code)] // named for completeness with the others; no test in this suite provokes it
-pub const RPT_MALFORMED: u64 = 2;
+pub(crate) const RPT_MALFORMED: u64 = 2;
 #[allow(dead_code)] // named for completeness with the others; no test in this suite provokes it
-pub const RPT_SUBTREE_FAILED: u64 = 3;
+pub(crate) const RPT_SUBTREE_FAILED: u64 = 3;
 pub const RPT_CRED_FAILED: u64 = 4;
 
 /// **Run the provisioning tool once**, against an already-wired credential service's provision

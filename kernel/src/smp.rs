@@ -109,7 +109,7 @@ pub fn online_cpus() -> cpu_set::Cpus {
 
 /// The k-th online cpu, wrapping: the sampler's safe form of "a random online cpu". Falls back to
 /// the calling cpu only if the mask is somehow empty (before the boot core registers itself).
-pub fn nth_online(k: usize) -> usize {
+pub(crate) fn nth_online(k: usize) -> usize {
     cpu_set::nth_in(online_harts_mask(), k).unwrap_or(crate::cpu::id())
 }
 
@@ -133,14 +133,14 @@ static SPREAD: [core::sync::atomic::AtomicU32; MAX_CPUS] =
 /// The low end of core `id`'s slot, which is its **guard page**: one page of address space the
 /// kernel map deliberately leaves unmapped. `arch::mmu::map_everything` skips exactly this page per
 /// core, and `verify` refuses to install a map in which it translates.
-pub fn secondary_stack_guard(id: usize) -> u64 {
+pub(crate) fn secondary_stack_guard(id: usize) -> u64 {
     SECONDARY_STACKS.0.get() as u64 + (id as u64) * SECONDARY_STACK_SLOT as u64
 }
 
 /// Core `id`'s usable stack as `(bottom, top)`: the slot above its guard page. Used by the mapper
 /// (what to map) and by the high-water report (what to paint and scan, milestone 84). The boot
 /// core's slot exists but is never painted and never used; the report skips it.
-pub fn secondary_stack_span(id: usize) -> (u64, u64) {
+pub(crate) fn secondary_stack_span(id: usize) -> (u64, u64) {
     let bottom = secondary_stack_guard(id) + SECONDARY_STACK_GUARD as u64;
     (bottom, bottom + SECONDARY_STACK_SIZE as u64)
 }
@@ -200,7 +200,7 @@ static DESCRIBED: AtomicUsize = AtomicUsize::new(0);
 /// If the blob is unreadable. Both callers run after `memory::init` has already parsed the same
 /// pointer, so a failure here means something un-mapped the tree between the two, which is a kernel
 /// bug rather than a machine we should tolerate.
-pub fn read_cpu_list() {
+pub(crate) fn read_cpu_list() {
     let dt = crate::device_tree().expect("device tree is unreadable");
     let list = CpuList::from_device_tree(&dt).expect("cannot read /cpus");
 
@@ -302,7 +302,7 @@ pub fn read_cpu_list() {
 /// x86-only: ACPI is x86's discovery mechanism, not a portable one, the same reason
 /// `arch::machine::Acpi` itself lives under `arch/x86_64/` rather than beside `device_tree_blob`.
 #[cfg(target_arch = "x86_64")]
-pub fn seat_cpus_from_acpi(cpus: &[(u8, bool)]) {
+pub(crate) fn seat_cpus_from_acpi(cpus: &[(u8, bool)]) {
     let mut startable = 0;
     let mut unseated = 0; // startable cores whose local apic id names no slot
 
@@ -362,7 +362,7 @@ pub fn seat_cpus_from_acpi(cpus: &[(u8, bool)]) {
     not(any(test, feature = "system_tests", target_arch = "x86_64")),
     allow(dead_code)
 )]
-pub fn hwid(id: usize) -> Option<u64> {
+pub(crate) fn hwid(id: usize) -> Option<u64> {
     match HWID.get(id)?.load(Ordering::Acquire) {
         u64::MAX => None,
         h => Some(h),
@@ -414,7 +414,7 @@ unsafe extern "C" {
 ///   real QEMU dump that states `smc`, so the decode is exercised; no machine here boots that
 ///   configuration, so the `smc` instruction path has never executed. See `arch::cpu_start`.
 #[cfg_attr(feature = "single_hart", allow(unreachable_code))]
-pub fn bring_up_secondaries() {
+pub(crate) fn bring_up_secondaries() {
     // Record the boot core as online before starting anyone, so a TLB shootdown from here on names
     // it. (Secondaries add their own bits as they come up.)
     ONLINE_MASK.fetch_or(1 << cpu::id(), Ordering::Release);
@@ -526,7 +526,7 @@ pub fn bring_up_secondaries() {
 /// stack. `cpu_id` came from `MPIDR_EL1`. It turns the core into a full scheduler participant and
 /// then becomes that core's idle thread. (Step 3b-ii.)
 #[unsafe(no_mangle)]
-pub extern "C" fn secondary_main(cpu_id: usize) -> ! {
+pub(crate) extern "C" fn secondary_main(cpu_id: usize) -> ! {
     // 1. Per-CPU pointer first, ahead of anything that could take a lock (the lock path reads this
     //    core's held-rank out of its PerCpu block). See cpu.rs.
     cpu::init_this_cpu(cpu_id);

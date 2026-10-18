@@ -26,7 +26,7 @@ use crate::cpu::{self, MAX_CPUS};
 
 /// The S-mode timer interrupt cause (`scause` = 5, the Supervisor timer interrupt). The RISC-V
 /// analog of aarch64's per-CPU timer INTID.
-pub const TIMER_INTID: u32 = 5;
+pub(crate) const TIMER_INTID: u32 = 5;
 
 /// Ticks per second, the preemption rate. Same 100 Hz as aarch64.
 pub const TICK_HZ: u64 = 100;
@@ -60,7 +60,7 @@ static TIMEBASE_HZ: AtomicU64 = AtomicU64::new(0);
 /// to fall back to, and the previous behaviour (assume QEMU's 10 MHz) is what this milestone exists
 /// to delete: a timer running at the wrong rate is a scheduler that preempts at the wrong rate and a
 /// `sleep` that returns at the wrong time, with nothing anywhere reporting a fault.
-pub fn init_frequency(dtb_ptr: usize) {
+pub(crate) fn init_frequency(dtb_ptr: usize) {
     // SAFETY: the pointer OpenSBI handed us in `a1`, named through the boot table's direct map.
     // `DeviceTreeBlob::from_ptr` re-checks the magic, and this runs on the same map `memory::init`
     // uses.
@@ -134,7 +134,7 @@ fn sbi_set_timer(next: u64) {
 
 /// The free-running counter (`rdtime`). Real: a leaf read with no dependency on the timer being set
 /// up, the RISC-V counterpart of reading `CNTVCT`.
-pub fn now() -> u64 {
+pub(crate) fn now() -> u64 {
     instructions::read_time()
 }
 
@@ -154,7 +154,7 @@ pub fn frequency() -> u64 {
 ///
 /// In practice this is never `None` by the time any process is loaded: `init_frequency` runs on the
 /// boot hart before the first deadline is armed, long before `kernel::user::load`.
-pub fn frequency_checked() -> Option<u64> {
+pub(crate) fn frequency_checked() -> Option<u64> {
     let hz = TIMEBASE_HZ.load(Ordering::Relaxed);
     (hz != 0).then_some(hz)
 }
@@ -252,7 +252,7 @@ const CY: u64 = 1 << 0;
 // than deleted: milestone 74's cycle-counter work is the caller that will want it in anger.
 #[cfg_attr(not(feature = "system_tests"), allow(dead_code))]
 #[cfg(any(test, feature = "system_tests", feature = "cycle_counter_grant"))]
-pub fn is_cycle_counter_grantable() -> bool {
+pub(crate) fn is_cycle_counter_grantable() -> bool {
     true
 }
 
@@ -278,7 +278,7 @@ pub fn is_cycle_counter_grantable() -> bool {
 /// a measurement build the way `soak_test` is. `kernel/Cargo.toml`'s feature block carries the
 /// reasoning and the measured cost. Milestone 228's closed default at `init` is NOT gated.
 #[cfg(any(test, feature = "system_tests", feature = "cycle_counter_grant"))]
-pub fn set_cycle_counter_grant(granted: bool) {
+pub(crate) fn set_cycle_counter_grant(granted: bool) {
     let current = instructions::read_scounteren();
 
     let want = if granted { current | CY } else { current & !CY };
@@ -307,7 +307,7 @@ pub fn set_cycle_counter_grant(granted: bool) {
 /// The gate's own limitation is the real finding and is recorded separately:
 /// `design/roadmap/0368-a-flat-entry-set-counts-bytes-no-syscall-fetches.md`.
 #[inline(never)]
-pub fn tick() {
+pub(crate) fn tick() {
     TICKS[cpu::id()].fetch_add(1, Ordering::Relaxed);
     // In a test build, feed the hang watchdog: a lost IPC wakeup would otherwise block a test
     // forever and the whole run would hang silently. Driven from the timer so it costs nothing.
@@ -370,7 +370,7 @@ fn rearm() {
 /// grid and armed SBI from `now()` would pass every other test in this tree and leave this bound
 /// within a few ticks.
 #[cfg(feature = "icount")]
-pub const ARRIVAL_BOUND: u64 = 1_500;
+pub(crate) const ARRIVAL_BOUND: u64 = 1_500;
 
 /// **Instructions from a deadline to the next one being armed** (milestone 78's instrument): the
 /// whole handler, [`ARRIVAL_BOUND`]'s span plus the tick bookkeeping, the `DEADLINE` store and the
@@ -381,7 +381,7 @@ pub const ARRIVAL_BOUND: u64 = 1_500;
 /// this number exceeding one tick period, which is 10,000,000 instructions of virtual time at
 /// 100 Hz, so the bound is three orders of magnitude tighter than the assertion it replaces.
 #[cfg(feature = "icount")]
-pub const HANDLER_BOUND: u64 = 2_500;
+pub(crate) const HANDLER_BOUND: u64 = 2_500;
 
 /// Execute `2 * iters` instructions and return that count, so `icount::calibrate` can check the
 /// virtual clock against a known instruction count and refuse to measure anything if this boot is
@@ -397,7 +397,7 @@ pub const HANDLER_BOUND: u64 = 2_500;
 ///
 /// Here rather than in `icount.rs` because DECISIONS §3 puts every `asm!` under `arch/`.
 #[cfg(feature = "icount")]
-pub fn calibration_loop(iters: u64) -> u64 {
+pub(crate) fn calibration_loop(iters: u64) -> u64 {
     // SAFETY: a self-contained counted loop in a caller-saved scratch register. It touches no
     // memory, makes no call, and leaves the register dead, which is what the operand spec and
     // `nomem`/`nostack` state.
@@ -426,7 +426,7 @@ pub fn ticks() -> u64 {
 /// an idle core at any preemption point (DECISIONS §28.3). Reading by index makes the pair name one
 /// hart on purpose. See notes/load-sensitive-assertions.md.
 #[cfg_attr(not(any(test, feature = "system_tests")), allow(dead_code))]
-pub fn ticks_on(hart: usize) -> u64 {
+pub(crate) fn ticks_on(hart: usize) -> u64 {
     TICKS[hart].load(Ordering::Relaxed)
 }
 
@@ -459,12 +459,12 @@ pub fn is_tick_pending() -> bool {
 /// Part of the arch timer contract rather than of any caller; this file's tests are what exercise
 /// it, exactly as on aarch64.
 #[cfg_attr(not(any(test, feature = "system_tests")), allow(dead_code))]
-pub fn uptime_ms() -> u64 {
+pub(crate) fn uptime_ms() -> u64 {
     now() / (timebase_hz() / 1000)
 }
 
 /// Busy-wait for `counter_ticks` of the free-running counter.
-pub fn spin_for(counter_ticks: u64) {
+pub(crate) fn spin_for(counter_ticks: u64) {
     let start = now();
     while now().wrapping_sub(start) < counter_ticks {
         core::hint::spin_loop();
@@ -479,7 +479,7 @@ pub fn spin_for(counter_ticks: u64) {
 /// [`DEADLINE`] the count is real, and it is what makes the cost of masking interrupts visible (see
 /// this file's `a_long_critical_section_costs_a_tick`).
 #[cfg_attr(not(any(test, feature = "system_tests")), allow(dead_code))]
-pub fn missed_ticks() -> u64 {
+pub(crate) fn missed_ticks() -> u64 {
     missed_ticks_on(cpu::id())
 }
 
@@ -487,7 +487,7 @@ pub fn missed_ticks() -> u64 {
 /// a test that reads it either side of a wait must name the hart, or a migration compares two
 /// unrelated counters.
 #[cfg_attr(not(any(test, feature = "system_tests")), allow(dead_code))]
-pub fn missed_ticks_on(hart: usize) -> u64 {
+pub(crate) fn missed_ticks_on(hart: usize) -> u64 {
     MISSED_TICKS[hart].load(Ordering::Relaxed)
 }
 
@@ -507,7 +507,7 @@ pub fn missed_ticks_on(hart: usize) -> u64 {
     all(not(any(test, feature = "system_tests")), not(feature = "icount")),
     allow(dead_code)
 )]
-pub fn deadline() -> u64 {
+pub(crate) fn deadline() -> u64 {
     DEADLINE[cpu::id()].load(Ordering::Relaxed)
 }
 
@@ -535,7 +535,7 @@ pub mod miss_detail {
 
     /// Record the counter and the deadline it had already passed. Called from [`super::rearm`], in
     /// trap context, so this is three relaxed stores and nothing else.
-    pub fn record(now: u64, next: u64) {
+    pub(crate) fn record(now: u64, next: u64) {
         let id = cpu::id();
         NOW[id].store(now, Ordering::Relaxed);
         NEXT[id].store(next, Ordering::Relaxed);
@@ -545,7 +545,7 @@ pub mod miss_detail {
     /// This hart's last miss as `(now, next, count)`. `now - next` is how late the re-arm was, in
     /// counter ticks; compare it against [`super::interval`] to tell a slow handler from a
     /// descheduled emulator.
-    pub fn last() -> (u64, u64, u64) {
+    pub(crate) fn last() -> (u64, u64, u64) {
         let id = cpu::id();
         (
             NOW[id].load(Ordering::Relaxed),

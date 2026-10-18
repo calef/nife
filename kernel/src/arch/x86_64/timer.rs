@@ -133,7 +133,7 @@ const PIT_CHANNEL0_RATE: u8 = 0b0011_0100;
 /// It is emphatically **not** the IO APIC input the line arrives on: the MADT's interrupt source
 /// overrides say the PIT is wired to global system interrupt 2, because pin 0 carries the 8259
 /// cascade. See `arch/x86_64/irq.rs`.
-pub const PIT_IRQ: u32 = 0;
+pub(crate) const PIT_IRQ: u32 = 0;
 
 /// The TSC's frequency in hertz, established by [`init_frequency`]. Zero until then.
 static TSC_HZ: AtomicU64 = AtomicU64::new(0);
@@ -278,7 +278,7 @@ pub(super) fn calibration_has_converged(samples: &[u64]) -> bool {
 /// # Panics
 /// If the local APIC is not up. The order is APIC then timer, and a timer calibrated against a
 /// counter that is not running would produce a plausible TSC frequency and a nonsense tick period.
-pub fn init_frequency(boot_info_pointer: usize) {
+pub(crate) fn init_frequency(boot_info_pointer: usize) {
     let _ = boot_info_pointer;
     assert!(
         irq::is_local_apic_ready(),
@@ -378,7 +378,7 @@ pub fn start_pit_ticking(hz: u64) -> u64 {
 }
 
 /// The counter's current value: the TSC.
-pub fn now() -> u64 {
+pub(crate) fn now() -> u64 {
     rdtsc()
 }
 
@@ -389,7 +389,7 @@ pub fn now() -> u64 {
 /// representable state rather than a bug to crash on. In practice this is never `None` by the
 /// time any process is loaded: `init_frequency` runs early in the boot tour, well before the
 /// first call to `kernel::user::load`.
-pub fn frequency_checked() -> Option<u64> {
+pub(crate) fn frequency_checked() -> Option<u64> {
     let hz = TSC_HZ.load(Ordering::Relaxed);
     (hz != 0).then_some(hz)
 }
@@ -406,7 +406,7 @@ pub fn frequency() -> u64 {
 /// Whether [`frequency`]'s number came from `CPUID` leaf `0x15` or from PIT calibration, for the
 /// boot print and this milestone's own evidence. `"uncalibrated"` before [`init_frequency`] has
 /// run, which [`frequency`] itself would panic on; this never panics.
-pub fn frequency_source() -> &'static str {
+pub(crate) fn frequency_source() -> &'static str {
     if TSC_HZ.load(Ordering::Relaxed) == 0 {
         "uncalibrated"
     } else if TSC_HZ_FROM_CPUID.load(Ordering::Relaxed) {
@@ -436,13 +436,13 @@ impl Calibration {
     /// Every one of these is an *upper bound* on the truth, which is the whole argument: see
     /// [`CALIBRATION_WINDOW_CAP`]. So the spread across them is not an error bar. It says how hard
     /// the host was fighting this calibration, and the truth is at or below the smallest of them.
-    pub fn windows(&self) -> &[u64] {
+    pub(crate) fn windows(&self) -> &[u64] {
         &self.samples[..self.taken]
     }
 
     /// **The worst window's implied rate**, in hertz, for the boot print to show beside the chosen
     /// one. Zero before [`init_frequency`] has run.
-    pub fn worst(&self) -> u64 {
+    pub(crate) fn worst(&self) -> u64 {
         self.windows().iter().copied().max().unwrap_or(0)
     }
 }
@@ -452,7 +452,7 @@ impl Calibration {
 /// [`frequency`] returns the smallest window when the rate came from the PIT. It can also report
 /// `cpuid leaf 0x15` (see [`frequency_source`]), in which case these windows were still timed, for
 /// the local APIC timer's rate which has no `CPUID` equivalent, and simply not used for the TSC.
-pub fn calibration() -> Calibration {
+pub(crate) fn calibration() -> Calibration {
     Calibration {
         samples: core::array::from_fn(|i| CALIBRATION_SAMPLES[i].load(Ordering::Relaxed)),
         taken: CALIBRATION_TAKEN.load(Ordering::Relaxed),
@@ -465,7 +465,7 @@ pub fn interval() -> u64 {
 }
 
 /// The local APIC timer's measured frequency, for the boot print. Zero before calibration.
-pub fn apic_timer_frequency() -> u64 {
+pub(crate) fn apic_timer_frequency() -> u64 {
     APIC_TIMER_HZ.load(Ordering::Relaxed)
 }
 
@@ -501,7 +501,7 @@ pub fn init() {
 // than deleted: milestone 74's cycle-counter work is the caller that will want it in anger.
 #[cfg_attr(not(feature = "system_tests"), allow(dead_code))]
 #[cfg(any(test, feature = "system_tests", feature = "cycle_counter_grant"))]
-pub fn is_cycle_counter_grantable() -> bool {
+pub(crate) fn is_cycle_counter_grantable() -> bool {
     true
 }
 
@@ -529,14 +529,14 @@ pub fn is_cycle_counter_grantable() -> bool {
 /// reasoning and the measured cost. Milestone 228's closed default at `init` is NOT gated.
 #[inline(always)]
 #[cfg(any(test, feature = "system_tests", feature = "cycle_counter_grant"))]
-pub fn set_cycle_counter_grant(_granted: bool) {}
+pub(crate) fn set_cycle_counter_grant(_granted: bool) {}
 
 /// **Take one tick.** Called from the trap handler when [`irq::TIMER_VECTOR`] arrives.
 ///
 /// It does not write the EOI: the trap handler does that for every interrupt vector, in one place,
 /// because a missed EOI is a hang rather than an error and one place is easier to be sure about
 /// than one per handler.
-pub fn tick() {
+pub(crate) fn tick() {
     TICKS.fetch_add(1, Ordering::Relaxed);
     // In a test build, feed the hang watchdogs (`testing::watchdog_tick`), as the other two
     // architectures' ticks do. Missing here from milestone 161 until 2026-10-11 (UTC), so no x86_64
@@ -565,7 +565,7 @@ pub fn is_tick_pending() -> bool {
 }
 
 /// Spin for `counter_ticks` of the TSC.
-pub fn spin_for(counter_ticks: u64) {
+pub(crate) fn spin_for(counter_ticks: u64) {
     let start = now();
     while now().wrapping_sub(start) < counter_ticks {
         core::hint::spin_loop();
@@ -583,7 +583,7 @@ pub fn spin_for(counter_ticks: u64) {
 /// other core's ticks hide the wedged one (corrected 2026-10-13 UTC by lane
 /// `maintainer/supervision-label-hang`, whose hang was exactly that shape).
 #[allow(dead_code)]
-pub fn ticks_on(cpu: usize) -> u64 {
+pub(crate) fn ticks_on(cpu: usize) -> u64 {
     let _ = cpu;
     ticks()
 }

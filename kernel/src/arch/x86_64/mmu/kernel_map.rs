@@ -18,13 +18,13 @@ use super::*;
 
 /// The physical address of the page-table root the CPU is currently walking (`CR3`, with the
 /// PCID/flag bits masked off).
-pub fn current_root() -> u64 {
+pub(crate) fn current_root() -> u64 {
     read_cr3() & 0x000f_ffff_ffff_f000
 }
 
 /// Print what the MMU is doing, one line, on every boot. The x86 twin of the other two
 /// architectures' summaries.
-pub fn print_summary() {
+pub(crate) fn print_summary() {
     let root = KERNEL_ROOT.load(Ordering::Relaxed);
     if root == 0 {
         crate::println!(
@@ -164,7 +164,7 @@ pub(super) unsafe fn install(root: u64) {
 /// trampoline (`boot.s`'s `secondary_boot`) already installed `boot_pml4`, and this just switches
 /// to the same fine root the boot core is already running on. Called from `secondary_main`'s step
 /// 3, same as the other two architectures.
-pub fn init_secondary() {
+pub(crate) fn init_secondary() {
     let root = KERNEL_ROOT.load(Ordering::Relaxed);
     assert_ne!(
         root, 0,
@@ -191,7 +191,7 @@ fn kernel_mapper() -> Mapper<impl FnMut() -> Option<u64>, fn(u64) -> *mut PageTa
 }
 
 /// Map one page in the kernel's address space.
-pub fn map_page(va: u64, pa: u64, flags: Flags) -> Result<(), MapError> {
+pub(crate) fn map_page(va: u64, pa: u64, flags: Flags) -> Result<(), MapError> {
     let _guard = KERNEL_MMU.lock(); // exclusive: two CPUs must not mutate the tables at once
     kernel_mapper().map(va, pa, flags)
 }
@@ -199,7 +199,7 @@ pub fn map_page(va: u64, pa: u64, flags: Flags) -> Result<(), MapError> {
 /// Unmap one page in the kernel's address space, invalidate the TLB, and return the physical frame
 /// (the caller's to free; the mapper never owned it).
 #[allow(dead_code)]
-pub fn unmap_page(va: u64) -> Result<u64, MapError> {
+pub(crate) fn unmap_page(va: u64) -> Result<u64, MapError> {
     let _guard = KERNEL_MMU.lock(); // exclusive: see map_page
     let (pa, flush) = kernel_mapper().unmap(va)?;
     flush.flush(flush_tlb);
@@ -215,7 +215,7 @@ pub fn unmap_page(va: u64) -> Result<u64, MapError> {
 /// frame away.
 ///
 /// Local first, so this core's own page-table write is retired before anyone is told to look.
-pub fn flush_tlb(va: u64) {
+pub(crate) fn flush_tlb(va: u64) {
     // Getting TLB maintenance wrong means a stale translation, which is the memory-unsafety that
     // matters here rather than Rust's.
     super::instructions::invlpg(va);
@@ -223,7 +223,7 @@ pub fn flush_tlb(va: u64) {
 }
 
 /// Translate a kernel virtual address through the live kernel tables.
-pub fn translate(va: u64) -> Option<(u64, Flags)> {
+pub(crate) fn translate(va: u64) -> Option<(u64, Flags)> {
     let _guard = KERNEL_MMU.lock();
     kernel_mapper().translate(va)
 }
@@ -233,7 +233,7 @@ pub fn translate(va: u64) -> Option<(u64, Flags)> {
 /// For fault handlers, which is why it does not go through [`translate`]: a handler that has already
 /// lost the machine must not block on a lock whose holder might be the thread that just died. Same
 /// disposition and same caller (`stack::print_text_words`) as the RISC-V twin.
-pub fn is_mapped(va: u64) -> bool {
+pub(crate) fn is_mapped(va: u64) -> bool {
     let root = KERNEL_ROOT.load(Ordering::Relaxed);
     if root == 0 {
         // Before `init`, the boot map covers the low 4 GiB three ways over and nothing is a hole.

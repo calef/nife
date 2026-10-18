@@ -140,7 +140,7 @@ pub fn publish() {
 
 /// What `boot_progenitor` grants: the ring's first frame, the cursor page and the notification,
 /// or `None` when [`publish`] could not allocate them.
-pub fn grants() -> Option<(u64, u64, crate::sched::NotificationId)> {
+pub(crate) fn grants() -> Option<(u64, u64, crate::sched::NotificationId)> {
     let ring = RING_PHYS.load(Ordering::Relaxed);
     (ring != 0).then(|| {
         (
@@ -153,7 +153,7 @@ pub fn grants() -> Option<(u64, u64, crate::sched::NotificationId)> {
 
 /// Whether a drainer has ever written its cursor. The flood probes start on it.
 #[allow(dead_code)]
-pub fn attached_once() -> bool {
+pub(crate) fn attached_once() -> bool {
     cursor().is_some_and(|c| c.get() != DETACHED)
 }
 
@@ -229,7 +229,7 @@ fn catch_up(r: &Ring<'_>, out: &mut impl FnMut(&str)) {
 
 /// **Route one `print!` fragment.** `out` writes to the UART (and the kernel's screen); it is
 /// called for direct lines as they arrive, and for held lines only when the drainer has stopped.
-pub fn route(line: &mut Line, s: &str, mut out: impl FnMut(&str)) {
+pub(crate) fn route(line: &mut Line, s: &str, mut out: impl FnMut(&str)) {
     let Some(r) = ring() else {
         out(s);
         return;
@@ -318,7 +318,7 @@ pub fn flush(line: &mut Line, mut out: impl FnMut(&str)) {
 /// **Signal the drainer if a held line is waiting and this core holds no lock.** Called at the end
 /// of `_print` and from the timer tick.
 #[inline]
-pub fn signal_if_safe() {
+pub(crate) fn signal_if_safe() {
     if SIGNAL_PENDING.load(Ordering::Relaxed) {
         signal_slow();
     }
@@ -376,7 +376,7 @@ pub fn test_leave_panic() {
 /// talks over it. With `kernel_log_panic_probe` it panics on the thirtieth line instead, so the
 /// gate can see a panic reach the UART with a drainer attached.
 #[cfg(feature = "console_flood")]
-pub fn flood_tick() {
+pub(crate) fn flood_tick() {
     static TICKS: AtomicU64 = AtomicU64::new(0);
     static LINES: AtomicU64 = AtomicU64::new(0);
     if crate::cpu::id() != 0 || !attached_once() {

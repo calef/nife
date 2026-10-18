@@ -57,7 +57,7 @@ pub type ThreadId = u64;
 /// 2 more frames per live thread. The guard page below still turns "too small" into a legible
 /// fault rather than silent corruption, and the high-water gate (stack.rs) still alarms well
 /// before the guard.
-pub const STACK_PAGES: usize = 6;
+pub(crate) const STACK_PAGES: usize = 6;
 
 /// Where kernel thread stacks live, virtually: **the architecture's answer**, because the address
 /// is the architecture's (rule 1).
@@ -74,7 +74,7 @@ const STACK_AREA: u64 = mmu::THREAD_STACK_AREA;
 /// (`FREE_STACK_ADDRESS_SPACE` hands back the slot base, never an interior address), which is what lets a
 /// fault handler turn an address back into "slot N, this far into its guard page". See
 /// [`crate::stack::guard_page_at`].
-pub const STACK_SLOT_SPAN: u64 = (STACK_PAGES as u64 + 1) * FRAME_SIZE;
+pub(crate) const STACK_SLOT_SPAN: u64 = (STACK_PAGES as u64 + 1) * FRAME_SIZE;
 
 static NEXT_STACK_VA: AtomicU64 = AtomicU64::new(STACK_AREA);
 
@@ -84,7 +84,7 @@ static NEXT_STACK_VA: AtomicU64 = AtomicU64::new(STACK_AREA);
 /// Reads one relaxed atomic and nothing else, deliberately: the caller is a fault handler that has
 /// already lost the machine, so it may not take a lock. A slot allocated concurrently on another
 /// core can be missing from the range, which costs a diagnosis and never a wrong one.
-pub fn stack_area_span() -> (u64, u64) {
+pub(crate) fn stack_area_span() -> (u64, u64) {
     (STACK_AREA, NEXT_STACK_VA.load(Ordering::Relaxed))
 }
 
@@ -92,7 +92,7 @@ pub fn stack_area_span() -> (u64, u64) {
 /// `u64::MAX` (= `cpu::NO_TID`), which the generational table can never mint, so a thread that
 /// somehow escaped naming resolves to nothing instead of to slot 0. Every insert path overwrites
 /// it via `Table::insert_with` (milestone 14 phase A; design/kernel-objects-from-untyped.md).
-pub const UNNAMED: ThreadId = u64::MAX;
+pub(crate) const UNNAMED: ThreadId = u64::MAX;
 
 /// Stack address ranges from threads that have exited.
 ///
@@ -239,7 +239,7 @@ impl KernelStack {
 
     /// The lowest usable byte. Test support.
     #[cfg_attr(not(any(test, feature = "system_tests")), allow(dead_code))]
-    pub fn bottom(&self) -> u64 {
+    pub(crate) fn bottom(&self) -> u64 {
         self.bottom
     }
 }
@@ -769,7 +769,7 @@ const _: () = assert!(
 /// stores it. Deriving this from a `&Thread` or `&mut Thread` would be wrong rather than merely
 /// unidiomatic: a reference's provenance covers the struct, and this address is past its end. Take
 /// the raw pointer out of the table (`Threads::pointer`) and pass that.
-pub unsafe fn fp_state_of(thread: *mut Thread) -> *mut crate::arch::fp::FpState {
+pub(crate) unsafe fn fp_state_of(thread: *mut Thread) -> *mut crate::arch::fp::FpState {
     // SAFETY: the caller's contract. The offset is inside the page by the assertion above, and the
     // result is aligned because `FP_STATE_OFFSET` is a multiple of `FpState`'s alignment and a page
     // is aligned to far more than that.
@@ -785,7 +785,7 @@ pub unsafe fn fp_state_of(thread: *mut Thread) -> *mut crate::arch::fp::FpState 
 ///
 /// # Safety
 /// As [`fp_state_of`], and the register file must not already hold anything worth keeping.
-pub unsafe fn init_fp_state(thread: *mut Thread) {
+pub(crate) unsafe fn init_fp_state(thread: *mut Thread) {
     // SAFETY: the caller's contract; one aligned write of a `Copy` value inside the page.
     unsafe { fp_state_of(thread).write(crate::arch::fp::FpState::INITIAL) };
 }
@@ -804,7 +804,7 @@ pub unsafe fn init_fp_state(thread: *mut Thread) {
 /// (`sched::current_cap`) took the global lock to read a table that has exactly one owner. On radon
 /// at four busy cores 41% of those lookups found it held. The order between the two locks is
 /// written at the rank.
-pub type CapabilityTableLock = crate::sync::IrqSafeMutex<crate::cap::CapabilityTable>;
+pub(crate) type CapabilityTableLock = crate::sync::IrqSafeMutex<crate::cap::CapabilityTable>;
 
 /// **Where a thread's capability table lives: past its FP register file, in the same TCB page.**
 ///
@@ -848,7 +848,7 @@ pub(crate) const EMPTY_CAPABILITY_TABLE: CapabilityTableLock = crate::sync::IrqS
 ///
 /// As [`fp_state_of`]: `thread` must point to a live `Thread` **at the start of its own TCB page**,
 /// as the table stores it, never one derived from a reference.
-pub unsafe fn capability_table_of(thread: *mut Thread) -> *const CapabilityTableLock {
+pub(crate) unsafe fn capability_table_of(thread: *mut Thread) -> *const CapabilityTableLock {
     // SAFETY: the caller's contract; one field read through the page pointer, no reference to the
     // `Thread` formed. Since milestone 812 (`std::thread::spawn` runs real threads in one address
     // space) the table may be its process's rather than its own, so the address is stored rather
@@ -862,7 +862,7 @@ pub unsafe fn capability_table_of(thread: *mut Thread) -> *const CapabilityTable
 /// # Safety
 ///
 /// As [`capability_table_of`].
-pub unsafe fn own_capability_table_of(thread: *mut Thread) -> *const CapabilityTableLock {
+pub(crate) unsafe fn own_capability_table_of(thread: *mut Thread) -> *const CapabilityTableLock {
     // SAFETY: the caller's contract. Inside the page by the assertion above, and aligned because the
     // offset is a multiple of the lock's alignment and a page is aligned to far more.
     unsafe { thread.cast::<u8>().add(CAPABILITY_TABLE_OFFSET).cast() }
@@ -875,7 +875,7 @@ pub unsafe fn own_capability_table_of(thread: *mut Thread) -> *const CapabilityT
 ///
 /// As [`capability_table_of`], and no other core may yet be able to reach the table: the thread is
 /// being born, so its name has not been handed to anyone.
-pub unsafe fn init_capability_table(thread: *mut Thread) {
+pub(crate) unsafe fn init_capability_table(thread: *mut Thread) {
     // SAFETY: the caller's contract; one aligned write inside the page, over bytes nothing reads.
     unsafe {
         let own = own_capability_table_of(thread);
@@ -958,7 +958,7 @@ impl Thread {
     ///
     /// `dst` is writable, aligned for `Thread`, and holds no live `Thread`.
     #[inline(never)]
-    pub unsafe fn write_adopted_current(dst: *mut Thread, id: ThreadId) {
+    pub(crate) unsafe fn write_adopted_current(dst: *mut Thread, id: ThreadId) {
         // SAFETY: the caller's contract.
         unsafe {
             dst.write(Thread {
@@ -1029,7 +1029,7 @@ impl Thread {
     /// `dst` must be writable, aligned for `Thread`, and hold no live `Thread`: this *writes*
     /// rather than assigns, so nothing is dropped. `Threads::insert_at` satisfies all three with a
     /// fresh page it exclusively owns.
-    pub unsafe fn spawn_into<F: FnOnce() + Send + 'static>(
+    pub(crate) unsafe fn spawn_into<F: FnOnce() + Send + 'static>(
         f: F,
         id: ThreadId,
         dst: *mut Thread,
@@ -1154,7 +1154,7 @@ impl Thread {
     /// no address space, no entry: `Embryo`. `CONFIGURE` fills in the space and entry, `START`
     /// builds the stack and context and makes it `Ready`. `thread_control_block_kmem` records that this TCB's
     /// page is a user region's, not `kmem`'s, so the reaper leaves it for the region.
-    pub fn embryo() -> Self {
+    pub(crate) fn embryo() -> Self {
         Thread {
             id: UNNAMED,
             handshake: thread_wake_handshake::Handshake::embryo(),
@@ -1199,7 +1199,7 @@ impl Thread {
     /// frame whose trampoline drops to EL0 at `entry` on `user_sp`, exactly as `thread_trampoline`
     /// starts a kernel thread's closure. The caller builds `stack`, before taking `IPC_TABLES`
     /// (2026-10-04; see `sched::start_thread_control_block`).
-    pub fn arm_for_start(&mut self, stack: KernelStack) {
+    pub(crate) fn arm_for_start(&mut self, stack: KernelStack) {
         let (entry, user_sp) = self.entry;
         let context = (stack.top() - size_of::<Context>() as u64) as *mut Context;
         // SAFETY: the stack was just mapped read/write, and this is inside it. `arch` owns the

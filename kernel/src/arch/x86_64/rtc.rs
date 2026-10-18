@@ -141,7 +141,7 @@ fn bcd_to_binary(v: u8) -> u8 {
 /// `components/src/clock.rs` still runs whatever it is handed through
 /// `clock_contract::policy::is_plausible` before publishing it, the same as every other RTC
 /// binding.
-pub fn read_unix_nanos() -> Option<u64> {
+pub(crate) fn read_unix_nanos() -> Option<u64> {
     let raw = loop {
         while is_update_in_progress() {
             core::hint::spin_loop();

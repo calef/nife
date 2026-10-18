@@ -23,9 +23,9 @@ use crate::memory;
 /// T-Head's memory types, because firmware has turned `XTheadMae` on and plain Sv39's zeros there are
 /// undefined. `arch::isa::init` refuses a hart that disagrees with the format chosen here.
 #[cfg(not(feature = "board_th1520"))]
-pub type Format = paging::Sv39;
+pub(crate) type Format = paging::Sv39;
 #[cfg(feature = "board_th1520")]
-pub type Format = paging::Sv39Mae;
+pub(crate) type Format = paging::Sv39Mae;
 
 /// The UART, mapped as device memory in the direct map. Without it the machine goes silent the
 /// instant we switch off the coarse boot table. Per machine, so it is [`super::machine`]'s.
@@ -103,7 +103,7 @@ fn current_root_pa() -> u64 {
 /// extension of bit 38 = 1). Chosen exactly like aarch64's base so `VA = PA | KERNEL_VA_BASE` is
 /// exact and a kernel VA shares its physical address's page-table indices. Matched to
 /// `KERNEL_VA_BASE` in link-riscv64.ld, and the kernel runs here from `boot.s`'s high-half jump on.
-pub const KERNEL_VA_BASE: u64 = 0xffff_ffc0_0000_0000;
+pub(crate) const KERNEL_VA_BASE: u64 = 0xffff_ffc0_0000_0000;
 
 /// **Where kernel thread stacks live, virtually** (`thread.rs`'s `STACK_AREA`).
 ///
@@ -133,14 +133,14 @@ pub const THREAD_STACK_AREA: u64 = KERNEL_VA_BASE | 0x0000_0010_0000_0000;
 /// the window are mapped page by page by `direct_map` exactly as low ones are; the window decides
 /// only *where* they are named. If a machine ever puts devices in two distant gigabytes, this
 /// verdict changes (milestone 89's seventh question says so too).
-pub const DEVICE_WINDOW_PA: u64 = 0xff_c000_0000;
+pub(crate) const DEVICE_WINDOW_PA: u64 = 0xff_c000_0000;
 /// One gigabyte: one root entry.
-pub const DEVICE_WINDOW_SIZE: u64 = 1 << 30;
+pub(crate) const DEVICE_WINDOW_SIZE: u64 = 1 << 30;
 /// Root index 511, the last gigabyte of the high half.
-pub const DEVICE_WINDOW_VA: u64 = 0xffff_ffff_c000_0000;
+pub(crate) const DEVICE_WINDOW_VA: u64 = 0xffff_ffff_c000_0000;
 /// The first physical address the direct map does not reach: 255 GiB, so that `pa +
 /// KERNEL_VA_BASE` stops one gigabyte short of [`DEVICE_WINDOW_VA`].
-pub const DIRECT_MAP_LIMIT: u64 = DEVICE_WINDOW_VA - KERNEL_VA_BASE;
+pub(crate) const DIRECT_MAP_LIMIT: u64 = DEVICE_WINDOW_VA - KERNEL_VA_BASE;
 
 // The arithmetic the two translations rest on, checked by the compiler rather than by a reader.
 const _: () = {
@@ -247,16 +247,16 @@ static BOOT_PAGE_TABLE: BootTable = boot_table();
 /// The physical address of the virtio-mmio transport window on QEMU's `virt` machine. The `virt`
 /// board lays out 8 virtio-mmio slots of 0x1000 each starting at `0x1000_1000`, growing downward by
 /// slot; this base and the count below describe that window for the driver layer.
-pub const VIRTIO_MMIO_BASE: u64 = 0x1000_1000;
+pub(crate) const VIRTIO_MMIO_BASE: u64 = 0x1000_1000;
 /// The size of the virtio-mmio window (8 slots of 0x1000).
-pub const VIRTIO_MMIO_SIZE: u64 = 8 * 0x1000;
+pub(crate) const VIRTIO_MMIO_SIZE: u64 = 8 * 0x1000;
 /// The first PLIC interrupt id for the virtio-mmio slots on the `virt` machine (irq 1 is the first
 /// virtio slot; the driver adds the slot index).
-pub const VIRTIO_IRQ_BASE: u32 = 1;
+pub(crate) const VIRTIO_IRQ_BASE: u32 = 1;
 /// RISC-V's `virt` lays out 8 virtio-mmio slots 0x1000 apart (aarch64's are 32, 0x200 apart). The
 /// probe (`virtio::find_block_device`) walks them.
-pub const VIRTIO_SLOT_STRIDE: u64 = 0x1000;
-pub const VIRTIO_SLOTS: u64 = 8;
+pub(crate) const VIRTIO_SLOT_STRIDE: u64 = 0x1000;
+pub(crate) const VIRTIO_SLOTS: u64 = 8;
 
 /// Whether `map_everything` mapped the virtio-mmio window, which it does only when the device tree
 /// names a `virtio,mmio` node (milestone 89). Written once on the primary hart before any probe.
@@ -287,7 +287,7 @@ pub fn virtio_slots() -> u64 {
 /// **The floor, not the answer, since milestone 320.** `pci::ecam_buses()` is what the kernel maps
 /// and reads: this value until a survey has run, and the machine's own topology afterwards. On this
 /// architecture no survey runs, so it stays 1 and is the truth here.
-pub const PCI_ECAM_BUSES: u16 = 1;
+pub(crate) const PCI_ECAM_BUSES: u16 = 1;
 
 /// How much of the 32-bit PCI memory window the kernel maps and assigns BARs from. The window
 /// itself comes from the device tree (`memory::pci_regions`, the bridge's `ranges`); with
@@ -295,12 +295,12 @@ pub const PCI_ECAM_BUSES: u16 = 1;
 /// places them itself, bumping from the discovered base (kernel/src/pci.rs). A 2 MB slice: a
 /// virtio function's register BAR is 16 KB, so this bounds the kernel's page-table spend while
 /// leaving room for dozens of devices.
-pub const PCI_BAR_MAPPED: u64 = 0x20_0000;
+pub(crate) const PCI_BAR_MAPPED: u64 = 0x20_0000;
 
 /// The PLIC input for INTx line A on the `virt` board's root complex; B, C, D follow. A device's
 /// line is `PCI_IRQ_BASE + ((dev + pin - 1) % 4)`, the standard swizzle (`pci::intx_irq`); the
 /// dtb fixture test walks the machine's own `interrupt-map` and asserts the formula matches.
-pub const PCI_IRQ_BASE: u32 = 32;
+pub(crate) const PCI_IRQ_BASE: u32 = 32;
 
 /// Physical to kernel-virtual: `pa + KERNEL_VA_BASE`, except in the [device window](DEVICE_WINDOW_PA).
 ///
@@ -318,7 +318,7 @@ pub const PCI_IRQ_BASE: u32 = 32;
 /// things in, and every machine this tree boots keeps its RAM in the first 16 GiB. It is enforced
 /// where it can be checked without a cost per call: [`refuse_unnameable_ram`] at the top of
 /// [`init`] for RAM, and `direct_map` for every device mapping.
-pub const fn phys_to_virt(pa: u64) -> u64 {
+pub(crate) const fn phys_to_virt(pa: u64) -> u64 {
     (pa & ((1 << 38) - 1)) | KERNEL_VA_BASE
 }
 
@@ -353,7 +353,7 @@ fn refuse_unnameable_ram() {
 }
 
 /// Kernel-virtual to physical. The inverse of [`phys_to_virt`].
-pub const fn virt_to_phys(va: u64) -> u64 {
+pub(crate) const fn virt_to_phys(va: u64) -> u64 {
     if va >= DEVICE_WINDOW_VA {
         va - DEVICE_WINDOW_VA + DEVICE_WINDOW_PA
     } else {
@@ -363,7 +363,7 @@ pub const fn virt_to_phys(va: u64) -> u64 {
 
 /// A physical page-table address as a kernel pointer. Identity in bare mode; the direct map makes it
 /// valid once the Sv39 step maps all of RAM into the high-half. Same role as the aarch64 helper.
-pub fn phys_to_ptr(pa: u64) -> *mut PageTable {
+pub(crate) fn phys_to_ptr(pa: u64) -> *mut PageTable {
     phys_to_virt(pa) as *mut PageTable
 }
 
@@ -501,7 +501,7 @@ fn probe_asid_bits() -> usize {
 }
 
 /// How many `satp.ASID` bits this hardware implements. Panics if read before [`init`] probed.
-pub fn asid_bits() -> usize {
+pub(crate) fn asid_bits() -> usize {
     let n = ASID_BITS.load(core::sync::atomic::Ordering::Relaxed);
     assert_ne!(n, usize::MAX, "asid_bits() read before mmu::init probed it");
     n
@@ -529,7 +529,7 @@ static ASID_TAGGING_TRUSTED: core::sync::atomic::AtomicBool =
 ///
 /// Read on the context-switch path, so it is a relaxed load of a value written once at boot, before
 /// any secondary hart exists and before any user address space does.
-pub fn asid_tagging_is_trusted() -> bool {
+pub(crate) fn asid_tagging_is_trusted() -> bool {
     ASID_TAGGING_TRUSTED.load(core::sync::atomic::Ordering::Relaxed)
 }
 
@@ -539,7 +539,7 @@ pub fn asid_tagging_is_trusted() -> bool {
 /// `KERNEL_ROOT` the primary built and verified gives this hart the same W^X map every other hart
 /// runs on. All harts share the one kernel root, so there is nothing per-hart to build. The RISC-V
 /// counterpart of the aarch64 `init_secondary`.
-pub fn init_secondary() {
+pub(crate) fn init_secondary() {
     let root = KERNEL_ROOT.load(Ordering::Relaxed);
     // SAFETY: the primary built this root and is running on it; it covers this code, this hart's
     // stack (mapped in the kernel image), and the UART, so the switch is seamless.
@@ -860,7 +860,7 @@ linker_symbol!(stack_top, __stack_top);
 /// **Returns a full `satp` value** (not a bare root), so `switch_user_root`/`activate_user` write it
 /// directly; the `root` a process stores must itself contain the kernel high-half (see the note on
 /// the single-`satp` model at `switch_user_root`).
-pub fn ttbr0_value(root: u64, asid: u16) -> u64 {
+pub(crate) fn ttbr0_value(root: u64, asid: u16) -> u64 {
     SATP_MODE_SV39 | ((asid as u64) << SATP_ASID_SHIFT) | (root >> 12)
 }
 
@@ -868,7 +868,7 @@ pub fn ttbr0_value(root: u64, asid: u16) -> u64 {
 /// exists so a portable test can ask "which tag is this space wearing?" without knowing that this
 /// ISA keeps it in `satp[59:44]` and aarch64 keeps it in `TTBR0_EL1[63:48]`.
 #[cfg_attr(not(feature = "system_tests"), allow(dead_code))] // the tests are its only caller; the kernel composes, never decomposes
-pub fn asid_of(satp: u64) -> u16 {
+pub(crate) fn asid_of(satp: u64) -> u16 {
     ((satp >> SATP_ASID_SHIFT) & 0xffff) as u16
 }
 
@@ -892,7 +892,7 @@ pub fn asid_of(satp: u64) -> u16 {
 ///
 /// Skipped when this is the only hart online, exactly as [`flush_tlb`] skips it: there is nobody to
 /// shoot down, and single-hart boot tears down address spaces before the secondaries exist.
-pub fn flush_asid(asid: u16) {
+pub(crate) fn flush_asid(asid: u16) {
     // Local first, so this hart's own page-table writes are ordered before anyone is told to look.
     instructions::sfence_vma_asid(asid as u64);
 
@@ -919,7 +919,7 @@ pub fn flush_asid(asid: u16) {
 /// nothing.
 #[cfg(any(test, feature = "system_tests"))]
 #[cfg_attr(not(feature = "system_tests"), allow(dead_code))] // the system tests call it; a unit-test boot on some ISAs does not
-pub fn permit_kernel_access_to_user_pages(allowed: bool) -> bool {
+pub(crate) fn permit_kernel_access_to_user_pages(allowed: bool) -> bool {
     const SSTATUS_SUM: u64 = 1 << 18;
     // Widening what S-mode may touch is a permission change, not a memory-safety one; the kernel's
     // own mappings are unaffected.
@@ -936,14 +936,14 @@ pub fn permit_kernel_access_to_user_pages(allowed: bool) -> bool {
 /// # Safety
 /// `satp` must name a well-formed Sv39 root that includes the kernel high-half (else the next
 /// instruction fetch faults); the caller owns that invariant, as on aarch64.
-pub unsafe fn activate_user(satp: u64) {
+pub(crate) unsafe fn activate_user(satp: u64) {
     // SAFETY: this function's own `# Safety` contract is exactly the one this call needs; it
     // forwards, it does not weaken.
     unsafe { write_satp(satp) };
 }
 
 /// Remove the user address space from this hart: fall back to the kernel-only reserved root.
-pub fn deactivate_user() {
+pub(crate) fn deactivate_user() {
     // SAFETY: `reserved_root()` composes `KERNEL_ROOT`, the fine map `init` built and stored, which
     // is `'static` and contains the kernel high half by construction. Its low half is empty, so
     // every user address faults, which is the point.
@@ -992,18 +992,18 @@ pub fn user_can_read(va: u64) -> bool {
 
 /// Whether U-mode may write `va`: user-accessible and writable. Same disposition, same test.
 #[cfg_attr(not(feature = "system_tests"), allow(dead_code))]
-pub fn user_can_write(va: u64) -> bool {
+pub(crate) fn user_can_write(va: u64) -> bool {
     translate_in_either_half(va).is_some_and(|(_, f)| f.is_user_accessible() && f.is_writable())
 }
 
 /// The physical root of the currently installed address space (`satp.PPN << 12`).
-pub fn current_user_root() -> u64 {
+pub(crate) fn current_user_root() -> u64 {
     current_root_pa()
 }
 
 /// Unmap one user page at `va` in the space rooted at `root`, invalidate the TLB, and return the
 /// frame it named.
-pub fn unmap_user_at(root: u64, va: u64) -> Option<u64> {
+pub(crate) fn unmap_user_at(root: u64, va: u64) -> Option<u64> {
     // SAFETY: `root` is a live low-half-owning root; `unmap` allocates nothing; the direct map makes
     // `phys_to_ptr` valid.
     let mut mapper = unsafe { Mapper::<_, _, Format>::new(root, Half::Low, || None, phys_to_ptr) };
@@ -1021,7 +1021,7 @@ pub fn unmap_user_at(root: u64, va: u64) -> Option<u64> {
 /// go back: see `paging::Mapper::unlink_table` for why the cut is one entry. The flush is by ASID
 /// rather than by page because the span is up to a whole table's reach and the walk caches above
 /// the leaves have to go too, and a by-tag flush reaches both on every core.
-pub fn cut_user_table(root: u64, va: u64, table: u64, asid: u16) -> Option<(u64, u64)> {
+pub(crate) fn cut_user_table(root: u64, va: u64, table: u64, asid: u16) -> Option<(u64, u64)> {
     // SAFETY: `root` is a live low-half table (the registry forgets a root before its space frees
     // it); the direct map makes `phys_to_ptr` valid; a cut allocates nothing.
     let mut mapper = unsafe { Mapper::<_, _, Format>::new(root, Half::Low, || None, phys_to_ptr) };
@@ -1031,7 +1031,7 @@ pub fn cut_user_table(root: u64, va: u64, table: u64, asid: u16) -> Option<(u64,
 }
 
 /// Translate `va` in the space rooted at physical `root`.
-pub fn translate_at(root: u64, va: u64) -> Option<(u64, Flags)> {
+pub(crate) fn translate_at(root: u64, va: u64) -> Option<(u64, Flags)> {
     // SAFETY: `root` is a page table; the direct map makes `phys_to_ptr` valid; no allocation.
     let mapper = unsafe { Mapper::<_, _, Format>::new(root, Half::Low, || None, phys_to_ptr) };
     mapper.translate(va)
@@ -1040,7 +1040,7 @@ pub fn translate_at(root: u64, va: u64) -> Option<(u64, Flags)> {
 /// Map one user page at `va` onto the already-owned physical frame `phys` in the current address
 /// space, drawing any intermediate tables from `alloc`, then flush the TLB for `va` (RISC-V may
 /// require an `sfence.vma` to make a freshly-valid leaf visible, unlike aarch64).
-pub fn map_current_user_page_frame(
+pub(crate) fn map_current_user_page_frame(
     va: u64,
     phys: u64,
     flags: Flags,
@@ -1058,7 +1058,7 @@ pub fn map_current_user_page_frame(
 /// `satp`, so "the reserved user root" is simply the kernel root: its low half is empty, so any user
 /// address faults, which is exactly right for a kernel thread. (On aarch64 this is a separate empty
 /// `TTBR0` table; the single-`satp` model folds it into the kernel root.)
-pub fn reserved_root() -> u64 {
+pub(crate) fn reserved_root() -> u64 {
     ttbr0_value(KERNEL_ROOT.load(Ordering::Relaxed), 0)
 }
 
@@ -1089,7 +1089,7 @@ pub fn reserved_root() -> u64 {
 /// `script/fastpath-footprint` caught a hot symbol outside `.text.hot` (2026-10-08 UTC). Forcing
 /// the two hot ones keeps the hot path independent of how many cold callers exist.
 #[inline(always)]
-pub unsafe fn switch_user_root(satp: u64) {
+pub(crate) unsafe fn switch_user_root(satp: u64) {
     if read_satp() == satp {
         return;
     }
@@ -1123,7 +1123,7 @@ fn kernel_mapper() -> Mapper<impl FnMut() -> Option<u64>, fn(u64) -> *mut PageTa
 }
 
 /// Map one page into the kernel's own (high-half) address space.
-pub fn map_page(va: u64, pa: u64, flags: Flags) -> Result<(), MapError> {
+pub(crate) fn map_page(va: u64, pa: u64, flags: Flags) -> Result<(), MapError> {
     let _guard = KERNEL_MMU.lock(); // exclusive: two harts must not mutate the tables at once
     kernel_mapper().map(va, pa, flags)
 }
@@ -1131,7 +1131,7 @@ pub fn map_page(va: u64, pa: u64, flags: Flags) -> Result<(), MapError> {
 /// Remove one page from the kernel's address space, invalidate the TLB, and return the physical
 /// frame (the caller's to free; the mapper never owned it). The `TlbFlush` obligation is discharged
 /// here with a real `sfence.vma`; dropping one un-discharged panics.
-pub fn unmap_page(va: u64) -> Result<u64, MapError> {
+pub(crate) fn unmap_page(va: u64) -> Result<u64, MapError> {
     let _guard = KERNEL_MMU.lock(); // exclusive: see map_page
     let (pa, flush) = kernel_mapper().unmap(va)?;
     flush.flush(flush_tlb);
@@ -1144,7 +1144,7 @@ pub fn unmap_page(va: u64) -> Result<u64, MapError> {
 /// `sfence.vma rs1, rs2` with `rs1` = the address and `rs2` = `x0` (all ASIDs) invalidates that
 /// page's translation. Unlike aarch64's `tlbi`, `sfence.vma` also orders the preceding page-table
 /// write and completes locally, so no separate barrier is needed.
-pub fn flush_tlb(va: u64) {
+pub(crate) fn flush_tlb(va: u64) {
     // Local first. Getting TLB maintenance wrong means a stale translation, which is the
     // memory-unsafety that matters here, not Rust unsafety.
     instructions::sfence_vma_page(va);
@@ -1161,18 +1161,18 @@ pub fn flush_tlb(va: u64) {
 }
 
 /// Whether paging is on: `satp`'s MODE field is not Bare (0). True from `boot.s`'s Sv39 switch on.
-pub fn is_enabled() -> bool {
+pub(crate) fn is_enabled() -> bool {
     read_satp() >> 60 != 0
 }
 
 /// Translate a kernel virtual address through the live kernel tables.
-pub fn translate(va: u64) -> Option<(u64, Flags)> {
+pub(crate) fn translate(va: u64) -> Option<(u64, Flags)> {
     let _guard = KERNEL_MMU.lock();
     kernel_mapper().translate(va)
 }
 
 /// Translate a user virtual address through the currently installed address space.
-pub fn translate_user(va: u64) -> Option<(u64, Flags)> {
+pub(crate) fn translate_user(va: u64) -> Option<(u64, Flags)> {
     translate_at(current_root_pa(), va)
 }
 
@@ -1198,7 +1198,7 @@ pub fn installed_satp_and_leaf(va: u64) -> (u64, Option<Flags>) {
     (read_satp(), translate_in_either_half(va).map(|(_, f)| f))
 }
 
-pub fn is_mapped_in_current_space(va: u64) -> bool {
+pub(crate) fn is_mapped_in_current_space(va: u64) -> bool {
     let root = current_root_pa();
     // SAFETY: `root` is the live installed root; the direct map makes `phys_to_ptr` valid; a
     // translate allocates nothing, so the `|| None` allocator is never called.
@@ -1236,7 +1236,7 @@ pub fn is_mapped(va: u64) -> bool {
 /// The kernel high half is the top 256 entries (index 256..512, `KERNEL_VA_BASE`'s top-level index
 /// and up); they point at shared kernel intermediate tables, so copying the entries shares the whole
 /// kernel map. Called by `user::AddressSpace` right after it allocates a root.
-pub fn share_kernel_half(root: u64) {
+pub(crate) fn share_kernel_half(root: u64) {
     let kernel_root = KERNEL_ROOT.load(Ordering::Relaxed);
     // SAFETY: both are page-aligned root tables reachable through the direct map. We copy only the
     // high-half entries; the low half stays zero for the process's own user mappings.
@@ -1261,7 +1261,7 @@ pub fn share_kernel_half(root: u64) {
     any(test, feature = "system_tests", feature = "bench"),
     allow(dead_code)
 )]
-pub fn print_summary() {
+pub(crate) fn print_summary() {
     crate::println!(
         "  mmu             : Sv39 {}, one satp, kernel high half at {:#018x}",
         if is_enabled() {

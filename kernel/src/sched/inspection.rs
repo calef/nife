@@ -30,7 +30,7 @@ use super::*;
 // compiled without them would not build either. `script/lint` clippies `--features soak_test` on both
 // ISAs, which is what keeps them seen.
 #[cfg(feature = "soak_test")]
-pub fn wake_refusals() -> u64 {
+pub(crate) fn wake_refusals() -> u64 {
     trace::counted(trace::Event::WakeRefused)
 }
 
@@ -43,7 +43,7 @@ pub fn wake_refusals() -> u64 {
 // compiled without them would not build either. `script/lint` clippies `--features soak_test` on both
 // ISAs, which is what keeps them seen.
 #[cfg(feature = "soak_test")]
-pub fn wakes_deferred() -> u64 {
+pub(crate) fn wakes_deferred() -> u64 {
     trace::counted(trace::Event::WakeDeferred)
 }
 
@@ -57,7 +57,7 @@ pub fn wakes_deferred() -> u64 {
 // compiled without them would not build either. `script/lint` clippies `--features soak_test` on both
 // ISAs, which is what keeps them seen.
 #[cfg(feature = "soak_test")]
-pub fn remote_placements() -> u64 {
+pub(crate) fn remote_placements() -> u64 {
     trace::counted(trace::Event::PlaceRemote)
 }
 
@@ -72,7 +72,7 @@ pub fn remote_placements() -> u64 {
 // compiled without them would not build either. `script/lint` clippies `--features soak_test` on both
 // ISAs, which is what keeps them seen.
 #[cfg(feature = "soak_test")]
-pub fn migrations() -> u64 {
+pub(crate) fn migrations() -> u64 {
     trace::counted(trace::Event::Migrated)
 }
 
@@ -84,7 +84,7 @@ pub fn migrations() -> u64 {
 // compiled without them would not build either. `script/lint` clippies `--features soak_test` on both
 // ISAs, which is what keeps them seen.
 #[cfg(feature = "soak_test")]
-pub fn steals_served() -> u64 {
+pub(crate) fn steals_served() -> u64 {
     trace::counted(trace::Event::StealServe)
 }
 
@@ -156,7 +156,7 @@ pub fn current_cpu_ticks() -> u64 {
 /// A user thread's `TrapFrame` is not an ordinary local. It must sit at exactly the address the
 /// vector table's `SAVE_CONTEXT` will rebuild it at when the user traps in, because `eret`
 /// leaves `SP_EL1` pointing just past it and the hardware does not consult our intentions.
-pub fn current_kernel_stack_top() -> Option<u64> {
+pub(crate) fn current_kernel_stack_top() -> Option<u64> {
     let guard = IPC_TABLES.lock();
     let sched = guard.as_ref()?;
     sched
@@ -465,7 +465,7 @@ pub fn runnable_non_idle_count(&exclude: &ThreadId) -> usize {
 /// be running on another core while its stack is scanned; the scan reads a snapshot, and a racing
 /// deepening is at worst under-reported by this run (see `stack::high_water`).
 #[cfg(any(test, feature = "system_tests"))]
-pub fn scan_live_thread_stacks() {
+pub(crate) fn scan_live_thread_stacks() {
     let mut guard = IPC_TABLES.lock();
     let Some(sched) = guard.as_mut() else {
         return;
@@ -738,7 +738,7 @@ pub(super) static BOOT_STAGE: AtomicU32 = AtomicU32::new(0);
 
 /// Record that the boot tour reached `stage`. Monotonic by convention, not enforced.
 #[cfg_attr(any(target_arch = "aarch64", target_arch = "x86_64"), allow(dead_code))] // the riscv tour is the caller today
-pub fn note_boot_stage(stage: u32) {
+pub(crate) fn note_boot_stage(stage: u32) {
     BOOT_STAGE.store(stage, Ordering::Relaxed);
 }
 
@@ -752,7 +752,7 @@ pub fn note_boot_stage(stage: u32) {
 // `dump_threads` still prints it from `BOOT_STAGE` directly; what has no caller is this accessor.
 // Kept with the canary below, for the reason written there.
 #[allow(dead_code)]
-pub fn boot_stage() -> u32 {
+pub(crate) fn boot_stage() -> u32 {
     BOOT_STAGE.load(Ordering::Relaxed)
 }
 
@@ -761,7 +761,7 @@ pub fn boot_stage() -> u32 {
 /// receive and disarms when the receive returns; see notes/visionfive2.md (fifth stop) for what
 /// boot 11 does with the output. **No caller since milestone 295**; see the note on `mod canary`.
 #[allow(dead_code)]
-pub fn canary_arm_registries() {
+pub(crate) fn canary_arm_registries() {
     let mut guard = IPC_TABLES.lock();
     let Some(sched) = guard.as_mut() else {
         return;
@@ -780,7 +780,7 @@ pub fn canary_arm_registries() {
 /// Disarm the [`canary`]. The demo window's other bracket. Quiesces: when it returns, no check
 /// pass is in flight on any core. **No caller since milestone 295**; see the note on `mod canary`.
 #[allow(dead_code)]
-pub fn canary_disarm() {
+pub(crate) fn canary_disarm() {
     canary::disarm();
 }
 
@@ -822,6 +822,6 @@ pub fn preemptions_here() -> u64 {
 /// observation that straddles a preemption: the preemption is exactly what may move the reader.
 /// `kernel/src/preemption_window_tests.rs` samples one core across an unmask for that reason.
 #[cfg_attr(not(any(test, feature = "system_tests")), allow(dead_code))]
-pub fn preemptions_on(id: usize) -> u64 {
+pub(crate) fn preemptions_on(id: usize) -> u64 {
     PREEMPTIONS_PER_CPU[id].load(Ordering::Relaxed)
 }

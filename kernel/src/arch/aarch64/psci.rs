@@ -37,7 +37,7 @@ macro_rules! psci_call {
 /// error code: PSCI's own space runs from -1 to -9, and inventing a tenth would be a lie about who
 /// answered. Nothing reaches this in the normal path, because `smp::bring_up_secondaries` asks
 /// [`can_start_secondaries`] first.
-pub const PSCI_NOT_DISCOVERED: i64 = i64::MIN;
+pub(crate) const PSCI_NOT_DISCOVERED: i64 = i64::MIN;
 
 /// PSCI `CPU_ON`: start a secondary core. Returns 0 on success, a negative error otherwise.
 ///
@@ -60,7 +60,7 @@ pub const PSCI_NOT_DISCOVERED: i64 = i64::MIN;
 ///   The `hvc` path is exercised on every test run. Choosing the wrong one of the two is an
 ///   undefined-instruction trap rather than an error code, which is why it is read rather than
 ///   defaulted, and why this note is here rather than in a tracker.
-pub fn cpu_start(target_mpidr: u64, entry: u64, context: u64) -> i64 {
+pub(crate) fn cpu_start(target_mpidr: u64, entry: u64, context: u64) -> i64 {
     let Some((conduit, func)) = isa::psci() else {
         return PSCI_NOT_DISCOVERED;
     };
@@ -155,13 +155,13 @@ pub fn reboot(marker: &str) -> abi::Error {
 /// False on a machine whose device tree has no `/psci` node, or one whose node did not say enough
 /// to make the call. Both are real: a uniprocessor board has no reason to carry the node, and a
 /// board whose cores are released from a spin-table carries a different mechanism instead.
-pub fn can_start_secondaries() -> bool {
+pub(crate) fn can_start_secondaries() -> bool {
     isa::psci().is_some()
 }
 
 /// Print how this machine starts a core, or why it cannot. One line, on every boot, beside the SMP
 /// count; the same discipline milestone 60's ISA summary set.
-pub fn print_bring_up_mechanism() {
+pub(crate) fn print_bring_up_mechanism() {
     let Some(psci) = isa::psci_record() else {
         println!("  smp: the device tree has no /psci node, so no core can be started here");
         return;

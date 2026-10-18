@@ -29,7 +29,7 @@ use crate::arch::UserFault;
 /// there is exactly one frame layout rather than two, and `iretq` always pops five words.
 #[repr(C)]
 #[derive(Debug, Clone, Copy)]
-pub struct TrapFrame {
+pub(crate) struct TrapFrame {
     pub rax: u64,
     pub rbx: u64,
     pub rcx: u64,
@@ -85,7 +85,7 @@ impl TrapFrame {
     /// decision the "move fast on what can be undone" tenet calls expensive; it is now settled, and
     /// it is **spoken**: every hand-assembled program in `user::x86_programs` reaches
     /// `crate::syscall::dispatch` through these accessors, from ring 3, under the scheduler.
-    pub fn syscall_nr(&self) -> u64 {
+    pub(crate) fn syscall_nr(&self) -> u64 {
         self.rax
     }
 
@@ -105,7 +105,7 @@ impl TrapFrame {
 
     /// Set syscall argument/return register `i`. The return value and IPC message words ride back
     /// in the first three, exactly as they do on the other two architectures.
-    pub fn set_arg(&mut self, i: usize, v: u64) {
+    pub(crate) fn set_arg(&mut self, i: usize, v: u64) {
         match i {
             0 => self.rdi = v,
             1 => self.rsi = v,
@@ -132,7 +132,7 @@ impl TrapFrame {
     /// all, and the TSS's I/O permission bitmap is empty (segments.rs). That is the only correct
     /// answer while there is no capability shape for a port (DECISIONS §121).
     #[allow(dead_code)]
-    pub fn for_user_entry(entry: u64, user_sp: u64, args: [u64; 3]) -> Self {
+    pub(crate) fn for_user_entry(entry: u64, user_sp: u64, args: [u64; 3]) -> Self {
         const RFLAGS_IF: u64 = 1 << 9;
         const RFLAGS_ALWAYS_ONE: u64 = 1 << 1;
         TrapFrame {
@@ -254,23 +254,23 @@ unsafe extern "C" {
 /// Nothing lost a number to this. Timer ticks are counted by `arch::timer::ticks()` and printed by
 /// the bring-up tour from there; an unclaimed device vector is counted by [`DEVICE_IRQS`] and, when
 /// there was nothing to route it to, by [`SPURIOUS_IRQS`].
-pub static ROUTED_IRQS: AtomicUsize = AtomicUsize::new(0);
+pub(crate) static ROUTED_IRQS: AtomicUsize = AtomicUsize::new(0);
 
 /// **How many interrupts arrived with nothing to route them to.** A spurious interrupt is normal on
 /// x86 in a way it is not elsewhere: the 8259 PIC manufactures vector 7 (or 15) when a line drops
 /// between assertion and acknowledgement, and the local APIC has a dedicated spurious vector.
-pub static SPURIOUS_IRQS: AtomicUsize = AtomicUsize::new(0);
+pub(crate) static SPURIOUS_IRQS: AtomicUsize = AtomicUsize::new(0);
 
 /// **How many NMIs arrived that the TLB shootdown did not claim.** Vector 2 is this kernel's
 /// shootdown message (`mmu::shoot_down_others`) and nothing else on this machine sends one, so this
 /// should stay at zero; it is counted rather than assumed away because an NMI from a source we do
 /// not know about is exactly the kind of fact that is invisible until someone looks.
-pub static NMIS_UNCLAIMED: AtomicUsize = AtomicUsize::new(0);
+pub(crate) static NMIS_UNCLAIMED: AtomicUsize = AtomicUsize::new(0);
 
 /// **How many *device* interrupts arrived through the IO APIC**, as distinct from the local APIC's
 /// own timer. Counted separately because the two prove different things: the timer proves the local
 /// APIC delivers and the trap path returns, and this proves a line outside the CPU reached it.
-pub static DEVICE_IRQS: AtomicUsize = AtomicUsize::new(0);
+pub(crate) static DEVICE_IRQS: AtomicUsize = AtomicUsize::new(0);
 
 /// **System calls served, counted for the system tests only** (`system_tests/src/user/el0_boundary_tests.rs`
 /// proves a program reached user mode and came back by watching it rise). Every syscall on every
@@ -278,14 +278,14 @@ pub static DEVICE_IRQS: AtomicUsize = AtomicUsize::new(0);
 /// in all of them, and it was one of two shared writes on the cheapest syscall's path
 /// (notes/job-mix/null-syscall-under-load.md).
 #[cfg(any(test, feature = "system_tests"))]
-pub static SVC_COUNT: AtomicUsize = AtomicUsize::new(0);
+pub(crate) static SVC_COUNT: AtomicUsize = AtomicUsize::new(0);
 
 /// **How many user-mode faults were taken.**
-pub static USER_FAULTS: AtomicUsize = AtomicUsize::new(0);
+pub(crate) static USER_FAULTS: AtomicUsize = AtomicUsize::new(0);
 
 /// **How many breakpoints were taken.** `int3`, vector 3, which is what [`self_test`] uses to prove
 /// the trap path round-trips.
-pub static BRK_COUNT: AtomicUsize = AtomicUsize::new(0);
+pub(crate) static BRK_COUNT: AtomicUsize = AtomicUsize::new(0);
 
 /// The last user fault, packed by [`UserFault::encode`]. 0 means no user thread has faulted.
 static LAST_USER_FAULT: AtomicU64 = AtomicU64::new(0);
@@ -300,7 +300,7 @@ static LAST_USER_FAULT_ADDRESS: AtomicU64 = AtomicU64::new(0);
 /// overwrites it before a test reads it, and a user exception that is not a page fault records
 /// address 0. A test that asserts on it must retry or tie the record to its own thread. Found by
 /// the eighth outsider pass (`notes/confinement-outsider-pass-8.md`), whose row-21 test retries.
-pub fn last_user_fault() -> Option<(UserFault, u64)> {
+pub(crate) fn last_user_fault() -> Option<(UserFault, u64)> {
     // Pairs with the `Release` on `USER_FAULTS` in [`user_fault`]: a caller that has already seen
     // the counter rise must see the record that rise was announcing, and not the previous one.
     let code = LAST_USER_FAULT.load(Ordering::Acquire);
@@ -314,7 +314,7 @@ pub fn last_user_fault() -> Option<(UserFault, u64)> {
 /// The frame lives at `stack_top - size_of::<TrapFrame>()` on all three architectures, which is
 /// what makes this readable at all; see `user::enter_frame` for why that placement is a rule rather
 /// than a convenience. Meaningless for a pure kernel thread, which never builds one.
-pub fn user_pc(stack_top: u64) -> u64 {
+pub(crate) fn user_pc(stack_top: u64) -> u64 {
     let frame = (stack_top - size_of::<TrapFrame>() as u64) as *const TrapFrame;
     // SAFETY: a diagnostic read of the frame the entry path writes at the stack top. Volatile
     // because the owning thread may be running on another CPU while we read, and this must not be
@@ -365,7 +365,7 @@ unsafe extern "C" {
 /// kernel stack, with the user address space installed and `TSS.RSP0` naming a kernel stack the
 /// next trap can be pushed onto (`segments::set_kernel_stack`).
 #[inline(always)]
-pub unsafe fn enter_user(frame: *mut TrapFrame) -> ! {
+pub(crate) unsafe fn enter_user(frame: *mut TrapFrame) -> ! {
     // **Refuse to enter ring 3 with no entry point**, for the reason the RISC-V twin carries at
     // length: a thread dispatched with `rip == 0` fetches its first instruction from address 0,
     // page-faults, and dies, and whatever it was supposed to serve then never answers. That is a
@@ -411,7 +411,7 @@ fn entered_user_with_no_entry_point(user_sp: u64) -> ! {
 /// # Panics
 /// If the local APIC is not up. An empty function that silently succeeded before the controller
 /// exists would let a caller believe interrupts are unmasked when nothing can deliver one.
-pub fn enable_external() {
+pub(crate) fn enable_external() {
     assert!(
         super::irq::is_local_apic_ready(),
         "external interrupts are the local APIC's to deliver, and it is not up yet",
@@ -482,7 +482,7 @@ pub fn init() {
 /// `self_test::run` calls it again a few hundred lines later, and the second call reported `2`.
 /// Harmless here (both tests are `>= 1`) and exactly the shape of bug that is not harmless in a
 /// counter somebody later compares for equality, so the three now answer the same question.
-pub fn self_test() -> usize {
+pub(crate) fn self_test() -> usize {
     let before = BRK_COUNT.load(Ordering::Relaxed);
     // SAFETY: `int3` raises vector 3, which the IDT above routes to the common handler. The handler
     // treats a breakpoint as an event to count and step over, so this returns to the next
@@ -558,7 +558,7 @@ const SYSCALL_FLAG_MASK: u64 = (1 << 8)      // TF
 /// The pseudo-vector a `syscall` frame carries, so a fault report or a dump can say where the frame
 /// came from. **256 is out of the IDT's range by construction**, which is what keeps it from
 /// colliding with a real vector; the assertion says so rather than leaving it to be noticed.
-pub const SYSCALL_VECTOR: u64 = 0x100;
+pub(crate) const SYSCALL_VECTOR: u64 = 0x100;
 const _: () = assert!(
     SYSCALL_VECTOR > 255,
     "a real IDT vector would be ambiguous here"
@@ -584,7 +584,7 @@ const _: () = assert!(
 /// # Safety
 /// Must be called with the GDT installed (the selectors this writes index it) and before anything
 /// enters ring 3.
-pub unsafe fn init_syscall() {
+pub(crate) unsafe fn init_syscall() {
     let star = ((SYSRET_SELECTOR_BASE as u64) << 48) | ((KERNEL_CODE as u64) << 32);
     // SAFETY: these are the architectural `syscall` MSRs, present on every long-mode CPU (they are
     // part of the mode itself, not an optional feature). The values are checked against the GDT by
@@ -625,7 +625,7 @@ unsafe extern "C" {
 #[unsafe(no_mangle)]
 // In the pinned hot section: milestone 796 (pin the hot trap path's placement).
 #[unsafe(link_section = ".text.hot.x86_syscall_handler")]
-pub unsafe extern "C" fn x86_syscall_handler(frame: *mut TrapFrame) {
+pub(crate) unsafe extern "C" fn x86_syscall_handler(frame: *mut TrapFrame) {
     // SAFETY: `x86_syscall_entry` built the frame directly below the pointer it passed, and no
     // other caller exists (the symbol is only referenced from trap.s).
     let frame = unsafe { &mut *frame };
@@ -696,7 +696,7 @@ unsafe extern "C" {
 /// Called only from `isr_common`, which has just constructed a complete [`TrapFrame`] at the
 /// address it passes. Nothing else may call it.
 #[unsafe(no_mangle)]
-pub unsafe extern "C" fn x86_trap_dispatch(frame: *mut TrapFrame) {
+pub(crate) unsafe extern "C" fn x86_trap_dispatch(frame: *mut TrapFrame) {
     // Vectors 2, 8 and 18 never arrive here: their stubs enter through `isr_paranoid` and
     // [`x86_paranoid_dispatch`], on their own IST stacks.
     // SAFETY: `isr_common` built the frame directly below the pointer it passed.
@@ -731,7 +731,7 @@ pub unsafe extern "C" fn x86_trap_dispatch(frame: *mut TrapFrame) {
 /// Called only from [`x86_trap_dispatch`] or from `dispatch_on_interrupt_stack`, both of which pass
 /// a complete [`TrapFrame`]. Nothing else may call it.
 #[unsafe(no_mangle)]
-pub unsafe extern "C" fn x86_trap_body(frame: *mut TrapFrame) -> bool {
+pub(crate) unsafe extern "C" fn x86_trap_body(frame: *mut TrapFrame) -> bool {
     // SAFETY: `isr_common` built the frame directly below the pointer it passed, and no other
     // caller exists (the symbol is only referenced from trap.s and from the function above).
     let frame = unsafe { &mut *frame };
@@ -953,7 +953,7 @@ fn fatal_exception(frame: &TrapFrame, vector: u64) -> ! {
 /// Called only from `isr_paranoid`, which has just built a complete [`TrapFrame`] at the address it
 /// passes, on an IST stack. Nothing else may call it.
 #[unsafe(no_mangle)]
-pub unsafe extern "C" fn x86_paranoid_dispatch(frame: *mut TrapFrame) {
+pub(crate) unsafe extern "C" fn x86_paranoid_dispatch(frame: *mut TrapFrame) {
     // SAFETY: `isr_paranoid` built the frame directly below the pointer it passed, and no other
     // caller exists (the symbol is only referenced from trap.s).
     let frame = unsafe { &mut *frame };

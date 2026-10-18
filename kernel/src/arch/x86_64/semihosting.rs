@@ -28,10 +28,10 @@ use core::arch::asm;
 /// The harness's success code. **Three, not zero**, because `isa-debug-exit` can only produce odd
 /// statuses; see the module header.
 #[cfg_attr(not(any(test, feature = "system_tests")), allow(dead_code))]
-pub const EXIT_SUCCESS: u32 = 3;
+pub(crate) const EXIT_SUCCESS: u32 = 3;
 /// The harness's failure code (any status that is not [`EXIT_SUCCESS`]).
 #[cfg_attr(not(any(test, feature = "system_tests")), allow(dead_code))]
-pub const EXIT_FAILURE: u32 = 1;
+pub(crate) const EXIT_FAILURE: u32 = 1;
 
 /// The `isa-debug-exit` device's I/O port, as `helpers/qemu-runner-x86_64.sh` places it
 /// (`iobase=0xf4`). Not a fixed address in the machine: it is where we put the device, and the two

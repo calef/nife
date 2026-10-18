@@ -60,7 +60,7 @@ pub fn verify(name: &str, bytes: &[u8]) -> Result<(), measured_boot::VerifyError
 /// back to, and running the wrong one is precisely the thing being prevented. So this prints what it
 /// expected, what it measured, and halts. Loudly, because a silent halt at boot is indistinguishable
 /// from a hardware problem, and whoever hits this needs to know it was a *refusal*.
-pub fn require(name: &str, bytes: &[u8]) {
+pub(crate) fn require(name: &str, bytes: &[u8]) {
     let measured = measured_boot::sha256(bytes);
     match measured_boot::verify_digest(TRUST_ROOT, name, &measured) {
         Ok(()) => {}
@@ -115,7 +115,7 @@ pub fn require(name: &str, bytes: &[u8]) {
 ///
 /// A **missing** table halts, for [`require`]'s reason one level down: a progenitor that cannot vouch for
 /// what it loads must not be handed the archive at all.
-pub fn require_program_measurements(fs: &nifefs::Fs<'_>) {
+pub(crate) fn require_program_measurements(fs: &nifefs::Fs<'_>) {
     let name = measured_boot::PROGRAM_MEASUREMENTS;
     match fs.read(name) {
         Some(bytes) => require(name, bytes),

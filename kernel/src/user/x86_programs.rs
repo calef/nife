@@ -75,7 +75,7 @@ const NOP: u8 = 0x90;
 /// ```text
 ///   eb fe        jmp $-2          (to itself)
 /// ```
-pub const SPIN: &[u32] = &pack_1([0xEB, 0xFE, NOP, NOP]);
+pub(crate) const SPIN: &[u32] = &pack_1([0xEB, 0xFE, NOP, NOP]);
 
 /// **A child that faults on its very first memory access**: load from `addr`, which nothing maps.
 ///
@@ -94,7 +94,7 @@ pub const fn fault(addr: u32) -> [u32; 2] {
 }
 
 /// How far past the entry the faulting instruction in [`fault`] begins. See its doc comment.
-pub const FAULT_PC_OFFSET: u64 = 5;
+pub(crate) const FAULT_PC_OFFSET: u64 = 5;
 
 /// **A child that SENDs one word on the endpoint capability in slot 0, then exits cleanly.**
 ///
@@ -158,7 +158,7 @@ pub const fn report(word: u32) -> [u32; 8] {
 ///   ee                out dx, al       (#GP here if this thread holds no PortRange for `port`)
 ///   ...               <report(word)>   (SEND the word on slot 0, then SYS_EXIT)
 /// ```
-pub const fn port_out(port: u16, val: u8, word: u32) -> [u32; 9] {
+pub(crate) const fn port_out(port: u16, val: u8, word: u32) -> [u32; 9] {
     const {
         assert!(
             abi::rendezvous::SEND == 0,
@@ -189,7 +189,7 @@ pub const fn port_out(port: u16, val: u8, word: u32) -> [u32; 9] {
 /// `mov al, val` (`B0` + imm8, 2 bytes) precede the `out`, so a fault on it is reported six bytes
 /// past the entry.
 #[cfg(all(any(test, feature = "system_tests"), target_arch = "x86_64"))]
-pub const PORT_OUT_PC_OFFSET: u64 = 6;
+pub(crate) const PORT_OUT_PC_OFFSET: u64 = 6;
 
 /// **A child that executes one `out` to `port` and, if the CPU permitted it, exits cleanly.**
 ///
@@ -347,11 +347,11 @@ pub const fn port_out_on_cpu_then_exit(port: u16, val: u8, cpu: u8) -> [u32; 8] 
 /// Where [`port_out_on_cpu_then_exit`]'s `out` is: eight, three and two bytes of core check, then
 /// [`port_out`]'s own six bytes before its `out`.
 #[cfg(all(any(test, feature = "system_tests"), target_arch = "x86_64"))]
-pub const PORT_OUT_ON_CPU_PC_OFFSET: u64 = 13 + PORT_OUT_PC_OFFSET;
+pub(crate) const PORT_OUT_ON_CPU_PC_OFFSET: u64 = 13 + PORT_OUT_PC_OFFSET;
 
 /// Where [`port_out_on_cpu_then_exit`] faults when it is on the wrong core: the load from address 0.
 #[cfg(all(any(test, feature = "system_tests"), target_arch = "x86_64"))]
-pub const PORT_OUT_ON_CPU_WRONG_CPU_PC_OFFSET: u64 = 29;
+pub(crate) const PORT_OUT_ON_CPU_WRONG_CPU_PC_OFFSET: u64 = 29;
 
 /// **A child that deletes its own capability in `slot`, then writes a byte to a port, then exits**
 /// (milestone 313's audit). The drop-it-yourself fixture: a holder of the `PortRange` capability
@@ -384,7 +384,7 @@ pub const PORT_OUT_ON_CPU_WRONG_CPU_PC_OFFSET: u64 = 29;
 ///   b8 xx xx xx xx    mov eax, SYS_EXIT (reached only if the `out` was permitted)
 ///   0f 05             syscall           (exit: the supervisor sees EVENT_EXIT, not EVENT_FAULT)
 /// ```
-pub const fn cap_delete_then_port_out(slot: u32, port: u16, val: u8) -> [u32; 7] {
+pub(crate) const fn cap_delete_then_port_out(slot: u32, port: u16, val: u8) -> [u32; 7] {
     let s = slot.to_le_bytes();
     let del = (abi::SYS_CAP_DELETE as u32).to_le_bytes();
     let p = port.to_le_bytes();
@@ -405,7 +405,7 @@ pub const fn cap_delete_then_port_out(slot: u32, port: u16, val: u8) -> [u32; 7]
 /// The faulting pc offset for [`cap_delete_then_port_out`]: two five-byte `mov r32, imm32`s and the
 /// two-byte `syscall` (12 bytes), then [`port_out`]'s own six bytes before its `out`.
 #[cfg(all(any(test, feature = "system_tests"), target_arch = "x86_64"))]
-pub const CAP_DELETE_THEN_PORT_OUT_PC_OFFSET: u64 = 12 + PORT_OUT_PC_OFFSET;
+pub(crate) const CAP_DELETE_THEN_PORT_OUT_PC_OFFSET: u64 = 12 + PORT_OUT_PC_OFFSET;
 
 /// **A child that reads one byte from an I/O port and exits.** [`port_out_then_exit`]'s `in` twin:
 /// the read side of the port range, so a READ-only capability's positive control and a non-holder's
@@ -434,7 +434,7 @@ pub const fn port_in_then_exit(port: u16) -> [u32; 4] {
 
 /// The faulting pc offset for [`port_in_then_exit`]'s `in`: four bytes of `mov dx, port` precede it.
 #[cfg(all(any(test, feature = "system_tests"), target_arch = "x86_64"))]
-pub const PORT_IN_ONLY_PC_OFFSET: u64 = 4;
+pub(crate) const PORT_IN_ONLY_PC_OFFSET: u64 = 4;
 
 /// **A child that reads one byte from a port and then writes one to it, and exits only if both were
 /// permitted.** The READ-only capability's probe: with the read granted and the write refused, the
@@ -470,7 +470,7 @@ pub const fn port_in_then_out(port: u16, val: u8) -> [u32; 4] {
 /// The faulting pc offset for [`port_in_then_out`]'s `out`: the four-byte `mov dx, port`, the
 /// one-byte `in`, and the two-byte `mov al, val` precede it.
 #[cfg(all(any(test, feature = "system_tests"), target_arch = "x86_64"))]
-pub const PORT_IN_THEN_OUT_OUT_PC_OFFSET: u64 = 7;
+pub(crate) const PORT_IN_THEN_OUT_OUT_PC_OFFSET: u64 = 7;
 
 /// **A child that deletes two capability slots, then writes one byte to a port, then exits.**
 /// [`cap_delete_then_port_out`]'s two-slot twin, for a child holding the same port range in two
@@ -523,12 +523,12 @@ pub const fn two_capability_deletes_then_port_out(
 /// The faulting pc offset for [`two_capability_deletes_then_port_out`]'s `out`: two delete sequences (12
 /// bytes each) then [`port_out`]'s six bytes.
 #[cfg(all(any(test, feature = "system_tests"), target_arch = "x86_64"))]
-pub const TWO_CAPABILITY_DELETES_THEN_PORT_OUT_PC_OFFSET: u64 = 24 + PORT_OUT_PC_OFFSET;
+pub(crate) const TWO_CAPABILITY_DELETES_THEN_PORT_OUT_PC_OFFSET: u64 = 24 + PORT_OUT_PC_OFFSET;
 
 /// The faulting pc offset for [`receive_then_port_out`]'s `out`: the RECEIVE invocation (25 bytes:
 /// two `mov r32, imm32`s, three operand setups and the `syscall`) then [`port_out`]'s six bytes.
 #[cfg(all(any(test, feature = "system_tests"), target_arch = "x86_64"))]
-pub const RECEIVE_THEN_PORT_OUT_PC_OFFSET: u64 = 25 + PORT_OUT_PC_OFFSET;
+pub(crate) const RECEIVE_THEN_PORT_OUT_PC_OFFSET: u64 = 25 + PORT_OUT_PC_OFFSET;
 
 /// **A child that blocks in RECEIVE on slot 1, then writes a byte to a port, then exits**
 /// (milestone 299). The revocation fixture: a holder of the `PortRange` capability naming `port`
@@ -562,7 +562,7 @@ pub const RECEIVE_THEN_PORT_OUT_PC_OFFSET: u64 = 25 + PORT_OUT_PC_OFFSET;
 /// test is not receiving parks the child forever and hangs the run: a broken revoke could not turn
 /// the test red, only stall it. Exiting makes the broken case arrive as `EVENT_EXIT` where the test
 /// wants `EVENT_FAULT`, which is what lets the test carry a falsification record at all.
-pub const fn receive_then_port_out(port: u16, val: u8) -> [u32; 10] {
+pub(crate) const fn receive_then_port_out(port: u16, val: u8) -> [u32; 10] {
     let p = port.to_le_bytes();
     let rcv = (abi::rendezvous::RECEIVE as u32).to_le_bytes();
     let inv = (abi::SYS_INVOKE as u32).to_le_bytes();
@@ -601,7 +601,7 @@ pub const fn receive_then_port_out(port: u16, val: u8) -> [u32; 10] {
 ///   b8 xx xx xx xx    mov eax, SYS_EXIT
 ///   0f 05             syscall           (exit, if it is ever woken)
 /// ```
-pub const fn receive() -> [u32; 8] {
+pub(crate) const fn receive() -> [u32; 8] {
     invoke_then_exit(abi::rendezvous::RECEIVE as u32)
 }
 
@@ -614,7 +614,7 @@ pub const fn receive() -> [u32; 8] {
 /// out of the server's capability table or leave a forgeable answer behind.
 ///
 /// Byte for byte [`receive`] with a different method word; see it for the encoding.
-pub const fn call() -> [u32; 8] {
+pub(crate) const fn call() -> [u32; 8] {
     invoke_then_exit(abi::rendezvous::CALL as u32)
 }
 

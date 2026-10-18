@@ -223,9 +223,9 @@ pub struct GpuDevice {
 
 /// The run lengths a holder of a [`GpuDevice`] grants, so `kernel::user::boot_progenitor` mints the
 /// same two runs this file does rather than recomputing them.
-pub const GPU_DMA_RUN: NonZeroU64 = DMA_RUN;
+pub(crate) const GPU_DMA_RUN: NonZeroU64 = DMA_RUN;
 /// See [`GPU_DMA_RUN`].
-pub const GPU_SURFACE_RUN: NonZeroU64 = SURFACE_RUN;
+pub(crate) const GPU_SURFACE_RUN: NonZeroU64 = SURFACE_RUN;
 
 /// **Find the GPU, build its DMA region, route its interrupt and register its confined transport**,
 /// and spawn nothing. `None` if no virtio-gpu function is on the bus.
@@ -237,7 +237,7 @@ pub const GPU_SURFACE_RUN: NonZeroU64 = SURFACE_RUN;
 /// (provisional) was promoted to check, because milestone 177 (wire the graphical terminal stack
 /// into the real interactive boot) had built the graphical stack kernel-side on the premise that
 /// the driver needed a capability per DMA page.
-pub fn wire_device() -> Option<GpuDevice> {
+pub(crate) fn wire_device() -> Option<GpuDevice> {
     let d = crate::pci::find_gpu_device()?;
 
     // The DMA region: contiguous, because the surface must be one run of physical frames for the
@@ -719,7 +719,7 @@ impl TerminalWiring {
 
     /// A scanout pixel, read by the **kernel** through the direct map: a witness that belongs to
     /// no process in userspace.
-    pub fn screen_pixel(&self, x: u32, y: u32) -> u32 {
+    pub(crate) fn screen_pixel(&self, x: u32, y: u32) -> u32 {
         let at = mmu::phys_to_virt(self.surface) + (y * graphics_contract::WIDTH + x) as u64 * 4;
         // SAFETY: inside the scanout frames this kernel allocated.
         unsafe { core::ptr::read_volatile(at as *const u32) }

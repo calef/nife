@@ -306,7 +306,7 @@ const TRNG_VA: u64 = address_space_map::pair_page(0x0000_0000_0094_0000);
 /// not settle that: AGENTS.md puts public function names in an architect's hands, and calef has
 /// not ruled on this one.
 #[cfg(target_arch = "riscv64")]
-pub fn jh7110_trng_device() -> Option<jh7110_entropy::Discovered> {
+pub(crate) fn jh7110_trng_device() -> Option<jh7110_entropy::Discovered> {
     jh7110_entropy::discover(&crate::device_tree().ok()?)
         .ok()
         .flatten()

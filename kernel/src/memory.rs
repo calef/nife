@@ -347,7 +347,7 @@ fn record_jh7110_ethernet(dtb: &device_tree_blob::DeviceTreeBlob<'_>) {
 /// - **At most `MAX_REGIONS` RAM regions.** More than that indexes past the map below. Both `virt`
 ///   boards describe one; q35 describes three. A caller with more must decide what to drop, because
 ///   this cannot.
-pub fn bring_up_page_frames(ram: &[Region], forbidden: &[Region]) {
+pub(crate) fn bring_up_page_frames(ram: &[Region], forbidden: &[Region]) {
     assert!(!ram.is_empty(), "the machine describes no RAM at all");
 
     // The whole span we have to be able to describe. Note this is the *span*, not the
@@ -533,7 +533,7 @@ fn note_allocation(allocator: &PageFrameAllocator<'static>, count: usize, grante
 /// `(low_water, refused, largest_refused)`: see [`FREE_LOW_WATER`]. The low-water is `usize::MAX`
 /// until the first allocation. Printed by the test suite's closing summary.
 #[cfg_attr(not(any(test, feature = "system_tests")), allow(dead_code))] // the closing summary is the only reader
-pub fn allocation_pressure() -> (usize, usize, usize) {
+pub(crate) fn allocation_pressure() -> (usize, usize, usize) {
     use core::sync::atomic::Ordering::Relaxed;
     (
         FREE_LOW_WATER.load(Relaxed),
@@ -552,7 +552,7 @@ pub fn alloc() -> Option<PageFrame> {
 
 /// Physically contiguous frames, for hardware that does DMA and has no MMU to hide a
 /// scattered buffer behind. Milestone 8 needs this.
-pub fn alloc_contiguous(count: usize) -> Option<PageFrame> {
+pub(crate) fn alloc_contiguous(count: usize) -> Option<PageFrame> {
     let mut guard = ALLOCATOR.lock();
     let allocator = guard.as_mut()?;
     let run = allocator.alloc_contiguous(count);
@@ -658,7 +658,7 @@ pub fn frame_is_allocated(pa: u64) -> Option<bool> {
 /// exhaustion. The frame ledger prints both, so the next person meets the distinction rather than
 /// deducing it. See notes/frames.md.
 #[cfg_attr(not(any(test, feature = "system_tests")), allow(dead_code))] // the frame ledger in testing.rs is the caller
-pub fn largest_free_run() -> usize {
+pub(crate) fn largest_free_run() -> usize {
     ALLOCATOR
         .lock()
         .as_ref()
@@ -697,14 +697,14 @@ pub fn is_page_frame_used(frame: PageFrame) -> Option<bool> {
 /// was named `intc@`, which is why a GICv3 machine's redistributor was once driven as a CPU
 /// interface. The version travelling with the addresses is what keeps that from recurring.
 #[cfg_attr(not(target_arch = "aarch64"), allow(dead_code))] // riscv has a PLIC, x86 an APIC
-pub fn gic_regions() -> Option<machine_discovery::gic::Gic> {
+pub(crate) fn gic_regions() -> Option<machine_discovery::gic::Gic> {
     *GIC_REGIONS.lock()
 }
 
 /// The PLIC's register block (start, size), both **physical**, from the device tree. `None` on
 /// aarch64 or before `init`. RISC-V's `mmu::init` maps it device-typed, like the GIC.
 #[cfg_attr(not(target_arch = "riscv64"), allow(dead_code))] // the PLIC is riscv's controller; x86 answers with its APIC
-pub fn plic_region() -> Option<(u64, u64)> {
+pub(crate) fn plic_region() -> Option<(u64, u64)> {
     *PLIC_REGION.lock()
 }
 
@@ -713,7 +713,7 @@ pub fn plic_region() -> Option<(u64, u64)> {
 /// when the tree does not describe it, and the whole answer `None` on every machine that is not a
 /// JH7110, which is every machine CI boots. RISC-V's `mmu::init` maps the first page of each.
 #[cfg_attr(not(target_arch = "riscv64"), allow(dead_code))] // no JH7110 anywhere but a JH7110
-pub fn jh7110_storage() -> Option<[Option<designware_mobile_storage::jh7110::Slot>; 2]> {
+pub(crate) fn jh7110_storage() -> Option<[Option<designware_mobile_storage::jh7110::Slot>; 2]> {
     *JH7110_STORAGE.lock()
 }
 
@@ -727,7 +727,7 @@ pub fn jh7110_storage() -> Option<[Option<designware_mobile_storage::jh7110::Slo
 /// and an address the firmware named are different claims, and by the time anyone reads the log
 /// they cannot be told apart from the number alone.
 #[cfg_attr(not(target_arch = "riscv64"), allow(dead_code))] // no JH7110 anywhere but a JH7110
-pub fn jh7110_clock_and_reset() -> Option<jh7110_clock_and_reset::Found> {
+pub(crate) fn jh7110_clock_and_reset() -> Option<jh7110_clock_and_reset::Found> {
     *JH7110_CRG.lock()
 }
 
@@ -739,7 +739,7 @@ pub fn jh7110_clock_and_reset() -> Option<jh7110_clock_and_reset::Found> {
 /// reset as an I2C write to the AXP15060, and U-Boot hands over with that bus's clock gated and its
 /// reset asserted. See `design/roadmap/0592-radons-reboot-dies-in-opensbis-pmic-write.md`.
 #[cfg_attr(not(target_arch = "riscv64"), allow(dead_code))] // no JH7110 anywhere but a JH7110
-pub fn jh7110_pmic_bus() -> Option<(
+pub(crate) fn jh7110_pmic_bus() -> Option<(
     jh7110_clock_and_reset::Found,
     jh7110_clock_and_reset::PmicBus,
 )> {
@@ -750,7 +750,7 @@ pub fn jh7110_pmic_bus() -> Option<(
 /// `None` on every machine whose tree names no such port, which is every machine CI boots.
 /// RISC-V's `mmu::init` maps all four windows device-typed.
 #[cfg_attr(not(target_arch = "riscv64"), allow(dead_code))] // no JH7110 anywhere but a JH7110
-pub fn jh7110_ethernet() -> Option<Jh7110Ethernet> {
+pub(crate) fn jh7110_ethernet() -> Option<Jh7110Ethernet> {
     *JH7110_ETHERNET.lock()
 }
 
@@ -759,7 +759,7 @@ pub fn jh7110_ethernet() -> Option<Jh7110Ethernet> {
 /// (milestone 53). Both come from the same `discover_sys`, so they are the same window, and
 /// `mmu::init` maps it once through this rather than twice through each.
 #[cfg_attr(not(target_arch = "riscv64"), allow(dead_code))] // no JH7110 anywhere but a JH7110
-pub fn jh7110_sys_window() -> Option<jh7110_clock_and_reset::Found> {
+pub(crate) fn jh7110_sys_window() -> Option<jh7110_clock_and_reset::Found> {
     jh7110_pmic_bus()
         .map(|(sys, _)| sys)
         .or_else(|| jh7110_ethernet().map(|e| e.sys))
@@ -768,7 +768,7 @@ pub fn jh7110_sys_window() -> Option<jh7110_clock_and_reset::Found> {
 /// What [`jh7110_ethernet`] answers: the port as the tree describes it, and the three windows
 /// outside the controller that its bring-up writes.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub struct Jh7110Ethernet {
+pub(crate) struct Jh7110Ethernet {
     /// The controller, its PHY's settings, its station address if the tree has one.
     pub port: designware_ethernet::jh7110::Discovered,
     /// The AON clock-and-reset window: `gmac0`'s bus clocks, transmit clock and resets.
@@ -786,7 +786,7 @@ pub struct Jh7110Ethernet {
 /// its own PCIe controller is a different device, undriven until its own milestone. Absence
 /// degrades the way an absent virtio device does: `mmu::map_everything` maps no window and every
 /// probe in kernel/src/pci.rs reports nobody home without touching MMIO.
-pub fn pci_regions() -> Option<((u64, u64), (u64, u64))> {
+pub(crate) fn pci_regions() -> Option<((u64, u64), (u64, u64))> {
     *PCI_REGIONS.lock()
 }
 
@@ -799,7 +799,7 @@ pub fn pci_regions() -> Option<((u64, u64), (u64, u64))> {
 /// Its only caller is `x86_64`'s boot tour; the other two architectures fill the same static from
 /// their device tree inside `init` instead.
 #[cfg_attr(not(target_arch = "x86_64"), allow(dead_code))]
-pub fn record_pci_regions(ecam: (u64, u64), mem32: (u64, u64)) {
+pub(crate) fn record_pci_regions(ecam: (u64, u64), mem32: (u64, u64)) {
     *PCI_REGIONS.lock() = Some((ecam, mem32));
 }
 
@@ -808,7 +808,7 @@ pub fn record_pci_regions(ecam: (u64, u64), mem32: (u64, u64)) {
 /// gates the whole aarch64 IOMMU path: no node, no register reads, no faults on a machine that
 /// never had the device.
 #[cfg_attr(target_arch = "x86_64", allow(dead_code))] // VT-d init takes the DMAR's units, not one base (milestone 594)
-pub fn smmu_region() -> Option<(u64, u64)> {
+pub(crate) fn smmu_region() -> Option<(u64, u64)> {
     *SMMU_REGION.lock()
 }
 
@@ -818,7 +818,7 @@ pub fn smmu_region() -> Option<(u64, u64)> {
 /// each window, the same role [`smmu_region`] plays for the SMMU. Every unit and not only one
 /// since milestone 594 (every VT-d unit translates its own devices), which brings every unit up. Name: provisional.
 #[cfg_attr(not(target_arch = "x86_64"), allow(dead_code))]
-pub fn vtd_regions() -> [Option<(u64, u64)>; machine_discovery::acpi::MAX_DRHDS] {
+pub(crate) fn vtd_regions() -> [Option<(u64, u64)>; machine_discovery::acpi::MAX_DRHDS] {
     *VTD_REGIONS.lock()
 }
 
@@ -829,7 +829,7 @@ pub fn vtd_regions() -> [Option<(u64, u64)>; machine_discovery::acpi::MAX_DRHDS]
 /// record a fact the fine map can no longer act on. A unit past the array is a panic, not a
 /// silent drop: the DMAR decoder holds no more units than this array does.
 #[cfg_attr(not(target_arch = "x86_64"), allow(dead_code))]
-pub fn record_vtd_region(base: u64, size: u64) {
+pub(crate) fn record_vtd_region(base: u64, size: u64) {
     let mut g = VTD_REGIONS.lock();
     let slot = g
         .iter_mut()
@@ -842,7 +842,7 @@ pub fn record_vtd_region(base: u64, size: u64) {
 /// named, in table order; `None` past the last. [`vtd_regions`]' counterpart on an AMD machine,
 /// and read by `mmu::map_everything` for the same reason. Name: provisional (lane `amd-vi`).
 #[cfg_attr(not(target_arch = "x86_64"), allow(dead_code))]
-pub fn amd_vi_regions() -> [Option<(u64, u64)>; machine_discovery::acpi::ivrs::MAX_IVHDS] {
+pub(crate) fn amd_vi_regions() -> [Option<(u64, u64)>; machine_discovery::acpi::ivrs::MAX_IVHDS] {
     *AMD_VI_REGIONS.lock()
 }
 
@@ -850,7 +850,7 @@ pub fn amd_vi_regions() -> [Option<(u64, u64)>; machine_discovery::acpi::ivrs::M
 /// [`record_vtd_region`] must, and a unit past the array is a panic for the same reason. Name:
 /// provisional (lane `amd-vi`).
 #[cfg_attr(not(target_arch = "x86_64"), allow(dead_code))]
-pub fn record_amd_vi_region(base: u64, size: u64) {
+pub(crate) fn record_amd_vi_region(base: u64, size: u64) {
     let mut g = AMD_VI_REGIONS.lock();
     let slot = g
         .iter_mut()
@@ -868,7 +868,7 @@ pub fn record_amd_vi_region(base: u64, size: u64) {
 /// with. This exists so that the *mapping* survives the fine map replacing the boot map, which is
 /// the moment a console armed on the boot tables would otherwise start faulting.
 #[cfg_attr(not(target_arch = "x86_64"), allow(dead_code))]
-pub fn framebuffer() -> Option<(u64, u64)> {
+pub(crate) fn framebuffer() -> Option<(u64, u64)> {
     *FRAMEBUFFER.lock()
 }
 
@@ -881,7 +881,7 @@ pub fn framebuffer() -> Option<(u64, u64)> {
 /// mapped, so the first `println!` after the `mov cr3` takes a page fault, and the fault handler
 /// prints, and it faults.
 #[cfg_attr(not(target_arch = "x86_64"), allow(dead_code))]
-pub fn record_framebuffer(base: u64, size: u64) {
+pub(crate) fn record_framebuffer(base: u64, size: u64) {
     *FRAMEBUFFER.lock() = Some((base, size));
 }
 
@@ -898,7 +898,7 @@ pub fn record_framebuffer(base: u64, size: u64) {
     not(any(test, feature = "system_tests", feature = "shell")),
     allow(dead_code)
 )]
-pub fn rtc_region() -> Option<(u64, u64, u64)> {
+pub(crate) fn rtc_region() -> Option<(u64, u64, u64)> {
     *RTC_REGION.lock()
 }
 
@@ -910,7 +910,7 @@ pub fn rtc_region() -> Option<(u64, u64, u64)> {
 /// resolvable parent, or an entry shape the decoder refuses; see
 /// `machine_discovery::interrupt_id`). The callers own the fallback (`user::UART_RX_INTID`, the
 /// QEMU constant) and print which source won, so a bench transcript is diagnosable.
-pub fn uart_irq() -> Option<u32> {
+pub(crate) fn uart_irq() -> Option<u32> {
     *UART_IRQ.lock()
 }
 
@@ -925,7 +925,7 @@ pub fn uart_irq() -> Option<u32> {
 /// Its only caller is `x86_64`'s boot tour; the other two architectures fill the same static from
 /// their device tree inside `init` instead.
 #[cfg_attr(not(target_arch = "x86_64"), allow(dead_code))]
-pub fn record_uart_irq(irq: u32) {
+pub(crate) fn record_uart_irq(irq: u32) {
     *UART_IRQ.lock() = Some(irq);
 }
 
@@ -934,7 +934,7 @@ pub fn record_uart_irq(irq: u32) {
 /// The MMU needs these: with paging on, a physical address the kernel cannot *name* is a
 /// physical address it cannot use, and it must be able to touch any frame the allocator
 /// hands it (to zero a new page table, to fill a new user page).
-pub fn ram_regions() -> impl Iterator<Item = (u64, u64)> {
+pub(crate) fn ram_regions() -> impl Iterator<Item = (u64, u64)> {
     // Copy the whole map out under ONE lock acquisition, then iterate freely. 256 bytes.
     //
     // The alternative (an iterator that holds the lock, or takes it per element) would keep a
@@ -1001,7 +1001,7 @@ pub fn initial_ramdisk_region() -> Option<(u64, u64)> {
 /// and an installer has to write that file to a disk's EFI system partition. `uefi_loader`'s
 /// `place_boot_file` has the argument.
 #[cfg_attr(not(target_arch = "x86_64"), allow(dead_code))]
-pub fn record_boot_file(start: u64, size: u64) {
+pub(crate) fn record_boot_file(start: u64, size: u64) {
     BOOT_FILE_START.store(start as usize, core::sync::atomic::Ordering::Relaxed);
     BOOT_FILE_SIZE.store(size as usize, core::sync::atomic::Ordering::Relaxed);
 }
@@ -1016,7 +1016,7 @@ pub fn record_boot_file(start: u64, size: u64) {
 /// than a `cfg` that would make a portable fact look like an x86 detail, which is
 /// [`record_initial_ramdisk`]'s own reasoning for the same attribute.
 #[cfg_attr(not(target_arch = "x86_64"), allow(dead_code))]
-pub fn boot_file_region() -> Option<(u64, u64)> {
+pub(crate) fn boot_file_region() -> Option<(u64, u64)> {
     let start = BOOT_FILE_START.load(core::sync::atomic::Ordering::Relaxed) as u64;
     let size = BOOT_FILE_SIZE.load(core::sync::atomic::Ordering::Relaxed) as u64;
     (size > 0).then_some((start, size))
@@ -1029,7 +1029,7 @@ pub fn boot_file_region() -> Option<(u64, u64)> {
 /// and has to be distinguishable from slot 0 rather than confused with it: confirming slot 0 on a
 /// machine that actually booted slot 1 would mark an image good that never ran.
 #[cfg_attr(not(target_arch = "x86_64"), allow(dead_code))]
-pub fn record_boot_slot(slot: Option<u8>) {
+pub(crate) fn record_boot_slot(slot: Option<u8>) {
     let encoded = slot.map_or(0, |s| s as usize + 1);
     BOOT_SLOT_PLUS_ONE.store(encoded, core::sync::atomic::Ordering::Relaxed);
 }
@@ -1040,7 +1040,7 @@ pub fn record_boot_slot(slot: Option<u8>) {
 /// image in its own file. All three are boots with nothing to confirm, and `None` is the answer
 /// that leaves the disk alone.
 #[cfg_attr(not(target_arch = "x86_64"), allow(dead_code))]
-pub fn boot_slot() -> Option<u8> {
+pub(crate) fn boot_slot() -> Option<u8> {
     match BOOT_SLOT_PLUS_ONE.load(core::sync::atomic::Ordering::Relaxed) {
         0 => None,
         n => Some((n - 1) as u8),
@@ -1053,12 +1053,12 @@ pub fn boot_slot() -> Option<u8> {
 /// a boot that did not come from the disk has not been asked to change it (the live stick
 /// proposal's G2; calef's ruling on PR #1652, 2026-10-04 UTC).
 #[cfg_attr(not(target_arch = "x86_64"), allow(dead_code))]
-pub fn record_booted_from_nvme(yes: bool) {
+pub(crate) fn record_booted_from_nvme(yes: bool) {
     BOOTED_FROM_NVME.store(yes, core::sync::atomic::Ordering::Relaxed);
 }
 
 /// What [`record_booted_from_nvme`] recorded.
-pub fn booted_from_nvme() -> bool {
+pub(crate) fn booted_from_nvme() -> bool {
     BOOTED_FROM_NVME.load(core::sync::atomic::Ordering::Relaxed)
 }
 
@@ -1187,7 +1187,7 @@ static INITIAL_RAMDISK_SIZE: AtomicUsize = AtomicUsize::new(0);
     any(test, feature = "system_tests", feature = "bench"),
     allow(dead_code)
 )]
-pub fn print_summary() {
+pub(crate) fn print_summary() {
     let Some(s) = stats() else {
         println!("  memory          : uninitialized");
         return;
