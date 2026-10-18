@@ -1,74 +1,94 @@
 ---
-status: PROPOSED
+status: DECIDED
 raised: 2026-10-17
+decided: 2026-10-17
+ratified_by: calef
 ---
 
 # 307. How long a name may be: one bound for programs, packages and the files they travel in
 
 *(Section number provisional until the merge queue lands it.)*
 
-Raised by calef, 2026-10-17 (UTC), while reviewing unratified names: *"32 bytes is probably too
-short for packages anyways."* and *"I would like to get to 255 bytes for the filename like
-Debian/Ubuntu."* The trigger was `usb_keyboard_driver`, which a flat rule spelling out every acronym
-would make `universal_serial_bus_keyboard_driver`, 36 bytes, past both 32-byte ceilings below.
+calef, 2026-10-17 (UTC): *"32 bytes is probably too short for packages anyways."* A program, a
+package and the files they travel in share one name bound, and both formats that carry a name store
+it length-prefixed. This changes formats that nife's kernel and tools, `jig` and basalt's published
+packages share, so it was ruled before any code.
 
-This changes formats that three programs share (nife's kernel and tools, `jig`, and basalt's
-published packages), so it is decided before any code. Nothing here is built.
+## The rules
 
-## What holds today
+1. **A package's file name, `<name>-<version>-<architecture>.nifepkg`, is at most 252 bytes as a
+   whole** (calef: *"252 seems fine for now."*). Each field is bounded by the file name, not given
+   its own limit. A program name, which is its own file under `bin/`, is at most the same 252.
+2. **The bound is the smallest name limit among the filesystems nife installs packages onto.** A
+   filesystem nife only reads, such as ISO 9660, does not count. Today that set is redoxfs, whose
+   `DIR_ENTRY_MAX_LENGTH` is 252: a 4-byte node pointer and 252 name bytes make its 256-byte entry.
+   Each writable filesystem crate exports its maximum name length, and a test fails if any is below
+   the bound. The bound rises only when that test allows it.
+3. **Names are variable width** in `nifefs` and `package_archive` (calef: *"variable-width"*): a
+   length, then the bytes.
+   - A `nifefs` entry is a one-byte length, the name, then `start_block` and `len` as `u32`s.
+     Entries are walked, not indexed. The header's `count` keeps a ceiling, so a hostile header is
+     refused before anything is multiplied by it, and the directory is sized in bytes.
+     `ENTRIES_IN_FIRST_BLOCK` becomes the entries that end inside block 0, found while walking,
+     which is what the EL0 block driver in `crates/virtio` reads.
+   - A package's name, version and architecture are each a `u16` length and bytes. A member name is
+     a path: a `u16` length, every `/`-separated component within the bound, one page at most, so
+     `bin/<a 252-byte program>` fits.
+4. **One constant, in a crate both formats import** (calef: *"Yes"*). `package_archive` does not
+   depend on `nifefs`, so neither owns it; the crate holding it is named by the build lane. Every
+   ceiling that holds a program or package name reads it: `HOLDER_MAX`, the timetable's `NAME_MAX`,
+   swish's installed path and `Label`, and `STEM_LEN`. basalt's `helpers/packages.py` reads nife's
+   value instead of restating it. The log registration's 32-byte `NAME_MAX` is a wire field and
+   widens with its protocol. `documentation`'s 72-byte path is not a package name and stays.
+5. **`jig install` refuses a package name longer than `jig remove` can carry.** The per-file grant
+   name, `filesystem_protocol::grant::MAX_NAME`, is 16 bytes because it rides in two `START` words,
+   and lifting it is its own milestone. Until that milestone lands, install checks the same 16
+   bytes, so nothing is installed that remove cannot remove. All six of basalt's packages fit; the
+   longest is `hackbench`, 9 bytes.
+6. **The magic bumps, and `jig` refuses the old format.** `nifefs` is `CRKR0003` and
+   `package_archive` is `NIFEPKG2`, for §58 (a wider archive name)'s reason: a reader striding the
+   old layout would find a plausible name at the wrong offset. Once the migration's step 3 lands,
+   `jig` refuses `NIFEPKG1` as an unknown format. No installed system holds a `NIFEPKG1` package.
 
-Two on-disk formats carry a name in a fixed 32-byte NUL-padded field, and many smaller ceilings sit
-beside them. Every one was found by search on 2026-10-17 (UTC):
+## The migration, in order
 
-| where | bound | what it bounds | kind |
-|---|---|---|---|
-| `crates/nifefs` `NAME_LEN`, magic `CRKR0002` | 32 | an archive entry, so every program the kernel or the progenitor spawns by name | on-disk, fixed; `ENTRY_LEN = 40`, `MAX_FILES = 178` in 14 directory blocks |
-| `crates/package_archive` `NAME_LEN`, magic `NIFEPKG1` | 32 | package name, version, architecture, and every member | on-disk, fixed; header 112 bytes, member entry 72 |
-| `package_archive::PROGRAM_PREFIX` | 28 | a packaged program, since its member is `bin/<program>` in a 32-byte field | derived |
-| `package_archive::STEM_LEN`, `swish` `bare.rs` `PATH_MAX` (108), its `Label` (32) | 98, 108, 32 | the `name-version-arch` stem and `/packages/<n>/<v>/<a>` | runtime buffers |
-| `filesystem_protocol::grant::MAX_NAME`, `grant_plan` `MAX_FILE_NAME` | 16 | a per-file grant's name, and so `jig remove <package>` and the Remove and Vouch messages | wire: two `START` words |
-| `grant_plan::spawnproto` `HOLDER_MAX`, `system_log_protocol` `control::NAME_MAX`, `components/src/timetable.rs` `NAME_MAX` | 32 each | a NameTaken holder, a log registration, an installed program in store mode | wire or runtime |
-| `crates/documentation` `PATH_MAX`, magic `CRKRMAN1` | 72 | a manual page's path | on-disk |
-| basalt `helpers/packages.py` `NAME_LEN` | 32 | `doc/` member names, a hand copy of nife's value | basalt's own check |
-| `vendor/redoxfs` `DIR_ENTRY_MAX_LENGTH` | 252 | a file name on nife's general filesystem | on-disk: a 4-byte node pointer and 252 name bytes make a 256-byte entry |
-| `redoxfs_server` `NAME_MAX`, std's `nife` overlay | 4096 (one page) | a name or path on the filesystem request path | runtime |
-| `filesystem_protocol::dirent` | 255 | a READDIR record's one-byte length | wire |
+nife and basalt pin each other. nife's CI installs basalt's packages: `script/ci-build`'s rows run
+`cargo xtask basalt-fetch` and `jig install ripgrep` from the release `xtask/basalt-pins.index`
+pins, and in CI a failed fetch fails the row. basalt builds its packages with the pinned nife's
+`cargo xtask package`. So:
 
-`activation_set` and `manifest_note` assume no name width (`manifest_note`'s 8-byte field holds only
-the note owner `nife`). U-Boot's 32-byte image name and GPT's 36-unit label are foreign formats and
-do not move.
+1. nife, one pull request. The shared constant and rule 2's test. `nifefs` at `CRKR0003`, with
+   every reader in the same change (kernel, `virtio`, `sealed_pair`'s scan, xtask, the fuzz targets
+   and the Kani harnesses), since images regenerate from the tree. `package_archive` writes
+   `NIFEPKG2` and reads `NIFEPKG2` and `NIFEPKG1`. The `NIFEPKG1` reader exists only to break the
+   cycle: nife's CI must still install basalt's pinned packages until basalt has rebuilt them with
+   this commit. It is not compatibility for users. Rule 5's check lands here too.
+2. basalt. Bump the nife pin to step 1's merge commit, cited as `nifeos/nife@<sha>`. Rebuild
+   every package, rewrite every recipe's digest table with `--update-digests` (milestone 917
+   (basalt's packages build reproducibly)), drop the hand-copied `NAME_LEN`, and publish a new
+   Release. Every digest changes, and the pull request says why.
+3. nife. Copy basalt's new index lines over `xtask/basalt-pins.index` and delete the `NIFEPKG1`
+   reader in the same pull request, so the window closes in the change that ends its reason.
+4. basalt. Re-pin nife to step 3.
 
-**The premise holds with one correction.** nife's general filesystem does not allow 255-byte names
-today. redoxfs stops at 252 and answers 253 to 255 with `EINVAL`. Everything between a program and
-redoxfs allows at least a page.
+basalt's earlier `rolling-*` Releases stay published and unchanged.
 
-## Fork 1: which bound
+## Why these
 
-- (a) Each of name, version and architecture up to 255 bytes.
-- (b) The package's file name as a whole, `<name>-<version>-<architecture>.nifepkg`, within the
-  limit, as Debian bounds `name_version_arch.deb` and nothing else.
+One file name, not three fields. Bounding each of name, version and architecture at 255 would
+permit a 775-byte file name that no filesystem in this tree or on Linux can hold. The real limit
+would be the filesystem's anyway, met at install as an `EINVAL`. Bounding the file name is one fact
+checked in one place: the file fits. That is also the only bound Debian has in practice, and it
+comes from Linux's `NAME_MAX`, not from Debian's packaging rules (see prior art).
 
-**Recommendation: (b), with the limit set to 252 bytes, the name limit of the filesystem nife
-serves.** Option (a) permits a 775-byte file name that no filesystem in this tree or on Linux can
-hold, so the real limit would be the filesystem's anyway, discovered at install time as an
-`EINVAL`. Option (b) is one fact checked in one place: the file fits. Each field is then bounded by
-it, and a program name, which is its own file under `bin/`, is bounded by the same 252.
+252, not Debian's 255. A 253-byte file name would be valid in the format and unstorable on
+nife's own disk. Patching the vendored redoxfs to 255 would make its directory entry 259 bytes,
+change its on-disk format and stop it reading upstream's images. Declaring 255 in the format and
+enforcing 252 at install is two numbers for one fact. Rule 2's test is what lets the bound move when
+the set of writable filesystems changes.
 
-**This is a pushback on 255.** calef asked for Debian's number, and Debian's number is Linux's
-`NAME_MAX`. nife's is redoxfs's 252. A 253-byte package file name would be valid in the format and
-unstorable on nife's own disk. The alternatives:
-
-- 252 (recommended). Matches what nife can store. Three bytes short of Debian; no Debian package
-  name is anywhere near it (see prior art).
-- 255, and patch the vendored redoxfs to match. Its directory entry becomes 259 bytes, which
-  breaks the 256-byte entry's alignment and redoxfs's on-disk format, so every nife redoxfs image
-  stops reading upstream's and the other way round. A patch to an on-disk format is the kind §46
-  (thin primitives or whole subsystems) says to vendor only when it is needed, and three bytes of
-  name is not a need.
-- 255 in the format, 252 enforced at install. Two numbers for one fact, which is the shape the
-  ladder's first rung exists to remove.
-
-## Fork 2: fixed or variable width
+Variable width. Fixed 252-byte fields cost every entry of every image and archive the full
+width; a length prefix costs what a name uses.
 
 Measured on 2026-10-17 (UTC) against the 131 programs that the three architectures' initial
 ramdisks pack between them, mean 13.3 bytes, longest 27. They are every `[[bin]]` in `components/`
@@ -96,95 +116,42 @@ Package header and table of contents (a variable field is a `u16` length and its
 | fixed 255 | 1,371 | 1,666 | 2,256 | +6.3% |
 | variable | 142 to 153 | 204 to 222 | 319 to 320 | smaller than today |
 
-**Recommendation: variable width, in both formats.** It is smaller than today's fixed 32 in every
-measured case, and fixed 252 is 6.5 times the directory for nothing. Would I still choose it if
-both cost the same work? Yes, and they do not: a fixed field is a one-constant change, and variable
-width is the more work. What it costs, so the ruling is made on it:
+Variable width is smaller than today's fixed 32 in every measured case, and fixed 252 is 6.5
+times the directory for nothing. It is the more work of the two, so effort did not choose it.
 
-- Entries are walked, not indexed. Today entry `i` is at `12 + 40i`. A variable directory is
-  read front to back. Every reader already loops over all entries, so this changes code, not
-  complexity.
-- `MAX_FILES` becomes a byte budget. Keep a count ceiling on the header's `count` so a hostile
-  header is refused before anything is multiplied by it (`package_archive::MAX_MEMBERS`'s reason),
-  and size the directory in bytes.
-- `nifefs::ENTRIES_IN_FIRST_BLOCK` stops being a constant. The EL0 block driver in
-  `crates/virtio` sees only block 0 of a three-file disk. It becomes "the entries that end inside
-  block 0", computed while walking. At a fixed 252 it would be one entry, which breaks that disk
-  outright.
-- The Kani harnesses over `nifefs`'s parser are rewritten, because the parser is.
-- A member name becomes a path, a `u16` length with every `/`-separated component within 252
-  bytes, so `bin/<a 252-byte program>` fits. It is one page at most, the bound the filesystem
-  request path already enforces.
+What else was considered for the migration: one atomic nife change with no `NIFEPKG1` reader,
+letting the basalt fetch rows fail until basalt republishes. Refused, because it turns a gate off for
+a cross-repository round trip, and the failure it would hide is the one this migration can cause.
 
-## Fork 3: whether program names and package names move together
+## The formats this replaces
 
-**Recommendation: yes, one constant.** A program is a member of its package (`bin/<program>`), an
-entry in the image's archive, and a file on redoxfs. A ceiling that differs across those three is a
-program that can be packaged and not installed, which is the failure `package_archive::NAME_LEN`'s
-own comment names. Under rule 7 the constant lives in a crate both formats import. `package_archive`
-deliberately does not depend on `nifefs`, so neither owns it; which crate holds it is a naming call
-for the build lane. basalt's hand copy reads nife's value instead of restating it.
+Before this decision is built, two on-disk formats carry a name in a fixed 32-byte NUL-padded field,
+and smaller ceilings sit beside them. Every one, found by search on 2026-10-17 (UTC):
 
-The side channels in the table do not all have to move in the same change, but each needs an
-answer:
+| where | bound | what it bounds | kind |
+|---|---|---|---|
+| `crates/nifefs` `NAME_LEN`, magic `CRKR0002` | 32 | an archive entry, so every program the kernel or the progenitor spawns by name | on-disk, fixed; `ENTRY_LEN = 40`, `MAX_FILES = 178` in 14 directory blocks |
+| `crates/package_archive` `NAME_LEN`, magic `NIFEPKG1` | 32 | package name, version, architecture, and every member | on-disk, fixed; header 112 bytes, member entry 72 |
+| `package_archive::PROGRAM_PREFIX` | 28 | a packaged program, since its member is `bin/<program>` in a 32-byte field | derived |
+| `package_archive::STEM_LEN`, `swish` `bare.rs` `PATH_MAX` (108), its `Label` (32) | 98, 108, 32 | the `name-version-arch` stem and `/packages/<n>/<v>/<a>` | runtime buffers |
+| `filesystem_protocol::grant::MAX_NAME`, `grant_plan` `MAX_FILE_NAME` | 16 | a per-file grant's name, and so `jig remove <package>` and the Remove and Vouch messages | wire: two `START` words |
+| `grant_plan::spawnproto` `HOLDER_MAX`, `system_log_protocol` `control::NAME_MAX`, `components/src/timetable.rs` `NAME_MAX` | 32 each | a NameTaken holder, a log registration, an installed program in store mode | wire or runtime |
+| `crates/documentation` `PATH_MAX`, magic `CRKRMAN1` | 72 | a manual page's path | on-disk |
+| basalt `helpers/packages.py` `NAME_LEN` | 32 | `doc/` member names, a hand copy of nife's value | basalt's own check |
+| `vendor/redoxfs` `DIR_ENTRY_MAX_LENGTH` | 252 | a file name on nife's general filesystem | on-disk: a 4-byte node pointer and 252 name bytes make a 256-byte entry |
+| `redoxfs_server` `NAME_MAX`, std's `nife` overlay | 4096 (one page) | a name or path on the filesystem request path | runtime |
+| `filesystem_protocol::dirent` | 255 | a READDIR record's one-byte length | wire |
 
-- **The 16-byte grant name is a defect against this rule today.** `jig remove` refuses a package
-  name over 16 bytes, and `mdr` under a flat acronym rule becomes `markdown-renderer`, 17. The
-  constant's own comment calls 16 a demonstrator's limit, and lifting it means a frame for the
-  caretaker rather than two argument words. That is its own milestone; until it lands, `jig
-  remove`'s limit is a recorded exception in the `BUGS` beside it.
-- `HOLDER_MAX`, the log registration's `NAME_MAX`, the timetable's `NAME_MAX`, swish's 108-byte path
-  and `Label`, and `STEM_LEN` all hold a program or package name, so they read the shared constant.
-  A log registration that cuts a name at 32 keeps cutting it until the log protocol is widened,
-  which is a wire change and is listed, not bundled.
-- `documentation`'s 72-byte path has its own magic and is not a package name. It moves when a
-  manual page's path needs to.
-
-## Fork 4: the migration, in order
-
-Who has already acted on the current format:
-
-- basalt has published 17 `rolling-*` Releases in `NIFEPKG1`, the latest holding 18 packages, with
-  each package's SHA-256 in its recipe's digest table (milestone 917 (basalt's packages build reproducibly))
-  and in the index at `basalt.nifeos.org`.
-- nife pins six of those packages by digest in `xtask/basalt-pins.index` and fetches them in CI,
-  where a failed fetch fails the row.
-- Installed systems: none found. Every nifefs image regenerates from the tree, as §58 (a wider
-  archive name) argued, and no `.nifepkg` is known to sit on a disk that outlives a rebuild. The
-  maintainers confirm this for the bench boards before step 1 lands.
-
-The two repositories pin each other, so the order matters:
-
-1. nife, one pull request. The shared constant. `nifefs` with variable entries and magic
-   `CRKR0003`, every reader in the same change (kernel, `virtio`, `sealed_pair`'s scan, xtask, the
-   fuzz targets), since images regenerate and nothing outside nife reads one. `package_archive`
-   writes `NIFEPKG2` and reads both 2 and 1. The second reader is there because nife's gates fetch
-   basalt's `NIFEPKG1` packages until step 3.
-2. basalt. Bump the nife pin to step 1's merge commit, cite it as `nifeos/nife@<sha>`, rebuild
-   every package, rewrite every recipe's digest table with `--update-digests`, drop the hand-copied
-   `NAME_LEN`, and publish a new Release. Every digest changes, and the pull request says that this
-   is why.
-3. nife. Copy basalt's new index lines over `xtask/basalt-pins.index` and delete the `NIFEPKG1`
-   reader in the same pull request, so the window closes in the change that ends its reason. `jig`
-   then refuses a `NIFEPKG1` file with `BadMagic`, and its message says to fetch a rebuilt package.
-4. basalt. Re-pin to step 3.
-
-**Sub-fork: does `jig` keep reading `NIFEPKG1` after step 3? Recommendation: no, it refuses.** A
-second parser of hostile input kept forever, for archives no installed system holds, costs more than
-it saves. The old Releases stay published and unchanged; a reader meets `BadMagic`, not a
-misreading, which is §58's reason for a bump.
-
-What else was considered: one atomic nife change with no dual reader, letting the basalt fetch rows
-fail until basalt republishes. Refused, because it turns a gate off for the length of a cross-repo
-round trip, and the failure it would hide is exactly the one this migration can cause.
+`activation_set` and `manifest_note` assume no name width (`manifest_note`'s 8-byte field holds only
+the note owner `nife`). U-Boot's 32-byte image name and GPT's 36-unit label are foreign formats and
+do not move.
 
 ## What it unblocks
 
 Measured with a flat rule that spells out every acronym in a name (`abi`, `cpu`, `elf`, `fs`, `gpu`,
 `http`, `os`, `pci`, `tls`, `uefi`, `usb`, `uuid`; `mdr` as `markdown_renderer`). The list was taken
 from the names' own tokens; foreign program names (`rg`, `mkfs`, `ps`) keep their spelling, as the
-acronym test already says. The flat rule itself is pending, and this records only what it would
-cost.
+acronym test already says. The flat rule is decided separately; this records what it costs.
 
 | set | names | over 32 today | over 32 expanded | over 28 expanded (`bin/` today) | longest expanded |
 |---|---|---|---|---|---|
@@ -233,13 +200,10 @@ Four binary package names pass 64, so crates.io's cap would refuse real Debian p
 Homebrew, Alpine's apk and abuild, Cargo's local `restricted_names.rs` (searched, not audited), and
 Fedora's packaging guidelines as distinct from `rpm` itself.
 
-## What is blocked until this is ruled
-
-Any program or package name past 28 bytes, so the flat acronym rule's renames. The build lane for
-steps 1 to 4. The `jig remove` grant milestone, which waits on Fork 3's constant.
-
 ## BUGS
 
 - The measurement counts names in the tree on 2026-10-17 (UTC). The per-architecture archives pack
   subsets of the 131, so the directory figures are an upper bound for any one image.
 - APFS's limit was measured on one macOS host; no Apple document stating it was found.
+- Rule 5 makes `jig install` refuse names `jig remove` cannot carry, which caps an installable
+  package name at 16 bytes until the grant milestone lands.
