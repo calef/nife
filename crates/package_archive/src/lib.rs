@@ -334,7 +334,7 @@ pub struct Program<'a> {
     /// The executable member's bytes.
     pub bytes: &'a [u8],
     /// Their SHA-256, as the table of contents carries it and [`installable`] checked it. This is
-    /// the digest the activation set records and the spawner computes (DECISIONS §219 (how the
+    /// the digest the installed-programs table records and the spawner computes (DECISIONS §219 (how the
     /// shell names an installed program to the spawner) option D).
     pub digest: Digest,
     /// The member's index in the table of contents, which [`program_name`] reads back.

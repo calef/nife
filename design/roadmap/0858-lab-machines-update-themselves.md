@@ -87,9 +87,9 @@ Checked rather than assumed. Each is a gap the model must close before a lab mac
    until §220 (signed builds) is built, a new version of any package is a new catalog, which is a
    new slot. §220's build is milestone 666 (a signed build installs up to its key's ceiling),
    NOT-STARTED. This is the hard dependency.
-2. **§229's refusal** is built (`activation_set::Error::ImageName`) and must narrow to slot programs.
+2. **§229's refusal** is built (`installed_programs::Error::ImageName`) and must narrow to slot programs.
 3. **The progenitor builds every service from the archive.** `crates/system_initializer` names each
-   by archive entry. Starting a base service from the activation set is what §241's B2 required and
+   by archive entry. Starting a base service from the installed-programs table is what §241's B2 required and
    nothing has built.
 4. **The kernel itself starts `block_driver` and `redoxfs_server`** (`kernel/src/user.rs`, §241's
    fact 5). Nothing can restart those, so in effect they are slot programs until milestone 811 (the
@@ -137,7 +137,7 @@ Each line is one lane. "Proposed" means a new milestone an integrator would numb
 Candidate, not proposed: kernel N-1 compatibility (Fork 5), triggered when the stability chart's
 syscall rows stay at zero changed for several weeks, or when a first customer arrives.
 
-Reuse: `crates/boot_slot`, `uefi_loader`'s chooser, `crates/activation_set`, `crates/component_plan`'s
+Reuse: `crates/boot_slot`, `uefi_loader`'s chooser, `crates/installed_programs`, `crates/component_plan`'s
 dependency graph, the `reboot` program, `helpers/package-http-peer` and basalt's gate. MINIX 3's
 service update, QNX's HAM, Mender, RAUC and SWUpdate were considered for their state machines, not
 their code: each assumes an OS or a bootloader nife does not have.

@@ -37,18 +37,18 @@ $ alto
   each `bin/<program>`, and checks each one's bytes against its digest before any is placed. A
   `bin/` name that is empty or nested, or a program named twice, refuses the package.
 - The progenitor places every program under `packages/<name>/<version>/` and writes one
-  generation through `activation_set::with_entries`. One install is one generation (§208
-  (installing a package is granting it, and the activation set is versioned)). One refused
+  generation through `installed_programs::with_entries`. One install is one generation (§208
+  (installing a package is granting it, and the installed programs are versioned)). One refused
   program refuses the package with nothing written.
 - A held name's refusal carries the refused member's index in the reply's word 2, and two more
   messages carry the holder's name (`spawnproto::holder_words`). `jig` names the program from the
   bytes it sent.
-- `jig remove` is `activation_set::without_package`.
+- `jig remove` is `installed_programs::without_package`.
 
 ## BUGS
 
 - A generation is one 4,096-byte page, and a program's row and pointer take about 170 bytes. So
-  the live set holds about two dozen installed programs, by arithmetic on `activation_set`'s
+  the live set holds about two dozen installed programs, by arithmetic on `installed_programs`'s
   writer rather than measured.
 - Every program of a package shares the 4 MiB staging limit (`spawnproto::IMAGE_MAX_PAGES`).
 - A holder's name longer than 32 bytes, which only a hand-written table holds, is cut at that

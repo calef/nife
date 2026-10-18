@@ -22,7 +22,7 @@ itself is confined by capability, and gVisor on Linux cannot confine itself.
 
 The small first rung: an OCI import shim. It translates an image's payload into a nife package.
 That is one §197 (a package is one archive file) archive with a §195 (a reviewed recipe vouches
-for a package) recipe, entering the §208 (installing a package is granting it) activation set
+for a package) recipe, entering the §208 (installing a package is granting it) installed-programs table
 like any package. This is repackaging, flatpak-shaped: it runs software rebuilt for nife rather
 than arbitrary Linux binaries, and it makes the distribution half of the container story native
 without promising the compatibility half.

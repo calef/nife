@@ -533,8 +533,8 @@ fn load_current(p: &Installed) -> Option<(elf::Elf<'static>, grant_plan::Manifes
 /// mapped at `timetable::contract::STORE_PAGE_VA`. Every call is a blocking `CALL`, so the page is
 /// this process's between them.
 mod store {
-    use activation_set::{CURRENT, generation_name, lookup, parse_current};
     use filesystem_protocol::{PAGE, dir, fs};
+    use installed_programs::{CURRENT, generation_name, lookup, parse_current};
     use timetable::contract;
     use user_mode_runtime::call;
 
@@ -614,7 +614,7 @@ mod store {
     }
 
     /// **Stage the bytes a bare `name` runs**: the live generation's entry for it (never an owner's
-    /// vouch, `activation_set::lookup`), read from `packages/<name>/<version>/<program>`, and
+    /// vouch, `installed_programs::lookup`), read from `packages/<name>/<version>/<program>`, and
     /// answered only if they hash to that entry's digest. `(length, digest)`.
     pub fn load(name: &str) -> Option<(usize, measured_boot::Digest)> {
         let mut table = [0u8; PAGE];

@@ -74,7 +74,7 @@ carries."*
    distribution's package index)), by a publish job in basalt.
 6. Installation by `jig install ripgrep` (milestone 809 (the package client becomes a program)), to
    where swish finds an installed program (§219 (how the shell names an installed program to the
-   spawner)). It is vouched through the activation set, so it gets its note's grants.
+   spawner)). It is vouched through the installed-programs table, so it gets its note's grants.
 7. Stop packing `rg` into the base image by accident: `xtask` packs it only where a test asks, with
    a comment citing this milestone. That is not a restriction to tests. In the interim before
    milestone 809 works, an image carrying `rg` is a test image and says so; after it, customers get

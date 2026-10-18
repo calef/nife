@@ -148,7 +148,7 @@ pub const FAULTED_SENTENCE: &[u8] = b"  that command faulted and was killed befo
 /// rule: the digest was not found, and what would have let it run anyway is a capability, not a
 /// setting. That capability is §219's gate D2 (`spawnproto::RUN_UNVOUCHED_SLOT`), and a shell
 /// meets this sentence only when it does not hold it.
-pub const UNVOUCHED_SENTENCE: &[u8] = b"  refused: those bytes are not in the activation set, and running unvouched bytes needs a capability this session does not hold\n";
+pub const UNVOUCHED_SENTENCE: &[u8] = b"  refused: those bytes are not among the installed programs, and running unvouched bytes needs a capability this session does not hold\n";
 
 /// **What the prompt says when a file's own manifest refuses the line** (milestone 597
 /// (a program carries its manifest in an ELF note), provisional), one sentence per
@@ -192,7 +192,7 @@ pub fn write_vouch(status: spawnproto::ActivationStatus, live: u64, out: &mut dy
     let said: &[u8] = match status {
         S::Done => b"  vouched",
         S::NotExecutable => b"  refused: those bytes are not a program this machine runs",
-        S::StoreFailed => b"  could not write the activation set",
+        S::StoreFailed => b"  could not write the installed programs",
         _ => b"  the progenitor could not take that request",
     };
     out(said);

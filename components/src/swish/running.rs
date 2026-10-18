@@ -224,7 +224,7 @@ static IMAGE_TABLES: core::sync::atomic::AtomicU64 = core::sync::atomic::AtomicU
 ///
 /// The shell reads the file through the file service it already holds, into frames split from its
 /// own budget, and sends them on the spawn endpoint under `IMAGE_BIT`. The progenitor hashes its own
-/// copy and looks the digest up in the activation set: a hit runs with the manifest the bytes
+/// copy and looks the digest up in the installed-programs table: a hit runs with the manifest the bytes
 /// carry. A miss runs only if this session holds the run-unvouched capability
 /// ([`HOLDS_RUN_UNVOUCHED`], §219's gate D2), which this request then claims and presents as its
 /// last message; the child gets what the line granted and the clock and configuration pages.

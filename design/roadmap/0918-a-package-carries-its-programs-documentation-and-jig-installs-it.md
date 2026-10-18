@@ -35,7 +35,7 @@ kernel included), that covers every package. `ripgrep` is the first.
   other member is carried and ignored. A package with `doc/` members therefore installs today, and
   its pages are dropped.
 - `jig` is the client. The progenitor is the installer (§208 (installing a package is granting it,
-  and the activation set is versioned)). Its `install` places the program at
+  and the installed programs are versioned)). Its `install` places the program at
   `packages/<name>/<version>/<program>` and commits a new generation. `remove` and `rollback`
   commit generations too.
 - A bare name reaches a program through the live generation (§229 (how a bare name at the prompt

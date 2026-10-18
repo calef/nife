@@ -1293,9 +1293,9 @@ fn store_caretakers(own_ut: u64, region: u64, care: &elf::Elf) -> Option<(u64, u
         login_protocol::DURABLE_WINDOW,
     ))
     .ok()?;
-    let activation = store_caretaker(own_ut, region, care, badged, activation_set::DIRECTORY);
+    let activation = store_caretaker(own_ut, region, care, badged, installed_programs::DIRECTORY);
     let packages = activation
-        .and_then(|_| store_caretaker(own_ut, region, care, badged, activation_set::PACKAGES));
+        .and_then(|_| store_caretaker(own_ut, region, care, badged, installed_programs::PACKAGES));
     cap_delete(badged);
     match (activation, packages) {
         (Some(a), Some(p)) => Some((a, p)),

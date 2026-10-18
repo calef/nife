@@ -24,7 +24,7 @@ its digest and a catalog line. And the fuzz target and Kani harnesses §197 acce
 container's price. Rung 3a's consumer half is built: the image carries a package catalog, a host
 serves the package over plain HTTP, and `net_stack`'s client accepts it only by the image's digest,
 on aarch64 and riscv64. The table §208 (installing is granting) versions is in
-`crates/activation_set`. Run by digest and the installer are built under §219 (how the shell names
+`crates/installed_programs`. Run by digest and the installer are built under §219 (how the shell names
 an installed program to the spawner): `package install`, `remove` and `rollback` at the prompt,
 across a reboot, on all three architectures. `package install <name>` fetches over the booted
 system's network on all three (x86_64 over the `e1000e`), and `greeting`, which no image carries,

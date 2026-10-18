@@ -16,7 +16,7 @@ different packages have different dependencies on upgrading a dependency. We sho
 to address that."* *(Number provisional until the merge queue lands it. Title and slug are drafts.)*
 
 Built 2026-09-29 (UTC) on `milestone/614-every-version-live`, against the five rulings below.
-`crates/activation_set` carries the ruled shape: rows `<digest> <program> <version> <package>`
+`crates/installed_programs` carries the ruled shape: rows `<digest> <program> <version> <package>`
 keyed on the digest, and the default pointer inside the generation file. Install appends and moves
 the pointer, so the bare word still means the newest install. Removal follows ruling 5: bare remove
 takes every live version and the pointer; `package@version` removes one, moving the pointer to the

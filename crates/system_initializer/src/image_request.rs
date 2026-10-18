@@ -12,7 +12,7 @@ use super::*;
 // ruled 2026-09-26; milestone 198 (a package manager) rung 3a).
 // -------------------------------------------------------------------------------------------
 
-/// Where the progenitor maps the file service's shared page to read the activation set. Mapped
+/// Where the progenitor maps the file service's shared page to read the installed-programs table. Mapped
 /// once, on the first image request, with page tables from its own budget. Clear of every other
 /// window this process maps (`INIT_OUT_VA` and the three peek pages below it, and the loader's
 /// scratch window, `supervision_protocol::SCRATCH_WINDOW`, which starts at `0x1000_0000`).
@@ -572,7 +572,7 @@ pub(super) fn staged_image(len: u64) -> &'static [u8] {
 }
 
 /// **Is this image vouched for?** Its SHA-256, looked up in the live generation of the activation
-/// set on the file service (`activation_set`). `false` on a miss, and on every way of failing to
+/// set on the file service (`installed_programs`). `false` on a miss, and on every way of failing to
 /// read the table: no disk, no `activation` directory, a `current` that does not parse, a
 /// generation that is malformed or larger than a page. A table that cannot be read vouches for
 /// nothing, which is `measured_boot`'s rule one table over.
@@ -588,7 +588,7 @@ pub(super) fn vouched(bytes: &[u8], fs: Option<Fs>, own_ut: u64, fs_mapped: &mut
     let d = files.named(
         fs_operation::OPENDIR,
         fs_operation::ROOT,
-        activation_set::DIRECTORY,
+        installed_programs::DIRECTORY,
         dir::READ,
     );
     if d < 0 {
@@ -597,7 +597,10 @@ pub(super) fn vouched(bytes: &[u8], fs: Option<Fs>, own_ut: u64, fs_mapped: &mut
     let mut table = [0u8; PAGE_BYTES];
     let hit = match files.live_generation(d as u64, &mut table) {
         Ok((_, n)) => core::str::from_utf8(&table[..n]).is_ok_and(|table| {
-            matches!(activation_set::lookup_digest(table, &digest), Ok(Some(_)))
+            matches!(
+                installed_programs::lookup_digest(table, &digest),
+                Ok(Some(_))
+            )
         }),
         Err(()) => false,
     };

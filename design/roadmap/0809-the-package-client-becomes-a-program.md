@@ -75,8 +75,8 @@ had two clients for one store. Under §195 (a reviewed recipe vouches for a pack
 decides, so whoever carries the bytes need not be trusted. `jig` fetches them and sends an ordinary
 install, and `http_response` left the progenitor's graph.
 
-The progenitor keeps the activation set and the one rename of `current` that changes what runs
-(§208 (installing a package is granting it, and the activation set is versioned)), the digest check
+The progenitor keeps the installed-programs table and the one rename of `current` that changes what runs
+(§208 (installing a package is granting it, and the installed programs are versioned)), the digest check
 on its own copy, and the image's catalog. `vouch` stays a builtin; a `jig vouch` later is small and
 reversible.
 
@@ -156,19 +156,19 @@ To settle before `add-repository` is built (item 1 is ruled):
    spelling is provisional (`Name: provisional` in
    [design/naming/README.md](../naming/README.md), tracked by `script/names --unratified`). It is
    a flag because §219 reads a word containing `/` as a file, and `@` already means a version.
-3. The activation set records `OWNER` for a vouch. It would need to record which source vouched,
+3. The installed-programs table records `OWNER` for a vouch. It would need to record which source vouched,
    or a rollback cannot say what it is undoing.
 4. Whether a second index may carry §250's "moved to" field, and whether the client follows it.
 
 ## Other package managers, against the same contracts
 
 `jig` uses only public contracts: `crates/package_archive` (§197 (a package is one archive file)),
-the index format, `spawnproto`'s activation request (§208) and `crates/activation_set`. A second
+the index format, `spawnproto`'s activation request (§208) and `crates/installed_programs`. A second
 manager on those crates can do what `jig` can, once the owner's console grants it the installer
 endpoint.
 
 calef, 2026-10-06 (UTC), accepted how managers coexist: *"Yes."* Only `jig` holds the endpoint by
-default; other tools stay user-local, like `pipx`. Each activation set row records which manager
+default; other tools stay user-local, like `pipx`. Each installed-programs row records which manager
 installed it, and the progenitor refuses a manager's remove or rollback of another's row.
 
 ## How this splits against milestones 801 and 802
@@ -207,7 +207,7 @@ Items 1, 2, 3 and 5 wait on nothing. Every item is proved on aarch64, riscv64 an
 same gate (rule 5).
 
 Reuse: all inside the tree (`package_archive`, `http_response`, `socket_protocol`'s fixture peer,
-`activation_set`, `spawnproto`'s activation request, swish's frame sender, milestone 205's argv and
+`installed_programs`, `spawnproto`'s activation request, swish's frame sender, milestone 205's argv and
 designation). Writing the program was forced: no existing client speaks this capability ABI. The
 apt, pkg and Homebrew manuals §46 (thin primitives or whole subsystems) owed were read 2026-10-10;
 [the vocabulary record](../naming/command-line-rulings.md#jig-takes-apts-verbs) cites them.
@@ -262,7 +262,7 @@ measured.
 ## BUGS
 
 - Retiring `Activation::Fetch` changed a wire format that only this tree speaks.
-- Until I3, `jig` is inside the trusted base for installs, and the activation set's provenance for
+- Until I3, `jig` is inside the trusted base for installs, and the installed-programs table's provenance for
   an index install is `jig`'s claim.
 - `jig`'s own refusals name no generation, and a `remove <package>@<version>` that cannot pick a
   default names no candidates: it holds no view of `activation/` until item 6 grants one.

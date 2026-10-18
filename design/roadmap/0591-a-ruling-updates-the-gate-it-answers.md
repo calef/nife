@@ -11,7 +11,7 @@ highest claimed when this lane cut its branch. The file stem is a lane's coinage
 too. Promoted from the proposal `a-ruling-updates-the-gate-it-answers`, filed 2026-09-24 by the
 `maintainer/198-gate-is-stale` lane. That lane found milestone 198 (a package manager, and the
 trivial install that makes a second customer possible) still gated `DECISION`. Its last fork had
-been ruled a day earlier, by §208 (installing a package is granting it, and the activation set is
+been ruled a day earlier, by §208 (installing a package is granting it, and the installed programs are
 versioned).
 `design/fatal-risks/README.md` risk 8 repeated the stale gate as the reason nobody can be asked to run
 nife. Built the same day as option 2 below. The proposal's analysis is kept, lightly cut; its gate

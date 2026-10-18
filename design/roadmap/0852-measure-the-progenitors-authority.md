@@ -130,7 +130,7 @@ with the inventory in hand, per measure first. Some candidate remediations, as e
 - Releasing an item after its last use, where the inventory shows a lifetime capability with one
   use at boot.
 - Moving the installer out of the progenitor. Milestone 809 (the package client becomes a program)
-  keeps the installer there, because the progenitor alone reads the activation set; the inventory
+  keeps the installer there, because the progenitor alone reads the installed-programs table; the inventory
   would say what that costs.
 
 ## Parity

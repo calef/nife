@@ -20,7 +20,7 @@ fn a_vouch_answer_says_what_is_live() {
     );
     assert_eq!(
         shown(|o| write_vouch(S::StoreFailed, 2, o)),
-        "  could not write the activation set; generation 2 is live\n"
+        "  could not write the installed programs; generation 2 is live\n"
     );
 }
 
