@@ -19,7 +19,7 @@
 //! - **A detached thread's stack is never freed**: nothing is left to free it once the thread has
 //!   gone, so a program that spawns and drops threads without joining leaks one stack each.
 //! - **Each spawn spends one TCB page of the heap's region for good** (`notes/processes.md`).
-//! - **A process has at most `current_cpu_protocol::THREAD_PAGE_SLOTS` (16) threads**, its main
+//! - **A process has at most `current_cpu_contract::THREAD_PAGE_SLOTS` (16) threads**, its main
 //!   thread included; one more spawn answers `OutOfMemory` as an `io::Error`.
 
 use crate::ffi::CStr;

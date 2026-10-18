@@ -26,7 +26,7 @@ name here is provisional: the donation, its verbs, and the fixture.
 ## Why, and its honest rank
 
 A server with a fixed budget has a fixed number of clients. `net_stack` today holds a 128-page
-budget, a 96-page heap for smoltcp, and `socket_protocol::MAX_SOCKETS` = 6. Each client already
+budget, a 96-page heap for smoltcp, and `socket_contract::MAX_SOCKETS` = 6. Each client already
 pays for the frame its bytes cross in, minted from its own `NET_MEMORY_REGION_SLOT`. But the
 socket's smoltcp buffers (`SOCK_BUF`, 2 KiB each way) and the page tables that map the client's
 frame come from the server's budget (`components/src/net_stack.rs`). So the seventh connection is
@@ -51,7 +51,7 @@ clients of one server.
   (`abi::page_frame::MAP`). A server mapping pages a client can revoke can lose them while running.
 - A server dies on a fault, delivered to its supervisor (§26 (the fault endpoint)). There is no
   recoverable fault.
-- `socket_protocol` opens a socket with a message that carries no capability today.
+- `socket_contract` opens a socket with a message that carries no capability today.
 
 Reuse: the broker and its accounts are milestone 851's. Genode's session quota donation lends the shape
 and no code.
@@ -161,7 +161,7 @@ From memory, unchecked; the building lane owes a read of each.
 
 1. Milestone 851's broker gains a holder-opened child account, delegable, closed by its holder.
 2. The broker's charge ledger: a server moves charge between its account and a donation.
-3. `socket_protocol`'s open carries a donation capability. A socket without one is refused by name.
+3. `socket_contract`'s open carries a donation capability. A socket without one is refused by name.
 4. `net_stack` keeps its fixed budget for itself and draws per-socket memory against donations.
 
 ### Exit criteria a stranger could check

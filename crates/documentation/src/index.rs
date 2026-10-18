@@ -32,7 +32,7 @@
 //! - **A term is truncated to [`TERM_MAX`] bytes**, so two identifiers that agree in their first 24
 //!   characters share a posting list and a query for either finds both.
 //! - **Terms are ASCII-folded and split on anything that is not a letter or a digit**, so
-//!   `filesystem_protocol` indexes as `filesystem` and `protocol`, and a search for it finds pages
+//!   `filesystem_contract` indexes as `filesystem` and `protocol`, and a search for it finds pages
 //!   that mention either, as `apropos` does.
 //! - **There is no phrase search, and a result names a page, not a line**: the index stores no
 //!   positions, because the reader has no memory to spend on them. Ranking divides a term's count by
@@ -170,7 +170,7 @@ impl Header {
 ///
 /// The reader asks for a page by number and gets it or does not; it never seeks, never reads a byte
 /// range, and never holds two pages at once. That is the whole interface, and it is this small so
-/// that the guest implementation is a single `filesystem_protocol` `READ` and the host implementation is a
+/// that the guest implementation is a single `filesystem_contract` `READ` and the host implementation is a
 /// slice.
 pub trait Pages {
     /// Fill `out` with page `index` of the file. `false` means the read failed or ran off the end.
@@ -273,7 +273,7 @@ pub fn normalize(word: &[u8], out: &mut [u8; TERM_MAX]) -> usize {
 /// they agreed while testing only a word with no underscore in it.
 ///
 /// **Only the underscore joins.** This repository writes `snake_case` identifiers in running prose
-/// constantly (`filesystem_protocol`, `grant_plan`, `terminal_sink_caretaker`), so they are the names a reader
+/// constantly (`filesystem_contract`, `grant_plan`, `terminal_sink_caretaker`), so they are the names a reader
 /// most wants to search for, and the underscore is unambiguous here in a way the hyphen is not:
 /// joining across `-` would manufacture a term out of every hyphenated phrase in the corpus. The
 /// renderer narrowed emphasis for the same reason and records it in its own `BUGS`.

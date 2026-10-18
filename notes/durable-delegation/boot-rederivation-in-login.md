@@ -31,7 +31,7 @@ Name: the file's provisional, minted by milestone 152's lane on 2026-09-27.
 
 - a new rendezvous, `session_reviver` holding `WRITE | GRANT` and `login` holding `READ`;
 - per identity, one word carrying an opcode and the name's length, and two words carrying the name
-  packed as `filesystem_protocol::grant::pack_name` packs it (16 bytes at most);
+  packed as `filesystem_contract::grant::pack_name` packs it (16 bytes at most);
 - four `SEND_CAP`s in a fixed order: the user's budget (`WRITE | GRANT`), the session process's
   region (`WRITE`), the registration page (`WRITE`) and the session's readiness endpoint (`READ`);
 - a closing word with the count, so `login` knows the pass is over before it opens its front door.

@@ -1024,9 +1024,9 @@ diff --git a/crates/nifefs/src/lib.rs b/crates/nifefs/src/lib.rs
 """, 'format-crate'),
 
     ("format-crate: #1402's shape, a layout table row changed in a comment, fires", """\
-diff --git a/crates/manifest_note/src/lib.rs b/crates/manifest_note/src/lib.rs
---- a/crates/manifest_note/src/lib.rs
-+++ b/crates/manifest_note/src/lib.rs
+diff --git a/crates/capability_manifest_note/src/lib.rs b/crates/capability_manifest_note/src/lib.rs
+--- a/crates/capability_manifest_note/src/lib.rs
++++ b/crates/capability_manifest_note/src/lib.rs
 @@ -1,3 +1,3 @@
  //! | version | field | meaning |
 -//! | 4 | 1 | `arg` | 0 forbidden, 1 required, 2 words |
@@ -1076,9 +1076,9 @@ diff --git a/crates/glob/src/lib.rs b/crates/glob/src/lib.rs
 """, None),
 
     ("format-crate: classified by a doc version table, a code change in it fires", """\
-diff --git a/crates/manifest_note/src/lib.rs b/crates/manifest_note/src/lib.rs
---- a/crates/manifest_note/src/lib.rs
-+++ b/crates/manifest_note/src/lib.rs
+diff --git a/crates/capability_manifest_note/src/lib.rs b/crates/capability_manifest_note/src/lib.rs
+--- a/crates/capability_manifest_note/src/lib.rs
++++ b/crates/capability_manifest_note/src/lib.rs
 @@ -1,3 +1,3 @@
  //! | version | field |
 -//! | 1       | a     |
@@ -1116,9 +1116,9 @@ diff --git a/crates/package_archive/src/lib.rs b/crates/package_archive/src/lib.
 """, None),
 
     ("format-crate: a table row after a closed test module still fires", """\
-diff --git a/crates/manifest_note/src/lib.rs b/crates/manifest_note/src/lib.rs
---- a/crates/manifest_note/src/lib.rs
-+++ b/crates/manifest_note/src/lib.rs
+diff --git a/crates/capability_manifest_note/src/lib.rs b/crates/capability_manifest_note/src/lib.rs
+--- a/crates/capability_manifest_note/src/lib.rs
++++ b/crates/capability_manifest_note/src/lib.rs
 @@ -1,8 +1,8 @@
  pub const VERSION: u32 = 1;
  #[cfg(test)]
@@ -1152,12 +1152,12 @@ diff --git a/crates/nifefs/src/lib.rs b/crates/nifefs/src/lib.rs
 """, 'format-crate'),
 
     ("format-crate: an identifier renamed in a layout sentence stays quiet (#1255, #860)", """\
-diff --git a/crates/clock_protocol/src/lib.rs b/crates/clock_protocol/src/lib.rs
---- a/crates/clock_protocol/src/lib.rs
-+++ b/crates/clock_protocol/src/lib.rs
+diff --git a/crates/clock_contract/src/lib.rs b/crates/clock_contract/src/lib.rs
+--- a/crates/clock_contract/src/lib.rs
++++ b/crates/clock_contract/src/lib.rs
 @@ -1,3 +1,3 @@
 -/// Where the opcode sits: bits 63:56, the same position `filesystem_proto` uses.
-+/// Where the opcode sits: bits 63:56, the same position `filesystem_protocol` uses.
++/// Where the opcode sits: bits 63:56, the same position `filesystem_contract` uses.
  pub const VERSION: u32 = 1;
 """, None),
 

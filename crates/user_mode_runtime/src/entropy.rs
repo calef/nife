@@ -1,4 +1,4 @@
-//! **Fill a buffer from the entropy service**, the client half of `entropy_protocol` (milestone 56
+//! **Fill a buffer from the entropy service**, the client half of `entropy_contract` (milestone 56
 //! (secrets, credentials, and the entropy to make them safe), DECISIONS §44 (entropy is a
 //! capability), notes/entropy.md).
 //!
@@ -9,14 +9,14 @@
 //! §94 (what may live in a userspace library) tell that it was one thing, asserted by hand four
 //! times. Lifted here on 2026-10-06 (UTC).
 //!
-//! # Why here and not in `entropy_protocol`
+//! # Why here and not in `entropy_contract`
 //!
-//! `entropy_protocol` is the contract: request and reply encodings, pure and dependency-free, and
+//! `entropy_contract` is the contract: request and reply encodings, pure and dependency-free, and
 //! the kernel's entropy service and the std PAL build on it as well as these clients. A fill
 //! function has to `CALL` an endpoint, and putting it in the contract would make the contract
 //! depend on this runtime, which owns `call` (calef, 2026-10-06, steering the lane that wrote this).
 //! So the split is the usual one: the loop, which is pure and is where the refusals live, is
-//! `entropy_protocol::fill_with` and takes the `CALL` as a closure, so it is host-tested there
+//! `entropy_contract::fill_with` and takes the `CALL` as a closure, so it is host-tested there
 //! (this crate has no host tests: it is bare-metal `asm!`); this module supplies the closure.
 //! The std PAL's `fill_bytes` (`patches/std-nife/overlay/std/src/sys/random/nife.rs`) was the other
 //! candidate and is not shareable: it lives inside `std`, these programs are `no_std`, and it
@@ -35,12 +35,12 @@
 ///
 /// `None` covers both failures, which every caller so far treats alike: this process holds no
 /// entropy endpoint in `slot`, or the service answered with fewer bytes than asked. On `None` the
-/// contents of `out` are unspecified and must not be used. See `entropy_protocol::fill_with` for
+/// contents of `out` are unspecified and must not be used. See `entropy_contract::fill_with` for
 /// the loop and its tests.
 ///
 /// Name: ratified 2026-10-07 (calef, #1795). His word: "Yes". getrandom's verb; the module already
 /// says entropy.
 #[must_use]
 pub fn fill(slot: u64, out: &mut [u8]) -> Option<()> {
-    entropy_protocol::fill_with(out, |w0| super::call(slot, w0, 0))
+    entropy_contract::fill_with(out, |w0| super::call(slot, w0, 0))
 }

@@ -27,7 +27,7 @@ const SET_VA_CARETAKER: u64 = 0x0000_0000_0070_0000;
 /// encoded into a **frame of its own and mapped read-only** into the caretaker, which copies it
 /// into a local before it does anything else. That is the honest place for `ARG_MAX` to
 /// reappear: it is the size of a capability now, not the size of a buffer, and it is bounded by
-/// `filesystem_protocol::nameset::MAX_NAMES` at both ends.
+/// `filesystem_contract::nameset::MAX_NAMES` at both ends.
 ///
 /// The set is written **before the caretaker is spawned**, into a frame nothing else has ever
 /// been handed, which is why it needs none of [`wait_for_caretaker`]'s ordering care: unlike
@@ -38,11 +38,11 @@ pub struct SetGrant<'a> {
     /// names are the names *in* it that the grant designates.
     pub dir: &'static str,
     /// The set, as `(name, is_dir)`: what the shell's expansion produced. At most
-    /// `filesystem_protocol::nameset::MAX_NAMES` of them, and an over-long set is a panic here because the
+    /// `filesystem_contract::nameset::MAX_NAMES` of them, and an over-long set is a panic here because the
     /// shell refuses it at the prompt (`grant_plan::Refusal::TooManyNames`), so one arriving means
     /// the wiring built a grant no command line could have expressed.
     pub names: &'a [(&'a [u8], bool)],
-    /// The [`filesystem_protocol::dir`] rights the caretaker asks for on its descent.
+    /// The [`filesystem_contract::dir`] rights the caretaker asks for on its descent.
     pub rights: u64,
     /// The confined program's three `START` words. `rm` is started with a grant's spec and two
     /// name words rather than a role and a number; see [`DirGrant`].
@@ -71,7 +71,7 @@ pub fn start_granted_set(
         stack_pages,
     } = grant;
     assert!(
-        filesystem_protocol::grant::fits(dir.as_bytes()),
+        filesystem_contract::grant::fits(dir.as_bytes()),
         "a granted directory's name rides in two argument words; this one does not fit",
     );
     let (file_ep, file_shared, readiness) = ensure(blk_image, fs_server_image)?;
@@ -81,8 +81,8 @@ pub fn start_granted_set(
     // The set, encoded into its own frame before anything can see it. `encode` refuses rather
     // than truncating, and a truncated set would be a capability nobody planned.
     let set_phys = page_frame();
-    let mut encoded = [0u8; filesystem_protocol::nameset::BYTES];
-    let n = filesystem_protocol::nameset::encode(names, &mut encoded)
+    let mut encoded = [0u8; filesystem_contract::nameset::BYTES];
+    let n = filesystem_contract::nameset::encode(names, &mut encoded)
         .expect("this set does not fit one grant, so no command line could have named it");
     // SAFETY: a fresh frame of FRAME_SIZE bytes reachable through the direct map, and `n` is at
     // most `nameset::BYTES`, which is far smaller.
@@ -90,8 +90,8 @@ pub fn start_granted_set(
         core::ptr::copy_nonoverlapping(encoded.as_ptr(), mmu::phys_to_virt(set_phys) as *mut u8, n);
     };
 
-    let (lo, hi) = filesystem_protocol::grant::pack_name(dir.as_bytes());
-    let spec = filesystem_protocol::grant::spec(dir.len(), rights);
+    let (lo, hi) = filesystem_contract::grant::pack_name(dir.as_bytes());
+    let spec = filesystem_contract::grant::spec(dir.len(), rights);
 
     crate::sched::spawn(move || {
         run(

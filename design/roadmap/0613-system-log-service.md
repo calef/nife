@@ -35,9 +35,9 @@ the `console` server drive one UART from two address spaces).
 By lane `milestone/613-system-log-service`. Every name below is provisional: `system_log` (the
 crate and the program) and `system_log_protocol` (the wire contracts).
 
-- `crates/system_log_protocol`: the F3 header (32 bytes, then at most 224 of text), syslog's eight
+- `crates/system_log_contract`: the F3 header (32 bytes, then at most 224 of text), syslog's eight
   levels, the spawner's control words and the reader's window layout.
-- `crates/byte_sink_protocol`: §242's amendment. Bits 39:32 of a bytes message's first word carry
+- `crates/byte_sink_contract`: §242's amendment. Bits 39:32 of a bytes message's first word carry
   the level plus one, so 0 still means "not set". Bits 47:40 carry the body kind, and 0 is text.
 - `crates/system_log`: stamping from the badge, one partial line per writer (eight at once), the
   in-tree JSONL writer, and the 64 KiB ring with its per-user filter and dropped-count line.
@@ -113,7 +113,7 @@ forwarding. `Log::ingest` is that entry point. The service's own `BUGS` sections
 - **Recorded.** `crates/system_log/src/lib.rs`: a per-user reader's dropped-count line counts
   every user's evicted records, `time` is stamped when a line completes, and the ninth concurrent
   partial line splits the quietest one.
-- **Recorded.** `crates/system_log_protocol/src/lib.rs`: control words carry 32-bit badges, and
+- **Recorded.** `crates/system_log_contract/src/lib.rs`: control words carry 32-bit badges, and
   names are cut at 32 bytes.
 - **Recorded.** `components/src/system_log.rs`: four readers at most, and the one-page stack a
   kernel spawn gives it has not been measured on the crowded-writer path.

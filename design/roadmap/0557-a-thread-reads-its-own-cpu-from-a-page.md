@@ -46,7 +46,7 @@ register has none.
 
 ## What was built
 
-- `crates/current_cpu_protocol` (name provisional): the layout, the magic, the sentinel, the
+- `crates/current_cpu_contract` (name provisional): the layout, the magic, the sentinel, the
   per-architecture address, the writer and the reader. Nine host tests and three doctests.
 - `kernel::user::AddressSpace::attach_current_cpu_page`: one frame from the global allocator,
   stamped and mapped `user_rodata`. Called from `AddressSpace::new` (every space the kernel builds,
@@ -191,7 +191,7 @@ their own commit. Nothing else was.
   `design/roadmap/0561-a-per-cpu-allocator-is-what-the-current-cpu-page-was-for.md`: the consumer this
   page exists for, and the only thing that turns the mechanism into a measured number.
 - **Recorded.** What has to change when two TCBs can share an address space: in
-  `crates/current_cpu_protocol`'s `BUGS` section, beside the field it constrains.
+  `crates/current_cpu_contract`'s `BUGS` section, beside the field it constrains.
 - **Recorded.** The fault rather than `None` for an unbound space: in `user_mode_runtime::current_cpu`'s
   own `BUGS` section, where a caller meets it.
 

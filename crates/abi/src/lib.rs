@@ -459,7 +459,7 @@ pub enum Error {
     /// directions: a program never granted a stdout keeps running and prints into the void, which
     /// is what every OS does to a process whose stdout is closed, while a program whose reader has
     /// exited must **end**. Both used to arrive as `NoSuchSlot`, so the only available behaviour
-    /// was the wrong one for a pipeline. See `crates/byte_sink_protocol` and notes/sink-protocol.md.
+    /// was the wrong one for a pipeline. See `crates/byte_sink_contract` and notes/sink-protocol.md.
     ///
     /// It carries no probing risk, which is why it can be told apart here when
     /// [`Error::NotSupervised`] deliberately cannot: the capability is one the caller already
@@ -503,7 +503,7 @@ impl Error {
     /// assert_eq!(Error::from_ret(-4), Some(Error::BadPointer));
     ///
     /// // A number that is not one of the kernel's errors is not decoded as one. That is what lets a
-    /// // wire contract layered on top (`entropy_protocol`, `credential_protocol`) tell "no capability" from "no".
+    /// // wire contract layered on top (`entropy_contract`, `credential_contract`) tell "no capability" from "no".
     /// assert_eq!(Error::from_ret(-99), None);
     /// ```
     pub fn from_ret(v: i64) -> Option<Error> {

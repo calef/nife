@@ -272,13 +272,13 @@ fn screen_rows(bytes: &[u8], alphabet: &[u8]) -> Result<board_console::screen::S
     let paper = [(bg >> 16) as u8, (bg >> 8) as u8, bg as u8];
     let screen =
         board_console::screen::decode(bytes, ink, paper, alphabet, 1).map_err(|e| e.to_string())?;
-    if (screen.width, screen.height) != (graphics_protocol::WIDTH, graphics_protocol::HEIGHT) {
+    if (screen.width, screen.height) != (graphics_contract::WIDTH, graphics_contract::HEIGHT) {
         return Err(format!(
             "scanout is {}x{}, the surface is {}x{}",
             screen.width,
             screen.height,
-            graphics_protocol::WIDTH,
-            graphics_protocol::HEIGHT
+            graphics_contract::WIDTH,
+            graphics_contract::HEIGHT
         ));
     }
     Ok(screen)

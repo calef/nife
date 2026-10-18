@@ -30,7 +30,7 @@ pub const RETYPE: u64 = 1;
 /// address space the process holds (milestone 812 (`std::thread::spawn` runs real threads in one
 /// address space)). **`floor`**, for every object type, is the lowest slot the new capability may
 /// land in, `0` meaning the first free slot as before (milestone 812, provisional): a `std`
-/// program passes `std_runtime_protocol::SLOTS` so nothing it makes lands in a fixed slot it was
+/// program passes `std_runtime_contract::SLOTS` so nothing it makes lands in a fixed slot it was
 /// not given.
 pub const RETYPE_OBJ: u64 = 2;
 

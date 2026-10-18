@@ -9,7 +9,7 @@
 //! # The std slot convention
 //!
 //! A std program's loader owes it, per the out-of-band-contract rule of notes/abi.md §4, the slots
-//! `crates/std_runtime_protocol` lists, each with what it grants. Two are always there: an untyped
+//! `crates/std_runtime_contract` lists, each with what it grants. Two are always there: an untyped
 //! budget the global allocator draws heap pages from lazily (`memory_region::MAP`, at
 //! [`HEAP_BASE`], capped at [`HEAP_MAX`]), and the endpoint `stdout` and `stderr` SEND to, 16
 //! bytes per message (w0 = byte count, w1|w2 = the bytes, little-endian), so out and err
@@ -22,7 +22,7 @@
 //! `SystemTime::now()` and `SystemRng` do, rather than report 1970 or predictable bytes). Programs
 //! that never use a slot never touch it.
 
-// **The numbers themselves live in `crates/std_runtime_protocol`** (milestone 595 (provisional)),
+// **The numbers themselves live in `crates/std_runtime_contract`** (milestone 595 (provisional)),
 // generated into this PAL as `runtimeproto` by `cargo xtask std-src`. They were written here, and
 // again twice in the kernel test harness, until the progenitor became a fourth place that had to
 // agree; now all of them read one file. Every address in it is a row of the user address-space map
@@ -240,7 +240,7 @@ pub fn now() -> u64 {
 /// states its own rate. Neither other one has such a register: RISC-V states the timebase in the
 /// device tree and `x86_64`'s TSC rate is measured or read from `CPUID`, and in both cases only the
 /// kernel can ever know it. So the kernel learns it once at boot and maps the answer read-only at
-/// `counter_frequency_protocol::PAGE_VA` into every process it builds; this reads that page, the
+/// `counter_frequency_contract::PAGE_VA` into every process it builds; this reads that page, the
 /// same way `user_mode_runtime::cntfrq` does, which is what keeps a `std` program and a `no_std`
 /// program on one machine agreeing about what a second is.
 ///

@@ -5,11 +5,11 @@
 //! FS server), and the kernel test (which asserts the client's report). Not part of either wire
 //! protocol; a shared constant, like a test vector.
 //!
-//! Moved out of `filesystem_protocol` by milestone 886 (the filesystem test fixture moves to its
+//! Moved out of `filesystem_contract` by milestone 886 (the filesystem test fixture moves to its
 //! own crate), which also ruled where the line sits: the protocol words shipping programs send
 //! each other (`READY`, `DESCENT_REFUSED`, and `rm`'s status convention) stayed in
-//! `filesystem_protocol`; everything here is test data or a test hook, and nothing that boots
-//! depends on this crate. It is `no_std` and depends on `filesystem_protocol` alone
+//! `filesystem_contract`; everything here is test data or a test hook, and nothing that boots
+//! depends on this crate. It is `no_std` and depends on `filesystem_contract` alone
 //! (`throughput::UNIT` is that crate's `fs::TRANSFER_MAX`).
 //!
 //! Name: provisional (proposed by block 886, its crate-root name lifted; considered and refused
@@ -85,13 +85,13 @@ pub const SHARED_UNEXPECTED: u64 = 0x599B_ADDD;
 /// `fs_test_client`'s SMB verify role, removed with the SMB implementation on 2026-08-30
 /// (notes/smb.md), and the end-to-end leg it checked (the count already non-zero because
 /// something *above* the guest process had flushed the device) needed a network client to
-/// cause that flush. So [`filesystem_protocol::fs::SYNC`] and the block server's `VIRTIO_BLK_T_FLUSH` are
+/// cause that flush. So [`filesystem_contract::fs::SYNC`] and the block server's `VIRTIO_BLK_T_FLUSH` are
 /// still wired and still correct, and nothing gates them any more. The vocabulary is kept
 /// rather than deleted because the classification is the useful half and re-homing the witness
 /// onto a role that does not need a network is a small piece of work with no design question
 /// in it; see this lane's report.
 ///
-/// The witness asks [`filesystem_protocol::fs::SYNC`] twice and reads the count each answer carries.
+/// The witness asks [`filesystem_contract::fs::SYNC`] twice and reads the count each answer carries.
 /// **Two independent things are being checked**, which is why one verdict is not enough:
 ///
 /// 1. The count was **already non-zero** when the witness first asked. Nothing in this process
@@ -106,9 +106,9 @@ pub mod durability {
     /// this process's own sync moved the count again. The only passing verdict.
     pub const DURABLE: u64 = 1;
     /// The count was zero when the witness first asked, so **no flush ever reached the
-    /// device** before it ran: nothing above this process reached `filesystem_protocol::fs::SYNC`.
+    /// device** before it ran: nothing above this process reached `filesystem_contract::fs::SYNC`.
     pub const NEVER_FLUSHED: u64 = 2;
-    /// [`filesystem_protocol::fs::SYNC`] answered `EOPNOTSUPP`: this device offers no
+    /// [`filesystem_contract::fs::SYNC`] answered `EOPNOTSUPP`: this device offers no
     /// `VIRTIO_BLK_F_FLUSH`, so the claim cannot be backed here at all. **Not a bug in this
     /// tree**, and it must not be reported as one; it is the honest answer for a device that
     /// does not do the thing, and a run that met it should say so and stop rather than pass.
@@ -138,9 +138,9 @@ pub const THROUGHPUT_NAME: &str = "throughput";
 /// its results (`kernel/src/bench.rs`). Two programs agree on these, so they are a crate and not a
 /// constant written twice (CLAUDE.md rule 7).
 pub mod throughput {
-    /// **The transfer unit: the whole file channel, which is the most a single `filesystem_protocol`
+    /// **The transfer unit: the whole file channel, which is the most a single `filesystem_contract`
     /// request can carry.** Still not a tuning choice *here*: it is
-    /// [`filesystem_protocol::fs::TRANSFER_MAX`], so this phase always measures the protocol's own
+    /// [`filesystem_contract::fs::TRANSFER_MAX`], so this phase always measures the protocol's own
     /// ceiling and the tuning lives at the one constant that sets that ceiling.
     ///
     /// It was 4096 until milestone 138 step 3, because the region a request moved bytes
@@ -149,7 +149,7 @@ pub mod throughput {
     /// comparison against a system whose client may pass a differently sized buffer is
     /// comparing two different things, and **that caveat did not go away when the number got
     /// bigger**; see notes/benchmarks.md.
-    pub const UNIT: usize = filesystem_protocol::fs::TRANSFER_MAX;
+    pub const UNIT: usize = filesystem_contract::fs::TRANSFER_MAX;
 
     /// **Bytes moved per phase, held constant across transfer sizes on purpose.** 1 MiB, which
     /// is small for a throughput benchmark and is bounded by the fixture image (16 MiB) rather
@@ -304,7 +304,7 @@ pub const VERDICT: u64 = 0xE5_CA9E00;
 /// exists so "it cannot reach a sibling" is a claim about a directory that is really there and
 /// that the process one hop up the chain really can open, the same reason the per-file
 /// attacker's neighbour is a real file. `deeper` is inside the grant, so a second descent has
-/// somewhere to go and [`filesystem_protocol::dir::DESCEND`] has something to withhold.
+/// somewhere to go and [`filesystem_contract::dir::DESCEND`] has something to withhold.
 ///
 /// ```text
 ///   /            motd  scratch  sub/  other/
@@ -352,7 +352,7 @@ pub mod tree {
     /// capability and that the capability it mints is not wider than the one that made it.
     pub const MADE_DIR: &str = "dir-by-atk";
     /// What the attacker renames [`MADE`] to, if its capability carries
-    /// [`filesystem_protocol::dir::REMOVE`]. The post-run host check looks for a name with this prefix
+    /// [`filesystem_contract::dir::REMOVE`]. The post-run host check looks for a name with this prefix
     /// in [`SUB`] **and** a [`MADE`] one that was not renamed, which is `REMOVE` being enforced
     /// witnessed from outside the guest: one capability moved a name and another could not.
     pub const MOVED: &str = "moved-by-atk";
@@ -370,8 +370,8 @@ pub mod tree {
     /// through the open handle after.
     pub const NAV_BODY: &[u8] = b"CRK47-NAV: a name can go while the bytes stay\n";
     /// The directory a navigating shell makes with `mkdir` and leaves behind. It stays because
-    /// the shell never empties it: [`filesystem_protocol::fs::UNLINK`] refuses a directory and
-    /// [`filesystem_protocol::fs::RMDIR`] refuses a non-empty one, so a directory with a name in it
+    /// the shell never empties it: [`filesystem_contract::fs::UNLINK`] refuses a directory and
+    /// [`filesystem_contract::fs::RMDIR`] refuses a non-empty one, so a directory with a name in it
     /// takes two deliberate steps to remove and neither of them is one word.
     pub const NAV_DIR: &str = "nav-dir";
     /// The directory a navigating shell makes, puts [`NAV_INSIDE`] in, and then removes with
@@ -491,7 +491,7 @@ pub mod tree {
     /// controls, and they are two different controls: [`GLOB_MISS`] is a **file that exists,
     /// sits one directory entry away, and is not in the set**, which is what a set-attenuated
     /// capability must not be able to name; [`GLOB_DIR`] is a directory, so the type bit
-    /// [`filesystem_protocol::nameset::IS_DIR`] carries has something to be wrong about.
+    /// [`filesystem_contract::nameset::IS_DIR`] carries has something to be wrong about.
     pub const GLOBSET: &str = "globset";
     /// The pattern the shell expands, and the whole of what `rm *.txt` designates here. Pinned
     /// against the matcher by a host test, so the set the kernel test states literally is
@@ -613,7 +613,7 @@ pub mod walk {
     /// The width region: one directory holding [`WIDE_COUNT`] files.
     pub const WIDE: &str = "wide";
     /// Files in [`WIDE`]. 128 four-byte names are 768 bytes of `READDIR` records
-    /// ([`filesystem_protocol::dirent::record_len`]), so the whole listing is one page and the slope is per
+    /// ([`filesystem_contract::dirent::record_len`]), so the whole listing is one page and the slope is per
     /// entry rather than per page. Pricing a page boundary would want more than 680 names.
     pub const WIDE_COUNT: usize = 128;
     /// The control: [`WIDE`]'s shape with one file, so the difference is entries alone.
@@ -621,7 +621,7 @@ pub mod walk {
     /// The byte region.
     pub const SIZES: &str = "sizes";
     /// Its files and their sizes. 4 KiB is one page; 256 KiB is sixteen of the file channel's
-    /// largest requests ([`filesystem_protocol::fs::TRANSFER_MAX`] at the time of writing).
+    /// largest requests ([`filesystem_contract::fs::TRANSFER_MAX`] at the time of writing).
     pub const SIZE_FILES: [(&str, usize); 3] =
         [("s4k", 4096), ("s64k", 65_536), ("s256k", 262_144)];
     /// What every file in [`CHAIN`], [`WIDE`] and [`NARROW`] holds. Sixteen bytes, so a small
@@ -771,21 +771,21 @@ pub mod dirscape {
     /// **It asked for a right its capability did not carry, and got it.** Never allowed, and
     /// this is the bit that answers "can a child's rights exceed its parent's".
     pub const WIDENED: u64 = 1 << 3;
-    /// It enumerated the granted directory. Expected only with [`filesystem_protocol::dir::ENUMERATE`].
+    /// It enumerated the granted directory. Expected only with [`filesystem_contract::dir::ENUMERATE`].
     pub const ENUMERATED: u64 = 1 << 4;
     /// It descended one level inside the grant. Expected only with
-    /// [`filesystem_protocol::dir::DESCEND`].
+    /// [`filesystem_contract::dir::DESCEND`].
     pub const DESCENDED: u64 = 1 << 5;
-    /// It created a name inside the grant. Expected only with [`filesystem_protocol::dir::CREATE`].
+    /// It created a name inside the grant. Expected only with [`filesystem_contract::dir::CREATE`].
     pub const CREATED: u64 = 1 << 6;
     /// It made a **directory** inside the grant and got a capability to it. Expected only with
-    /// [`filesystem_protocol::dir::CREATE`] and [`filesystem_protocol::dir::DESCEND`] together.
+    /// [`filesystem_contract::dir::CREATE`] and [`filesystem_contract::dir::DESCEND`] together.
     pub const MADE_A_DIR: u64 = 1 << 12;
     /// Its write to a file inside the grant was accepted **and read back**. Expected only with
-    /// [`filesystem_protocol::dir::WRITE`].
+    /// [`filesystem_contract::dir::WRITE`].
     pub const WROTE: u64 = 1 << 7;
     /// **It renamed a name inside its grant.** Expected only with
-    /// [`filesystem_protocol::dir::REMOVE`] and [`filesystem_protocol::dir::CREATE`] together, which is what
+    /// [`filesystem_contract::dir::REMOVE`] and [`filesystem_contract::dir::CREATE`] together, which is what
     /// makes this the bit that gives the `REMOVE` rung something to fail.
     pub const RENAMED: u64 = 1 << 8;
     /// An enumeration it was allowed to make returned a name that is not in the granted
@@ -802,13 +802,13 @@ pub mod dirscape {
     /// that reaches nothing is trivially unescapable.
     pub const GRANTED_ACCESS_FAILED: u64 = 1 << 11;
     /// **It listed the extended attributes of the file inside its grant** (milestone 61).
-    /// Expected wherever [`filesystem_protocol::dir::READ`] is held, which is every configuration that
+    /// Expected wherever [`filesystem_contract::dir::READ`] is held, which is every configuration that
     /// can open the file at all: an attribute is part of what a file *is*, so a capability that
     /// may read the file may read what is attached to it. Before milestone 61 the caretaker
     /// answered `EOPNOTSUPP` and this bit was never set.
     pub const READ_ATTRS: u64 = 1 << 14;
     /// **It set an extended attribute on that file and read it back with its type code.**
-    /// Expected only with [`filesystem_protocol::dir::WRITE`], which is [`WROTE`]'s rule applied to the
+    /// Expected only with [`filesystem_contract::dir::WRITE`], which is [`WROTE`]'s rule applied to the
     /// third way of changing a file.
     ///
     /// The interesting part is *who* enforces it: `fs_subtree_caretaker` performs no check, so
@@ -822,7 +822,7 @@ pub mod dirscape {
     /// (milestone 61's name-set witness). Never allowed.
     ///
     /// A set capability's whole property is that `rm *.txt` cannot reach `notes.md`. `rm` asks
-    /// that question with [`filesystem_protocol::dir::REMOVE`] and nothing else; this asks it with
+    /// that question with [`filesystem_contract::dir::REMOVE`] and nothing else; this asks it with
     /// `READ`, because the milestone taught `fs_nameset_caretaker` four verbs that read and it
     /// would be a poor trade to close an attribute gap by opening a naming one.
     pub const REACHED_AN_UNMATCHED_NAME: u64 = 1 << 16;
@@ -1115,8 +1115,8 @@ pub mod attrs {
     /// on-device half of "deletion is in the same transaction as the file's": a leaked blob is
     /// not wasted space, it is somebody else's metadata on a file that never asked for it.
     pub const GONE_AFTER_UNLINK: u64 = 1 << 4;
-    /// A value past [`filesystem_protocol::xattr::MAX_VALUE`] was refused with
-    /// [`filesystem_protocol::xattr::E2BIG`], loudly, rather than stored short (DECISIONS §42 (a filesystem declares what it offers and must be truthful)).
+    /// A value past [`filesystem_contract::xattr::MAX_VALUE`] was refused with
+    /// [`filesystem_contract::xattr::E2BIG`], loudly, rather than stored short (DECISIONS §42 (a filesystem declares what it offers and must be truthful)).
     pub const OVERSIZE_REFUSED: u64 = 1 << 5;
     /// The store's directory could not be opened, created, or descended into. A client that
     /// could name it could read any file's attributes as ordinary bytes.
@@ -1149,7 +1149,7 @@ pub mod attrs {
     /// Its value: opaque bytes, which is exactly what `streams_xattr` stores.
     pub const VALUE: &[u8] = b"CRK57: an opaque byte string\n";
     /// Its type code, `'CSTR'` in BFS's spelling. Non-zero on purpose: a layer that silently
-    /// wrote [`filesystem_protocol::xattr::RAW`] would pass a test whose fixture used the default.
+    /// wrote [`filesystem_contract::xattr::RAW`] would pass a test whose fixture used the default.
     pub const KIND: u32 = 0x4353_5452;
 }
 

@@ -14,7 +14,7 @@ That is the amendment of §120 (a QEMU-only virtio-rng stopgap for the interacti
 login-boot-wiring piece of milestone 49 (users, login, and attribution). The first thing calef
 expects a person to do with a new system is set their own password. Nothing in this tree lets them.
 
-Where a proof-gated rotation verb lives is a `credential_protocol` wire change two
+Where a proof-gated rotation verb lives is a `credential_contract` wire change two
 programs must agree on, and the options below are close enough in cost that the choice is an architect's
 rather than a lane's. It is
 §168 (where a proof-gated credential rotation
@@ -32,7 +32,7 @@ else's. It does not exist today, and it is not an oversight.
 `credentialer::Store::put`'s own doc comment names the reason directly: **"replacing an existing identity
 is not offered: this runs once, before the seal, and 'put twice, second wins' is a rule with a bug
 in it (which of two concurrent provisioners won?) that a store with no update path simply does not
-have."** `credential_protocol::provision::SEAL`'s own doc is blunter still: after it, "the store
+have."** `credential_contract::provision::SEAL`'s own doc is blunter still: after it, "the store
 cannot be changed by anything short of restarting the service." Both are considered, not
 accidental. The sealed store is what lets `credentialer.rs` promise a client that a stored secret
 is exactly what an operator vouched for at boot, with nothing able to move it later.
@@ -48,11 +48,11 @@ One at a time, by construction.
 
 ## The design question this needs answered, and why it is an architect's
 
-Where the rotation verb lives, and it is a wire change to `credential_protocol` two programs (whichever
+Where the rotation verb lives, and it is a wire change to `credential_contract` two programs (whichever
 client calls it, and `credentialer.rs`) must agree on. The *move fast on what can be undone*
 tenet puts it in the irreversible column. Options, not decided here:
 
-- **A new op on the verify endpoint** (`credential_protocol::verify`), the endpoint a real login flow
+- **A new op on the verify endpoint** (`credential_contract::verify`), the endpoint a real login flow
   already reaches. Extend it with a `ROTATE` opcode carrying the current secret and the new one in
   one request, verified and replaced atomically. Reuses the trust boundary a client already crosses
   to log in at all. It needs no new capability wired to anyone beyond what login-boot-wiring

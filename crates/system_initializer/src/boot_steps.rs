@@ -10,7 +10,7 @@
 use super::*;
 
 /// Draw `out.len()` bytes from the entropy service through `request`
-/// ([`entropy_protocol::MAX_BYTES`] at a time), the identical loop `components/src/credentialer.rs`'s own
+/// ([`entropy_contract::MAX_BYTES`] at a time), the identical loop `components/src/credentialer.rs`'s own
 /// `fill` performs as a *client* of that same service (this process is, briefly, one too: it draws
 /// the generated password's own raw bytes before `credentialer` ever exists). `false` when the
 /// service could not supply them, which the caller treats as fatal to generating a password at all
@@ -19,21 +19,21 @@ use super::*;
 fn fill_entropy(request: u64, out: &mut [u8]) -> bool {
     let mut done = 0;
     while done < out.len() {
-        let want = (out.len() - done).min(entropy_protocol::MAX_BYTES as usize);
+        let want = (out.len() - done).min(entropy_contract::MAX_BYTES as usize);
         // SAFETY: `invoke` traps to the kernel, which validates the capability and the method
         // before acting.
         let (r0, r1) = call(
             request,
-            entropy_protocol::req(entropy_protocol::GET, want as u64),
+            entropy_contract::req(entropy_contract::GET, want as u64),
             0,
         );
-        let Some(n) = entropy_protocol::delivered(r0) else {
+        let Some(n) = entropy_contract::delivered(r0) else {
             return false;
         };
         if n < want {
             return false;
         }
-        done += entropy_protocol::take(n, r1, &mut out[done..]);
+        done += entropy_contract::take(n, r1, &mut out[done..]);
     }
     true
 }
@@ -315,7 +315,7 @@ pub(super) fn read_boot_programs(fs: &nifefs::Fs<'static>, table: &str) -> BootP
     // it, and the archive is reserved RAM the frame allocator does not own and no capability names.
     // So the real boot started `login` with no archive at all and it died at `_start` on every
     // boot. It is handed a copy of exactly the one program it needs instead, as a blob (see the
-    // login block far below, and `login_protocol::CARETAKER_ELF_VA` for the whole account).
+    // login block far below, and `login_contract::CARETAKER_ELF_VA` for the whole account).
     //
     // Empty when this process would not vouch for the bytes, which is the same answer `care_elf`
     // above already gives the spawn service: `login` then comes up and denies every login rather
@@ -642,7 +642,7 @@ fn start_virtio_entropy(
             // doc).
             let (verdict, _, _) = receive(ready);
             cap_delete(ready);
-            let entropy_ready = verdict == entropy_protocol::READY;
+            let entropy_ready = verdict == entropy_contract::READY;
             if entropy_ready {
                 // Kept for the login stack below (`credentialer`'s own client view) and, since
                 // milestone 111, for the spawn service after it; see `entropy_client`'s own
@@ -1150,13 +1150,13 @@ pub(super) fn start_second_dir_caretaker(
     // before trusting this path.
     second_dir.filter(|_| w.with_fs).and_then(|sd| {
         assert!(
-            filesystem_protocol::grant::fits(sd.name.as_bytes()),
+            filesystem_contract::grant::fits(sd.name.as_bytes()),
             "a granted directory's name rides in two argument words; this one does not fit",
         );
         let region = memory_region_split(ut, SECOND_DIR_CARETAKER_PAGES).ok()?;
         let care = care_elf?;
-        let (lo, hi) = filesystem_protocol::grant::pack_name(sd.name.as_bytes());
-        let spec = filesystem_protocol::grant::spec(sd.name.len(), sd.rights);
+        let (lo, hi) = filesystem_contract::grant::pack_name(sd.name.as_bytes());
+        let spec = filesystem_contract::grant::spec(sd.name.len(), sd.rights);
         // Window 0's page, sliced out of the pool for the build and dropped after (milestone 599).
         let zero = window_zero(Fs {
             ep: g.fs_ep,
@@ -1527,7 +1527,7 @@ fn start_credential_services(
     // hanging with a service that can never be asked a real question.
     call(
         prov,
-        credential_protocol::req(credential_protocol::provision::SEAL, 0, 0),
+        credential_contract::req(credential_contract::provision::SEAL, 0, 0),
         0,
     );
     cap_delete(prov);
@@ -1573,18 +1573,18 @@ fn provision_identity(
         let req_slice = unsafe {
             core::slice::from_raw_parts_mut(
                 PROVISION_SCRATCH_VA as *mut u8,
-                credential_protocol::PAGE,
+                credential_contract::PAGE,
             )
         };
         req_slice.fill(0);
-        let placed = credential_protocol::place(
+        let placed = credential_contract::place(
             req_slice,
             DEMO_IDENTITY,
             login_password,
-            credential_protocol::provision::PUT,
+            credential_contract::provision::PUT,
         );
         placed.expect(
-            "DEMO_IDENTITY and login_password are both well within credential_protocol's \
+            "DEMO_IDENTITY and login_password are both well within credential_contract's \
              bounds by construction; a None here is a logic bug in this file, not a \
              runtime condition",
         );
@@ -1603,10 +1603,10 @@ fn provision_identity(
         let req_slice = unsafe {
             core::slice::from_raw_parts_mut(
                 PROVISION_SCRATCH_VA as *mut u8,
-                credential_protocol::PAGE,
+                credential_contract::PAGE,
             )
         };
-        credential_protocol::wipe(req_slice);
+        credential_contract::wipe(req_slice);
         login_ready
     }
 }
@@ -1747,10 +1747,10 @@ fn start_login(
             // `build_child` already reaches that same transient peak copying `login`'s
             // own segments.
             blobs: &[
-                (login_protocol::CARETAKER_ELF_VA, p.care_blob),
-                (login_protocol::PROGRAM_MEASUREMENTS_VA, table.as_bytes()),
-                (login_protocol::USER_TIMETABLE_KEEPER_ELF_VA, p.keeper_blob),
-                (login_protocol::TIMETABLE_ELF_VA, p.timetable_blob),
+                (login_contract::CARETAKER_ELF_VA, p.care_blob),
+                (login_contract::PROGRAM_MEASUREMENTS_VA, table.as_bytes()),
+                (login_contract::USER_TIMETABLE_KEEPER_ELF_VA, p.keeper_blob),
+                (login_contract::TIMETABLE_ELF_VA, p.timetable_blob),
             ],
             stack_pages: LOGIN_STACK_PAGES,
             ..ChildEndowment::new(Retention::Nothing)
@@ -1761,7 +1761,7 @@ fn start_login(
         login_child,
         p.care_blob.len() as u64,
         table.len() as u64,
-        login_protocol::schedule_lengths(p.keeper_blob.len() as u64, p.timetable_blob.len() as u64),
+        login_contract::schedule_lengths(p.keeper_blob.len() as u64, p.timetable_blob.len() as u64),
     ));
     // login holds its own copies now; ours were only ever the means of wiring.
     cap_delete(login_page);
@@ -1819,12 +1819,12 @@ fn place_login_capabilities(w: &Wiring, login_tcb: u64, run_unvouched: &mut Opti
     // and every signed-in user's caretaker share. Placed after the build, like the
     // run-unvouched endpoint and for its reason: the build is this table's peak.
     // [`Windows`] never hands this window to a job.
-    let durable_page = must(window_page(g.fs_page, login_protocol::DURABLE_WINDOW).ok_or(()));
+    let durable_page = must(window_page(g.fs_page, login_contract::DURABLE_WINDOW).ok_or(()));
     must_ok(place_at(
         login_tcb,
         durable_page,
         abi::rights::WRITE | abi::rights::GRANT,
-        login_protocol::DURABLE_WINDOW_SLOT,
+        login_contract::DURABLE_WINDOW_SLOT,
     ));
     cap_delete(durable_page);
 }

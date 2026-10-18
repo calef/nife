@@ -52,21 +52,21 @@ SCRATCH = pathlib.Path('target/interface-stability')
 
 # The contracts division: notes/packages-and-divisions.md (#1389, not yet on main), `abi`, the
 # fifteen `*_protocol` crates that are contracts (not `network_time_protocol`, a service whose name
-# says protocol), and the named formats two programs agree on. `manifest_note` is the one addition:
+# says protocol), and the named formats two programs agree on. `capability_manifest_note` is the one addition:
 # it was born on 2026-09-26, after that note's census, and it is exactly the kind of crate the
 # division names. Membership is by the crate's name TODAY; a week in the past counts the crates
 # whose directory later became one of these (LINEAGE below), which is a restatement like every
 # other series on the metrics page.
 CONTRACTS = (
     'abi',
-    'byte_sink_protocol', 'capability_witness_protocol', 'clock_protocol',
-    'counter_frequency_protocol', 'credential_protocol', 'current_cpu_protocol',
-    'entropy_protocol', 'environment_protocol', 'filesystem_protocol', 'graphics_protocol',
-    'login_protocol', 'socket_protocol', 'std_runtime_protocol', 'supervision_protocol',
-    'swap_protocol',
+    'byte_sink_contract', 'capability_witness_contract', 'clock_contract',
+    'counter_frequency_contract', 'credential_contract', 'current_cpu_contract',
+    'entropy_contract', 'environment_contract', 'filesystem_contract', 'graphics_contract',
+    'login_contract', 'socket_contract', 'std_runtime_contract', 'supervision_protocol',
+    'hot_swap_contract',
     'elf', 'measured_boot', 'package_archive', 'installed_programs', 'boot_slot', 'nifefs',
     'globally_unique_identifier_partition_table', 'grant_plan', 'component_plan', 'compositor',
-    'line_editor', 'manifest_note',
+    'line_editor', 'capability_manifest_note',
 )
 
 # The std ABI is every crate `cargo xtask std-src` copies into the standard library's platform
@@ -78,7 +78,7 @@ STD_ABI_GLOBS = ('xtask/src/farm.rs', 'xtask/src/farm/*.rs')
 STD_ABI_RE = re.compile(r'"crates/(\w+)/src/lib\.rs"')
 
 # A format identity: a public constant a reader checks before trusting the bytes after it. A value
-# change is a format bump. `BOTH_VERSIONS` is a flag bit in swap_protocol, not an identity.
+# change is a format bump. `BOTH_VERSIONS` is a flag bit in hot_swap_contract, not an identity.
 FORMAT_CONST = re.compile(r'(^|_)(VERSION|MAGIC|REVISION)($|_)')
 
 # The amendment ledger, kept at the format (AGENTS.md rung 3): a `# Amendments` section in the
@@ -219,7 +219,7 @@ def std_abi_source_texts():
 # compared with a fresh one from the new.
 SURFACE_VERSION = 'v4'
 # The interface as a nife program sees it: every contract crate is `no_std` and builds for the
-# kernel's own first target, and two (`supervision_protocol`, `swap_protocol`) link
+# kernel's own first target, and two (`supervision_protocol`, `hot_swap_contract`) link
 # `user_mode_runtime`, which does not build for the host at all. BUGS: items behind a
 # `cfg(target_arch)` for riscv64 or x86_64 are not read.
 TARGET = 'aarch64-unknown-none-softfloat'
@@ -426,14 +426,27 @@ def surface(doc, read_span=None):
 # ---------------------------------------------------------------------------------------------
 # Comparing two weeks.
 
+def is_wire_variant(fingerprint):
+    """Is this the fingerprint of an enum VARIANT (`walk` writes only variants with these two keys)?"""
+    try:
+        d = json.loads(fingerprint)
+    except ValueError:
+        return False
+    return isinstance(d, dict) and set(d) == {'fields', 'discriminant'}
+
+
 def is_syscall_item(crate, path, fingerprint):
-    """Is this item part of the syscall surface? abi's public constants, which are all of it.
+    """Is this item part of the syscall surface? abi's public constants and enum variants.
 
     The syscall numbers (`SYS_*`), the object types (`objtype::*`), and every method number and
-    argument or result encoding the object modules define. Functions in `abi` are helpers, not
-    surface, so only constants count.
+    argument or result encoding the object modules define are constants. The error codes
+    (`Error::*`) and the other `#[repr]` enums' values are variants, and a program outside the
+    tree matches on them by number exactly as it does on a constant, so a renumbered or removed
+    variant is a boundary move too (calef, 2026-10-18 UTC). Functions and the enum items
+    themselves are helpers, not surface.
     """
-    return crate == 'abi' and fingerprint.startswith('{"constant"')
+    return crate == 'abi' and (fingerprint.startswith('{"constant"')
+                               or is_wire_variant(fingerprint))
 
 
 def syscall_class(path):
@@ -442,6 +455,8 @@ def syscall_class(path):
         return 'syscall'
     if path.startswith('objtype::'):
         return 'object type'
+    if path.startswith('Error::'):
+        return 'error code'
     return 'method or encoding'
 
 
@@ -1010,6 +1025,19 @@ def selftest():
         set())
     std_add, _pc, _e = compare({'n': {'dir': 'user_mode_heap', 'items': {}}},
                                {'n': {'dir': 'user_mode_heap', 'items': {'a': '1'}}}, {'n'})
+    def variant(value):
+        return _fp({'fields': [], 'discriminant': {'expr': str(value), 'value': str(value)}})
+
+    def one(crate, old_items, new_items):
+        return compare({crate: {'dir': crate, 'items': old_items}},
+                       {crate: {'dir': crate, 'items': new_items}}, set())[0]
+
+    err_renumbered = one('abi', {'Error::NoSuchSlot': variant(-1)}, {'Error::NoSuchSlot': variant(-7)})
+    err_added = one('abi', {}, {'Error::Fresh': variant(-99)})
+    err_removed = one('abi', {'Error::NoSuchSlot': variant(-1)}, {})
+    enum_item = one('abi', {'Error': _fp({'kind': 'enum', 'variants': ['A']})},
+                    {'Error': _fp({'kind': 'enum', 'variants': ['A', 'B']})})
+    other_variant = one('grant_plan', {'Mode::A': variant(1)}, {'Mode::A': variant(2)})
     ledger = ledger_dates('//! Intro\n//!\n//! # Amendments\n//!\n//! - 2026-09-27: field order\n'
                           '//!   continued, not an item\n//! - 2026-10-02 (UTC): again\n'
                           '//! # BUGS\n//! - 2026-01-01: not an amendment\n')
@@ -1084,6 +1112,17 @@ def selftest():
         ('the version constant is a format bump', counts['format_bumps'], 1),
         ('the renumber is classed as a syscall', syscall_class('SYS_EXIT'), 'syscall'),
         ('an object type is classed as one', syscall_class('objtype::NOTIFICATION'), 'object type'),
+        ('an error code is classed as one', syscall_class('Error::NoSuchSlot'), 'error code'),
+        ('a renumbered abi error code is boundary',
+         (err_renumbered['breaking'], err_renumbered['syscall_changed'],
+          err_renumbered['contract_breaking']), (1, 1, 0)),
+        ('a new abi error code is a boundary addition',
+         (err_added['additions'], err_added['syscall_added']), (1, 1)),
+        ('a removed abi error code is boundary', err_removed['breaking'], 1),
+        ('the enum item itself is not boundary',
+         (enum_item['breaking'], enum_item['contract_breaking']), (0, 1)),
+        ('a variant outside abi stays contract api',
+         (other_variant['breaking'], other_variant['contract_breaking']), (0, 1)),
         ('std abi reports the items that are not the boundary', counts['std_breaking'], 1),
         ('a crate rename is one decision; off the boundary it is contract churn',
          (renamed['breaking'], renamed['renamed'], renamed['contract_breaking']), (0, 1, 1)),
@@ -1099,11 +1138,11 @@ def selftest():
         ('the ledger reads dated items under its heading only', ledger,
          ['2026-09-27', '2026-10-02']),
         ('lineage follows a chain of renames',
-         resolve_lineage({'fs': 'fs_proto', 'fs_proto': 'filesystem_protocol'}),
-         {'fs': 'filesystem_protocol', 'fs_proto': 'filesystem_protocol'}),
+         resolve_lineage({'fs': 'fs_proto', 'fs_proto': 'filesystem_contract'}),
+         {'fs': 'filesystem_contract', 'fs_proto': 'filesystem_contract'}),
         ('lineage survives a cycle', resolve_lineage({'a': 'b', 'b': 'a'})['a'] in ('a', 'b'), True),
         ('contract dirs include old names',
-         'crates/fs_proto/' in contract_dirs({'fs_proto': 'filesystem_protocol'}), True),
+         'crates/fs_proto/' in contract_dirs({'fs_proto': 'filesystem_contract'}), True),
         ('a docs-only companion does not cross',
          classify_commit('x', ['crates/abi/src/lib.rs', 'notes/abi.md', 'design/x.md'], dirs),
          (True, False, False)),
@@ -1134,8 +1173,8 @@ def selftest():
          .count('> - `c`: removed `X`'), 1),
         ('the std abi list comes from the copy',
          std_abi_crates('root.join("crates/abi/src/lib.rs"),\nroot.join("crates/abi/src/lib.rs"),'
-                        ' root.join("crates/clock_protocol/src/lib.rs")'),
-         ['abi', 'clock_protocol']),
+                        ' root.join("crates/clock_contract/src/lib.rs")'),
+         ['abi', 'clock_contract']),
     ]
     failed = [(name, got, want) for name, got, want in cases if got != want]
     for name, got, want in failed:

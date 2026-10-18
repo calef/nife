@@ -6,7 +6,7 @@ pub const WRITE: u64 = 1 << 1;
 pub const GRANT: u64 = 1 << 2;
 
 /// **Learn what exists, without acting on it** (milestone 126). The kernel-level twin of
-/// `filesystem_protocol`'s directory `ENUMERATE`; `capability::Rights::ENUMERATE` carries the full
+/// `filesystem_contract`'s directory `ENUMERATE`; `capability::Rights::ENUMERATE` carries the full
 /// argument and the list of objects expected to grow it.
 pub const ENUMERATE: u64 = 1 << 3;
 

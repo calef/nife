@@ -52,7 +52,7 @@ use core::sync::atomic::{AtomicU64, Ordering};
 
 use abi::rights;
 use domain_name_system::{Query, Reject, TcpReply};
-use socket_protocol::*;
+use socket_contract::*;
 use user_mode_runtime::socket_frame::Frame;
 use user_mode_runtime::{
     call, call_receiving, cap_delete, exit, map_page_frame, now, receive, receive_cap,
@@ -129,14 +129,14 @@ const DNS_IP: [u8; 4] = [10, 0, 2, 3];
 const DNS_PORT: u16 = 53;
 const GW_IP: [u8; 4] = [10, 0, 2, 2];
 const TFTP_PORT: u16 = 69;
-const ECHO_IP: [u8; 4] = socket_protocol::fixture::ECHO_PEER_IP;
-const ECHO_PORT: u16 = socket_protocol::fixture::ECHO_PEER_PORT;
+const ECHO_IP: [u8; 4] = socket_contract::fixture::ECHO_PEER_IP;
+const ECHO_PORT: u16 = socket_contract::fixture::ECHO_PEER_PORT;
 
 const DNS_TXID: u16 = 0x1234;
 
 /// **The runners' name server** (milestone 384), a `guestfwd` that runs `helpers/name-server-peer`
 /// once per connection, the package source's address on DNS's port. Local rather than in
-/// `socket_protocol::fixture` because this is the only program that dials it; the peer spells the
+/// `socket_contract::fixture` because this is the only program that dials it; the peer spells the
 /// zone below again in Python, so the two sides are written independently.
 const NAME_SERVER_IP: [u8; 4] = [10, 0, 2, 9];
 /// The transaction id for the name server exchanges. Fixed, because over TCP to a peer the test
@@ -171,11 +171,11 @@ const NAME_SERVER_CASES: [(&str, Expect); 6] = [
 /// spawn service hands this stack, so asking for it proves the grant refuses rather than that
 /// nothing happened to bind.
 ///
-/// Both come from `socket_protocol::fixture` since milestone 64, when `std_exerciser` became a second
+/// Both come from `socket_contract::fixture` since milestone 64 (enough `std` to run somebody else's crate), when `std_exerciser` became a second
 /// binary that has to agree with this one about which port is granted and which is not. Rule 7:
 /// what two binaries agree on is a crate.
-const LISTEN_PORT: u64 = socket_protocol::fixture::LISTEN_PORT as u64;
-const DENIED_PORT: u64 = socket_protocol::fixture::DENIED_PORT as u64;
+const LISTEN_PORT: u64 = socket_contract::fixture::LISTEN_PORT as u64;
+const DENIED_PORT: u64 = socket_contract::fixture::DENIED_PORT as u64;
 /// Which of [`SOCKETS`] an exchange means. Most exchanges use one socket at a time, [`SOCKET`].
 /// The inbound gate holds two, because they are two objects: the listener never carries a byte and
 /// never gets a frame, and the connection is where the frame is. Keeping them apart is the
@@ -186,10 +186,10 @@ const CONNECTION: usize = 1;
 /// What the host sends in and what the guest answers with. Different strings on purpose: an echo
 /// would pass even if the guest were somehow reflecting the host's own bytes, and the point of this
 /// gate is that the guest *composed* an answer to a connection it did not make. Shared with
-/// `std_exerciser`'s inbound half through `socket_protocol::fixture`; `xtask`'s prober deliberately
+/// `std_exerciser`'s inbound half through `socket_contract::fixture`; `xtask`'s prober deliberately
 /// keeps its own literals, so the two sides of the exchange are written independently.
-const IN_MSG: &[u8] = socket_protocol::fixture::IN_MSG;
-const OUT_MSG: &[u8] = socket_protocol::fixture::OUT_MSG;
+const IN_MSG: &[u8] = socket_contract::fixture::IN_MSG;
+const OUT_MSG: &[u8] = socket_contract::fixture::OUT_MSG;
 
 /// The fixture the runners put in slirp's TFTP directory, and its exact contents. Both sides are
 /// fixed so the round trip is asserted byte for byte (see helpers/qemu-runner-*.sh).
@@ -883,7 +883,7 @@ const CATALOGUE_VA: u64 = address_space_map::pair_page(0x0000_0000_00C0_0000);
 /// so a test asserting a refusal cannot be satisfied by a broken fetch.
 pub const DIGEST_REFUSED: u64 = 3;
 // The package source the runners put at 10.0.2.9:8080 (`helpers/package-http-peer`).
-use socket_protocol::fixture::{
+use socket_contract::fixture::{
     PACKAGE_PEER_HOST, PACKAGE_PEER_IP as PACKAGE_IP, PACKAGE_PEER_PORT as PACKAGE_PORT,
 };
 

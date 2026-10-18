@@ -124,7 +124,7 @@ impl BoundSpace {
             // the space is dropped only after its thread can never be switched in again (this
             // type's own doc). The caller is the one core switching this thread in, so it is the
             // only writer for as long as the store takes.
-            unsafe { current_cpu_protocol::publish(kernel_va, cpu) };
+            unsafe { current_cpu_contract::publish(kernel_va, cpu) };
         }
     }
 }
@@ -187,7 +187,7 @@ pub fn user_address_space_create(region: u64) -> Option<u64> {
         // which is the moment it becomes a thread's space and therefore the moment the question
         // "which CPU am I on" starts having an answer.
         current_cpu_page: None,
-        thread_pages: [0; current_cpu_protocol::THREAD_PAGE_SLOTS],
+        thread_pages: [0; current_cpu_contract::THREAD_PAGE_SLOTS],
         thread_pages_made: 0,
         thread_pages_in_use: 0,
     };
@@ -330,14 +330,14 @@ pub fn bind_user_address_space(
 /// process) fork 6): the lowest free slot, its page made and mapped read-only if the slot has
 /// never been used, and rebuilt (unscheduled, with today's allowance) if it has. Returns
 /// `(slot, user address, kernel address)`. `None` when every slot is taken, which is the
-/// per-process thread limit (`current_cpu_protocol::THREAD_PAGE_SLOTS`), or no frame or table can
+/// per-process thread limit (`current_cpu_contract::THREAD_PAGE_SLOTS`), or no frame or table can
 /// be had.
 pub fn take_thread_page(name: u64) -> Option<(u8, u64, u64)> {
     let mut spaces = USER_SPACES.lock();
     let space = &mut spaces.get_mut(name)?.space;
     let k = (!space.thread_pages_in_use).trailing_zeros() as usize;
-    let va = current_cpu_protocol::thread_page_va(k)?;
-    let bytes = current_cpu_protocol::build_page_allowing(u64::from(
+    let va = current_cpu_contract::thread_page_va(k)?;
+    let bytes = current_cpu_contract::build_page_allowing(u64::from(
         crate::smp::online_harts_mask().count_ones(),
     ));
     let kernel_va = if k == 0 {

@@ -22,7 +22,7 @@ pub enum OutputSpec {
     /// One or more raw `u64` answers on the result endpoint, read by the shell and rendered by it.
     /// Older than the sink contract and still right for an integer; not redirectable.
     Words,
-    /// The sink contract (`crates/byte_sink_protocol`): self-framing byte messages ending in `OPERATION_EOF`. The
+    /// The sink contract (`crates/byte_sink_contract`): self-framing byte messages ending in `OPERATION_EOF`. The
     /// only output that `>` and `|` can substitute, because it is the only one whose meaning does
     /// not depend on who is reading it.
     Bytes,
@@ -220,7 +220,7 @@ pub const DOMAIN_SLOT: u64 = 7;
 ///
 /// A number is not a right. What it means to hold this slot is decided by the capability the progenitor puts
 /// in it, and a program spawned without the declaration holds an empty slot here: its first `CALL`
-/// answers `abi::Error::NoSuchSlot`, which `entropy_protocol::delivered` reads as `None` rather than
+/// answers `abi::Error::NoSuchSlot`, which `entropy_contract::delivered` reads as `None` rather than
 /// as a count.
 pub const ENTROPY_SLOT: u64 = 9;
 
@@ -264,7 +264,7 @@ pub const SHELL_CONFIG_VA: u64 = 0x0000_0000_00d0_1000;
 /// **Where a program that declares [`Manifest::installer`] finds the installer endpoint**
 /// (milestone 809 (the package client becomes a program), DECISIONS §270 (a package manager holds
 /// an installer endpoint, not the spawn endpoint)). Fifteen, one past [`SYNC_SLOT`], for
-/// [`ENTROPY_SLOT`]'s reasons, and above `std_runtime_protocol`'s ten fixed slots, so the same
+/// [`ENTROPY_SLOT`]'s reasons, and above `std_runtime_contract`'s ten fixed slots, so the same
 /// number in either layout. `WRITE` alone: the holder may send a request and may not receive
 /// another's or pass the endpoint on.
 ///
@@ -280,7 +280,7 @@ pub const INSTALLER_SLOT: u64 = 15;
 pub const INSTALLER_REPLY_SLOT: u64 = 16;
 
 /// **Where a program that declares [`Manifest::catalog`] finds the catalog page's capability**
-/// (milestone 809), `READ`, beside its mapping at `std_runtime_protocol::CATALOG_PAGE`. The
+/// (milestone 809), `READ`, beside its mapping at `std_runtime_contract::CATALOG_PAGE`. The
 /// mapping is what the program reads; the slot is what it probes before reading, so a copy run
 /// without the grant says so instead of faulting on an unmapped page. Seventeen, one past
 /// [`INSTALLER_REPLY_SLOT`].
@@ -290,8 +290,8 @@ pub const CATALOG_SLOT: u64 = 17;
 
 /// **Where a program that holds [`Manifest::indexes`] finds the index sources page's capability**
 /// (milestone 801 (packages over the internet)), `READ`, beside its mapping at
-/// `std_runtime_protocol::INDEX_SOURCES_PAGE`, for [`CATALOG_SLOT`]'s reason. Eighteen, one past
-/// it. The index store's directory grant is at `std_runtime_protocol::FS_DIR_SLOT`, the `std`
+/// `std_runtime_contract::INDEX_SOURCES_PAGE`, for [`CATALOG_SLOT`]'s reason. Eighteen, one past
+/// it. The index store's directory grant is at `std_runtime_contract::FS_DIR_SLOT`, the `std`
 /// layout's one directory slot.
 ///
 /// Name: provisional 2026-10-12 (UTC), lane `milestone/801-jig-installs-from-the-index`.
@@ -300,7 +300,7 @@ pub const INDEX_SOURCES_SLOT: u64 = 18;
 /// **Where a program that declares [`Manifest::machine`] finds the machine statistics page's
 /// capability** (milestone 126 (the `procps` package), DECISIONS §225 (`free` sees the machine and
 /// your share)). Eleven, one past [`NETWORK_SLOT`], for that constant's reasons. The page itself is
-/// mapped at `machine_statistics_protocol::PAGE_VA`; the capability is here so `caps` has a slot to
+/// mapped at `machine_statistics_contract::PAGE_VA`; the capability is here so `caps` has a slot to
 /// print and so the grant is visible in the table.
 ///
 /// Name: ratified 2026-09-27 (calef, #1360's table).
@@ -415,7 +415,7 @@ impl ArgSpec {
 /// cannot declare one.
 ///
 /// Every variant grants the named names and nothing else in their directory, with the walk below a
-/// named directory (`filesystem_protocol`'s `DESCEND`), because a program handed `src` means to
+/// named directory (`filesystem_contract`'s `DESCEND`), because a program handed `src` means to
 /// read what is in it. **An unvouched program gets [`WordGrant::ReadOnly`] whatever it declares**
 /// (clause 4): [`UNVOUCHED_STD_MANIFEST`] is read-only. A mark on a word that widens it is clause 4's
 /// other half, and its spelling is not ruled, so none is built.
@@ -436,7 +436,7 @@ pub enum WordGrant {
 }
 
 impl WordGrant {
-    /// The rights a caretaker asks the file service for, as `filesystem_protocol::dir`'s bits. Spelled
+    /// The rights a caretaker asks the file service for, as `filesystem_contract::dir`'s bits. Spelled
     /// as numbers here because this crate does not link the filesystem contract (see its
     /// `Cargo.toml`); `word_rights_are_the_filesystem_contracts` pins them to its constants.
     pub const fn rights(self) -> u64 {
@@ -507,7 +507,7 @@ pub enum FileSpec {
 ///
 /// # Why the rights are not a mask here
 ///
-/// The fields say what the program will *do*, not what the wire calls it. `filesystem_protocol::dir`'s
+/// The fields say what the program will *do*, not what the wire calls it. `filesystem_contract::dir`'s
 /// six-rung ladder is the filesystem contract's vocabulary, and translating into it belongs to the
 /// shell, which holds both contracts; keeping it out of `grant_plan` is [`MAX_FILE_NAME`](crate::MAX_FILE_NAME)'s rule, that a
 /// command line can be checked without linking the filesystem.
@@ -599,7 +599,7 @@ pub struct Manifest {
     /// `ps` prints the two apart.
     pub domain: bool,
     /// **Endowed a read-only mapping of the inert-configuration page** (milestone 47's
-    /// environment-variable fork, DECISIONS §111; `crates/environment_protocol`).
+    /// environment-variable fork, DECISIONS §111; `crates/environment_contract`).
     ///
     /// [`clock`](Manifest::clock)'s twin again, for the identical reason: `TZ`/`LANG`/`TERM` are
     /// not something a command line designates, so there is no token to place and no refusal to
@@ -615,7 +615,7 @@ pub struct Manifest {
     /// change what a shell hands its children. **Provisional field name.**
     pub config: bool,
     /// **Endowed a client view of the entropy service** (milestone 111; DECISIONS §44,
-    /// `crates/entropy_protocol`, notes/entropy.md).
+    /// `crates/entropy_contract`, notes/entropy.md).
     ///
     /// The fourth member of [`clock`](Manifest::clock)'s family and the first one that is an
     /// *endpoint a service answers on* rather than a page: randomness is not a name a person types,
@@ -627,7 +627,7 @@ pub struct Manifest {
     /// and nothing else: a declaring program may ask the service for bytes and may not receive
     /// another client's request, and it holds no `GRANT`, so it cannot hand randomness to anything
     /// it spawns. A program that does not declare it holds an empty slot there and its first
-    /// `CALL` comes back as a kernel error, which `entropy_protocol::delivered` reports as `None`
+    /// `CALL` comes back as a kernel error, which `entropy_contract::delivered` reports as `None`
     /// rather than as a short reply: **that difference is the whole feature**, and it is what
     /// `disk_partitioner` already turns into `R_NO_ENTROPY` instead of writing a GPT full of
     /// counter-derived ids.
@@ -637,7 +637,7 @@ pub struct Manifest {
     /// the service was built to have (DECISIONS §44).
     pub entropy: bool,
     /// **Endowed a client view of the network stack** (milestone 590 (provisional), the booted
-    /// system starts its network stack; `crates/socket_protocol`, `components/src/net_stack.rs`).
+    /// system starts its network stack; `crates/socket_contract`, `components/src/net_stack.rs`).
     ///
     /// [`entropy`](Manifest::entropy)'s shape exactly, one service over: an endpoint the progenitor
     /// holds because it built the service, placed at [`NETWORK_SLOT`] carrying `WRITE` for a child
@@ -653,13 +653,13 @@ pub struct Manifest {
     /// client of a network stack shares its socket numbers) a socket was a small integer every
     /// client shared, and this comment said two declaring programs could each operate the other's
     /// sockets. No inbound authority rides with it: the stack the progenitor
-    /// builds holds `socket_protocol::NO_LISTEN_GRANT`, so a declaring program can connect out and
+    /// builds holds `socket_contract::NO_LISTEN_GRANT`, so a declaring program can connect out and
     /// cannot listen.
     ///
     /// **Provisional field name.**
     pub network: bool,
     /// **Endowed the machine statistics page** (milestone 126, DECISIONS §225 part 2;
-    /// `crates/machine_statistics_protocol`): a read-only mapping at that crate's `PAGE_VA`, and
+    /// `crates/machine_statistics_contract`): a read-only mapping at that crate's `PAGE_VA`, and
     /// the frame's capability at [`MACHINE_SLOT`] carrying `READ`.
     ///
     /// [`clock`](Manifest::clock)'s family again: how the box is doing is not something a command
@@ -700,7 +700,7 @@ pub struct Manifest {
     pub reboot: bool,
     /// **Endowed a sync-only capability to the file server** (milestone 805, the 2026-10-06
     /// amendment to §251), at [`SYNC_SLOT`]: an endpoint badged and bound by
-    /// `filesystem_protocol::fs::BIND_SYNC`, so it answers `fs::SYNC` and refuses every other
+    /// `filesystem_contract::fs::BIND_SYNC`, so it answers `fs::SYNC` and refuses every other
     /// verb. It names no directory and reaches no file. The progenitor makes one for the job from
     /// a client window the job holds until it is reaped, places it, and keeps no copy.
     ///
@@ -730,7 +730,7 @@ pub struct Manifest {
     /// **Provisional field name** (the block's draft was `activation`).
     pub installer: bool,
     /// **Endowed a read-only copy of the image's package catalog** (milestone 809), mapped at
-    /// `std_runtime_protocol::CATALOG_PAGE`: the `<stem> <digest>` lines the image vouches for,
+    /// `std_runtime_contract::CATALOG_PAGE`: the `<stem> <digest>` lines the image vouches for,
     /// `package_archive::CATALOG`, which the kernel's measurement of the archive covers. What a
     /// package manager resolves a name against and lists, until an index replaces it. Knowledge
     /// and not authority: the progenitor checks every install against its own copy.
@@ -741,7 +741,7 @@ pub struct Manifest {
     /// item 6 of milestone 809 (the package client becomes a program)): a directory grant on
     /// `activation/indexes`, placed where a line's own directory grant would go, and a read-only
     /// copy of the image's index sources (`package_index::SOURCES_ENTRY`) mapped at
-    /// `std_runtime_protocol::INDEX_SOURCES_PAGE`. The directory holds the index copy a package
+    /// `std_runtime_contract::INDEX_SOURCES_PAGE`. The directory holds the index copy a package
     /// manager writes, which the progenitor then installs from: ruling I2 of 2026-10-06 (calef, "I
     /// would think jig"), under which the progenitor trusts the copy in a directory only the owner's
     /// console grants. See [`IndexStore`].
@@ -783,7 +783,7 @@ pub enum IndexStore {
 }
 
 impl IndexStore {
-    /// The rights the store's directory is opened with, as `filesystem_protocol::dir`'s bits:
+    /// The rights the store's directory is opened with, as `filesystem_contract::dir`'s bits:
     /// [`WordGrant::ReadOnly`]'s for reading, and [`WordGrant::Create`]'s for writing, since the
     /// first `update` creates the copy. `None` for [`IndexStore::Forbidden`].
     pub const fn rights(self) -> Option<u64> {
@@ -801,7 +801,7 @@ impl IndexStore {
 /// A native program reads its capabilities by position, and the progenitor fills them from slot 0
 /// upward in the order `spawn_service` documents. A `std` program cannot: the code reading its
 /// slots is the standard library, written once for every program, so each authority has a fixed
-/// slot and an empty slot means "not given" (`crates/std_runtime_protocol`). The two layouts
+/// slot and an empty slot means "not given" (`crates/std_runtime_contract`). The two layouts
 /// disagree about slot 0 (the output, or the heap's budget), so a `std` program built in the native
 /// layout would take its stdout endpoint for an allocator and fail on its first `println!`.
 ///
@@ -810,7 +810,7 @@ impl IndexStore {
 pub enum Runtime {
     /// Capabilities in order, the output first. Every program in `components/` and `fixtures/`.
     Native,
-    /// `std_runtime_protocol`'s eight fixed slots, its three shared pages, and a heap carved from
+    /// `std_runtime_contract`'s eight fixed slots, its three shared pages, and a heap carved from
     /// [`STD_REGION_PAGES`]. A program built with `-Zbuild-std` for a `*-unknown-nife`
     /// target.
     Std,
@@ -825,7 +825,7 @@ pub enum Runtime {
 /// the job's region would stop `job_undertaker` reclaiming the job; and a heap split off the pool
 /// beside it would be a second region nothing reclaims at all. So the child's address space, image,
 /// stack and TCB come out of this region first, and the same region, narrowed to `WRITE`, is the
-/// budget at `std_runtime_protocol::MEMORY_REGION_SLOT` its allocator maps from. Its heap is what
+/// budget at `std_runtime_contract::MEMORY_REGION_SLOT` its allocator maps from. Its heap is what
 /// the build left, and one reclaim returns all of it.
 ///
 /// Sized as the 256 pages of heap the kernel test harness has given every `std` program since

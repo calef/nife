@@ -15,7 +15,7 @@
 //! `GRANT` would let it hand a random source on; neither is given.
 //!
 //! **Without the entropy grant it prints nothing** and says why on its second stream:
-//! `entropy_protocol::delivered` reports the empty slot as `None`, and `uuid > id.txt` must leave
+//! `entropy_contract::delivered` reports the empty slot as `None`, and `uuid > id.txt` must leave
 //! the file empty, because a predictable identifier is wrong and looks right. No counter fallback,
 //! as in `disk_partitioner` and the partition table. It takes no arguments; there is no argv on
 //! this ABI (notes/abi.md).
@@ -58,7 +58,7 @@ const DIAG_SLOT: u64 = grant_plan::DIAGNOSTICS_SLOT;
 
 /// Slot 9: the entropy service, `WRITE`. Its *presence* is what the draw finds out about, and it
 /// finds out by asking rather than by probing: a `CALL` on an empty slot answers
-/// `abi::Error::NoSuchSlot`, which `entropy_protocol::delivered` separates from every real count.
+/// `abi::Error::NoSuchSlot`, which `entropy_contract::delivered` separates from every real count.
 const ENTROPY_SLOT: u64 = grant_plan::ENTROPY_SLOT;
 
 #[unsafe(no_mangle)]
@@ -80,7 +80,7 @@ pub extern "C" fn _start(_a0: u64, _a1: u64, _a2: u64) -> ! {
         );
     }
     if has_diag {
-        send(DIAG_SLOT, byte_sink_protocol::eof(), 0, 0);
+        send(DIAG_SLOT, byte_sink_contract::eof(), 0, 0);
     }
 
     if let Some(bytes) = drawn {
@@ -89,7 +89,7 @@ pub extern "C" fn _start(_a0: u64, _a1: u64, _a2: u64) -> ! {
         write_on(REPORT, &line);
     }
 
-    send(REPORT, byte_sink_protocol::eof(), 0, 0);
+    send(REPORT, byte_sink_contract::eof(), 0, 0);
     exit();
 }
 
@@ -98,7 +98,7 @@ pub extern "C" fn _start(_a0: u64, _a1: u64, _a2: u64) -> ! {
 fn write_on(slot: u64, bytes: &[u8]) {
     let mut rest = bytes;
     while !rest.is_empty() {
-        let (w0, w1, w2, n) = byte_sink_protocol::pack(rest);
+        let (w0, w1, w2, n) = byte_sink_contract::pack(rest);
         send(slot, w0, w1, w2);
         rest = &rest[n..];
     }

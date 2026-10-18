@@ -217,7 +217,7 @@ def unsafe_census(files):
 # baked in below, the same trade `MILESTONE_STATUSES`/`NAME_STATUSES` already make in
 # `script/metrics`: today's definition, applied uniformly across history).
 #
-# **A `SHARED` crate is not a hedge.** `environment_protocol` and `clock_protocol` are the clearest
+# **A `SHARED` crate is not a hedge.** `environment_contract` and `clock_contract` are the clearest
 # cases: the kernel builds the shared page (`PageBuilder`) and a userspace `std` program reads it
 # back through the identical `unsafe fn new`/`from_raw_parts` accessor, so the SAME unsafe source
 # genuinely executes with kernel privilege in one binary and under confinement in another. There is
@@ -253,7 +253,7 @@ KERNEL_ONLY_CRATES = frozenset({
 USERSPACE_ONLY_CRATES = frozenset({
     'c_seam', 'component_plan', 'credentialer', 'documentation',
     'globally_unique_identifier_partition_table', 'loaded_image_check', 'schedule_store',
-    'supervision_protocol', 'swap_protocol', 'swish', 'system_initializer', 'timetable',
+    'supervision_protocol', 'hot_swap_contract', 'swish', 'system_initializer', 'timetable',
     'uptime', 'user_mode_heap', 'user_mode_runtime', 'virtio',
 })
 USERSPACE_ONLY_DIRS = ('redoxfs_server/', 'std_exerciser/', 'entropy_backend/',
@@ -265,14 +265,14 @@ USERSPACE_ONLY_DIRS = ('redoxfs_server/', 'std_exerciser/', 'entropy_backend/',
 
 # The 36 `crates/` members reachable from BOTH sides, over real (non-`dev`) edges.
 SHARED_CRATES = frozenset({
-    'abi', 'bitmap_font', 'block_roster', 'boot_ladder', 'byte_sink_protocol', 'calendar',
-    'capability_witness_protocol', 'clock_protocol', 'compositor', 'coremark',
-    'counter_frequency_protocol', 'credential_protocol', 'device_tree_blob', 'elf',
-    'entropy_protocol', 'environment_protocol', 'filesystem_protocol', 'glob', 'grant_plan',
-    'graphics_protocol', 'jh7110_entropy', 'job_mix', 'line_editor', 'login_protocol',
+    'abi', 'bitmap_font', 'block_roster', 'boot_ladder', 'byte_sink_contract', 'calendar',
+    'capability_witness_contract', 'clock_contract', 'compositor', 'coremark',
+    'counter_frequency_contract', 'credential_contract', 'device_tree_blob', 'elf',
+    'entropy_contract', 'environment_contract', 'filesystem_contract', 'glob', 'grant_plan',
+    'graphics_contract', 'jh7110_entropy', 'job_mix', 'line_editor', 'login_contract',
     'machine_discovery', 'measured_boot', 'network_time_protocol', 'nifefs',
     'non_volatile_memory_express', 'pgrep', 'pmap', 'ps', 'screen_console', 'soak_page',
-    'socket_protocol', 'video_terminal',
+    'socket_contract', 'video_terminal',
 })
 
 # `uefi_loader` and the one crate only it reaches (`sealed_pair`) are neither: they run once, before

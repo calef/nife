@@ -6,7 +6,7 @@
 //! §170 ruled that a program written by somebody else hears its arguments as bytes, and that the
 //! bytes carry no authority. So this file is the whole of the transport: it reads the argument page
 //! its loader mapped read-only at `rt::ARGS_PAGE` (capability in `rt::ARGS_SLOT`), in
-//! `argument_protocol`'s layout, generated into this PAL as `argproto`. What a word on that page
+//! `program_argument_contract`'s layout, generated into this PAL as `argproto`. What a word on that page
 //! may *reach* was decided before the program started, by the directory in slot 4 and nothing
 //! else; a path here that names something the program was not granted opens nothing.
 //!
@@ -17,7 +17,7 @@
 //!
 //! A program granted no argument page gets no arguments, not even `argv[0]`: the same
 //! honest-absence shape every other slot has. A page that does not parse whole reads as no
-//! arguments too (`argument_protocol`'s docs say why a partial argv is never returned).
+//! arguments too (`program_argument_contract`'s docs say why a partial argv is never returned).
 //!
 //! # Zero copies
 //!

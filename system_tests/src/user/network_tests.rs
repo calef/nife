@@ -44,12 +44,12 @@ const NET_CLIENT_DIGEST_REFUSED: u64 = 3;
 /// exactly this one, and the client asks for `fixture::DENIED_PORT` as well to prove the grant
 /// refuses. Named here because the *spawn service* is what grants it, which is the point.
 ///
-/// Taken from `socket_protocol::fixture` rather than spelled again (milestone 64): three binaries and
+/// Taken from `socket_contract::fixture` rather than spelled again (milestone 64 (enough `std` to run somebody else's crate)): three binaries and
 /// this test have to agree on the number, and a literal repeated per call site is the shape rule 7
 /// exists to retire. The runners' `hostfwd` spells it a second time because a shell script cannot
 /// read a Rust crate, and that drift is loud (the prober reports the guest served none).
 #[cfg(target_arch = "aarch64")]
-const NET_LISTEN_PORT: u16 = socket_protocol::fixture::LISTEN_PORT;
+const NET_LISTEN_PORT: u16 = socket_contract::fixture::LISTEN_PORT;
 /// The fixed UDP port range the accept test's stack is granted (milestone 55's UDP bind grant).
 /// Named here for the same reason as the listen port: the spawn service grants it, and a program
 /// cannot ask for what it was not given. `socket_test_client` binds 5354 inside it to prove a
@@ -163,10 +163,10 @@ fn the_net_server_acquires_a_dhcp_lease_over_smoltcp() {
         "smoltcp's DHCP lease {addr:#010x} is not in QEMU slirp's 10.0.2.0/24",
     );
     // slirp's DHCP names 10.0.2.3 as the DNS server, and the lease report carries it in its second
-    // word (`socket_protocol::lease`, provisional) for a resolver's spawner (§248 (the name
+    // word (`socket_contract::lease`, provisional) for a resolver's spawner (§248 (the name
     // resolver is its own confined program)).
     assert_eq!(
-        socket_protocol::lease::word_ipv4(nameserver),
+        socket_contract::lease::word_ipv4(nameserver),
         Some([10, 0, 2, 3]),
         "the lease report did not carry slirp's DNS server (word {nameserver:#x})",
     );
@@ -221,7 +221,7 @@ fn a_client_completes_a_udp_round_trip_through_the_socket_contract() {
         net_stack_image(),
         NET_TEST_UDP_TFTP,
         false,
-        socket_protocol::NO_LISTEN_GRANT,
+        socket_contract::NO_LISTEN_GRANT,
     ) else {
         crate::testing::skip!("no virtio-net device attached");
     };
@@ -247,7 +247,7 @@ fn a_client_completes_a_udp_round_trip_through_the_socket_contract_pci() {
         net_stack_image(),
         NET_TEST_UDP_TFTP,
         true,
-        socket_protocol::NO_LISTEN_GRANT,
+        socket_contract::NO_LISTEN_GRANT,
     ) else {
         crate::testing::skip!("no virtio-net-pci device attached");
     };
@@ -277,7 +277,7 @@ fn an_accept_nobody_answers_ends_at_the_stacks_bound() {
         net_stack_image(),
         NET_TEST_TCP_ACCEPT_UNHEARD,
         true,
-        socket_protocol::listen_grant(NET_LISTEN_PORT, NET_LISTEN_PORT),
+        socket_contract::listen_grant(NET_LISTEN_PORT, NET_LISTEN_PORT),
     ) else {
         crate::testing::skip!("no virtio-net-pci device attached");
     };
@@ -325,7 +325,7 @@ fn a_name_resolves_through_the_stack_and_a_real_one_when_the_host_answers() {
         net_stack_image(),
         NET_TEST_NAME_RESOLUTION,
         false,
-        socket_protocol::NO_LISTEN_GRANT,
+        socket_contract::NO_LISTEN_GRANT,
     ) else {
         crate::testing::skip!("no virtio-net device attached");
     };
@@ -370,7 +370,7 @@ fn a_client_echoes_over_tcp_through_the_socket_contract() {
         net_stack_image(),
         NET_TEST_TCP_ECHO,
         false,
-        socket_protocol::NO_LISTEN_GRANT,
+        socket_contract::NO_LISTEN_GRANT,
     ) else {
         crate::testing::skip!("no virtio-net device attached");
     };
@@ -434,7 +434,7 @@ fn a_client_echoes_over_tcp_through_the_socket_contract_pci() {
         net_stack_image(),
         NET_TEST_TCP_ECHO,
         true,
-        socket_protocol::NO_LISTEN_GRANT,
+        socket_contract::NO_LISTEN_GRANT,
     ) else {
         crate::testing::skip!("no virtio-net-pci device attached");
     };
@@ -464,7 +464,7 @@ fn a_reopened_socket_id_connects_again_over_tcp() {
         net_stack_image(),
         NET_TEST_TCP_REOPEN,
         false,
-        socket_protocol::NO_LISTEN_GRANT,
+        socket_contract::NO_LISTEN_GRANT,
     ) else {
         crate::testing::skip!("no virtio-net device attached");
     };
@@ -532,8 +532,8 @@ fn a_host_process_connects_to_the_guest_and_is_answered() {
         net_stack_image(),
         NET_TEST_TCP_ACCEPT,
         false,
-        socket_protocol::listen_grant(NET_LISTEN_PORT, NET_LISTEN_PORT)
-            | socket_protocol::udp_bind_grant(NET_UDP_GRANT_BOTTOM, NET_UDP_GRANT_TOP),
+        socket_contract::listen_grant(NET_LISTEN_PORT, NET_LISTEN_PORT)
+            | socket_contract::udp_bind_grant(NET_UDP_GRANT_BOTTOM, NET_UDP_GRANT_TOP),
     ) else {
         crate::testing::skip!("no virtio-net device attached");
     };
@@ -576,7 +576,7 @@ fn a_host_process_connects_to_the_guest_and_is_answered() {
 /// rather than a mystery.
 ///
 /// `listen refused` is milestone 64's negative control and it costs this boot nothing: the stack
-/// this program is spawned with carries `socket_protocol::NO_LISTEN_GRANT`, so
+/// this program is spawned with carries `socket_contract::NO_LISTEN_GRANT`, so
 /// `std::net::TcpListener::bind` answers `PermissionDenied`, and the program says so on its way
 /// past rather than quietly running a smaller demo. A lane that broke the grant check open would
 /// turn this line into `listen ok` and fail here, in a transcript comparison, rather than passing
@@ -587,7 +587,7 @@ const STD_NET_EXPECTED: &[u8] = b"std net on nife\nlisten refused\nudp ok\ntcp e
 /// The exact transcript the same binary prints when its stack **is** granted the listening port
 /// (milestone 64's inbound half). Four lines, and each is a separate claim: the granted port binds,
 /// a port outside the grant is refused as a matter of authority, the granted port is exclusive, and
-/// the listener served `socket_protocol::fixture::ROUNDS` connections one after another.
+/// the listener served `socket_contract::fixture::ROUNDS` connections one after another.
 #[cfg(target_arch = "aarch64")]
 const STD_LISTEN_EXPECTED: &[u8] =
     b"std net on nife\nlisten ok\ndenied refused\nin use refused\nserved 2\n";
@@ -614,7 +614,7 @@ fn std_net_runs_over_the_socket_contract() {
     let Some((report, writer, net)) = virtio_service::start_net_std(
         net_stack_image(),
         std_exerciser_image(),
-        socket_protocol::NO_LISTEN_GRANT,
+        socket_contract::NO_LISTEN_GRANT,
     ) else {
         crate::testing::skip!("no virtio-net device attached");
     };
@@ -640,7 +640,7 @@ fn std_net_runs_over_the_socket_contract() {
 /// **The refusals ride in this same spawn rather than in a test of their own**, which is the
 /// machine's call and not a preference: a net test spends minutes in `net_stack`'s userspace
 /// smoltcp poll, so a boot is the expensive unit. `denied refused` is
-/// `socket_protocol::fixture::DENIED_PORT`, outside the grant this stack carries, answered
+/// `socket_contract::fixture::DENIED_PORT`, outside the grant this stack carries, answered
 /// `PermissionDenied`; `in use refused` is the granted port asked for twice, answered `AddrInUse`.
 /// The **whole-stack** refusal is the sibling test above, whose stack carries no grant at all.
 ///
@@ -657,7 +657,7 @@ fn a_std_program_serves_a_granted_listening_port() {
     let Some((report, writer, net)) = virtio_service::start_net_std(
         net_stack_image(),
         std_exerciser_image(),
-        socket_protocol::listen_grant(NET_LISTEN_PORT, NET_LISTEN_PORT),
+        socket_contract::listen_grant(NET_LISTEN_PORT, NET_LISTEN_PORT),
     ) else {
         crate::testing::skip!("no virtio-net device attached");
     };

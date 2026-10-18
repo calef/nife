@@ -7,12 +7,12 @@ complete without it; this is how each piece is built, and its proof.
 
 ## The login service
 
-`login` (provisional name) is `components/src/login.rs`, with its wire contract `crates/login_protocol`
+`login` (provisional name) is `components/src/login.rs`, with its wire contract `crates/login_contract`
 (provisional). It holds the credential service's verify endpoint, the file service's root directory
 capability, and a construction budget. The verify endpoint is milestone 56 (secrets and entropy)'s,
 unmodified: neither `cred_proto` nor `credentialer.rs` changed.
 
-A client presents an identity and a secret over `login_protocol`. On a match, `login` builds a fresh
+A client presents an identity and a secret over `login_contract`. On a match, `login` builds a fresh
 `fs_subtree_caretaker`. That is the same construction `crates/system_initializer` performs for a
 directory-granted spawn. It also splits a fresh budget, then delegates both to the caller over
 `abi::endpoint::SEND_CAP`. Two different successful logins are therefore two different endpoint
@@ -39,7 +39,7 @@ Proven end to end by `system_tests/src/user/login_tests.rs` on both ISAs, with `
 ## Per-identity subtrees
 
 Landed 2026-08-23, under DECISIONS §117 (a principal's subtree is named by its identity string). `login` used to
-attenuate every principal to the same fixed subtree, `filesystem_protocol::fixture::tree::SUB`, with the same
+attenuate every principal to the same fixed subtree, `filesystem_contract::fixture::tree::SUB`, with the same
 rights. It now attenuates each authenticated identity to a subtree named by the identity string
 itself. The string is used directly, with no lookup table. That matches exactly what milestone 155
 (a provisioning tool)'s `identity_provisioner` creates at provisioning time; nothing is auto-vivified
@@ -57,8 +57,8 @@ from a wrong password. `components/src/login.rs`'s own BUGS gives the reasoning.
 
 A third bound surfaced here and is now recorded rather than left implicit. An identity longer than
 sixteen bytes cannot get a per-identity subtree in this slice at all. The grant name travels in two
-argument words to the caretaker (`filesystem_protocol::grant::MAX_NAME`). That is narrower than
-`login_protocol::MAX_IDENTITY`'s sixty-four. `login` refuses rather than silently truncating.
+argument words to the caretaker (`filesystem_contract::grant::MAX_NAME`). That is narrower than
+`login_contract::MAX_IDENTITY`'s sixty-four. `login` refuses rather than silently truncating.
 
 ## The channel-per-client front door
 
@@ -66,7 +66,7 @@ A single `REQUEST`/`RESULT` endpoint pair would share one staging page across ev
 process ever serves, which is a structural "one client at a time" limit. `credentialer.rs`
 documents that limit for its own verify page.
 
-The front door accepts exactly one word, `login_protocol::CONNECT`. It mints a fresh, private
+The front door accepts exactly one word, `login_contract::CONNECT`. It mints a fresh, private
 request/result pair and staging page per caller, before any identity or secret is staged. That is
 `filesystem_proto`'s own "a fresh object per client" answer, copied here. Two callers reaching the
 front door together contend only for service order. They can never observe or corrupt each
@@ -130,7 +130,7 @@ the same `measured_boot::verify_in_manifest` that `system_initializer::measured`
 does so once, at startup, before any client exists.
 
 A refusal does not crash the service. That mirrors `system_initializer`'s own rule: "an unvouched
-`fs_subtree_caretaker` costs a feature, not a boot". Every login is answered `login_protocol::DENIED`
+`fs_subtree_caretaker` costs a feature, not a boot". Every login is answered `login_contract::DENIED`
 instead. `components/src/login.rs`'s own BUGS explains why this fold does not get the anti-oracle
 reasoning the wrong-password and no-subtree folds get. This check varies with nothing a caller
 controls, so there is nothing to probe. The test is
@@ -143,9 +143,9 @@ what got built. This executed the recommendation rather than re-deciding it.
 
 `login` now holds a `WRITE | GRANT` view of the real interactive terminal. `boot` grants it; it is
 the same capability the shell already holds `WRITE` on. `login` hands `WRITE` on to the first
-successful caller. Every login after that is refused with `login_protocol::NO_TERMINAL`, a dedicated
+successful caller. Every login after that is refused with `login_contract::NO_TERMINAL`, a dedicated
 code not folded into `DENIED`. The refusal comes before the identity or secret is even relayed to
-the credential service. It lasts until `login_protocol::LOGOUT` frees the terminal. `LOGOUT` is a bare
+the credential service. It lasts until `login_contract::LOGOUT` frees the terminal. `LOGOUT` is a bare
 word on the front door, since it carries no secret.
 
 `components/src/login.rs`'s "The terminal: single-session, deny cleanly" has the full design. Its

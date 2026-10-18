@@ -1,5 +1,5 @@
 //! `std::fs` for nife (milestone 27 phase two): `File` bound to the FS-service contract
-//! (DECISIONS §27, notes/fs-server.md, `crates/filesystem_protocol`).
+//! (DECISIONS §27, notes/fs-server.md, `crates/filesystem_contract`).
 //!
 //! # There is no global namespace
 //!

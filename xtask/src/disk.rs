@@ -285,7 +285,7 @@ pub(crate) const INSTALLED_UNVOUCHED: &str = "installed/unvouched";
 /// carries its manifest in an ELF note), provisional): `least_authority_demo`, stripped. Unvouched
 /// bytes may hold only what the D2 ruling names, and an argument is a designation the line would
 /// have to make, so `script/swish-check` types it with one and the progenitor must refuse it. Not
-/// named after the program because a name is at most 16 bytes (`filesystem_protocol`'s
+/// named after the program because a name is at most 16 bytes (`filesystem_contract`'s
 /// `MAX_NAME`), which `least_authority_demo` is not; CI found that on the first run.
 pub(crate) const INSTALLED_ASKS_AN_ARGUMENT: &str = "installed/asks-an-arg";
 
@@ -478,13 +478,13 @@ fn without_symbols(path: &std::path::Path, architecture: &str) -> Result<Vec<u8>
 
 /// **`bytes` with its one manifest note's version word replaced by `version`**, for
 /// [`INSTALLED_MALFORMED_NOTE`]. The note is found by its header and owner, which
-/// `manifest_note::Note::of` writes for every manifest; exactly one must be present, or the fixture
+/// `capability_manifest_note::Note::of` writes for every manifest; exactly one must be present, or the fixture
 /// would prove nothing.
 fn with_note_version(bytes: &[u8], version: u32) -> Result<Vec<u8>, String> {
     let mut head = Vec::new();
-    head.extend_from_slice(&((manifest_note::OWNER.len() + 1) as u32).to_le_bytes());
-    head.extend_from_slice(&(manifest_note::DESCRIPTOR_LEN as u32).to_le_bytes());
-    head.extend_from_slice(&manifest_note::MANIFEST.to_le_bytes());
+    head.extend_from_slice(&((capability_manifest_note::OWNER.len() + 1) as u32).to_le_bytes());
+    head.extend_from_slice(&(capability_manifest_note::DESCRIPTOR_LEN as u32).to_le_bytes());
+    head.extend_from_slice(&capability_manifest_note::MANIFEST.to_le_bytes());
     head.extend_from_slice(b"nife\0\0\0\0");
     let at: Vec<usize> = bytes
         .windows(head.len())

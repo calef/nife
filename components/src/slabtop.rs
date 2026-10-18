@@ -68,12 +68,12 @@ pub extern "C" fn _start(_a0: u64, _a1: u64, _a2: u64) -> ! {
         ),
     }
     if has_diag {
-        send(DIAG_SLOT, byte_sink_protocol::eof(), 0, 0);
+        send(DIAG_SLOT, byte_sink_contract::eof(), 0, 0);
     }
     if let Ok(s) = found {
         slabtop::write_report(&s, &mut |b| write_on(REPORT, b));
     }
-    send(REPORT, byte_sink_protocol::eof(), 0, 0);
+    send(REPORT, byte_sink_contract::eof(), 0, 0);
     exit();
 }
 
@@ -100,7 +100,7 @@ fn usage(record: u64) -> Result<u64, i64> {
 fn write_on(slot: u64, bytes: &[u8]) {
     let mut rest = bytes;
     while !rest.is_empty() {
-        let (w0, w1, w2, n) = byte_sink_protocol::pack(rest);
+        let (w0, w1, w2, n) = byte_sink_contract::pack(rest);
         send(slot, w0, w1, w2);
         rest = &rest[n..];
     }

@@ -29,7 +29,7 @@ component's capability table, and it is consumed on use. It cannot be delegated 
 forged, or reached by revoking anything. Freeing a stranded caller requires the cooperation of the
 component whose lack of cooperation is the definition of the hang.
 
-The test demonstrates that inversion rather than asserting it. `swap_protocol::NOTE_RELEASE` is the
+The test demonstrates that inversion rather than asserting it. `hot_swap_contract::NOTE_RELEASE` is the
 operator's reply to the wedged instance, and the instance then uses the reply capability it took to
 answer `WEDGE_RELEASED` to the caller it stranded. In the test the wedge is deliberate and
 cooperates; a real one does not, and the `CL_WAS_RELEASED` bit exists so a reader can tell which of

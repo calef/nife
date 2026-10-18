@@ -8,8 +8,8 @@
 //! Name: provisional (lane maintainer/files-over-1500, 2026-10-12 UTC), for the module and the
 //! file.
 
+use filesystem_contract::{fs, grant, xattr};
 use filesystem_fixture as fixture;
-use filesystem_protocol::{fs, grant, xattr};
 use fixture::escape;
 use user_mode_runtime::{call, exit, send};
 
@@ -194,7 +194,7 @@ fn probe_attributes(writable: bool) -> u64 {
         ),
         0,
     );
-    if filesystem_protocol::reply_errno(g0 as i64) == Some(xattr::ENOTSUP) {
+    if filesystem_contract::reply_errno(g0 as i64) == Some(xattr::ENOTSUP) {
         verdict |= escape::GRANTED_ATTRS_FAILED;
     }
 

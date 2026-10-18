@@ -33,7 +33,7 @@ Three pieces exist and are not joined at the prompt.
 - A std program cannot hold the network at the prompt. Milestone 595 (the shell runs a `std`
   program)'s BUGS: the progenitor does not mint the socket frames' budget slot 3 needs, so
   `grant_plan` refuses a std manifest that declares the network.
-- A std program's resolver is a badge at `std_runtime_protocol::RESOLVER_SLOT` (slot 9,
+- A std program's resolver is a badge at `std_runtime_contract::RESOLVER_SLOT` (slot 9,
   provisional), placed today only by `system_tests`' `std_service`.
 
 `jig` (milestone 809 (the package client becomes a program)) needs all three to reach
@@ -42,7 +42,7 @@ Three pieces exist and are not joined at the prompt.
 ## The work
 
 1. The progenitor starts `domain_name_resolver` once the lease arrives, told the lease's name server
-   (`socket_protocol::lease`'s second word), as the test harness does with the runners' peer.
+   (`socket_contract::lease`'s second word), as the test harness does with the runners' peer.
 2. The progenitor mints a socket frames' budget for a std program whose manifest declares the
    network, and places it at slot 3. 595's `a_std_program_declares_only_what_the_std_layout_can_hold`
    then admits the network.
@@ -60,7 +60,7 @@ Reuse: everything named above is in the tree; this is wiring.
 
 Lane `milestone/892-a-std-program-at-the-prompt-holds-the-network-and-a-resolver`. "Reuse: this
 is wiring" was false. The resolver had eight windows for its life and no way to withdraw a grant
-(`name_resolution_protocol`'s BUGS), and the progenitor outlives every job it spawns, so wiring
+(`domain_name_resolution_contract`'s BUGS), and the progenitor outlives every job it spawns, so wiring
 alone would have let the ninth `jig` of a boot be refused.
 
 - The forget verb. `OPERATION_FORGET` (provisional) frees a badge's window; the resolver
@@ -103,7 +103,7 @@ versioned)). The owner can narrow them later. The details he accepted:
 
 What that leaves to build:
 
-1. The zones in a program's manifest note, the ask. `manifest_note` is a format two programs agree
+1. The zones in a program's manifest note, the ask. `capability_manifest_note` is a format two programs agree
    on, so the encoding is decided once.
 2. The granted zones in the installed-programs table's entry, which is where an owner's narrowing lands too.
 3. The progenitor grants one badge per granted zone at spawn and forgets each at the reap. The std
@@ -131,14 +131,14 @@ The question as put was loose on two points. The ruling reads as follows with bo
   installed programs are versioned), and milestone 911 (scripted installs grant only what the owner's
   approval file allows) lists them apart.
 - A manifest can already declare the network. `Manifest::network` is one flag (byte 34 of
-  `manifest_note`), and a program in the image table gets it today. What is missing is the install
+  `capability_manifest_note`), and a program in the image table gets it today. What is missing is the install
   path: `grant_plan::image_can_carry` refuses installed bytes whose note sets it, and nothing at
   install lists it.
 
 So "network use" means the existing grant: a client view of the network stack carrying `WRITE`,
 at `NETWORK_SLOT` (slot 10) for a native program and slot 2 for a `std` one. A `std` program also
 gets the socket frames' budget at slot 3, as item 2 mints it for `jig`. It connects out and cannot
-listen (`socket_protocol::NO_LISTEN_GRANT`).
+listen (`socket_contract::NO_LISTEN_GRANT`).
 
 What that leaves to build, beside item 3's four pieces and in the same places:
 

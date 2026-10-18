@@ -226,13 +226,13 @@ pub const fn port_out_then_exit(port: u16, val: u8) -> [u32; 4] {
 }
 
 /// The address of the current-CPU word a ring-3 thread reads its own core from: the second
-/// eight bytes of `current_cpu_protocol`'s page (the magic is the first eight, and the crate's own
+/// eight bytes of `current_cpu_contract`'s page (the magic is the first eight, and the crate's own
 /// tests pin `OFF_CPU` at 8 and `PAGE_BYTES` at `OFF_CPU + 8`, which is the subtraction below). It
 /// is under 2 GiB (`address_space_map::CODE_MODEL_CEILING`), so the 32-bit absolute form of `mov`
 /// below addresses it with no sign-extension surprise.
 #[cfg(all(any(test, feature = "system_tests"), target_arch = "x86_64"))]
 const CURRENT_CPU_WORD: u32 =
-    (current_cpu_protocol::PAGE_VA + current_cpu_protocol::PAGE_BYTES as u64 - 8) as u32;
+    (current_cpu_contract::PAGE_VA + current_cpu_contract::PAGE_BYTES as u64 - 8) as u32;
 
 #[cfg(all(any(test, feature = "system_tests"), target_arch = "x86_64"))]
 packer!(pack_12, 48, 12);
@@ -244,7 +244,7 @@ packer!(pack_12, 48, 12);
 /// 2026-10-03 finding this program exists for: at `NIFE_SMP=2` the non-holder ran on the other
 /// core and faulted for a reason that had nothing to do with the hand-off).
 ///
-/// It reads its core from the current-CPU page (`current_cpu_protocol`, written by the context
+/// It reads its core from the current-CPU page (`current_cpu_contract`, written by the context
 /// switch on the core doing the switch) **once before the `out` and once after**, and sends both:
 /// equal, they bracket the `out` on one core. The message is `[word, core after, core before]`.
 /// Not proof against a thread that migrated away and back inside three instructions, which would

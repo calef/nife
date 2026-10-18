@@ -8,7 +8,7 @@
 /// **A `std` child's endowment, placed where nife's `std` reads it** (milestone 595 (provisional)).
 ///
 /// The native spawn fills a child's table from slot 0, output first; nife's `std` fixes a slot per
-/// authority (`crates/std_runtime_protocol`), and a native child's output slot is a `std` child's
+/// authority (`crates/std_runtime_contract`), and a native child's output slot is a `std` child's
 /// heap budget, so a `std` program built natively dies on its first `println!`. This is the other
 /// shape, from the decisions [`spawn_service`](super::spawn_service) already made.
 ///
@@ -79,12 +79,12 @@ pub(super) struct StdGrants {
 // than assumed, because the contract crate could renumber them and this would build a child whose
 // heap and output were swapped.
 const _: () = assert!(
-    std_runtime_protocol::MEMORY_REGION_SLOT == 0 && std_runtime_protocol::STDOUT_SLOT == 1
+    std_runtime_contract::MEMORY_REGION_SLOT == 0 && std_runtime_contract::STDOUT_SLOT == 1
 );
 
 impl StdLayout {
     pub(super) fn new(region: u64, out: (u64, u64), g: StdGrants) -> Self {
-        use std_runtime_protocol as rt;
+        use std_runtime_contract as rt;
         let StdGrants {
             dir,
             clock,

@@ -39,7 +39,7 @@ use crate::arch::mmu;
 
 /// One transfer unit: a filesystem block, the same unit the blk-IPC protocol moves, so the EL0
 /// block server serves the FS server without a translation layer.
-pub const BLOCK_SIZE: usize = filesystem_protocol::blk::BLOCK_SIZE;
+pub const BLOCK_SIZE: usize = filesystem_contract::blk::BLOCK_SIZE;
 
 /// The DMA region's layout, in page offsets. One contiguous run, allocated by [`bring_up`] and
 /// confined as one region, in two halves that are **not** the same authority:
@@ -62,7 +62,7 @@ const IO_CQ_PAGE: u64 = 4;
 /// Where the transfer buffer starts, relative to [`DATA_PLANE_PAGE`]. The EL0 server computes the
 /// same offset from what it was handed; the constant is duplicated there against this one because
 /// the two live in different address spaces and nothing but the spawn contract joins them.
-pub const TRANSFER_PAGES: u64 = filesystem_protocol::blk::TRANSFER_BLOCKS as u64;
+pub const TRANSFER_PAGES: u64 = filesystem_contract::blk::TRANSFER_BLOCKS as u64;
 const DMA_PAGES: u64 = 5 + TRANSFER_PAGES;
 
 /// **Test-only escape-target hook for the confinement falsification** (milestone 261's Outstanding

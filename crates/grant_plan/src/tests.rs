@@ -4,10 +4,10 @@ use crate::*;
 
 #[test]
 fn a_grant_name_limit_matches_the_filesystem_contract() {
-    // `grant_plan` deliberately does not depend on `filesystem_protocol` (the shell's parser must not need the
+    // `grant_plan` deliberately does not depend on `filesystem_contract` (the shell's parser must not need the
     // filesystem contract to check a command line), so the constant is duplicated. That is only
     // safe if a change to one without the other fails here, on the host, in milliseconds.
-    assert_eq!(MAX_FILE_NAME, filesystem_protocol::grant::MAX_NAME);
+    assert_eq!(MAX_FILE_NAME, filesystem_contract::grant::MAX_NAME);
     assert!(file_name_fits(b"sixteen-bytes!!!"));
     assert!(!file_name_fits(b"seventeen-bytes!!"));
     assert!(!file_name_fits(b""));

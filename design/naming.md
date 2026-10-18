@@ -113,7 +113,8 @@ the limit pick a name.
 - Never `-d`, which claims a Unix daemon. The vocabulary is component (the shippable unit), service
   (what it offers) and contract (the wire protocol). "Server" is a fine role word.
 - A program's binary, source file and archive entry share one string.
-- Wire-contract crates end in `_protocol`, per milestone 265 (`_proto` is a truncation). `abi`
+- Wire-contract crates end in `_contract` (calef, 2026-10-18 UTC); a standard keeps its word
+  (`network_time_protocol`). `abi`
   predates the suffix. `compositor` and `line_editor` hold protocol modules but are logic crates.
 - A crate that is a component's engine takes the component's name.
 - An `_exerciser` loads a capability of the system, with no contract probed. A `_test_client`
@@ -143,6 +144,10 @@ Each sets a test that reaches past the word. The arguments are in
 | The `login` stem stays | ratified 2026-09-15 for the whole family |
 | The casing of `nife` | lowercase everywhere, prose included |
 | `cpu` is the scheduling unit; `core` is the physical core | `cpu` is what the scheduler runs a thread on; a GPU is named `gpu`, never `cpu` (2026-10-03) |
+
+### Precedents set by example
+
+The 2026-10-18 rulings, as rules: [precedents-set-by-example.md](naming/precedents-set-by-example.md).
 
 ## Where a name's provenance lives
 
@@ -296,7 +301,7 @@ This is rung three of the ladder: no gate can tell an account from an intention 
 
 1. No name ending in `-d` (a real word goes in `naming_allow`, with a reason).
 2. No "daemon" outside `design/` and `script/lint`.
-3. Contract crates spelled `*_protocol`.
+3. Contract crates spelled `*_contract`.
 4. A milestone-claim branch that parses.
 5. No `#[path]` module shared by two binaries.
 6. Lowercase, hyphenated `notes/` and `design/` filenames.
@@ -308,8 +313,7 @@ caught it was a person not knowing the word, and that remains the test.
 ## Appendices
 
 Every former section kept its heading, so a citation by section name resolves in the file listed.
-The directory and stems are provisional, minted 2026-09-24. Which file holds which former section
-is the table in [naming/README.md](naming/README.md).
+The directory and stems are provisional. The table is in [naming/README.md](naming/README.md).
 
 ## BUGS
 

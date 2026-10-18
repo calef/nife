@@ -7,8 +7,8 @@
 //! Name: provisional (lane maintainer/files-over-1500, 2026-10-12 UTC), for the module and the
 //! file.
 
+use filesystem_contract::{dir, fs, xattr};
 use filesystem_fixture as fixture;
-use filesystem_protocol::{dir, fs, xattr};
 use fixture::{dirscape as esc, tree};
 use user_mode_runtime::{call, exit, send};
 
@@ -207,7 +207,7 @@ fn probe_enumeration() -> u64 {
         // buffer with a length the server chose would be a panic this program cannot report.
         let n = (n as usize).min(buf.len());
         get_page(n, &mut buf);
-        for (name, _) in filesystem_protocol::dirent::iter(&buf[..n]) {
+        for (name, _) in filesystem_contract::dirent::iter(&buf[..n]) {
             for stranger in [
                 fixture::MOTD_NAME,
                 fixture::SCRATCH_NAME,

@@ -73,7 +73,7 @@ contain **no unsafe operation**:
 
 | Site | Why it is `unsafe fn` anyway |
 |---|---|
-| `crates/clock_protocol/src/lib.rs:178` `Clock::new` | takes a VA the caller promises is a mapped clock page |
+| `crates/clock_contract/src/lib.rs:178` `Clock::new` | takes a VA the caller promises is a mapped clock page |
 | `crates/paging/src/lib.rs:323` `assume_no_stale_entry` | the name is the contract: the caller asserts a TLB fact |
 | `crates/paging/src/lib.rs:410` `Mapper::new` | the caller promises `root` is a live table |
 | `crates/user_mode_runtime/src/heap.rs:193` `GlobalAlloc::alloc` | unsafe because the trait method is |

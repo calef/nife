@@ -75,7 +75,7 @@ seL4: silent, and the silence is the finding. The kernel models no ports, no soc
 networking is a userspace component (CAmkES/lwIP, later Rust). Whatever a net server implements *is*
 the policy. So there is no seL4 answer to diverge from here, and any claim that "seL4 does X" means
 "some unverified seL4 component does X", since seL4's proofs cover the kernel and a port policy is
-outside them. The same is true of us: nothing in `crates/socket_protocol` is machine-checked, and
+outside them. The same is true of us: nothing in `crates/socket_contract` is machine-checked, and
 this grant is ordinary code.
 
 Plan 9: authority by namespace. You write `announce 80` into `/net/tcp/clone`, and what

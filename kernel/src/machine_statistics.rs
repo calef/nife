@@ -2,7 +2,7 @@
 //!
 //! One frame holding the machine-wide counters `free`, `vmstat` and `top` read: the free frame
 //! count, and per core the busy and idle ticks, the context switches, the interrupts and the run
-//! queue. The layout is `crates/machine_statistics_protocol`'s; this module is the writes.
+//! queue. The layout is `crates/machine_statistics_contract`'s; this module is the writes.
 //!
 //! **The counters live in the page itself**, so there is no copy and no refresh to schedule. Each
 //! per-core word is written only by its own core (the tick and the cross-core interrupt run on
@@ -34,7 +34,7 @@
 
 use core::sync::atomic::{AtomicPtr, AtomicU64, Ordering};
 
-use machine_statistics_protocol::{WORDS, build_header, word};
+use machine_statistics_contract::{WORDS, build_header, word};
 
 use crate::cpu;
 

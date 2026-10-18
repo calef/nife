@@ -6,7 +6,7 @@
 //! rather than [`grant_plan::Manifest::clock`]). The page is mapped `READ`-only, which is why there
 //! is no `printenv -s TZ=...`: the missing authority is a page permission, not a check here.
 //!
-//! `environment_protocol::ConfigPage` answers `Option<&str>` per key: `Some(value)` when the page is
+//! `environment_contract::ConfigPage` answers `Option<&str>` per key: `Some(value)` when the page is
 //! valid and carries that key, and `None` both when the key was never set and when nobody assembled
 //! a page at all. This program tells "no grant" apart the way `date` tells "no clock capability"
 //! apart: by checking whether it holds the capability before printing anything.
@@ -31,7 +31,7 @@
 //! Name: ratified 2026-09-13 (calef, working the unratified worklist). Unix's own name, true here:
 //! upstream `printenv` with no arguments prints the whole environment, which is exactly this
 //! program. Refused `env` (`env(1)` also sets variables and runs a command, neither possible here).
-//! Refused `config` and `environment` (generic, and `environment_protocol` spends the stem).
+//! Refused `config` and `environment` (generic, and `environment_contract` spends the stem).
 
 #![no_std]
 // Program entry points, not the crates/ library surface milestone 68's ratchet tracks
@@ -40,7 +40,7 @@
 #![allow(missing_docs)]
 #![no_main]
 
-use environment_protocol::ConfigPage;
+use environment_contract::ConfigPage;
 use user_mode_runtime::{exit, invoke, send};
 
 /// Slot 0: where the output goes. An endpoint with `WRITE`, and the same 16-bytes-per-message
@@ -59,7 +59,7 @@ const CONFIG_VA: u64 = address_space_map::pair_page(0x00e0_0000);
 pub extern "C" fn _start(_a0: u64, _a1: u64, _a2: u64) -> ! {
     let Some(page) = config_page() else {
         line(b"printenv: no configuration was granted");
-        send(REPORT, byte_sink_protocol::eof(), 0, 0);
+        send(REPORT, byte_sink_contract::eof(), 0, 0);
         exit();
     };
 
@@ -67,7 +67,7 @@ pub extern "C" fn _start(_a0: u64, _a1: u64, _a2: u64) -> ! {
     key_line(&page, b"LANG", page.lang());
     key_line(&page, b"TERM", page.term());
 
-    send(REPORT, byte_sink_protocol::eof(), 0, 0);
+    send(REPORT, byte_sink_contract::eof(), 0, 0);
     exit();
 }
 

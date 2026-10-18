@@ -63,7 +63,7 @@ pub fn cntfrq_checked() -> Option<u64> {
 }
 
 /// The counter frequency in Hz (RISC-V), read from the **timebase page** the kernel maps read-only
-/// into every process at [`counter_frequency_protocol::PAGE_VA`].
+/// into every process at [`counter_frequency_contract::PAGE_VA`].
 ///
 /// RISC-V has **no** register that reports the timebase. The machine states it in the device tree,
 /// at `/cpus/timebase-frequency`, and a process holds neither a pointer to the blob nor a capability
@@ -96,12 +96,12 @@ pub fn cntfrq() -> u64 {
 #[cfg(target_arch = "riscv64")]
 pub fn cntfrq_checked() -> Option<u64> {
     // SAFETY: every path that builds a riscv64 process maps a page (real, or zeroed when the rate
-    // was never learned) read-only at `counter_frequency_protocol::PAGE_VA` before it runs:
+    // was never learned) read-only at `counter_frequency_contract::PAGE_VA` before it runs:
     // `kernel::user::load`, `kernel::user::map_timebase_page`, and
     // `supervision_protocol::build_child_space`. See that crate's `BUGS` section for the one shape
     // that does not, which faults here on purpose.
     let page = unsafe {
-        counter_frequency_protocol::TimebasePage::new(counter_frequency_protocol::PAGE_VA)
+        counter_frequency_contract::TimebasePage::new(counter_frequency_contract::PAGE_VA)
     };
     page.hz()
 }
@@ -141,7 +141,7 @@ pub fn now() -> u64 {
 }
 
 /// The counter frequency in Hz (`x86_64`), read from the **timebase page** the kernel maps
-/// read-only into every process at [`counter_frequency_protocol::PAGE_VA`] (milestone 161's `cntfrq`
+/// read-only into every process at [`counter_frequency_contract::PAGE_VA`] (milestone 161 (the x86_64 kernel port: bring up the HAL's third architecture)'s `cntfrq`
 /// follow-up).
 ///
 /// x86 has **no architected rate a ring-3 program can ask for**: `CPUID` leaf `0x15` is absent on
@@ -178,9 +178,9 @@ pub fn cntfrq() -> u64 {
 pub fn cntfrq_checked() -> Option<u64> {
     // SAFETY: every kernel-side space-building function this crate's own docs list maps a page
     // (real, or zeroed when the rate was never learned) read-only at
-    // `counter_frequency_protocol::PAGE_VA` into every x86_64 process before it ever runs.
+    // `counter_frequency_contract::PAGE_VA` into every x86_64 process before it ever runs.
     let page = unsafe {
-        counter_frequency_protocol::TimebasePage::new(counter_frequency_protocol::PAGE_VA)
+        counter_frequency_contract::TimebasePage::new(counter_frequency_contract::PAGE_VA)
     };
     page.hz()
 }
@@ -300,7 +300,7 @@ fn read_cycle_counter() -> u64 {
 /// selector, because the consumer here is a memory allocator keeping a per-CPU cache: it asks once
 /// per allocation, and a crossing at that rate is not a cost you can amortize away. (The ruling's
 /// `design/decisions/` section is on another branch and not on `main` yet, so it is named here
-/// rather than cited.) `crates/current_cpu_protocol` carries the layout, the ordering argument and
+/// rather than cited.) `crates/current_cpu_contract` carries the layout, the ordering argument and
 /// the reason this is not a register on any of the three targets.
 ///
 /// **The answer can be stale before you use it**, because the kernel may migrate this thread the
@@ -310,7 +310,7 @@ fn read_cycle_counter() -> u64 {
 /// sequences; this tree does not have those and is not pretending to.
 ///
 /// **The value is a CPU id, not an index into anything you have counted.** Size a per-CPU array by
-/// [`current_cpu_protocol::CPU_ID_BOUND`] and nothing else: the VisionFive 2's online set is
+/// [`current_cpu_contract::CPU_ID_BOUND`] and nothing else: the VisionFive 2's online set is
 /// `{1, 2, 3}`, so counting cores and indexing by the count reaches a core that is not there and
 /// misses one that is.
 ///
@@ -318,7 +318,7 @@ fn read_cycle_counter() -> u64 {
 ///
 /// ```no_run
 /// # use user_mode_runtime::current_cpu;
-/// let mut per_cpu = [0u64; current_cpu_protocol::CPU_ID_BOUND];
+/// let mut per_cpu = [0u64; current_cpu_contract::CPU_ID_BOUND];
 /// if let Some(cpu) = current_cpu() {
 ///     per_cpu[cpu] += 1;
 /// }
@@ -333,10 +333,10 @@ fn read_cycle_counter() -> u64 {
 ///   that faults is a space with no thread in it, which has nothing to ask. Stated because the
 ///   failure is a fault rather than a value, which is the one thing a caller cannot handle.
 pub fn current_cpu() -> Option<usize> {
-    // SAFETY: the kernel maps a page it owns, read-only, at `current_cpu_protocol::PAGE_VA` into
+    // SAFETY: the kernel maps a page it owns, read-only, at `current_cpu_contract::PAGE_VA` into
     // every address space that a TCB binds, before that thread's first instruction runs. See this
     // function's own BUGS section for the one shape that has no page.
-    let page = unsafe { current_cpu_protocol::CurrentCpuPage::new(current_cpu_protocol::PAGE_VA) };
+    let page = unsafe { current_cpu_contract::CurrentCpuPage::new(current_cpu_contract::PAGE_VA) };
     page.cpu()
 }
 
@@ -353,7 +353,7 @@ pub fn current_cpu() -> Option<usize> {
 /// What needs a capability is the **wall clock**, which is this plus an offset only the clock page
 /// carries. See notes/clock.md.
 pub fn monotonic_nanos() -> u64 {
-    /// Nanoseconds in a second. Spelled here rather than taken from `clock_protocol`, because this
+    /// Nanoseconds in a second. Spelled here rather than taken from `clock_contract`, because this
     /// crate is the syscall runtime and depends on `abi` alone; a runtime that pulled in a wire
     /// contract to name a unit would be the wrong direction for the dependency.
     const NANOS_PER_SEC: u64 = 1_000_000_000;

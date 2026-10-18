@@ -3,7 +3,7 @@
 //!
 //! The peer `components/src/network_time_client.rs` is tested against. It holds `READ` on the
 //! endpoint the client holds `WRITE` on, and it speaks the same socket contract
-//! (`crates/socket_protocol/src/lib.rs`) `net_stack` does, so the client cannot tell it apart from the
+//! (`crates/socket_contract/src/lib.rs`) `net_stack` does, so the client cannot tell it apart from the
 //! real stack.
 //!
 //! # What the substitution is worth, and why it survives being a separate binary
@@ -70,7 +70,7 @@ use network_time_protocol::{Packet, Short, Timestamp, leap, mode};
 // allowed rather than trimmed: the value of compiling the *same file* net_stack does is that the
 // two cannot drift, and a per-consumer subset would throw that away.
 #[allow(dead_code)]
-use socket_protocol::*;
+use socket_contract::*;
 use user_mode_runtime::socket_frame::Frame;
 use user_mode_runtime::{
     Delivered, badge, cap_delete, map_page_frame, receive_request, reply, reply_capability, send,
@@ -119,7 +119,7 @@ const SERVER_TURNAROUND_NANOS: u64 = 1_000;
 
 /// Where this server maps the client's shared frame in its own address space. The client picks its
 /// own, and the two do not have to agree: what they share is the frame's *layout*, which is
-/// `socket_protocol`'s.
+/// `socket_contract`'s.
 const PAGE_FRAME_VA: u64 = address_space_map::pair_page(0x0000_0000_00A0_0000);
 
 // SAFETY: the `OPERATION_ATTACH_PAGE_FRAME` arm below maps one page read/write at PAGE_FRAME_VA, and it is
@@ -255,8 +255,8 @@ fn build_reply(request: &Packet, variant: u64, claimed_nanos: u64, out: &mut [u8
 /// `Query::accept` refuses it, which is the behaviour a test wiring an absurd time wants.
 fn stamp(unix_nanos: u64) -> Option<Timestamp> {
     Timestamp::from_unix(
-        unix_nanos / clock_protocol::NANOS_PER_SEC,
-        (unix_nanos % clock_protocol::NANOS_PER_SEC) as u32,
+        unix_nanos / clock_contract::NANOS_PER_SEC,
+        (unix_nanos % clock_contract::NANOS_PER_SEC) as u32,
     )
 }
 

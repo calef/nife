@@ -142,9 +142,9 @@ fn wire_servers(
 ///
 /// This is what an **installed** system boots through. A machine with a nife disk on it has no
 /// virtio block device at all: the stick is gone, and what is left is the NVMe controller the
-/// installer wrote to. The NVMe data plane already serves `filesystem_protocol::blk` from a
+/// installer wrote to. The NVMe data plane already serves `filesystem_contract::blk` from a
 /// confined process with the same transfer geometry the FS server expects
-/// (`filesystem_protocol::blk::TRANSFER_BLOCKS` pages, multi-block requests included), so the
+/// (`filesystem_contract::blk::TRANSFER_BLOCKS` pages, multi-block requests included), so the
 /// substitution is the endpoint and the shared region and nothing else.
 ///
 /// **The FS server is given the whole disk, not the nife data partition**, and that is a recorded
@@ -190,7 +190,7 @@ fn nvme_disk() -> Option<(RendezvousId, Option<RendezvousId>, u64)> {
 /// server is no longer the only thing that wants "a block device, served over IPC, by a process
 /// that owns the DMA and nothing else". Its two clients (`disk_surveyor`, `disk_partitioner`) only
 /// ever map the first data page and only ever send single-block requests, so they are unmodified
-/// by the region's growth, the same compatibility [`filesystem_protocol::blk::TRANSFER_BLOCKS`] documents.
+/// by the region's growth, the same compatibility [`filesystem_contract::blk::TRANSFER_BLOCKS`] documents.
 pub(in crate::user) fn spawn_block_server(
     blk_image: &'static [u8],
     dev: crate::virtio::BlockDevice,
@@ -343,9 +343,9 @@ pub(super) fn spawn_fs_server(fs_server_image: &'static [u8], cfg: FsServer) {
     crate::sched::spawn(move || {
         // Build the mapping list: the two shared channels, then the extra stack pages. The FS
         // server maps the whole of both, the one party that must for each: it drives every block
-        // the blk channel can carry (up to `filesystem_protocol::blk::TRANSFER_BLOCKS`, milestone 138 step 4)
+        // the blk channel can carry (up to `filesystem_contract::blk::TRANSFER_BLOCKS`, milestone 138 (close the read gap: a 4 KiB request must stop moving 128 KiB) step 4)
         // and serves whatever length a client asks for on the file channel, up to
-        // `filesystem_protocol::fs::TRANSFER_MAX` (step 3). A client maps only what it uses of the file
+        // `filesystem_contract::fs::TRANSFER_MAX` (step 3). A client maps only what it uses of the file
         // channel; nothing else maps the blk channel at all.
         // The mapping list lives in this server slot's static, not on this thread's stack
         // (milestone 599): K windows of `FILE_PAGES` entries took this closure's frame to 6.7 KiB,

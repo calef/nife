@@ -26,14 +26,14 @@
 ///
 /// **The result is the thread's current-CPU page address** (milestone 812, §269 fork 6, the same
 /// ruling), never negative: the page the kernel publishes this thread's core and its allowance
-/// on. A thread configured with a space reads `current_cpu_protocol::PAGE_VA`; one that joins a
-/// process reads its own slot below it (`current_cpu_protocol::thread_page_va`). Zero if the space
+/// on. A thread configured with a space reads `current_cpu_contract::PAGE_VA`; one that joins a
+/// process reads its own slot below it (`current_cpu_contract::thread_page_va`). Zero if the space
 /// could not be given a page.
 ///
 /// **Given a process capability with [`rights::BIND`](super::rights::BIND) instead of an address
 /// space**, the thread joins that process and the capability is not consumed (§269 fork 1, ruling
 /// (b) on #1892): see [`super::process`]. `OutOfMemory` when the process already has
-/// `current_cpu_protocol::THREAD_PAGE_SLOTS` threads.
+/// `current_cpu_contract::THREAD_PAGE_SLOTS` threads.
 pub const CONFIGURE: u64 = 0;
 
 /// `invoke(cap, CAP_INSERT, cap_slot, rights, target)` -> `child_slot`. Copy the capability in

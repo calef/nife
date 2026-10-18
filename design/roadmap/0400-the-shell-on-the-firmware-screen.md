@@ -37,7 +37,7 @@ half; keystrokes stay on the serial line until it lands.
 
 | Piece | Where | What it is |
 |---|---|---|
-| A driver behind the framebuffer contract | `components/src/framebuffer_driver.rs` (name provisional) | serves `graphics_protocol`'s `INFO`/`FLUSH` over a screen the firmware already set up: a flush is a copy of the damage rectangle from the surface (RAM) into the aperture, at the screen's stride and in its byte order |
+| A driver behind the framebuffer contract | `components/src/framebuffer_driver.rs` (name provisional) | serves `graphics_contract`'s `INFO`/`FLUSH` over a screen the firmware already set up: a flush is a copy of the damage rectangle from the surface (RAM) into the aperture, at the screen's stride and in its byte order |
 | The copy's arithmetic, host-tested | `screen_console::Aperture` (name provisional) | the surface clipped to the screen, the span a driver needs mapped, two words that carry it across a spawn, and the copy; five host tests, one doctest |
 | The kernel's wiring | `display_service::start_screen_terminal`, `user::boot_screen_terminal`, `user::run_with_device_run` and `user::DeviceRun` (all provisional) | spawns the driver and `display_terminal`, and grants the progenitor slots 10 and 11 with slot 12 empty |
 | The handover | `console::yield_screen`, `console::reclaim_screen_for_panic` | see below |

@@ -33,7 +33,7 @@ machine_discovery = { version = "0.1.0", path = "../machine_discovery" }
 # The scanout's geometry, in the wide-copy store-count test only: the 924x344 surface and its
 # stride are the framebuffer contract's own numbers, and a test that hardcoded them would keep
 # passing when the contract changed. No build dependency; `Aperture` itself knows no scanout.
-graphics_protocol = { version = "0.1.0", path = "../graphics_protocol" }
+graphics_contract = { version = "0.1.0", path = "../graphics_contract" }
 # The terminal engine's grid bounds, in the coverage test only: the screen terminal's surface is
 # capped at what one `Vt` can lay a grid over, and the test that a 1920x1080 screen is covered
 # whole must use the same cap the kernel does. No build dependency.

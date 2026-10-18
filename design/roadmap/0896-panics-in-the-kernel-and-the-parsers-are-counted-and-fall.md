@@ -55,17 +55,17 @@ Measured over non-test code (the note's scope: no `#[cfg(test)]` items, no `test
 
 Of those 32 crates, 20 have no target under `fuzz/`:
 
-- Disk and image formats: `file_allocation_table`, `manifest_note`, `boot_slot`.
-- Network: `network_time_protocol`, `socket_protocol`, `name_resolution_protocol`.
+- Disk and image formats: `file_allocation_table`, `capability_manifest_note`, `boot_slot`.
+- Network: `network_time_protocol`, `socket_contract`, `domain_name_resolution_contract`.
 - Device-supplied bytes: `machine_discovery` (ACPI tables), `pci`, `usb`,
   `extensible_host_controller_interface`, `e1000e`, `designware_ethernet`,
   `designware_mobile_storage`, `non_volatile_memory_express`, `virtio`.
-- Peer-process contracts: `graphics_protocol` (reached only through `compositor`'s target),
-  `login_protocol`, `credential_protocol`, `supervision_protocol`, `swap_protocol`.
+- Peer-process contracts: `graphics_contract` (reached only through `compositor`'s target),
+  `login_contract`, `credential_contract`, `supervision_protocol`, `hot_swap_contract`.
 
 The 12 with a target are `redoxfs_server`, `nifefs`, `globally_unique_identifier_partition_table`,
 `package_archive`, `elf`, `domain_name_system`, `http_response`, `device_tree_blob`,
-`filesystem_protocol`, `system_log_protocol`, `byte_sink_protocol` and `compositor`.
+`filesystem_contract`, `system_log_contract`, `byte_sink_contract` and `compositor`.
 
 ## The mechanism, and its rung
 

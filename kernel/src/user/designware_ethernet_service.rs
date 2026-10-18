@@ -96,7 +96,7 @@ pub fn start_net_server(image: &'static [u8], listen_grant: u64) -> Result<Wirin
 #[cfg_attr(not(feature = "network_bench"), allow(dead_code))]
 pub fn start_drain(image: &'static [u8], peer: u64) -> Result<(RendezvousId, Wiring), NotStarted> {
     const TEST_TCP_DRAIN: u64 = 7;
-    let mut w = start_net_server(image, socket_protocol::NO_LISTEN_GRANT)?;
+    let mut w = start_net_server(image, socket_contract::NO_LISTEN_GRANT)?;
     let cli = super::virtio_service::spawn_stack_client(
         image,
         TEST_TCP_DRAIN,
@@ -167,7 +167,7 @@ fn spawn_server(image: &'static [u8], listen_grant: u64, found: Found) -> Wiring
         // What each socket is minted from (§255 (each socket is its own capability)); slot 8, the
         // server's own address space, `run_with_own_space` adds once the space exists.
         at(
-            socket_protocol::stack_slots::MINT,
+            socket_contract::stack_slots::MINT,
             rendezvous_cap(stack, Rights::WRITE.union(Rights::GRANT)),
         );
         run_with_own_space(
@@ -179,7 +179,7 @@ fn spawn_server(image: &'static [u8], listen_grant: u64, found: Found) -> Wiring
                 grants: &[rendezvous_cap(report, Rights::WRITE)], // slot 0
                 maps: &maps,
             },
-            socket_protocol::stack_slots::OWN_SPACE,
+            socket_contract::stack_slots::OWN_SPACE,
         )
     })
     .expect("could not spawn net_stack over the JH7110 Ethernet port");

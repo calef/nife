@@ -25,7 +25,7 @@ pub struct BootEndowment {
     /// **The wall clock** (milestone 51's wiring): a `PageFrame` capability with `READ` and nothing
     /// else, granted ahead of the filesystem pair so its slot is the same on every boot, whether or
     /// not a disk was attached, and granted **unconditionally**: a boot with no clock service hands
-    /// us a zeroed page, which reads as `clock_protocol::state::UNKNOWN` and is the honest answer for a
+    /// us a zeroed page, which reads as `clock_contract::state::UNKNOWN` and is the honest answer for a
     /// machine that does not know the time. The progenitor hands it on only to a child whose manifest declares
     /// a clock, and hands on `READ`, so nothing spawned from this prompt can set the time
     /// (DECISIONS §43).
@@ -164,7 +164,7 @@ pub struct BootEndowment {
     pub entropy_ep: u64,
     /// **The machine statistics page** (milestone 126, DECISIONS §225 (`free` sees the machine and your share) part 2): a `PageFrame`
     /// capability with `READ | GRANT` to the frame the kernel keeps its machine-wide counters in
-    /// (`crates/machine_statistics_protocol`). Granted unconditionally, like
+    /// (`crates/machine_statistics_contract`). Granted unconditionally, like
     /// [`config_page`](BootEndowment::config_page), so its slot never moves. [`boot`](crate::boot) hands it to
     /// the boot prompt's shell when [`GRANT_MACHINE_PAGE`](crate::GRANT_MACHINE_PAGE) says the owner allows it, and keeps no
     /// copy; the shell sends it back with the spawn request of a program that declares
@@ -174,7 +174,7 @@ pub struct BootEndowment {
     pub machine_page: u64,
     /// **The kernel's ring** (milestone 342 (the kernel and the `console` server drive one UART
     /// from two address spaces), calef's ruling F): a `READ | GRANT` capability to the run of
-    /// frames the kernel writes its lines into (`system_log_protocol::kernel_ring`). [`boot`](crate::boot) maps
+    /// frames the kernel writes its lines into (`system_log_contract::kernel_ring`). [`boot`](crate::boot) maps
     /// it read-only into the system log service and keeps no copy. Empty on a boot whose kernel
     /// could not allocate it. Name: provisional, milestone 342's lane, 2026-10-03.
     pub kernel_ring: u64,
@@ -264,6 +264,6 @@ pub struct BootEndowment {
 pub struct SecondDirGrant {
     /// One component under the image root, the same shape a `DirGrant`'s `name` already takes.
     pub name: &'static str,
-    /// The `filesystem_protocol::dir` rights the caretaker asks for on its descent.
+    /// The `filesystem_contract::dir` rights the caretaker asks for on its descent.
     pub rights: u64,
 }

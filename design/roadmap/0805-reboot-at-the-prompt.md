@@ -65,7 +65,7 @@ work on radon whatever this milestone builds.
 
 The writable filesystem is RedoxFS behind `redoxfs_server`, not nifefs. nifefs is the read-only
 boot archive. notes/fs-server.md measures RedoxFS as prefix-consistent at every power-cut point.
-Its block cache is write-through, and `filesystem_protocol::fs::SYNC` (op 19) asks the block
+Its block cache is write-through, and `filesystem_contract::fs::SYNC` (op 19) asks the block
 server for a real device flush. Both the virtio and NVMe block servers implement that flush.
 
 Reuse: the reset routes are the tree's own `arch::reboot`, and the kernel is written here by
@@ -204,7 +204,7 @@ Built 2026-10-06 (UTC). Every name below is provisional.
   (`only_reboot_declares_reboot_and_no_image_can`), and `grant_plan::image_can_carry` keeps it off
   every installed image. A manifest note cannot spell it (`manifest_note::encode` refuses), so the
   note's wire format is unchanged.
-- **The sync-only capability.** `filesystem_protocol::fs::BIND_SYNC` binds a client badge so
+- **The sync-only capability.** `filesystem_contract::fs::BIND_SYNC` binds a client badge so
   the file server answers `SYNC` on it and refuses every other verb with `EPERM`
   (`subtree_scope::Binding::SyncOnly`, enforced in `redoxfs_server`'s dispatch). `reboot`
   declares `grant_plan::Manifest::sync`; the spawn service binds a window's badge for that job,

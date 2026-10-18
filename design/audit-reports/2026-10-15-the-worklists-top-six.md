@@ -77,7 +77,7 @@ re-measure; the numbers do not, and they are the reader's.
 Its summary sentence, in bold, said nothing found "is" a live privilege escalation "on `main`
 today". It holds its own day now (2026-08-04), with the four security audits since named as the
 current word. The same note's premise item said the inbound socket half (`LISTEN`/`ACCEPT`) "is
-not on `main`"; it has since landed in `crates/socket_protocol`, and a reader auditing sockets
+not on `main`"; it has since landed in `crates/socket_contract`, and a reader auditing sockets
 today would have skipped half the contract on this note's word.
 
 ### 4. FIXED: a built milestone still argued for as a case

@@ -150,7 +150,7 @@ pub(super) struct SpawnEndpoint {
     /// The label of the job each resolver badge is granted to: badge `i + 1` for entry `i`, so a
     /// badge names its entry and no two live jobs share one. Forgotten at the job's reap, which is
     /// when nothing holds the badge any more.
-    resolving: [Option<u64>; name_resolution_protocol::GRANTS_MAX],
+    resolving: [Option<u64>; domain_name_resolution_contract::GRANTS_MAX],
 }
 
 /// How many first messages [`SpawnEndpoint`] keeps from senders it is not serving.
@@ -173,7 +173,7 @@ impl SpawnEndpoint {
             replies: [None; INSTALLER_HOLDERS],
             next_label: 1,
             resolver,
-            resolving: [None; name_resolution_protocol::GRANTS_MAX],
+            resolving: [None; domain_name_resolution_contract::GRANTS_MAX],
         }
     }
 
@@ -188,7 +188,7 @@ impl SpawnEndpoint {
         let ep = self.resolver?;
         let entry = self.resolving.iter().position(Option::is_none)?;
         let badge = entry as u32 + 1;
-        for (w0, w1) in name_resolution_protocol::grant_messages(badge, zone.as_bytes())? {
+        for (w0, w1) in domain_name_resolution_contract::grant_messages(badge, zone.as_bytes())? {
             send(ep, w0, w1, 0);
         }
         self.resolving[entry] = Some(label);
@@ -227,7 +227,7 @@ impl SpawnEndpoint {
         ) else {
             return;
         };
-        if let Some((w0, w1)) = name_resolution_protocol::forget_message(entry as u32 + 1) {
+        if let Some((w0, w1)) = domain_name_resolution_contract::forget_message(entry as u32 + 1) {
             send(ep, w0, w1, 0);
         }
         self.resolving[entry] = None;
@@ -609,7 +609,7 @@ pub(super) fn vouched(bytes: &[u8], fs: Option<Fs>, own_ut: u64, fs_mapped: &mut
 }
 
 /// **The manifest a file's bytes are endowed with, or `None` to refuse them** (milestone 597,
-/// provisional). Their note is read with `elf::Elf::note` and decoded by `manifest_note`; a note
+/// provisional). Their note is read with `elf::Elf::note` and decoded by `capability_manifest_note`; a note
 /// that is there and unreadable refuses the bytes, since running them as if they carried none would
 /// endow a program with a manifest it did not declare. `grant_plan::image_manifest` then applies
 /// the vouch (the shell's `caps` calls the same function to preview it), and the request's own
@@ -621,17 +621,23 @@ pub(super) fn endowed_image(
     mem_pages: u64,
     words: bool,
 ) -> Option<grant_plan::Manifest> {
-    let declared = match elf.note(manifest_note::OWNER, manifest_note::MANIFEST) {
+    let declared = match elf.note(
+        capability_manifest_note::OWNER,
+        capability_manifest_note::MANIFEST,
+    ) {
         Ok(None) => None,
-        Ok(Some(d)) => Some(manifest_note::decode(d).ok()?),
+        Ok(Some(d)) => Some(capability_manifest_note::decode(d).ok()?),
         Err(_) => return None,
     };
     // **A verb table is not honored for installed bytes yet** (milestone 809 (the package client
-    // becomes a program), `manifest_note::VERBS`): endowing from the manifest alone would hand
+    // becomes a program), `capability_manifest_note::VERBS`): endowing from the manifest alone would hand
     // every line every verb's grants, so bytes carrying one are refused instead. The image's own
     // `jig` narrows by `grant_plan`'s table, and nothing installed carries the note.
     if !matches!(
-        elf.note(manifest_note::OWNER, manifest_note::VERBS),
+        elf.note(
+            capability_manifest_note::OWNER,
+            capability_manifest_note::VERBS
+        ),
         Ok(None)
     ) {
         return None;

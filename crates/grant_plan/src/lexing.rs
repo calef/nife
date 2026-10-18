@@ -5,7 +5,7 @@
 
 use super::*;
 
-/// The longest file name a per-file grant can carry. Duplicated from `filesystem_protocol::grant::MAX_NAME`
+/// The longest file name a per-file grant can carry. Duplicated from `filesystem_contract::grant::MAX_NAME`
 /// rather than imported, because `grant_plan` is the shell's parser and must not depend on the filesystem
 /// contract to check a command line; the pair is pinned by a test in each crate so a change to one
 /// without the other fails on the host in milliseconds.

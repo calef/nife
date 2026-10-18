@@ -29,7 +29,7 @@ in the report rather than claimed:
 
 - **Milestone numbers.** Sonnet's commits cite milestones 158 to 184; the earlier models' cite lower
   numbers. Stripping them mutilates the message that the rubric is partly scoring.
-- Content that only exists after a date. An x86_64 file, `CapabilityTable`, `login_protocol`. The
+- Content that only exists after a date. An x86_64 file, `CapabilityTable`, `login_contract`. The
   post-rename vocabulary alone identifies the window.
 - The window is the model. Because the two are perfectly confounded, any leak of the date is a
   leak of the attribution. Blinding cannot do better than the confound allows.

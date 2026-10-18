@@ -70,7 +70,7 @@ retired rather than widened.
 This is Unix's `getty` and `login` split (from memory): the authenticator never owns the line.
 Liveness falls out, because the greeter receives the shell's death on the fault endpoint (§26 (the
 fault endpoint)), which fixes `login`'s stuck-terminal bug. The cost is one program and a
-`login_protocol` change that drops the terminal from the reply.
+`login_contract` change that drops the terminal from the reply.
 
 ### Fork 2: Which programs a user may run, and how a user gets more
 

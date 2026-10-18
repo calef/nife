@@ -150,7 +150,7 @@ const IMAGE_BIT: u64 = 1 << 39;
 ///   exactly as an image's do (`IMAGE_BIT`: [`image_pages`] `SEND_CAP`s, each narrowed to `READ`).
 ///   The progenitor copies them before it hashes, for the image path's reason.
 /// - For [`Activation::Remove`], one data message follows, the program's name packed the way a
-///   directory grant packs one (`filesystem_protocol::grant::pack_name`: two words, then the
+///   directory grant packs one (`filesystem_contract::grant::pack_name`: two words, then the
 ///   length). Opaque here for [`GRANT_WORDS`]'s reason.
 /// - For [`Activation::Rollback`], nothing follows.
 /// - For [`Activation::Vouch`], word 0 is the executable's length, its frames follow as an
@@ -187,12 +187,12 @@ const RUN_UNVOUCHED_BIT: u64 = 1 << 41;
 
 /// **The line's argv follows as one frame** (milestone 205 (how a foreign program is told what to
 /// do), DECISIONS §170 (how a foreign program is told what to do)). The shell assembles the words it was typed into one page in
-/// `argument_protocol`'s layout and `SEND_CAP`s it narrowed to `READ`, after the directory grant's
+/// `program_argument_contract`'s layout and `SEND_CAP`s it narrowed to `READ`, after the directory grant's
 /// data and any image's frames, and before every other delegated capability.
 ///
 /// **The progenitor copies it**, for [`IMAGE_BIT`]'s reason: the shell keeps a mapping of the frame.
 /// It copies into a page carved from the child's own region, so the child's reclaim frees it, and
-/// places that at `std_runtime_protocol::ARGS_SLOT` mapped read-only at `ARGS_PAGE`. The bytes are
+/// places that at `std_runtime_contract::ARGS_SLOT` mapped read-only at `ARGS_PAGE`. The bytes are
 /// not read on the way, because §170 ruled that they carry no authority: what a word may reach is
 /// the directory grant's business and nothing on this page can widen it.
 ///
@@ -292,7 +292,7 @@ const _: () = assert!(SHELL_GPU_SLOT + 6 < RUN_UNVOUCHED_SLOT);
 /// **The directory grant is a set of names, and the set follows as one frame** (milestone 205 (how
 /// a foreign program is told what to do), §170 clauses 2 to 5). Meaningful with [`Wiring::dir`]: the
 /// progenitor builds `fs_nameset_caretaker` rather than `fs_subtree_caretaker` for the grant, and
-/// maps it the set, `filesystem_protocol::nameset`'s encoding, read-only. The shell sends the frame
+/// maps it the set, `filesystem_contract::nameset`'s encoding, read-only. The shell sends the frame
 /// `READ`-only after the argv's, before every other delegated capability; the progenitor copies it,
 /// for [`IMAGE_BIT`]'s reason, into a page from the job's region.
 ///
@@ -548,12 +548,12 @@ pub const IMAGE_PAGE: u64 = 4096;
 /// **The two messages a [`Wiring::dir`] request is followed by**, in order, each three words:
 ///
 /// 1. **the caretaker's `START` words**, which the progenitor passes to `fs_subtree_caretaker` verbatim: the
-///    granted directory's name and the `filesystem_protocol::dir` rights the subtree capability is to carry;
+///    granted directory's name and the `filesystem_contract::dir` rights the subtree capability is to carry;
 /// 2. **the confined program's `START` words**, which the progenitor passes to the program verbatim: for `rm`,
 ///    the operand's name and the options that were typed.
 ///
-/// **This module does not decode either, deliberately.** They are `filesystem_protocol::grant`'s packing, and
-/// `grant_plan` has no non-dev dependency on `filesystem_protocol` on purpose (its own manifest says why: the
+/// **This module does not decode either, deliberately.** They are `filesystem_contract::grant`'s packing, and
+/// `grant_plan` has no non-dev dependency on `filesystem_contract` on purpose (its own manifest says why: the
 /// shell must be able to check a command line without linking the filesystem contract). Passing them
 /// through as opaque triples keeps that true, and it means a change to how a grant is packed is a
 /// change in one crate rather than in the wire this one owns. The shell packs them; the progenitor forwards

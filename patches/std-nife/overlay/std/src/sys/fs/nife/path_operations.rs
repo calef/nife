@@ -163,7 +163,7 @@ pub fn readdir(p: &Path) -> io::Result<ReadDir> {
 }
 
 /// **Remove a name** (`UNLINK`, milestone 64). Not revocation: a handle already open on the file
-/// keeps reading, exactly as POSIX promises, and `filesystem_protocol::fs::UNLINK` records why the contract
+/// keeps reading, exactly as POSIX promises, and `filesystem_contract::fs::UNLINK` records why the contract
 /// draws that line. A directory is refused (`IsADirectory`); [`rmdir`] is its verb.
 pub fn unlink(p: &Path) -> io::Result<()> {
     if !is_reachable() {
@@ -193,7 +193,7 @@ pub fn rmdir(p: &Path) -> io::Result<()> {
 
 /// **Move a name** (`RENAME`, milestone 64), and the reason this one matters out of proportion to
 /// how often crates name it: write-a-temp-then-rename is how every careful program replaces a file,
-/// and `filesystem_protocol::fs::RENAME` is both concurrency-atomic and crash-atomic, which is what that idiom
+/// and `filesystem_contract::fs::RENAME` is both concurrency-atomic and crash-atomic, which is what that idiom
 /// actually needs.
 ///
 /// The two names travel in the shared page back to back, source first, because one request word

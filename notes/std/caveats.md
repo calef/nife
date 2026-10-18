@@ -35,7 +35,7 @@ The records this file cites by number:
   leaves the process.
 
   `TZ`, `LANG` and `TERM` are seeded from a grant (milestone 47's environment-variable fork,
-  DECISIONS §111, `environment_protocol`). A process granted an inert-configuration page
+  DECISIONS §111, `environment_contract`). A process granted an inert-configuration page
   (`rt::CONFIG_SLOT`, a `PageFrame` with `READ`, the same rights-ladder shape as the clock) has those
   three keys in its table from the first line of `main` onward. `pal::nife::init` reads them before
   the program's own code runs. A process granted no such page is seeded with nothing. This is the
@@ -144,7 +144,7 @@ The records this file cites by number:
   win. `SystemTime::now()` has no error channel, so the only loud refusal available is a panic, and
   std has no way to represent "I do not know", which means a program cannot ask whether it *can*
   ask. The `Unsupported` shape `fs` and `net` use is not available here. Anything that needs to
-  check first reads `clock_protocol::state` off the page directly, which is what a `no_std`
+  check first reads `clock_contract::state` off the page directly, which is what a `no_std`
   component does. The alternative considered and rejected was returning a frozen `UNIX_EPOCH`, which
   is still reporting 1970 and is exactly the confusion §42 forbids.
 - `std::random` is a granted capability, and refuses loudly without it (milestone 56, §44). It used

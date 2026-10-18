@@ -68,7 +68,7 @@ use children::*;
 use client_windows::*;
 pub use endowment::{BootEndowment, SecondDirGrant};
 use fault::*;
-use filesystem_protocol::{dir, fs as fs_operation};
+use filesystem_contract::{dir, fs as fs_operation};
 use grant_plan::job_windows::{ReapsDue, Windows};
 use grant_plan::{Prog, spawnproto};
 use image_request::*;

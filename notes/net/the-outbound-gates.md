@@ -50,7 +50,7 @@ whose slirp flow has not yet cleared makes the SYN go unanswered, and net_stack 
 bounded connect poll forever. Bisection confirms it: a fresh id connects, a reused id hangs.
 
 So net_stack does what any real stack does: it allocates ephemeral local ports from a private range
-with a rotating allocator independent of the socket id (`socket_protocol::ephemeral`).
+with a rotating allocator independent of the socket id (`socket_contract::ephemeral`).
 Each open advances the cursor, so a just-closed
 connection's port is not handed out again until the whole range has cycled. A port a live socket
 still holds is skipped outright. Socket-id reuse is then safe: the reopened socket gets a new local
@@ -66,7 +66,7 @@ resolver runs on riscv64 and aarch64. Milestone 801 (packages over the internet)
 at a counter-derived point instead, which made an overlap rare but not impossible: CI hit it on
 #1964 (2026-10-12, `thead-c906`, the `std_resolve` lookup) and in run 38357922842 (2026-10-13,
 riscv64, `loop.nife.test`). The cursor now follows the boot clock, so a later stack starts past an
-earlier one's ports. `socket_protocol::ephemeral` has the bound and its BUGS.
+earlier one's ports. `socket_contract::ephemeral` has the bound and its BUGS.
 
 The regression is `a_reopened_socket_id_connects_again_over_tcp` (both ISAs): open a TCP socket,
 connect to the guestfwd echo peer, close, reopen the *same* id, and connect again; the client reports

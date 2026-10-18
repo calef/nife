@@ -11,7 +11,7 @@ Removed in the same pass, 2026-08-30:
 - `crates/ntlm` entirely;
 - the NTLM path through `crates/credentialer`: `Record`'s `nt` field and `has_ntlm` flag,
   `derive_ntlm`, `put_ntlm`, `ntlm_proof`, and the `NTLM_CHALLENGE_LEN`/`NTLM_KEY_LEN` re-exports;
-- the `provision::PUT_NTLM` and `verify::NTLM_PROOF` opcodes in `crates/credential_protocol`, with
+- the `provision::PUT_NTLM` and `verify::NTLM_PROOF` opcodes in `crates/credential_contract`, with
   their request accessors;
 - the four dependency crates that existed only underneath them: `md4`, `md-5`, `hmac` and `digest`.
 
@@ -50,7 +50,7 @@ Both were verified in the tree rather than assumed.
 
 ## One casualty worth naming
 
-It was a good piece of writing. `credential_protocol`'s module docs argued "an opcode is not an
+It was a good piece of writing. `credential_contract`'s module docs argued "an opcode is not an
 authority" using the *collision* between `provision::SEAL` and `verify::NTLM_PROOF` at opcode 2 as
 its worked example. They recorded that milestone 65 (a secrets service) demonstrated the principle by
 breaking a kernel test when the collision appeared. The principle is unchanged and the example is

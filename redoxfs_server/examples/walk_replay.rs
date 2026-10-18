@@ -12,8 +12,8 @@
 
 use std::time::Instant;
 
+use filesystem_contract::dir;
 use filesystem_fixture::walk as tree;
-use filesystem_protocol::dir;
 use redoxfs::{DiskMemory, FileSystem};
 use redoxfs_server::walk_model::{self, Counting};
 use redoxfs_server::{CachedDisk, NameCopy, Server};
@@ -31,7 +31,7 @@ fn main() {
     let disk = DiskMemory::new(32 * 1024 * 1024);
     let fs = FileSystem::create(disk, None, 0, 0).expect("create");
     let mut srv = Server::open(fs.disk).expect("open");
-    walk_model::stage(&mut srv, filesystem_protocol::fs::ROOT as u32).expect("stage");
+    walk_model::stage(&mut srv, filesystem_contract::fs::ROOT as u32).expect("stage");
     let disk = srv.into_disk();
     let mut srv = Server::open(CachedDisk::new(
         Counting::new(disk),
