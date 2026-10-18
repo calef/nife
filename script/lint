@@ -2939,6 +2939,7 @@ fi
 "$(dirname "$0")/names" --check
 python3 helpers/name_rules.py --selftest
 python3 helpers/name_crossings.py --selftest
+python3 helpers/name_ruled.py --selftest
 
 echo "naming: no -d names, no daemons, contract crates spelled one way,"
 echo "        no #[path] module shared by two binaries, docs lowercase and hyphenated,"

@@ -108,8 +108,9 @@
 #   script/names <name>       one name: its provenance, or the entry that refused it
 #   script/names --check      every surface carries a block; non-zero on a problem (script/lint)
 #
-# **The gate is presence, never `ratified`.** Nothing here fails a build because a name is waiting on
-# calef, and it must stay that way: a lint that demanded the queue be drained would block every
+# **The gate is presence, never `ratified`.** The one exception is a name calef has already ruled:
+# `--check` fails it after 45 days unrenamed (helpers/name_ruled.py). Nothing else fails a build
+# because a name is waiting on calef, and it must stay that way: a lint that demanded the queue be drained would block every
 # unrelated merge behind a review nobody can hurry, which is the wall this milestone exists to avoid
 # building. The worklist is how the queue gets worked; the gate only insists that a name says which
 # state it is in. There are **four** states rather than the three listed above:
@@ -156,6 +157,7 @@ sys.path.insert(0, os.path.join(root, "helpers"))
 import name_provenance                                                      # noqa: E402
 import name_rules                                                           # noqa: E402
 import name_crossings                                                       # noqa: E402
+import name_ruled                                                           # noqa: E402
 
 # The three surfaces that are a directory listing, each with the file that holds its header. The
 # fourth kind, `package`, is discovered instead: see `packages()` below, which is what covers
@@ -584,6 +586,16 @@ unrecorded = [r for r in records if r["status"] == "unrecorded"]
 provisional = [r for r in records if r["status"] == "provisional"]
 refusals = [(bad, r) for r in records for bad in r["refused"]]
 
+# **A name calef has ruled and nobody has renamed is not a question for him** (helpers/name_ruled.py).
+# It stays in `provisional` (the block says so until the rename lands) and in the worklist count;
+# `--unratified` prints it in its own section, and the check below fails one left past the limit.
+ruled_owed = name_ruled.owed(provisional)
+try:
+    _rulings = open(os.path.join(root, name_rules.RULES_DOC)).read()
+except OSError:
+    _rulings = ""
+problems.extend(name_ruled.overdue(records, name_ruled.today_utc(), _rulings))
+
 # **The worklist is every name that is not ratified, and it is computed once.** Every line below that
 # says how much still wants an architect reads THIS list, because until 2026-09-19 three lines
 # computed it
@@ -662,6 +674,8 @@ if mode == "--check":
           f"({', '.join(f'{len(by_kind.get(k, []))} {PLURAL.get(k, k + chr(115))}' for k in KINDS)})")
     print(f"names: {len(ratified)} ratified, {len(provisional)} provisional, {len(recorded)} "
           f"recorded, {len(unrecorded)} unrecorded, {len(refusals)} refusals recorded beside them")
+    print(f"names: {len(ruled_owed)} of the provisional are ruled with the rename owed "
+          f"(fails past {name_ruled.MAX_AGE_DAYS} days)")
     print(f"names: {len(worklist)} still want an architect "
           f"(script/names --unratified), which is a worklist and not a failure")
     for bad in contradictions:
@@ -729,14 +743,27 @@ if mode == "--unratified":
             return 0, ""
         return (0, r["crossing"][0]) if r["crossing"] else (1, "")
 
-    todo = sorted(worklist,
+    owed_ids = {id(r) for r in ruled_owed}
+    todo = sorted((r for r in worklist if id(r) not in owed_ids),
                   key=lambda r: (EXPOSURE[r["kind"]], group(r), KINDS.index(r["kind"]),
                                  URGENCY[r["status"]],
                                  r["path"] if r["kind"] == "document" else r["name"]))
-    if not todo:
+    if not worklist:
         print("every name in the tree is ratified")
         sys.exit(0)
-    print(f"UNRATIFIED ({len(todo)} of {len(records)}), in the order worth working through\n")
+    print(f"UNRATIFIED ({len(worklist)} of {len(records)}), in the order worth working through\n")
+    if ruled_owed:
+        today = name_ruled.today_utc()
+        print(f"RULED, RENAME OWED ({len(ruled_owed)}): calef has ruled these, so do not ask him "
+              f"again; perform the rename.")
+        print(f"The check fails one left past {name_ruled.MAX_AGE_DAYS} days (design/naming.md).\n")
+        for r in sorted(ruled_owed, key=lambda r: (r["ruled_on"], r["name"])):
+            print(f"  {r['kind']:<8} {r['name']:<28} -> {r['ruled_to']:<28} ruled {r['ruled_on']} "
+                  f"({name_ruled.age_days(r['ruled_on'], today)} days)")
+        for r in name_ruled.unparsed(provisional):
+            print(f"  NOT PARSED: {r['kind']} {r['name']} says \"and ruled\" in a shape "
+                  f"helpers/name_ruled.py cannot read; it is listed below as plain provisional")
+        print()
     print("Exposure first: a program is typed at the prompt, a crate is what a newcomer greps,")
     print("an item or module is read in a `use` line (one another package reaches first), a")
     print("directory or document is what a reader")
@@ -771,7 +798,8 @@ if mode == "--unratified":
           f"{sum(r['kind'] == 'module' for r in cross)} modules), {len(inner) - len(cross)} are "
           f"internal. Crossing names are reviewed first (calef, 2026-10-17); internal ones "
           f"still need ratifying.")
-    print(f"{len(provisional)} provisional (the author expects a change), "
+    print(f"{len(ruled_owed)} ruled, rename owed (calef has answered), "
+          f"{len(provisional) - len(ruled_owed)} provisional (the author expects a change), "
           f"{len(unrecorded)} unrecorded (research, then a ruling), "
           f"{len(recorded)} recorded (a ruling only).")
     print("script/names <name> prints what the history does and does not say about one of them.")

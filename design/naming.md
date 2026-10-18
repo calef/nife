@@ -208,7 +208,9 @@ script/names --check       the gate; script/lint runs it
 The gate checks presence and form, and never keys on `ratified`, so an unratified name never fails
 a build.
 
-The order of `--unratified` is ruled in [convention-rulings.md](naming/convention-rulings.md).
+The order of `--unratified` is ruled in [convention-rulings.md](naming/convention-rulings.md). That
+page also holds the one gate that keys on a ruling: a name calef ruled and nobody renamed fails
+`--check` after 45 days.
 
 A rule calef ratified for a class of names is recorded with his words in
 [convention-rulings.md](naming/convention-rulings.md) (2026-10-17). `script/names` counts every name
