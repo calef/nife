@@ -144,7 +144,6 @@ Each sets a test that reaches past the word. The arguments are in
 | The `login` stem stays | ratified 2026-09-15 for the whole family |
 | The casing of `nife` | lowercase everywhere, prose included |
 | `cpu` is the scheduling unit; `core` is the physical core | `cpu` is what the scheduler runs a thread on; a GPU is named `gpu`, never `cpu` (2026-10-03) |
-| nife's wire-contract crates end in `_contract` | a standard keeps its own word (`network_time_protocol`) |
 
 ## Where a name's provenance lives
 
