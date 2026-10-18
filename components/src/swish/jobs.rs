@@ -85,8 +85,12 @@ fn watch_to_the_end(h: Held) {
     watch(h.jf, h.job_ut);
     // Account for every ^C up to now, so the job's interrupts do not leak into the next one.
     CONSUMED.store(intr_count(), core::sync::atomic::Ordering::Relaxed);
-    // Drop our caps. If the job was reclaimed, the untyped cap is already stale; cap_delete just
-    // frees the slot.
+    release(h);
+}
+
+/// Give back the slots this shell held for a job. If the job was reclaimed, the region's slot is
+/// already stale and deleting it only frees the slot.
+fn release(h: Held) {
     cap_delete(h.job_fr);
     cap_delete(h.job_ut);
 }
@@ -485,8 +489,7 @@ fn spawn_background(jobs: &mut Jobs, e: Endowment) {
 /// Reclaim a finished job's region and give back its slots.
 fn collect(h: Held) -> bool {
     let ok = reclaim(h.job_ut);
-    cap_delete(h.job_fr);
-    cap_delete(h.job_ut);
+    release(h);
     ok
 }
 
