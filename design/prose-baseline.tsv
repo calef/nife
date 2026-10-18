@@ -11,16 +11,6 @@
 # two counts). Median and bold are not asked of documents under 200 words.
 # measure: 3
 path	words	median	longest	bold_lead	bold_inline
-design/decisions/0160-what-a-subshell-copies.md	-	-	64	-	-
-design/decisions/0161-what-counts-as-running-vaultwarden.md	-	-	42	-	-
-design/decisions/0162-giving-up-a-mapping.md	-	-	50	-	-
-design/decisions/0163-where-a-device-fault-is-delivered.md	-	-	45	-	-
-design/decisions/0164-resolving-a-tid-a-supervisor-holds.md	-	-	46	-	-
-design/decisions/0165-where-a-stored-secret-comes-from.md	-	-	43	-	-
-design/decisions/0166-the-rasteriser-and-how-many-faces.md	-	-	51	-	-
-design/decisions/0167-what-a-profiling-session-may-name.md	-	-	49	-	-
-design/decisions/0168-where-a-rotation-verb-lives.md	-	-	42	-	-
-design/decisions/0169-whether-a-clipboard-exists.md	-	21.5	50	-	-
 design/decisions/0171-where-a-program-image-starts.md	-	-	42	-	-
 design/decisions/0172-credential-endpoint-per-resource.md	-	-	44	-	-
 design/decisions/0173-narrowing-the-namespace-root.md	-	-	42	-	-

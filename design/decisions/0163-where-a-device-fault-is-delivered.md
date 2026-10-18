@@ -24,10 +24,12 @@ named here only so the decision is not read as gating it.
 ## The ruling, 2026-10-05 UTC
 
 calef ruled in one word: **"B1"**. On an IOMMU fault, the kernel faults the driver process. Its
-supervisor receives the existing death message, `EVENT_FAULT` (`crates/abi/src/lib.rs:984`), with
-`addr` set to the faulting DMA address and the driver's label in argument register 5 (§148 (a supervisor restarts by asking, and resolves by asking the kernel), as amended 2026-10-04; #1659). That label is milestone 105 (the two forks named and left)'s. There is no new event code and no wire
-change. It mirrors §26 (the fault endpoint: thread death becomes a message a supervisor holds): a
-thread whose message is sent never runs again.
+supervisor receives the existing death message, `EVENT_FAULT` (`crates/abi/src/lib.rs:984`). The
+message's `addr` is set to the faulting DMA address, and the driver's label is in argument
+register 5 (§148 (a supervisor restarts by asking, and resolves by asking the kernel), as amended
+2026-10-04; #1659). That label is milestone 105 (the two forks named and left)'s. There is no new
+event code and no wire change. It mirrors §26 (the fault endpoint: thread death becomes a message a
+supervisor holds): a thread whose message is sent never runs again.
 
 **Widened the same day (2026-10-05 UTC), calef answering "Yes" to "B1 plus quarantine at the IOMMU,
 written as part of the ruling":** besides faulting the driver, the kernel switches that device's
@@ -49,24 +51,24 @@ are aarch64, riscv64, and x86_64).
 
 ## Whether the premise is true, measured 2026-09-19, rechecked 2026-10-05
 
-It is. Every call site of `crate::iommu::take_fault` outside the driver definitions is a test:
-`kernel/src/virtio.rs:1049,1595,1603` (the DMA-escape test) and
-`system_tests/src/user/display_tests.rs:196,219,247` (milestone 29 (a display terminal: framebuffer, virtio-gpu, and a foreign component), framebuffer work; the file
-moved out of `kernel/src/user/` when the system tests left the kernel crate). The aarch64 and
-riscv64 drivers say so in their own comments. *"take_fault (the confinement test); no production
-fault handler yet."* There are three drivers, not two: x86_64 now has VT-d
-(`kernel/src/arch/x86_64/iommu.rs`), and VT-d and riscv-iommu-pci signal faults by message-signaled
-interrupt (MSI), as the xHCI driver already does. Today no driver registers a fault interrupt,
-so a confined device that faults during an ordinary boot reports to nobody, and the kernel discards
-its own evidence that hardware confinement fired.
+It is. Every call site of `crate::iommu::take_fault` outside the driver definitions is a test. The
+sites are `kernel/src/virtio.rs:1049,1595,1603` (the DMA-escape test) and
+`system_tests/src/user/display_tests.rs:196,219,247` (milestone 29 (a display terminal: framebuffer,
+virtio-gpu, and a foreign component), framebuffer work). That file moved out of `kernel/src/user/`
+when the system tests left the kernel crate. The aarch64 and riscv64 drivers say so in their own
+comments. *"take_fault (the confinement test); no production fault handler yet."* There are three
+drivers, not two: x86_64 now has VT-d (`kernel/src/arch/x86_64/iommu.rs`), and VT-d and
+riscv-iommu-pci signal faults by message-signaled interrupt (MSI), as the xHCI driver already does.
+Today no driver registers a fault interrupt, so a confined device that faults during an ordinary
+boot reports to nobody, and the kernel discards its own evidence that hardware confinement fired.
 
 The overflow flag is partly done. x86_64 already clears its flag in `take_fault`
 (`kernel/src/arch/x86_64/iommu.rs:918-924`). aarch64 and riscv64 do not, which is milestone 102's
 small half.
 
 Three documents already say it is owed, which is the argument that this is a gap rather than a
-possibility: `notes/iommu.md`'s honest limits, [§20](0020-iommu-dma-isolation.md) (IOMMU-backed DMA
-isolation)'s own limits list, and `notes/framebuffer-contract.md` mirrored into
+possibility. They are `notes/iommu.md`'s honest limits, [§20](0020-iommu-dma-isolation.md)
+(IOMMU-backed DMA isolation)'s own limits list, and `notes/framebuffer-contract.md` mirrored into
 [§29](0029-framebuffer-grant.md) (the framebuffer is a bigger grant, not an exemption).
 
 ## What this tree already does in the analogous case
