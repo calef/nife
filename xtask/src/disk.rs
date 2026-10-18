@@ -1052,7 +1052,7 @@ pub(crate) fn nvme_disk_path() -> String {
         .to_string()
 }
 
-/// Where swish-check's NVMe disk is written (milestone 834): its own file rather than
+/// Where swish-check's NVMe disk is written (milestone 834 (ioping on nife and Linux)): its own file rather than
 /// [`nvme_disk_path`], so a suite leg and a swish-check leg in one checkout do not share a disk.
 pub(crate) fn swish_check_nvme_path() -> String {
     workspace_root()

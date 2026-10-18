@@ -783,7 +783,7 @@ fn a_designation_becomes_one_grant_at_the_current_directory() {
     );
 }
 
-/// **Under a mount point, the words' grant is in the mounted tree** (milestone 834): the second
+/// **Under a mount point, the words' grant is in the mounted tree** (milestone 834 (ioping on nife and Linux)): the second
 /// tree, at the position inside it, as every other grant there records it. It was the first tree
 /// at the mount-inclusive path, so the progenitor would have descended into a first-tree
 /// directory named after the mount point.

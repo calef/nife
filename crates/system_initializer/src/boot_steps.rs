@@ -1270,7 +1270,7 @@ pub(super) fn finish_shell_endowment(
     // session: the prompt asks for a launch and cannot hand a device to anything. They stay in the
     // boot endowment's own slots, read from [`GraphicalTerminalCaps`]; [`graphical_terminal_grants`]
     // already deleted whatever no session can be built from.
-    // **The second mounted tree** (milestone 834): the disk tree's endpoint, `WRITE` and no
+    // **The second mounted tree** (milestone 834 (ioping on nife and Linux)): the disk tree's endpoint, `WRITE` and no
     // `GRANT`, at the named slot the shell probes. Unbadged, so the disk tree stages the shell's
     // requests in its window 0, which the kernel mapped onto the first file service's window 0:
     // the frame the shell already maps at [`SH_FS_VA`]. Sound for the reason the two-tree witness

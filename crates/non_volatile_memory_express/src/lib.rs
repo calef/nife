@@ -519,7 +519,7 @@ impl IdentifyNamespace {
 /// the disk driver rather than as a diagnosis.
 pub const MAX_DSTRD: u32 = 8;
 
-/// **How many transfer windows the EL0 server keeps, one per client** (milestone 834; calef ruled
+/// **How many transfer windows the EL0 server keeps, one per client** (milestone 834 (ioping on nife and Linux); calef ruled
 /// "Per-client window" on nifeos/nife#2371, 2026-10-18 23:06 UTC). Each window is
 /// `filesystem_contract::blk::TRANSFER_BLOCKS` pages of the DMA region, and the server stages a
 /// request in window `badge`, the badge on the endpoint capability the client called

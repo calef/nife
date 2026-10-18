@@ -85,7 +85,7 @@ pub(super) struct Channels {
     /// holds nothing it could hand a caretaker; the progenitor is the only process here that can build one,
     /// which is what made `rm` a refusal at the prompt for six weeks.
     pub(super) fs: Option<Fs>,
-    /// **The second mounted tree's service and its client-window pool** (milestone 834), or `None`
+    /// **The second mounted tree's service and its client-window pool** (milestone 834 (ioping on nife and Linux)), or `None`
     /// on a boot without one. [`fs`](Channels::fs)'s shape and reason: a directory grant the shell
     /// names through `/disk` is built from this, badged per job
     /// (`grant_plan::spawnproto::in_mounted_tree`).

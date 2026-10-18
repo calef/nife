@@ -265,7 +265,7 @@ pub(in crate::swish_check) const SWISH_CHECK_AFTER_REBOOT: &[Line] = &[
         ],
     ),
     line(0, "cd /", &[]),
-    // **The same program, timing the disk rather than a file server's memory** (milestone 834).
+    // **The same program, timing the disk rather than a file server's memory** (milestone 834 (ioping on nife and Linux)).
     // `/disk` is the second mounted tree, the disk tree: the whole NVMe namespace as one
     // read-only file, `n1`, served with no cache, so every request reaches the controller.
     // `-o 1m -S 4m` is the range Linux's side of the bench names by flag, scaled to this 8 MiB

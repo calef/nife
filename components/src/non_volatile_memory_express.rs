@@ -302,7 +302,7 @@ pub extern "C" fn _start(arg0: u64, arg1: u64, arg2: u64) -> ! {
 /// four verbs the virtio block server answers, so the FS server and the disk tools cannot tell
 /// which kind of disk is underneath.
 ///
-/// **A request stages in the window its badge names** (milestone 834). Each client maps only its
+/// **A request stages in the window its badge names** (milestone 834 (ioping on nife and Linux)). Each client maps only its
 /// own window (`kernel/src/user/non_volatile_memory_express_service.rs`), and this server answers
 /// one request at a time, so two clients staging at once touch different pages. A badge no client
 /// was given is refused before anything is staged.

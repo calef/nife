@@ -61,7 +61,7 @@ pub(super) static HOLDS_CONFIG: core::sync::atomic::AtomicBool =
     core::sync::atomic::AtomicBool::new(false);
 
 /// **Whether this shell holds a second mounted tree** ([`spawnproto::MOUNTED_TREE_SLOT`],
-/// milestone 834): the disk tree, which the progenitor places in the boot shell on a machine with
+/// milestone 834 (ioping on nife and Linux)): the disk tree, which the progenitor places in the boot shell on a machine with
 /// an NVMe disk. Probed once at `_start` for [`HOLDS_RUN_UNVOUCHED`]'s reason; `interactive`
 /// mounts it at [`spawnproto::MOUNTED_TREE_NAME`].
 pub(super) static HOLDS_MOUNTED_TREE: core::sync::atomic::AtomicBool =

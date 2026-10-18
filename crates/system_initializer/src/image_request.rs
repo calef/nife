@@ -18,7 +18,7 @@ use super::*;
 /// scratch window, `supervision_protocol::SCRATCH_WINDOW`, which starts at `0x1000_0000`).
 pub(super) const ACTIVATION_FS_VA: u64 = address_space_map::pair_page(0x0f40_0000);
 
-/// **Where the progenitor maps the second mounted tree's client-window pool** (milestone 834), to
+/// **Where the progenitor maps the second mounted tree's client-window pool** (milestone 834 (ioping on nife and Linux)), to
 /// zero a window between two jobs. Past [`ACTIVATION_FS_VA`]'s pool, which is the same size, and
 /// below [`IMAGE_STAGING_VA`].
 pub(super) const MOUNTED_TREE_POOL_VA: u64 = address_space_map::pair_page(0x0f50_0000);

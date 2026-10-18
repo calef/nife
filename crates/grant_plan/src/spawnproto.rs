@@ -293,7 +293,7 @@ const _: () = assert!(SHELL_GPU_SLOT > MACHINE_PAGE_SLOT);
 const _: () = assert!(SHELL_GPU_SLOT > crate::SHELL_CONFIGURATION_SLOT);
 const _: () = assert!(SHELL_GPU_SLOT + 6 < RUN_UNVOUCHED_SLOT);
 
-/// **Where the boot shell holds its second mounted tree** (milestone 154's mechanism, milestone 834's
+/// **Where the boot shell holds its second mounted tree** (milestone 154's mechanism, milestone 834 (ioping on nife and Linux)'s
 /// use): the disk tree's endpoint, `WRITE` and no `GRANT`, the read-only and uncached view of the
 /// NVMe disk calef ruled for the prompt (2026-10-18 21:36 UTC, "Yes, read-only at prompt"). Empty
 /// on a machine with no NVMe disk, and the shell's `_start` probe is what tells that apart. A named

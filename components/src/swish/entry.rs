@@ -114,7 +114,7 @@ pub(super) fn interactive(rights: u64) -> ! {
     } else {
         Nav::rooted_at(DIR_TERMINAL, rights)
     };
-    // **The second mounted tree, when the progenitor placed one** (milestone 834): the disk tree,
+    // **The second mounted tree, when the progenitor placed one** (milestone 834 (ioping on nife and Linux)): the disk tree,
     // at `/disk`. It shares the first tree's page, so it needs nothing mapped of its own.
     if rights != 0 && HOLDS_MOUNTED_TREE.load(core::sync::atomic::Ordering::Relaxed) {
         let mut mount = nav::Cwd::root();

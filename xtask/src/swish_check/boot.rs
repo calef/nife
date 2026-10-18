@@ -298,7 +298,7 @@ fn leg_runner(arch: &str, kvm: bool, uefi_timeout_secs: u64) -> Command {
         c
     } else {
         let target = if riscv { RISCV_TARGET } else { TARGET };
-        // **An NVMe disk, for the second mounted tree** (milestone 834): the disk tree serves it
+        // **An NVMe disk, for the second mounted tree** (milestone 834 (ioping on nife and Linux)): the disk tree serves it
         // at `/disk`, and the after-reboot script times reads of it with `ioping`. Zeros, made
         // fresh for each boot. `x86_64` attaches none, because a blank NVMe disk there is offered
         // the install (`verdict::swish_check_omits` says so where the lines are left out).

@@ -83,7 +83,7 @@ pub(super) const fn job_windows() -> Windows {
     Windows::new(1, login_contract::DURABLE_WINDOW)
 }
 
-/// **The second mounted tree's job windows** (milestone 834): every window but 0, which is the
+/// **The second mounted tree's job windows** (milestone 834 (ioping on nife and Linux)): every window but 0, which is the
 /// shell's (the first file service's window 0 frame, [`MountedTreeGrant::pool`]). No `login` window
 /// is reserved, because `login` holds one tree.
 pub(super) const fn mounted_job_windows() -> Windows {

@@ -329,7 +329,7 @@ fn spawn_system_installer(
     let report = crate::sched::create_rendezvous();
     let budget = crate::memory_region::create(SYSTEM_INSTALLER_BUDGET_PAGES)
         .expect("no budget for system_installer");
-    // The installer's own window (milestone 834), so a confirm beside a live filesystem server
+    // The installer's own window (milestone 834 (ioping on nife and Linux)), so a confirm beside a live filesystem server
     // stages in pages that server never reads.
     let blk_cap = disk.client_cap(::non_volatile_memory_express::INSTALLER_WINDOW);
     let blk_shared = disk.window_phys(::non_volatile_memory_express::INSTALLER_WINDOW);

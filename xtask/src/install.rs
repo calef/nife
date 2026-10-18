@@ -113,7 +113,7 @@ pub(crate) fn install_boot() -> bool {
             ("the progenitor is running at ring 3", "ls\r"),
             // And then read the file back, which is what makes this an install rather than a boot.
             ("made-on-target", "wc made-on-target\r"),
-            // **The disk tree, beside the filesystem on the same disk** (milestone 834): the
+            // **The disk tree, beside the filesystem on the same disk** (milestone 834 (ioping on nife and Linux)): the
             // NVMe server's two clients, each in its own transfer window, the arrangement xenon
             // runs `ioping` in. `caps` says where it is mounted and `ls` reads its directory.
             ("1 10 57", "caps\r"),

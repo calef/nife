@@ -116,7 +116,7 @@ pub(super) fn words_grant(
             ));
         }
     };
-    // **A directory in the mounted tree is named through the mount** (milestone 834): the
+    // **A directory in the mounted tree is named through the mount** (milestone 834 (ioping on nife and Linux)): the
     // progenitor builds the caretaker against the tree `spawnproto::in_mounted_tree` says.
     let mut routed = [0u8; filesystem_contract::grant::MAX_NAME + 1];
     let dir = match g.which {

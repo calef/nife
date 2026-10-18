@@ -265,7 +265,7 @@ pub(crate) type CapabilityTable = capability::CapabilityTable<Object, CAPABILITY
 /// measured on `script/swish-check`'s aarch64 leg. The highest is the gpu-and-keyboard boot with an
 /// NVMe disk, at 36 of [`CAPABILITY_TABLE_SLOTS`] (2026-10-18 UTC); a boot with no gpu peaks lower,
 /// and one with no NVMe disk two lower, because the disk tree's endpoint and client-window pool
-/// (milestone 834) are held for the life of the boot. `notes/capability-peak-trace.md`
+/// (milestone 834 (ioping on nife and Linux)) are held for the life of the boot. `notes/capability-peak-trace.md`
 /// itemises what sits on the peak: the capabilities the progenitor never gives back (among them the
 /// entropy and network client endpoints it endows children from, the display grants, its own
 /// address space, the reboot object and the name resolver's endpoint), the login block's own, and

@@ -81,7 +81,7 @@ cd                        pwd is /
 ## What is left, and when
 
 The boot shell holds one second tree: the disk tree, the NVMe disk as one read-only file, at
-`/disk` (milestone 834). The progenitor places its endpoint at `spawnproto::MOUNTED_TREE_SLOT`, the
+`/disk` (milestone 834 (ioping on nife and Linux)). The progenitor places its endpoint at `spawnproto::MOUNTED_TREE_SLOT`, the
 shell probes that slot at `_start`, and `spawnproto` holds the mount name and rights. A directory
 grant under `/disk` is named through the mount (`disk/<dir>`), and the progenitor builds it against
 the disk tree. What is left for a filesystem that can come and go: a dead mount answers Gone and

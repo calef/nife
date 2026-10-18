@@ -182,7 +182,7 @@ fn a_confined_el0_process_serves_the_block_interface_end_to_end() {
 }
 
 /// **Each client stages in the window its badge names, and the disk tree's cannot write**
-/// (milestone 834; calef, 2026-10-18 23:06 UTC, "Per-client window"). The NVMe server keeps one
+/// (milestone 834 (ioping on nife and Linux); calef, 2026-10-18 23:06 UTC, "Per-client window"). The NVMe server keeps one
 /// transfer window per client so the filesystem server, the installer and the disk tree can
 /// each have a request in flight without overwriting another's staging. What would go wrong without
 /// it is a write that carries another client's bytes, so that is what this checks: a write through

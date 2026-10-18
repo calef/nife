@@ -43,7 +43,7 @@ pub(super) struct Nav {
     /// `holds.second` is `Some` only in a wiring that told this shell it holds two trees: the
     /// two-tree witness ([`two_trees`]), and the boot shell on a machine with an NVMe disk, which
     /// finds the disk tree at `spawnproto::MOUNTED_TREE_SLOT` and mounts it at `/disk`
-    /// (milestone 834).
+    /// (milestone 834 (ioping on nife and Linux)).
     pub(super) holds: grant_plan::Holdings,
     /// `handles[i]` is the directory capability for level `i + 1`; level 0 is [`fs::ROOT`], the
     /// capability the rendezvous itself designates.

@@ -405,7 +405,7 @@ fn spawn_channels(
         // go straight to the screen, through a process that can do nothing else with them.
         term_sink,
         fs,
-        // **The second mounted tree's service and pool** (milestone 834), kept for the life of
+        // **The second mounted tree's service and pool** (milestone 834 (ioping on nife and Linux)), kept for the life of
         // the boot for `fs`'s reason: a directory grant inside it is built from this copy.
         disk: mounted_tree.map(|t| Fs {
             ep: t.ep,

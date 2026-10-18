@@ -563,7 +563,7 @@ fn grant_machine_slots(tid: crate::thread::ThreadId, aspace_name: u64) {
 }
 
 /// Slots 32 and 33, the disk tree and its client-window pool, when this machine has an NVMe disk
-/// (milestone 834): the installed system's second mounted tree (calef, 2026-10-18 21:36 UTC, "Yes,
+/// (milestone 834 (ioping on nife and Linux)): the installed system's second mounted tree (calef, 2026-10-18 21:36 UTC, "Yes,
 /// read-only at prompt"). `WRITE | GRANT` on both for the file service's reason at slots 5 and 6:
 /// the progenitor narrows the endpoint into the shell and slices the pool, one window per client.
 /// Past the reboot object's slot 31, so no earlier slot moves. Only beside a file service, whose

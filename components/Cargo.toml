@@ -400,7 +400,7 @@ path = "src/non_volatile_memory_express.rs"
 test = false
 bench = false
 
-# The disk tree (milestone 834): the whole NVMe namespace as one read-only file, served with no
+# The disk tree (milestone 834 (ioping on nife and Linux)): the whole NVMe namespace as one read-only file, served with no
 # cache, as the installed system's second mounted tree. The NVMe server's second client, in a
 # transfer window of its own. Name provisional.
 [[bin]]

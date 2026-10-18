@@ -11,6 +11,6 @@ home = { repo = "filesystem", status = "provisional" }
 # links to enforce a subtree grant itself. The same job the caretakers do, so it lives with them;
 # an interface because every eligible server, in whatever package, links it. Placement provisional.
 interfaces = ["subtree_scope"]
-# The disk tree (milestone 834) serves the fs contract over a whole disk, read-only and uncached.
+# The disk tree (milestone 834 (ioping on nife and Linux)) serves the fs contract over a whole disk, read-only and uncached.
 crates = ["disk_tree"]
 programs = ["disk_tree", "fs_file_caretaker", "fs_nameset_caretaker", "fs_subtree_caretaker"]

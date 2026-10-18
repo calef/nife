@@ -28,7 +28,7 @@ pub(super) fn swish_check_omits(arch: &str, line: &str) -> Option<&'static str> 
     // disk install that stood in for the fetch there went with them. Nothing is omitted today;
     // the function stays because the next leg-specific gap needs somewhere to say why.
     //
-    // **The disk tree's lines** (milestone 834): `x86_64`'s leg attaches no NVMe disk, because the
+    // **The disk tree's lines** (milestone 834 (ioping on nife and Linux)): `x86_64`'s leg attaches no NVMe disk, because the
     // kernel offers a blank one the install and waits for an answer (`install_service::offer`),
     // so that boot has no second mounted tree. `cargo xtask install-boot` reads the tree on
     // `x86_64`, on the installed machine.
