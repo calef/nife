@@ -868,6 +868,7 @@ needs_maintainer() {
 			# `gh pr` or `gh issue`: the two architect causes also apply to issues.
 			NM_KIND=$(printf '%s' "$rec" | jq -r '.kind // "pr"')
 			action=$(printf '%s' "$rec" | jq -r '.action')
+			causes=$(printf '%s' "$rec" | jq -r '.causes | map(.cause) | join(", ")')
 			# calef, #1792, 2026-10-06 (UTC): the drain adds `needs-architect` itself for an open
 			# question or a moved surface, and only flags the reverse (hold-no-ask), because a wrong
 			# removal could merge a pull request without his ruling. Never remove it here.
@@ -878,7 +879,6 @@ needs_maintainer() {
 					echo "$ME: #$num needs $HELD_LABEL ($causes) and could not be labeled"
 				fi
 			fi
-			causes=$(printf '%s' "$rec" | jq -r '.causes | map(.cause) | join(", ")')
 			case "$action" in
 			hold) ;;
 			requeue)
