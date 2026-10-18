@@ -187,14 +187,6 @@ design/roadmap/0556-a-second-risc-v-implementation-for-rent.md	-	-	47	-	-
 design/roadmap/0557-a-thread-reads-its-own-cpu-from-a-page.md	-	-	62	-	-
 design/roadmap/0559-a-list-strangers-read-to-find-a-kernel.md	-	-	49	-	-
 design/roadmap/0560-a-long-file-name-or-riscv64-cannot-be-installed.md	-	-	42	-	-
-design/roadmap/0561-a-per-cpu-allocator-is-what-the-current-cpu-page-was-for.md	-	-	45	-	-
-design/roadmap/0563-a-seal-check-that-reads-bytes-cannot-see-a-check-that-was-dropped.md	-	-	41	-	-
-design/roadmap/0564-a-userspace-program-cannot-learn-which-cpus-are-online.md	-	22	49	-	-
-design/roadmap/0565-a-website-for-the-project-plan.md	-	-	60	-	-
-design/roadmap/0566-is-this-ipc-surface-composable-for-verification.md	-	-	45	-	-
-design/roadmap/0567-one-rate-mechanism-or-three.md	-	-	42	-	-
-design/roadmap/0568-the-boot-file-has-nowhere-to-go-on-a-device-tree-machine.md	-	21	58	-	-
-design/roadmap/0569-the-disk-an-installer-names-has-no-model.md	-	24	51	-	-
 design/roadmap/0570-the-install-offer-should-say-what-is-already-on-the-disk.md	-	-	66	-	-
 design/roadmap/0571-the-x86-boot-calibrates-once-and-can-be-wrong-by-4x.md	-	24	62	-	-
 design/roadmap/0572-there-is-no-way-back-from-the-stick.md	-	-	45	-	-
