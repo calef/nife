@@ -14,6 +14,12 @@
 //! somewhere without this crate owning a byte of it. That is the same borrowing shape
 //! `package_archive` uses, for the same reason: the first consumer has no allocator.
 //!
+//! **The head is parsed by `httparse`**, the parser under `hyper`, which is `no_std`, has no
+//! dependencies and no allocator, and is fuzzed upstream (OSS-Fuzz). Its `Partial` status is how
+//! this reader knows the head has not ended yet. What stays ours is the policy around it: the head
+//! cap, the request writer, and the rules below, which `httparse` does not enforce because a general
+//! HTTP parser is deliberately more lenient than a package client should be.
+//!
 //! **It is strict, because every byte it reads came off a network.** A response it cannot read
 //! exactly is refused rather than guessed at:
 //!
@@ -23,10 +29,11 @@
 //!   as an end. A digest would still catch the truncation; refusing it here says why.
 //! - **`Transfer-Encoding` is refused**, chunked included. A `GET` sent as HTTP/1.0 is never owed a
 //!   chunked reply, so a server sending one is not speaking to us.
-//! - **Lines end in CRLF**, a header section is at most [`HEAD_MAX`] bytes, a duplicated
-//!   `Content-Length` must agree with itself, and a body longer than it said is refused.
+//! - **Lines end in CRLF** (`httparse` also accepts a bare LF, and a client that does can be made to
+//!   disagree with a proxy about where a line stops), a header section is at most [`HEAD_MAX`]
+//!   bytes, a duplicated `Content-Length` must agree with itself, and a body longer than it said is
+//!   refused.
 //!
-
 //! # BUGS
 //!
 //! - **No redirects, no keep-alive, no `Range`.** One request per connection, and a `3xx` is a
@@ -35,9 +42,20 @@
 //!   `Content-Length` cannot serve a package to nife.
 //! - **Header values other than the two it reads are not validated.** They are skipped, not
 //!   interpreted, so a malformed `Date` costs nothing; a malformed line (no colon) is refused.
-//! - **Fuzzed, not proved.** `fuzz/fuzz_targets/http_response_feed.rs` checks that how the reads
-//!   fall never changes the answer. A Kani harness over even two symbolic 22-byte reads does not
-//!   finish in a CI shard's minutes (the `contains` and per-byte `ends_with` scans unroll badly).
+//! - **The head parse is `httparse`'s, and is not proved here.** What vouches for it is upstream's
+//!   own fuzzing (OSS-Fuzz) and its use under `hyper`. What is ours is the glue, and
+//!   `fuzz/fuzz_targets/http_response_feed.rs` checks that how the reads fall never changes the
+//!   answer. No Kani harness covers the head: the reader is not on the verification path, so
+//!   design/decisions/0046-dependency-rule.md takes the parser rather than proving one, and the
+//!   harness the hand-written parser had never finished in a CI shard's minutes.
+//! - **At most [`MAX_HEADERS`] header lines.** `httparse` parses into a caller-supplied array, and
+//!   this crate has no allocator, so a head with more lines is refused as [`Error::HeadTooLong`]
+//!   even when it is under the byte cap. The array lives on the stack for the length of one parse
+//!   (4 KiB).
+//! - **The head is parsed again on every read until it ends**, because `httparse` does not resume.
+//!   Bounded by the head cap (quadratic in it, for a peer that sends one byte per read); not measured.
+//! - **A minor version other than 0 or 1 is refused** (`HTTP/1.2` does not exist); `httparse`
+//!   accepts only those two.
 //!
 //! Name: provisional 2026-09-24 (milestone 198's rung 3a consumer lane). `http` alone would claim
 //! more than a request writer and a response reader; `design/naming.md` is the rule and calef's the
@@ -49,6 +67,11 @@
 /// this is enough for a real server's, and it is a bound, so a peer that never ends its headers is
 /// refused rather than read forever.
 pub const HEAD_MAX: usize = 2048;
+
+/// The most header lines a head may hold. `httparse` fills a caller-supplied array and this crate
+/// has no allocator, so the array is a bound. 128 is enough for the tests' 5,291-byte redirect head,
+/// which is built of 123 short lines; each slot is 32 bytes of stack.
+const MAX_HEADERS: usize = 128;
 
 /// **A head big enough for `github.com`'s redirect**, for a reader made with
 /// [`Response::with_room`]. A GitHub Release download answers `302` with a head of 5,291 bytes
@@ -65,7 +88,8 @@ pub const REDIRECT_HEAD_MAX: usize = 8192;
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Error {
     /// The status line and headers ran past the reader's bound ([`HEAD_MAX`] unless it was made
-    /// with more room) without the blank line that ends them.
+    /// with more room) without the blank line that ends them, or held more than [`MAX_HEADERS`]
+    /// header lines.
     HeadTooLong,
     /// The first line is not `HTTP/1.<digit> <three digits> ...`.
     BadStatusLine,
@@ -187,16 +211,14 @@ impl<const N: usize> Response<N> {
         if self.state == State::Head {
             return None;
         }
-        let head = &self.head[..self.head_len - 2];
-        head.split_inclusive(|&b| b == b'\n')
-            .skip(1)
-            .find_map(|line| {
-                let line = strip_crlf(line)?;
-                let colon = line.iter().position(|&b| b == b':')?;
-                line[..colon]
-                    .eq_ignore_ascii_case(name)
-                    .then(|| trim(&line[colon + 1..]))
-            })
+        let mut headers = [httparse::EMPTY_HEADER; MAX_HEADERS];
+        let mut parsed = httparse::Response::new(&mut headers);
+        parsed.parse(&self.head[..self.head_len]).ok()?;
+        parsed
+            .headers
+            .iter()
+            .find(|h| h.name.as_bytes().eq_ignore_ascii_case(name))
+            .map(|h| h.value.trim_ascii())
     }
 
     /// Take the next bytes off the connection, and return the part of them that is body.
@@ -208,27 +230,25 @@ impl<const N: usize> Response<N> {
     pub fn feed<'a>(&mut self, input: &'a [u8]) -> Result<&'a [u8], Error> {
         let mut rest = input;
         if self.state == State::Head {
-            let mut taken = 0;
-            let mut ended = false;
-            for &byte in input {
+            let before = self.head_len;
+            let take = (N - before).min(input.len());
+            self.head[before..before + take].copy_from_slice(&input[..take]);
+            self.head_len += take;
+            let Some(head) = read_head(&self.head[..self.head_len])? else {
+                // No room left means no read can end it.
                 if self.head_len == N {
                     return Err(Error::HeadTooLong);
                 }
-                self.head[self.head_len] = byte;
-                self.head_len += 1;
-                taken += 1;
-                if self.head[..self.head_len].ends_with(b"\r\n\r\n") {
-                    ended = true;
-                    break;
-                }
-            }
-            if !ended {
                 return Ok(&[]);
-            }
-            let (status, length) = parse_head(&self.head[..self.head_len])?;
-            self.status = Some(status);
-            self.state = State::Body { length, seen: 0 };
-            rest = &input[taken..];
+            };
+            self.status = Some(head.status);
+            self.state = State::Body {
+                length: head.length,
+                seen: 0,
+            };
+            // The head ended inside this read; `before` bytes of it came from earlier ones.
+            self.head_len = head.end;
+            rest = input.get(head.end.saturating_sub(before)..).unwrap_or(&[]);
         }
         let State::Body { length, seen } = self.state else {
             return Ok(&[]);
@@ -264,73 +284,76 @@ impl<const N: usize> Response<N> {
     }
 }
 
-/// Parse a complete head (it ends in the blank line) into the status and the body length.
-fn parse_head(head: &[u8]) -> Result<(u16, u64), Error> {
-    // Drop the final CRLF CRLF's second half, so every line below ends in exactly one CRLF.
-    let head = &head[..head.len() - 2];
-    let mut lines = head.split_inclusive(|&b| b == b'\n');
-    let status_line = lines.next().ok_or(Error::BadStatusLine)?;
-    let status_line = strip_crlf(status_line).ok_or(Error::BadStatusLine)?;
-    let status = parse_status(status_line)?;
+/// A head `httparse` found complete: where it ends, the status, and the declared body length.
+struct Head {
+    end: usize,
+    status: u16,
+    length: u64,
+}
+
+/// Parse `buf` as a status line and headers, or `None` if the blank line that ends them has not
+/// arrived. `httparse` supplies the grammar; the rules that make this reader stricter are here.
+fn read_head(buf: &[u8]) -> Result<Option<Head>, Error> {
+    // `httparse` skips leading empty lines; a response that starts with one is not speaking HTTP.
+    if matches!(buf.first(), Some(b'\r' | b'\n')) {
+        return Err(Error::BadStatusLine);
+    }
+    let mut headers = [httparse::EMPTY_HEADER; MAX_HEADERS];
+    let mut parsed = httparse::Response::new(&mut headers);
+    let end = match parsed.parse(buf) {
+        Ok(httparse::Status::Complete(end)) => end,
+        Ok(httparse::Status::Partial) => return Ok(None),
+        Err(httparse::Error::Version | httparse::Error::Status) => {
+            return Err(Error::BadStatusLine);
+        }
+        Err(httparse::Error::TooManyHeaders) => return Err(Error::HeadTooLong),
+        Err(_) => return Err(Error::BadHeader),
+    };
+    require_crlf(&buf[..end])?;
+    let status = parsed.code.filter(|c| (100..=599).contains(c));
+    let status = status.ok_or(Error::BadStatusLine)?;
 
     let mut length = None;
-    for line in lines {
-        let line = strip_crlf(line).ok_or(Error::BadHeader)?;
-        let colon = line
-            .iter()
-            .position(|&b| b == b':')
-            .ok_or(Error::BadHeader)?;
-        let (name, value) = (&line[..colon], trim(&line[colon + 1..]));
-        if name.is_empty() || name.iter().any(|&b| b <= b' ') {
-            return Err(Error::BadHeader);
-        }
-        if name.eq_ignore_ascii_case(b"transfer-encoding") {
+    for header in parsed.headers.iter() {
+        if header.name.eq_ignore_ascii_case("transfer-encoding") {
             return Err(Error::TransferEncoding);
         }
-        if name.eq_ignore_ascii_case(b"content-length") {
-            let n = parse_decimal(value).ok_or(Error::BadContentLength)?;
+        if header.name.eq_ignore_ascii_case("content-length") {
+            let n = parse_decimal(header.value.trim_ascii()).ok_or(Error::BadContentLength)?;
             if length.is_some_and(|earlier| earlier != n) {
                 return Err(Error::BadContentLength);
             }
             length = Some(n);
         }
     }
-    Ok((status, length.ok_or(Error::NoContentLength)?))
+    let length = length.ok_or(Error::NoContentLength)?;
+    Ok(Some(Head {
+        end,
+        status,
+        length,
+    }))
 }
 
-/// `HTTP/1.x NNN reason`, where the reason may be empty.
-fn parse_status(line: &[u8]) -> Result<u16, Error> {
-    let bad = Error::BadStatusLine;
-    let (version, rest) = line.split_at_checked(8).ok_or(bad)?;
-    if !(version.starts_with(b"HTTP/1.") && version[7].is_ascii_digit()) {
-        return Err(bad);
+/// Refuse a CR that is not half of a CRLF and an LF that is not the other half, which `httparse`
+/// accepts as line endings. In the status line that is [`Error::BadStatusLine`], elsewhere
+/// [`Error::BadHeader`].
+fn require_crlf(head: &[u8]) -> Result<(), Error> {
+    let first_line_ends = head.iter().position(|&b| b == b'\n').unwrap_or(head.len());
+    for (at, &byte) in head.iter().enumerate() {
+        let bare = match byte {
+            b'\r' => head.get(at + 1) != Some(&b'\n'),
+            b'\n' => at == 0 || head[at - 1] != b'\r',
+            _ => false,
+        };
+        if bare {
+            return Err(if at <= first_line_ends {
+                Error::BadStatusLine
+            } else {
+                Error::BadHeader
+            });
+        }
     }
-    let rest = rest.strip_prefix(b" ").ok_or(bad)?;
-    let (code, tail) = rest.split_at_checked(3).ok_or(bad)?;
-    if !(tail.is_empty() || tail[0] == b' ') {
-        return Err(bad);
-    }
-    let code = parse_decimal(code).ok_or(bad)?;
-    if !(100..=599).contains(&code) {
-        return Err(bad);
-    }
-    Ok(code as u16)
-}
-
-/// A line without its CRLF, or `None` if it does not end in one (a bare LF is refused).
-fn strip_crlf(line: &[u8]) -> Option<&[u8]> {
-    line.strip_suffix(b"\r\n")
-        .filter(|l| !l.contains(&b'\r') && !l.contains(&b'\n'))
-}
-
-fn trim(mut s: &[u8]) -> &[u8] {
-    while let [b' ' | b'\t', rest @ ..] = s {
-        s = rest;
-    }
-    while let [rest @ .., b' ' | b'\t'] = s {
-        s = rest;
-    }
-    s
+    Ok(())
 }
 
 fn parse_decimal(digits: &[u8]) -> Option<u64> {
