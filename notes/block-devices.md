@@ -64,9 +64,9 @@ This is the design claim, and milestone 57's entry has been making it since 2026
 > the tool cannot enforce it. **Here the warning is structural**: the tool was handed one disk.
 
 `crates/block_roster` is the listing half. One page, written by the kernel at wiring time from its
-own mmio and PCIe scans, mapped **read-only** into whichever program was granted it. A program
-without the mapping has nowhere to look, and the refusal is "you hold no such capability" rather
-than a permission check.
+own mmio and PCIe scans (virtio-blk on either transport, and NVMe controllers by class code),
+mapped **read-only** into whichever program was granted it. A program without the mapping has
+nowhere to look, and the refusal is "you hold no such capability" rather than a permission check.
 
 **It is deliberately not a `*_proto`.** Ten crates in `crates/` carry that suffix and describe
 messages two programs exchange; this one describes bytes at an address, written once and thereafter

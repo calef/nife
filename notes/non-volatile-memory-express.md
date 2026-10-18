@@ -218,10 +218,9 @@ it.
   region that contains the admin rings, so the server can aim DMA at them, and with stride 0 it can ring the admin
   doorbell. Neither is an escape and both are option 4's to close.
 - Nothing but the test serves it over blk IPC. `non_volatile_memory_express` speaks the four
-  blk verbs, but
-  `block_roster` has no NVMe transport kind, so `disk_surveyor` cannot list the disk and the FS
-  server's default remains virtio-blk, untouched. The wire shape is decidable now that a process
-  owns the controller; see `design/roadmap/0421-a-block-roster-that-can-name-an-nvme-disk.md`.
+  blk verbs and `block_roster` lists the controller
+  (`TRANSPORT_NON_VOLATILE_MEMORY_EXPRESS`, §193), so `disk_surveyor` sees the disk, but no
+  program is handed its endpoint and the FS server's default remains virtio-blk.
 - A transfer is one command per filesystem block, so a sixteen-block blk request is sixteen
   round trips where the virtio block server issues one. `prp_pair` refuses anything needing a PRP
   list, and a multi-page transfer needs one.
