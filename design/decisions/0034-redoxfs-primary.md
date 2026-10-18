@@ -75,8 +75,8 @@ filesystem are different jobs, and the initrd wants exactly what nifefs is. It s
 - FAT32 / exFAT. `fatfs` is mature and no_std. Rejected for a root on semantics: no crash
   consistency at all, no permissions, no symlinks. It is the right answer for a future *boot* partition
   where interop is the point, and wrong for anything that must survive a power cut.
-- littlefs. Genuinely power-fail-resilient, and wrong on two axes: it targets raw NAND/NOR with
-  wear leveling rather than a block device, at microcontroller scale, and it is C, so it would put a
+- littlefs. Genuinely power-fail-resilient, and wrong on two axes. It targets raw NAND/NOR with
+  wear leveling rather than a block device, at microcontroller scale. And it is C, so it would put a
   foreign component in the storage path for no thesis gain.
 - btrfs / ZFS / F2FS. No no_std Rust implementation, and a size that would dominate the project.
   The `no_std` half of this expired on 2026-09-14; see the 2026-09-20 amendment below, which also
@@ -90,9 +90,9 @@ filesystem are different jobs, and the initrd wants exactly what nifefs is. It s
 
 Milestone 55 surfaced a requirement §34 never considered: Time Machine over SMB wants extended
 attributes (Samba's `streams_xattr`), and RedoxFS has none. calef's read was that this suggested the
-choice was wrong rather than something to patch around, and the strongest half of that is correct:
-extending RedoxFS's on-disk format would destroy two of the four reasons for choosing it, since it
-would no longer be the filesystem Redox actually runs and every pin bump would pay for the divergence.
+choice was wrong rather than something to patch around, and the strongest half of that is correct.
+Extending RedoxFS's on-disk format would destroy two of the four reasons for choosing it. It would
+no longer be the filesystem Redox actually runs, and every pin bump would pay for the divergence.
 "We will patch xattrs in" is doubling down and should not have been offered as a co-equal option.
 
 **What the requirement is not, stated precisely:** the application is not blocked. Samba's
@@ -181,11 +181,11 @@ it, and call the filesystem after the first `p` of them `S(p)`. Then:
 
 That is prefix consistency, and it is deliberately stated as a stronger property than the one the
 milestone asked for. "Every acknowledged write is either wholly present or wholly absent" falls out
-of it, and so does the thing that phrasing leaves open: a state where a later operation survived and
-an earlier one did not. Two further assertions make it a measurement rather than a shape. `p` must be
-non-decreasing as the cut point advances, so a later crash can never lose more than an earlier
-one; and at the last cut point `p` must be the whole workload, so a filesystem that recovered the
-initial state every time (perfectly prefix-consistent, perfectly useless) fails.
+of it, and so does the thing that phrasing leaves open. That is a state where a later operation
+survived and an earlier one did not. Two further assertions make it a measurement rather than a
+shape. `p` must be non-decreasing as the cut point advances, so a later crash can never lose more
+than an earlier one. And at the last cut point `p` must be the whole workload, so a filesystem that
+recovered the initial state every time (perfectly prefix-consistent, perfectly useless) fails.
 
 The fault-injection table the next paragraph cites, its controls and the on-device run are in
 [`crash-consistency.md`](0034-redoxfs-primary/crash-consistency.md).
@@ -193,16 +193,16 @@ The fault-injection table the next paragraph cites, its controls and the on-devi
 The limit, stated as plainly as the guarantee, because it is real. RedoxFS's `Disk` trait has no
 flush and no barrier, so write *ordering* is the device's job. A device that acknowledges a write it
 has not persisted and then persists later ones can leave a valid commit pointing at a block that
-never landed, and no filesystem promises otherwise. What RedoxFS does promise, and what the third row
-measures, is that this is **never silent**: every `BlockPtr` carries a seahash of the block it names,
-checked on every read, so a lost or torn block is an error rather than a wrong answer. Our block
-server issues no `VIRTIO_BLK_T_FLUSH`, so on real hardware with a volatile write cache the durability
-of the *last* acknowledged write is the device's word rather than ours; that is a gap in our driver,
-not in the engine, and it is recorded here rather than in a footnote.
+never landed, and no filesystem promises otherwise. What RedoxFS does promise, and what the third
+row measures, is that this is **never silent**. Every `BlockPtr` carries a seahash of the block it
+names, checked on every read, so a lost or torn block is an error rather than a wrong answer. Our
+block server issues no `VIRTIO_BLK_T_FLUSH`, so on real hardware with a volatile write cache the
+durability of the *last* acknowledged write is the device's word rather than ours. That is a gap in
+our driver, not in the engine, and it is recorded here rather than in a footnote.
 
 What is still a design claim. Ordering and durability at the device, above. Repair and recovery
 tooling for an image the checksums *do* reject, which "What would reverse this" already names as
-unchecked, and which this milestone sharpens rather than answers: we can now produce such an image
+unchecked, and which this milestone sharpens rather than answers. We can now produce such an image
 deliberately, and there is still nothing to hand a user who has one. Condition 2 (throughput,
 milestone 38) is untouched.
 
@@ -215,7 +215,7 @@ What changed. This section was decided 2026-07-29, when nothing in this tree had
 alternatives list above dismisses "btrfs / ZFS / F2FS" in one line, and the first half of that line
 is *"No `no_std` Rust implementation"*. Milestone 27 (Rust `std` on the native ABI) retired that
 premise, and milestone 184 (extend the `std` port (milestone 27) to x86_64, BUILT 2026-09-14)
-finished the job: all three targets now declare `"std": true`, the `nife-dev` farm builds it, and an
+finished the job. All three targets now declare `"std": true`, the `nife-dev` farm builds it, and an
 `fs_server` is an ordinary EL0 program exactly as `redoxfs_server` is. **A userspace filesystem may
 use `std` here, so `no_std` is no longer a filter on anything.**
 
@@ -224,8 +224,8 @@ which is the one that was asked:
 
 1. Does a usable Rust implementation exist, and at what completeness: read-only, read-write,
    maintained? This is now the live question and it is unanswered. It should be measured against
-   `targets/*-unknown-nife.json` rather than looked up, which is the lesson milestone 442 (a crypto
-   provider `rustls` can use on all three bare-metal targets) paid for: DECISIONS §196 (nife carries
+   `targets/*-unknown-nife.json` rather than looked up. That is the lesson milestone 442 (a crypto
+   provider `rustls` can use on all three bare-metal targets) paid for. DECISIONS §196 (nife carries
    TLS: `rustls` for the protocol, and a crypto provider we make work)'s table was measured against
    stock `-none` targets and every row of it was wrong about ours.
 2. **Our `std` is not Linux's.** The targets are `singlethread = true` with `panic-strategy = abort`,
@@ -237,8 +237,9 @@ which is the one that was asked:
    is FAT32, exFAT, NTFS and ext4.
 
 The ZFS half of that bullet survives, and for a reason the 2026-07-30 amendment above already
-gives rather than for the one written here: OpenZFS is not a component you confine, it is a subsystem
-you host, needing a Solaris Porting Layer against a seam built to confine a narrow interface. That
+gives rather than for the one written here. OpenZFS is not a component you confine, it is a
+subsystem you host, needing a Solaris Porting Layer against a seam built to confine a narrow
+interface. That
 argument is untouched by userspace `std`. btrfs was bundled into a one-line dismissal with it and
 should not have been, which is the more useful half of this correction: a shared bullet let one
 crate's disqualifier stand in for another's.

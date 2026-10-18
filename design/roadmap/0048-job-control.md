@@ -95,6 +95,11 @@ request.
 - **Proposed.** Job control for every program:
   `design/roadmap/proposals/every-job-is-built-the-way-a-supervised-job-is.md`.
 
+The kernel verbs are built, on all three architectures: `SUSPEND` stops a thread silently and
+returns once it is off every core, and `RESUME` continues it at its saved PC
+([notes/suspend-and-resume.md](../../notes/suspend-and-resume.md) has the cases). What is left is
+the shell's half, `Ctrl-Z` and `bg`.
+
 ## The open question: `disown`
 
 If the shell drops its capabilities to a job, nobody can reap it, and §26's dead-until-reaped means the

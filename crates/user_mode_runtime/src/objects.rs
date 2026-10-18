@@ -194,7 +194,7 @@ pub fn address_space_map_into(aspace: u64, va: u64, frame_slot: u64, mode: u64) 
     unsafe { invoke(aspace, abi::address_space::MAP_INTO, va, frame_slot, mode) }
 }
 
-/// `CAP_INSERT`: copy the capability in the caller's `cap_slot`, narrowed to `rights`, into the
+/// `CAP_INSERT`: copy the capability in the caller's `capability_slot`, narrowed to `rights`, into the
 /// child TCB's capability table. `target = 0` places it in the first free slot; `target = n` places
 /// it in slot `n - 1` (see `abi::thread_control_block::CAP_INSERT`'s own doc for the supervision-slot
 /// use of an explicit target). Returns the slot it landed in, or a negative `abi::Error`.
@@ -206,7 +206,7 @@ pub fn address_space_map_into(aspace: u64, va: u64, frame_slot: u64, mode: u64) 
 /// thread control block, and capability is spelled out).
 pub fn thread_control_block_capability_insert(
     tcb_slot: u64,
-    cap_slot: u64,
+    capability_slot: u64,
     rights: u64,
     target: u64,
 ) -> i64 {
@@ -216,7 +216,7 @@ pub fn thread_control_block_capability_insert(
         invoke(
             tcb_slot,
             abi::thread_control_block::CAP_INSERT,
-            cap_slot,
+            capability_slot,
             rights,
             target,
         )
@@ -268,6 +268,25 @@ pub fn thread_control_block_start(tcb_slot: u64, x0: u64, x1: u64, x2: u64) -> i
     // SAFETY: `svc`/`ecall`. The kernel validates `WRITE` and that the TCB is whole before it joins
     // the run queue.
     unsafe { invoke(tcb_slot, abi::thread_control_block::START, x0, x1, x2) }
+}
+
+/// `SUSPEND`: stop the thread whose TCB is in `tcb_slot` until a [`thread_control_block_resume`],
+/// keeping its registers (DECISIONS §300 (the paused state, a TCB verb, silent)). Silent: nobody is told. When this returns 0 the thread
+/// is off every core. `0` on success; a negative `abi::Error`.
+///
+/// Name: provisional (lane/48-tcb-suspend-resume, 2026-10-18 UTC).
+pub fn thread_control_block_suspend(tcb_slot: u64) -> i64 {
+    // SAFETY: `svc`/`ecall`. The kernel validates `WRITE`; nothing in this address space changes.
+    unsafe { invoke(tcb_slot, abi::thread_control_block::SUSPEND, 0, 0, 0) }
+}
+
+/// `RESUME`: let the thread whose TCB is in `tcb_slot` run on from where it was suspended
+/// (DECISIONS §300). `0` on success, also when it was not suspended; a negative `abi::Error`.
+///
+/// Name: provisional (lane/48-tcb-suspend-resume, 2026-10-18 UTC).
+pub fn thread_control_block_resume(tcb_slot: u64) -> i64 {
+    // SAFETY: as `thread_control_block_suspend`.
+    unsafe { invoke(tcb_slot, abi::thread_control_block::RESUME, 0, 0, 0) }
 }
 
 /// Drop the capability in `slot` from this thread's capability table (`SYS_CAP_DELETE`). Deleting an empty

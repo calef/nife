@@ -20,7 +20,7 @@ host-testable crates, and that is why the fuzzers could reach it at all.
 
 The justification is empirical, not aesthetic: it found three real defects in its first sitting.
 Two panics in `dtb` on a hostile device tree, which is boot-path code parsing bytes the *firmware*
-wrote; and `nifefs` writing a name containing a NUL that could then never be read back, from the
+wrote. And `nifefs` writing a name containing a NUL that could then never be read back, from the
 one-file input `[("\0", [])]`, in under a minute. Each is fixed with a regression test beside the
 fix, so the finding survives whether or not anyone reruns the fuzzer. A found bug is a permanent
 test, not a permanent fuzzing job.

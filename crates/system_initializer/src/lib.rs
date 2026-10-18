@@ -14,7 +14,7 @@
 //! driver, the line discipline, the shell, the terminal's sink adapter when the archive has one,
 //! and `job_undertaker`. GPU and virtio keyboard grants ride out to the shell untouched; graphics
 //! is launched from the prompt, never at boot. Then it stays alive as the spawn service. It carves
-//! [`INIT_OWN_PAGES`] and a renewable [`JOBS_BUDGET_PAGES`] off the construction root and deletes
+//! [`PROGENITOR_RESERVED_PAGES`] and a renewable [`JOBS_BUDGET_PAGES`] off the construction root and deletes
 //! the root, gives up the UART capabilities once the drivers hold them, and keeps the file service.
 //! The negative control after the delete must see `NoSuchSlot`, not `NotPermitted`.
 //!
@@ -74,7 +74,8 @@ use grant_plan::{Program, spawnproto};
 use image_request::*;
 use layout::*;
 pub use layout::{
-    CHILD_STACK_PAGES, GRANT_MACHINE_PAGE, IMAGE_POOL_PAGES, INIT_OWN_PAGES, JOBS_BUDGET_PAGES,
+    CHILD_STACK_PAGES, GRANT_MACHINE_PAGE, IMAGE_POOL_PAGES, JOBS_BUDGET_PAGES,
+    PROGENITOR_RESERVED_PAGES,
 };
 use line_editor::proto;
 use measurement::*;

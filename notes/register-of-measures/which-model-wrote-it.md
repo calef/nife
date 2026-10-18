@@ -31,14 +31,15 @@ So this series is cheaper and coarser, and it will still be here in a year. The 
 is [project cost](project-cost.md). Its subsection "The deadline, and what was already gone when
 the capture started" is the argument for this one.
 
-### Three buckets, and the sum is checked
+### Four buckets, and the sum is checked
 
-Every commit in the repository falls in exactly one of three. `script/metrics` fails loudly if they
+Every commit in the repository falls in exactly one of four. `script/metrics` fails loudly if they
 do not add up to the week's whole commit count.
 
 - **attributed**, carrying a `Co-Authored-By` trailer, counted per model.
 - **unattributed**, authored with no trailer.
 - **merge**, created by the platform rather than by anyone.
+- **claim**, an empty commit: its tree is its parent's tree.
 
 A sum that must come out right is a denominator that cannot leak. Normalization might drop a model,
 a new model name might be swallowed, or a classification rule might be wrong. In each case the
@@ -53,6 +54,12 @@ merge bucket is a throughput count. 95 merge commits do carry a trailer, from an
 conflict. The merge bucket still wins, because what the commit records is a landing, not a piece of
 writing.
 
+A claim is the empty commit a lane makes when it opens its draft, under §90 (the claim is a draft
+pull request). It carries no work, so it is kept out of every model's count whatever its trailer
+says. `script/claim` signs it `Claude Code` unless told otherwise, and some lanes sign it with
+their model, so the test is the empty tree and not the name. The few CI re-triggers, which are also
+empty, count here too.
+
 Merges carry a commit count and no line count. A merge's diff against its first parent is the whole
 of what landed on the branch. Every line of it is already counted on that branch's own commits, so
 adding it would roughly double the tree.
@@ -66,14 +73,16 @@ silent merge the table exists to prevent.
 
 A trailer value the table has never seen is counted in `other_models` and printed by name on every
 run. It is not dropped, and it does not quietly become an existing model. `script/metrics`' own
-`MODEL_TRAILERS` records every spelling this repository has carried. Seven were checked against
-all 5,487 commits on 2026-09-24. `Claude Code` is among them: it signs a single commit and is the
-tool rather than a model. It is in the table as a decision, so it does not warn forever.
+`MODEL_TRAILERS` records every spelling this repository has carried. `Claude Code` is the tool
+rather than a model, and `OpenCode (GLM)` names a harness and a vendor with no version. Both are in
+the table as decisions, filed under `other_models`, so they do not warn forever. No record in the
+tree says which GLM model the `OpenCode (GLM)` commits ran, and guessing one would be the silent
+merge this table refuses.
 
-The eighth, `Claude Opus 5.5`, arrived the same day, when the tree switched models. Until it had a
-row it went into `other_models` and was named on stderr, which is the rule above working: nothing
-was lost, and the week's sum still balanced. It is a version, not a context window, so it has its
-own column, `opus_5_5`, rather than joining `opus_5`.
+A new model's name goes into `other_models` and is named on stderr until it has a row, which is
+the rule above working: nothing is lost, and the week's sum still balances. `Claude Opus 5.5` is a
+version, not a context window, so it has its own column, `opus_5_5`, rather than joining `opus_5`.
+`GLM-5.3-Flash` is a second spelling of `GLM 5.3 Flash` and shares its column.
 
 ### Eight hues, more than eight bands
 

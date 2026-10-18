@@ -36,9 +36,9 @@ The five parts, each decided explicitly:
    `(event code, tid, fault pc, fault address, reserved)`. Synchronous rendezvous means `RECV`
    blocks on one endpoint, so per-child endpoints would force a supervisor thread per child or a
    new wait-any primitive; the shared endpoint needs neither. The id word is trustworthy because
-   the kernel is the only sender on this path (seL4 solves the general untrusted-sender case with
+   the kernel is the only sender on this path. seL4 solves the general untrusted-sender case with
    badged capabilities; that mechanism returns as its own decision if shared endpoints ever need
-   trustworthy identity from userspace senders).
+   trustworthy identity from userspace senders.
 
 Surface cost: no new syscall and no new method. Spawn already carries grants; delivery is a
 kernel-internal send. The additions are a message-format convention and a spawn-slot convention,
@@ -96,8 +96,8 @@ init cannot break the kernel or escape). But init's **bytes** were loaded unchec
 program that builds every other process. Anything that could substitute bytes at
 `/chosen/linux,initrd-start` got to be init. Milestone 16b (IOMMU-backed driver isolation), whose
 boundary proof is §20 (IOMMU-backed DMA isolation: one seam, two arch drivers), had already closed
-the DMA window a device could have used to rewrite the initrd *behind* the check, which is why the check is
-now airtight rather than theater; that ordering was deliberate.
+the DMA window a device could have used to rewrite the initrd *behind* the check. That is why the
+check is now airtight rather than theater; that ordering was deliberate.
 
 Five decisions, each with its alternative on the record:
 
@@ -115,7 +115,7 @@ Five decisions, each with its alternative on the record:
    and SHA-3 (a second permutation to audit) both buy speed we do not need for one 1.2 MB hash per
    boot. Hand-written rather than vendored, because a vendored crate is a supply-chain edge inside the
    TCB to save arithmetic whose reference text and test vectors are published. The build and the
-   kernel hash through the *same* crate, so the measurement has one definition; the risk that trades
+   kernel hash through the *same* crate, so the measurement has one definition. The risk that trades
    for (an implementation agreeing only with itself) is answered by testing against the published
    FIPS 180-4 vectors and by the cross-check against the host's `shasum`.
 
@@ -130,33 +130,35 @@ Five decisions, each with its alternative on the record:
    the hash never feeds back into the initrd, and every xtask path already built `user()` before the
    kernel (it boots with the archive as `-initrd`), so nothing was resequenced. Cost accepted: a
    userspace change now relinks the kernel, which is what "runs exactly this init" means. A bare
-   `cargo build`/`clippy` with no manifest yields an empty trust root rather than a build error, so
-   the lint gate still works and the failure lands at boot where it belongs; a *malformed* manifest is
-   a hard build error, because measuring nothing silently is worse than stopping.
+   `cargo build`/`clippy` with no manifest yields an empty trust root rather than a build error. So
+   the lint gate still works and the failure lands at boot where it belongs. A *malformed* manifest
+   is a hard build error, because measuring nothing silently is worse than stopping.
 
-5. The kernel measures only the program the kernel loads. `init` on aarch64, `init` and `system_initializer`
-   on riscv64. Every other program in the archive is loaded by init in userspace and is not measured
-   today, so the chain of trust stops at init's entry. The capability-correct extension is init
-   measuring what init loads (its own table, in userspace, trustworthy because init's own bytes are
-   now measured), which keeps policy out of the kernel the same way supervision does. Built by
-   milestone 104 on 2026-08-05, so this paragraph describes the state before it: init now refuses
-   to load what it cannot vouch for, the table is an archive entry rather than compiled into init
-   (init is *in* the archive it measures), and the kernel gained one digest and no policy. Three
-   programs remain unmeasured and are named in notes/trusted-init.md. Hashing the whole 14 MB archive in the kernel would cover everything with one
-   value but puts both the cost and the policy in the wrong place.
+5. The kernel measures only the program the kernel loads. `init` on aarch64, `init` and
+   `system_initializer` on riscv64. Every other program in the archive is loaded by init in
+   userspace and is not measured today, so the chain of trust stops at init's entry. The
+   capability-correct extension is init measuring what init loads (its own table, in userspace,
+   trustworthy because init's own bytes are now measured), which keeps policy out of the kernel the
+   same way supervision does. Built by milestone 104 (the measurement continues past init) on
+   2026-08-05, so this paragraph describes the state before it. Init now refuses to load what it
+   cannot vouch for. The table is an archive entry rather than compiled into init (init is *in* the
+   archive it measures), and the kernel gained one digest and no policy. Three programs remain
+   unmeasured and are named in notes/trusted-init.md. Hashing the whole 14 MB archive in the kernel
+   would cover everything with one value but puts both the cost and the policy in the wrong place.
 
 The signature variant, recorded as a follow-up rather than built. A signature over init against a
 public key compiled into the kernel buys one thing a hash cannot: updating init without rebuilding
 the kernel. Its costs are real and both land in places this project protects. First, signature
-verification enters the TCB: Ed25519 means field arithmetic, point decompression, and SHA-512, which
-is an order of magnitude more code inside the boundary than SHA-256, and it is code where a subtle bug
-is an accepted forgery rather than a crash. Second, key custody becomes a question a hash never asks:
-where the private key lives, who can sign, how it rotates, and what revokes a compromised one (a
-kernel with a baked-in public key and no revocation list is one leaked key away from accepting
-anything forever). The peer project Atom ships Ed25519-signed executables, so this is real and
-reachable, just a bigger TCB. It becomes worth paying for when init is delivered independently of the
-kernel; today they are built by one command in one tree in one sequence, so the hash is strictly
-better. The natural sequence if it is ever wanted: signature verification *in addition to* the
+verification enters the TCB. Ed25519 means field arithmetic, point decompression, and SHA-512,
+which is an order of magnitude more code inside the boundary than SHA-256. It is code where a
+subtle bug is an accepted forgery rather than a crash. Second, key custody becomes a question a
+hash never asks: where the private key lives, who can sign, how it rotates, and what revokes a
+compromised one. A kernel with a baked-in public key and no revocation list is one leaked key away
+from accepting anything forever. The peer project Atom ships Ed25519-signed executables, so this is
+real and reachable, just a bigger TCB. It becomes worth paying for when init is delivered
+independently of the kernel; today they are built by one command in one tree in one sequence, so
+the hash is strictly better.
+The natural sequence if it is ever wanted: signature verification *in addition to* the
 measured root (so the hash stays the floor if key handling fails), and the verification code proved
 with Kani, the prover §14 (the project's direction) chose, before it is trusted.
 
@@ -198,10 +200,10 @@ of the §14 soft spot. Recorded here with the rest of milestone 22 for the same 
 
 5. **Proven by authority, not by timing.** Two cross-ISA tests (`authority_tests`): after the handoff
    both construction primitives fail from inside init with `NoSuchSlot` (nothing there) rather than
-   `NotPermitted` (something there, restricted); and a faulting sub-server is reaped and restarted by
-   its supervisor, with the clean exit of the replacement *not* triggering another restart. "init was
-   not involved" is proven by the empty capability slot, not by scheduling order: a process that cannot
-   retype a page cannot have built the replacement.
+   `NotPermitted` (something there, restricted). And a faulting sub-server is reaped and restarted
+   by its supervisor, with the clean exit of the replacement *not* triggering another restart. "init
+   was not involved" is proven by the empty capability slot, not by scheduling order. A process that
+   cannot retype a page cannot have built the replacement.
 
 Two design forks found, reported rather than built through.
 
@@ -227,12 +229,12 @@ inject keystrokes) and moving the spawn service wants an interactive confirmatio
 test. See notes/trusted-init.md for the shape it takes.
 
 A pre-existing bug this work found, on both architectures. The supervision tree enters more
-processes per run than anything before it, and that surfaced a race in the **exception-return path**:
-staging `SPSR_EL1`/`ELR_EL1` (aarch64) or `sepc`/`sstatus` (riscv) for the return is not atomic with
-respect to a nested exception, so an interrupt in a two-instruction window could return a brand-new
-process to its entry point at EL1 (aarch64, observed, about one suite run in four) or to a kernel
-address in U-mode (riscv, found by inspection). Only the first-entry path was exposed, because a normal
-trap return already has interrupts masked. Fixed by masking at the top of the restore, one instruction,
-free at the far end because the return restores the mask from the saved state anyway. Written up in
-notes/exceptions.md. The icount baselines moved by well under 1% (one extra instruction per exception
-return) and were re-saved in the same commit.
+processes per run than anything before it, and that surfaced a race in the **exception-return
+path**. Staging `SPSR_EL1`/`ELR_EL1` (aarch64) or `sepc`/`sstatus` (riscv) for the return is not
+atomic with respect to a nested exception. So an interrupt in a two-instruction window could return
+a brand-new process to its entry point at EL1 (aarch64, observed, about one suite run in four) or to
+a kernel address in U-mode (riscv, found by inspection). Only the first-entry path was exposed,
+because a normal trap return already has interrupts masked. Fixed by masking at the top of the
+restore, one instruction, free at the far end because the return restores the mask from the saved
+state anyway. Written up in notes/exceptions.md. The icount baselines moved by well under 1% (one
+extra instruction per exception return) and were re-saved in the same commit.

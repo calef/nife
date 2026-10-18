@@ -67,9 +67,9 @@ hops is a blocking `CALL`, so a client is parked inside its own call while the c
 page. That holds once the caretaker is serving and not at startup, where the caretaker stages
 the granted name and then blocks, and a confined program that already exists overwrites it.
 
-In the failing case it is not even a race: when the wiring call also wires the FS service, the
+In the failing case it is not even a race. When the wiring call also wires the FS service, the
 server is parked in its readiness `SEND`, so the caretaker's descent cannot be answered until
-someone drains it, and the client owns that entire window. So draining a readiness sentinel is
+someone drains it. The client owns that entire window. So draining a readiness sentinel is
 sequencing, not merely an assertion. `fs_file_caretaker` carried the same latent bug and took the
 same three lines. The fix is ordering, not a second page.
 

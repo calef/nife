@@ -184,14 +184,14 @@ pub fn spawn_elf_child_builder(
             + 1
             + initial_ramdisk_pages / 512
             + crate::revoke::log_pages_for(initial_ramdisk_pages)
-            + INIT_STACK_PAGES
+            + PROGENITOR_STACK_PAGES
             + 8;
         let mut space = AddressSpace::new(content).expect("no memory for the builder");
         map_segments(&mut space, &elf).expect("could not lay out the builder");
         // A multi-page stack: a builder that parses and builds a child ELF has deep call chains
         // (the loader loop, copy_from_slice, the elf parser), so one page overflows. Map
-        // INIT_STACK_PAGES down from USER_STACK_TOP; the entry sp is unchanged (USER_STACK_TOP).
-        for k in 0..INIT_STACK_PAGES {
+        // PROGENITOR_STACK_PAGES down from USER_STACK_TOP; the entry sp is unchanged (USER_STACK_TOP).
+        for k in 0..PROGENITOR_STACK_PAGES {
             space
                 .map_new(USER_STACK_VA - k * FRAME_SIZE, Flags::user_data())
                 .expect("could not map the builder's stack");

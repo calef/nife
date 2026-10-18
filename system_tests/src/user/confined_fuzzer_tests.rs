@@ -341,6 +341,10 @@ impl Conductor {
             // and a matching word (milestone 812 (`std::thread::spawn` runs real threads in one
             // address space)) is parked on a futex, which a wake of its key releases.
             Wait::Futex(k) => sched::futex_wake(k.space, k.address, 1) == 1,
+            // Only a TCB's holder can suspend a thread (DECISIONS §300 (the paused state, a TCB
+            // verb, silent)), and no fuzzer is given or can make one, so a fuzzer parked here
+            // reached authority it was never granted.
+            Wait::Resume => escape!(self, "fuzzer {x} was suspended, and no fuzzer holds a TCB"),
         }
     }
 

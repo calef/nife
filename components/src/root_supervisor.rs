@@ -42,7 +42,8 @@
 // Each binary in the tree compiles the shared module but uses a different slice of it (the sub-server
 // builds nothing, the supervisor holds no memory), so the unused halves are expected, not dead.
 use supervision_protocol::{
-    ChildEndowment, REPORT_FAILED, REPORT_INIT_DROPPED, REPORT_SUP_SAW_DEATH, Retention,
+    ChildEndowment, REPORT_CONSTRUCTION_AUTHORITY_DROPPED, REPORT_FAILED, REPORT_SUP_SAW_DEATH,
+    Retention,
 };
 use user_mode_runtime::{
     cap_delete, receive, retype_into_kernel_object, retype_into_page_frame, send,
@@ -171,7 +172,7 @@ pub extern "C" fn _start(_a0: u64, initial_ramdisk_len: u64, _a2: u64) -> ! {
     let object = retype_into_kernel_object(ROOT_UT, abi::objtype::THREAD_CONTROL_BLOCK);
     send(
         REPORT,
-        REPORT_INIT_DROPPED,
+        REPORT_CONSTRUCTION_AUTHORITY_DROPPED,
         (frame < 0 && object < 0) as u64,
         (-frame) as u64,
     );
