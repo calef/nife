@@ -175,7 +175,9 @@ pub(super) fn finish_blocked_resident(sched: &mut IpcTables, tid: ThreadId) {
                 hold_token(token);
             }
         }
-        None => {}
+        // A suspended thread (DECISIONS §300 (the paused state, a TCB verb, silent)) is on no
+        // queue and already holds its token.
+        Some(Wait::Resume) | None => {}
     }
 
     // Sweep the outstanding reply capabilities, sharing milestone 254's function rather than

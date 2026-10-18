@@ -71,3 +71,30 @@ pub const START: u64 = 2;
 ///
 /// *(Name and number provisional, milestone 812's lane, 2026-10-10 UTC.)*
 pub const SET_THREAD_POINTER: u64 = 3;
+
+/// `invoke(cap, SUSPEND, _, _, _)` -> 0 (DECISIONS §300 (the paused state, a TCB verb, silent);
+/// seL4's `TCB_Suspend`). **Stop the thread this TCB names until a [`RESUME`]**, keeping its
+/// registers. Needs `WRITE`: the TCB capability is the whole authority.
+///
+/// - **Silent.** No message, no event code, nothing on the supervision endpoint that §26 (the
+///   fault endpoint) reports deaths on. The caller is the witness.
+/// - **Stopped when it returns.** A thread running on another core is taken off it before the call
+///   answers, so a caller that reads the thread afterwards sees it standing still.
+/// - **A thread blocked in IPC stays in that IPC.** Its rendezvous may still complete, and it then
+///   stops before running another user instruction; a `RESUME` lets it return what it was given.
+/// - A thread may suspend itself; the call returns 0 after somebody resumes it.
+/// - Suspending a suspended thread is 0 and changes nothing. An embryo is `WrongObject` (`START`
+///   it); a thread that has exited or died is `Gone`.
+///
+/// *(Name and number provisional, lane/48-tcb-suspend-resume, 2026-10-18 UTC.)*
+pub const SUSPEND: u64 = 4;
+
+/// `invoke(cap, RESUME, _, _, _)` -> 0 (DECISIONS §300; seL4's `TCB_Resume`). **Let a suspended
+/// thread run on from where it stopped**: the saved PC, every register as it was. Not a re-run.
+/// Needs `WRITE`.
+///
+/// Resuming a thread that is not suspended is 0 and changes nothing. An embryo is `WrongObject`; a thread that
+/// has exited or died is `Gone`.
+///
+/// *(Name and number provisional, lane/48-tcb-suspend-resume, 2026-10-18 UTC.)*
+pub const RESUME: u64 = 5;

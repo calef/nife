@@ -62,6 +62,11 @@ thread's state into a message a supervisor holds"), and give the method its own 
 same verb unlocks the other two triggers, a userspace pager and a debugger, so it should be designed
 for all three rather than for job control alone.
 
+The kernel verbs are built, on all three architectures: `SUSPEND` stops a thread silently and
+returns once it is off every core, and `RESUME` continues it at its saved PC
+([notes/suspend-and-resume.md](../../notes/suspend-and-resume.md) has the cases). What is left is
+the shell's half, `Ctrl-Z` and `bg`.
+
 ## The open question: `disown`
 
 If the shell drops its capabilities to a job, nobody can reap it, and §26's dead-until-reaped means the

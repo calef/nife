@@ -803,6 +803,13 @@ mod unmap_tests;
 #[cfg(test)]
 mod running_space_tests;
 
+/// **`ThreadControlBlock::SUSPEND` and `RESUME` from the syscall boundary** (DECISIONS §300 (the
+/// paused state, a TCB verb, silent)): a user thread stops, resumes with its registers, obeys only a
+/// TCB capability with `WRITE`, and dies with its region while stopped. Cross-ISA, one hand-written
+/// spinner per ISA (DECISIONS §19).
+#[cfg(test)]
+mod suspension_tests;
+
 /// **Each thread has its own thread pointer, set by the kernel** (milestone 812
 /// (`std::thread::spawn` runs real threads in one address space), §269 (how threads share a
 /// process) fork 4): from `CONFIGURE` or the thread's own `SET_THREAD_POINTER`, kept apart across

@@ -286,12 +286,23 @@ pub fn schedule() {
         // The *test* stays here, on the hot path, because it is two loads and a compare. The
         // *body* is out of line (milestone 188 phase 3): converting a killed thread and freeing its
         // callers is a teardown, so its bytes have no business in the kernel's hottest function.
-        if sched.threads.get(current).is_some_and(|t| {
-            t.killed
-                && (t.handshake.state == State::Running
-                    || (t.handshake.state == State::Blocked && !t.handshake.wake_pending))
-        }) {
+        //
+        // **A suspension order is carried out here too** (DECISIONS §300 (the paused state, a TCB verb, silent)), for a current thread
+        // still `Running`: it parks before the pick, so the pick neither requeues it nor keeps it.
+        // After the kill, so a doomed thread dies rather than stopping.
+        let (kill, suspend) = sched.threads.get(current).map_or((false, false), |t| {
+            let running = t.handshake.state == State::Running;
+            (
+                t.killed
+                    && (running
+                        || (t.handshake.state == State::Blocked && !t.handshake.wake_pending)),
+                t.suspend_requested && running,
+            )
+        });
+        if kill {
             finish_killed_current(sched, current);
+        } else if suspend {
+            suspension::park_suspended_current(sched, current);
         }
 
         // The pick: this core's queue, the idle thread when it is empty, and the outgoing thread

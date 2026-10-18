@@ -15,7 +15,7 @@ the same lines, moved out of `kernel/src/sched.rs` into `kernel/src/sched/region
 the same and only the path and line numbers differ.
 
 diff --git a/kernel/src/sched/region_reaping.rs b/kernel/src/sched/region_reaping.rs
-index 38cc2218f..d06f56721 100644
+index a8df00c85..78fe42ec9 100644
 --- a/kernel/src/sched/region_reaping.rs
 +++ b/kernel/src/sched/region_reaping.rs
 @@ -169,12 +169,7 @@ pub(super) fn finish_blocked_resident(sched: &mut IpcTables, tid: ThreadId) {
@@ -29,6 +29,6 @@ index 38cc2218f..d06f56721 100644
 -            }
 -        }
 +        Some(Wait::Futex(_)) => {}
-         None => {}
-     }
- 
+         // A suspended thread (DECISIONS §300 (the paused state, a TCB verb, silent)) is on no
+         // queue and already holds its token.
+         Some(Wait::Resume) | None => {}
