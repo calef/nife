@@ -1,206 +1,236 @@
-# xenon bench card, 2026-10-18: ioping on Linux, then the soak
+# xenon bench card: the I219, 801's fetch, ioping on both systems, then the soak
 
 *Name: provisional, minted 2026-10-18 (UTC) by lane `lane/xenon-bench-2026-10-18`, after
 `notes/xenon-bench-2026-10.md`; naming is an architect's.*
 
-One evening at xenon. The brief was three runs: risk 6's ioping comparison, milestone 801 (packages over the
-internet)'s exit criterion, and the soak of §259 (a multicore soak counts toward risk 5 at ten
-million crossings over three boots). **Two of the three cannot be done on nife tonight**, for the
-reasons in "What is blocked, and why". What can be done, in this order:
+One evening at xenon, not yet scheduled; the file takes the evening's date when it is. Five steps,
+in this order, because each needs the one before:
 
-1. Risk 6, the Linux half of step 1 of its path back to GREEN. Unmodified ioping 1.3 on a
-   Fedora 44 live stick, read-only against the NVMe, five passes per boot, the log over serial to
-   patagonia. About 15 minutes a boot.
-2. Risk 5, the first of §259's three boots on xenon. The `soak_test` kernel, watched over serial
-   by `script/board-console`, left running overnight.
+1. The I219 boot: milestone 494 (a driver for the network card a PC actually has)'s bench boot,
+   which must end `verdict LEASED-AND-MEASURED`. About 20 minutes.
+2. On patagonia: flip `PCH_PROVEN_ON_SILICON` in a commit citing that log, and build the
+   installer from it. About 5 minutes.
+3. Milestone 801 (packages over the internet)'s exit criterion: install, boot from the disk, then
+   `jig update` and `jig install ioping` from `basalt.nifeos.org`. About 15 minutes.
+4. Risk 6, step 1 of its path back to GREEN: ioping on nife (the package step 3 installed), then on
+   Linux, three boots of five passes each. About an hour.
+5. Risk 5: the first of the three boots §259 (a multicore soak counts toward risk 5 at ten million
+   crossings over three boots) needs on xenon, left running overnight.
 
 Unit details (serial device names, addresses, serial numbers) are kept off-tree by the maintainers.
 Where this card and a procedure page disagree, the machine decides and the page gets corrected.
 
-Prepared 2026-10-18 (UTC) on `91be0eab3` (main at the claim).
+## Status
 
-## What is blocked, and why
+Not ready to run. Every image below was built from `1e1820fd0`, the tip of `lane/release-uefi-boot`
+(#2360), which fixes release x86_64 UEFI images stopping after the `pat` line. When #2360 merges,
+every image is rebuilt from main, re-hashed and re-booted under OVMF, and this table changes.
 
-- **Every release-profile x86_64 UEFI image on `91be0eab3` stops under OVMF right after the `pat`
-  line**, before `cr4.smep`. The last line is
-  `pat         : 0x0007040600070106 on core 0 (was ...); entry 1 is write-combining`, then nothing.
-  Reproduced three ways: `cargo xtask install-boot` (twice), `cargo xtask network-bench`, and
-  `cargo xtask uefi-image --release` booted by hand. The debug-profile `cargo xtask uefi-boot`
-  passes, and the debug soak image boots at four cores. The installer must be release (the loader
-  refuses to offer a debug image), and `network-bench` builds release, so neither can go to xenon.
-  No CI job boots a release UEFI image, so main did not notice. A first-parent bisect from
-  `a08efc8dc` names the merge of #1997 (`maintainer/static-mut-891`, 2026-10-12 UTC), which
-  rewrote `kernel/src/arch/x86_64/segments.rs`. The fix is a kernel lane's, not a bench step.
-- **The installed system has no network on xenon.** The kernel refuses the I219 at boot while
-  `PCH_PROVEN_ON_SILICON` is `false` (`kernel/src/user/e1000e_service.rs`). The flag may be flipped
-  only in a commit citing a xenon `network-bench` boot that ends `verdict LEASED-AND-MEASURED`
-  (`notes/e1000e.md`, "calef's bench step on xenon"), and that image is release.
-- So milestone 801's fetch cannot run tonight, and nife's half of the ioping comparison waits on it.
-  Milestone 834 (ioping on nife and Linux) is done only when ioping is installed by `jig install`
-  from basalt's index. On xenon the only way to the NVMe from a program is a file on the installed
-  RedoxFS.
+| image | build | under OVMF | SHA-256 |
+|---|---|---|---|
+| I219 boot, house-LAN peer | `cargo xtask network-bench --stage-only --peer <patagonia's LAN address>:9494` | `release build`, `82574L ... link up`, `preflight dmar scope : PASS`, `dhcp : leased 10.0.2.15`; gate `verdict LEASED-AND-MEASURED` | `fcb2abf2f1d352a23d764752f789271138e96b56c9a949c17693f2d01fdf5976` |
+| I219 boot, Internet Sharing peer | `... --peer 192.168.2.1:9494` | the same lines | `c2c5665f38b2b6cc510b960cf5ee21486570948ec965d962885b44aea6e46dc3` |
+| installer, basalt's sources, flag unflipped (rehearsal only) | `cargo xtask std-exerciser`, then `NIFE_INDEX_SOURCES=basalt cargo xtask install-boot` | `install-boot: PASS`, three boots; packs `repository basalt.nifeos.org 443 rolling` | `7efc64c12eb5691922b26ec0d2e8059f9bef8b327982b29a9c7a2608d7e1d066` |
+| soak, debug | `cargo xtask uefi-image --features soak_test` | 4 cores online, 24 user threads; at 65 s `crossings=7981`, `wakerate=399/s`, `refused=0 mismatch=0 stalled=0` | `8cd2e3635d2418014f96617a4d93ffa0625921eb5f7357ca4a0cc6ea439549c5` |
 
-The order those take once release images boot again is in "When release images boot again" below.
+The I219 image's peer address is compiled in, so there is one image per network arrangement. The
+installer that goes to xenon is built at the bench in step 2, so its hash is recorded then. Copies
+are kept off-tree by the maintainers.
+
+## The open risk: name resolution at the prompt has never worked
+
+Rehearsed under QEMU: the installed system runs `jig update`, reaches the network and fails with
+`index unreachable at basalt.nifeos.org: NetworkUnreachable`. `jig` prints only the error's kind,
+which here means the resolver was refused a network step. `progenitor: name resolver up; asks
+10.0.2.3, the lease's name server` printed first. Whether this is QEMU's user-mode network or nife
+is not known. No boot anywhere has resolved a name at the prompt, as milestone 892 (a std program at
+the prompt holds the network and a name resolver)'s block records. Step 3 on xenon is that test. If
+it fails the same way, the serial log is the record. Go on to step 4's Linux half and
+step 5.
 
 ## What calef needs at the bench
 
 - **A monitor and a USB keyboard on xenon.** It halts at POST without a keyboard.
 - The serial chain: the C4PDJ module's COM1, the null-modem barrel and the FTDI adapter into
-  patagonia. Both runs log over it; nothing tonight is photographed.
-- The Fedora 44 live stick used on 2026-10-04, and a FAT32 stick (`NIFE`) for the soak image and
-  the ioping RPM.
-- Network on xenon helps for Linux (`dnf install`), and is optional: the RPM can go on the stick.
+  patagonia. Every step logs over it. The installer's `INSTALL` is typed there, since nife has no
+  USB keyboard driver.
+- Ethernet on xenon with a path to the internet. Its room has no port, so either a long cable to the
+  house router or a cable to patagonia with macOS Internet Sharing on (patagonia is then
+  `192.168.2.1`). Pick before building step 1's image. Internet Sharing meets milestone 494's
+  criterion 2 only in spirit; the Results row says which.
+- Two FAT32 sticks: `NIFE` for the nife images and the ioping RPM, and the Fedora 44 live stick.
+- Someone at patagonia for step 2, which is a commit and a build.
 
 ## Before the evening, on patagonia
 
-The soak image is built and boot-checked. Its SHA-256:
-
-| image | built from | under OVMF | SHA-256 |
-|---|---|---|---|
-| `soak_test`, debug (`cargo xtask uefi-image --features soak_test`) | `91be0eab3` | 4 cores online; `soak-test: started 4 groups ... (24 user threads) on 4 online core(s)`; 61 s: `crossings=7620`, `wakerate=388/s`, `refused=0 mismatch=0 stalled=0` | `595e522e2323fc2009399cb25ef331fa20386a87a69323f3ec89e78a827c56d8` |
-
-The copy is kept off-tree by the maintainers. To rebuild it instead, in a checkout at that commit:
+In a checkout of the commit under test (a fresh worktree builds nothing it was not asked to):
 
 ```sh
-cargo xtask uefi-image --features soak_test     # -> target/esp/EFI/BOOT/BOOTX64.EFI
-shasum -a 256 target/esp/EFI/BOOT/BOOTX64.EFI   # compare with the table
-```
-
-Put the ioping RPM on the `NIFE` stick too, for a Linux boot with no network. It is Fedora's own
-build of the same release, 1.3:
-
-```sh
+pgrep -l qemu                                    # nothing of yours should be running
+git log -1 --format=%h                           # goes in every Results row
+cargo xtask std-exerciser                        # builds jig; without it the image has no jig
+P=$(ipconfig getifaddr en0)                      # or P=192.168.2.1 with Internet Sharing
+cargo xtask network-bench --stage-only --peer "$P:9494"
+shasum -a 256 target/esp-network-bench/EFI/BOOT/BOOTX64.EFI
 curl -LO https://dl.fedoraproject.org/pub/fedora/linux/releases/44/Everything/x86_64/os/Packages/i/ioping-1.3-10.fc44.x86_64.rpm
-mkdir -p /Volumes/NIFE/EFI/BOOT
-cp ioping-1.3-10.fc44.x86_64.rpm /Volumes/NIFE/
-cp <soak image> /Volumes/NIFE/EFI/BOOT/BOOTX64.EFI
-diskutil eject /Volumes/NIFE
 ```
 
-The NIFE stick boots the soak, so it must not be in xenon during the Linux boots unless F12 picks
-the Fedora stick.
+`cargo xtask std-exerciser` matters: `jig` is packed only when it has been built, and an image
+without it answers `jig update` with `could not spawn (the progenitor is out of memory)`.
 
-## Run 1: ioping on Linux, three boots, five passes each
+## Step 1: the I219 boot
 
-calef ruled on 2026-10-18 (UTC) that ioping is the benchmark that explains or corrects risk 6's
-2.16x read: unmodified, on nife and on Linux on xenon, with real logs and repeated passes. Tonight
-is its Linux row.
-
-**Nothing here writes to the NVMe.** ioping reads; it refuses to write a device without `-WWW`, and
-no command below passes `-W`. The Oct 4 install on the disk stays intact.
-
-On patagonia, before powering xenon on:
+The procedure is `notes/e1000e.md`, "calef's bench step on xenon", with its table of every ending.
+In short: start the peer in a terminal on patagonia,
 
 ```sh
-ls /dev/cu.usbserial-*
-cd <nife checkout>/target && screen -L /dev/cu.usbserial-<id> 115200   # logs to ./screenlog.0; ctrl-a k ends
+while true; do head -c 104857600 /dev/zero | nc -l 9494; done
 ```
 
-On xenon: Fedora stick in, power on, F12, the stick's `UEFI:` entry, "Try Fedora". Open a terminal.
+then capture serial in a second terminal, copy the image and boot xenon from it:
+
+```sh
+script/board-console --board xenon --port /dev/cu.usbserial-<id> --for 10m --until none \
+    --log target/xenon-i219-$(date -u +%Y%m%dT%H%M%SZ).log
+cp target/esp-network-bench/EFI/BOOT/BOOTX64.EFI /Volumes/NIFE/EFI/BOOT/BOOTX64.EFI && diskutil eject /Volumes/NIFE
+```
+
+Success is `network-bench: nic : 8086:15e3 I219-LM5 (SPT), link up`, a `dhcp : leased` line,
+a `transfer` line and `network-bench: verdict LEASED-AND-MEASURED`. Anything else ends the evening's
+network half: route it by that table, and go to step 4's Linux half and step 5.
+
+## Step 2: flip the flag, build the installer
+
+Only after step 1 ended `LEASED-AND-MEASURED`. On a branch from the commit under test:
+
+```sh
+git switch -c lane/i219-proven-on-xenon
+sed -i '' 's/^pub const PCH_PROVEN_ON_SILICON: bool = false;/pub const PCH_PROVEN_ON_SILICON: bool = true;/' kernel/src/user/e1000e_service.rs
+git commit -am "e1000e: the I219 is proven on xenon (bench log <file>, verdict LEASED-AND-MEASURED)"
+NIFE_INDEX_SOURCES=basalt cargo xtask install-boot          # must end install-boot: PASS
+shasum -a 256 target/esp-install/EFI/BOOT/BOOTX64.EFI
+cp target/esp-install/EFI/BOOT/BOOTX64.EFI /Volumes/NIFE/EFI/BOOT/BOOTX64.EFI && diskutil eject /Volumes/NIFE
+```
+
+The commit message names the step 1 log, and the log is committed with it under
+`bench/xenon-<date>/`, as the flag's own comment requires. QEMU's NIC is an 82574L, not a PCH part,
+so `install-boot` passing says nothing about the I219; step 3 is the I219's test at the prompt.
+
+## Step 3: milestone 801, install, boot from the disk, fetch
+
+This destroys what is on the NVMe, which is the 2026-10-04 install. The steps are the October
+card's step 2 (`notes/xenon-bench-2026-10.md`), with the serial capture in `screen`, because
+`INSTALL` has to be typed:
+
+```sh
+cd <checkout>/target && screen -L /dev/cu.usbserial-<id> 115200     # ctrl-a k ends; log is screenlog.0
+```
+
+1. Boot the stick. Check that the offer's `TARGET` names the disk by size, then type `INSTALL` in
+   `screen` within 30 seconds. Wait for `install : DONE`.
+2. Remove the stick, power off, power on with the Ethernet cable in. Note whether the firmware found
+   the disk itself or needed F12.
+3. At `$`, type:
+
+   ```text
+   jig update
+   jig install ioping
+   cd packages
+   ioping -v
+   ```
+
+| line | means |
+|---|---|
+| `index updated: N packages for x86_64, from basalt.nifeos.org over TLS` | the index came by name over pinned TLS |
+| `fetched ioping-1.3-x86_64 from ... over TLS`, then `fetched and installed; generation N is live` | milestone 801's exit criterion is met |
+| `ioping 1.3` | the installed program runs |
+| `index unreachable at basalt.nifeos.org: NetworkUnreachable` | the resolver was refused a network step: the open risk above |
+| `index unreachable at basalt.nifeos.org: <other>` | the name resolved and the connection or TLS failed; the text says which |
+| `passed over https://...: <why>` | the Release location was refused; `jig` falls back to Pages' `targets/` |
+| `no source sent the package; nothing was installed` or `refused: the index does not vouch for the bytes` | a fetch or digest failure; stop |
+
+## Step 4: ioping on nife, then on Linux
+
+calef ruled on 2026-10-18 (UTC) that ioping is the benchmark that explains or corrects risk 6's 2.16x
+read: unmodified, on nife and on Linux on xenon, with real logs and repeated passes.
+
+### nife, three boots
+
+ioping holds only its own installed file, read-only, so that file is the target. In `screen`, after
+each boot from the disk:
+
+```text
+cd packages
+wc ioping/1.3/ioping
+ioping -c 1000 -i 0 -s 4k ioping/1.3/ioping
+```
+
+Type the `ioping` line five times. The `wc` line's third number is the file's size in bytes, `F`,
+which the Linux run uses. Power off fully between boots.
+
+### Linux, three boots
+
+Fedora stick in, F12, "Try Fedora", a terminal. Nothing here writes to the NVMe: ioping refuses to
+write a device without `-WWW`, and no line passes `-W`.
 
 ```sh
 sudo dnf install -y ioping nvme-cli || sudo rpm -i /run/media/liveuser/NIFE/ioping-1.3-10.fc44.x86_64.rpm
 sudo stty -F /dev/ttyS0 115200 cs8 -cstopb -parenb -crtscts onlcr
 ```
 
-Then the whole run as one command, so every byte goes to the serial log. `B` is the boot number,
-1 to 3:
+With `screen` capturing on patagonia, one command per boot, `B` the boot and `F` from nife's `wc`:
 
 ```sh
-B=1; {
+B=1 F=<bytes>; {
   date -u +%FT%TZ; uname -r; ioping -v
   cat /sys/block/nvme0n1/queue/scheduler /sys/module/nvme/parameters/poll_queues
-  cat /sys/block/nvme0n1/device/model; sudo nvme smart-log /dev/nvme0n1 | grep -i temp
-  for p in 1 2 3 4 5; do
-    echo "=== boot $B pass $p cached-io-invalidated $(date -u +%FT%TZ)"
-    sudo ioping -c 1000 -i 0 -s 4k -S 64m -o 1m /dev/nvme0n1
-  done
-  for p in 1 2 3 4 5; do
-    echo "=== boot $B pass $p direct $(date -u +%FT%TZ)"
-    sudo ioping -D -c 1000 -i 0 -s 4k -S 64m -o 1m /dev/nvme0n1
-  done
   sudo nvme smart-log /dev/nvme0n1 | grep -i temp
+  for p in 1 2 3 4 5; do echo "=== boot $B pass $p as-nife"; sudo ioping -c 1000 -i 0 -s 4k -S $F -o 1m /dev/nvme0n1; done
+  for p in 1 2 3 4 5; do echo "=== boot $B pass $p direct"; sudo ioping -D -c 1000 -i 0 -s 4k -S $F -o 1m /dev/nvme0n1; done
+  for p in 1 2 3 4 5; do echo "=== boot $B pass $p risk6-window"; sudo ioping -c 1000 -i 0 -s 4k -S 64m -o 1m /dev/nvme0n1; done
 } 2>&1 | sudo tee /dev/ttyS0
 ```
 
-What the arguments are: 1000 requests (`-c`), no pause between them (`-i 0`), 4 KiB each (`-s`).
-They land at random 4 KiB-aligned offsets inside a 64 MiB window (`-S`) starting 1 MiB in (`-o`).
-That is the window risk 6's nife figure and the Oct 4 `fio` run used. ioping prints one line per request with
-its latency, then `min/avg/max/mdev`. The first set invalidates the page cache before each read,
-which is ioping's default and the mode nife can repeat. The second set adds `-D` (`O_DIRECT`), the
-Linux reference, since what direct I/O means on nife is milestone 834's open question.
+`-c 1000 -i 0 -s 4k` is the same on both systems: 1000 requests of 4 KiB, no pause, one at a time,
+each line a latency. The `as-nife` set reads a working set of nife's size. Without `-D`, ioping
+drops the page cache before each read, the mode nife can match. The `direct` set adds `O_DIRECT` as
+Linux's reference. The `risk6-window` set reads the 64 MiB at 1 MiB that risk 6's figure and the
+Oct 4 `fio` run used.
 
-Power off fully between boots, as risk 6's own runs did, since the Oct 4 Linux reads varied 74 to
-188 MB/s with drive state. After boot 3, quit `screen` and keep `screenlog.0`.
+## Step 5: the soak, boot 1 of three
 
-Recording: commit `screenlog.0` whole as `bench/xenon-2026-10-18/ioping-linux.log`, stripped
-with `LC_ALL=C tr -cd '\11\12\15\40-\176'` (`notes/bench-runbook.md`'s BUGS) and nothing else.
-
-## Run 2: the soak, boot 1 of §259's three
-
-§259 counts at least ten million crossings over at least three plain boots per architecture. radon
-crossed at 44 to 150 a second, so xenon needs something like 20 to 60 hours over three boots;
-tonight starts the first. A plain boot soaks until the watcher stops; it is not the
-`reboot_soak_test` build. The procedure is `notes/soak.md`, "On radon at a bench", with xenon's
-stick and `--board xenon`.
-
-On patagonia, with nothing else holding the port (`lsof /dev/cu.usbserial-*`; quit `screen`
-first):
+radon crossed at 44 to 150 a second, so ten million on xenon is something like 20 to 60 hours over
+three boots. A plain boot soaks until the watcher stops; it is not the `reboot_soak_test` build. The
+procedure is `notes/soak.md`, "On radon at a bench". Quit `screen`, check `lsof /dev/cu.usbserial-*`,
+then:
 
 ```sh
 script/board-console --board xenon --port /dev/cu.usbserial-<id> --for 12h --until none \
     --log target/xenon-soak-$(date -u +%Y%m%dT%H%M%SZ).log
 ```
 
-Then: `NIFE` stick in xenon, power on, F12, the stick. Before walking away, read the first beat:
+Boot the soak image. Before walking away, the first beat must show `on 4 online core(s)`,
+`wakerate` near 400/s, and `crossings` rising between beats; if not, stop.
 
-- `soak-test: started 4 groups of one responder, 3 callers, 1 grinder and 1 tick waiter (24 user
-  threads) on 4 online core(s)`. Four cores is xenon's i5-7500T; fewer means an AP did not come up.
-- `wakerate` near 400/s (100 per core), and `crossings` rising between beats.
+## Recording
 
-If either is wrong, stop: hours of a soak that does not cross cores answer nothing. A
-`soak-test: FAILED` line, or three missed beats, ends the watch on its own; the log is the artifact.
+Under `bench/xenon-<date>/`, each log whole, stripped with `LC_ALL=C tr -cd '\11\12\15\40-\176'`
+and nothing else (`notes/bench-runbook.md`'s BUGS):
 
-Recording: the log goes to `bench/xenon-2026-10-18/soak-boot1.log`, and its last beat's
-`rounds`, `rate`, `wakes` and `crossings`, with the duration, go in `notes/soak.md`'s table and
-milestone 225 (run the soak on radon, argon and xenon)'s block.
-
-## When release images boot again
-
-In order, because each needs the one before:
-
-1. The I219 boot (`notes/e1000e.md`, "calef's bench step on xenon"): `cargo xtask network-bench
-   --stage-only --peer "$P:9494"`, an Ethernet cable, a `nc` peer on patagonia. It must end
-   `verdict LEASED-AND-MEASURED`. Then a lane flips `PCH_PROVEN_ON_SILICON`, citing the log.
-2. Milestone 801's exit: `NIFE_INDEX_SOURCES=basalt cargo xtask install-boot` builds the
-   installer with `package_index::BASALT_SOURCES` (`repository basalt.nifeos.org 443 rolling`, by
-   name, pinned to ISRG Root X1) and proves it installs under OVMF. Install from the stick as the
-   October card's step 2 does and boot from the disk with Ethernet in. At the prompt, over serial:
-
-   ```text
-   jig update
-   jig install ioping
-   ```
-
-   Success reads `index updated: N packages for x86_64, from basalt.nifeos.org over TLS`, then
-   `fetched ioping-1.3-x86_64 from ... over TLS` and `fetched and installed; generation N is live`.
-   Failure names its cause: `index unreachable at basalt.nifeos.org: ...`, `passed over https://...`,
-   `no source sent the package; nothing was installed`, or `refused: the index does not vouch for
-   the bytes that arrived`.
-3. nife's ioping row: in `packages`, `ioping -c 1000 -i 0 -s 4k <file>` on the installed
-   system, five passes a boot over three boots. Unvouched, ioping holds only its own installed
-   file, read-only (the BUGS of milestone 906 (ioping is packaged in basalt)), so the window
-   cannot be 64 MiB at 1 MiB as on Linux.
-   Matching the two is milestone 834's first question, not a bench step.
+- `i219.log`, with `notes/e1000e.md`'s Results row; it lands with step 2's commit.
+- `install-and-fetch.log` and `ioping-nife.log` from `screenlog.0`, and the line for milestone 801's
+  block.
+- `ioping-linux.log`, and risk 6's comparison, every pass, through whoever holds `design/`.
+- `soak-boot1.log`, with its last beat in `notes/soak.md`'s table and milestone 225 (run the soak on
+  radon, argon and xenon)'s block.
 
 ## BUGS
 
-- Tonight's ioping run is half a comparison. The nife half waits on the release-image defect, the
-  I219 flag and 801, in that order.
-- The Linux run reads the raw device and nife's will read a file through RedoxFS and the file
-  server. Even with identical arguments that is not apples-to-apples, and the comparison must say
-  so.
-- The soak image is a debug build, as `cargo xtask uefi-image` makes by default. radon's were too;
-  a release soak would cross faster and is not what §259's radon count measured.
+- The nife and Linux ioping rows are not apples-to-apples. nife reads a file through RedoxFS and the
+  file server, and Linux reads the raw device. What direct I/O means on nife is milestone 834
+  (ioping on nife and Linux)'s open question.
+- Step 2 builds the evening's installer from a branch that has not merged, because the flag may
+  flip only after silicon proves it. The branch's pull request follows the evening.
+- The soak image is a debug build, as radon's were.
 - Every xenon-side line above is a prediction. xenon has booted four cores (2026-09-17) and has
-  never run the soak.
+  never run the I219 path, `jig` or the soak.
