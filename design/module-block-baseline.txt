@@ -1029,7 +1029,6 @@ crates/designware_ethernet/src/coherence.rs::classify
 crates/designware_ethernet/src/coherence.rs::delivered
 crates/designware_ethernet/src/coherence.rs::observe
 crates/designware_ethernet/src/coherence.rs::prepare
-crates/designware_ethernet/src/coherence.rs::transmit_completed
 crates/designware_ethernet/src/controller.rs
 crates/designware_ethernet/src/controller.rs::Bus
 crates/designware_ethernet/src/controller.rs::Error
@@ -2486,7 +2485,6 @@ crates/filesystem_fixture/src/lib.rs::WALKED_UP
 crates/filesystem_fixture/src/lib.rs::WALKED_UP
 crates/filesystem_fixture/src/lib.rs::WALK_BYTES
 crates/filesystem_fixture/src/lib.rs::WALK_COMPONENTS
-crates/filesystem_fixture/src/lib.rs::WALK_DIRS
 crates/filesystem_fixture/src/lib.rs::WALK_ENTRIES
 crates/filesystem_fixture/src/lib.rs::WALK_FILES
 crates/filesystem_fixture/src/lib.rs::WARMUP
@@ -5701,7 +5699,6 @@ kernel/src/cpu.rs::runq_len
 kernel/src/delegation_pause.rs
 kernel/src/delegation_pause.rs::arm
 kernel/src/delegation_pause.rs::disarm
-kernel/src/delegation_pause.rs::parked
 kernel/src/delegation_pause.rs::release
 kernel/src/designware_ethernet.rs
 kernel/src/designware_ethernet.rs::Error
@@ -6247,7 +6244,6 @@ kernel/src/user/memory_region_service.rs::start
 kernel/src/user/non_volatile_memory_express_service.rs::DmaEscape
 kernel/src/user/non_volatile_memory_express_service.rs::Wiring
 kernel/src/user/non_volatile_memory_express_service.rs::blk
-kernel/src/user/non_volatile_memory_express_service.rs::canary_intact
 kernel/src/user/non_volatile_memory_express_service.rs::ensure_or_why
 kernel/src/user/non_volatile_memory_express_service.rs::start_dma_escape
 kernel/src/user/non_volatile_memory_express_service.rs::transfer_block

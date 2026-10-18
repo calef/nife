@@ -370,7 +370,7 @@ fn the_rg_match_paths_meet_at_the_region_boundaries() {
 #[test]
 fn the_walk_totals_are_what_the_shape_adds_up_to() {
     use crate::walk::*;
-    assert_eq!(WALK_DIRS, 12);
+    assert_eq!(WALK_DIRECTORIES, 12);
     assert_eq!(WALK_FILES, 141);
     assert_eq!(WALK_ENTRIES, 153);
     // 138 small files of 16 bytes, plus 4 KiB, 64 KiB and 256 KiB.
