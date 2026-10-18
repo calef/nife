@@ -48,7 +48,7 @@ claims parity:
 
 - **A network grant scoped to addresses and ports.** The manifest's `network` is one bit today:
   all of the network, or none. A container gets its own address, its own ports and firewall rules.
-- **A CPU budget the scheduler enforces.** Milestone 282 measures a thread's CPU time; nothing
+- **A CPU budget the scheduler enforces.** Milestone 282 (a thread's CPU time, and the `top` it makes possible) measures a thread's CPU time; nothing
   limits it. A container gets `cpu.max`.
 
 An I/O bandwidth limit (`io.max`) is not required yet. An imported Linux binary runs under the
