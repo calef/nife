@@ -85,7 +85,7 @@ the shape this system keeps arriving at: the boundary carries authority, not str
 
 ## The limitation that shaped it, which is a property of the boundary
 
-Nothing in this system delivers bytes from a command line to a program. `Endowment::arg` is one
+Nothing in this system delivers bytes from a command line to a program. `Endowment::program_argument` is one
 `u64`, and `spawnproto` carries three words. Every string-shaped designation a person types (a file,
 a directory) arrives at the child as a capability. That is what `rm logs/old` and `doc
 notes/glob.md` both are, and it is why `rm` learns nothing about the name it removes.

@@ -108,8 +108,8 @@ pub(super) fn words_grant(
             b"  that directory is in a mounted tree, and the progenitor builds a caretaker\n  from the root tree; a grant there is not built\n",
         ));
     }
-    let dir = match g.dir.depth() {
-        1 => g.dir.component(0),
+    let dir = match g.directory.depth() {
+        1 => g.directory.component(0),
         0 => {
             return Err(Some(
                 b"  its words name things in the root of this shell's namespace, and a caretaker is\n  built by descending into a directory: `cd` into one first\n",
@@ -240,7 +240,7 @@ static IMAGE_TABLES: core::sync::atomic::AtomicU64 = core::sync::atomic::AtomicU
 /// One frame is held at a time: retyped, filled, delegated narrowed to `READ`, deleted. The staging
 /// region is destroyed once the answer is in, which revokes the frames from both address spaces.
 /// See `spawnproto`'s BUGS for what this first cut does not do.
-pub(super) fn run_image(nav: &mut Nav, spec: RunSpec) {
+pub(super) fn run_image(nav: &mut Nav, spec: ParsedInvocation) {
     let Some(PlannedImage {
         t,
         handle,
@@ -266,8 +266,12 @@ pub(super) fn run_image(nav: &mut Nav, spec: RunSpec) {
 
     let (w0, w1, w2) = spawnproto::request(
         size,
-        e.arg,
-        if mem_slot.is_some() { e.mem_pages } else { 0 },
+        e.program_argument,
+        if mem_slot.is_some() {
+            e.memory_grant_pages
+        } else {
+            0
+        },
         spawnproto::Wiring {
             image: true,
             run_unvouched: holds_run_unvouched,
@@ -357,12 +361,12 @@ struct PlannedImage {
 
 /// [`run_image`]'s first half: open the file, read its note, and bind the line against the manifest
 /// it carries. Each refusal closes the file and says why, and the answer is `None`.
-fn plan_image(nav: &mut Nav, spec: RunSpec) -> Option<PlannedImage> {
+fn plan_image(nav: &mut Nav, spec: ParsedInvocation) -> Option<PlannedImage> {
     if nav.dir.is_none() {
         say(Say::NoDirectory);
         return None;
     }
-    let (t, handle, size) = open_for_bytes(nav, spec.prog)?;
+    let (t, handle, size) = open_for_bytes(nav, spec.program)?;
     let declared = match read_manifest_note(t.slot, handle, size) {
         Ok(d) => d,
         Err(r) => {
@@ -432,7 +436,7 @@ struct ImageGrants {
 /// carved, says why, and answers `None`.
 fn carve_image_grants(
     nav: &mut Nav,
-    spec: RunSpec,
+    spec: ParsedInvocation,
     t: Tree,
     handle: u64,
     e: &Endowment,
@@ -446,8 +450,8 @@ fn carve_image_grants(
         out_of_budget();
         return None;
     }
-    let mem_slot = if e.mem_pages > 0 {
-        memory_region_split(e.mem_pages)
+    let mem_slot = if e.memory_grant_pages > 0 {
+        memory_region_split(e.memory_grant_pages)
     } else {
         None
     };
@@ -473,7 +477,7 @@ fn carve_image_grants(
     };
     // **And what its words designated** (milestone 205's designation half), on a page carved
     // after the argv's and still below staging.
-    let set_grant = match (e.dir, m.arg) {
+    let set_grant = match (e.directory, m.arg) {
         (Some(g), grant_plan::ArgSpec::Words(grant)) => match words_grant(&g, grant, 0) {
             Ok(w) => Some(w),
             Err(why) => {
@@ -760,7 +764,7 @@ pub(super) fn vouch(nav: &mut Nav, path: Option<&[u8]>) {
 
 /// Print a refusal in the capability model's voice, which is [`swish::write_refusal`]'s job: the
 /// fixed half is `grant_plan`'s and the program name is supplied where one helps.
-pub(super) fn refuse(spec: RunSpec, refusal: Refusal) {
+pub(super) fn refuse(spec: ParsedInvocation, refusal: Refusal) {
     refused();
     swish::write_refusal(&spec, refusal, &mut print);
 }
@@ -830,13 +834,13 @@ pub(super) fn dir_grant(g: &GrantDir, flags: u64) -> Result<DirWords, &'static [
     // The directory the caretaker descends into. One component, because that is one `OPENDIR`; a
     // deeper path is a *chain* of caretakers (DECISIONS §92 names it as the case supervision was
     // chosen for) and the progenitor builds one.
-    let dir = match g.dir.depth() {
+    let dir = match g.directory.depth() {
         0 => {
             return Err(
                 b"  that names the root of this shell's namespace, and a caretaker is built by \n  descending into a directory; there is no name here to descend into\n",
             );
         }
-        1 => g.dir.component(0),
+        1 => g.directory.component(0),
         _ => {
             return Err(
                 b"  that directory is more than one level down, and the progenitor builds one caretaker \n  per grant; a deeper grant is a chain of them, which is not built\n",
@@ -898,8 +902,8 @@ pub(super) fn spawn(e: Endowment, argv: Option<Argv>) {
     };
     // A memory grant is carved from the shell's own untyped. If our budget is spent, say so plainly
     // rather than sending the progenitor a promise we cannot keep.
-    let mem_slot = if e.mem_pages > 0 {
-        match memory_region_split(e.mem_pages) {
+    let mem_slot = if e.memory_grant_pages > 0 {
+        match memory_region_split(e.memory_grant_pages) {
             Some(slot) => Some(slot),
             None => {
                 failed();
@@ -996,7 +1000,7 @@ fn spawn_dir_grant(
     // **A program that hears words is granted what they designated** (milestone 205), as a name
     // set or the whole directory, through `words_grant` rather than `rm`'s `dir_grant`.
     let mut set_grant = None;
-    let dir_words = match (e.dir, e.prog.manifest().arg) {
+    let dir_words = match (e.directory, e.prog.manifest().arg) {
         (None, _) => None,
         (Some(g), grant_plan::ArgSpec::Words(grant)) => match words_grant(&g, grant, 0) {
             Ok(w) => {
@@ -1038,8 +1042,8 @@ fn plain_request(e: &Endowment, args: bool, dir: bool, nameset: bool) -> (u64, u
     // way it endows the clock. `2>` makes a line non-plain and goes down [`pipeline`].
     spawnproto::request(
         e.prog.id(),
-        e.arg,
-        e.mem_pages,
+        e.program_argument,
+        e.memory_grant_pages,
         spawnproto::Wiring {
             interruptible: false,
             sink: false,
@@ -1289,33 +1293,33 @@ fn outcome(e: Endowment, answer: u64) {
 
 /// Resolve an invocation, then either refuse it at the prompt (a mismatch the manifest caught) or
 /// spawn it, granting exactly what the command named and nothing else.
-pub(super) fn run(nav: &mut Nav, cmd: &[u8], spec: RunSpec) {
+pub(super) fn run(nav: &mut Nav, cmd: &[u8], spec: ParsedInvocation) {
     // **A path runs bytes, not a name** (DECISIONS §219 (how the shell names an installed program to the spawner) option D, milestone 198 (a package manager) rung 3a). A program
     // the image names is a word with no `/` in it; anything with one is a file this shell reads and
     // hands the progenitor as frames. `installed/uptime` and `./a.out` both land here.
-    if spec.prog.contains(&b'/') {
+    if spec.program.contains(&b'/') {
         return run_image(nav, spec);
     }
     // **A bare word is the image's, an installed program's, or refused** (DECISIONS §229 (how a
     // bare name at the prompt reaches an installed program), B2). An installed program runs down
     // the same road its path does, so what it is granted and who vouched for it do not depend on
     // how it was named.
-    match bare(nav, spec.prog) {
+    match bare(nav, spec.program) {
         swish::bare::Bare::Installed { path, notice } => {
             // **The spawn line says both when a version set asked for a version that is not live**
             // (milestone 614 (two installed versions of one program, each runnable, and a caller
             // granted the one it needs), ruling 4): what runs, and what the set specified. A
             // preview ([`caps`]) says nothing ran, so it prints no notice.
             if let Some(notice) = notice {
-                swish::bare::write_divergence(spec.prog, &notice, &mut print);
+                swish::bare::write_divergence(spec.program, &notice, &mut print);
             }
             let mut by_path = spec;
-            by_path.prog = path.as_bytes();
+            by_path.program = path.as_bytes();
             return run_image(nav, by_path);
         }
         swish::bare::Bare::Both(path) => {
             refused();
-            return swish::bare::write_both(spec.prog, &path, &mut print);
+            return swish::bare::write_both(spec.program, &path, &mut print);
         }
         swish::bare::Bare::Image | swish::bare::Bare::Unknown => {}
     }

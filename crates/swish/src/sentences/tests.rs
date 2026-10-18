@@ -35,7 +35,7 @@ fn pwd_prints_the_position_relative_to_this_shells_own_root() {
     assert!(cwd.descend(b"docs"));
     assert!(cwd.descend(b"drafts"));
     let holdings = Holdings {
-        dir: true,
+        directory: true,
         cwd,
         ..Holdings::default()
     };
@@ -81,14 +81,14 @@ fn a_spawn_that_failed_says_so_whatever_the_program_was() {
 #[test]
 fn the_two_programs_that_answer_with_a_number_report_it_in_their_own_terms() {
     let mut e = endowment(Prog::LeastAuthorityDemo);
-    e.arg = 7;
+    e.program_argument = 7;
     assert_eq!(
         shown(|o| write_outcome(&e, 49, o)),
         "  a process at EL0 computed 7*7 = 49\n"
     );
 
     let mut e = endowment(Prog::MemoryGrantDepleter);
-    e.mem_pages = 16;
+    e.memory_grant_pages = 16;
     let s = shown(|o| write_outcome(&e, 14, o));
     // Both numbers, because the gap between them is the page tables the grant paid for, and a
     // reader who sees only one of them cannot tell that the grant was honored.
