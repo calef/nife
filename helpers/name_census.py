@@ -29,9 +29,9 @@ import name_crossings
 import name_provenance
 import name_rules
 
-# Where a program's file lives. `user/src/` is only in history: milestone 175 split it into the
-# other two on 2026-09-13, and `script/metrics` counts each week from the tree it had. (Milestone 175 is the split of `user/`
-# into `components/` for services and `fixtures/` for test and benchmark programs.)
+# Where a program's file lives. `user/src/` is only in history: milestone 175 (split `user/`:
+# `components/` for services, `fixtures/` for test and benchmark programs) replaced it with the other
+# two on 2026-09-13, and `script/metrics` counts each week from the tree it had.
 PROGRAM_DIRS = ("components/src", "fixtures/src", "user/src")
 _RECORD_STEM = re.compile(r"^\d")
 _PACKAGE_NAME = re.compile(r'^\s*name\s*=\s*"([^"]+)"', re.M)
@@ -50,9 +50,8 @@ STRAY_WHY = {
 }
 
 # An exception to §75 (directories under `design/` and `notes/` carry provenance in their own
-# README) (2026-10-06, UTC). Each entry under notes/skills/
-# is an Agent Skills directory whose SKILL.md name the specification fixes, so the entry has no
-# README of its own. calef ratified all six entry names in one ruling, which notes/skills/README.md
+# README), from 2026-10-06 (UTC). Each entry under notes/skills/ is an Agent Skills directory whose
+# SKILL.md name the specification fixes, so the entry has no README of its own. calef ratified all six entry names in one ruling, which notes/skills/README.md
 # records beside the directory's own block, and judged a README per entry the gate's fault ("SKILL.md
 # holds the information"). So a directory DIRECTLY under notes/skills/ that holds a SKILL.md is
 # covered by the parent's block. helpers/agents-index-check.py fails an entry with no row there.
