@@ -136,8 +136,10 @@ Settled in the tier 1 review of 2026-10-18 (UTC), each a precedent and not a new
   [convention-rulings.md](convention-rulings.md)), even when the heading is a sentence, as in
   `lift-is-only-worth-what-its-caller-does` and `functions-that-answer-yes-or-no`. When the slug is
   wrong, change the heading. There is no exception.
-- A dated record is named by place and date: `radon-2026-09-03`, `qemu-2026-09`. Use the month when
-  the record spans days. A word such as "baselines" or "measurements" claims a role, so leave it out.
+- A dated record is named by its subject and date (calef, 2026-10-18 UTC: "Yes"). For a bench run the
+  subject is the machine: `radon-2026-09-03`, `qemu-2026-09`. Otherwise it is what was examined:
+  `census-`, `inflow-`, `baseline-`, `guard-page-faults-`, `kernel-stack-overflow-2026-08-15`. Use the
+  month when the record spans days. A word such as "measurements" claims a role, so leave it out.
 - The machine stays in the stem when the directory does not name it: `network-boot-xenon` under
   `x86-uefi-boot/`, while `visionfive2/network-boot` needs none.
 - A file name says what the file is in the sense its directory gives it. `survey-design` fits under
@@ -148,6 +150,13 @@ Settled in the tier 1 review of 2026-10-18 (UTC), each a precedent and not a new
   heading (calef, 2026-10-18 UTC: "Yes").
 - An appendix that continues no single section (reference tables, logs, datasets, indexes) is named
   for its own title, cut down to the noun that says what it is (calef, 2026-10-18 UTC: "Yes").
+
+## Script names
+
+calef, 2026-10-18 (UTC): "Yes". A command that does one action takes a verb: `claim`, `bench`, `fmt`,
+`record-ruling`, `vendor-verify`, `repeat-under-load`, `toolchain-bump`. A standing tool or role
+takes a noun: `board-boot-watcher`, `merge-queue-rebaser`, `project-metrics`,
+`outsider-pass-launcher`. A gate ends in `-check`.
 
 ## What is checked, and what cannot be
 
