@@ -11,16 +11,6 @@
 # two counts). Median and bold are not asked of documents under 200 words.
 # measure: 3
 path	words	median	longest	bold_lead	bold_inline
-design/decisions/0146-archive-and-compression-write-or-take.md	-	-	42	-	-
-design/decisions/0147-a-timer-a-userspace-service-cannot-hold.md	-	-	69	-	-
-design/decisions/0149-kernel-served-console-endpoint.md	-	-	51	-	-
-design/decisions/0151-repository-goal-is-independent-release.md	-	-	46	-	-
-design/decisions/0152-port-range-capability.md	-	22	66	-	-
-design/decisions/0153-two-core-x86-test-sequencing.md	-	-	49	-	-
-design/decisions/0154-the-acronym-test-is-whether-the-phrase-is-spoken.md	-	-	49	-	-
-design/decisions/0155-naming-conventions-move-out-of-the-constitution.md	-	-	56	-	-
-design/decisions/0157-a-trivial-install-is-a-web-page-a-usb-drive-and-packages.md	-	-	48	-	-
-design/decisions/0158-a-program-is-declared-once.md	-	-	54	-	-
 design/decisions/0160-what-a-subshell-copies.md	-	-	64	-	-
 design/decisions/0161-what-counts-as-running-vaultwarden.md	-	-	42	-	-
 design/decisions/0162-giving-up-a-mapping.md	-	-	50	-	-

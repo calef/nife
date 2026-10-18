@@ -28,8 +28,8 @@ structure is for. This decides that:
 
 So the endpoint is the decoupled ecosystem, not the monorepo held forever. Milestone 39's own
 recommendation is consistent with this: get there through option B (workspaces inside one repository)
-and let the distribution be a manifest repository (`basalt`, reserved by milestone 120), reaching the
-split when the seams exist rather than by directory surgery up front.
+and let the distribution be a manifest repository (`basalt`, reserved by milestone 120). That
+recommendation reaches the split when the seams exist rather than by directory surgery up front.
 
 ## What this does not settle, and it is deliberately separate
 
@@ -44,9 +44,9 @@ quietly break, so the strain has to justify the trade. That trade is a separate 
 
 A BSD ships a base system: kernel plus core userland as one cohesive tree, developed and released
 as a unit, with ports layered on top. There is a privileged base, and it *is* the OS. A Linux
-distribution has no base tree: the kernel is one upstream project on its own cadence, every userland
-piece is a separately-versioned upstream, and the distribution is an integrator that packages those
-independent pieces together with glue and a package manager, owning none of them.
+distribution has no base tree. The kernel is one upstream project on its own cadence, and every
+userland piece is a separately-versioned upstream. The distribution is an integrator that packages
+those independent pieces together with glue and a package manager, owning none of them.
 
 nife is the second. Three consequences that are the point of naming it rather than a stylistic note:
 
@@ -83,7 +83,7 @@ and with it the maintainer's earlier BSD-leaning comparison, not the sequencing.
 ## BUGS
 
 - **This decides the goal, not the grain.** "One repository per package" was calef's opening framing
-  in the same conversation; the maintainer argued for splitting on release cadence instead, since a
+  in the same conversation. The maintainer argued for splitting on release cadence instead, since a
   piece earns a repository when it can ship independently and almost nothing can yet while the
   protocols move. This section records that independent release is the *test* for the grain; which
   pieces pass it is measured when the split is scheduled, not asserted here.

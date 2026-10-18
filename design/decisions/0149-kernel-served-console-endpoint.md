@@ -8,7 +8,7 @@ ratified_by: calef
 # 149. May the kernel answer on an endpoint, where §121 leaves no userspace holder?
 
 2026-09-15, and the answer is no. Raised 2026-09-09 by the maintainer. Resolved
-not by picking one of its three options but by dissolving its premise: this section asked what to
+not by picking one of its three options but by dissolving its premise. This section asked what to
 do *given that §121 leaves no userspace holder on x86*, and on 2026-09-15 calef reopened §121 to give
 x86 exactly that holder (the port-range capability). So the kernel does **not** answer on an endpoint;
 x86's console is a userspace driver like the other two. See the resolution at the end. *(Number
@@ -73,7 +73,7 @@ on x86.
 - *For*: smaller to build; no kernel thread to schedule or wedge.
 - *Against*: it is syscall surface, the expensive kind under the *move fast on what can be undone*
   tenet, and every future program is written against it. It is also worse on security grounds in a
-  capability system, and this is the part that is easy to get backwards: a syscall is reachable by
+  capability system, and this is the part that is easy to get backwards. A syscall is reachable by
   every thread in the system, where an endpoint is reachable only by whoever was handed the
   capability, and can be revoked. Option 2 asks for a rule about who should call it; option 1 makes
   most programs unable to.
@@ -90,7 +90,7 @@ currently assumes. The framebuffer is MMIO, so the existing mapping model works 
 
 ## Recommendation
 
-Option 1, and the effort test (§92, and the seventh question) comes out the same way: if all
+Option 1, and the effort test (§92, and the seventh question) comes out the same way. If all
 three cost the same, option 1 is still the one to pick, because it is the only one where the
 interface does not diverge. It is not the cheapest to build; option 2 is.
 
@@ -103,7 +103,7 @@ one.
 
 Whether the kernel should serve IPC generally, to expose facts only it knows (preemption counts,
 scheduler state, the machine description). calef raised that in the same conversation and it is a
-better question than this one, but it is a different question, and the two were deliberately
+better question than this one, but it is a different question. The two were deliberately
 separated so that the general case is not decided on the momentum of the narrow one:
 
 | | This section (console) | Kernel introspection |
@@ -149,8 +149,9 @@ thread) is **not** built.
 Why the recommendation here lost, recorded because it was argued for. This section recommended the
 kernel thread on the strength of the interface-does-not-diverge test, and it was right that the client
 stays identical. What it undervalued is that the kernel thread keeps a device driver in the kernel,
-which is the one thing §14's thesis says userspace should hold, and that the endpoint's ability to hide
-the driver's location is a reason to *migrate* later, not a reason to build the kernel version first.
+which is the one thing §14's thesis says userspace should hold. It also undervalued that the
+endpoint's ability to hide the driver's location is a reason to *migrate* later, not a reason to
+build the kernel version first.
 calef ruled straight to the userspace driver (DECISIONS §121, milestone 299), accepting a slower path
 to the x86 prompt in exchange for not shipping a kernel-resident driver at all. The BUGS below, about a
 kernel-resident IPC server's denial-of-service surface and its place in the trusted computing base, are
