@@ -8,9 +8,7 @@ architect's call, ship a provisional one and say so, never rename on your own in
 two disagree, this file is the rule and `AGENTS.md` is the bug. The headline rule is
 [§39 (a component is named for what it is)](decisions/0039-component-names.md).
 
-This page is what a lane or a maintainer acts on. The argument, history, worked examples and every
-recorded refusal live in the [appendices](#appendices), split out on 2026-09-24 under §212 (a prose
-budget) and §213 (writing standards).
+The argument, examples and refusals live in the [appendices](#appendices).
 
 ## Who names things
 
@@ -169,13 +167,14 @@ not tracked and never fails.
 The refusals are the valuable half. A refused name is visible nowhere else, and the person who most
 needs it is the one about to propose it again.
 
-### The four states
+### The five states
 
 | State | Means | What clears it |
 |---|---|---|
 | `provisional` | whoever chose it expects it to change, per §89 (`provisional` becomes the fourth provenance state) | a ruling |
 | `unrecorded` | nothing in the tree or its history says why | research, then a ruling |
 | `recorded` | something outside the block argues the name; calef never ruled | a ruling |
+| `local` | only its own package reads it, and it passed every mechanical check (§310) | another package reading it, or a failed check |
 | `ratified` | calef ruled, with the date and what was refused | done |
 
 ### The forms
@@ -185,6 +184,7 @@ Name: ratified <YYYY-MM-DD> (<who>, <where>). Refused `x` (why), `y` (why).
 Name: recorded (<where>). <what the tree already argues, and what it does not settle>
 Name: unrecorded. <what the history does and does not say>
 Name: provisional. <what was considered>
+Name: local by rule, <YYYY-MM-DD> (§310).
 ```
 
 - The date on `ratified` sits outside the parentheses, and `recorded` names its citation. Both are
@@ -200,6 +200,11 @@ Name: provisional. <what was considered>
 - A directory under `design/` or `notes/` records its name in its own `README.md`, per §75
   (directories carry provenance in their own README).
 
+### Local names are ratified by rule
+
+A `pub` item only its package reads, passing each mechanical check, is `local` (§310):
+[local-names-are-ratified-by-rule.md](naming/local-names-are-ratified-by-rule.md).
+
 ### The commands
 
 ```
@@ -210,17 +215,12 @@ script/names --unratified  the worklist, ordered by exposure; provisional first;
 script/names --check       the gate; script/lint runs it
 ```
 
-The gate checks presence and form, and never keys on `ratified`, so an unratified name never fails
-a build.
+The gate checks presence and form, never `ratified`, so an unratified name never fails a build.
 
-The order of `--unratified` is ruled in [convention-rulings.md](naming/convention-rulings.md). That
-page also holds the one gate that keys on a ruling: a name calef ruled and nobody renamed fails
-`--check` after 45 days.
-
-A rule calef ratified for a class of names is recorded with his words in
-[convention-rulings.md](naming/convention-rulings.md) (2026-10-17). `script/names` counts every name
-a rule covers as ratified and `script/names <name>` cites the rule. A name the rule pulls aside keeps
-the status its own block claims.
+[convention-rulings.md](naming/convention-rulings.md) rules the order of `--unratified`, and holds
+each rule calef ratified for a class of names, in his words. `script/names` counts a name a rule
+covers as ratified and cites the rule; one it pulls aside keeps its own block's status. A name
+calef ruled and nobody renamed fails `--check` after 45 days.
 
 ## Where a document goes
 

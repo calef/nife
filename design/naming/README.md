@@ -33,3 +33,4 @@ that two indexes offer (milestone 809 (the package client becomes a program)). N
 | [rename-where-names-hide.md](rename-where-names-hide.md) | program strings, copied crates, crates outside the compiler, the census |
 | [rename-traps.md](rename-traps.md) | A sweep can turn a stale pointer into a fabricated one, and six other traps |
 | [what-milestone-63-left-alone.md](what-milestone-63-left-alone.md) | the former BUGS |
+| [local-names-are-ratified-by-rule.md](local-names-are-ratified-by-rule.md) | which rules a script can apply, for §310's local names |

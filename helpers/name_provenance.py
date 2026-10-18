@@ -36,10 +36,17 @@ import re
 # claim about INTENT (whoever chose this expects it to change) where the other three are claims about
 # the RECORD; §89 added it on 2026-08-16 and the states are orthogonal in principle. The tree spends
 # one word on the common case rather than modelling the cross product.
-STATUSES = ['ratified', 'recorded', 'provisional', 'unrecorded']
+#
+# `local` is the fifth (§310 (a name read only inside its package is ratified by rule)): a `pub`
+# item no other package reads, which passed every mechanical check on the date it carries. calef
+# ratified the class, not the name, so it is counted apart from `ratified`, and a lane writes it.
+# `helpers/name_local.py` fails one that another package starts reading.
+STATUSES = ['ratified', 'local', 'recorded', 'provisional', 'unrecorded']
 
-_HEAD = re.compile(r"(ratified|recorded|unrecorded|provisional)\b")
-_DATE = re.compile(r"ratified (\d{4}-\d{2}-\d{2})\b")
+_HEAD = re.compile(r"(ratified|local|recorded|unrecorded|provisional)\b")
+_DATE = re.compile(r"(?:ratified|local by rule,) (\d{4}-\d{2}-\d{2})\b")
+# The whole `local` form, because a lane writes it and nothing but the form says which rule it cites.
+LOCAL_FORM = re.compile(r"^local by rule, \d{4}-\d{2}-\d{2} \(§\d+\)")
 
 # `recorded` claims the reasoning is somewhere else, so it has to point: `recorded (milestone 46)`,
 # `recorded (design/naming.md)`. Same shape of check as the date on `ratified`, and the same limit,
@@ -303,7 +310,7 @@ def parse(text):
     m = _HEAD.match(text)
     status = m.group(1) if m else None
     date = None
-    if status == "ratified":
+    if status in ("ratified", "local"):
         d = _DATE.match(text)
         date = d.group(1) if d else None
     return status, date, refused_in(text)
@@ -331,6 +338,8 @@ def classify(text):
         return None, None, refused, NO_STATUS
     if status == "ratified" and date is None:
         return None, None, refused, NO_DATE
+    if status == "local" and not LOCAL_FORM.match(text):
+        return None, None, refused, NO_DATE
     if status == "recorded" and not CITED.match(text):
         return None, None, refused, NO_CITATION
     return status, date, refused, None
@@ -351,10 +360,11 @@ def classify(text):
 
 # An item a doc comment can sit on, after its attributes. `const fn` is a function, so the keyword
 # list is scanned for the LAST keyword before the identifier.
+# The keyword ends at a word boundary, or the field `pub structure: u32` reads as a struct `ure`.
 _ITEM = re.compile(
     r"^\s*(?:pub(?:\s*\([^)]*\))?\s+)?"
     r"(?:(?:const|async|unsafe|default|extern(?:\s+\"[^\"]*\")?)\s+)*"
-    r"(fn|const|static|struct|enum|union|trait|type|mod|macro_rules!)\s*(?:mut\s+)?"
+    r"(fn|const|static|struct|enum|union|trait|type|mod|macro_rules!)(?![A-Za-z0-9_])\s*(?:mut\s+)?"
     r"([A-Za-z_][A-Za-z0-9_]*)")
 # A struct field or an enum variant, the two things a `///` can document that are not items.
 _FIELD = re.compile(r"^\s*(?:pub(?:\s*\([^)]*\))?\s+)?([a-z_][A-Za-z0-9_]*)\s*:(?!:)")

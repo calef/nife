@@ -83,7 +83,8 @@ demanded the queue be drained would hold every unrelated merge behind a review n
 That is a wall this milestone was written specifically not to build. `script/lint` insists only
 that a name say which state it is in.
 
-There are four states rather than these three. §89 (`provisional` becomes the fourth provenance
+There are five states rather than these three. §310 (a name read only inside its package is
+ratified by rule) added `local`, a class calef ratified by rule. §89 (`provisional` becomes the fourth provenance
 state) added `provisional` on 2026-08-16: a claim about intent, where the other three are claims
 about the record. `provisional` is the largest of the three unratified states. The section *Those two captures print
 the worklist two different ways* below is where it is argued. This table is milestone 115's and is

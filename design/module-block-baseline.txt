@@ -1343,7 +1343,6 @@ crates/designware_mobile_storage/src/card.rs::mmc
 crates/designware_mobile_storage/src/card.rs::r1_state
 crates/designware_mobile_storage/src/card.rs::sd
 crates/designware_mobile_storage/src/card.rs::sd
-crates/designware_mobile_storage/src/card.rs::ure
 crates/designware_mobile_storage/src/command.rs
 crates/designware_mobile_storage/src/command.rs::ALL_SEND_CID
 crates/designware_mobile_storage/src/command.rs::APP_CMD
@@ -2718,7 +2717,6 @@ crates/globally_unique_identifier_partition_table/src/entry.rs::SIZE
 crates/globally_unique_identifier_partition_table/src/entry.rs::TYPE_GUID
 crates/globally_unique_identifier_partition_table/src/entry.rs::UNIQUE_GUID
 crates/globally_unique_identifier_partition_table/src/entry.rs::UNUSED
-crates/globally_unique_identifier_partition_table/src/entry.rs::_guid
 crates/globally_unique_identifier_partition_table/src/entry.rs::blocks
 crates/globally_unique_identifier_partition_table/src/entry.rs::decode
 crates/globally_unique_identifier_partition_table/src/entry.rs::encode
@@ -7776,8 +7774,6 @@ tools/redoxfs_host/src/listing.rs::ls
 tools/redoxfs_host/src/main.rs
 tools/redoxfs_host/src/partition_table.rs::PartitionInfo
 tools/redoxfs_host/src/partition_table.rs::TableInfo
-tools/redoxfs_host/src/partition_table.rs::_guid
-tools/redoxfs_host/src/partition_table.rs::_name
 tools/redoxfs_host/src/partition_table.rs::partitions
 tools/redoxfs_host/src/volume.rs::PartitionDisk
 tools/redoxfs_host/src/volume.rs::PartitionSelector

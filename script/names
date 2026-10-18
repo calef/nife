@@ -117,6 +117,9 @@
 # §89 (`provisional` becomes the fourth provenance state) added `provisional` on 2026-08-16, a
 # claim about INTENT where the other three are claims about the RECORD, and it is the largest of the
 # four today.
+# `local` is a fifth, from §310 (a name read only inside its package is ratified by rule): a `pub`
+# item no other package reads that passed every mechanical check, ratified by calef's rule for the
+# class. It is off the worklist, and helpers/name_local.py fails one another package starts reading.
 #
 # BUGS. It checks that a name carries provenance and that the provenance parses. It cannot check
 # that the recorded reason is **still true**, that a date is right, that a `recorded` citation leads
@@ -210,6 +213,10 @@ for r in records:
 ratified = [r for r in records if r["status"] == "ratified"]
 recorded = [r for r in records if r["status"] == "recorded"]
 unrecorded = [r for r in records if r["status"] == "unrecorded"]
+# `local` is a pub item §310 (a name read only inside its package is ratified by rule) covers:
+# ratified by calef's rule for the class, never by him for the name, so it is counted apart and is
+# off the worklist. helpers/name_local.py, in script/lint, sends one back the day it stops being local.
+local = [r for r in records if r["status"] == "local"]
 # `provisional` is a claim about INTENT (whoever chose this expects it to change), where the other
 # three are claims about the RECORD. §89 added it on 2026-08-16, after milestone 117's second
 # stranger run wrote the word AGENTS.md tells a lane to write and got a red gate for it: the file
@@ -305,7 +312,8 @@ if mode == "--check":
         sys.exit(1)
     print(f"names: {len(records)} names carry provenance "
           f"({', '.join(f'{len(by_kind.get(k, []))} {PLURAL.get(k, k + chr(115))}' for k in KINDS)})")
-    print(f"names: {len(ratified)} ratified, {len(provisional)} provisional, {len(recorded)} "
+    print(f"names: {len(ratified)} ratified, {len(local)} local by rule (§310), "
+          f"{len(provisional)} provisional, {len(recorded)} "
           f"recorded, {len(unrecorded)} unrecorded, {len(refusals)} refusals recorded beside them")
     print(f"names: {len(ruled_owed)} of the provisional are ruled with the rename owed "
           f"(fails past {name_ruled.MAX_AGE_DAYS} days)")
@@ -352,7 +360,7 @@ def rank_crossings():
     """
     cands, by_key = [], {}
     for r in records:
-        if r["kind"] not in ("item", "module") or r["status"] == "ratified":
+        if r["kind"] not in ("item", "module") or r["status"] in ("ratified", "local"):
             continue
         file, _, line = r["path"].partition(":")
         key = (r["kind"], r["name"], r["path"])
@@ -491,18 +499,21 @@ if mode:
 for kind in KINDS:
     group = sorted(by_kind.get(kind, []), key=lambda r: r["name"])
     tally = {s: sum(1 for r in group if r["status"] == s)
-             for s in ("ratified", "provisional", "recorded", "unrecorded")}
+             for s in ("ratified", "local", "provisional", "recorded", "unrecorded")}
     print(f"\n{kind.upper()}S ({len(group)}: {tally['ratified']} ratified, "
+          f"{tally['local']} local by rule, "
           f"{tally['provisional']} provisional, {tally['recorded']} recorded, "
           f"{tally['unrecorded']} unrecorded)")
     for r in group:
-        when = r["date"] if r["status"] == "ratified" else r["status"]
+        when = (r["date"] if r["status"] == "ratified"
+                else f"local {r['date']}" if r["status"] == "local" else r["status"])
         tail = f"  refused {len(r['refused'])}" if r["refused"] else ""
         print(f"  {r['name']:<28} {when:<12}{tail}")
 
 # The total counts a module or document with no block, which is in no status: each is a file whether
 # or not anyone wrote its block (helpers/name_census.py), and script/metrics' `names_total` is this.
 print(f"\ntotal: {len(records) + len(unblocked)} names, {len(ratified)} ratified, "
+      f"{len(local)} local by rule, "
       f"{len(provisional)} provisional, {len(recorded)} recorded, {len(unrecorded)} unrecorded, "
       f"{len(unblocked)} with no block, {len(refusals)} refusals")
 print(f"{len(worklist)} still want an architect: script/names --unratified")

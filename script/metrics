@@ -24,7 +24,7 @@
 # name's provenance lives in the header of the thing it names, and that convention was invented by
 # milestone 115 on 2026-08-04. Three weeks of the series predate it, so they restate as a tree full
 # of named things and no recorded ratifications, which is a convention's birth rather than a fact
-# about the names. `names_total` counts the named things and the four status columns count the ones
+# about the names. `names_total` counts the named things and the status columns count the ones
 # whose block parses, so those weeks show the gap instead of hiding it. notes/project-metrics.md
 # says the same thing where the bars are.
 #
@@ -2410,9 +2410,9 @@ def _cell(row, field):
 
 
 # One band on this page is arithmetic over columns rather than a column of its own. The naming
-# chart's "no provenance block" is `names_total` minus the four statuses, and it is deliberately not
-# in the CSV: it is not a status a `Name:` block can carry, and a fifth column would put a fifth
-# word in a four-word vocabulary that `script/names` gates on. Drawn rather than stored, because the
+# chart's "no provenance block" is `names_total` minus the statuses, and it is deliberately not
+# in the CSV: it is not a status a `Name:` block can carry, and a column for it would put a word
+# in the vocabulary that `script/names` gates on that no block can hold. Drawn rather than stored, because the
 # three weeks before milestone 115 invented the convention would otherwise be three empty bars,
 # which this page's own rule reads as "the record did not exist" and would leave the reader with no
 # idea that the tree already had 119 named things in it.
@@ -2560,7 +2560,8 @@ CHARTS = [
     ('names.svg', 'Names by what the tree records about them',
      'every name script/names tracks: crates, programs, packages, scripts, every module and '
      'document, documentation directories, and every pub item',
-     [('Ratified', 'names_ratified'), ('Ruled, rename owed', 'names_ruled_owed'),
+     [('Ratified', 'names_ratified'), ('Local, ratified by rule', 'names_local'),
+      ('Ruled, rename owed', 'names_ruled_owed'),
       ('Recorded', 'names_recorded'), ('Provisional', 'names_provisional_unruled'),
       ('Unrecorded', 'names_unrecorded'),
       ('No provenance block', 'names_no_block')], 1.0, None, None),
