@@ -1,5 +1,5 @@
-//! **`activation_set`**: what is installed, as a table that is never edited, only succeeded (§208
-//! (installing a package is granting it, and the activation set is versioned)). The progenitor reads
+//! **`installed_programs`**: what is installed, as a table that is never edited, only succeeded (§208
+//! (installing a package is granting it, and the installed programs are versioned)). The progenitor reads
 //! the live generation on every image spawn and looks the executable's digest up ([`lookup_digest`]);
 //! the shell reads it to resolve a bare word and preview `caps`. Both take the location from here
 //! (rule 7): a directory [`DIRECTORY`] holding [`CURRENT`] and one file per generation
@@ -33,7 +33,9 @@
 //!   takes about 170 bytes, so one generation holds about two dozen installed programs.
 //! - Nothing makes the `current` write atomic; a torn write on RedoxFS was not checked.
 //!
-//! Name: provisional: §208's own phrase.
+//! Name: ratified 2026-10-18 (calef, "`installed_programs`"). Each row is a program, keyed by its
+//! executable's digest, that may run, and vouching goes through the same installer as install and
+//! remove, so "installed" covers every row.
 
 #![no_std]
 
@@ -319,7 +321,7 @@ pub fn versions_of<'a>(
 /// # Examples
 ///
 /// ```
-/// use activation_set::{lookup, with_entry, without_package, Entry, NO_VERSION, OWNER};
+/// use installed_programs::{lookup, with_entry, without_package, Entry, NO_VERSION, OWNER};
 ///
 /// let digest = [7u8; 32];
 /// let uptime = Entry { program: "uptime", version: "0.1.0", package: "uptime", digest, manager: "jig" };
@@ -380,7 +382,7 @@ impl From<Error> for Refused<'_> {
 
 /// [`with_entry`] for several rows at once: **every program of one package, in one generation**
 /// (milestone 919 (a package carries several programs); §208 (installing a package is granting
-/// it, and the activation set is versioned): one install is one generation, and one rollback
+/// it, and the installed programs are versioned): one install is one generation, and one rollback
 /// undoes it). Every row is checked before a byte is written, so one refused program refuses the
 /// whole package and `out` means nothing. `entries` is called once per pass and must yield the same
 /// rows each time; `image_carries` answers, for one program's name, what [`with_entry`]'s flag
@@ -615,7 +617,7 @@ pub fn parse_current(text: &str) -> Option<u32> {
     digits.parse().ok()
 }
 
-/// The directory the activation set lives in, at the root of the file service. Provisional.
+/// The directory the installed-programs table lives in, at the root of the file service. Provisional.
 pub const DIRECTORY: &str = "activation";
 
 /// The one-line file in [`DIRECTORY`] naming the live generation ([`parse_current`]).
@@ -645,8 +647,8 @@ pub const PACKAGES: &str = "packages";
 pub const OWNER: &str = "owner";
 
 /// **What a row's manager column reads as when the row has none**: written before milestone 809
-/// (the package client becomes a program) added the column (calef, 2026-10-06: "each activation set
-/// row records which manager installed it"), by the shell's `package` builtin, which the same change
+/// (the package client becomes a program) added the column (calef, 2026-10-06, quoted as he said it: "each
+/// activation set row records which manager installed it"), by the shell's `package` builtin, which the same change
 /// removed. Never written. A row's manager is otherwise `jig` or [`OWNER`]. Provisional.
 pub const NO_MANAGER: &str = "-";
 

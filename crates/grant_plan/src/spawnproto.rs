@@ -121,7 +121,7 @@ const DIR2_BIT: u64 = 1 << 38;
 /// mapping of them and could change the bytes between a hash and a build. It maps each frame
 /// through the loader's scratch window (`supervision_protocol::map_scratch`), copies it into a page of its own, and deletes
 /// the capability before taking the next, so a request of any size costs its capability table one
-/// transient slot. A digest found in the activation set is vouched and runs with that entry's
+/// transient slot. A digest found in the installed-programs table is vouched and runs with that entry's
 /// manifest. A miss runs only for a caller that presents the run-unvouched capability
 /// ([`RUN_UNVOUCHED_BIT`], §219's gate D2), with [`crate::UNVOUCHED_MANIFEST`]; any other miss is
 /// refused with [`SPAWN_UNVOUCHED`].
@@ -129,8 +129,8 @@ const DIR2_BIT: u64 = 1 << 38;
 /// Name: provisional (milestone 198 rung 3a, 2026-09-26), §219's own word for it.
 const IMAGE_BIT: u64 = 1 << 39;
 
-/// **Not a spawn: an edit to the activation set** (milestone 198 (a package manager) rung 3a's
-/// installer; DECISIONS §208 (installing a package is granting it, and the activation set is
+/// **Not a spawn: an edit to the installed-programs table** (milestone 198 (a package manager) rung 3a's
+/// installer; DECISIONS §208 (installing a package is granting it, and the installed programs are
 /// versioned)). When this bit is set the request asks the progenitor to install, remove or roll
 /// back, word 1 is an [`Activation`] verb, the rest of word 2 is zero, and the progenitor answers
 /// with exactly one message on the result endpoint: [`activation_reply`]'s two words.
@@ -345,7 +345,7 @@ pub enum Activation {
     /// console), ruling 1, and §195 (a reviewed recipe vouches for a package) clause 3: the owner
     /// may vouch for a digest no source carries). The progenitor hashes its own copy and writes a
     /// new generation whose entry for the name is that digest, marked
-    /// `activation_set::OWNER` in place of a package, so
+    /// `installed_programs::OWNER` in place of a package, so
     /// `package rollback` undoes it like any other edit. The bytes are not copied: a digest vouches
     /// for itself wherever the file is. They must parse as an executable, or nothing is written.
     ///
@@ -415,10 +415,10 @@ pub enum ActivationStatus {
     // 7, 8 and 9 were `NoSuchPackage`, `NoNetwork` and `FetchFailed`, the progenitor's fetch's
     // answers, retired with it by milestone 809. A fetch's failures are `jig`'s to say now.
     /// [`Activation::Vouch`] was sent bytes that do not parse as an executable, or a name the
-    /// activation set cannot record. Nothing was written.
+    /// installed-programs table cannot record. Nothing was written.
     NotExecutable = 10,
     /// [`Activation::Install`] for a package one of whose programs has the name another
-    /// installed package's program already has (`activation_set::Error::Taken`; DECISIONS §229
+    /// installed package's program already has (`installed_programs::Error::Taken`; DECISIONS §229
     /// (how a bare name at the prompt reaches an installed program), B2; calef, 2026-10-14 (UTC),
     /// milestone 919: "If two packages offer the same program name, refuse the second package.
     /// Need to remove the first one before installing the second one."). The same package at
@@ -427,7 +427,7 @@ pub enum ActivationStatus {
     /// the package that holds it ([`holder_words`]). Provisional.
     NameTaken = 11,
     /// [`Activation::Install`] for a package one of whose programs has the name of a program
-    /// the image carries (`activation_set::Error::ImageName`; DECISIONS §229, calef's ruling of
+    /// the image carries (`installed_programs::Error::ImageName`; DECISIONS §229, calef's ruling of
     /// 2026-09-27). Under §235 (the OS is built and updated from packages) a base program is
     /// updated through the boot slot, never by install. No generation was written. Provisional,
     /// like its number.
@@ -444,7 +444,7 @@ pub enum ActivationStatus {
     /// past the first message and nothing was written. Provisional.
     NotServedHere = 14,
     /// **A removal or a rollback would undo a row another package manager installed**
-    /// (`activation_set::may_edit`; calef's ruling of 2026-10-06 on milestone 809: a manager
+    /// (`installed_programs::may_edit`; calef's ruling of 2026-10-06 on milestone 809: a manager
     /// "refuses to remove or roll back a row it did not install"). Nothing was written.
     /// Provisional.
     NotYours = 15,
@@ -860,7 +860,7 @@ pub const fn installer_serves(verb: Activation) -> bool {
 
 /// **The word for bytes nobody vouched for** (DECISIONS §219, milestone 198 rung 3a). Sent on the
 /// result endpoint by the progenitor when an `IMAGE_BIT` request's digest is not in the
-/// activation set, in place of [`SPAWN_FAILED`], because "nothing was built" and "it was refused
+/// installed-programs table, in place of [`SPAWN_FAILED`], because "nothing was built" and "it was refused
 /// as unvouched" are different facts a person needs told apart: the first is out of memory, the
 /// second is a decision.
 ///

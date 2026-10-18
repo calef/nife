@@ -36,7 +36,7 @@ pub(super) const LINES: &[Line] = &[
     ),
     // **Fetching, refused before the network is touched**: the catalog names no such package,
     // so nothing is asked of the package source. `jig` reads its copy of the catalog and sends
-    // nothing, so it names no generation: it holds no view of the activation set.
+    // nothing, so it names no generation: it holds no view of the installed-programs table.
     line(
         1,
         "jig install nosuch",

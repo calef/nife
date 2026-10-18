@@ -19,7 +19,7 @@ update."* Option a was that a package may declare a service the progenitor start
 needs it because a supervisor tied to a session is not one, and its own `daemonize` forks.
 
 **In brief.** A package's manifest can declare a service. `jig install` shows that grant with the
-rest and starts the service. The progenitor starts it at every boot from the activation set, and a
+rest and starts the service. The progenitor starts it at every boot from the installed-programs table, and a
 package update restarts it on the new bytes. `jig remove` and `jig rollback` undo it. Restart is
 teardown and respawn by the progenitor, with no signals and no `kill`.
 
@@ -30,11 +30,11 @@ teardown and respawn by the progenitor, with no signals and no `kill`.
 - Install. `jig install` lists everything the install grants, including "runs as a service, now
   and at every boot", and one confirmation covers all of it. Install starts and enables the service
   by default; `jig install --no-start` opts out.
-- The activation set. The installer adds the service to the versioned activation set, under
-  §208 (installing a package is granting it, and the activation set is versioned). The progenitor
+- The installed-programs table. The installer adds the service to the versioned installed-programs table, under
+  §208 (installing a package is granting it, and the installed programs are versioned). The progenitor
   starts it at once and at every boot. `jig remove` stops it and drops it from the set; `jig
   rollback` returns to the previous set, services included.
-- Restart. The progenitor tears the process down and respawns it from its activation-set entry.
+- Restart. The progenitor tears the process down and respawns it from its installed-programs entry.
   A crash restarts it under the declared policy, from the death message §26 (the fault endpoint:
   thread death becomes a message a supervisor holds) already delivers.
 - Reload and graceful stop. A service may declare a control endpoint that accepts those
@@ -42,7 +42,7 @@ teardown and respawn by the progenitor, with no signals and no `kill`.
   restarted. The command that sends them is unnamed.
 - Configuration. The package ships a read-only default, and the owner's configuration lives in
   a writable directory granted to the service.
-- Update. A package update is a new activation-set version, and the progenitor restarts the
+- Update. A package update is a new installed-programs version, and the progenitor restarts the
   affected services on it automatically. `jig` lists which services will restart before the
   confirmation, which is §159 (lab machines upgrade like user machines, and only a new kernel needs
   a reboot) applied to an optional package.
@@ -52,7 +52,7 @@ teardown and respawn by the progenitor, with no signals and no `kill`.
 Checked 2026-10-12 (UTC). Nothing on the roadmap or in the proposal pile owns a declared service.
 
 - The progenitor builds the boot's own services from literals in `crates/system_initializer`, by
-  archive entry. Nothing starts a program from the activation set at boot, and nothing restarts a
+  archive entry. Nothing starts a program from the installed-programs table at boot, and nothing restarts a
   service that dies: milestone 854 (the init package holds only what init does) found no real boot
   starts `root_supervisor` or `sub_server_supervisor`.
 - Milestone 858 (lab machines update themselves through packages, and only a new kernel reboots
@@ -78,7 +78,7 @@ them at install. So it is built here, once, for every grant:
 - Each grant on its own line: the service ("runs as a service, now and at every boot"), each
   resolver zone, each directory with its rights, and every other capability the manifest asks for.
 - A root-zone ask, which can resolve any name, is flagged apart rather than listed like the rest.
-- One confirmation covers the list, and what was confirmed is kept with the activation-set entry.
+- One confirmation covers the list, and what was confirmed is kept with the installed-programs entry.
   That record is the one the scripted-installs milestone in flight (#2026, approval files) reuses,
   so an approval file answers the same list a person would.
 
@@ -87,7 +87,7 @@ them at install. So it is built here, once, for every grant:
 1. The declaration in the manifest, beside 849's run-time needs: program, arguments, grants,
    restart policy (`never`, `on-crash` with a limit and backoff), optional control endpoint.
 2. The install confirmation above, and its record. The installer records the service in the
-   activation set's entry, with `--no-start`.
+   installed-programs table's entry, with `--no-start`.
 3. The progenitor starts every enabled service in the live generation, at once on install and at
    every boot, each under a supervision endpoint the progenitor holds.
 4. Teardown and respawn on a crash, by policy, and on an update, for each service whose package
@@ -102,7 +102,7 @@ that reports its version:
 
 1. `jig install` of the fixture lists each grant: "runs as a service, now and at every boot", a
    directory with its rights, and a resolver zone. After one confirmation the fixture is running,
-   as `ps` shows over its domain, and the confirmed list is in its activation-set entry.
+   as `ps` shows over its domain, and the confirmed list is in its installed-programs entry.
 2. A second fixture whose manifest asks for the root zone is flagged apart in its confirmation.
 3. After `reboot` (milestone 805 (`reboot` at the prompt: a person restarts the machine without
    touching its power)), it is running again with no command typed.
@@ -127,4 +127,4 @@ Fuchsia's: the manager tears down and restarts, and a component may serve a life
 
 The missing half of a package manager for long-running programs: a package can say "I am a
 service", and install, boot, crash, update and rollback each start, restart or stop it from the
-activation set, with no signals.
+installed-programs table, with no signals.

@@ -37,7 +37,7 @@ of record.
 ## Why a plain `--yes` is refused
 
 Three rulings of today made the install confirmation carry real authority. Under §208 (installing a
-package is granting it, and the activation set is versioned), `jig install` shows everything the
+package is granting it, and the installed programs are versioned), `jig install` shows everything the
 install grants and one confirmation covers it. Milestone 910 (a package declares a service:
 install starts it, boot starts it, update restarts it) adds "runs as a service, now and at every
 boot" to that list. Item 3 of milestone 892 (a std program at the prompt holds the network and
@@ -112,13 +112,13 @@ allow`. It never grants the intersection: a program that silently got less than 
 at run time, far from the cause. A removal passes when the entry says `remove = true`.
 
 Only `jig` parses the file. It compiles it, on the owner's console, into canonical grant records:
-one per package, sorted, in the encoding the activation set already stores (`crates/activation_set`,
+one per package, sorted, in the encoding the installed-programs table already stores (`crates/installed_programs`,
 §208). A human-readable file is for the owner; the progenitor compares records and never parses the
 file.
 
 ## The grant record, which every path writes
 
-The grant record is the part of an activation-set row that says what the owner granted that
+The grant record is the part of an installed-programs row that says what the owner granted that
 package: its zones, its service, its directories and its other capabilities. It is one canonical
 encoding, with no timestamp and no trace of how the answer was given. Three paths write it:
 
@@ -127,7 +127,7 @@ encoding, with no timestamp and no trace of how the answer was given. Three path
 2. A scripted `jig install --approved <file>`, or a delegated holder. The asks pass the subset test;
    the record is the asks.
 3. basalt's image composition (909), on the host. Each package in the image passes the same test
-   against the image's approval file, and the image's first activation set holds the records.
+   against the image's approval file, and the image's first installed-programs table holds the records.
 
 For the same grants, the three records are byte-identical. How the answer was given is recorded
 beside the record, not inside it, in a column like §270's manager column: `console`, or the
@@ -154,7 +154,7 @@ holder can forge or widen it. That grant has two forms:
 
 - one run: the owner's console starts a script's job with it, and it ends when the job is reaped;
 - standing: a service package (910) whose manifest asks for "installer, within approval X", granted
-  at install like any other ask and recorded in the activation set. This is how a lab machine's
+  at install like any other ask and recorded in the installed-programs table. This is how a lab machine's
   updater (858) holds it across reboots.
 
 **What the progenitor checks.** Every `Install`, `Remove` and `Rollback` arriving under a badge that
@@ -169,7 +169,7 @@ something the file already allowed grants nothing new, and it lets 858's updater
 with nobody present. Reserving rollback to the owner would leave an unattended machine on a broken
 package until the owner reached it.
 
-**Approvals are not generations.** The progenitor stores approvals beside the activation set's
+**Approvals are not generations.** The progenitor stores approvals beside the installed-programs table's
 generations, not as rows in them, so `jig rollback` restores packages and leaves every approval as
 it was (ruled 2026-10-12). Changing an approval stays `jig approve` or `jig revoke`. An approval is
 the owner's standing decision, not a state of the machine. Were it a row, rolling back could
@@ -208,7 +208,7 @@ checked by the authority that grants, are the nearest model; this file keeps its
 
 ## The work
 
-1. The grant record: one canonical encoding in `crates/activation_set`, written by interactive
+1. The grant record: one canonical encoding in `crates/installed_programs`, written by interactive
    install, and the "how it was answered" column beside it. Host tests that two paths agree.
 2. The approval file, in TOML: `jig` parses it and compiles it to grant records. Host tests for
    the subset test and its error, which names every extra grant.
@@ -217,7 +217,7 @@ checked by the authority that grants, are the nearest model; this file keeps its
    §270's semantics amended in `design/decisions/` (a new method on an existing endpoint, recorded
    there per §10 (process model: capability-based, microkernel; untyped memory deferred)).
    Re-approval as ruled, and room in `Approve` for the signed form. Approvals are stored beside
-   the activation set's generations, never as rows in them, and `Rollback` under a badge is checked
+   the installed-programs table's generations, never as rows in them, and `Rollback` under a badge is checked
    against that badge's approval.
 5. The two delegation forms: a one-run grant at spawn from the owner's console, and the standing ask
    in a service manifest beside 910's declaration.
@@ -247,7 +247,7 @@ Under QEMU on aarch64, riscv64 and x86_64, in `script/swish-check`, with fixture
 8. A rollback leaves approvals unchanged: after `jig revoke X`, rolling back to a generation from
    before the revoke leaves X revoked, and an approval made after the restored generation stays.
 
-Reuse: §270's badge and activation request, `crates/activation_set`, and 910's and 892's grant
+Reuse: §270's badge and activation request, `crates/installed_programs`, and 910's and 892's grant
 encodings, extended rather than duplicated. The file's design takes Fuchsia's checked-by-the-granter
 allowlist and Android's per-permission grant state; debconf preseeding was read as the shape that
 pre-answers questions without bounding them.

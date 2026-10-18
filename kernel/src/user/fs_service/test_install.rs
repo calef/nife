@@ -1,5 +1,5 @@
 //! **The kernel test harness installs a package as an installer would** (milestone 152 (durable
-//! delegation)'s Fork 8 D). Moved out of `fs_service.rs` unchanged, apart from the activation set's
+//! delegation)'s Fork 8 D). Moved out of `fs_service.rs` unchanged, apart from the installed-programs table's
 //! manager column, by milestone 809 (the package client becomes a program), when that file reached
 //! §266 (a Rust source file stays under 2,000 lines)'s ratchet.
 
@@ -56,7 +56,7 @@ pub fn install_for_test(program: &str, name: &str, version: &str, bytes: &[u8]) 
         }
         call([fs::req(fs::CLOSE, h, 0), 0]);
     };
-    let packages = dir(page, fs::ROOT, activation_set::PACKAGES);
+    let packages = dir(page, fs::ROOT, installed_programs::PACKAGES);
     let n = dir(page, packages, name);
     let v = dir(page, n, version);
     put(page, v, program, bytes);
@@ -67,7 +67,7 @@ pub fn install_for_test(program: &str, name: &str, version: &str, bytes: &[u8]) 
     // The row and its pointer (milestone 614 (two installed versions of one program)): the bytes'
     // path is its package and version columns, and its manager is `jig`, as milestone 809 (the
     // package client becomes a program) records one.
-    let entry = activation_set::Entry {
+    let entry = installed_programs::Entry {
         program,
         version,
         package: name,
@@ -75,7 +75,7 @@ pub fn install_for_test(program: &str, name: &str, version: &str, bytes: &[u8]) 
         manager: "jig",
     };
     let mut table = [0u8; 512];
-    let len = activation_set::with_entry(
+    let len = installed_programs::with_entry(
         "",
         &entry,
         crate::user::program(program).is_some(),
@@ -83,15 +83,15 @@ pub fn install_for_test(program: &str, name: &str, version: &str, bytes: &[u8]) 
     )
     .expect("one entry fits");
     let mut current = [0u8; 16];
-    let current_len = activation_set::format_current(1, &mut current).expect("fits");
+    let current_len = installed_programs::format_current(1, &mut current).expect("fits");
     let mut digits = [0u8; 10];
-    let first = activation_set::generation_name(1, &mut digits);
-    let activation = dir(page, fs::ROOT, activation_set::DIRECTORY);
+    let first = installed_programs::generation_name(1, &mut digits);
+    let activation = dir(page, fs::ROOT, installed_programs::DIRECTORY);
     put(page, activation, first, &table[..len]);
     put(
         page,
         activation,
-        activation_set::CURRENT,
+        installed_programs::CURRENT,
         &current[..current_len],
     );
     call([fs::req(fs::CLOSE, activation, 0), 0]);

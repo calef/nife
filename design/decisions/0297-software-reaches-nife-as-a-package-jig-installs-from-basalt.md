@@ -67,7 +67,7 @@ This does not start from nothing. Three records already plan most of it.
 - Milestone 611 (every program and crate belongs to a package, and every package has a home)
   draws the package boundaries in this tree. Under this ruling, basalt is where those packages are
   built and published.
-- §208 (installing a package is granting it, and the activation set is versioned) gives the
+- §208 (installing a package is granting it, and the installed programs are versioned) gives the
   generations that `jig rollback` moves between.
 - Milestone 858 (lab machines update themselves through packages, and only a new kernel reboots
   them) already plans a kernel package. Its fork 5 keeps kernel and base as separate packages.

@@ -110,9 +110,9 @@ session's D2 capability into a scheduled job, that job keeps running a program w
 revoked, on every fire, with nobody at a terminal to notice.
 
 **Recommendation: a scheduled job never holds D2.** It runs vouched programs only. §220's drop
-does not reach a job through the progenitor's activation-set lookup: the timetable loads a job from an archive `login` checked
+does not reach a job through the progenitor's installed-programs lookup: the timetable loads a job from an archive `login` checked
 at start-up, and the progenitor never sees a fire. That path exists only if fork 8 resolves jobs through
-the activation set. A user who wants to schedule an unvouched
+the installed-programs table. A user who wants to schedule an unvouched
 build vouches it first. This is a grant rule for the registrar, so it is recorded here for whoever
 builds it; the milestone 129 (scheduled execution) lane working the scheduler in parallel is the likely consumer.
 

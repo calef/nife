@@ -92,7 +92,7 @@ alone would have let the ninth `jig` of a boot be refused.
 
 calef, on #2011: "yes, record c". For every program other than `jig`, the manifest asks for its
 resolver zones. The owner grants them at `jig install`, in the same confirmation as the program's
-other grants (§208 (installing a package is granting it, and the activation set is
+other grants (§208 (installing a package is granting it, and the installed programs are
 versioned)). The owner can narrow them later. The details he accepted:
 
 - A manifest may list several zones. Each granted zone is its own badge, per §252 (a resolver
@@ -105,7 +105,7 @@ What that leaves to build:
 
 1. The zones in a program's manifest note, the ask. `manifest_note` is a format two programs agree
    on, so the encoding is decided once.
-2. The granted zones in the activation set's entry, which is where an owner's narrowing lands too.
+2. The granted zones in the installed-programs table's entry, which is where an owner's narrowing lands too.
 3. The progenitor grants one badge per granted zone at spawn and forgets each at the reap. The std
    PAL holds one resolver slot today, so a program with several zones needs a slot per badge, or
    a PAL that picks the badge whose zone holds the name.
@@ -128,7 +128,7 @@ The question as put was loose on two points. The ruling reads as follows with bo
 
 - The zones are resolver zones, the names a program may look up. They are not filesystem zones;
   directories are a separate grant under §208 (installing a package is granting it, and the
-  activation set is versioned), and milestone 911 (scripted installs grant only what the owner's
+  installed programs are versioned), and milestone 911 (scripted installs grant only what the owner's
   approval file allows) lists them apart.
 - A manifest can already declare the network. `Manifest::network` is one flag (byte 34 of
   `manifest_note`), and a program in the image table gets it today. What is missing is the install
@@ -142,9 +142,9 @@ listen (`socket_protocol::NO_LISTEN_GRANT`).
 
 What that leaves to build, beside item 3's four pieces and in the same places:
 
-1. The progenitor endows the network to an installed program only when its activation-set entry
+1. The progenitor endows the network to an installed program only when its installed-programs entry
    records the owner's grant. `image_can_carry` keeps refusing bytes with no such entry.
-2. The granted network in the activation set's entry, in the same grant record as the zones, so an
+2. The granted network in the installed-programs table's entry, in the same grant record as the zones, so an
    owner's narrowing and 911's approval file reach it the same way.
 3. The line at install, "reaches the network (connects out)", in the one confirmation with the
    zones. Milestone 910 (a package declares a service) builds that confirmation for every grant a

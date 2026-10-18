@@ -343,14 +343,15 @@ fn complete_word(nav: &mut Nav, disc: &mut line_editor::LineDisc, echo: &mut Ech
                 for p in grant_plan::Prog::ALL {
                     each(p.name().as_bytes(), false);
                 }
-                // And what the live activation set names by bare word (§229, B2): the default
-                // each name's pointer answers, never an owner's vouch, which claims no name, and
-                // never a version somebody else picked.
+                // And what the live installed-programs table names by bare word (§229 (how a bare
+                // name at the prompt reaches an installed program), B2): the default each name's
+                // pointer answers, never an owner's vouch, which claims no name, and never a
+                // version somebody else picked.
                 with_live_table(nav, |text, _| {
-                    for entry in activation_set::entries(text).flatten() {
+                    for entry in installed_programs::entries(text).flatten() {
                         // Once per name: a name the image also has is already offered, and is
                         // refused when run.
-                        if activation_set::lookup(text, entry.program)
+                        if installed_programs::lookup(text, entry.program)
                             .is_ok_and(|found| found == Some(entry))
                             && grant_plan::Prog::from_name(entry.program.as_bytes()).is_none()
                         {
