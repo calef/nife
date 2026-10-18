@@ -142,13 +142,11 @@ holds roots per source.
 Its four details are all ruled:
 
 1. How an added index is authenticated: ruled 2026-10-17 (UTC). calef: *"Just a URL."*
-   `jig add-repository <url>` takes only a URL. The index is checked against the roots the image
-   already pins for basalt (ISRG Root X1 today), and a server whose certificate chains elsewhere is
-   refused with a message naming the root it needed. There is no system store, by §196 clause 4's
-   design. A separate proposal, [the web's
-   authority list as a package and a capability](https://github.com/nifeos/nife/pull/2277)
-   (proposed, unmerged), may later change what added indexes are checked against; this ruling does not
-   decide it.
+   `jig add-repository <url>` takes only a URL, and a refusal names the root the server needed.
+   He first ruled that the index is checked against the roots the image pins for basalt (ISRG Root
+   X1 today). §306 (the web's authority list is a package and a capability), decided 2026-10-18,
+   replaces that set: an added index is trusted at the channel as a website is, by the list's
+   authorities, and basalt's own channel never depends on the list.
 2. The same name in two indexes: ruled 2026-10-17 (UTC). calef chose *"A"*: a bare name offered by
    two indexes is refused as `Ambiguous`, as milestone 614 (two installed versions of one program, each runnable) does for versions, and an
    index-qualified name picks one. First-index-wins is refused as the dependency-confusion shape.
