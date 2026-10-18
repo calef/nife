@@ -63,7 +63,7 @@ static SCRIPT_RUNNING: AtomicBool = AtomicBool::new(false);
 ///
 /// The real boot reports a killed job to the shell: `job_undertaker` sends `JOB_FAULTED` on the
 /// result endpoint, the shell prints its faulted sentence and destroys the pipe, and the rest of
-/// the line ends. [`init_service`] has no undertaker, so here the line's other stages and the shell
+/// the line ends. [`spawn_service_stub`] has no undertaker, so here the line's other stages and the shell
 /// wait forever on a stage that will never write (merge-group run 38506029610: `date` killed in
 /// `date | wc`, then sixty seconds of every thread blocked). No script here expects a fault, because
 /// this stub could never have reported one, so any rise in `USER_FAULTS` while a script runs is
@@ -159,7 +159,7 @@ fn start_with(
         crate::println!("start_with: no swish in the archive");
         return None;
     };
-    // **Kept for the boot, deliberately.** `init_service` below is a kernel thread that loops on
+    // **Kept for the boot, deliberately.** `spawn_service_stub` below is a kernel thread that loops on
     // `spawn_ep` forever, and nothing ends it, so reclaiming these would turn it into a busy loop
     // on a stale endpoint. They come from a region of their own so the three pages are charged to
     // the test that called this, rather than from the kernel's pool, whose 32-page chunk is charged
@@ -201,8 +201,8 @@ fn start_with(
 
     // The progenitor first, so a shell that spawns before the service is listening merely blocks in a
     // rendezvous rather than failing.
-    if crate::sched::spawn(move || init_service(spawn_ep, result)).is_none() {
-        crate::println!("start_with: spawn(init_service) refused");
+    if crate::sched::spawn(move || spawn_service_stub(spawn_ep, result)).is_none() {
+        crate::println!("start_with: spawn(spawn_service_stub) refused");
         return None;
     }
 
@@ -450,7 +450,7 @@ pub fn counts(said: &[u8]) -> (u64, u64, u64) {
 /// install), so neither bit is drained off the wire here, and a line that set one would desync the
 /// two sides' shared count of delegated capabilities. No guest test routes either shape through
 /// this path today; both are exercised only against the real progenitor, by `script/swish-check`.
-fn init_service(spawn_ep: RendezvousId, result: RendezvousId) -> ! {
+fn spawn_service_stub(spawn_ep: RendezvousId, result: RendezvousId) -> ! {
     loop {
         let m = crate::sched::ipc_receive(spawn_ep);
         let (w0, w1, w2) = (m[0], m[1], m[2]);

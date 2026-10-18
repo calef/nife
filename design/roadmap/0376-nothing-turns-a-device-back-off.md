@@ -10,11 +10,11 @@ needs_person: yes
 # 376. Nothing turns a device back off
 
 Filed as a proposal on 2026-09-04 by the milestone 220 lane, which wrote
-the first code in this tree that turns a device on and deliberately did not write its inverse;
-promoted by milestone 433 on 2026-09-19. Checked against the tree that day and nothing has moved:
+the first code in this tree that turns a device on and deliberately did not write its inverse.
+It was promoted by milestone 433 (drain the proposal pile to zero) on 2026-09-19. Checked against the tree that day and nothing has moved.
 `crates/jh7110_clock_and_reset` exposes `discover`, the offset and mask arithmetic, and the two
 read-back predicates (`clocks_running`, `was_already_up`), with no path that gates a clock or
-asserts a reset, and `kernel/src/drivers/jh7110_clock_and_reset.rs` still offers no teardown. The
+asserts a reset. `kernel/src/drivers/jh7110_clock_and_reset.rs` still offers no teardown. The
 gate is decided:
 [§304 (who may turn a device off)](../decisions/0304-who-may-turn-a-device-off.md), 2026-10-15:
 measure before building. This milestone's next work is the bench run, radon with the STG domain

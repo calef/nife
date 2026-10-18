@@ -14,7 +14,7 @@ use super::*;
 
 /// Where the progenitor maps the file service's shared page to read the installed-programs table. Mapped
 /// once, on the first image request, with page tables from its own budget. Clear of every other
-/// window this process maps (`INIT_OUT_VA` and the three peek pages below it, and the loader's
+/// window this process maps (`PROGENITOR_SHELL_OUTPUT_VIRTUAL_ADDRESS` and the three peek pages below it, and the loader's
 /// scratch window, `supervision_protocol::SCRATCH_WINDOW`, which starts at `0x1000_0000`).
 pub(super) const ACTIVATION_FS_VA: u64 = address_space_map::pair_page(0x0f40_0000);
 

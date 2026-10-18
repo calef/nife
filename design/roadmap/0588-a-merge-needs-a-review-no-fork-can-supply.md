@@ -20,17 +20,17 @@ name the `automation` environment (name provisional), whose deployment branches 
 Option 3 is protective as of 2026-10-03 (UTC): calef deleted the organization-level copies, and
 the secrets now exist only on the environment (see `## Follow-on`). The text below is the proposal's own, unedited
 except for this paragraph, the gate's first sentence, and the `## Follow-on` and `## Index row`
-sections; the ruling paragraph under the gate was added to the proposal before promotion. As filed: Raised by the 2026-09-24 security audit
-(`design/audit-reports/2026-09-24-new-trust-boundaries.md`, finding 1), which found that
+sections; the ruling paragraph under the gate was added to the proposal before promotion. Its long sentences are split to meet §213 (writing standards). As filed: Raised by the 2026-09-24 security audit
+(`design/audit-reports/2026-09-24-new-trust-boundaries.md`, finding 1). It found that
 `helpers/merge-drain.sh` armed auto-merge on every open, non-draft pull request against `main`
-from any author, that the ruleset on `main` requires zero approving reviews, and that a merge-group
-build runs a pull request's own workflow edits with this repository's secrets. The audit closed the
+from any author. It found that the ruleset on `main` requires zero approving reviews, and that a
+merge-group build runs a pull request's own workflow edits with this repository's secrets. The audit closed the
 path in the script (`helpers/queue-eligible.jq` refuses a head in another repository); this is the
 rung above it.
 
 Option 1 is still an architect's to rule, and the secret move is an organization
 setting only he can make. As filed: every option below is a repository or organization setting, which is a fact
-that leaves the tree: no lane can change it, and every lane works under it from the moment it
+that leaves the tree. No lane can change it, and every lane works under it from the moment it
 changes. It is an architect's.
 
 Ruled the same day, in part (calef, 2026-09-24 UTC): options 2 and 3 are adopted. Option 2 is
@@ -59,9 +59,9 @@ not ruled and is what this proposal still asks about; its cost stands as written
 
 1. **Require one approving review, and let the App give it to a lane.** Set
    `required_approving_review_count: 1`. calef cannot approve his own pull requests, so every lane
-   would stall unless something else approves them: `merge-drain.sh`, holding the App token, would
+   would stall unless something else approves them. `merge-drain.sh`, holding the App token, would
    approve a pull request that passes the same admission predicate before arming it. A fork's pull
-   request then needs a person. Cost: the App's review is a rubber stamp by construction, and a
+   request then needs a person. Cost: the App's review is a rubber stamp by construction. A
    reader of the pull request page sees "approved by nife-smelter" on work nobody read, which is the
    record lying in a new way. The platform enforces the rule, which is the point; the honesty cost
    is real and should be weighed against it.
@@ -72,17 +72,17 @@ not ruled and is what this proposal still asks about; its cost stands as written
 3. **Put the App's secrets in an environment the queue cannot use.** Move `AUTOMATION_APP_ID` and
    `AUTOMATION_APP_KEY` into an Actions environment whose deployment branches are `main` only, and
    have the scheduled workflows name it. A merge-group ref (`gh-readonly-queue/main/...`) is not
-   `main`, so a job on it that named the environment would be refused, and a job that did not
+   `main`, so a job on it that named the environment would be refused. A job that did not
    name it cannot read the secrets. Cost: three workflow files gain an `environment:` line; the
    toolchain-bump workflow, which opens a pull request under the App, keeps working because it runs
    from `main`.
 
 ## Recommendation
 
-2 and 3 together, now: each is one setting, neither touches a lane, and between them a stranger's
+2 and 3 together, now: each is one setting, and neither touches a lane. Between them a stranger's
 code cannot run with a secret whether or not the drain is right. 1 is the only one that makes the
-review a platform rule rather than a script's, and it is offered rather than recommended because
-its cost is a review record that says something false. If calef takes 1, the App's approval
+review a platform rule rather than a script's. It is offered rather than recommended because its
+cost is a review record that says something false. If calef takes 1, the App's approval
 comment should say in its body that it is the admission predicate speaking and not a reader.
 
 ## What is blocked until it is answered

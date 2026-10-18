@@ -21,7 +21,7 @@ shell delegates, because `spawnproto` moves capabilities and not just words.
 
 So the interactive progenitor keeps the loader and gives up three other things instead.
 
-1. The root construction budget. It carves `INIT_OWN_PAGES` (128, for its own scratch page
+1. The root construction budget. It carves `PROGENITOR_RESERVED_PAGES` (128, for its own scratch page
    tables) and `JOBS_BUDGET_PAGES` (240, the job pool) off the root untyped and deletes the root.
    After that it can spend at most those two, and it cannot reach the rest of what the kernel gave it
    or delegate the root to anything it builds.
