@@ -52,7 +52,7 @@ SCRATCH = pathlib.Path('target/interface-stability')
 
 # The contracts division: notes/packages-and-divisions.md (#1389, not yet on main), `abi`, the
 # fifteen `*_protocol` crates that are contracts (not `network_time_protocol`, a service whose name
-# says protocol), and the named formats two programs agree on. `manifest_note` is the one addition:
+# says protocol), and the named formats two programs agree on. `capability_manifest_note` is the one addition:
 # it was born on 2026-09-26, after that note's census, and it is exactly the kind of crate the
 # division names. Membership is by the crate's name TODAY; a week in the past counts the crates
 # whose directory later became one of these (LINEAGE below), which is a restatement like every
@@ -66,7 +66,7 @@ CONTRACTS = (
     'hot_swap_contract',
     'elf', 'measured_boot', 'package_archive', 'installed_programs', 'boot_slot', 'nifefs',
     'globally_unique_identifier_partition_table', 'grant_plan', 'component_plan', 'compositor',
-    'line_editor', 'manifest_note',
+    'line_editor', 'capability_manifest_note',
 )
 
 # The std ABI is every crate `cargo xtask std-src` copies into the standard library's platform

@@ -108,7 +108,7 @@ recorded at the format, AGENTS.md's rung 3, in the crate's own module documentat
 ```
 
 One list item per amendment, opening with its UTC date. The heading and the shape are this lane's,
-provisional. No crate carries one yet. `manifest_note`'s version 1, amended in place on 2026-09-27
+provisional. No crate carries one yet. `capability_manifest_note`'s version 1, amended in place on 2026-09-27
 on a branch not yet merged, is the first that should.
 
 ## First reading, and the trend
