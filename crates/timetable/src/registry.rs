@@ -113,8 +113,8 @@ impl<'a> Registry<'a> {
     ///
     /// // Planned, and the endowment is the whole of what the child will hold.
     /// let e = reg.rows()[0].endowment().expect("least_authority_demo 7 is a legal line");
-    /// assert_eq!(e.arg, 7);
-    /// assert_eq!(e.mem_pages, 0);
+    /// assert_eq!(e.program_argument, 7);
+    /// assert_eq!(e.memory_grant_pages, 0);
     ///
     /// // The manifest refuses the line, exactly as the prompt would.
     /// assert!(matches!(reg.rows()[1].admission, Admission::Refused(_)));
