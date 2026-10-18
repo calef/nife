@@ -51,6 +51,7 @@ boundary or fail a check.
    The date is the day the name was checked, in UTC. `local` is a fifth state beside
    `ratified`, `recorded`, `unrecorded` and `provisional`. It is counted apart from all four in
    `script/names` and in `script/metrics`' names chart, and it is not on the worklist.
+   The word `local` and the block form are provisional names, and naming them is calef's.
 5. What re-queues a name. `script/lint` fails when a `local` name is read by another package
    or fails a check, and says which. The change that caused it rewrites the block to
    `Name: provisional.`, which puts the name on calef's queue at its rank. Narrowing a `local`
@@ -58,7 +59,8 @@ boundary or fail a check.
 
 ## What it accepts
 
-Most of design/naming.md is judgment, and the rule does not check it. An abbreviation nobody has
+The ruling covers local names as a class, so the rules of design/naming.md that need a reader
+are not checked for them. An abbreviation nobody has
 ruled on (`buf`, `ctx`, `idx`) passes, as do a verb naming a thing and a word used against its
 kernel meaning (`map`, `frame`, `tick`). For a local name that cost is bounded. Its readers are
 the package's own, and renaming it later touches one package.
