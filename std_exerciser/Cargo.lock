@@ -7,6 +7,13 @@ name = "argument_protocol"
 version = "0.1.0"
 
 [[package]]
+name = "capability_manifest_note"
+version = "0.1.0"
+dependencies = [
+ "grant_plan",
+]
+
+[[package]]
 name = "crossbeam-deque"
 version = "0.8.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -65,13 +72,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "manifest_note"
-version = "0.1.0"
-dependencies = [
- "grant_plan",
-]
-
-[[package]]
 name = "name_resolution_protocol"
 version = "0.1.0"
 dependencies = [
@@ -106,10 +106,10 @@ version = "0.1.0"
 name = "std_exerciser"
 version = "0.1.0"
 dependencies = [
+ "capability_manifest_note",
  "filesystem_fixture",
  "filesystem_protocol",
  "grant_plan",
- "manifest_note",
  "name_resolution_protocol",
  "rayon",
  "socket_protocol",
