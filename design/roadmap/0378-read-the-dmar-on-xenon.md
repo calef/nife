@@ -1,6 +1,7 @@
 ---
-status: PARTIAL
+status: BUILT
 raised: 2026-09-04
+built: 2026-10-18
 milestone_dependencies: none
 decision_dependencies: none
 machine_requirements: none
@@ -9,53 +10,38 @@ needs_person: no
 ---
 # 378. Read the DMAR, because a firmware checkbox is not an IOMMU
 
-Filed as a proposal on 2026-09-04 by the lane that transcribed xenon's firmware
-into notes/xenon-firmware.md; promoted by milestone 433 on 2026-09-19, when the tree was read
-against it. **Most of what this asks for was built by two other milestones while it sat in the
-pile**, and what is left is smaller and sharper than the file describes.
+A boot on a VT-d machine prints, on each unit's `iommu` line, both claims about interrupt
+remapping: the unit's own (`ECAP.IR`) and the platform's (the DMAR's `INTR_REMAP` flag, bit 0 of
+the table's Flags field). A boot log shows at a glance whether firmware and hardware agree.
 
-Re-checked 2026-10-03 (UTC): one item is left, printing the DMAR's own `INTR_REMAP` flag, and it
-needs no board. The boot on xenon was taken on 2026-09-17, and carrying every DRHD is milestone
-594's.
+```
+  iommu           : VT-d drhd at 0x00000000fed90000, root table default-deny, translating, interrupt remapping offered (unused), dmar INTR_REMAP set
+```
 
-Built, and by whom. Milestone 161 (the x86_64 kernel port) gave `crates/machine_discovery`'s `parse_dmar` and
-`first_drhd`, so the table is parsed at boot, its well-formedness checked, and the first remapping
-unit's register base carried into `arch::x86_64::machine`. Milestone 317 (2026-09-17) answered the
-question this file was really asking. `ECAP.IR`, the bit that says the hardware can remap interrupts
-at all, is read from inside the guest on every boot and printed on the `iommu` line as
-`interrupt remapping offered` or `absent`. It also overturned the premise §86 had been reasoning
-from, since x86_64 has been offering interrupt remapping in every boot this tree has ever run and
-nobody knew because no code read the bit.
+## What is built
 
-What was left, checked 2026-09-19, and what is left on 2026-10-03. Three things were named, in the order they matter. Only the second remains.
-
-1. No boot on xenon has reported it. Answered 2026-09-17, see the correction below. The one xenon transcript that exists
-   (`bench/xenon-2026-09-17/first-light-095500.log`) predates milestone 317, so it carries the DRHD
-   base and not the remapping line. The 2026-09-17 audit says the same, and one boot of a stick
-   that already exists settles it.
-2. The DMAR's own `INTR_REMAP` flags bit is parsed and thrown away.
-   `kernel/src/arch/x86_64/machine.rs`'s `read_dmar` decodes the fixed part to prove the table is
-   well-formed and keeps only `first_drhd`; `crates/machine_discovery/src/acpi.rs`'s own `BUGS`
-   records the bit as read and never used. That is the platform's claim about itself, beside the
-   unit's claim about itself, and this file asks for both.
-3. Only the first DRHD is carried. A machine can have more than one. Done by milestone 594
-   (every VT-d unit translates its own devices) on 2026-09-25.
-
-*Corrected 2026-09-25 (UTC), from pull request #1275, the rehearsal for milestone 261 (the NVMe
-driver leaves the kernel), on two of the three items.* The first is answered and does not mean what
-it was expected to. xenon reported `interrupt remapping offered (unused)` on 2026-09-17 at 22:51 UTC
-(`bench/xenon-2026-09-17/tour-display-225100.log`), but from the first unit, `0xfed90000`. The third
-is the most urgent of the three, not the least. On the OptiPlex 7040, which shares xenon's register
-addresses, that first unit covers only the integrated graphics and the catch-all is `0xfed91000`. So
-"nothing this tree boots has a second unit", said twice below, is probably false of xenon, and the
-one unit this tree brought up there was likely not the one in front of the NVMe. #1275 decodes every
-DRHD and brings up the catch-all. All of this is inferred from the sibling machine, and stays
-unverified until milestone 261's bench evening reads xenon's DMAR (`notes/risk-6-bench-evening.md`,
-added by #1275).
-
-The body below is left as it was filed on 2026-09-04, so the argument that moved this work from
-a bench trip to a parser is readable as it was made. Read it against the three outstanding items
-above rather than as a description of the tree today.
+- **The table is parsed at boot** (milestone 161): `crates/machine_discovery`'s `parse_dmar` checks
+  the fixed part, and `DmarUnits::parse` decodes every DRHD, RMRR and PCI scope. Milestone 594
+  brings up every unit it names.
+- **The unit's claim**, `ECAP.IR`, is read from each unit in `kernel/src/arch/x86_64/iommu.rs`
+  (milestone 317). xenon's tour (`bench/xenon-2026-09-17/tour-display-225100.log`, line 119)
+  printed `interrupt remapping offered (unused)` from its first unit, so
+  `notes/confinement-claims.md`'s fifth claim is answered there as offered by the unit and unused by
+  this kernel.
+- **The platform's claim** is kept in the parsed table as
+  `DmarUnits::platform_interrupt_remapping` (from `Dmar::claims_interrupt_remapping`) and printed
+  beside the unit's through `InterruptRemappingClaims`, whose wording a host test holds
+  (`the_dmar_intr_remap_flag_is_kept_and_printed_beside_the_units`, flag set and clear). Under
+  QEMU both claims follow `intel-iommu`'s `intremap` property, which `NIFE_INTREMAP` sets
+  (`helpers/qemu-runner-x86_64.sh`).
+- **No gate reads the `iommu` line.** `script/boot-check` asserts the machine description reaches
+  its end, not what each line says, so the wording is held by the host test alone.
+- **Reads and reports only.** Nothing here enables interrupt remapping, programs a remapping unit
+  or changes a driver; `kernel/src/arch/x86_64/iommu.rs`'s header says `ECAP.IR` is read to report
+  and never to act on, and the same holds for `INTR_REMAP`. Turning a unit on is a much larger
+  piece of work.
+- **xenon's own pair is unread.** The first xenon boot under this kernel prints both values; until
+  then whether its firmware's claim matches its units' is not known.
 
 ## What is being proposed
 
@@ -110,37 +96,12 @@ and this tree has parsed several ACPI tables already (`notes/x86-port/acpi-and-p
 and MCFG work). The expensive part is not the parse, it is deciding what the kernel should *do*
 when it finds a DMAR it did not expect, and the answer for this proposal is nothing: print it.
 
-## Follow-on
-
-- **Done.** One boot of xenon under a kernel built since milestone 317 (the interrupt-remapping flags): the tour of 2026-09-17
-  22:51 UTC printed `VT-d drhd at 0x00000000fed90000, root table default-deny, translating,
-  interrupt remapping offered (unused)` (`bench/xenon-2026-09-17/tour-display-225100.log`, line
-  119). Checked 2026-10-03. That settles `notes/confinement-claims.md`'s fifth claim as offered by
-  the unit and unused by this kernel.
-- **Outstanding.** Printing the DMAR's own `INTR_REMAP` flag beside the unit's `ECAP.IR`. Needs no
-  board and no decision: a lane's work. Rechecked 2026-10-03, still true (`crates/machine_discovery/src/acpi.rs`'s
-  BUGS still lists the bit as read and never used). First checked 2026-09-19: `read_dmar` in `kernel/src/arch/x86_64/machine.rs` decodes the fixed part and keeps
-  only the DRHD base, with the comment saying nothing reads either field yet, and
-  `crates/machine_discovery/src/acpi.rs`'s `BUGS` says the same from the other side. The two flags
-  are different claims, one by the platform and one by the unit, and this block wants both.
-- **Done.** Carrying more than one DRHD, which #1297 showed was the most urgent of the three,
-  since xenon very likely has a second unit. Milestone 594 (every VT-d unit translates its own
-  devices) brings up every unit and routes each device to its owner, 2026-09-25. Verifying that on
-  xenon is 594's own outstanding boot.
-- **Recorded.** This block reads and reports and never enables interrupt remapping, programs a
-  remapping unit, or changes a driver. Turning a unit on is a much larger piece of work and should
-  not start until somebody knows whether the hardware supports it, which is what the first bullet
-  buys. Recorded beside the code in `kernel/src/arch/x86_64/iommu.rs`, whose header says `ECAP.IR`
-  is read to report and never to act on.
-
 ## Index row
 
 Two in-tree records were waiting on a fact nobody could check: whether xenon's firmware leaves
-interrupt remapping off. The premise was half wrong, and finding that out is what this block is.
-Seventy photographs of the OptiPlex 7050's setup UI contain no interrupt-remapping control at all,
-so there is no switch to photograph. What there is instead is a table the firmware publishes and any
-kernel can read, which relocates the work from the most expensive place in this project to the
-cheapest. Most of it has since been built elsewhere: milestone 161 parses the DMAR and carries the
-first unit's register base. Milestone 317 reads `ECAP.IR` from inside the guest and prints it,
-overturning DECISIONS §86 (whether an NVMe driver can leave the kernel)'s reading that x86_64 boots with remapping off. What remains is the DMAR's own `INTR_REMAP` flag, which is parsed and discarded. The xenon boot
-(2026-09-17) and the second remapping unit (milestone 594) are done.
+interrupt remapping off. There is no switch to photograph: seventy photographs of the OptiPlex
+7050's setup UI contain no interrupt-remapping control. What there is instead is a table the
+firmware publishes and any kernel can read, which moves the work from the bench to a parser. The
+DMAR is parsed at boot (milestone 161), every unit is brought up (milestone 594), each unit's
+`ECAP.IR` is read (milestone 317), and the `iommu` line prints it beside the DMAR's own
+`INTR_REMAP` flag, so a boot shows whether the platform's claim and the hardware's agree.

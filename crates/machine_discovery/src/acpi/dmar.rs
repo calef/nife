@@ -31,6 +31,46 @@ pub struct Dmar {
     pub flags: u8,
 }
 
+/// The DMAR flags bit `INTR_REMAP` (VT-d 8.1): the platform's claim that it supports interrupt
+/// remapping. Each unit makes its own claim in `ECAP.IR`, and the two need not agree.
+const DMAR_INTR_REMAP: u8 = 1 << 0;
+
+impl Dmar {
+    /// **Does the platform claim interrupt remapping** (the table's `INTR_REMAP` flag)?
+    ///
+    /// Name: provisional (milestone 378 (read the DMAR on xenon), 2026-10-18 UTC).
+    pub const fn claims_interrupt_remapping(&self) -> bool {
+        self.flags & DMAR_INTR_REMAP != 0
+    }
+}
+
+/// **The two interrupt-remapping claims a VT-d machine makes, as the boot line prints them**:
+/// the unit's (`ECAP.IR`) and the platform's (the DMAR's `INTR_REMAP`). One line carries both so
+/// a boot log shows whether firmware and hardware agree. `(unused)` because nothing in this
+/// kernel remaps an interrupt, whatever either says.
+///
+/// Here rather than in the kernel's print so a host test holds the wording.
+///
+/// Name: provisional (milestone 378 (read the DMAR on xenon), 2026-10-18 UTC).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct InterruptRemappingClaims {
+    /// The unit's `ECAP.IR`.
+    pub unit: bool,
+    /// The DMAR's `INTR_REMAP`, [`DmarUnits::platform_interrupt_remapping`].
+    pub platform: bool,
+}
+
+impl core::fmt::Display for InterruptRemappingClaims {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        write!(
+            f,
+            "interrupt remapping {} (unused), dmar INTR_REMAP {}",
+            if self.unit { "offered" } else { "absent" },
+            if self.platform { "set" } else { "clear" },
+        )
+    }
+}
+
 /// One byte of host address width, one byte of flags, ten reserved bytes.
 pub(super) const DMAR_FIXED_LEN: usize = 12;
 
@@ -327,6 +367,10 @@ pub struct DmarUnits {
     /// path. **When set, a device no recorded scope names is answered "unknown" rather than handed
     /// to the catch-all**, because the entry that names it may be the one that was dropped.
     pub truncated: bool,
+    /// The fixed part's `INTR_REMAP` flag, [`Dmar::claims_interrupt_remapping`]: the platform's
+    /// claim, kept beside the units whose own claim (`ECAP.IR`) the kernel reads from each. False
+    /// for a body too short to hold the flags byte. Name: provisional (milestone 378, 2026-10-18).
+    pub platform_interrupt_remapping: bool,
 }
 
 impl Default for DmarUnits {
@@ -347,6 +391,7 @@ impl Default for DmarUnits {
             rmrr_scope_count: 0,
             rmrrs_refused: 0,
             truncated: false,
+            platform_interrupt_remapping: false,
         }
     }
 }
@@ -400,7 +445,11 @@ impl DmarUnits {
     /// Total for any input: a malformed scope list stops that structure's scopes and sets
     /// [`DmarUnits::truncated`].
     pub fn parse(body: &[u8]) -> DmarUnits {
-        let mut u = DmarUnits::default();
+        let mut u = DmarUnits {
+            platform_interrupt_remapping: parse_dmar(body)
+                .is_ok_and(|d| d.claims_interrupt_remapping()),
+            ..DmarUnits::default()
+        };
         let mut at = DMAR_FIXED_LEN;
         while at + 4 <= body.len() {
             let kind = u16(body, at);
@@ -643,7 +692,44 @@ mod tests {
             d.host_address_width, 39,
             "the table stores width - 1; q35 reports 38 for a 39-bit width"
         );
-        assert_eq!(d.flags, 0, "no interrupt remapping on this machine");
+        assert_eq!(d.flags, 0, "intremap=off: no interrupt remapping claimed");
+    }
+
+    /// **The platform's interrupt-remapping claim survives the parse and reaches the boot line**
+    /// (milestone 378), set and clear. Bit 0 alone decides it: the set table also carries bits 1
+    /// and 2 (`X2APIC_OPT_OUT`, `DMA_CTRL_PLATFORM_OPT_IN`) and the clear one carries them too,
+    /// so a test of the whole byte against zero would pass both and prove nothing. The unit's
+    /// claim is set opposite to the platform's in each, so a line that printed one in the other's
+    /// place fails.
+    #[test]
+    fn the_dmar_intr_remap_flag_is_kept_and_printed_beside_the_units() {
+        for (flags, platform) in [(0b111, true), (0b110, false)] {
+            let mut body = dmar(&[drhd(0, 0xfed9_0000, &[])]);
+            body[1] = flags;
+            assert_eq!(
+                parse_dmar(&body).unwrap().claims_interrupt_remapping(),
+                platform
+            );
+            let u = DmarUnits::parse(&body);
+            assert_eq!(u.platform_interrupt_remapping, platform, "flags {flags:#b}");
+            let line = std::format!(
+                "{}",
+                InterruptRemappingClaims {
+                    unit: !platform,
+                    platform: u.platform_interrupt_remapping,
+                }
+            );
+            let want = if platform {
+                "interrupt remapping absent (unused), dmar INTR_REMAP set"
+            } else {
+                "interrupt remapping offered (unused), dmar INTR_REMAP clear"
+            };
+            assert_eq!(line, want);
+        }
+        assert!(
+            !DmarUnits::parse(&[0x26]).platform_interrupt_remapping,
+            "a body too short for the flags byte claims nothing"
+        );
     }
 
     /// **The whole reason this table gets read**: a DRHD names where VT-d's register file is,

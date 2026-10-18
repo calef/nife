@@ -53,8 +53,9 @@
 //!   SIDP are not decoded at all. An ANDD names an ACPI-namespace device (an I2C or serial
 //!   controller with no PCI identity) that can issue DMA; this kernel drives none, so none is
 //!   confined, and a machine where one matters needs ANDD and the type-5 scope decoded.
-//! - **`Dmar::flags`' `INTR_REMAP` bit is read and never used.** Interrupt remapping is a real VT-d
-//!   feature this parser can report the presence of and this kernel does not build.
+//! - **`Dmar::flags`' `INTR_REMAP` bit is reported and never acted on.** Interrupt remapping is a
+//!   real VT-d feature this parser reports the platform's claim to
+//!   ([`DmarUnits::platform_interrupt_remapping`]) and this kernel does not build.
 //! - **An MCFG window whose `end_bus` precedes its `start_bus` is reported as written.** Nothing in
 //!   the encoding forbids it and [`mcfg_entry`] does not refuse it, because the bus numbers are the
 //!   firmware's claim and this module reports claims. [`McfgEntry::size`] answers zero for such a
@@ -79,9 +80,9 @@ pub mod ivrs;
 
 use bytes::{u16, u32, u64};
 pub use dmar::{
-    DeviceScope, Dmar, DmarEntry, DmarStructures, DmarUnits, Drhd, MAX_DRHDS, MAX_RMRR_SCOPES,
-    MAX_RMRRS, MAX_SCOPE_PATH, MAX_SCOPES, Ownership, ReservedRegion, SCOPE_PCI_ENDPOINT,
-    SCOPE_PCI_SUBHIERARCHY, dmar_structures, first_drhd, parse_dmar,
+    DeviceScope, Dmar, DmarEntry, DmarStructures, DmarUnits, Drhd, InterruptRemappingClaims,
+    MAX_DRHDS, MAX_RMRR_SCOPES, MAX_RMRRS, MAX_SCOPE_PATH, MAX_SCOPES, Ownership, ReservedRegion,
+    SCOPE_PCI_ENDPOINT, SCOPE_PCI_SUBHIERARCHY, dmar_structures, first_drhd, parse_dmar,
 };
 pub use fadt::{ArmBoot, ResetRegister, ResetSpace, parse_arm_boot, parse_fadt_reset};
 pub use gtdt::{GTDT_ACTIVE_LOW, GTDT_EDGE_TRIGGERED, Gtdt, parse_gtdt};

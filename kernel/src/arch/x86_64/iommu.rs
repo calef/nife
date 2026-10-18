@@ -39,7 +39,9 @@
 //!   fault from one device can hide another's and a burst past it is lost (`FSTS.PFO`). A caller
 //!   reading one device's faults must first quiesce every other device on the bus.
 
-use machine_discovery::acpi::{DmarUnits, Drhd, MAX_DRHDS, MAX_RMRR_SCOPES, SCOPE_PCI_ENDPOINT};
+use machine_discovery::acpi::{
+    DmarUnits, Drhd, InterruptRemappingClaims, MAX_DRHDS, MAX_RMRR_SCOPES, SCOPE_PCI_ENDPOINT,
+};
 use paging::PageFormat;
 use paging::x86_64::Vtd;
 
@@ -641,6 +643,8 @@ pub(crate) fn print_summary() {
     if super::amd_vi::print_summary() {
         return;
     }
+    // Copied out before `IOMMU` is taken: both locks share a rank.
+    let platform = DMAR.lock().as_ref().is_some_and(|d| d.platform_interrupt_remapping);
     let g = IOMMU.lock();
     let mut any = false;
     for s in g.iter() {
@@ -649,12 +653,11 @@ pub(crate) fn print_summary() {
                 any = true;
                 crate::println!(
                     "  iommu           : VT-d drhd at {:#018x}, root table default-deny, translating, \
-                     interrupt remapping {} (unused)",
+                     {}",
                     u.base,
-                    if u.interrupt_remapping {
-                        "offered"
-                    } else {
-                        "absent"
+                    InterruptRemappingClaims {
+                        unit: u.interrupt_remapping,
+                        platform,
                     },
                 );
             }
