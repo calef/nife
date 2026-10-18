@@ -115,7 +115,7 @@ fn naming_a_file_to_a_reader_is_the_operator_left_out() {
     assert!(!g.writable, "a reader reads");
     assert!(
         e.file.is_none(),
-        "this is a stream, not the per-file capability FileSpec describes",
+        "this is a stream, not the per-file capability FileGrantDeclaration describes",
     );
     // The same line against a shell that holds no directory is the milestone's headline
     // refusal, and it is a statement about a capability table rather than about the calendar.
@@ -417,15 +417,15 @@ fn an_input_operand_survives_a_pipeline() {
 
 /// A filter that answers while it reads: the manifest shape no shipped program declares yet.
 /// Planned through [`plan_against_with`] so [`check_chain`] is live, tested logic rather than a
-/// branch nothing reaches, exactly as [`READS_A_FILE`] keeps `FileSpec::Required` live.
+/// branch nothing reaches, exactly as [`READS_A_FILE`] keeps `FileGrantDeclaration::Required` live.
 const RENDERS_AS_IT_READS: Manifest = Manifest {
-    arg: ArgSpec::Forbidden,
-    mem: MemSpec::Forbidden,
-    file: FileSpec::Forbidden,
-    dir: DirSpec::Forbidden,
+    arg: ProgramArgumentDeclaration::Forbidden,
+    mem: MemoryGrantDeclaration::Forbidden,
+    file: FileGrantDeclaration::Forbidden,
+    dir: DirectoryGrantDeclaration::Forbidden,
     short_options: NO_SHORT_OPTIONS,
-    output: OutputSpec::Bytes,
-    input: InputSpec::Required {
+    output: OutputDeclaration::Bytes,
+    input: InputDeclaration::Required {
         writes_while_reading: true,
     },
     reports: true,
@@ -441,7 +441,7 @@ const RENDERS_AS_IT_READS: Manifest = Manifest {
     sync: false,
     installer: false,
     catalog: false,
-    indexes: IndexStore::Forbidden,
+    indexes: IndexStoreDeclaration::Forbidden,
     startup: StartupContract::Native,
 };
 

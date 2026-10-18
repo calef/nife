@@ -85,12 +85,13 @@ pub use image::{
     image_request_fits,
 };
 pub use manifest::{
-    ArgSpec, CATALOG_SLOT, DIAGNOSTICS_SLOT, DOMAIN_SLOT, DirSpec, ENTROPY_SLOT, FileSpec,
-    INDEX_SOURCES_SLOT, INSTALLER_REPLY_SLOT, INSTALLER_SLOT, IndexStore, InputSpec, MACHINE_SLOT,
-    MAX_DECLARED_SHORT_OPTIONS, Manifest, MemSpec, NETWORK_SLOT, NO_SHORT_OPTIONS, OutputSpec,
-    REBOOT_SLOT, SHARE_SLOT, SHELL_CONFIG_SLOT, SHELL_CONFIG_VA, STD_REGION_PAGES, SYNC_SLOT,
-    ShortOptions, StartupContract, UNVOUCHED_MANIFEST, UNVOUCHED_STD_MANIFEST, WordGrant,
-    image_region_pages, named_std_region_pages,
+    CATALOG_SLOT, DIAGNOSTICS_SLOT, DOMAIN_SLOT, DirectoryGrantDeclaration, ENTROPY_SLOT,
+    FileGrantDeclaration, INDEX_SOURCES_SLOT, INSTALLER_REPLY_SLOT, INSTALLER_SLOT,
+    IndexStoreDeclaration, InputDeclaration, MACHINE_SLOT, MAX_DECLARED_SHORT_OPTIONS, Manifest,
+    MemoryGrantDeclaration, NETWORK_SLOT, NO_SHORT_OPTIONS, OutputDeclaration,
+    ProgramArgumentDeclaration, REBOOT_SLOT, SHARE_SLOT, SHELL_CONFIG_SLOT, SHELL_CONFIG_VA,
+    STD_REGION_PAGES, SYNC_SLOT, ShortOptions, StartupContract, UNVOUCHED_MANIFEST,
+    UNVOUCHED_STD_MANIFEST, WordGrant, image_region_pages, named_std_region_pages,
 };
 pub use parsing::{
     BUILTINS, MAX_POSITIONALS, ParsedInvocation, UserVerb, argv, check_words, each_word, parse,
