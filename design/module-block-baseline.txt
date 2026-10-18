@@ -1343,7 +1343,6 @@ crates/designware_mobile_storage/src/card.rs::mmc
 crates/designware_mobile_storage/src/card.rs::r1_state
 crates/designware_mobile_storage/src/card.rs::sd
 crates/designware_mobile_storage/src/card.rs::sd
-crates/designware_mobile_storage/src/card.rs::ure
 crates/designware_mobile_storage/src/command.rs
 crates/designware_mobile_storage/src/command.rs::ALL_SEND_CID
 crates/designware_mobile_storage/src/command.rs::APP_CMD
@@ -2718,7 +2717,6 @@ crates/globally_unique_identifier_partition_table/src/entry.rs::SIZE
 crates/globally_unique_identifier_partition_table/src/entry.rs::TYPE_GUID
 crates/globally_unique_identifier_partition_table/src/entry.rs::UNIQUE_GUID
 crates/globally_unique_identifier_partition_table/src/entry.rs::UNUSED
-crates/globally_unique_identifier_partition_table/src/entry.rs::_guid
 crates/globally_unique_identifier_partition_table/src/entry.rs::blocks
 crates/globally_unique_identifier_partition_table/src/entry.rs::decode
 crates/globally_unique_identifier_partition_table/src/entry.rs::encode
@@ -4666,7 +4664,6 @@ crates/supervision_protocol/src/lib.rs::Child
 crates/supervision_protocol/src/lib.rs::ChildEndowment
 crates/supervision_protocol/src/lib.rs::PAGE
 crates/supervision_protocol/src/lib.rs::REPORT_FAILED
-crates/supervision_protocol/src/lib.rs::REPORT_INIT_DROPPED
 crates/supervision_protocol/src/lib.rs::REPORT_SERVER_RAN
 crates/supervision_protocol/src/lib.rs::REPORT_SUP_GAVE_UP
 crates/supervision_protocol/src/lib.rs::REPORT_SUP_SAW_DEATH
@@ -4786,7 +4783,6 @@ crates/system_initializer/src/endowment.rs::BootEndowment
 crates/system_initializer/src/endowment.rs::MountedTreeGrant
 crates/system_initializer/src/layout.rs::CHILD_STACK_PAGES
 crates/system_initializer/src/layout.rs::IMAGE_POOL_PAGES
-crates/system_initializer/src/layout.rs::INIT_OWN_PAGES
 crates/system_initializer/src/layout.rs::JOBS_BUDGET_PAGES
 crates/system_log/src/assembler.rs
 crates/system_log/src/assembler.rs::Assembler
@@ -7135,7 +7131,6 @@ kernel/src/user/ntp_service.rs::Server
 kernel/src/user/ntp_service.rs::start_client
 kernel/src/user/ntp_service.rs::start_server
 kernel/src/user/ntp_service.rs::start_witness
-kernel/src/user/progenitor_boot.rs::INIT_STACK_PAGES
 kernel/src/user/progenitor_boot.rs::PROGENITOR_ENTRY
 kernel/src/user/progenitor_boot.rs::PROGENITOR_ROLE
 kernel/src/user/raw_mode_service.rs
@@ -7776,8 +7771,6 @@ tools/redoxfs_host/src/listing.rs::ls
 tools/redoxfs_host/src/main.rs
 tools/redoxfs_host/src/partition_table.rs::PartitionInfo
 tools/redoxfs_host/src/partition_table.rs::TableInfo
-tools/redoxfs_host/src/partition_table.rs::_guid
-tools/redoxfs_host/src/partition_table.rs::_name
 tools/redoxfs_host/src/partition_table.rs::partitions
 tools/redoxfs_host/src/volume.rs::PartitionDisk
 tools/redoxfs_host/src/volume.rs::PartitionSelector

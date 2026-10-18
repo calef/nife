@@ -23,9 +23,9 @@ make any future missed poke self-healing.
 ## Why it was asked
 
 PR #576 fixed a real lost wakeup. `place_on` decided local-or-remote under `IPC_TABLES` with
-interrupts masked, and both callers recomputed that comparison with interrupts enabled; a work
-steal between the two reads makes them disagree, and in the bad direction the thread lands in a
-remote inbox with no SGI behind it. The target then refuses to rescue itself, because
+interrupts masked, and both callers recomputed that comparison with interrupts enabled. A work steal
+between the two reads makes them disagree, and in the bad direction the thread lands in a remote
+inbox with no SGI behind it. The target then refuses to rescue itself, because
 `try_initiate_steal` returns early when `runnable() > 0` and `runnable()` counts the inbox: the
 guard that normally prevents a redundant steal instead pins the core in idle.
 
@@ -46,10 +46,10 @@ was not found by reproduction; it was found because one wedge produced a dump pr
 name the bug from the trace rings alone. Blunting that is paying a real diagnostic capability for a
 class of bug the fix has already removed.
 
-The general form, worth stating because it will come up again: a mechanism that papers over a
-missed notification hides the defect rather than the symptom, and this tree's own ladder prefers a
-wrong state that cannot be represented, or a gate that fails loudly, over a recovery that makes the
-wrong state survivable. An idle drain is the fourth rung wearing the first rung's clothes.
+The general form, worth stating because it will come up again: a mechanism that papers over a missed
+notification hides the defect rather than the symptom. This tree's own ladder prefers a wrong state
+that cannot be represented, or a gate that fails loudly, over a recovery that makes the wrong state
+survivable. An idle drain is the fourth rung wearing the first rung's clothes.
 
 ## The case for it, which is real and is why this was a fork
 

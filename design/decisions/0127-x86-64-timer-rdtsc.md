@@ -23,21 +23,21 @@ x86 has neither: `rdtsc` reads a cycle counter, but nothing in the ISA says what
 ## The answer: PIT-calibrated `rdtsc`, frequency delivered via a mapped page
 
 **Calibration** (`kernel/src/arch/x86_64/timer.rs`): a single 10ms window, timed by polling PIT
-channel 2 (1,193,182 Hz, fixed since the 8254's introduction in 1981, chosen because it is the
-only channel with a software-controlled gate and a pollable output, so it needs no interrupts and
-works before IRQs exist). Across that window the kernel reads both the TSC delta and the local
-APIC timer's delta simultaneously (`measure_against_the_pit`), so the two calibrations either agree
-or the disagreement is visible rather than silently trusted. `now()` is a bare `rdtsc` read, no
-fence: the 10ms calibration window is coarse enough that reordering noise does not matter at the
-call site.
+channel 2 (1,193,182 Hz, fixed since the 8254's introduction in 1981). That channel was chosen
+because it is the only channel with a software-controlled gate and a pollable output, so it needs no
+interrupts and works before IRQs exist. Across that window the kernel reads both the TSC delta and
+the local APIC timer's delta simultaneously (`measure_against_the_pit`), so the two calibrations
+either agree or the disagreement is visible rather than silently trusted. `now()` is a bare `rdtsc`
+read, no fence: the 10ms calibration window is coarse enough that reordering noise does not matter
+at the call site.
 
-The `cntfrq()` contract, matching the other two architectures' own shape rather than inventing
-one: aarch64 and riscv64 both answer it as an ambient, no-syscall read (a system register on
-aarch64; a hardcoded QEMU constant on riscv64, whose own doc comment already predicts its eventual
+The `cntfrq()` contract matches the other two architectures' own shape rather than inventing one.
+aarch64 and riscv64 both answer it as an ambient, no-syscall read (a system register on aarch64; a
+hardcoded QEMU constant on riscv64). That constant's own doc comment already predicts its eventual
 real-hardware answer is "an aux-vector entry, the way Linux passes `AT_HWCAP`", since real riscv64
-silicon has no register either). x86_64's answer, a kernel-computed frequency delivered to
-userspace through a mapped `TimebasePage`, is that same aux-vector shape, not a new pattern:
-riscv64's own comment already named where this was going.
+silicon has no register either. x86_64's answer, a kernel-computed frequency delivered to userspace
+through a mapped `TimebasePage`, is that same aux-vector shape, not a new pattern: riscv64's own
+comment already named where this was going.
 
 ## What was checked before ratifying, not assumed
 

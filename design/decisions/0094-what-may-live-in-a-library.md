@@ -16,7 +16,7 @@ reading `user_rt`'s header.
 ## The claim that was half wrong
 
 `crates/user_rt` has recorded since 19f.6 that a `#[panic_handler]` is not an item in it, because a
-panic handler is per-final-binary: exactly one may exist in a linked program, so an item in the
+panic handler is per-final-binary. Exactly one may exist in a linked program, so an item in the
 library would force it on every program that links the crate and collide with any program that wants
 its own (`hello` does). That half is correct and stays.
 
@@ -44,8 +44,8 @@ names the two ABIs" becomes true, where 48 files had been falsifying it.
 The tell that the inference is wrong rather than the constraint: a per-binary item whose body is
 copied verbatim into every binary. If the body is identical everywhere, it is not per-binary; only its
 *declaration* is. Copying it is asserting the same invariant N times by hand, which §61 already says
-a `// SAFETY:` comment must never be: it is an assertion, not a formality, and 88 hand-written
-assertions of one invariant is 87 chances to write it differently.
+a `// SAFETY:` comment must never be. Such a comment is an assertion, not a formality, and 88
+hand-written assertions of one invariant is 87 chances to write it differently.
 
 And one of them was different. `terminal_sink_caretaker` called `exit()` and never trapped, so a
 panic there reported `EVENT_EXIT` where every other program reports `EVENT_FAULT` (§26): a

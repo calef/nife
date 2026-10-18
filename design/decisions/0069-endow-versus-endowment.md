@@ -9,7 +9,7 @@ ratified_by: calef
 
 calef, 2026-08-15: `ChildEndowment`. The family now reads as a system:
 `BootEndowment` is what boot hands the first process, `ChildEndowment` is what a parent hands a
-child, and `grant_plan::Endowment` is the plan either delivers on; same noun, distinguished by
+child, and `grant_plan::Endowment` is the plan either delivers on. Same noun, distinguished by
 recipient, the possessive-absolute principle §68 settled the same day. Refused `Construction`
 (says when rather than whose, and loses the family resemblance both directions). Also refused:
 this entry's own recommendation to defer into milestone 98, because eleven days later 98 had not

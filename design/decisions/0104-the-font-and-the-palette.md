@@ -41,7 +41,7 @@ would matter for rung three.
 
 Canonical Solarized, and calef narrowed it himself. His opening proposal was *"Solarized Dark
 Higher Contrast"*. Milestone 142's lane found that variant **is not Schoonover's and is not an
-iTerm2 built-in**: it traces to a 2011 gist, all sixteen values differ from canonical, and it
+iTerm2 built-in**. It traces to a 2011 gist, and all sixteen values differ from canonical. It
 discards Solarized's structural choice of putting the grays in the bright half of the ANSI table.
 Shown that, he answered "Solarized", and confirmed when asked: "To clarify, Solarized Dark." So
 it is canonical Solarized Dark, chosen over the variant he opened with after learning what that

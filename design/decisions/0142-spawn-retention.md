@@ -46,19 +46,20 @@ at a time, by whether that call site happens to call `cap_delete` after `START`.
 
 ### L4Re: the retained thing is the capability, and destruction is deleting it
 
-L4Re's thread capability is a lifetime handle in the fullest sense: the group description says a
+L4Re's thread capability is a lifetime handle in the fullest sense. The group description says a
 capability to a thread permits `l4_thread_ex_regs()`, which exchanges the instruction and stack
 pointers and cancels ongoing IPC on a *running* thread
-([Thread, L4Re](https://l4re.org/doc/group__l4__thread__api.html), fetched 2026-09-03). Retention and
-construction are one capability, as in seL4, and the delete right is what turns holding into ending.
+([Thread, L4Re](https://l4re.org/doc/group__l4__thread__api.html), fetched 2026-09-03). Retention
+and construction are one capability, as in seL4, and the delete right is what turns holding into
+ending.
 
 ### QNX: the counterexample, and it is the ambient one
 
-The authority is a property of the *caller*, not of anything the caller was handed, and the target is
-named by a global pid. A parent retains nothing in particular; it is simply one of the processes that
-may signal. This is the model §82 and this whole tree exist to refuse, and it is included because it
-is the one that makes the shape of the others visible: everybody else's answer is a held object,
-and the only disagreement is which object.
+The authority is a property of the *caller*, not of anything the caller was handed, and the target
+is named by a global pid. A parent retains nothing in particular; it is simply one of the processes
+that may signal. This is the model §82 (ambient authority is the problem) and this whole tree exist
+to refuse. It is included because it is the one that makes the shape of the others visible:
+everybody else's answer is a held object, and the only disagreement is which object.
 
 ## The five answers, and what each costs
 
@@ -70,10 +71,10 @@ Retention costs a capability-table slot per retained child, and the budget is ne
 `CAPABILITY_TABLE_SLOTS` is 24. `CAPABILITY_TABLE_PEAK_MEASURED` is 21, in init, during
 `build_child` for `credentialer`, instrumented over four boots by milestone 230 and kept honest by
 `report_peak` and `script/swish-check` since milestone 231 (nothing counts how many capability slots
-a boot actually uses). Three slots of headroom. `crates/system_initializer`'s `boot` starts
-twelve children, all long-lived. Any answer that gives the spawner one more permanently held
-capability per child asks init for twelve slots against three, so it is not an increment; it forces a
-raise of `CAPABILITY_TABLE_SLOTS`, which that constant's own doc prices at 32 bytes a slot across
+a boot actually uses). Three slots of headroom. `crates/system_initializer`'s `boot` starts twelve
+children, all long-lived. Any answer that gives the spawner one more permanently held capability per
+child asks init for twelve slots against three, so it is not an increment. It forces a raise of
+`CAPABILITY_TABLE_SLOTS`, which that constant's own doc prices at 32 bytes a slot across
 `MAX_THREADS` and whose history is five days of a silently halting boot. An answer whose handle is
 one per supervisor rather than one per child costs zero slots, which is precisely the shape §26.5
 already chose for the supervision endpoint and for a different reason.
@@ -121,11 +122,12 @@ Cost. No new capability, and no slots at all: one endpoint per supervisor covers
 (process model: capability-based, microkernel).
 
 **What it costs that is not code.** Three recorded decisions push against it, and the note that
-surveyed this said so first: §32 draws its line at the corpse in as many words, milestone 126 ruled
-that a domain names its members and does not act on them, and §26.2 deferred even *reattaching*
-supervision as a new decision. It also concentrates: the supervisor's one endpoint becomes authority
-over every child that ever named it, and the identity separating them is a tid the kernel stamped,
-which is fine for `REAP` on a corpse and is a wider blast radius on a live thread.
+surveyed this said so first. §32 (a supervisor may collect a corpse) draws its line at the corpse in
+as many words. Milestone 126 (the `procps` package) ruled that a domain names its members and does
+not act on them. And §26.2 deferred even *reattaching* supervision as a new decision. It also
+concentrates: the supervisor's one endpoint becomes authority over every child that ever named it.
+The identity separating them is a tid the kernel stamped, which is fine for `REAP` on a corpse and
+is a wider blast radius on a live thread.
 
 The asymmetry worth noticing. This is the answer a reader expects, because the supervisor is the
 party that notices a hang. It is also the one that overturns the most.
@@ -170,16 +172,17 @@ one changes meaning. `START` would return the slot the new handle landed in, whi
 
 Cost. One `Object` variant (nine to ten, `size_of` unchanged), a new arm in the dispatcher, and
 the semantics section. Then the slot arithmetic again, and worse than R2's, because this handle is
-*additional* rather than a re-use: twelve in init against three spare, and the caller cannot decline
-it without a flag, which means either `START` grows an argument (it has none spare; all three
+*additional* rather than a re-use: twelve in init against three spare. The caller cannot decline it
+without a flag. That means either `START` grows an argument (it has none spare; all three
 registers are the child's `x0`, `x1`, `x2`) or the mint is unconditional and every existing caller
 pays a slot it did not ask for.
 
-**What it costs that is not code.** A third noun for a reader to learn in the area a newcomer already
-finds hardest, and the one place this tree has explicitly warned against spending an irreversible
-number: §139 declined a method whose successor was already visible on the roadmap, and the same
-question applies here, since milestone 147's profiler wants cross-thread authority with a named
-target and nobody has priced its shape.
+**What it costs that is not code.** A third noun for a reader to learn in the area a newcomer
+already finds hardest, and the one place this tree has explicitly warned against spending an
+irreversible number. §139 (who may read the cycle counter) declined a method whose successor was
+already visible on the roadmap. The same question applies here, since milestone 147 (a
+profiler)'s profiler wants cross-thread authority with a named target and nobody has priced its
+shape.
 
 ---
 
@@ -196,7 +199,7 @@ failure that a spawn path forgets to decide: the field has no default that hides
 
 **What it does not do.** It cannot grant an authority the kernel does not offer, so on its own it
 declares R0 and makes it checkable. It is **not an alternative to R1, R2 or R3; it is the shape any
-of them would want anyway**, and it composes with 244's proposed follow-up (the largest crate in the
+of them would want anyway**. It composes with 244's proposed follow-up (the largest crate in the
 tree is proved by nothing a mutation can reach), which wants `boot`'s wiring to be a table a host
 test can assert. That proposal is worth citing rather than absorbing: it is this subject from the
 other side, and thirty-four of `boot`'s mutants delete a field from a `ChildEndowment` literal with
@@ -206,10 +209,10 @@ nothing noticing.
 
 This is the table this decision exists to produce. Milestone 133's proposals, as
 `notes/blocked-thread-teardown.md` states them: A finishes what `DESTROY` starts, on the region
-capability; B puts a terminate verb on the thread capability; C frees the stranded caller
-(its piece 1 is being split out as a
-milestone of its own on the branch `maintainer/mint-254-stranded-caller`, so it is out of scope
-here); D accepts the leak, bounds it, and records it.
+capability. B puts a terminate verb on the thread capability. C frees the stranded caller.
+C's piece 1 is being split out as a milestone of its own on the branch
+`maintainer/mint-254-stranded-caller`, so it is out of scope here. D accepts the leak, bounds it,
+and records it.
 
 | | A: completed reclaim | B: terminate verb | D: accept and bound |
 |---|---|---|---|
@@ -247,8 +250,8 @@ inferable, and each has to say why or stop.
 
 ### Why this releases milestone 133 instead of deferring it
 
-**The objection to proposal A was silence, not the region capability.** A needs no new authority, and
-that is most of its appeal; the risk recorded above is that taking it would settle retention *by
+**The objection to proposal A was silence, not the region capability.** A needs no new authority,
+and that is most of its appeal. The risk recorded above is that taking it would settle retention *by
 accident*, in R0's direction, after which every spawn path grows around it and R2 or R1 get harder.
 
 A declared field removes the accident. With retention written down, A cannot settle anything
@@ -273,15 +276,15 @@ A supervisor still cannot end one thread without taking its region. That is prop
 B stays open, behind a customer that does not exist yet: a supervisor that must stop one child while
 a sibling shares the region, or a policy separating stopping from freeing.
 
-R1 is named here as the likely successor, because it is the answer that fits this system's own
-model rather than seL4's. The supervisor already receives the fault, already reaps the corpse and
-already rebuilds the child; extending it from *notice death, reap, rebuild* to *notice hang, end,
-rebuild* is the same job, it costs no slots (§26.5, one endpoint per supervisor), and §32's `REAP`
-already proves the kernel can authorize an action on a thread off that endpoint. Its price is
-overturning three recorded decisions, and that should be bought with a customer rather than
-speculatively, which is the whole reason it is not being bought here.
+R1 is named here as the likely successor, because it is the answer that fits this system's own model
+rather than seL4's. The supervisor already receives the fault, already reaps the corpse and already
+rebuilds the child. Extending it from *notice death, reap, rebuild* to *notice hang, end, rebuild*
+is the same job, and it costs no slots (§26.5, one endpoint per supervisor). §32's `REAP` already
+proves the kernel can authorize an action on a thread off that endpoint. Its price is overturning
+three recorded decisions, and that should be bought with a customer rather than speculatively, which
+is the whole reason it is not being bought here.
 
 **R2 and R3 are disfavored on model grounds and not merely on cost**, per the two findings recorded
-in R2's entry above: this tree has no state-dependent authority for R2 to remove, and seL4's lifetime
-handle earns its keep only alongside a repair-and-resume recovery model that §26 declined in as many
-words.
+in R2's entry above. This tree has no state-dependent authority for R2 to remove, and seL4's
+lifetime handle earns its keep only alongside a repair-and-resume recovery model that §26 declined
+in as many words.

@@ -37,7 +37,7 @@ does not need them and that the milestone which does need them should be the one
 own reader in mind. Milestone 137's gate is `DECISION` for exactly that reason.
 
 The cost of being wrong is bounded, which is what made a decision cheap here despite the
-irreversible category: nothing is written to disk in a format we chose, because the sidecar is the
+irreversible category. Nothing is written to disk in a format we chose, because the sidecar is the
 Mac's format and the Mac both writes and renames it. Reversing this is claiming a bit we currently
 leave clear.
 
@@ -80,7 +80,7 @@ go. None of that machinery is reached by a client writing band files.
 2026-08-18.)
 
 The third piece of evidence is a whole server. `ksmbd`, the in-kernel Linux SMB server, is used
-as a Time Machine target and its entire handling of Apple's create context is four lines: find the
+as a Time Machine target. Its entire handling of Apple's create context is four lines: find the
 `AAPL` tag, set `conn->is_aapl`, and then use that flag in exactly two places, both of which zero
 `UniqueId` in a directory-information record. It emits **no** answering `AAPL` context and claims no
 `FULL_SYNC`. Its `FILE_NAMED_STREAMS` bit is set only when a share carries
@@ -142,10 +142,10 @@ away milestone 57's work, because the attribute store serves every non-SMB holde
 capability and always did. And it does not lose metadata on rename in the case that matters, because
 the renaming party is the client that wrote both files.
 
-Optional additions, each independently cheap and none required: filter `._*` from
+Optional additions are each independently cheap, and none is required. Filter `._*` from
 `QUERY_DIRECTORY` (roughly 10 lines in `smb_proto::server`, and it makes the share lie about its own
-contents, which is a §42 question); or refuse to create `._*` (which would break the client rather
-than tidy it).
+contents, which is a §42 (a filesystem declares what it offers) question). Or refuse to create `._*`
+(which would break the client rather than tidy it).
 
 ### Option 2: named streams, stored as extended attributes
 

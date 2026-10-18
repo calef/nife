@@ -118,12 +118,12 @@ Record which capability made each mapping, and have `REVOKE` unmap only those. T
 to both questions 1 and 2, and it is the seL4 shape.
 
 Cost, measured rather than asserted. `LogEntry` grows from 16 bytes to 24 to carry the object
-(`phys, va` plus the run base, which identifies the capability, derivatives included, since
-`derive` never changes the object). `LOG_ENTRIES` falls from 255 to 170 per log page, so a space
-pays about 1.5x the log pages it pays now; `revoke.rs`'s existing
-`assert!(size_of::<LogPage>() == FRAME_SIZE)` keeps that honest at compile time. "Or its
-derivatives" is free under this encoding and only under it: a narrowed derivative has the same
-object, so matching on the object matches the whole family without §13's derivation tree.
+(`phys, va` plus the run base, which identifies the capability, derivatives included, since `derive`
+never changes the object). `LOG_ENTRIES` falls from 255 to 170 per log page, so a space pays about
+1.5x the log pages it pays now. `revoke.rs`'s existing `assert!(size_of::<LogPage>() == FRAME_SIZE)`
+keeps that honest at compile time. "Or its derivatives" is free under this encoding and only under
+it. A narrowed derivative has the same object, so matching on the object matches the whole family
+without §13 (capability revocation and untyped reclamation)'s derivation tree.
 
 Consequence: it does not close the device half (question 3), and it is a change to what
 `REVOKE` means, which is the syscall surface.
@@ -178,8 +178,8 @@ recommendation above is a worked instance of the failure AGENTS.md names in *ele
 performance beat implementation convenience*: a case made in the vocabulary of architecture
 ("unreachable path", "syscall-semantics decision") whose load-bearing clause was that A was less
 work. Applied to itself, the tenet's one question, *would I still choose this if both options were
-the same amount of work*, answers no. C wins outright on the merits, and the cost that made
-deferring look prudent turned out to be small and bounded.
+the same amount of work*, answers no. C wins outright on the merits. The cost that made deferring
+look prudent turned out to be small and bounded.
 
 Three things the argument turned on, and they are lookups rather than opinions.
 
@@ -209,12 +209,12 @@ not two.
 
 What shipped, on `milestone/132-capability-scoped-revocation`:
 
-- `revoke::LogEntry` carries the object each mapping was made under, and `revoke::record_mapping`
-  takes a required `PageMapSource` (ratified 2026-08-27, landed as `MappedUnder`; renamed since
+- `revoke::LogEntry` carries the object each mapping was made under. `revoke::record_mapping` takes
+  a required `PageMapSource` saying which capability that was, or `NoCapability` for a page nothing
+  names. That type was ratified 2026-08-27 and landed as `MappedUnder`, and renamed since
   "mapping" alone is overloaded across this tree and `pmap` is already this tree's word for a page
-  mapping) saying which capability that was, or `NoCapability` for a page nothing names. A required
-  argument with no default is the ladder's rung one: a mapping that cannot say what authority made
-  it no longer compiles.
+  mapping. A required argument with no default is the ladder's rung one: a mapping that cannot say
+  what authority made it no longer compiles.
 - `PageFrame::REVOKE`'s unmap half is scoped to that object (`revoke::unmap_under_object`);
   `revoke_page_frame` is now literally the `count: 1` case of `revoke_page_frame_run`.
 - The capability half is unchanged, because exact-object equality already *was* the derivation
@@ -232,8 +232,8 @@ per-capability, and that doesn't change." It changed. The table is still keyed p
 records which object authorized each entry.
 
 **Question 3 is not answered and is not made easier by this.** `PageFrame::REVOKE` is still a
-CPU-side operation, a driver's IOMMU/DMA window is still registered as a byte range derived from no
-capability, and a capability-perfect revocation still leaves the device able to write the pages until
+CPU-side operation. A driver's IOMMU/DMA window is still registered as a byte range derived from no
+capability. A capability-perfect revocation still leaves the device able to write the pages until
 the virtio registration is torn down. Coupling `PageFrame` and `Virtio`, which are independent by
 design, is a separate decision with more surface than this one had. Recorded in `revoke.rs`'s
 `revoke_page_frame_run` BUGS and in notes/frames.md, where a reader meets the feature.

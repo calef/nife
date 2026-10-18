@@ -12,9 +12,9 @@ provision-time creation."*
 
 ## The question
 
-`login` attenuates every successful login to the same fixed subtree (`SUBTREE_NAME`), because
-wiring an authenticated identity to a *specific* subtree needs a lookup this milestone had not
-built, and its own text said it "does not want to guess the shape of." Two things needed deciding:
+`login` attenuates every successful login to the same fixed subtree (`SUBTREE_NAME`). That is
+because wiring an authenticated identity to a *specific* subtree needs a lookup this milestone had
+not built. Its own text said it "does not want to guess the shape of." Two things needed deciding:
 what the lookup is, and when the subtree comes to exist.
 
 ## The decision
@@ -25,17 +25,16 @@ credential store), not auto-vivified the first time someone logs in.
 
 ## Why, checked rather than assumed
 
-Identity is already the right shape for this. `cred_proto`/`login_proto` already represent
-identity as a plain byte string, up to `MAX_IDENTITY = 64` bytes (`"alice"`, `"bob"` in the
-existing tests), not an opaque numeric id needing a separate mapping. `fs_subtree_caretaker`
-already takes an arbitrary name at construction; today it is hardcoded to a constant, and using
-the identity instead is passing a different byte string through the same parameter, not new
-mechanism.
+Identity is already the right shape for this. `cred_proto`/`login_proto` already represent identity
+as a plain byte string, up to `MAX_IDENTITY = 64` bytes (`"alice"`, `"bob"` in the existing tests),
+not an opaque numeric id needing a separate mapping. `fs_subtree_caretaker` already takes an
+arbitrary name at construction; today it is hardcoded to a constant. Using the identity instead is
+passing a different byte string through the same parameter, not new mechanism.
 
 It is safe to use directly, checked against the fs model rather than assumed. `fs_proto`'s
 `valid_name` and the directory-entry model treat a name as one opaque key (up to `MAX_NAME = 255`
-bytes) with no separator parsing at all -- a `/` or `..` inside an identity string is just a byte
-in one entry name here, not a path-traversal vector, because this filesystem does not interpret
+bytes) with no separator parsing at all. A `/` or `..` inside an identity string is just a byte in
+one entry name here, not a path-traversal vector. That is because this filesystem does not interpret
 names for structure the way a string-parsed path would. `MAX_IDENTITY`'s 64 bytes fits comfortably
 under the 255-byte cap.
 
@@ -43,7 +42,7 @@ under the 255-byte cap.
 uid, which is consistent with how this milestone already avoids uid/gid everywhere else.
 
 **Provision-time over auto-vivify, and why that is not a detail.** Auto-vivify (create the subtree
-the first time an identity successfully logs in) is simpler to build but means any identity that
+the first time an identity successfully logs in) is simpler to build. But it means any identity that
 clears the credential store's `PUT` silently acquires a filesystem subtree with no separate,
 deliberate act. Provision-time creation keeps identity-creation and resource-allocation as one act,
 the same way `useradd` creates `/home/$USER` at account-creation rather than at first login. Given
@@ -57,14 +56,15 @@ Provision-time creation requires a provisioning tool that does two things (crede
 subtree creation), and none exists. Checked: nothing outside test harness code
 (`credentialer_test_client.rs`, `kernel/src/user/credential_tests.rs`) calls the credential
 service's `PROVISION` endpoint today. This decision assumes that tool into existence rather than
-leaving the assumption implicit; milestone 155, a provisioning tool that creates an identity and
-its home subtree together (minted alongside this decision, provisional), is where it is tracked.
+leaving the assumption implicit. Milestone 155 (a provisioning tool), a provisioning tool that
+creates an identity and its home subtree together (minted alongside this decision, provisional), is
+where it is tracked.
 
 ## What this does not decide
 
-The provisioning tool's own design (a program, its capability contract, whether it is interactive
-or scripted) is milestone 155's, not this entry's. Reclamation of a subtree when a principal is
-deprovisioned is not addressed here either; it is downstream of the reclamation bound
+The provisioning tool's own design (a program, its capability contract, whether it is interactive or
+scripted) is milestone 155's, not this entry's. Reclamation of a subtree when a principal is
+deprovisioned is not addressed here either. It is downstream of the reclamation bound
 `components/src/login.rs`'s own BUGS already names as open.
 
 ## What it unblocks

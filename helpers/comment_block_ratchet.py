@@ -22,15 +22,15 @@ paragraph rather than a `Name:` block. calef names things; expect this to change
 read as capping comments would say the opposite of the decision.
 
 **The measure.** A block is a run of adjacent comment lines of one kind, doc (`///`, `//!`,
-`/** */`, `/*! */`) or plain (`//`, `/* */`), exactly the definition
-`notes/comment-cost-2026-10-07.md` section 4 measured with; its size is its line count. A trailing
-comment on a code line is a span of one and can begin a block, which is the note's definition as
-its own scripts took it. Every tracked `.rs` file outside `vendor/`, plus untracked ones, so a
-lane's new file is judged before its first commit. A block of 40 lines is allowed; 41 is over.
+`/** */`, `/*! */`) or plain (`//`, `/* */`); its size is its line count. A trailing comment, one
+that begins after code on its line, is not part of any block: it labels the line it sits on, and
+that code line ends the run around it, so a table whose every row carries `// 0x41 A` holds no
+block at all. Every tracked `.rs` file outside `vendor/`, plus untracked ones, so a lane's new file
+is judged before its first commit. A block of 40 lines is allowed; 41 is over.
 
 **The cap: 40 lines**, calef's "about 40" read off the measured distribution rather than chosen
-before it. Measured 2026-10-09 (UTC) at this branch's base `2d59ddde1` with this file's own lexer,
-which reproduces the note's method: 28,950 blocks, median 2 lines, mean 4.77. Blocks over 40 hold
+before it. Measured 2026-10-09 (UTC) at `2d59ddde1` with the note's method, which counts a trailing
+comment as a one-line block: 28,950 blocks, median 2 lines, mean 4.77. Blocks over 40 hold
 19.8% of comment lines (the note, one day earlier, measured 20%); over 30 holds 24.5% and over 50
 holds 17.3%, so 40 is where the long tail's bulk sits, and it is the number calef named.
 
@@ -139,33 +139,39 @@ def write_baseline(rows):
 # --- the lexer -------------------------------------------------------------------------------------
 #
 # Adapted from notes/comment-cost-2026-10-07/rustlex.py (lane/comment-cost-measurement,
-# 2026-10-07 UTC), which stays untouched as that note's evidence and is the same lexer the note's
-# distribution was measured with. It handles line comments, nested block comments, doc versus
-# plain, strings, raw strings, byte strings, and char literals versus lifetimes; "good enough to
-# decide" is its own bar and the note's, and it is quoted here rather than improved on purpose, so
-# the gate and the measurement read the same tree.
+# 2026-10-07 UTC), which stays untouched as that note's evidence. It handles line comments, nested
+# block comments, doc versus plain, strings, raw strings, byte strings, and char literals versus
+# lifetimes; "good enough to decide" is its own bar and the note's. It departs from the note's lexer
+# in one place: a comment that begins after code on its line is kind 'trailing', which the note
+# counted as a one-line span of its markers' kind.
 
 def lex_comment_spans(src):
-    """[(kind, start_line, end_line)], 1-based, in source order. kind is 'doc' or 'plain'."""
+    """[(kind, start_line, end_line)], 1-based, in source order. kind is 'doc' or 'plain', or
+    'trailing' for a comment that begins after code on its line, whatever its markers."""
     i, n = 0, len(src)
     spans = []
     line = 1
+    code = False  # whether this line has held anything but whitespace and comments so far
     while i < n:
         c = src[i]
         if c == '\n':
             line += 1
+            code = False
             i += 1
             continue
         if c in ' \t\r':
             i += 1
             continue
+        trailing = code
+        code = True
         if src.startswith('//', i):
             j = src.find('\n', i)
             if j < 0:
                 j = n
             text = src[i:j]
             doc = (text.startswith('///') and not text.startswith('////')) or text.startswith('//!')
-            spans.append(('doc' if doc else 'plain', line, line))
+            spans.append(('trailing' if trailing else 'doc' if doc else 'plain', line, line))
+            code = trailing
             i = j
             continue
         if src.startswith('/*', i):
@@ -189,7 +195,8 @@ def lex_comment_spans(src):
             text = src[i:j]
             doc = ((text.startswith('/**') and not text.startswith('/***') and text != '/**/')
                    or text.startswith('/*!'))
-            spans.append(('doc' if doc else 'plain', sl, line))
+            spans.append(('trailing' if trailing else 'doc' if doc else 'plain', sl, line))
+            code = trailing and sl == line
             i = j
             continue
         # Raw strings r"..", r#".."#, br#".."#, c#".."#: skip whole, newlines counted.
@@ -238,12 +245,15 @@ def lex_comment_spans(src):
 def blocks_over(src, ceiling=CEILING):
     """[(first_line, lines)] for every block over `ceiling`, in line order.
 
-    A block is a run of adjacent comment spans of one kind whose line ranges are consecutive:
-    the note's section 4 definition, as its own q4.py took it.
+    A block is a run of adjacent comment spans of one kind whose line ranges are consecutive. A
+    trailing comment labels the code line it sits on, so it neither begins nor joins a block, and
+    its code line ends the run around it.
     """
     out = []
     cur = None
     for kind, a, b in lex_comment_spans(src):
+        if kind == 'trailing':
+            continue
         if cur and a == cur[1] + 1 and kind == cur[2]:
             cur = [cur[0], b, kind]
         else:
@@ -754,6 +764,23 @@ def selftest():
         cases.append(('adjacent spans of one kind merge, kinds differ, strings are skipped', False))
     if blocks_over('let s = r#"// not\na comment"#; // trailing\n// next\n'):
         cases.append(('raw strings do not start blocks', False))
+    # Trailing comments: crates/bitmap_font's glyph table, 128 rows each ending `// 0x41 A`, read
+    # as one 128-line block under the note's lexer.
+    table = ''.join(f'    [0x00, 0x7e], // 0x{k:02x}\n' for k in range(128))
+    if blocks_over(table, 0) != []:
+        cases.append(('a table annotated on every row holds no block of any size', False))
+    real = '// a\n' * 41
+    if blocks_over('let x = 1;\n' + real + table) != [(2, 41)]:
+        cases.append(('a 41-line // block beside an annotated table is still one block over the '
+                      'cap', False))
+    fails('a 41-line // block from the lexer still fails the cap',
+          problems({'x/a.rs': blocks_over(real)}, {}))
+    if blocks_over('// a\n' * 30 + 'f(); // b\n' + '// a\n' * 30, 0) != [(1, 30), (32, 30)]:
+        cases.append(('an annotated code line ends the run around it', False))
+    if lex_comment_spans('/* a */ f(); /* b */ // c\n/* d */ // e\n') != \
+            [('plain', 1, 1), ('trailing', 1, 1), ('trailing', 1, 1), ('plain', 2, 2),
+             ('plain', 2, 2)]:
+        cases.append(('a comment after code trails, a comment after only comments does not', False))
     # The message names the file, the line, the sizes and the remedy.
     msg = problems(tree(a=[(10, 41)]), {})[0]
     if not all(s in msg for s in ('a.rs:10', '41', '40', 'commit message', 'note', 'never to delete')):

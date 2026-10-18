@@ -14,7 +14,7 @@ needs later and a closed section that only says "done" throws them away.
 Applied, measured against the repository afterwards rather than assumed: private vulnerability
 reporting is enabled, so `SECURITY.md` no longer points at a button that does not exist. The
 `main` ruleset is active with seven required checks, zero bypass actors, and no
-`required_linear_history` rule, which was the deliberate choice: this tree's merge commits are how
+`required_linear_history` rule. That was the deliberate choice: this tree's merge commits are how
 `git log --first-parent` reads as one entry per piece of work, and linear history would destroy that.
 Require branches to be up to date before merging was turned on the same evening, after a merge
 order put two individually-green pull requests onto a red trunk.
