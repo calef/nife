@@ -183,7 +183,7 @@ const TENTHS_PER_TICK: u64 = 6;
 
 /// Which of the two layouts above this chipset uses.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum Generation {
+pub(crate) enum Generation {
     /// ICH9, TCO version 2: QEMU's `q35`.
     Ich9,
     /// 100/200-series PCH, TCO version 4: xenon.
@@ -200,7 +200,7 @@ struct NoReboot {
 /// **A TCO watchdog found on this machine**, not yet armed. Name provisional: calef names public
 /// items.
 #[derive(Debug)]
-pub struct Tco {
+pub(crate) struct Tco {
     generation: Generation,
     base: u16,
     no_reboot: NoReboot,
@@ -209,7 +209,7 @@ pub struct Tco {
 /// Why [`find`] found nothing it would drive. Each says which register said no, because the first
 /// reader of this is a bench log.
 #[derive(Debug, Clone, Copy)]
-pub enum Absent {
+pub(crate) enum Absent {
     /// Neither `00:1f.0` nor `00:1f.4` is a chipset this module knows.
     UnknownChipset { lpc: u32, smbus: u32 },
     /// ICH9 with `PMBASE` unprogrammed: firmware never gave the ACPI registers an address.
@@ -251,7 +251,7 @@ impl fmt::Display for Absent {
 
 /// Why [`Tco::arm`] did not arm.
 #[derive(Debug, Clone, Copy)]
-pub enum ArmError {
+pub(crate) enum ArmError {
     /// The requested time to reset is outside what ten bits of 0.6-second ticks, counted twice,
     /// can express: about 4.8 s to 1,227 s.
     OutOfRange { seconds: u64 },
@@ -291,7 +291,7 @@ impl fmt::Display for ArmError {
 
 /// What [`Tco::arm`] did, for the banner.
 #[derive(Debug, Clone, Copy)]
-pub struct Armed {
+pub(crate) struct Armed {
     /// The reload value written to `TCO_TMR`, in 0.6-second ticks.
     pub ticks: u16,
     /// Tenths of a second from a pet to the reset: two full counts.
@@ -395,7 +395,7 @@ fn map(phys: u64) -> Result<(), Absent> {
 
 impl Tco {
     /// Which chipset generation this is.
-    pub fn generation(&self) -> Generation {
+    pub(crate) fn generation(&self) -> Generation {
         self.generation
     }
 
@@ -442,7 +442,7 @@ impl Tco {
     /// and check it stayed clear, reload, then release the halt and check it released.
     ///
     /// [`pet`]: Tco::pet
-    pub fn arm(&self, reset_after_seconds: u64) -> Result<Armed, ArmError> {
+    pub(crate) fn arm(&self, reset_after_seconds: u64) -> Result<Armed, ArmError> {
         // Two counts to a reset, so each count is half the time.
         let ticks = reset_after_seconds * 10 / 2 / TENTHS_PER_TICK;
         if ticks < u64::from(TMR_MIN) || ticks > u64::from(TMR_MASK) {
@@ -494,24 +494,24 @@ impl Tco {
     /// **Pet the watchdog**: reload the count. Any write to `TCO_RLD` does it on versions 2 and 4,
     /// and it also forgets a first timeout: the datasheet's `SECOND_TO_STS` needs a second timeout
     /// "before the `TCO_RLD` register was written". Linux's `iTCO_wdt_ping` is this one write.
-    pub fn pet(&self) {
+    pub(crate) fn pet(&self) {
         self.write16(TCO_RLD, 1);
     }
 
     /// Ticks left in the current count, read from `TCO_RLD`. A number below the reload value is
     /// the evidence that the timer is really counting.
-    pub fn ticks_left(&self) -> u16 {
+    pub(crate) fn ticks_left(&self) -> u16 {
         self.read16(TCO_RLD) & TMR_MASK
     }
 
     /// The reload value `TCO_TMR` holds, in ticks: what a pet restarts the count from.
-    pub fn reload(&self) -> u16 {
+    pub(crate) fn reload(&self) -> u16 {
         self.read16(TCO_TMR) & TMR_MASK
     }
 
     /// **Stop it**: halt the timer and set `NO_REBOOT` again, Linux's `iTCO_wdt_stop`. Returns
     /// whether the halt took.
-    pub fn disarm(&self) -> bool {
+    pub(crate) fn disarm(&self) -> bool {
         self.write16(TCO1_CNT, self.read16(TCO1_CNT) | TCO_TMR_HALT);
         self.set_no_reboot(true);
         self.read16(TCO1_CNT) & TCO_TMR_HALT != 0

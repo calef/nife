@@ -42,12 +42,12 @@ unsafe extern "C" {
 /// Page-aligned by construction (`link-x86_64.ld`'s `.ap_trampoline` names `AP_TRAMPOLINE_PHYS`,
 /// itself a multiple of 4096), which is what lets [`super::cpu_start`] derive a `STARTUP` vector
 /// from it with a plain shift.
-pub fn trampoline_phys() -> u64 {
+pub(crate) fn trampoline_phys() -> u64 {
     (&raw const __ap_trampoline_start) as u64
 }
 
 /// How many bytes [`prepare`] copies: `__ap_trampoline_end - __ap_trampoline_start`.
-pub fn trampoline_size() -> u64 {
+pub(crate) fn trampoline_size() -> u64 {
     (&raw const __ap_trampoline_end) as u64 - trampoline_phys()
 }
 
@@ -62,7 +62,7 @@ pub fn trampoline_size() -> u64 {
 /// inside either one, so neither section's own `map_range` reaches it either. `mmu::map_everything`
 /// direct-maps it explicitly, by name, the same way `map_firmware_regions` already covers other
 /// gaps the general rules miss.
-pub fn trampoline_lma() -> u64 {
+pub(crate) fn trampoline_lma() -> u64 {
     (&raw const __ap_trampoline_lma) as u64
 }
 
@@ -74,7 +74,7 @@ pub fn trampoline_lma() -> u64 {
 /// only caller, and it does not return until the core it just started is either fully online (past
 /// the point it could still be reading this page) or given up on, which is what makes calling this
 /// again, for the next core, safe.
-pub unsafe fn prepare(stack_top: u64) {
+pub(crate) unsafe fn prepare(stack_top: u64) {
     let dst = trampoline_phys();
     let src = trampoline_lma();
     let len = trampoline_size();

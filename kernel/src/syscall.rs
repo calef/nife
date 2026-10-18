@@ -94,7 +94,7 @@ use thread_control_block::thread_control_block_invoke;
     target_os = "none",
     unsafe(link_section = ".text.hot.syscall.dispatch")
 )]
-pub fn dispatch(frame: &mut TrapFrame) {
+pub(crate) fn dispatch(frame: &mut TrapFrame) {
     // The syscall number and arguments come from the trap frame through arch accessors, not raw
     // register indices, because the ABI register file differs per architecture (aarch64 `svc` with
     // the number in x8 and args in x0..x5; RISC-V `ecall` with the number in a7 and args in a0..a5).

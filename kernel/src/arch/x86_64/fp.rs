@@ -41,7 +41,7 @@ use super::instructions::{self, read_cr0, read_cr4};
 /// **How many vector registers this architecture saves**: `xmm0`-`xmm15`, sixteen rather than the
 /// other two ISAs' thirty-two. See the aarch64 twin.
 #[cfg(any(test, feature = "system_tests"))]
-pub const REGISTERS: usize = 16;
+pub(crate) const REGISTERS: usize = 16;
 
 /// **A thread's FP/SSE register file**, plus the flag that says whether any of it is worth moving.
 ///
@@ -49,7 +49,7 @@ pub const REGISTERS: usize = 16;
 /// destination that is not 16-byte aligned, and the area sits at offset 16.
 #[repr(C, align(16))]
 #[derive(Clone, Copy)]
-pub struct FpState {
+pub(crate) struct FpState {
     /// Nonzero once this thread has executed an FP or SSE instruction. The save and the restore
     /// are both conditioned on it.
     live: u64,
@@ -76,7 +76,7 @@ impl FpState {
     /// every exception masked. `MXCSR` (offset 24) is `0x1f80`, likewise all six SIMD exceptions
     /// masked and round to nearest. A zeroed `MXCSR` would unmask every exception, so the first
     /// underflow in a scrubbed thread would be a `#XM` nobody asked for.
-    pub const INITIAL: Self = {
+    pub(crate) const INITIAL: Self = {
         let mut area = [0u8; 512];
         // x87 control word, little endian.
         area[0] = 0x7f;
@@ -97,12 +97,12 @@ impl FpState {
     }
 
     /// Has this thread ever executed an FP or SSE instruction?
-    pub fn is_live(&self) -> bool {
+    pub(crate) fn is_live(&self) -> bool {
         self.live != 0
     }
 
     /// Record that it has. Called once, from the `#NM` the set `TS` produced.
-    pub fn set_live(&mut self) {
+    pub(crate) fn set_live(&mut self) {
         self.live = 1;
     }
 }
@@ -157,7 +157,7 @@ pub fn enable() {
 }
 
 /// Is the FP unit open on this CPU right now?
-pub fn is_enabled() -> bool {
+pub(crate) fn is_enabled() -> bool {
     read_cr0() & CR0_TS == 0
 }
 
@@ -175,7 +175,7 @@ pub fn disable() {
 /// # Safety
 /// `state` must be a valid, writable, 16-byte-aligned `FpState`, and `CR0.TS` must be clear. The
 /// only caller is [`crate::fp::hand_over`].
-pub unsafe fn save(state: *mut FpState) {
+pub(crate) unsafe fn save(state: *mut FpState) {
     // SAFETY: forwarded. `fp_save` writes 512 bytes at `state + 16` and touches nothing else.
     unsafe { fp_save(state) }
 }
@@ -186,7 +186,7 @@ pub unsafe fn save(state: *mut FpState) {
 /// As [`save`], readable rather than writable. `state`'s `MXCSR` field must be one this CPU's
 /// `MXCSR_MASK` allows, or `fxrstor` raises `#GP`; every `FpState` this kernel builds comes from
 /// [`FpState::INITIAL`] or from a [`save`], and both satisfy that.
-pub unsafe fn restore(state: *const FpState) {
+pub(crate) unsafe fn restore(state: *const FpState) {
     // SAFETY: forwarded. `fp_restore` reads 512 bytes at `state + 16` and writes only registers.
     unsafe { fp_restore(state) }
 }
@@ -202,7 +202,7 @@ unsafe extern "C" {
 ///
 /// `xorps xmm0, xmm0` zeroes a register the caller is about to overwrite anyway.
 #[cfg(any(test, feature = "system_tests"))]
-pub fn touch() {
+pub(crate) fn touch() {
     // SAFETY: writes one `xmm` register. Under a set `CR0.TS` this raises `#NM`, which
     // `exceptions.rs` turns into an enable, and is re-executed after it.
     unsafe {
@@ -218,7 +218,7 @@ pub fn touch() {
 impl FpState {
     /// Write [`crate::fp::register_pattern`] across all sixteen `xmm` registers, each one's
     /// complement in the high half so the full 128 bits are exercised.
-    pub fn set_pattern(&mut self, seed: u64) {
+    pub(crate) fn set_pattern(&mut self, seed: u64) {
         for index in 0..16 {
             let low = crate::fp::register_pattern(seed, index);
             let at = XMM0 + index * 16;
@@ -228,12 +228,12 @@ impl FpState {
     }
 
     /// Is that pattern still there, in every `xmm` register?
-    pub fn has_pattern(&self, seed: u64) -> bool {
+    pub(crate) fn has_pattern(&self, seed: u64) -> bool {
         (0..16).all(|index| self.lane_low(index) == crate::fp::register_pattern(seed, index))
     }
 
     /// The low 64 bits of one `xmm` register, so a test can name the one that went wrong.
-    pub fn lane_low(&self, index: usize) -> u64 {
+    pub(crate) fn lane_low(&self, index: usize) -> u64 {
         let at = XMM0 + index * 16;
         let mut bytes = [0u8; 8];
         bytes.copy_from_slice(&self.area[at..at + 8]);
@@ -246,7 +246,7 @@ impl FpState {
     /// `fxsave` writes a handful of status fields (the last instruction pointer among them) that
     /// are not the thread's data and would make a byte-for-byte comparison against `INITIAL` fail
     /// for reasons that are not leaks.
-    pub fn is_scrubbed(&self) -> bool {
+    pub(crate) fn is_scrubbed(&self) -> bool {
         (0..16).all(|index| {
             let at = XMM0 + index * 16;
             self.area[at..at + 16].iter().all(|&byte| byte == 0)

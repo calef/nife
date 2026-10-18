@@ -81,7 +81,7 @@ impl FpState {
     /// anything sane expects to find. It doubles as the scrub value, so
     /// [`crate::fp::hand_over`] has exactly one thing to install when it takes the registers away
     /// from a thread rather than a second code path that zeroes them.
-    pub const INITIAL: Self = FpState {
+    pub(crate) const INITIAL: Self = FpState {
         live: 0,
         _pad: 0,
         q: [0; 32],
@@ -95,12 +95,12 @@ impl FpState {
     }
 
     /// Has this thread ever executed an FP instruction?
-    pub fn is_live(&self) -> bool {
+    pub(crate) fn is_live(&self) -> bool {
         self.live != 0
     }
 
     /// Record that it has. Called once, from the trap the disabled `FPEN` produced.
-    pub fn set_live(&mut self) {
+    pub(crate) fn set_live(&mut self) {
         self.live = 1;
     }
 }
@@ -156,7 +156,7 @@ pub fn enable() {
 /// they found it. **Nothing on the switch path asks**: there the answer is `live`, which is a fact
 /// about a thread rather than about a core, and reading `CPACR_EL1` to learn it would be a
 /// system-register read per switch for something already in memory.
-pub fn is_enabled() -> bool {
+pub(crate) fn is_enabled() -> bool {
     instructions::read_cpacr() & FPEN != 0
 }
 
@@ -167,7 +167,7 @@ pub fn is_enabled() -> bool {
 /// speculation window nobody has thought of yet; that is the whole of CVE-2018-3665. The invariant
 /// [`crate::fp`] keeps is that the file holds the running thread's data or the initial state, and
 /// it installs the latter before calling this.
-pub fn disable() {
+pub(crate) fn disable() {
     instructions::write_cpacr_synchronized(instructions::read_cpacr() & !FPEN);
 }
 
@@ -176,7 +176,7 @@ pub fn disable() {
 /// # Safety
 /// `state` must be a valid, writable, 16-byte-aligned `FpState`, and FP must be enabled on this
 /// core. Both are the caller's, and the only caller is [`crate::fp::hand_over`].
-pub unsafe fn save(state: *mut FpState) {
+pub(crate) unsafe fn save(state: *mut FpState) {
     // SAFETY: forwarded. `fp_save` writes 544 bytes at `state` and touches nothing else.
     unsafe { fp_save(state) }
 }
@@ -186,7 +186,7 @@ pub unsafe fn save(state: *mut FpState) {
 /// # Safety
 /// `state` must be a valid, readable, 16-byte-aligned `FpState`, and FP must be enabled on this
 /// core. Both are the caller's.
-pub unsafe fn restore(state: *const FpState) {
+pub(crate) unsafe fn restore(state: *const FpState) {
     // SAFETY: forwarded. `fp_restore` reads 544 bytes at `state` and writes only registers.
     unsafe { fp_restore(state) }
 }

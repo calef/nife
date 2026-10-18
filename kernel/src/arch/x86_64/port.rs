@@ -27,7 +27,7 @@ use core::arch::asm;
 /// # Safety
 /// A port write is a device command. The caller must know what is at `port` and that writing `val`
 /// to it is a thing the system wants to happen; there is no page table to catch a wrong guess.
-pub unsafe fn out8(port: u16, val: u8) {
+pub(crate) unsafe fn out8(port: u16, val: u8) {
     // SAFETY: the caller promises the port is one it means to drive. `out` has no memory effect,
     // and no flag effect, but it is emphatically not `nomem`-in-spirit: the compiler must not
     // reorder it against the volatile accesses around it, which `options(nostack)` alone preserves
@@ -40,7 +40,7 @@ pub unsafe fn out8(port: u16, val: u8) {
 /// # Safety
 /// As [`out8`]: the caller must know what is at `port`. A read is not automatically harmless, since
 /// several legacy devices (the 8259's ISR, the 16550's receive register) have read side effects.
-pub unsafe fn in8(port: u16) -> u8 {
+pub(crate) unsafe fn in8(port: u16) -> u8 {
     let val: u8;
     // SAFETY: as `out8`.
     unsafe {
@@ -55,7 +55,7 @@ pub unsafe fn in8(port: u16) -> u8 {
 /// # Safety
 /// As [`out8`].
 #[cfg_attr(not(feature = "watchdog_soak_test"), allow(dead_code))]
-pub unsafe fn out16(port: u16, val: u16) {
+pub(crate) unsafe fn out16(port: u16, val: u16) {
     // SAFETY: as `out8`.
     unsafe { asm!("out dx, ax", in("dx") port, in("ax") val, options(nostack, preserves_flags)) };
 }
@@ -65,7 +65,7 @@ pub unsafe fn out16(port: u16, val: u16) {
 /// # Safety
 /// As [`out8`].
 #[cfg_attr(not(feature = "watchdog_soak_test"), allow(dead_code))]
-pub unsafe fn in16(port: u16) -> u16 {
+pub(crate) unsafe fn in16(port: u16) -> u16 {
     let val: u16;
     // SAFETY: as `out8`.
     unsafe {
@@ -79,7 +79,7 @@ pub unsafe fn in16(port: u16) -> u16 {
 ///
 /// # Safety
 /// As [`out8`].
-pub unsafe fn out32(port: u16, val: u32) {
+pub(crate) unsafe fn out32(port: u16, val: u32) {
     // SAFETY: as `out8`.
     unsafe { asm!("out dx, eax", in("dx") port, in("eax") val, options(nostack, preserves_flags)) };
 }
@@ -89,7 +89,7 @@ pub unsafe fn out32(port: u16, val: u32) {
 /// # Safety
 /// As [`out8`].
 #[cfg_attr(not(any(test, feature = "system_tests")), allow(dead_code))]
-pub unsafe fn in32(port: u16) -> u32 {
+pub(crate) unsafe fn in32(port: u16) -> u32 {
     let val: u32;
     // SAFETY: as `out8`.
     unsafe {

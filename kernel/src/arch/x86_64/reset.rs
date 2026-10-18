@@ -61,7 +61,7 @@ static FADT_RESET_SPACE: AtomicU8 = AtomicU8::new(0);
 static FADT_RESET_VALUE: AtomicU8 = AtomicU8::new(0);
 
 /// Remember what the FADT said, for [`reboot`]. Called from `machine::read_acpi`.
-pub fn record(reset: Option<ResetRegister>) {
+pub(crate) fn record(reset: Option<ResetRegister>) {
     let Some(r) = reset else { return };
     FADT_RESET_SPACE.store(
         match r.space {

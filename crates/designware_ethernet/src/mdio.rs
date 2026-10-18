@@ -37,24 +37,24 @@ pub const COMMAND_LIMIT_US: u64 = 20_000;
 const POLL_US: u64 = 10;
 
 /// Clause 22: basic mode control.
-pub const BMCR: u8 = 0x00;
+pub(crate) const BMCR: u8 = 0x00;
 /// Restart autonegotiation; self-clearing.
-pub const BMCR_ANRESTART: u16 = 1 << 9;
+pub(crate) const BMCR_ANRESTART: u16 = 1 << 9;
 /// Autonegotiation enable.
-pub const BMCR_ANENABLE: u16 = 1 << 12;
+pub(crate) const BMCR_ANENABLE: u16 = 1 << 12;
 /// Software reset of the PHY; self-clearing.
 pub const BMCR_RESET: u16 = 1 << 15;
 /// Clause 22: basic mode status.
-pub const BMSR: u8 = 0x01;
+pub(crate) const BMSR: u8 = 0x01;
 /// Link status. **Latched low**: a link that dropped since the last read reads zero once, so the
 /// current state is the second of two reads.
-pub const BMSR_LINK: u16 = 1 << 2;
+pub(crate) const BMSR_LINK: u16 = 1 << 2;
 /// Autonegotiation complete.
 pub const BMSR_ANEG_COMPLETE: u16 = 1 << 5;
 /// Clause 22: PHY identifier, high half.
-pub const PHYSID1: u8 = 0x02;
+pub(crate) const PHYSID1: u8 = 0x02;
 /// Clause 22: PHY identifier, low half (the low four bits are the revision).
-pub const PHYSID2: u8 = 0x03;
+pub(crate) const PHYSID2: u8 = 0x03;
 
 /// Why an MDIO command did not complete.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

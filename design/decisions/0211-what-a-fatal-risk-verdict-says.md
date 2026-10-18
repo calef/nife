@@ -12,11 +12,11 @@ RUN, NOT-RUN, CANNOT-RUN. Raised by calef, 2026-09-23, reading
 `notes/project-metrics/fatal-risks.svg`: it seems like the wrong graph, because it plots tested
 against untested and all nine risks have now been put to an experiment, so it is a flat line at
 nine. He asked for risks by status instead. Implementation on branch
-`maintainer/experiment-status-ratified`. *(Minted provisionally at 208; moved to 209 on
+`maintainer/experiment-status-ratified`. *(Minted provisionally at 208. It moved to 209 on
 2026-09-23 when `maintainer/installing-is-granting` landed §208 (installing a package is
-granting it, and the installed programs are versioned) first; moved again to 211 the same day when a
-second lane, `maintainer/state-handoff-is-optional`, held §209 (state handoff is an opaque blob
-over a granted frame, and it is optional) and §210 (a correction of error, and its action items
+granting it, and the installed programs are versioned) first. It moved again to 211 the same day,
+when a second lane, `maintainer/state-handoff-is-optional`, held §209 (state handoff is an opaque
+blob over a granted frame, and it is optional). §210 (a correction of error, and its action items
 are decisions, proposals or milestones) was already taken on `main`.)*
 
 ## What is being decided
@@ -88,9 +88,9 @@ Laid side by side, the five (six) words answer four different questions:
 
 And the thing a reader most wants, what it found, is in none of them. It is in a separate
 capitalized word that follows on the same line for three risks (`GREEN` on risks 1 and 9, `AMBER`
-on 2 and 3) and in an English sentence for the rest: risk 6's *"all three of its parts are measured
-on silicon"*, risk 7's *"it found the thing this risk exists to find"* and *"a qualified yes with
-one exception"*.
+on 2 and 3). For the rest it is in an English sentence: risk 6's *"all three of its parts are
+measured on silicon"*, risk 7's *"it found the thing this risk exists to find"* and *"a qualified
+yes with one exception"*.
 
 ### Nothing stops any of this
 
@@ -178,21 +178,21 @@ reader comparing the word against the prose beneath it catches a lie in one glan
 
 **Why it was not chosen.** It loses on risk 8 and it loses for a reason this file itself calls the
 most dangerous state a fatal risk can be in. `UNTESTABLE` is not a point on a scale that runs from
-green to red; it is a statement that the scale does not apply, because the observation is gated
+green to red. It is a statement that the scale does not apply, because the observation is gated
 behind a precondition calef set and milestone 530 (name a customer, or admit the ranking function
-has nothing to rank) ruled on, and milestone 198 (a package manager, and the trivial install that
+has nothing to rank) ruled on. Milestone 198 (a package manager, and the trivial install that
 makes a second customer possible) is what would lift it. Put it on the same axis as `RUN-GREEN` and
 it renders as one more colored band, which is the chart telling a reader that a risk nobody can
-look at is a kind of result. Risk 4 has the same shape one step less severe: it is the
-best-measured entry on the list and has no finding, and a one-word scale must either call that
+look at is a kind of result. Risk 4 has the same shape one step less severe. It is the
+best-measured entry on the list and has no finding. A one-word scale must call that
 amber (false, it is not a finding) or call it unrun (false, milestone 168 (a multi-tasking workload
 benchmark, the number that would decide the event-kernel question) is built, gated and rehearsed on
 three architectures).
 
 Two further options, refused shorter. *Keep the existing five and document them* is the cheapest
-thing on the table and is refused because `NOT` is a truncation of `NOT YET`, `AUDITED` is a sixth
+thing on the table. It is refused because `NOT` is a truncation of `NOT YET`, `AUDITED` is a sixth
 word the script cannot see, and documenting a set that mixes four questions ratifies the category
-error rather than fixing it; the one thing it has going for it is that it is honest about what the
+error rather than fixing it. The one thing it has going for it is that it is honest about what the
 file says today, and that honesty is available under the chosen shape. *A numeric
 confidence*, a probability per risk, is refused because nothing here is estimated that way and a
 number invites arithmetic across nine claims that share no scale, which is the overclaiming this
@@ -219,7 +219,7 @@ Measured against the tree as it stands, not asserted.
   names `fatal_risks_tested` / `fatal_risks_untested` are in the column allowlist at line 208 and in
   the chart table; both change.
 - History. The chart is drawn from a metrics series over time. Re-deriving axis B for past dates
-  means reading past revisions of nine entries, and it is not obvious it is worth doing: the honest
+  means reading past revisions of nine entries, and it is not obvious it is worth doing. The honest
   option is to start the new series at the ruling date and say so on the chart, the way the effort
   chart already marks weeks with no surviving records rather than zeroing them.
 - **One thing that is not a cost.** Nothing outside these three files reads a status word. The

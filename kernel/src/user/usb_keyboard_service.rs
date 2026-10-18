@@ -68,7 +68,7 @@ const EXTRA_STACK_PAGES: usize = 3;
 const MAX_MAPS: usize = dma::WORK_PAGES as usize + MAX_REGISTER_PAGES as usize + EXTRA_STACK_PAGES;
 
 /// What [`start`] hands back.
-pub struct Wiring {
+pub(crate) struct Wiring {
     /// The driver's one bring-up report: [`report::KEYBOARD`], [`report::NO_KEYBOARD`] or
     /// [`report::FAILED`] in word 0.
     pub report: [u64; 5],
@@ -80,7 +80,7 @@ pub struct Wiring {
 /// **Find, confine and hand over the xHCI controller, and wait for the driver's report.** `Err`
 /// with [`crate::extensible_host_controller_interface::Absent::NoController`] on a machine with no
 /// controller, which the caller says nothing about.
-pub fn start(
+pub(crate) fn start(
     image: &'static [u8],
 ) -> Result<Wiring, crate::extensible_host_controller_interface::Absent> {
     let found = crate::extensible_host_controller_interface::bring_up()?;
@@ -167,7 +167,7 @@ pub fn start(
 
 /// **The boot line for a report**, printed by the caller: one sentence a person at the bench can
 /// act on, in the `  usb       :` column every boot line here uses.
-pub fn describe(w: &[u64; 5]) {
+pub(crate) fn describe(w: &[u64; 5]) {
     match w[0] {
         report::KEYBOARD => {
             let (port, speed, vendor, product) = report::keyboard_of(w[1]);
@@ -202,7 +202,7 @@ pub fn describe(w: &[u64; 5]) {
 }
 
 /// The boot line for a controller the kernel refused to hand over.
-pub fn describe_refusal(why: crate::extensible_host_controller_interface::Absent) {
+pub(crate) fn describe_refusal(why: crate::extensible_host_controller_interface::Absent) {
     use crate::extensible_host_controller_interface::Absent;
     match why {
         Absent::NoController => {}

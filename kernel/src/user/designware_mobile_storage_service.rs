@@ -23,11 +23,11 @@ use crate::sched::RendezvousId;
 /// **Whether the booted system may start this server.** False until a `storage_bench` boot on
 /// radon has read and written through it (notes/designware-mobile-storage.md's runbook); the lane
 /// that reads that log flips it, citing the log.
-pub const PROVEN_ON_SILICON: bool = false;
+pub(crate) const PROVEN_ON_SILICON: bool = false;
 
 /// A running server: where a client sends, where readiness arrives, and the physical base of the
 /// transfer region a client maps.
-pub struct Wiring {
+pub(crate) struct Wiring {
     /// Requests, `filesystem_contract::blk`.
     pub request: RendezvousId,
     /// One message when the server is up, or which step stopped it.
@@ -38,7 +38,7 @@ pub struct Wiring {
 
 /// Why nothing was started.
 #[derive(Debug)]
-pub enum NotStarted {
+pub(crate) enum NotStarted {
     /// No SYS clock window was recorded: this is not a JH7110.
     NoClockWindow,
     /// A clock did not read back enabled, or the reset did not release.
@@ -54,7 +54,11 @@ pub enum NotStarted {
 /// # Errors
 ///
 /// [`NotStarted`] says which step refused; nothing is spawned then.
-pub fn start(image: &'static [u8], slot: &Slot, window: Window) -> Result<Wiring, NotStarted> {
+pub(crate) fn start(
+    image: &'static [u8],
+    slot: &Slot,
+    window: Window,
+) -> Result<Wiring, NotStarted> {
     let handoff = Handoff {
         window,
         ciu_hz: slot.ciu_hz,

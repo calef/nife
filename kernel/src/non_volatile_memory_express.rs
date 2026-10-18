@@ -56,13 +56,13 @@ const ADMIN_SQ_PAGE: u64 = 0;
 const ADMIN_CQ_PAGE: u64 = 1;
 const IDENTIFY_PAGE: u64 = 2;
 /// The first page of the data plane's run, and the base [`Handoff::data_plane_phys`] carries.
-pub const DATA_PLANE_PAGE: u64 = 3;
+pub(crate) const DATA_PLANE_PAGE: u64 = 3;
 const IO_SQ_PAGE: u64 = 3;
 const IO_CQ_PAGE: u64 = 4;
 /// Where the transfer buffer starts, relative to [`DATA_PLANE_PAGE`]. The EL0 server computes the
 /// same offset from what it was handed; the constant is duplicated there against this one because
 /// the two live in different address spaces and nothing but the spawn contract joins them.
-pub const TRANSFER_PAGES: u64 = filesystem_contract::blk::TRANSFER_BLOCKS as u64;
+pub(crate) const TRANSFER_PAGES: u64 = filesystem_contract::blk::TRANSFER_BLOCKS as u64;
 const DMA_PAGES: u64 = 5 + TRANSFER_PAGES;
 
 /// **Test-only escape-target hook for the confinement falsification** (milestone 261's Outstanding
@@ -75,7 +75,8 @@ const DMA_PAGES: u64 = 5 + TRANSFER_PAGES;
 /// DMA land instead of faulting, and the test's canary is overwritten. That one store is the whole
 /// falsification, and it lives only in the patch, which is why the shipped tree never writes this.
 #[cfg(feature = "system_tests")]
-pub static ESCAPE_TARGET: core::sync::atomic::AtomicU64 = core::sync::atomic::AtomicU64::new(0);
+pub(crate) static ESCAPE_TARGET: core::sync::atomic::AtomicU64 =
+    core::sync::atomic::AtomicU64::new(0);
 
 /// Sixteen entries per I/O ring: one page holds 64 (submission) or 256 (completion), but the EL0
 /// server completes each command before submitting the next, so depth buys nothing and a small
@@ -86,7 +87,7 @@ const ENTRIES: u16 = 16;
 const IO_QID: u16 = 1;
 
 /// The one namespace QEMU's `-device nvme,drive=` carries. Namespace ids are 1-based.
-pub const NSID: u32 = 1;
+pub(crate) const NSID: u32 = 1;
 
 /// How many polls of a status or completion before the driver declares the controller hung. QEMU
 /// completes synchronously inside the doorbell write, so a bound this size is pure paranoia; on
@@ -251,7 +252,7 @@ impl NonVolatileMemoryExpress {
 
     /// The disk's capacity in bytes: the blk-IPC `SIZE` answer, which the EL0 server is told
     /// rather than left to ask, because asking means IDENTIFY and IDENTIFY is an admin command.
-    pub fn size_bytes(&self) -> u64 {
+    pub(crate) fn size_bytes(&self) -> u64 {
         self.ns.bytes()
     }
 
@@ -284,7 +285,7 @@ impl NonVolatileMemoryExpress {
 
     /// **Everything the EL0 data plane is told**, and the whole of what it could not compute for
     /// itself. See [`non_volatile_memory_express::Handoff`] for why it is three words.
-    pub fn handoff(&self) -> Handoff {
+    pub(crate) fn handoff(&self) -> Handoff {
         Handoff {
             dstrd: self.dstrd,
             // `new` refused a namespace this returns `None` for, so the unwrap cannot fire.

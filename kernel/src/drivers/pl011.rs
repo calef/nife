@@ -76,7 +76,7 @@ register_structs! {
 ///
 /// This is just a pointer. Constructing it is free, which is why the console can
 /// mint one per `print!` instead of holding global mutable state.
-pub struct Pl011 {
+pub(crate) struct Pl011 {
     base: *mut RegisterBlock,
 }
 
@@ -159,7 +159,7 @@ impl Pl011 {
     }
 
     /// Write one byte, spinning until the transmit FIFO has room for it.
-    pub fn write_byte(&self, byte: u8) {
+    pub(crate) fn write_byte(&self, byte: u8) {
         let r = self.regs();
         while r.FR.is_set(FR::TXFF) {
             core::hint::spin_loop();

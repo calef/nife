@@ -40,7 +40,7 @@ use crate::cpu::MAX_CPUS;
 
 /// The usable stack under each IST entry: four pages, `crate::interrupt_stack::SIZE`'s size and
 /// for its reason (the fatal path prints a register dump from here).
-pub const SIZE: usize = 4 * 4096;
+pub(crate) const SIZE: usize = 4 * 4096;
 
 /// The unmapped page below each stack.
 const GUARD: usize = 4096;
@@ -51,15 +51,15 @@ const SLOT: usize = GUARD + SIZE;
 /// How far below a stack's top `TSS.ist` points. The 16 bytes above hold the per-CPU pointer (the
 /// lower word) and one word of padding that keeps the IST value 16-byte aligned, which the CPU
 /// requires of the frame it pushes and the System V ABI requires at `isr_paranoid`'s `call`.
-pub const TOP_RESERVE: u64 = 16;
+pub(crate) const TOP_RESERVE: u64 = 16;
 
 /// The IST vectors this module serves, in slot order: `TSS.ist[k]` is `VECTORS[k]`'s stack, and the
 /// IDT gate for `VECTORS[k]` selects IST entry `k + 1` (the IDT encodes 0 as "do not switch").
-pub const VECTORS: [u8; 3] = [8, 2, 18];
+pub(crate) const VECTORS: [u8; 3] = [8, 2, 18];
 
 /// The IST entry (one-based, as the IDT encodes it) the gate for `vector` selects, or 0 for a
 /// vector that runs on the stack it interrupted.
-pub const fn slot_for(vector: usize) -> u8 {
+pub(crate) const fn slot_for(vector: usize) -> u8 {
     let mut k = 0;
     while k < VECTORS.len() {
         if VECTORS[k] as usize == vector {
@@ -87,14 +87,14 @@ static STACKS: SyncUnsafeCell<Stacks> =
 
 /// The low end of core `id`'s slot `k` (zero-based, an index into [`VECTORS`]): its guard page.
 /// Indexing bounds-checks both numbers.
-pub fn guard(id: usize, k: usize) -> u64 {
+pub(crate) fn guard(id: usize, k: usize) -> u64 {
     // SAFETY: `&raw const` of an element place projects the address, bounds-checked, without
     // reading the slot or making a reference to memory a core may be running on.
     (unsafe { &raw const (*STACKS.get()).0[id][k] }) as u64
 }
 
 /// Core `id`'s stack `k` as `(bottom, top)`: the slot above its guard page.
-pub fn span(id: usize, k: usize) -> (u64, u64) {
+pub(crate) fn span(id: usize, k: usize) -> (u64, u64) {
     let bottom = guard(id, k) + GUARD as u64;
     (bottom, bottom + SIZE as u64)
 }
@@ -133,7 +133,7 @@ pub unsafe fn install(id: usize, percpu: u64) {
 /// about every core's is the same question without needing to know which core this is, which is
 /// what lets `exceptions::x86_paranoid_dispatch` ask it before trusting anything reached through
 /// `gs`.
-pub fn is_on_an_nmi_stack(addr: u64) -> bool {
+pub(crate) fn is_on_an_nmi_stack(addr: u64) -> bool {
     const NMI: usize = slot_for(2) as usize - 1;
     (0..MAX_CPUS).any(|id| {
         let (bottom, top) = span(id, NMI);

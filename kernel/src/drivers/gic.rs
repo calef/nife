@@ -140,9 +140,9 @@ const PRIORITY_MASK: u32 = 0xff;
 const TIMER_PRIORITY: u8 = 0x80;
 
 /// The GIC reported a spurious interrupt: do nothing, and do NOT signal EOI.
-pub const SPURIOUS: u32 = 1023;
+pub(crate) const SPURIOUS: u32 = 1023;
 
-pub struct Gic {
+pub(crate) struct Gic {
     gicd: *mut Distributor,
     gicc: *mut CpuInterface,
 }
@@ -170,7 +170,7 @@ impl Gic {
 ///
 /// # Safety
 /// `gicc` must be a mapped device-memory address with at least 256 bytes behind it.
-pub unsafe fn identification(gicc: u64) -> u32 {
+pub(crate) unsafe fn identification(gicc: u64) -> u32 {
     // SAFETY: per this function's contract.
     unsafe { (*(gicc as *const CpuInterface)).IIDR.get() }
 }
@@ -200,7 +200,7 @@ pub unsafe fn init(gicd: u64, gicc: u64) {
 /// once; the CPU interface is banked per core (same MMIO address, different hardware behind it), so
 /// each core must enable its own. Called by the boot core inside [`init`] and by every secondary as
 /// it comes online (DECISIONS §11).
-pub fn init_this_cpu() {
+pub(crate) fn init_this_cpu() {
     let guard = GIC.lock();
     let gic = guard.as_ref().expect("gic::init_this_cpu before gic::init");
 
@@ -250,7 +250,7 @@ pub fn enable(intid: u32, target_cpu: usize) {
 /// level-triggered device that holds its line asserted cannot re-fire in a storm before the
 /// driver has had a chance to service it. The driver re-enables it (via its `Irq` capability's
 /// `ACK`) once it has quieted the device. See notes/interrupts.md.
-pub fn disable(intid: u32) {
+pub(crate) fn disable(intid: u32) {
     let guard = GIC.lock();
     let gic = guard.as_ref().expect("gic::disable before gic::init");
 
@@ -265,7 +265,7 @@ pub fn disable(intid: u32) {
 ///
 /// A controllable interrupt with no hardware behind it. The whole "an interrupt becomes a
 /// message" path can be tested with this: raise the SGI, watch a blocked thread wake.
-pub fn send_sgi(intid: u32, target_cpu: usize) {
+pub(crate) fn send_sgi(intid: u32, target_cpu: usize) {
     debug_assert!(intid < 16, "SGIs are INTID 0-15");
     debug_assert!(target_cpu < 8, "GICv2 SGIR targets at most 8 cores");
     let guard = GIC.lock();
@@ -283,7 +283,7 @@ pub fn send_sgi(intid: u32, target_cpu: usize) {
 /// Returns [`SPURIOUS`] (1023) if the GIC changed its mind. Do nothing with that, and in
 /// particular do **not** call [`end_of_interrupt`]: signalling completion for an interrupt you
 /// never took corrupts the GIC's priority stack.
-pub fn acknowledge() -> u32 {
+pub(crate) fn acknowledge() -> u32 {
     let guard = GIC.lock();
     let gic = guard.as_ref().expect("gic::acknowledge before gic::init");
     gic.gicc().IAR.read(GICC_IAR::INTID)
@@ -294,7 +294,7 @@ pub fn acknowledge() -> u32 {
 /// Until this is written, the GIC will not deliver another interrupt of **equal or lower**
 /// priority. Forget it and the timer fires exactly once and then never again, which looks
 /// nothing like "you forgot to write a register".
-pub fn end_of_interrupt(intid: u32) {
+pub(crate) fn end_of_interrupt(intid: u32) {
     let guard = GIC.lock();
     let gic = guard
         .as_ref()

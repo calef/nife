@@ -48,7 +48,7 @@ use super::instructions;
 
 /// **How many FP registers this architecture saves**: `f0`-`f31`. See the aarch64 twin.
 #[cfg(any(test, feature = "system_tests"))]
-pub const REGISTERS: usize = 32;
+pub(crate) const REGISTERS: usize = 32;
 
 /// **A thread's FP register file**, plus the flag that says whether any of it is worth moving.
 ///
@@ -56,7 +56,7 @@ pub const REGISTERS: usize = 32;
 /// offset 16.
 #[repr(C, align(16))]
 #[derive(Clone, Copy)]
-pub struct FpState {
+pub(crate) struct FpState {
     /// Nonzero once this thread has executed an FP instruction. See the aarch64 twin: the save and
     /// the restore are both conditioned on it.
     live: u64,
@@ -75,7 +75,7 @@ impl FpState {
     /// The state a thread starts with, and the state the registers are scrubbed to: zeros, which is
     /// what `FS == Initial` means in the table above, and round-to-nearest-even with no accrued
     /// exceptions in `fcsr`.
-    pub const INITIAL: Self = FpState {
+    pub(crate) const INITIAL: Self = FpState {
         live: 0,
         fcsr: 0,
         f: [0; 32],
@@ -87,12 +87,12 @@ impl FpState {
     }
 
     /// Has this thread ever executed an FP instruction?
-    pub fn is_live(&self) -> bool {
+    pub(crate) fn is_live(&self) -> bool {
         self.live != 0
     }
 
     /// Record that it has. Called once, from the first-use trap.
-    pub fn set_live(&mut self) {
+    pub(crate) fn set_live(&mut self) {
         self.live = 1;
     }
 }
@@ -157,7 +157,7 @@ pub fn enable() {
 /// zero, so this reports false immediately after [`enable`] and `crate::fp::enable_for_current`
 /// turns the first-use trap into a fault rather than retrying an instruction that will never
 /// execute.
-pub fn is_enabled() -> bool {
+pub(crate) fn is_enabled() -> bool {
     instructions::read_sstatus() & SSTATUS_FS != 0
 }
 
@@ -165,7 +165,7 @@ pub fn is_enabled() -> bool {
 ///
 /// **The caller owes the scrub**, as on every architecture here. See [`crate::fp`]'s header for the
 /// CVE that makes that sentence load-bearing rather than tidy.
-pub fn disable() {
+pub(crate) fn disable() {
     instructions::clear_sstatus(SSTATUS_FS);
 }
 
@@ -174,7 +174,7 @@ pub fn disable() {
 /// # Safety
 /// `state` must be a valid, writable, 16-byte-aligned `FpState`, and `sstatus.FS` must not be Off.
 /// The only caller is [`crate::fp::hand_over`].
-pub unsafe fn save(state: *mut FpState) {
+pub(crate) unsafe fn save(state: *mut FpState) {
     // SAFETY: forwarded. `fp_save` writes 272 bytes at `state` and touches nothing else.
     unsafe { fp_save(state) }
 }
@@ -183,7 +183,7 @@ pub unsafe fn save(state: *mut FpState) {
 ///
 /// # Safety
 /// As [`save`], readable rather than writable.
-pub unsafe fn restore(state: *const FpState) {
+pub(crate) unsafe fn restore(state: *const FpState) {
     // SAFETY: forwarded. `fp_restore` reads 272 bytes at `state` and writes only registers.
     unsafe { fp_restore(state) }
 }
@@ -199,7 +199,7 @@ unsafe extern "C" {
 ///
 /// `fmv.d.x f0, zero` writes zero into a register the caller is about to overwrite anyway.
 #[cfg(any(test, feature = "system_tests"))]
-pub fn touch() {
+pub(crate) fn touch() {
     // SAFETY: writes one FP register. Under `FS == Off` this raises the illegal-instruction trap
     // that `exceptions.rs` turns into an enable, and is re-executed after it.
     unsafe {
@@ -216,14 +216,14 @@ pub fn touch() {
 #[cfg(any(test, feature = "system_tests"))]
 impl FpState {
     /// Write [`crate::fp::register_pattern`] across all 32 registers.
-    pub fn set_pattern(&mut self, seed: u64) {
+    pub(crate) fn set_pattern(&mut self, seed: u64) {
         for (index, register) in self.f.iter_mut().enumerate() {
             *register = crate::fp::register_pattern(seed, index);
         }
     }
 
     /// Is that pattern still there, in every register?
-    pub fn has_pattern(&self, seed: u64) -> bool {
+    pub(crate) fn has_pattern(&self, seed: u64) -> bool {
         self.f
             .iter()
             .enumerate()
@@ -231,12 +231,12 @@ impl FpState {
     }
 
     /// One register, so a test can name the one that went wrong.
-    pub fn lane_low(&self, index: usize) -> u64 {
+    pub(crate) fn lane_low(&self, index: usize) -> u64 {
         self.f[index]
     }
 
     /// Do the registers hold [`Self::INITIAL`]'s values, i.e. has the file been scrubbed?
-    pub fn is_scrubbed(&self) -> bool {
+    pub(crate) fn is_scrubbed(&self) -> bool {
         self.f.iter().all(|&value| value == 0) && self.fcsr == 0
     }
 }

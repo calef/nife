@@ -22,7 +22,7 @@ inside `script/ci-build`, one row per check with a tier. Two things in it are ca
 ## Is the premise true
 
 Checked 2026-09-19 in this worktree. Yes. `script/ci-build`'s table carries 17 rows, 9 `local` and
-8 `ci`, the no-argument path runs the `local` tier in the table's order, and the script's own
+8 `ci`, and the no-argument path runs the `local` tier in the table's order. The script's own
 header says in capitals at line 37 that **the tier tags and the no-argument meaning are PROVISIONAL
 pending calef**.
 
@@ -75,7 +75,7 @@ Shipped provisionally as `local` and `ci`.
   builds three kernels, `supply-chain` is `ci` and takes seconds on a warm cache. The real criterion
   is what a person will wait for, which is not a duration.
 - `gate` / `report`. Refused: §134 already spends that split on the `script/` family itself
-  (what does something is a verb, what reports is a noun), and reusing the words one level down
+  (what does something is a verb, what reports is a noun). Reusing the words one level down
   would make `coverage` a report in one sense and a gate in another on the same page.
 
 **The noun rule does not reach this**, and the misreading is corrected here rather than deleted
@@ -98,7 +98,7 @@ naming a deployment, not on its part of speech.
 ## Recommendation
 
 Keep A as the default. On the tags, this section deliberately names no winner, because a tag a
-contributor learns is a name and names are calef's; what it offers is the refusals with their
+contributor learns is a name and names are calef's. What it offers is the refusals with their
 reasons, which is the half that is a lookup rather than an argument.
 
 ## How reversible, and who has acted on it
@@ -107,7 +107,7 @@ The tags are high, the default is not, and they should be answered as two questi
 one. The tags appear in one column of one table, in `--list` output and in three sentences of prose,
 so renaming them is one commit and touches no wire format and no syscall. The default is already in
 `CONTRIBUTING.md` and `.github/pull_request_template.md` telling a stranger this is the one command
-to remember, and a contributor who learns it and then finds it means something else is the expensive
+to remember. A contributor who learns it and then finds it means something else is the expensive
 half of *move fast on what can be undone*.
 
 ## What is blocked until this is answered

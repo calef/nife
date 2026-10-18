@@ -60,12 +60,12 @@ allocator, fixed field widths, a round-trip test). Considered and folded into Op
 bytes live and who may write them, not whether they are text or binary.
 
 **crontab's on-disk shape**: one file per user in `/var/spool/cron/crontabs/`, permission-gated by
-the directory rather than by the file format. `crontab -e` is the only sanctioned writer. This tree's
-own equivalent of "one file per user" is already how milestone 117 (DECISIONS §117) scopes a principal's
-subtree: "a principal's subtree is named by its identity string, created at provisioning time." A
-per-user schedule file living inside that same subtree, rather than in a shared system location,
-gets per-user scoping for free. It gets it from a mechanism this tree already has, rather than
-needing a new one.
+the directory rather than by the file format. `crontab -e` is the only sanctioned writer. This
+tree's own equivalent of "one file per user" is already how §117 (a principal's subtree is named by
+its identity) scopes a principal's subtree: "a principal's subtree is named by its identity string,
+created at provisioning time." A per-user schedule file living inside that same subtree, rather than
+in a shared system location, gets per-user scoping for free. It gets it from a mechanism this tree
+already has, rather than needing a new one.
 
 **systemd timer units**: one `.timer` unit file per job in `/etc/systemd/system/` or a user's own
 `~/.config/systemd/user/`, `INI`-shaped. `systemd` reads them at boot by walking the directory.
@@ -103,7 +103,7 @@ durable session. It is read at boot by whatever process performs re-derivation.
   schedule registered at runtime is exactly the same two words a compile-time `timetable.conf` line
   is. So the parser does not need to learn a second dialect.
 - *Location*: `<identity's own subtree>/schedule` (exact path a detail for whoever builds it), using
-  milestone 117's existing per-identity subtree rather than a shared system directory. This is what
+  §117's existing per-identity subtree rather than a shared system directory. This is what
   buys per-user scoping for free. A directory capability narrowed to one identity's subtree cannot
   read or write any other identity's file, with no new access-control mechanism to write.
   `login.rs`'s `mint()` already knows how to build such a capability.
@@ -151,7 +151,7 @@ dedicated "schedule store" service, mirroring the credentialer's provision/serve
 ## The recommendation
 
 **Option 1.** Reuse `crates/timetable::parse`'s document format unchanged. Store one file per identity
-inside that identity's own subtree (milestone 117's existing per-user scoping), and write/read it
+inside that identity's own subtree (§117's existing per-user scoping), and write/read it
 through ordinary `filesystem_proto` verbs. The capabilities are ones the writer (a live session
 registering a job) and the reader (boot-time re-derivation, §123) already need to hold for other
 reasons. This is the cheapest of the three by a wide margin because it is not really a new

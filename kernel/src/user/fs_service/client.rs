@@ -38,7 +38,7 @@ pub(super) const CLIENT_EXTRA_STACK: usize = 8;
 /// default, found short under `script/test`'s own aarch64 run (a data abort at the stack's guard
 /// page). Those roles went with `session_reviver` on 2026-09-27; the granted-directory spawners
 /// below still pass their callers' stack pages through it.
-pub fn spawn_fs_client(
+pub(crate) fn spawn_fs_client(
     client_image: &'static [u8],
     file_ep: RendezvousId,
     file_shared: u64,

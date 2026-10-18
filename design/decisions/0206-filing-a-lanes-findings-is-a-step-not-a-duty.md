@@ -68,8 +68,8 @@ a single word away from defeating the whole thing.
 Option 3, recommended: a capture step after every lane. Something reads the report and the pull
 request body and emits either nothing or N stub files in `design/roadmap/proposals/`. It is
 extraction rather than judgment, which is what §202 (mechanical work goes to a cheaper model, and
-the gates are why that is safe) routes to a cheaper model, and it fires without
-anyone remembering, which is the ladder's rung two. A stub it gets wrong is deleted; a finding it
+the gates are why that is safe) routes to a cheaper model. It fires without anyone remembering,
+which is the ladder's rung two. A stub it gets wrong is deleted; a finding it
 catches is one calef does not have to.
 
 ## What is blocked until this is answered

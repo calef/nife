@@ -5,11 +5,12 @@ raised: 2026-09-19
 
 # 189. Which of two definitions `caretaker` carries, and what the translating shape is called
 
-Raised 2026-09-19 by milestone 435 (forty-five milestones are gated on a decision nobody wrote down)'s slice-c lane, which found milestone 413 (what a `caretaker` is, when the thing it holds is not the thing it hands out)'s
-`DECISION` gate naming no section. Filed 2026-09-14 by the milestone 292 lane while naming the
-program that puts a file behind a byte sink, which had been `ROLE_FILE` inside a three-role binary
-and so had never needed a name of its own. *(Section number provisional until the merge queue lands
-it.)*
+Raised 2026-09-19 by milestone 435 (forty-five milestones are gated on a decision nobody wrote
+down)'s slice-c lane. That lane found milestone 413 (what a `caretaker` is, when the thing it holds
+is not the thing it hands out)'s `DECISION` gate naming no section. Filed 2026-09-14 by the
+milestone 292 (`fixtures/src/sink.rs` is three programs) lane while naming the program that puts a
+file behind a byte sink. That program had been `ROLE_FILE` inside a three-role binary and so had
+never needed a name of its own. *(Section number provisional until the merge queue lands it.)*
 
 ## What is being decided
 
@@ -92,7 +93,7 @@ None on question 1, and deliberately: it is a name, one of the two answers overt
 ratification calef made himself, and AGENTS.md's rule is that an irreversible fork arrives with
 options rather than a winner.
 
-What this section does recommend is answering question 3 explicitly whichever way 1 goes,
+What this section does recommend is answering question 3 explicitly whichever way 1 goes. That is
 because it is the cheap half and it is what makes the next adapter's name mechanical rather than
 copied from whichever neighbor the lane happened to read. `terminal_sink_caretaker` says what it
 holds and then what it hands out, in that order, and reads well; `fs_file_caretaker` says only what

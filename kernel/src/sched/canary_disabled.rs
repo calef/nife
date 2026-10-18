@@ -2,8 +2,8 @@
 //!
 //! Name: provisional (lane maintainer/split-parents-to-zero, 2026-10-13 UTC).
 
-pub fn arm(_ranges: &[(usize, usize)]) {}
-pub fn disarm() {}
-pub fn check() -> bool {
+pub(crate) fn arm(_ranges: &[(usize, usize)]) {}
+pub(crate) fn disarm() {}
+pub(crate) fn check() -> bool {
     false
 }

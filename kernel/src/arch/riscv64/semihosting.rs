@@ -27,10 +27,10 @@
 
 /// The harness's success code (a passing exit).
 #[cfg_attr(not(any(test, feature = "system_tests")), allow(dead_code))]
-pub const EXIT_SUCCESS: u32 = 0;
+pub(crate) const EXIT_SUCCESS: u32 = 0;
 /// The harness's failure code (any non-zero exit).
 #[cfg_attr(not(any(test, feature = "system_tests")), allow(dead_code))]
-pub const EXIT_FAILURE: u32 = 1;
+pub(crate) const EXIT_FAILURE: u32 = 1;
 
 // ---- QEMU `virt` exit: the `sifive_test` finisher ----
 

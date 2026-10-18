@@ -69,7 +69,7 @@ pub fn boot_hartid() -> usize {
 /// hart id, and QEMU's boot hart is not guaranteed to be 0, so this reads the id OpenSBI handed us at
 /// `_start` (stashed by boot.s). The SMP bring-up starts every *other* hart. The aarch64 twin is
 /// always 0.
-pub fn boot_cpu_id() -> usize {
+pub(crate) fn boot_cpu_id() -> usize {
     boot_hartid()
 }
 
@@ -77,7 +77,7 @@ pub fn boot_cpu_id() -> usize {
 /// `TPIDR_EL1`, but a general register, so this also arms the per-hart trap path: it records the
 /// pointer in this hart's [`TrapStash`] and points `sscratch` at that stash, so `trap.s` can recover
 /// the kernel `tp` after a U-mode round trip. See `crate::percpu` and trap.s.
-pub fn set_percpu(ptr: usize) {
+pub(crate) fn set_percpu(ptr: usize) {
     // Set `tp` first so `cpu::id()` (which reads `tp`) resolves this hart's index into TRAP_STASH.
     // SAFETY: `ptr` is this hart's `PerCpu`, which is what `tp` must name.
     unsafe { instructions::write_tp(ptr) };
@@ -136,7 +136,7 @@ pub fn read_current_thread() -> u64 {
 /// constant `true`: there the per-CPU pointer is `TPIDR_EL1`, a system register the trap frame never
 /// carries, so it cannot go stale on migration.
 #[cfg(any(test, feature = "system_tests"))]
-pub fn percpu_matches_hart() -> bool {
+pub(crate) fn percpu_matches_hart() -> bool {
     let was_enabled = crate::arch::interrupts::disable();
     // `sscratch` holds `&TRAP_STASH[hart]` in S-mode (trap.s keeps it so).
     let sscratch = instructions::read_sscratch();

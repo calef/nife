@@ -304,7 +304,7 @@ pub fn init(base: u64) {
     any(test, feature = "system_tests", feature = "bench"),
     allow(dead_code)
 )]
-pub fn print_summary() {
+pub(crate) fn print_summary() {
     match IOMMU.lock().as_ref() {
         Some(s) => crate::println!(
             "  iommu           : riscv-iommu at {:#018x}, device directory default-deny, \
@@ -321,7 +321,7 @@ pub fn print_summary() {
 /// **Build a DMA domain over exactly `regions`, in the format this IOMMU walks**, and return its
 /// root. The RISC-V IOMMU's single-stage (`iosatp`) translation is Sv39, the CPU's own format.
 /// `aarch64`'s twin says why this is a function rather than a type alias.
-pub fn build_domain(regions: &[paging::domain::DmaRegion]) -> u64 {
+pub(crate) fn build_domain(regions: &[paging::domain::DmaRegion]) -> u64 {
     crate::iommu::build_identity::<paging::Sv39>(regions)
 }
 
@@ -333,7 +333,7 @@ pub fn is_active() -> bool {
 /// it is up. This tree brings the unit up against a device tree whose `iommu-map` is an identity
 /// over the whole bus, so there is no second unit for a device to belong to. VT-d is the
 /// architecture where that stops being true; see `arch::x86_64::iommu::scope_of`.
-pub fn scope_of(_rid: u32) -> crate::iommu::Scope {
+pub(crate) fn scope_of(_rid: u32) -> crate::iommu::Scope {
     if is_active() {
         crate::iommu::Scope::WholeBus
     } else {
@@ -344,7 +344,11 @@ pub fn scope_of(_rid: u32) -> crate::iommu::Scope {
 /// **Firmware-reserved DMA regions for requester `rid`: none on this architecture as this tree
 /// brings it up** (milestone 594 (every VT-d unit translates its own devices)). The VT-d driver reports its RMRRs here so
 /// [`crate::iommu::confine`] can map them into every domain. The RISC-V IOMMU has no firmware table for this; a device tree `reserved-memory` region with `iommu-addresses` would be the place, and this tree reads none.
-pub fn for_each_reserved_region(_rid: u32, _each: &mut dyn FnMut(paging::domain::DmaRegion)) {}
+pub(crate) fn for_each_reserved_region(
+    _rid: u32,
+    _each: &mut dyn FnMut(paging::domain::DmaRegion),
+) {
+}
 
 /// Push one 16-byte command and wait for the IOMMU to consume it (QEMU processes the queue on
 /// the tail write; polling the head is the architectural contract).

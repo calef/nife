@@ -73,7 +73,7 @@ pub mod tick_trace {
     ///
     /// Called from `rearm` on both ISAs. Anything that is not the boot hart is dropped rather than
     /// mixed in.
-    pub fn record(fired: u64, arrival: u64, done: u64) {
+    pub(crate) fn record(fired: u64, arrival: u64, done: u64) {
         if crate::cpu::id() != 0 {
             return;
         }
@@ -95,20 +95,20 @@ pub mod tick_trace {
     }
 
     /// Ticks recorded since the last [`reset`].
-    pub fn count() -> u64 {
+    pub(crate) fn count() -> u64 {
         COUNT.load(Ordering::Relaxed)
     }
 
     /// Interrupts that arrived before the deadline they were armed against. Should be zero; a
     /// nonzero value means the emulator, not the kernel, and the boot says so rather than averaging
     /// it away.
-    pub fn early() -> u64 {
+    pub(crate) fn early() -> u64 {
         EARLY.load(Ordering::Relaxed)
     }
 
     /// `(count, arrival_min, arrival_mean, arrival_max, handler_mean, handler_max)`, in counter
     /// ticks. Means are integer divisions; the caller converts to instructions.
-    pub fn snapshot() -> (u64, u64, u64, u64, u64, u64) {
+    pub(crate) fn snapshot() -> (u64, u64, u64, u64, u64, u64) {
         let n = COUNT.load(Ordering::Relaxed).max(1);
         (
             COUNT.load(Ordering::Relaxed),

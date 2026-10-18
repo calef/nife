@@ -159,12 +159,12 @@ const DEFAULT_PRIORITY: u8 = 0xa0;
 const ENABLED_PRIORITY: u8 = 0x80;
 
 /// The first of the four special INTIDs (1020-1023) an acknowledge can return. 1023 is "spurious".
-pub const SPECIAL_FIRST: u32 = 1020;
+pub(crate) const SPECIAL_FIRST: u32 = 1020;
 
 /// How many redistributors this driver remembers, one per slot the caller names. The aarch64
 /// adapter asserts at compile time that `cpu::MAX_CPUS` fits, so the kernel's core count and this
 /// table cannot drift apart without a build failure.
-pub const SLOTS: usize = 8;
+pub(crate) const SLOTS: usize = 8;
 
 /// The distributor's virtual address, zero until [`init`]. Written once, on the boot core, before
 /// any other core exists; everything after reads it.
@@ -216,7 +216,7 @@ fn wait_for_rwp(read: impl Fn() -> u32, bit: u32, what: &str) {
 ///
 /// # Safety
 /// `gicd` must be a mapped device-memory address with at least 64 KiB behind it.
-pub unsafe fn identification(gicd: u64) -> u32 {
+pub(crate) unsafe fn identification(gicd: u64) -> u32 {
     // SAFETY: per this function's contract.
     unsafe { (*(gicd as *const Distributor)).PIDR2.get() }
 }
@@ -267,7 +267,7 @@ pub unsafe fn init(distributor: u64, redistributors: u64, redistributors_size: u
 /// Panics, naming the affinity, if no frame in the region claims this core: a core with no
 /// redistributor takes no timer and no SGI, and a silent version of that is the failure this
 /// milestone was written to end.
-pub fn init_this_cpu(slot: usize, affinity: u32) {
+pub(crate) fn init_this_cpu(slot: usize, affinity: u32) {
     let base = REDISTRIBUTOR_REGION[0].load(Ordering::Relaxed);
     let size = REDISTRIBUTOR_REGION[1].load(Ordering::Relaxed);
     assert!(base != 0, "gicv3::init_this_cpu before gicv3::init");
@@ -365,7 +365,7 @@ pub fn enable(slot: usize, intid: u32, route: u64) {
 /// **An SGI is never disabled**, which is the GICv2 behaviour the tree depends on (see
 /// [`init_this_cpu`]). An SGI is an edge a core raises on purpose; it cannot storm, so the reason
 /// the handler masks a line does not apply to it.
-pub fn disable(slot: usize, intid: u32) {
+pub(crate) fn disable(slot: usize, intid: u32) {
     let bit = 1 << (intid % 32);
     if intid < 16 {
         return;

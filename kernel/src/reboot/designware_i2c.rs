@@ -75,7 +75,7 @@ const INTR_STOP_DET: u32 = 1 << 9;
 const INTR_TX_ABRT: u32 = 1 << 6;
 
 /// The value a `DesignWare` I2C IP answers in `IC_COMP_TYPE` (the vendor header's `DW_I2C_COMP_TYPE`).
-pub const DW_I2C_COMP_TYPE: u32 = 0x4457_0140;
+pub(crate) const DW_I2C_COMP_TYPE: u32 = 0x4457_0140;
 
 /// Every wait's bound, the size of the console drivers' own bounds: far more polls than a 100 kHz
 /// transaction of a few bytes needs, and small enough to reach the fallback route promptly.
@@ -85,7 +85,7 @@ const BOUND: u32 = 1_000_000;
 /// the reset path's answer is a console line naming the state, not a typed recovery: the caller
 /// prints this and falls through to the firmware route.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum Failure {
+pub(crate) enum Failure {
     /// `IC_COMP_TYPE` did not read as a `DesignWare` I2C IP; the window is not this controller.
     NotADesignWare(u32),
     /// The controller never took an enable or disable word.
@@ -105,7 +105,7 @@ pub enum Failure {
 
 /// One `DesignWare` I2C controller, at a base address the caller owns.
 #[derive(Debug)]
-pub struct DesignWareI2c {
+pub(crate) struct DesignWareI2c {
     base: usize,
 }
 
@@ -129,7 +129,7 @@ impl DesignWareI2c {
 
     /// `IC_COMP_TYPE`, so the first thing the reset path does with a wrong window is say so.
     #[must_use]
-    pub fn component_type(&self) -> u32 {
+    pub(crate) fn component_type(&self) -> u32 {
         self.rd(COMP_TYPE)
     }
 
@@ -168,7 +168,7 @@ impl DesignWareI2c {
     /// The reads are issued by pushing `READ_CMD` into the transmit FIFO, which is how the IP
     /// works: reads are commands the master transmits. The STOP goes on the last command of all,
     /// whichever half it ends in.
-    pub fn write_read(
+    pub(crate) fn write_read(
         &self,
         mode: &jh7110_clock_and_reset::StandardMode,
         target: u8,
