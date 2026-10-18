@@ -11,7 +11,8 @@ in this order, because each needs the one before:
 2. On patagonia: flip `PCH_PROVEN_ON_SILICON` in a commit citing that log, and build the
    installer from it. About 5 minutes.
 3. Milestone 801 (packages over the internet)'s exit criterion: install, boot from the disk, then
-   `jig update` and `jig install ioping` from `basalt.nifeos.org`. About 15 minutes.
+   `jig update` and `jig install ioping` from `basalt.nifeos.org`. About 15 minutes. Blocked on
+   name resolution at the prompt (below).
 4. Risk 6, step 1 of its path back to GREEN: ioping on nife (the package step 3 installed), then on
    Linux, three boots of five passes each. About an hour.
 5. Risk 5: the first of the three boots §259 (a multicore soak counts toward risk 5 at ten million
@@ -22,31 +23,31 @@ Where this card and a procedure page disagree, the machine decides and the page 
 
 ## Status
 
-Not ready to run. Every image below was built from `1e1820fd0`, the tip of `lane/release-uefi-boot`
-(#2360), which fixes release x86_64 UEFI images stopping after the `pat` line. When #2360 merges,
-every image is rebuilt from main, re-hashed and re-booted under OVMF, and this table changes.
+Not ready to run: step 3 is blocked (below). Every image below was built from main at
+`805620590` and booted under OVMF.
 
 | image | build | under OVMF | SHA-256 |
 |---|---|---|---|
-| I219 boot, house-LAN peer | `cargo xtask network-bench --stage-only --peer <patagonia's LAN address>:9494` | `release build`, `82574L ... link up`, `preflight dmar scope : PASS`, `dhcp : leased 10.0.2.15`; gate `verdict LEASED-AND-MEASURED` | `fcb2abf2f1d352a23d764752f789271138e96b56c9a949c17693f2d01fdf5976` |
-| I219 boot, Internet Sharing peer | `... --peer 192.168.2.1:9494` | the same lines | `c2c5665f38b2b6cc510b960cf5ee21486570948ec965d962885b44aea6e46dc3` |
-| installer, basalt's sources, flag unflipped (rehearsal only) | `cargo xtask std-exerciser`, then `NIFE_INDEX_SOURCES=basalt cargo xtask install-boot` | `install-boot: PASS`, three boots; packs `repository basalt.nifeos.org 443 rolling` | `7efc64c12eb5691922b26ec0d2e8059f9bef8b327982b29a9c7a2608d7e1d066` |
-| soak, debug | `cargo xtask uefi-image --features soak_test` | 4 cores online, 24 user threads; at 65 s `crossings=7981`, `wakerate=399/s`, `refused=0 mismatch=0 stalled=0` | `8cd2e3635d2418014f96617a4d93ffa0625921eb5f7357ca4a0cc6ea439549c5` |
+| I219 boot, house-LAN peer | `cargo xtask network-bench --stage-only --peer <patagonia's LAN address>:9494` | `release build`, `82574L ... link up`, `preflight dmar scope : PASS`, `dhcp : leased 10.0.2.15`; gate `verdict LEASED-AND-MEASURED` | `36a35b926d78c25fd8e376c597b8ff75b7b788b82aaa40b941e52d72372431a3` |
+| I219 boot, Internet Sharing peer | `... --peer 192.168.2.1:9494` | the same lines | `15b1d0ad206f4a0170ebfcf559d8876edc6ef003a1b2afdd31697381084c6062` |
+| installer, basalt's sources, flag unflipped (rehearsal only) | `cargo xtask std-exerciser`, then `NIFE_INDEX_SOURCES=basalt cargo xtask install-boot` | `install-boot: PASS`, three boots; packs `repository basalt.nifeos.org 443 rolling` | `052b23ec58b256840ef1d67786c5170233fea288cb22dc147109c434f2c3016c` |
+| soak, debug | `cargo xtask uefi-image --features soak_test` | 4 cores online, 24 user threads; at 56 s `crossings=6021`, `wakerate=341/s`, `refused=0 mismatch=0 stalled=0` | `d8f64631ba9447beef0d40c4f6564ffb8daab50549961a0520127ae3e47fe085` |
 
 The I219 image's peer address is compiled in, so there is one image per network arrangement. The
 installer that goes to xenon is built at the bench in step 2, so its hash is recorded then. Copies
 are kept off-tree by the maintainers.
 
-## The open risk: name resolution at the prompt has never worked
+## Step 3 is blocked: name resolution at the prompt has never worked
 
-Rehearsed under QEMU: the installed system runs `jig update`, reaches the network and fails with
-`index unreachable at basalt.nifeos.org: NetworkUnreachable`. `jig` prints only the error's kind,
+Rehearsed under QEMU at `805620590`: the installed system runs `jig update`, reaches the network
+and fails with `index unreachable at basalt.nifeos.org: NetworkUnreachable`. `jig` prints only the error's kind,
 which here means the resolver was refused a network step. `progenitor: name resolver up; asks
 10.0.2.3, the lease's name server` printed first. Whether this is QEMU's user-mode network or nife
 is not known. No boot anywhere has resolved a name at the prompt, as milestone 892 (a std program at
-the prompt holds the network and a name resolver)'s block records. Step 3 on xenon is that test. If
-it fails the same way, the serial log is the record. Go on to step 4's Linux half and
-step 5.
+the prompt holds the network and a name resolver)'s block records. A lane to find the cause is
+proposed and not started. The card is not ready to run until that lane either makes `jig update`
+read the index under QEMU or shows the fault is QEMU's alone. Without step 3 there is no nife row
+in step 4, since nife's ioping is the package step 3 installs.
 
 ## What calef needs at the bench
 

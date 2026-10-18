@@ -46,3 +46,5 @@ area directories), ruled B). Appendices under
 - [Delegation and the method](README/delegation-and-the-method.md): how agents do the work here, and what it costs.
 
 `suspend-and-resume.md`: Name: provisional, minted 2026-10-18 (UTC) by lane/48-tcb-suspend-resume.
+
+`xenon-bench-2026-10-18.md`: Name: provisional, minted 2026-10-18 (UTC) by lane/xenon-bench-2026-10-18.
