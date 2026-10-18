@@ -30,9 +30,10 @@ Deliverable, in two parts.
    entry codec, the way Linux folds page-table levels). Put device discovery behind a "here is the hardware"
    interface (device tree today, ACPI/PCI later), and make the arch surface explicit. This is the
    reusable half and most of the value; a second ISA is what proves the split is honest. The
-   seam-*naming* subset that needs no second architecture is broken out as **20a** and can start
-   now. The abstraction *shapes* (the codec and discovery interfaces) wait for RISC-V, because deriving
-   them from one ISA is the wrong-abstraction trap DECISIONS warns against.
+   seam-*naming* subset that needs no second architecture is the
+   [seam-naming appendix](0020-portable-hal/name-the-seams.md). The abstraction *shapes* (the codec
+   and discovery interfaces) wait for RISC-V, because deriving them from one ISA is the
+   wrong-abstraction trap DECISIONS warns against.
 2. Bring up a second ISA, then a third: RISC-V first, x86_64 second. RISC-V is this
    milestone's own scope; x86_64 is milestone 161's.
 
@@ -69,9 +70,9 @@ precedent.
   tree today and ACPI/PCI later), taken up as the x86_64 discovery seam's wide half.
 - **Milestone 16.** Real-hardware aarch64, which this block names as the cheapest portability proof
   of all and deliberately puts somewhere else because it is the same ISA on real silicon.
-- **Recorded.** In `design/roadmap/0020a-name-the-seams.md`: the seam-naming subset that needs no
-  second architecture lives on as its own addendum block rather than being folded back in here. It
-  names and isolates the boundaries; it does not abstract across them.
+- **Recorded.** In `design/roadmap/0020-portable-hal/name-the-seams.md`: the seam-naming subset that
+  needs no second architecture, an appendix of this block. It names and isolates the boundaries; it
+  does not abstract across them.
 - **Refused.** Hardware breadth stays parked. Every driver on every board buys no proof coverage,
   because the proofs live in the machine-independent crates that already do not care about the ISA.
   Each new architecture enlarges the unverified TCB by one hand-written boot, MMU, trap and
