@@ -46,10 +46,10 @@ pub extern "C" fn _start(_arg0: u64, initial_ramdisk_len: u64, _arg2: u64) -> ! 
     else {
         refuse()
     };
-    let caps = [(REPORT, abi::rights::WRITE)];
+    let grants = [(REPORT, abi::rights::WRITE)];
     let maps = [(CHILD_UART_VA, UART_DEVICE, abi::address_space::MAP_RO)];
     let endowment = ChildEndowment {
-        caps: &caps,
+        caps: &grants,
         maps: &maps,
         stack_pages: system_initializer::CHILD_STACK_PAGES,
         // `Retention::Nothing`: this program exits a few lines after `START`, so keeping the

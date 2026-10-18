@@ -43,9 +43,9 @@ pub extern "C" fn _start(_arg0: u64, initial_ramdisk_len: u64, _arg2: u64) -> ! 
     else {
         refuse()
     };
-    let caps = [(REPORT, abi::rights::WRITE)];
+    let grants = [(REPORT, abi::rights::WRITE)];
     let endowment = ChildEndowment {
-        caps: &caps,
+        caps: &grants,
         stack_pages: system_initializer::CHILD_STACK_PAGES,
         // `Retention::Nothing`: this program exits a few lines after `START`, so keeping the
         // child's thread control block capability would be keeping it for nobody (DECISIONS §142

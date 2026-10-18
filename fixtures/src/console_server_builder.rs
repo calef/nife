@@ -67,13 +67,13 @@ pub extern "C" fn _start(_arg0: u64, initial_ramdisk_len: u64, _arg2: u64) -> ! 
     }
 
     // The server receives on slot 0 and acknowledges on slot 1.
-    let caps = [(request, abi::rights::READ), (reply, abi::rights::WRITE)];
+    let grants = [(request, abi::rights::READ), (reply, abi::rights::WRITE)];
     let maps = [
         (SHARED_VA, shared, abi::address_space::MAP_RO),
         (CHILD_UART_VA, UART_DEVICE, abi::address_space::MAP_RO),
     ];
     let endowment = ChildEndowment {
-        caps: &caps,
+        caps: &grants,
         maps: &maps,
         stack_pages: system_initializer::CHILD_STACK_PAGES,
         // `Retention::Nothing`: nothing here ever stops the server, and this program exits once
