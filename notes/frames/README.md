@@ -7,7 +7,7 @@ one-line BUGS list. These files carry what its prose budget has no room for.
   and what is still held at the end of a boot.
 - [`limitations.md`](limitations.md): the BUGS list in full.
 - [`run-fork.md`](run-fork.md): how a `PageFrame` that names a run was found, priced and decided.
-- [`stack-frame-fault.md`](stack-frame-fault.md): a thread-stack fault milestone 108 (the drivers move onto frame capabilities) surfaced and did
+- [`thread-stack-fault.md`](thread-stack-fault.md): a thread-stack fault milestone 108 (the drivers move onto frame capabilities) surfaced and did
   not cause.
 
 *Name: provisional, minted 2026-10-11 (UTC) by lane/next-ten-longest-notes, which split the parent
@@ -21,4 +21,4 @@ names files.
 - `limitations` Name: provisional, minted 2026-10-11 (UTC) by lane/next-ten-longest-notes, after
   `notes/soak/limitations.md`.
 - `run-fork` Name: provisional, minted 2026-10-11 (UTC) by lane/next-ten-longest-notes.
-- `stack-frame-fault` Name: provisional, minted 2026-10-11 (UTC) by lane/next-ten-longest-notes.
+- `thread-stack-fault` Name: ratified 2026-10-18 (calef, "Approve as a group"). Refused `stack-frame-fault`.

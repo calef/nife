@@ -122,3 +122,24 @@ contract suffix. The tree already says "wire contract" and "service contract" fo
 Nineteen crates took the suffix; `network_time_protocol` keeps its word, as the standard's name.
 `supervision_protocol` waits for its split into `supervision_contract` and `process_builder`.
 `script/lint` check 3 holds the spelling and lists those two exceptions by name.
+
+## A ruled name is not asked again, and its rename has a deadline
+
+A block reading `provisional, and ruled: calef ruled **`x`** on <date>` records a settled name.
+Its rename is not performed. `script/names --unratified` prints these first, under "ruled, rename
+owed", with the target and the age, and never in the plain provisional list. They still count in the
+worklist total. A `ruled the stem` block is not a rename and stays plain provisional.
+
+`script/names --check` fails when one is more than 45 days old. The limit is a measure, not a
+principle. The oldest owed rename was 35 days old on 2026-10-18 (UTC), so a shorter limit would
+have failed on day one and blocked every unrelated merge behind a backlog nobody can clear at once.
+Forty-five days passes a backlog being worked and fails a ruling nobody acted on. The parse and the limit
+are `helpers/name_ruled.py`.
+
+## Rename-owed exceptions
+
+A rename that cannot be performed yet (it waits on another milestone) is excused by one bullet of
+the form below. It expires on its end date, and the check then fails again. A bullet names the
+reason, so an exception is never silent.
+
+- (none)

@@ -60,5 +60,5 @@ count" abbreviates nothing.
 `script/lint` holds the line until the sweep, through `helpers/cap_abbreviation.py`: a ratchet
 over Rust identifiers that fails when the count rises, 2,890 on the ruling's day. The census, the
 kept names and a proposed spelling for each public name are in
-[capability-worklist.md](capability-worklist.md). The proposals are not ruled. The ABI names
+[capability-spelling-worklist.md](capability-spelling-worklist.md). The proposals are not ruled. The ABI names
 (`SEND_CAP`, `RECEIVE_CAP`, `CAP_INSERT`, `SYS_CAP_DELETE`) and the `Cap` type go last, as one batch.

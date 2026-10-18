@@ -289,7 +289,7 @@ pub fn confirm() {
 /// [`CONFIRMATION`].
 ///
 /// Name: provisional, flagged 2026-09-24 by the boolean-predicate pass
-/// (design/naming/boolean-predicates-worklist.md). It acts, so the Rust predicate rule calef
+/// (design/naming/functions-that-answer-yes-or-no-worklist.md). It acts, so the Rust predicate rule calef
 /// ratified 2026-09-24 exempts it, but it is a participle that reads as a question, on a function
 /// that prompts and reads the reply; recommended `ask_to_confirm`.
 fn asked(size_bytes: u64) -> bool {

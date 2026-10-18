@@ -219,7 +219,7 @@ condition below carries forward.
 
 ## What it changes for `free` and `vmstat`
 
-Milestone 126's open fork (the lane's appendix, `notes/process-view/what-is-left.md` on the branch
+Milestone 126's open fork (the lane's appendix, `notes/process-view/remaining-procps-programs.md` on the branch
 `milestone/126-procps`, pull request #1349) is whether memory is reported per region under a
 capability or as a machine-wide figure. Paging out follows whichever wins. Under option 1 a
 region's figure grows a paged-out count beside its committed count, read with the same right, and

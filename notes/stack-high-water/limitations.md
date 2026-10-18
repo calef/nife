@@ -18,7 +18,7 @@ entry in one line.
   [per-ipc-depth.md](per-ipc-depth.md) would be.
 - Depth reached before `paint_boot_stack` runs (a handful of early-boot frames) and never reached
   again is invisible, bounded below by the printed paint floor.
-- The static frame sizes in [frame-cost.md](frame-cost.md) are per function, not per call chain.
+- The static frame sizes in [stack-frame-sizes.md](stack-frame-sizes.md) are per function, not per call chain.
   `-Z emit-stack-sizes` says what one frame costs. It does not say which frames stack on top of each
   other, so it cannot give a worst-case depth on its own. Pairing it with the watermark is what makes
   either number actionable, and a tool that walks the call graph closes the gap.

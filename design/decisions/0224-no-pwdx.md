@@ -15,7 +15,7 @@ fork: *"Yes, decline pwdx."* *(Section number provisional until the merge queue 
 `procps` ships `pwdx`, which prints another process's current working directory. On Linux it reads
 `/proc/PID/cwd`. Milestone 126's block had filed it beside `w` as "print a name for a tid", which
 was the wrong reading; pull request #1349 corrected that and wrote the fork up in section 1 of
-[`notes/process-view/what-is-left.md`](../../notes/process-view/what-is-left.md). The options there
+[`notes/process-view/remaining-procps-programs.md`](../../notes/process-view/remaining-procps-programs.md). The options there
 were to decline it, to have the shell answer a query about its own position, or to have the kernel
 keep a path per thread.
 

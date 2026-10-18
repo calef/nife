@@ -29,7 +29,7 @@
 //! - The clock includes draining the N task reports, a small cost that grows with N.
 //! - Any message on the report endpoint counts as a report: a stray `CALL` there (answered `Gone`
 //!   under §246 (a plain `RECEIVE` never takes a capability)) reads as zero jobs and wedges the
-//!   sweep (notes/job-mix/spawn-destroy-gone.md). Checking the badge and shape would name it.
+//!   sweep (notes/job-mix/spawn-job-miscompiled-yield.md). Checking the badge and shape would name it.
 
 // **The seven markers in this import moved out of this file** (milestone 324 part 2): `CENSUS`,
 // `DONE`, `FAILED`, `KIND`, `POINT`, `STARTED` and `SUBRUN`. They were private `const`s here and

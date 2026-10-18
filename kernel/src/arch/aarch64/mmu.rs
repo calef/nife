@@ -787,7 +787,7 @@ pub fn user_can_write(va: u64) -> bool {
 /// afterwards; (the old `syscall::user_slice` reader that relied on this was removed in milestone 8).
 ///
 /// Name: provisional, flagged 2026-09-24 by the boolean-predicate pass
-/// (design/naming/boolean-predicates-worklist.md). It does not yet follow the Rust predicate rule
+/// (design/naming/functions-that-answer-yes-or-no-worklist.md). It does not yet follow the Rust predicate rule
 /// calef ratified 2026-09-24; recommended `can_el0_access`, because it is named for the `AT`
 /// instruction it issues, but the answer is about access.
 unsafe fn translate_as_el0(va: u64, write: bool) -> bool {

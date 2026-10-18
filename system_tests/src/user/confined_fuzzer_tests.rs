@@ -44,7 +44,7 @@ use confined_syscall_fuzzer_contract::report;
 
 use super::*;
 // The `cap` module and these constructors still carry their pre-sweep names
-// (design/naming/capability-worklist.md renames them when the tree is quiet); aliased here so
+// (design/naming/capability-spelling-worklist.md renames them when the tree is quiet); aliased here so
 // this file spells `capability` out everywhere a reader looks (calef, 2026-10-06).
 use crate::cap::{
     Cap as Capability, Object, Rights, address_space_cap as address_space_capability,

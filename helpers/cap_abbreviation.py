@@ -6,7 +6,7 @@ calef, 2026-10-06 (UTC):
 
 and, on how to apply it: "Record the ruling. We've almost got a quiet tree so we can run that
 shortly." New code spells `capability` out. Existing code is renamed in one sweep when the tree is
-quiet, from the worklist in design/naming/capability-worklist.md; this gate makes sure nothing new arrives
+quiet, from the worklist in design/naming/capability-spelling-worklist.md; this gate makes sure nothing new arrives
 before then. It is rung 2 of the AGENTS.md ladder, and the ruling's record is in
 design/naming/spelled-out-rulings.md.
 
@@ -441,7 +441,7 @@ def main(argv):
                   file=sys.stderr)
             return 1
         print(f'cap: {now:,} identifiers abbreviate capability as cap (ceiling held; the sweep '
-              f'in design/naming/capability-worklist.md drives it to zero)')
+              f'in design/naming/capability-spelling-worklist.md drives it to zero)')
         return 0
     if argv[0] == '--list':
         paths = argv[1:] or tracked()

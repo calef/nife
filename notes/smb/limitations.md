@@ -51,7 +51,7 @@ attempt knew it had not solved, written while the code was in front of someone.
 ## Durability and Apple metadata
 
 - `FULL_SYNC`'s durability is now backed, and here is what it still is not. The device is flushed
-  (see [apple-half.md](apple-half.md)), so that entry is closed. What remains:
+  (see [apple-extensions.md](apple-extensions.md)), so that entry is closed. What remains:
   the sync is device-wide, never per file. A client that flushes one handle makes the whole image
   durable. That is more work than it asked for, and is the only thing anything below here can do. And
   nothing fences: there is no ordering primitive on `fs_proto`. So a client issuing a write and a

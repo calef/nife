@@ -382,7 +382,7 @@ impl<S: RegisterSpace> Ns16550<S> {
     ///
     /// Name: provisional since milestone 249 (the boot lottery is sampled by a person walking to
     /// the board), flagged again 2026-09-25 by the lane that re-derived the x86 port falsifications
-    /// (design/naming/boolean-predicates-worklist.md, "`rx` and `tx`"). calef asked what `rx`
+    /// (design/naming/functions-that-answer-yes-or-no-worklist.md, "`rx` and `tx`"). calef asked what `rx`
     /// stands for in his #1255 review; recommended `discard_waiting_bytes`, because it drops the
     /// bytes `is_byte_waiting` would have reported.
     pub fn discard_rx(&self) {
@@ -401,7 +401,7 @@ impl<S: RegisterSpace> Ns16550<S> {
     /// interrupt and reads nothing. The console still polls for transmit.
     ///
     /// Name: provisional, flagged 2026-09-25 by the lane that re-derived the x86 port
-    /// falsifications (design/naming/boolean-predicates-worklist.md, "`rx` and `tx`"). calef asked
+    /// falsifications (design/naming/functions-that-answer-yes-or-no-worklist.md, "`rx` and `tx`"). calef asked
     /// what `rx` stands for in his #1255 review; recommended `enable_receive_interrupt`.
     #[cfg_attr(target_arch = "x86_64", allow(dead_code))] // riscv's `console::rx_enable` is the caller; the x86 console stays polled
     pub fn enable_rx_interrupt(&self) {
@@ -436,7 +436,7 @@ impl<S: RegisterSpace> Ns16550<S> {
     /// trips on silicon not answering at all.
     ///
     /// Name: provisional, flagged 2026-09-25 by the lane that re-derived the x86 port
-    /// falsifications (design/naming/boolean-predicates-worklist.md, "`rx` and `tx`"). calef asked
+    /// falsifications (design/naming/functions-that-answer-yes-or-no-worklist.md, "`rx` and `tx`"). calef asked
     /// what `rx` stands for in his #1255 review; recommended `enable_transmit_interrupt`.
     #[cfg(any(test, feature = "system_tests"))]
     pub fn enable_tx_interrupt(&self) {

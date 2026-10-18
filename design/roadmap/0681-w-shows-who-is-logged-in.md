@@ -20,7 +20,7 @@ A tid has no name, and `w`'s `WHAT` column is a name.
 
 Upstream `w` prints who is logged in and what each of them is running, with idle and CPU time per
 session. Measured against the tree on 2026-09-26, in section 2 of
-`notes/process-view/what-is-left.md`:
+`notes/process-view/remaining-procps-programs.md`:
 
 - What they are running needs a name for a tid. DECISIONS §148 (a supervisor restarts by asking,
   and resolves by asking the kernel) has a supervisor learn a dead thread's label from the death

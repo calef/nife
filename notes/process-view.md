@@ -76,7 +76,7 @@ Membership is `fault_ep == invoked_ep` and nothing else, proved both ways by Kan
 stranger is never shown, and a member is never hidden. The scheduler lock is given back between
 entries, so a survey is a sequence of snapshots with `readdir`'s bargain. The selector's design,
 the placement cost argument, the proofs and the cursor's safety argument are in
-[process-view/survey-method.md](process-view/survey-method.md).
+[process-view/survey-design.md](process-view/survey-design.md).
 
 ## Refused, empty, and populated are three answers
 
@@ -257,7 +257,7 @@ revocation log, so it costs nothing new and cannot disagree with what a revoke w
 delegates an address-space capability to a second program. So no program but a space's own builder
 can hold a live view of it today, and `pmap` runs only in kernel tests. Fixing that is a
 spawn-protocol question. The delegation audit and the finding are in
-[process-view/pmap-listing.md](process-view/pmap-listing.md); the pricing of `pmap` from the prompt
+[process-view/address-space-enumeration.md](process-view/address-space-enumeration.md); the pricing of `pmap` from the prompt
 is in [process-view/pmap.md](process-view/pmap.md).
 
 ## `watch` was built, and then cut
@@ -274,7 +274,7 @@ ranked by per-thread CPU time. The account is in [process-view/watch.md](process
 (milestone 455 (the signaling stratum of `procps`)). The machine-wide statistics are built beside
 this view, under §225 (`free` sees the machine and your share): see
 [the machine and your share](process-view/the-machine-and-your-share.md). The forks are written up
-in [what is left](process-view/what-is-left.md).
+in [what is left](process-view/remaining-procps-programs.md).
 
 See `design/roadmap/0126-who-else-is-running.md`, notes/glob.md (the matcher `pgrep` reuses),
 notes/supervision.md (the mechanism this reads),

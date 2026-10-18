@@ -8,7 +8,7 @@ read every present tense in them as "as of `685900ec`".
 - [`ntlm-removal.md`](ntlm-removal.md): what went with the NTLM half, and why it is the lesson.
 - [`adapter-as-it-stood.md`](adapter-as-it-stood.md): the adapter and its pieces.
 - [`wire-decisions.md`](wire-decisions.md): every wire choice and its reason.
-- [`apple-half.md`](apple-half.md): the `AAPL` create context and `FULL_SYNC`.
+- [`apple-extensions.md`](apple-extensions.md): the `AAPL` create context and `FULL_SYNC`.
 - [`throughput.md`](throughput.md): the 64 KiB transfer, measured.
 - [`testing.md`](testing.md): the host tests, the gate and the commands.
 - [`limitations.md`](limitations.md): the BUGS list in full.
@@ -18,3 +18,5 @@ Name: provisional, minted 2026-10-11 (UTC) by `lane/ten-longest-notes`, which sp
 §212 (a prose budget), for the directory and every stem in it. The directory follows the
 `notes/<stem>/` appendix convention §212 set, so its name is the parent's stem. Each file is named
 for its content. calef names directories and files, and `script/names --unratified` lists each stem.
+
+- `apple-extensions` Name: ratified 2026-10-18 (calef, "Approve as a group"). Refused `apple-half`.
