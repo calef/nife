@@ -31,9 +31,10 @@ Four observations count from the start, each only when it is real:
    FAT driver.
 
 Taught is a fifth: people working through a course built on nife's crates. Until a course chapter
-is live it is a leading indicator only, so the entry does not wait on one; once a chapter is live it
-counts. Which of green's two counts it then joins is open, and calef's. Publishing a crate or a
-chapter counts as none of the five.
+is live it is a leading indicator only, so the entry does not wait on one. Once a chapter is live it
+counts as use of the crates, toward green's three adopted or composed, and never as something
+leaving nife (calef, 2026-10-18 (UTC)). So taught alone cannot keep the year mark from red.
+Publishing a crate or a chapter counts as none of the five.
 
 **The experiment, which has not been run:** honest attempts at releasing or contributing nife's
 mechanisms, each with its own 6-month clock, run in parallel. An attempt is a release or a pull
