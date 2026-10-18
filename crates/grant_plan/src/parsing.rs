@@ -254,9 +254,8 @@ pub fn job_operand(tail: &[u8]) -> Result<Option<usize>, ()> {
     if n == 0 { Err(()) } else { Ok(Some(n)) }
 }
 
-/// **`kill`'s operands** (milestone 48): whether `-9` asked for the forcible tier, and the job.
+/// **`kill`'s operands** (milestone 48 (job control)): whether `-9` asked for the forcible tier, and the job.
 /// A job is required, because `kill` with nothing named would have to guess which job to stop.
-///
 ///
 /// Name: provisional, minted 2026-10-18 (UTC) by milestone/48-job-control.
 ///
