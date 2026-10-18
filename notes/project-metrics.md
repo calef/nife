@@ -153,7 +153,10 @@ Mean prompt per request, from session records that are not in git. A turn costs 
 
 From the milestone blocks in `design/roadmap/`, with unnumbered proposals stacked on top as the
 eighth series: work identified and not yet entered into the roadmap, which unlike a provisional name
-is closer to debt. The two zero weeks are a restatement artifact; watch `NOT-STARTED`, which grows faster than lanes
+is closer to debt. `REMOVED`, `SUPERSEDED` and `REFUSED` share one band; `milestones.csv` keeps
+them apart. A bar counts numbered milestones, so it is lower than the highest number (some were
+never used) and than a listing of `design/roadmap/`, which also holds directories of milestone
+parts. The two zero weeks are a restatement artifact; watch `NOT-STARTED`, which grows faster than lanes
 drain it.
 
 ## Rust in the tree
