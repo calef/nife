@@ -5,8 +5,10 @@ opening anything here. These files hold the mechanisms, measurements and histori
 naming rules, and the table below is their index.
 
 *Name: provisional, minted 2026-09-24 by the lane that split the file (`2ea02d231`), for the
-directory and every stem in it. Each appendix's own preamble says the same of its stem. Naming is
-calef's; `script/names --unratified` lists each stem.*
+directory and every stem in it. Each appendix's own preamble says the same of its stem. Also
+provisional, minted 2026-10-17: `--from <index>`, the spelling `jig install` uses to qualify a name
+that two indexes offer (milestone 809 (the package client becomes a program)). Naming is calef's;
+`script/names --unratified` lists each stem.*
 
 | Appendix | Former sections |
 |---|---|
