@@ -234,10 +234,10 @@ pub(super) fn spawn_progenitor_shaped(
         + 1
         + initial_ramdisk_pages / 512
         + crate::revoke::log_pages_for(initial_ramdisk_pages)
-        + INIT_STACK_PAGES
+        + PROGENITOR_STACK_PAGES
         + 8;
     let mut space = AddressSpace::new(content).unwrap_or_else(|| panic!("no memory for {name}"));
-    lay_out_program(&mut space, &elf, INIT_STACK_PAGES, name);
+    lay_out_program(&mut space, &elf, PROGENITOR_STACK_PAGES, name);
     // The ramdisk is reserved RAM the frame allocator does not own, so this maps rather than
     // allocates, one read-only page at a time, exactly as `spawn_elf_child_builder` maps it.
     for i in 0..initial_ramdisk_pages {

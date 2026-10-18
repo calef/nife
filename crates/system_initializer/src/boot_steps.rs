@@ -264,7 +264,7 @@ pub(super) fn read_boot_programs(fs: &nifefs::Fs<'static>, table: &str) -> BootP
     //
     // **Not here, though: in [`graphical_verdict`] and the two builders**, and that is a stack
     // budget rather than tidiness. `boot`'s frame is live for the whole boot, because the spawn
-    // service runs inside it, and the progenitor's stack is eight pages (`kernel::user::INIT_STACK_PAGES`).
+    // service runs inside it, and the progenitor's stack is eight pages (`kernel::user::PROGENITOR_STACK_PAGES`).
     // The first version kept three more `elf::Elf`s here and inlined the builders into it, and
     // overflowed that stack by 24 bytes under `package install` (`swish-check`, 2026-09-26). Each
     // helper measures for itself, in a frame that is gone before the spawn service starts; hashing
@@ -997,7 +997,16 @@ pub(super) fn refuse_unvouched(
         // can see is most of what this milestone was written to fix.
         // SAFETY: `invoke` traps to the kernel, which validates the capability and the method before
         // acting (user_mode_runtime's contract).
-        if unsafe { invoke(term.out, abi::page_frame::MAP, INIT_OUT_VA, 1, ut) } == 0 {
+        if unsafe {
+            invoke(
+                term.out,
+                abi::page_frame::MAP,
+                PROGENITOR_SHELL_OUTPUT_VIRTUAL_ADDRESS,
+                1,
+                ut,
+            )
+        } == 0
+        {
             let mut buf = [0u8; SENTENCE];
             announce(
                 term.ep,
@@ -1351,7 +1360,7 @@ pub(super) fn start_sink_adapter(w: &Wiring, sink_elf: Option<&elf::Elf<'static>
     //
     // Before the giveaway, because this is a **system** component and the root untyped is what the
     // system is built from. Everything below hands that budget away and proves it is gone, so an
-    // adapter built after it would have to come out of [`INIT_OWN_PAGES`], the scratch budget sized
+    // adapter built after it would have to come out of [`PROGENITOR_RESERVED_PAGES`], the scratch budget sized
     // for page tables and nothing else. Spending a whole program out of that pool would be invisible
     // here and would surface as some later child failing to map a scratch page.
     let term_sink = must(retype_obj(ut, abi::objtype::RENDEZVOUS));
@@ -1835,7 +1844,7 @@ fn place_login_capabilities(w: &Wiring, login_tcb: u64, run_unvouched: &mut Opti
 pub(super) fn give_away_budget(w: &Wiring, shell_tcb: u64, run_unvouched: Option<u64>) -> Kept {
     let (ut, term_ep) = (w.ut, w.term.ep);
     // **Give the construction budget away** (milestone 22, the interactive increment). Two bounded
-    // carves and then the root itself: after this line the progenitor can spend at most `INIT_OWN_PAGES` on
+    // carves and then the root itself: after this line the progenitor can spend at most `PROGENITOR_RESERVED_PAGES` on
     // itself and `JOBS_BUDGET_PAGES` on the prompt's jobs, and it can no longer reach the rest of the
     // memory the kernel handed it or delegate the root to anything it builds.
     //
@@ -1858,7 +1867,7 @@ pub(super) fn give_away_budget(w: &Wiring, shell_tcb: u64, run_unvouched: Option
         spawnproto::RUN_UNVOUCHED_SLOT,
     ));
 
-    let own_ut = must(memory_region_split(ut, INIT_OWN_PAGES));
+    let own_ut = must(memory_region_split(ut, PROGENITOR_RESERVED_PAGES));
     let jobs_ut = must(memory_region_split(ut, JOBS_BUDGET_PAGES));
     let images_ut = must(memory_region_split(ut, IMAGE_POOL_PAGES));
     // The shell's output page, in our own space, so we can say what just happened. Given up with
@@ -1866,7 +1875,16 @@ pub(super) fn give_away_budget(w: &Wiring, shell_tcb: u64, run_unvouched: Option
     // page from the shell too); see this module's BUGS.
     // SAFETY: `invoke` traps to the kernel, which validates the capability and the method before
     // acting (user_mode_runtime's contract).
-    if unsafe { invoke(w.term.out, abi::page_frame::MAP, INIT_OUT_VA, 1, ut) } != 0 {
+    if unsafe {
+        invoke(
+            w.term.out,
+            abi::page_frame::MAP,
+            PROGENITOR_SHELL_OUTPUT_VIRTUAL_ADDRESS,
+            1,
+            ut,
+        )
+    } != 0
+    {
         fail()
     }
     cap_delete(ut);
