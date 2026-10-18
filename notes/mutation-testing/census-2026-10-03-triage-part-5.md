@@ -62,7 +62,7 @@ Argued here, by shape:
 
 Argued in earlier appendices, and still reported by this re-run (39):
 
-- [regressions-capability-to-dtb](regressions-capability-to-dtb.md): `capability::note_peak` and
+- [regressions-2026-09-14-capability-to-device-tree-blob](regressions-2026-09-14-capability-to-device-tree-blob.md): `capability::note_peak` and
   `device_tree_blob::cells`.
 - [regressions-clock-protocol-swish-filesystem-protocol](regressions-clock-protocol-swish-filesystem-protocol.md):
   `clock_protocol`'s three. `publish` is killed by `script/interleaving-check`.
@@ -72,7 +72,7 @@ Argued in earlier appendices, and still reported by this re-run (39):
   `job_mix`'s three.
 - [measured-boot](measured-boot.md): `measured_boot`'s five.
 - [new-crate-backlog](new-crate-backlog.md): `memory_corruption_canary_gate`'s two `pause`s.
-- [clock-and-reset-nvme-screen-console](clock-and-reset-nvme-screen-console.md):
+- [jh7110-clock-and-reset-non-volatile-memory-express-screen-console](jh7110-clock-and-reset-non-volatile-memory-express-screen-console.md):
   `non_volatile_memory_express`'s seven and `screen_console`'s two.
 - [census-2026-09-21-triage](census-2026-09-21-triage.md): `portable_executable`'s five and
   `stick_maker::close_tag`'s two.
