@@ -89,7 +89,7 @@ machine's firmware offers, which QEMU's EDK2 only approximates. It corroborates;
 ## What `crates/machine_discovery/src/acpi.rs` already covers
 
 Read in full on 2026-09-23. It is 1,598 lines, and it has no architecture in its name and none in
-its code. It is host-tested and Kani-proved. For the proofs, see milestone 319 (the crate that
+its code. It is host-tested and Kani-proved. Its proofs are in milestone 319 (the crate that
 parses firmware had no proofs, and three of its first ones were false). See also milestone 431 (the
 ACPI walk is reachable by the prover for the first time, and proved by nothing). The generic half
 is done; add to it, do not start beside it.
@@ -109,12 +109,12 @@ is done; add to it, do not start beside it.
 Nothing in this tree reads any of these today. Checked by grep on 2026-09-23: `GTDT`, `FADT` and `SPCR` appear nowhere in any `.rs` file in this repository.
 
 1. MADT entry types 0x0B through 0x0F, which are where aarch64's CPUs and interrupt controller
-   live. On x86 the CPU list is type 0 and the interrupt controller is type 1. On aarch64 they are
-   five entry types. GICC (0x0B) is one per CPU, carrying the MPIDR and the ACPI processor UID and
+   live. On x86 the CPU list is type 0 and the interrupt controller is type 1. On aarch64 there are
+   five. GICC (0x0B) is one per CPU, carrying the MPIDR and the ACPI processor UID and
    an enabled flag. GICD (0x0C) carries the distributor's base address and the GIC version. GICR
    (0x0E) is the redistributor array a GICv3 needs. The other two are GIC MSI frame (0x0D) and GIC
-   ITS (0x0F). Today all five fall
-   through `madt_entries`' final arm to `MadtEntry::Other(kind)`: correct, and telling you nothing. This is the direct counterpart of what
+   ITS (0x0F). Today all five fall through `madt_entries`' final arm to
+   `MadtEntry::Other(kind)`: correct, and telling you nothing. This is the direct counterpart of what
    `machine_discovery::gic::discover` reads out of the device tree, including the GICv2-versus-GICv3
    distinction whose cost `kernel/src/memory.rs` records beside that call: a kernel that booted,
    printed `interrupts ON`, and took none.
