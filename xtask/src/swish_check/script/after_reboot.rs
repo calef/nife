@@ -10,6 +10,13 @@
 
 use super::*;
 
+/// **The one line that resolves a name at the prompt**: `jig install uptime` tries the entry's
+/// listed location, `packages.basalt.test`, by name before the repository's own copy. Typed from
+/// this constant so `resolver_refusal_failure` reads the line the script types.
+///
+/// Name: provisional, minted 2026-10-18 (UTC) by lane `lane/jig-resolves-by-name`.
+pub(in crate::swish_check) const RESOLVING_LINE: &str = "jig install uptime";
+
 /// **What the second boot types** (milestone 198 (a package manager) rung 3a): the installed
 /// program still runs after a reboot, a removal takes its vouch away without deleting it, and a
 /// rollback vouches for it again. The disk is the only thing the first boot hands this one.
@@ -113,11 +120,14 @@ pub(in crate::swish_check) const SWISH_CHECK_AFTER_REBOOT: &[Line] = &[
     ),
     // **A lying repository, refused by the index's digest** before the installer is asked: the
     // peer serves `uptime` with a byte flipped. `jig` tries the entry's listed location first,
-    // which this prompt cannot resolve, and then the repository's own copy.
+    // which this prompt cannot resolve, and then the repository's own copy. That listed location
+    // is the one name a std program resolves at this prompt, through the resolver the progenitor
+    // started, so its line is where `resolver_refusal_failure` looks.
     line(
         1,
-        "jig install uptime",
+        RESOLVING_LINE,
         &[
+            "passed over https://packages.basalt.test:8443",
             "refused: the index does not vouch for the bytes that arrived; nothing was sent to the \
              installer",
         ],

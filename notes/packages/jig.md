@@ -115,13 +115,16 @@ region one package larger, from the progenitor's image pool (`grant_plan::named_
   catalog of a page or more and `update` refuses an index whose lines for this architecture are.
 - An image names the test peer and root (`xtask`'s `image_index_sources`), reached at 10.0.2.9 by
   the sources' address, unless it is built with `NIFE_INDEX_SOURCES=basalt`, which packs
-  `package_index::BASALT_SOURCES` (`basalt.nifeos.org` pinned to ISRG Root X1). No boot proves the
-  production text.
+  `package_index::BASALT_SOURCES` (`basalt.nifeos.org` pinned to ISRG Root X1). No check boots
+  the production text, since a check may not depend on a host outside the runner.
 - A listed location is fetched through `pinned_tls_client::listed`: the root the index names for it
   among those the image carries, then at most one redirect. The redirect is held to the
   public-address check and to the index's root, per the third amendment of §250 (an image names its
-  distribution's package index). At the prompt no listed location resolves, so the boot check never
-  takes that path; `package_fetch_exerciser` proves it, calling the same function.
+  distribution's package index). Under the test sources no listed location resolves at the prompt,
+  because slirp asks the host's resolver, which knows no `.test` name, so the boot check never
+  fetches from one. It does require that the name reaches the name server
+  (`resolver_refusal_failure` in `xtask/src/swish_check/boot.rs`), and `package_fetch_exerciser`
+  proves the fetch, calling the same function.
 - `update` keeps no record of which address answered, and `install` tries the image's addresses
   in order again.
 - The index store needs a file server that binds grants itself; on one that does not, `jig` is
