@@ -103,7 +103,7 @@ refused: an invented ratification would put a false claim in the record of who c
 band stays large until 2026W39, when module, directory and document blocks were first written.
 
 The three steepest weeks are files being made. 2026W39 adds 537 names: 245 documents and 29
-directories from the §212 (a prose budget for every document) splits, which turned long documents
+directories from the §212 (a prose budget) splits, which turned long documents
 into directories of pages, and 193 item blocks. 2026W41 adds 699, 345 of them documents from more
 splits and 165 modules. 2026W42 adds 579, 415 of them modules from the §266 (a Rust source file
 stays under 2,000 lines) splits.
