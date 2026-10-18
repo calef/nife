@@ -388,8 +388,11 @@ def _selftest():
            "fn main() { arg_count(); let s: Seen; }\n")
     sources = {"lib_a/src/lib.rs": lib, "app/src/main.rs": app,
                "x_contract/src/lib.rs": "pub const CONFIG_WORD: u32 = 1;\n"}
+    # A census record's `path` is `file:doc line`; these name the fixture above, not tree code.
+    # line-citation: exception. Reason: fixture records in the census's own path form
     records = [{"kind": "item", "name": "op_ok", "path": "lib_a/src/lib.rs:8", "status": "ratified",
                 "what": "function"},
+               # line-citation: exception. Reason: fixture records in the census's own path form
                {"kind": "item", "name": "tint", "path": "lib_a/src/lib.rs:10",
                 "status": "provisional", "what": "function"}]
     unblocked = ["lib_a/src/lib.rs::mem_size", "lib_a/src/lib.rs::arg_count",

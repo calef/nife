@@ -82,3 +82,5 @@ names the crate. `helpers/name_crossings.py`'s `Reach` is the measure, and
   outside every Cargo package (a script that parses a constant out of a `.rs` file) is not counted.
 - `wire or format` is a list of packages, so a wire name defined anywhere else is reported as
   `local` or `crosses`. A lane renaming one checks that no other program parses it.
+- The gate judges what the census counts: every module and document, every `pub` item, and any
+  item with a block. A private or `pub(crate)` item with no block is outside it.
