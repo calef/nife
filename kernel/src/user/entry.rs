@@ -141,8 +141,8 @@ pub fn spawn_elf_child_builder(
     // phase B.1): the check has to be the thing that decides whether a thread is created at all,
     // not something the new thread does to itself. `trust::require` halts on a mismatch, so past
     // this line the bytes are the ones this kernel image was built against. The program-measurement
-    // table (milestone 104) is required for the same reason: the whole archive is mapped into the
-    // builder.
+    // table (milestone 104 (the measurement continues past init)) is required for the same reason:
+    // the whole archive is mapped into the builder.
     let boot_fs = match nifefs::Fs::parse(image) {
         Ok(fs) => fs,
         Err(e) => {
