@@ -1,5 +1,5 @@
 ---
-status: NOT-STARTED
+status: PARTIAL
 promoted_from: reuse-what-the-tree-wrote
 raised: 2026-10-04
 milestone_dependencies: none
@@ -19,7 +19,7 @@ commit only), so the `Reuse:` lines below use the ruling's terms and should be c
 landed wording. Title and slug are drafts.
 
 This is a proposal, not a decision: every replacement below adds a dependency, an architect's call
-under §46.
+under §46. Item (a) is built, on calef's 2026-10-18 (UTC) approval of `httparse`.
 
 ## Method, and what the numbers mean
 
@@ -80,15 +80,12 @@ Not kernel, not proved, not protocol: the candidates. Surprise: the kernel lists
 
 ## Ranked: trust gained per cost
 
-1. Adapt `http_response` to `httparse`. The package fetch path is rung 3a of milestone 198 (a package manager, and the trivial install that
-makes a second customer possible). It parses a network peer's response head with about 70 lines of
-our own, fuzzed (46 million inputs) but not
-proved: the crate's own BUGS section records that a Kani harness did not finish. `httparse` is under
-`hyper`, has no dependencies, builds `no_std`, and has had no advisory. Keep our request writer, the
-2 KiB head cap, and our `Content-Length` policy (no close-delimited body); hand the head to
-`httparse::Response::parse` and let its `Partial` status replace our `ends_with` scan. The existing
-fuzz target keeps working unchanged. Cost: small, one lane-day *(estimate)*.
-Loss: none proved; one zero-dependency crate in the base graph.
+1. BUILT: `http_response` reads its head through `httparse` 1.10.1 (default features off: `no_std`,
+no allocator, no dependencies, no advisory). It serves rung 3a of milestone 198 (a package manager, and the trivial install that makes a second
+customer possible). `Response::parse` and its `Partial` status replace the hand-written scan and
+line parser. The request writer, the 2 KiB head cap, the `Content-Length` policy (no close-delimited
+body) and strict CRLF stay in the crate. The host tests and fuzz target pass unchanged. `httparse`'s
+fuzzing now vouches for the grammar; the unfinished Kani harness is gone.
 
 2. Adapt `video_terminal` to `vte` for parsing, keeping our grid. Every program that writes to a
 terminal feeds this parser, so it is the widest untrusted-input surface in userspace that nothing
@@ -222,7 +219,7 @@ on the customer path.
 
 ## Proposed milestones, one replacement each
 
-- (a) `http_response` parses its head with `httparse`. Gate: existing host tests and fuzz target.
+- (a) BUILT: `http_response` parses its head with `httparse`. Gate: existing host tests and fuzz target.
 - (b) `video_terminal` parses with `vte`; the grid stays. Gate: existing host tests, plus a fuzz
   target the crate does not have.
 - (c0) Upstream `VIRTIO_F_ACCESS_PLATFORM` to `virtio-drivers`. Then (c1) input, (c2) GPU,
@@ -246,6 +243,11 @@ an ordinary dependency of `cryptography_provider`. Rule 3 (kernel) says write; r
 take. The header's reason, a small trusted computing base checked against FIPS 180-4 vectors, is a
 real one, and the kernel is exempt from the new default, so this proposal does not recommend a change.
 It records that two rules of §46 disagree here and only an architect can say which wins.
+
+## Follow-on
+
+- **Done.** Item (a), 2026-10-18 (UTC), nifeos/nife#2289.
+- **Outstanding.** Items (b) to (h), 2026-10-18: none started, each waits on its own §46 ruling. Checked: none of their crates is in `Cargo.lock`.
 
 ## Index row
 

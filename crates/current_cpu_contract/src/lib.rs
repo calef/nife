@@ -36,7 +36,7 @@
 //! - [`CPU_ID_BOUND`] is the kernel's compile-time `MAX_CPUS`, not the online set: right for
 //!   sizing, useless for iterating, which is the selector's question.
 //!
-//! Name: ratified 2026-10-17 (calef): "Yes". `current_cpu` is the field's own word for this
+//! Name: ratified 2026-10-18 (calef): "Yes". `current_cpu` is the field's own word for this
 //! quantity (`cpu` is ruled in design/naming.md, 2026-10-03); the suffix follows its sibling.
 
 #![cfg_attr(not(test), no_std)]

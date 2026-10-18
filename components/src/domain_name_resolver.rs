@@ -34,7 +34,7 @@
 //! - The UDP path is proved only up to the bytes; the boot test (`name_resolver_tests.rs`) asks over
 //!   TCP, because slirp forwards UDP to no process a test owns.
 //!
-//! Name: ratified 2026-10-17 (calef, a program-naming session), replacing `name_resolver`: he
+//! Name: ratified 2026-10-18 (calef, a program-naming session), replacing `name_resolver`: he
 //! proposed "`domain_name_resolver`" and confirmed it over `domain_name_system_resolver`. Refused
 //! `name_resolver` ("name" is ambiguous: `bare::resolve` resolves program names, `grant_plan::nav`
 //! paths), `domain_name_system_resolver`, `dns_resolver` (§154 (the acronym test)), `resolver`.

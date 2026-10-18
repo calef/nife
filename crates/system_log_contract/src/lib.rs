@@ -36,7 +36,7 @@
 //! - **A name is at most [`control::NAME_MAX`] bytes.** Longer program names are cut at the
 //!   registration, so a JSONL reader sees the prefix. Every program in the archive fits today.
 //!
-//! Name: ratified 2026-10-17 (calef): "Yes". A wire contract for the system log.
+//! Name: ratified 2026-10-18 (calef): "Yes". A wire contract for the system log.
 
 #![no_std]
 

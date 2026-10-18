@@ -27,7 +27,7 @@
 //! controller. What the split keeps from it is everything else: no other device, no clock
 //! generator, and no card outside its window except through that one register page.
 //!
-//! Name: ratified 2026-10-17 (calef, a program-naming session). Kept, paired with its crate as
+//! Name: ratified 2026-10-18 (calef, a program-naming session). Kept, paired with its crate as
 //! `non_volatile_memory_express` is. He considered `designware_sd_storage` and `sd_and_emmc_storage`,
 //! then answered "`designware_mobile_storage`". Refused those two (against the crate's name).
 //!

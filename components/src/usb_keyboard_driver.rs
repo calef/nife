@@ -50,7 +50,7 @@
 //! - **Events that arrive while a command is waited for are dropped** unless they are port
 //!   changes, which are remembered. A key pressed during a stall recovery is lost.
 //!
-//! Name: ratified 2026-10-17 (calef, a program-naming session). Kept, with the acronym, because
+//! Name: ratified 2026-10-18 (calef, a program-naming session). Kept, with the acronym, because
 //! "USB" is the everyday word and the expansion adds nothing a newcomer can use. He weighed
 //! `universal_serial_bus_keyboard_driver`, then answered "`usb_keyboard_driver`". Refused
 //! `universal_serial_bus_keyboard_driver` (the expansion). It is the `<device>_driver` shape of

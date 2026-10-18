@@ -45,7 +45,7 @@
 //! - **The environment does not ride here.** §170 is silent on environment variables for a foreign
 //!   program, so they stay on §111's validated page and this one carries argv alone.
 //!
-//! Name: ratified 2026-10-17 (calef), asked "Or should it be `program_argument_contract`?" and
+//! Name: ratified 2026-10-18 (calef), asked "Or should it be `program_argument_contract`?" and
 //! answering yes: `argument` alone collides with the argument register and the argument word.
 //! Refused `argument_contract` (that collision). The layout is a separate wire format two programs
 //! agree on; `design/roadmap/0672-the-argument-page-layout.md` is its proposal.

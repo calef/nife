@@ -1,6 +1,6 @@
 //! **The std runtime contract**: where a `std` program on nife finds each authority it was given.
 //!
-//! Name: ratified 2026-10-17 (calef): "Yes". The suffix follows `environment_contract` and
+//! Name: ratified 2026-10-18 (calef): "Yes". The suffix follows `environment_contract` and
 //! `clock_contract`, which the same PAL reads; the stem says which runtime.
 //!
 //! A native nife program is handed its capabilities in the order its spawner lists them, and

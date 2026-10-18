@@ -285,8 +285,8 @@ removed) is met, and so is §219's gate D2. The boot prompt is the owner's conso
   (`socket_contract::fixture`). A booted system outside QEMU has no source to fetch from, and §195's
   per-source trust needs a way to name one.
 - A slow source makes the prompt wait.
-- An HTTP reader runs in `jig` before its digest check. It is fuzzed, not proved;
-  `crates/http_response`'s BUGS says why.
+- An HTTP reader runs in `jig` before its digest check. Its head grammar is `httparse`'s (fuzzed
+  upstream); the glue is fuzzed here, not proved. `crates/http_response`'s BUGS says why.
 
 - **No compression.** `.hpkg` chunks its heap with zlib and `.apk` is three gzip streams; this
   stores members whole: the first packages are ELFs bound for a disk anyway, and a compressor is a
