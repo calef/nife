@@ -78,10 +78,10 @@ word in the file, less a generated table. §213's sentence and bold measures rea
 ruled this on 2026-10-13 (UTC), choosing the option "Gate counts every word".
 
 What this section does not yet decide: whether the cap applies to every document or to a class of
-them (question 2, where the recommendation below argues for every document, and where the two marked
-exceptions to date, `AGENTS.md` at 5,873 words of imperatives and `design/fatal-risks/README.md` at 4,235
-(it was 4,176 when this section was first written, and grew during the density pass),
-are the evidence either way). *(Section number 212 was minted at merge on 2026-09-24.)*
+them (question 2). The recommendation below argues for every document. The two marked exceptions
+to date are the evidence either way: `AGENTS.md` at 5,873 words of imperatives and
+`design/fatal-risks/README.md` at 4,235 (it was 4,176 when this section was first written, and
+grew during the density pass). *(Section number 212 was minted at merge on 2026-09-24.)*
 calef retired `AGENTS.md`'s exception on 2026-10-06 (UTC): "Retire the word-cap exception".
 
 calef's framing:
@@ -188,7 +188,7 @@ under-cap file may not cross.
 (c) plus (d), with these specifics.
 
 3,000 words of main body per document, every document in the tree, no exempt class. The
-one-pager is worth keeping as a **softer convention rather than a second cap**: `briefs/` sits at a
+one-pager is worth keeping as a **softer convention rather than a second cap**. `briefs/` sits at a
 1,302-word median and is already there in practice, so the convention describes what the tree does
 instead of imposing a second number to enforce.
 
@@ -253,7 +253,7 @@ ratified number means redoing it. Nothing else is blocked.
   cost; either alone is evadable, and this one is evadable in exactly the direction §213 watches.
 - The traffic argument rests on links, not readers, as said above. If the long documents are in
   fact read end to end by the people who cite them, the cap costs those readers a worse experience
-  to buy a better one for everyone else, and this section has no way to find out which.
+  to buy a better one for everyone else. This section has no way to find out which.
 - **3,000 is a judgment, not a measurement.** It is roughly six pages, it is above `notes/`' own
   median of 2,933, and those two facts are the whole case for that number rather than 2,500 or
   4,000.

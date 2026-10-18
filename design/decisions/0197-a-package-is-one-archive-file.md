@@ -24,7 +24,7 @@ reader owes a fuzz target and the Kani treatment `crates/nifefs` and `crates/elf
 That cost is now accepted rather than avoided.
 
 What it buys, and why the alternatives lost. C1 (members of the boot archive) is what the tree
-does today and is not a format at all; it cannot serve DECISIONS §159 (lab machines upgrade like
+does today and is not a format at all. It cannot serve DECISIONS §159 (lab machines upgrade like
 user machines), because under it installing is something the *build* does and every upgrade is a new
 image. C3 (content-addressed blobs) avoids the parser and makes identity and integrity one fact, and
 it loses the thing a person and a repository both want: `rg 14.1` as a name. §195 already answered
@@ -102,15 +102,15 @@ What lane/digest-label built on it, 2026-10-07:
 
 - One formatter and one parser, in `crates/measured_boot` beside the hash they label
   (`digest_text`, `parse_digest`; names provisional). Every text that carries a digest uses them:
-  a recipe's `digest`, a catalog line, the measurement table the trust root is generated from
-  (it shares the catalog's format and parser), an activation-set row and pointer, and the
-  shell's `caps` provenance line. Bare hex is refused as `Unlabeled`, any other label as
-  `UnknownLabel`, so an old line or a newer format is named rather than compared. Two Kani
-  harnesses prove the round trip for every digest and that nothing but `sha256:` and 64 hex
+  a recipe's `digest`, a catalog line, the measurement table the trust root is generated from,
+  an activation-set row and pointer, and the shell's `caps` provenance line. The measurement
+  table shares the catalog's format and parser. Bare hex is refused as `Unlabeled`, any other
+  label as `UnknownLabel`, so an old line or a newer format is named rather than compared. Two
+  Kani harnesses prove the round trip for every digest and that nothing but `sha256:` and 64 hex
   characters parses.
 - The in-memory `Digest` stays 32 bytes with no algorithm in it. A Merkle root, when it comes,
-  is a second fact beside the whole-file hash, checked differently, so it gets a type of its own;
-  an enum with one variant now would let one reach a check that only knows how to hash a whole
+  is a second fact beside the whole-file hash, checked differently, so it gets a type of its own.
+  An enum with one variant now would let one reach a check that only knows how to hash a whole
   file. `measured_boot`'s `Digest` documentation carries the argument.
 - The kernel's bare-hex diagnostics and `sealed_pair`'s, which a person compares against
   `shasum -a 256` and nothing parses, are unchanged.
@@ -140,7 +140,7 @@ Three things, which are separable and should be ruled separately if calef prefer
 ## The constraint every option is checked against
 
 nife cannot build software. A package is produced on a host (macOS or Linux) by a Rust
-cross-toolchain and consumed by a target with no compiler, no allocator in the loader, and a
+cross-toolchain. It is consumed by a target with no compiler, no allocator in the loader, and a
 Kani-proven parser policy for bytes it did not write (`crates/elf`, `crates/nifefs`, the GPT and
 device-tree parsers, all fuzzed by `script/fuzz`). So:
 
@@ -204,7 +204,7 @@ allowed to travel.** C2 is the one with no analogue here.
 SHA-256 is already hand-written in `crates/measured_boot`, tested against FIPS 180-4 vectors, and
 in the kernel's trust root. Fuchsia's Merkle root is SHA-256 over 8 KiB blocks (read from a search
 excerpt of `fuchsia.dev/.../merkleroot`; the page itself was not fetched). A Merkle tree buys
-verification of part of a file without reading all of it, which matters for a 10.7 MB `rg` ELF paged
+verification of part of a file without reading all of it. That matters for a 10.7 MB `rg` ELF paged
 in on demand and not for one read whole into memory, which is what the loader does now. Whether to
 take a plain digest or a Merkle root is part of this ruling.
 

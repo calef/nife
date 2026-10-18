@@ -65,9 +65,9 @@ the surface is most of the way to a decision. What can be said without deciding 
 argument between A and C is not about cost (C is free, A is a method) but about who is trusted,
 and that is the question to rule on.
 
-What would make C safe is worth naming as a third position: if the builder and the supervisor
-are the same principal, C's objection evaporates entirely, and the tree's current tree runs one
-sub-server at a time precisely because it has not had to answer this.
+What would make C safe is worth naming as a third position. If the builder and the supervisor are
+the same principal, C's objection evaporates entirely. The tree's current tree runs one sub-server
+at a time precisely because it has not had to answer this.
 
 ## How reversible it is
 

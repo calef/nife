@@ -94,7 +94,7 @@ told it is a size limit. D is the answer to the actual question, and the reason 
 that both of those pick a new number without writing down what the numbers mean, which is how
 `0x60_0000` happened.
 
-Would we still choose D if all four cost the same? Yes, and this is the case where it matters:
+Would we still choose D if all four cost the same? Yes, and this is the case where it matters.
 D is the most work by a large margin and is still the right answer, because the thing being bought
 is what a reader can know rather than what a program can do.
 
