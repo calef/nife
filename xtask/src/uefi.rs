@@ -331,6 +331,34 @@ pub(crate) fn uefi_stage(
 /// The boot is bounded by the runner script; a kernel that hangs fails this by producing none of
 /// the three rather than by hanging the gate. It is stopped as soon as the screen has answered.
 pub(crate) fn uefi_boot() -> bool {
+    uefi_boot_staged()
+}
+
+/// `cargo xtask uefi-boot [--release]`: the one caller whose arguments are this gate's, for the
+/// reason [`uefi_image_command`] is the only one that parses `uefi-image`'s (`script/test` calls
+/// [`uefi_boot`] with its own command line still in `std::env::args`).
+///
+/// **`--release` boots the profile every image for a machine is built in**: `install-boot`,
+/// `network-bench` and `uefi-image --release` are all release, and the suite's debug boot cannot
+/// stand in for them. An `asm!` operand that shares a register with a live input is invisible at
+/// debug and fatal at release: `segments::init`'s `ltr` loaded the low bits of a code address as
+/// its selector and every release image stopped after the boot's `pat` line, while every debug
+/// boot passed. CI's `boot-check` job runs this (`script/ci-build`'s `release-uefi-boot` row).
+pub(crate) fn uefi_boot_command() -> bool {
+    let args: Vec<String> = std::env::args().skip(2).collect();
+    match args.as_slice() {
+        [] => {}
+        [flag] if flag == "--release" => RELEASE.store(true, Ordering::Relaxed),
+        _ => {
+            eprintln!("usage: cargo xtask uefi-boot [--release]");
+            return false;
+        }
+    }
+    uefi_boot_staged()
+}
+
+/// The gate itself, in whichever profile [`RELEASE`] names. See [`uefi_boot`].
+fn uefi_boot_staged() -> bool {
     // **The shipping kernel behind a loader built with `screen_hold`** (milestone 445), staged
     // somewhere no bench procedure names. See [`uefi_screen_esp_dir`].
     let Some(kernel) = uefi_kernel(None) else {

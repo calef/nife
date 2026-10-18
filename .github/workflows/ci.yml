@@ -896,6 +896,12 @@ jobs:
       # a checkpoint that could never fire on two of three architectures, and it hid for months
       # because nothing read the channel it was supposed to appear on.
       - run: script/ci-build boot-check
+      # **And the release x86_64 UEFI image, booted under OVMF to the shell.** Every image a
+      # machine gets is release (`install-boot`, `network-bench`), and a debug boot cannot stand in
+      # for one: an `asm!` operand sharing a register with a live input is harmless at debug and
+      # fatal at release. In this job because it is a required check and already has QEMU and OVMF;
+      # the row's comment in script/ci-build has its price.
+      - run: script/ci-build release-uefi-boot
       - name: Check the job's wall time against its budget
         if: always()
         run: python3 helpers/job-budget.py check "${{ github.job }}" "$JOB_STARTED_AT"
