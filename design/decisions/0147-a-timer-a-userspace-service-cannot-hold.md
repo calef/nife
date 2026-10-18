@@ -32,9 +32,9 @@ both options were the same amount of work*, it loses on the merits:
   then acquire.
 
 Two of option 3's three shapes never reached the comparison, and this section says so rather than
-leaving them as live alternatives: `SYS_SLEEP` is ambient, which §10 refuses by design, and answers
-one of four consumers; and a timer object with a blocking `WAIT` has one wake source, so it does
-not meet milestone 106's own title, which is a wait ending on *either* the interrupt or the deadline.
+leaving them as live alternatives. `SYS_SLEEP` is ambient, which §10 refuses by design, and answers
+one of four consumers. A timer object with a blocking `WAIT` has one wake source, so it does not
+meet milestone 106's own title, which is a wait ending on *either* the interrupt or the deadline.
 Option 1 is that shape with the blocking removed, which is what makes it work.
 
 The cost accepted. This is two builds rather than one. Milestone 151 (notification objects)
@@ -43,16 +43,16 @@ way to wait on a timer and a message at once. Option 1 is 151 plus one object an
 that way.
 
 *(Was `PROPOSED` from 2026-09-05, written by milestone 263 (can a userspace process hold a timer,
-on all three architectures)'s lane, which named no winner
-deliberately: it was raised because that spike's answer invalidated the premise of a decision calef
-had made the same day, and AGENTS.md's rule is that an irreversible fork arrives with options rather
-than a recommendation. He ruled it the same day it was written.)*
+on all three architectures)'s lane, which named no winner deliberately. It was raised because that
+spike's answer invalidated the premise of a decision calef had made the same day. AGENTS.md's rule
+is that an irreversible fork arrives with options rather than a recommendation. He ruled it the
+same day it was written.)*
 
 ## What is being decided
 
 Milestone 106 asks for a wait that ends on either a message or a deadline. calef decided on
 2026-09-05 to serve it from a userspace timer service signaling a notification, rather than from
-a new kernel blocking primitive, and minted milestone 263 to price the prerequisite: whether such a
+a new kernel blocking primitive. He minted milestone 263 to price the prerequisite: whether such a
 service can hold a timer at all.
 
 It cannot, on riscv64, on any machine. So the decision needs re-making, and this is the fork.
@@ -111,11 +111,11 @@ Measured (milestone 263's scaffold, built, gated green with `script/test`, and d
 | kernel symbol bytes | +738 B / +2,266 B / +1,386 B, all under 0.25% |
 | per-tick bookkeeping | already priced in `notes/timed-wait.md`: one comparison per idle tick |
 
-What it costs that is not bytes. A syscall-surface addition, permanent, that every future program
-is written against. And a dependency on milestone 151, which is unbuilt: without §101's TCB binding
-this buys a thread a timer it can block on and no way to block on a timer *and* a message at once,
-which is milestone 106's actual complaint. Option 1 is 151 plus one object, and pricing it any
-other way understates it.
+What it costs that is not bytes. A syscall-surface addition, permanent, that every future program is
+written against. And a dependency on milestone 151, which is unbuilt. Without §101 (notification
+objects)'s TCB binding this buys a thread a timer it can block on and no way to block on a timer
+*and* a message at once, which is milestone 106's actual complaint. Option 1 is 151 plus one object,
+and pricing it any other way understates it.
 
 ### Option 2: a userspace service on aarch64 and x86_64, with a riscv64 scope note
 
@@ -154,7 +154,7 @@ It did not recommend, and that was on purpose. AGENTS.md: *"Recommend on reversi
 options only on irreversible ones"*, and a syscall-surface addition is the named example on the
 irreversible side. Milestone 263's lane priced the options and stopped there; calef ruled from the
 prices. Kept in the past tense rather than deleted, because how a decision was reached is part of
-the record, and a reader who finds a file that names a winner should be able to see that the winner
+the record. A reader who finds a file that names a winner should be able to see that the winner
 was not this file's to name.
 
 It also does not amend
@@ -181,8 +181,8 @@ reaches `deadline`, the kernel ORs `bits` into the notification named by `notifi
 exactly as `notification::SIGNAL(bits)` would. Arming replaces any pending deadline, which then
 never fires; a deadline already reached signals at once and leaves nothing armed. `bits = 0` is
 accepted and delivers nothing when the deadline passes, the same reading `SIGNAL(0)` already has
-(it wakes nobody, because it has nothing to deliver): a timer armed with `bits = 0` still consumes
-and replaces the pending deadline, it just signals nothing when it fires. Needs `WRITE` on the timer
+(it wakes nobody, because it has nothing to deliver). A timer armed with `bits = 0` still consumes
+and replaces the pending deadline; it just signals nothing when it fires. Needs `WRITE` on the timer
 and on the notification (the same right `SIGNAL` itself needs, because arming is signaling later);
 `WrongObject` if the slot named is not a notification. A notification destroyed while the timer is
 armed makes the expiry a no-op, not an error: there is nobody left to tell.

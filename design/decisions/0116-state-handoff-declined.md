@@ -42,21 +42,22 @@ Checked rather than designed, for whoever revisits this:
   `Frame` (the clock page, DECISIONS §111's env-config page, `block_roster`, `system_initializer`).
   Capabilities already move between processes via `GRANT`/`CAP_INSERT`, which the component
   manifest's wiring already uses.
-- The closest prior art, checked rather than recalled. Erlang/OTP's `code_change` is the same
-  shape: the VM does not serialize a module's state, it calls a function the module's own author
-  wrote, opaque term in and opaque term out. The mechanism is generic; the content is the
-  component's own business. CRIU and VM live migration are memory-page-level and assume identical
-  layout between old and new, which does not hold here (a swap can cross versions, and can be to a
-  different implementation entirely, over §31's C seam) -- worth ruling out explicitly rather than
-  citing uncritically, since the roadmap block's own prior-art list named them without this caveat.
+- The closest prior art, checked rather than recalled. Erlang/OTP's `code_change` is the same shape:
+  the VM does not serialize a module's state, it calls a function the module's own author wrote,
+  opaque term in and opaque term out. The mechanism is generic; the content is the component's own
+  business. CRIU and VM live migration are memory-page-level and assume identical layout between old
+  and new. That does not hold here (a swap can cross versions, and can be to a different
+  implementation entirely, over §31 (the foreign-language seam)'s C seam). They are worth ruling out
+  explicitly rather than citing uncritically, since the roadmap block's own prior-art list named
+  them without this caveat.
 - Nothing today needs this. `notes/fs-server.md`'s only mention of hot-swap is a passing
   observation that endpoint-only naming makes it possible in principle, not a live requirement.
 
 If it is picked up later: an opaque blob over a shared page for state, `GRANT` for capabilities,
 brokered through `swap_proto`'s existing `OP_QUIESCE` handshake, is the shape this note recommends
-starting from. **This is guidance, not a commitment** -- the decision here is to decline, and
-whoever eventually has a real component to swap should re-check this reasoning against what that
-component actually needs rather than build to a description with no customer to correct it.
+starting from. **This is guidance, not a commitment** -- the decision here is to decline. Whoever
+eventually has a real component to swap should re-check this reasoning against what that component
+actually needs rather than build to a description with no customer to correct it.
 
 ## What this does not decide
 

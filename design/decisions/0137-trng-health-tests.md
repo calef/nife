@@ -5,9 +5,9 @@ raised: 2026-09-01
 
 # 137. A hardware TRNG with no published health-test claim
 
-Raised 2026-09-01 by the maintainer, from milestone 159 (a real hardware entropy source: the JH7110's TRNG)'s (a real hardware
-entropy source: the JH7110's TRNG) lane, which found the question and correctly declined to answer
-it: a developer does not write a decision.
+Raised 2026-09-01 by the maintainer, from milestone 159 (a real hardware entropy source: the
+JH7110's TRNG)'s (a real hardware entropy source: the JH7110's TRNG) lane. That lane found the
+question and correctly declined to answer it: a developer does not write a decision.
 
 ## What is being decided
 
@@ -47,10 +47,10 @@ C. Treat the hardware as one source among several and mix, which is what milesto
 entropy on x86_64 and aarch64: RDSEED and RNDRRS) and the existing backends make possible. A compromised source degrades the
 pool rather than defining it. This is what most operating systems actually do.
 
-The failure action is the harder half of B and C, and it is a capability question: refusing to
-serve is a denial of service that could brick a boot, while serving flagged bytes moves the decision
-to a caller who may not check. §31 (the foreign-language seam)'s headline and the confinement work are the neighborhood this
-sits in.
+The failure action is the harder half of B and C, and it is a capability question. Refusing to serve
+is a denial of service that could brick a boot, while serving flagged bytes moves the decision to a
+caller who may not check. §31 (the foreign-language seam)'s headline and the confinement work are
+the neighborhood this sits in.
 
 ## Recommendation
 

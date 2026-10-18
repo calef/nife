@@ -88,6 +88,6 @@ item 4.
 ## BUGS
 
 Recorded beside the feature in `notes/adding-a-program.md`'s `BUGS`: a removed program's
-`SWISH_CHECK_SCRIPT` line is caught only by `script/swish-check`; the removal gate is a text scan
-and misses names built at runtime; the wire-id pin covers only ids shipped before 2026-09-19; the
-`[[bin]]` reader knows four keys; and every archive now carries `pmap`, which nothing spawns.
+`SWISH_CHECK_SCRIPT` line is caught only by `script/swish-check`. The removal gate is a text scan
+and misses names built at runtime. The wire-id pin covers only ids shipped before 2026-09-19. The
+`[[bin]]` reader knows four keys. Every archive now carries `pmap`, which nothing spawns.
