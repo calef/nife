@@ -502,10 +502,16 @@ impl Pal for Sys {
                     end.access() | if end.nonblocking() { O_NONBLOCK } else { 0 }
                 }
             }),
-            // Only a stream has a flag that can change: whether it waits (`O_NONBLOCK`).
+            // A stream may change whether it waits (`O_NONBLOCK`), and a file whether it asks for
+            // direct I/O (`O_DIRECT`, which ioping sets this way after opening). The access mode
+            // and the creation flags are fixed at open, as on Linux.
             F_SETFL => {
-                if let Description::Stream(end) = d {
-                    end.set_nonblocking(arg as c_int & O_NONBLOCK != 0);
+                match d {
+                    Description::Stream(end) => end.set_nonblocking(arg as c_int & O_NONBLOCK != 0),
+                    Description::File { flags, .. } => {
+                        *flags = (*flags & !O_DIRECT) | (arg as c_int & O_DIRECT);
+                    }
+                    _ => {}
                 }
                 Ok(0)
             }
