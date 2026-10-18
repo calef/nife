@@ -20,7 +20,7 @@ The sweep is mechanical and a lane could start it today. **What it cannot settle
 and there is no useful half of this work that does not create one.** Two shapes:
 
 1. One crate per pair (`login_test_contract`, `compositor_test_contract`, ...), which follows
-   `hot_swap_contract`'s precedent, keeps each contract readable in one file, and costs nineteen names.
+   `swap_protocol`'s precedent, keeps each contract readable in one file, and costs nineteen names.
 2. One crate for all of them, which costs one name and makes the crate a grab bag of unrelated
    numbers.
 
@@ -66,7 +66,7 @@ is the vocabulary the two ends share, which is rule 7's category rather than §6
 ## Why the existing protocol crates are the wrong home, which is a lookup rather than a preference
 
 These numbers are **not part of any shipped wire contract**. Putting `login_test_client`'s six
-behavior numbers into `login_contract` would widen the protocol a real login client is written
+behavior numbers into `login_protocol` would widen the protocol a real login client is written
 against with something no real client needs. `crates/hot_swap_contract` is not a counter-example: the
 swap roles genuinely belong to the swap protocol.
 

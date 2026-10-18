@@ -19,7 +19,7 @@ A subtree caretaker attenuates by performing one `OPENDIR` *into* the directory 
 root of the shell's namespace has no name to descend into, so there is nothing to attenuate through.
 Two answers, and they are permanent in different ways:
 
-1. A narrowing verb on `filesystem_contract`, meaning "the directory I already hold, with fewer
+1. A narrowing verb on `filesystem_protocol`, meaning "the directory I already hold, with fewer
    rights", with no name resolution.
 2. An interactive boot whose shell starts one component below the image root, so the root the
    user meets always has a parent.
@@ -57,7 +57,7 @@ and therefore cannot ask for the right amount; this is about a handle with no pa
 A sentinel in `OPENDIR` still needs a name to open. A narrowing verb still leaves a client unable to
 discover what it holds.
 
-What they do share is a page in calef's queue. Both add rights machinery to `filesystem_contract`
+What they do share is a page in calef's queue. Both add rights machinery to `filesystem_protocol`
 and both are irreversible in the same way. Answering them in one sitting costs less than answering
 them six weeks apart, and answering §98 alone would be the more expensive order, because it ships a
 rights-shaped addition to this wire without the other case in view.

@@ -67,7 +67,7 @@ settled; this decision is only about how the material reaches the broker in the 
 
 The credential store's refusal to be updated is also considered rather than accidental.
 `credentialer::Store::put` offers no replacement because *"put twice, second wins"* has a race in
-it, and `credential_contract::provision::SEAL` says that after it the store cannot be changed short
+it, and `credential_protocol::provision::SEAL` says that after it the store cannot be changed short
 of restarting the service. Any provisioning path has to arrive before the seal, or argue with it.
 
 ## How reversible it is
