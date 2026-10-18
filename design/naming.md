@@ -174,7 +174,7 @@ needs it is the one about to propose it again.
 | `provisional` | whoever chose it expects it to change, per §89 (`provisional` becomes the fourth provenance state) | a ruling |
 | `unrecorded` | nothing in the tree or its history says why | research, then a ruling |
 | `recorded` | something outside the block argues the name; calef never ruled | a ruling |
-| `local` | only its own package reads it, and it passed every mechanical check (§310) | another package reading it, or a failed check |
+| `local` | read only by its package; passed every mechanical check | a reader elsewhere, or a failed check |
 | `ratified` | calef ruled, with the date and what was refused | done |
 
 ### The forms
@@ -202,8 +202,8 @@ Name: local by rule, <YYYY-MM-DD> (§310).
 
 ### Local names are ratified by rule
 
-A `pub` item only its package reads, passing each mechanical check, is `local` (§310):
-[local-names-are-ratified-by-rule.md](naming/local-names-are-ratified-by-rule.md).
+§310 (ratify local names by rule): a `pub` item only its package reads, passing each
+mechanical check, is `local`: [local-names-are-ratified-by-rule.md](naming/local-names-are-ratified-by-rule.md).
 
 ### The commands
 

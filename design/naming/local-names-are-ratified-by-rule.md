@@ -33,7 +33,7 @@ Each rule on this page, by whether a script can apply it:
 | Rule | Kind | Checked for `local` by |
 |---|---|---|
 | Rust's casing for the item's kind | mechanical | `name_local.py` |
-| Abbreviations a ruling spells out (§154's table, [spelled-out-rulings.md](spelled-out-rulings.md)) | mechanical | `name_local.py`; `cap` also by `cap_abbreviation.py` |
+| Abbreviations a ruling spells out (§154 (the acronym test is whether the phrase is spoken)'s table, [spelled-out-rulings.md](spelled-out-rulings.md)) | mechanical | `name_local.py`; `cap` also by `cap_abbreviation.py` |
 | American spelling | mechanical | `typos --locale en-us` and `house_style.py`'s list |
 | No `-d`, no Unix service word | mechanical | `name_local.py`, as `script/lint`'s naming block does for programs |
 | Not a refused name | mechanical | `script/names --refused` |
