@@ -72,11 +72,9 @@ Since 2026-09-24 an item or module carrying a `Name:` paragraph is tracked too, 
 documentation directory and document under `design/`, `notes/` and `briefs/`. A name a rule on
 `design/naming/convention-rulings.md` covers counts as `ratified`.
 
-Both scripts take the names from one enumeration, `helpers/name_census.py`: `script/names` hands it
-the working tree, and this series hands it each week's commit. `script/metrics` fails when the
-current week's total and `script/names`' total disagree, so they agree on `main`: at 2026W42, 1,793
-names, 642 `ratified`, 1,113 `provisional` (7 of them ruled with the rename owed), 31 `recorded`
-and 7 `unrecorded`.
+Both scripts enumerate through `helpers/name_census.py`, `script/names` over the working tree and
+this series over each week's commit, and `script/metrics` fails when the current week's totals
+disagree. At 2026W42 both say 1,793 names.
 
 The four words are what a block *says*:
 
@@ -85,9 +83,8 @@ The four words are what a block *says*:
 - `Provisional` is whoever coined it saying out loud that they expect it to change.
 - `Unrecorded` is nothing outside the block saying why the name is what it is.
 
-`Ruled, rename owed` is a `provisional` block that says calef has ruled the name and the rename has
-not landed (`helpers/name_ruled.py`). It is drawn apart from `Provisional` because it is no longer a
-question for him, and it leaves the chart when the rename merges.
+`Ruled, rename owed` is a `provisional` block saying calef has ruled and the rename has not landed
+(`helpers/name_ruled.py`). It is no longer his question, so it is drawn apart.
 
 The total is every named thing, and the statuses do not have to add up to it. The pale band is the
 difference: named things with no block, or a block that fails `script/names`' form checks. That
@@ -109,7 +106,7 @@ READMEs and doc comments that mention `Name:` in prose before the 2026-09-24 kin
 paragraph a block. From 2026W39 the band is zero.
 
 The bar jumps from 257 at 2026W38 to 695 at 2026W39 because the item, module, directory and
-document kinds arrived that week, and most of what they found was `provisional`.
+document kinds arrived that week, mostly `provisional`.
 
 2026W36 is one milestone doing one thing. `Unrecorded` goes from 64 to 2, `Recorded` from 9 to 37
 and `Provisional` from 26 to 66. That is milestone 264 (sixty names git history cannot justify, and
