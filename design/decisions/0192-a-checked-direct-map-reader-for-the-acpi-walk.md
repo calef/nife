@@ -83,10 +83,11 @@ stops.
 
 ## Recommendation
 
-Shape 2, held rather than passed, and the argument is this tree's own rather than economy. A
-bound that travels with the walk is one place to be wrong. A bound recomputed at each call site is
-the same invariant asserted N times by hand, which is the shape §94 refused for 58 panic handlers
-and §61 refuses for `// SAFETY:` comments.
+Shape 2, held rather than passed, and the argument is this tree's own rather than economy. A bound
+that travels with the walk is one place to be wrong. A bound recomputed at each call site is the
+same invariant asserted N times by hand. That is the shape §94 (what may live in a userspace
+library) refused for 58 panic handlers and §61 (a lint is adopted on evidence) refuses for
+`// SAFETY:` comments.
 
 **The recommendation is offered because the mechanism is reversible; the name is not, and no name is
 proposed here.** An accessor at a trust boundary is read by every future reader of this file, and

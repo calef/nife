@@ -9,9 +9,10 @@ ratified_by: calef
 
 Raised 2026-09-19 by milestone 435 (forty-five milestones are gated on a decision nobody wrote
 down)'s slice B. That slice read milestone 342 (the kernel and the `console` server drive one UART
-from two address spaces)'s `DECISION` gate and found it naming no section. Milestone 230 named the
-fork while fixing something else, and the 2026-09-03 proposal sweep carried it forward. *(Section
-number provisional until the merge queue lands it.)*
+from two address spaces)'s `DECISION` gate and found it naming no section. Milestone 230
+(`script/shell-check` is red on `main`) named the fork while fixing something else, and the
+2026-09-03 proposal sweep carried it forward. *(Section number provisional until the merge queue
+lands it.)*
 
 ## The ruling
 
@@ -60,12 +61,12 @@ contract is recognizing a boot sequence in that stream. Interleaved bytes break 
 least visible way available: the log is present, it looks like output, and the line being matched
 has a kernel message spliced through the middle of it.
 
-Nothing in `design/decisions/` answers it, checked 2026-09-19.
-[§149](0149-kernel-served-console-endpoint.md) is the nearest and is a different question. It asked
-whether the kernel may *answer on an endpoint* where §121 left x86 without a userspace holder. It
-was resolved on 2026-09-15 by dissolving that premise, so x86's console is a userspace driver like
-the other two. That makes the interleaving question more live rather than less, because all three
-architectures now reach the shape that produces it.
+Nothing in `design/decisions/` answers it, checked 2026-09-19. [§149 (may the kernel answer on an
+endpoint)](0149-kernel-served-console-endpoint.md) is the nearest and is a different question. It
+asked whether the kernel may *answer on an endpoint* where §121 (what a device capability is) left
+x86 without a userspace holder. It was resolved on 2026-09-15 by dissolving that premise, so x86's
+console is a userspace driver like the other two. That makes the interleaving question more live
+rather than less, because all three architectures now reach the shape that produces it.
 
 ## What the kernel actually writes after the handoff, measured
 

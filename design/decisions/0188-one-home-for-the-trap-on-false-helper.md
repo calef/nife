@@ -12,9 +12,10 @@ provisional until the merge queue lands it.)*
 
 ## What is being decided
 
-The name, and only the name. Whether the function is lifted is already decided by §94. What is
-open is what a public item on `crates/user_mode_runtime` is called. That is the most-read function
-name this tree could add, since every program in the tree links that crate.
+The name, and only the name. Whether the function is lifted is already decided by §94 (what may live
+in a userspace library). What is open is what a public item on `crates/user_mode_runtime` is called.
+That is the most-read function name this tree could add, since every program in the tree links that
+crate.
 
 ## Is the premise true
 
@@ -69,13 +70,14 @@ the point where a pattern is a convention.
 
 ## Recommendation
 
-`require`, on the recognition argument: the kernel already spends the word on "a mismatch that
-must not be recovered from", and a reader who has met `trust::require` meets the same idea at EL0
-under the same name. The risk is the mirror of the reason, and it should be weighed. One word
-meaning two related things at two privilege levels is either a recognition or a collision. §31's
-refusal of `witness` and milestone 440's refusal of `runner` are both cases where this tree decided
-a second sense cost more than it bought. The difference here is that the two senses are the *same*
-idea rather than two unrelated ones.
+`require`, on the recognition argument: the kernel already spends the word on "a mismatch that must
+not be recovered from", and a reader who has met `trust::require` meets the same idea at EL0 under
+the same name. The risk is the mirror of the reason, and it should be weighed. One word meaning two
+related things at two privilege levels is either a recognition or a collision. §31 (the
+foreign-language seam)'s refusal of `witness` and milestone 440 (what `script/ci-build` with no
+arguments should mean)'s refusal of `runner` are both cases where this tree decided a second sense
+cost more than it bought. The difference here is that the two senses are the *same* idea rather than
+two unrelated ones.
 
 ## Would we still choose this if both options cost the same
 

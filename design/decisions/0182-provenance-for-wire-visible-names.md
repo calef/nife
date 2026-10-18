@@ -82,9 +82,9 @@ recorded. So the widening under discussion is at most a doubling of the tree's n
 plausibly much less, which is the figure the scope question turns on.
 
 The other candidate sets, unenumerated, which is itself the point: the `*_proto` crates' operation
-names and error codes, which already carry blocks *for the crate* and not for the words on the
-wire. The second set is public function and method names, calef's since 2026-08-23 and counted by
-nothing, which milestone 276's own `BUGS` already records.
+names and error codes, which already carry blocks *for the crate* and not for the words on the wire.
+The second set is public function and method names, calef's since 2026-08-23 and counted by nothing,
+which milestone 276 (the dashboard counts milestones and decisions)'s own `BUGS` already records.
 
 ## Recommendation
 

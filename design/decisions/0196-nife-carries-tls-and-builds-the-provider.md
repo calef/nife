@@ -20,12 +20,13 @@ The ruling, in four clauses:
 2. `rustls` for the protocol. Measured below: `rustls` 0.23.45 with default features off plus
    `tls12` is 7 crates, all Rust, and that part builds. `embedded-tls` (58 crates) and OpenSSL
    are not taken; the table says why.
-3. The crypto provider is ours to make work, and it is the actual project. Every candidate
-   provider fails on our bare-metal targets today, in two classes. First, `getrandom` has no
-   backend (`ring`, `rustls-rustcrypto`). That is exactly what `entropy_backend` exists to answer,
-   and nife can supply it because it has an entropy service. Second, SIMD paths in `sha2` and
-   `polyval` fail on the soft-float `x86_64-unknown-none`. The probe itself says that may differ
-   against nife's own target specification and pinned nightly. Milestone 442 carries that work.
+3. The crypto provider is ours to make work, and it is the actual project. Every candidate provider
+   fails on our bare-metal targets today, in two classes. First, `getrandom` has no backend (`ring`,
+   `rustls-rustcrypto`). That is exactly what `entropy_backend` exists to answer, and nife can
+   supply it because it has an entropy service. Second, SIMD paths in `sha2` and `polyval` fail on
+   the soft-float `x86_64-unknown-none`. The probe itself says that may differ against nife's own
+   target specification and pinned nightly. Milestone 442 (a crypto provider `rustls` can use)
+   carries that work.
 4. **Roots are held per source, not in a system store**, which is §195's shape one layer down: the
    package client holds one root or one pinned key for the one source it talks to. A system-wide
    trust store would need updating independently of the system, and the thing that updates it is

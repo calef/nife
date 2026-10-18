@@ -8,10 +8,10 @@ raised: 2026-09-19
 Raised 2026-09-19 by milestone 435 (forty-five milestones are gated on a decision nobody wrote
 down)'s lane. That lane found milestone 147 (a profiler that holds exactly the counters it was
 granted) gated on `MILESTONE 75, DECISION` naming no decision, when the prior question its gate
-defers to has been answered since 2026-09-02. [§139](0139-cycle-counter-authority.md) (who may read
-the cycle counter, and by what authority) took it; 147's gate never said so, and §139's own text
-says it does **not** cover what 147 needs. *(Section number provisional until the merge queue lands
-it.)*
+defers to has been answered since 2026-09-02. [§139 (who may read the cycle
+counter)](0139-cycle-counter-authority.md) (who may read the cycle counter, and by what authority)
+took it; 147's gate never said so, and §139's own text says it does **not** cover what 147 needs.
+*(Section number provisional until the merge queue lands it.)*
 
 ## What §139 settled, and why 147 is still owed a decision
 

@@ -8,9 +8,9 @@ raised: 2026-09-19
 Raised 2026-09-19 by milestone 435 (forty-five milestones are gated on a decision nobody wrote
 down)'s slice-c lane. That lane found milestone 413 (what a `caretaker` is, when the thing it holds
 is not the thing it hands out)'s `DECISION` gate naming no section. Filed 2026-09-14 by the
-milestone 292 lane while naming the program that puts a file behind a byte sink, which had been
-`ROLE_FILE` inside a three-role binary and so had never needed a name of its own. *(Section number
-provisional until the merge queue lands it.)*
+milestone 292 (`fixtures/src/sink.rs` is three programs) lane while naming the program that puts a
+file behind a byte sink. That program had been `ROLE_FILE` inside a three-role binary and so had
+never needed a name of its own. *(Section number provisional until the merge queue lands it.)*
 
 ## What is being decided
 

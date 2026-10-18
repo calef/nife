@@ -67,9 +67,10 @@ The overflow flag is partly done. x86_64 already clears its flag in `take_fault`
 small half.
 
 Three documents already say it is owed, which is the argument that this is a gap rather than a
-possibility. They are `notes/iommu.md`'s honest limits, [§20](0020-iommu-dma-isolation.md)
-(IOMMU-backed DMA isolation)'s own limits list, and `notes/framebuffer-contract.md` mirrored into
-[§29](0029-framebuffer-grant.md) (the framebuffer is a bigger grant, not an exemption).
+possibility. They are `notes/iommu.md`'s honest limits, [§20 (IOMMU-backed DMA
+isolation)](0020-iommu-dma-isolation.md) (IOMMU-backed DMA isolation)'s own limits list, and
+`notes/framebuffer-contract.md` mirrored into [§29 (the framebuffer is a bigger
+grant)](0029-framebuffer-grant.md) (the framebuffer is a bigger grant, not an exemption).
 
 ## What this tree already does in the analogous case
 

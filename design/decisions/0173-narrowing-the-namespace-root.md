@@ -45,11 +45,11 @@ server side that mints a second handle from a first.
 
 ## The neighboring decision, which should be read with this one
 
-[§98](0098-opendir-cannot-attenuate.md) is `PROPOSED` and is a rights change to the same wire, raised
-by milestone 122's lane. `OPENDIR` cannot be asked for "the parent's rights, whatever they are", so
-a `Dir` asks for `dir::ALL` and then discovers what it holds by probing one right at a time. Its
-proposal is a sentinel in `OPENDIR`'s rights word, about thirty lines across the protocol, the
-server and the PAL.
+[§98](0098-opendir-cannot-attenuate.md) is `PROPOSED` and is a rights change to the same wire,
+raised by milestone 122 (a directory handle `std` can hold)'s lane. `OPENDIR` cannot be asked for
+"the parent's rights, whatever they are", so a `Dir` asks for `dir::ALL` and then discovers what it
+holds by probing one right at a time. Its proposal is a sentinel in `OPENDIR`'s rights word, about
+thirty lines across the protocol, the server and the PAL.
 
 **The two do not subsume each other and the difference is worth stating**, because a reader meeting
 both will assume one design covers them. §98 is about a client that cannot read its own capability

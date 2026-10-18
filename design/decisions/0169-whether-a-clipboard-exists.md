@@ -76,5 +76,6 @@ nothing can be scoped from it until this is ruled.
 
 Downstream and waiting: real terminal use, which is the actual motivation. Copying a path from one
 pane and an error message from a build is the same *would someone live in this* axis milestone 142
-names for the display half. The sources are the terminal (142) and a pointer for drag-to-select
-(179). The paste target is anything a shell or an editor accepts text into.
+(a text display good enough) names for the display half. The sources are the terminal (142) and a
+pointer for drag-to-select (179). The paste target is anything a shell or an editor accepts text
+into.
