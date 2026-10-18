@@ -9,7 +9,7 @@
 use super::*;
 
 /// **Who vouched for an image's digest**, for [`write_image_capabilities`]: the live generation that lists
-/// it, and whether its entry is the owner's own vouch (`activation_set::OWNER`) rather than an
+/// it, and whether its entry is the owner's own vouch (`installed_programs::OWNER`) rather than an
 /// installed package's. Name: provisional (2026-09-26).
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct Vouched {
@@ -23,7 +23,7 @@ pub struct Vouched {
 /// (DECISIONS §219 option D and gate D2, milestone 198 rung 3a; the manifest note, milestone 597,
 /// provisional).
 ///
-/// The shell computes every input from the bytes it read and the activation set it can read:
+/// The shell computes every input from the bytes it read and the installed-programs table it can read:
 /// `digest` is the file's SHA-256 in its text form, `sha256:<hex>` (`measured_boot::digest_text`), `vouched_by` is the live generation that lists
 /// that digest and whether that entry is the owner's own vouch (DECISIONS §221 (the boot prompt
 /// is the owner's console)), or `None`, `declared` is the manifest the file's note carries (`None` for no note),

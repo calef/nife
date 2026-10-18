@@ -217,7 +217,7 @@ A. Where a manifest travels. Revised by calef, 2026-10-07 (UTC), on his question
    encodings equal.
 
    The consequence. One digest covers code and manifest together, for a script as for an ELF, so
-   the earlier draft's separate manifest file and its own entry in the activation set go away. The
+   the earlier draft's separate manifest file and its own entry in the installed-programs table go away. The
    cost. `jig` and the spawner each need one small reader per format, so `jig` grows as language
    support grows. That belongs to milestone 809 (the package client becomes a program).
 

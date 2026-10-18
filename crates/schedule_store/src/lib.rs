@@ -209,7 +209,7 @@ pub mod fixture {
     ///
     /// The commands name the suite's installed fixture program (provisional `scheduled_demo`,
     /// `login_tests`'s `install_scheduled_program`), because a durable session's timetable resolves
-    /// them in the activation set, where §229 (how a bare name at the prompt reaches an installed
+    /// them in the installed-programs table, where §229 (how a bare name at the prompt reaches an installed
     /// program) forbids a package from taking a name the image
     /// carries. `timetable_tests`'s registrar control copies this document's shape with an image
     /// program's name back in, because an archive-mode timetable plans against `grant_plan`'s

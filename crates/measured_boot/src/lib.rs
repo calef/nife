@@ -316,7 +316,7 @@ pub const SHA256_LABEL: &str = "sha256";
 pub const DIGEST_TEXT_LEN: usize = SHA256_LABEL.len() + 1 + DIGEST_LEN * 2;
 
 /// **A digest as the text every file and program in this tree writes it in**: `sha256:` and 64
-/// lowercase hex characters. A catalog line, a recipe's `digest`, an activation-set row, the
+/// lowercase hex characters. A catalog line, a recipe's `digest`, an installed-programs row, the
 /// measurement table, `caps`'s provenance line: one formatter, so they cannot drift apart, and one
 /// parser, [`parse_digest`], that every reader of them depends on (rule 7). No allocation, so the
 /// progenitor and the shell can write it.

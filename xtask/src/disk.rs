@@ -511,7 +511,7 @@ fn with_note_version(bytes: &[u8], version: u32) -> Result<Vec<u8>, String> {
 ///
 /// **It installs nothing.** Until 2026-09-26 this wrote `activation/` and the program itself,
 /// standing in for an installer; the installer now exists on the target (`package install`), and a
-/// fresh disk has no activation set at all. The one stand-in left is the download: the booted
+/// fresh disk has no installed-programs table at all. The one stand-in left is the download: the booted
 /// system's network reaches no package source yet, so the file arrives with the disk. Run after
 /// the archive build, whose outputs it reads, and before the boot.
 pub(crate) fn seed_installed(architecture: &str) -> bool {
@@ -584,7 +584,7 @@ fn stage_installed(architecture: &str) -> Result<String, String> {
          a tampered copy, {noteless_stem} at \
          {DOWNLOADED_NOTELESS}, {greeting_v2_stem} at {DOWNLOADED_GREETING_0_2_0}, duet at \
          {DOWNLOADED_DUET}, solo at {DOWNLOADED_SOLO}, and three \
-         unvouched programs; no activation set. The package source at {} serves {greeting_stem} \
+         unvouched programs; no installed-programs table. The package source at {} serves {greeting_stem} \
          and a lying {stem}",
         package.len(),
         String::from_utf8_lossy(&measured_boot::digest_text(&package_archive::sha256(

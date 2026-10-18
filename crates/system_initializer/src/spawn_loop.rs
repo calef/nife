@@ -198,7 +198,7 @@ pub(super) fn spawn_service(
         care,
         discipline,
         fs_scoped,
-        // Whether the file page is mapped here yet, for the activation set (first image request).
+        // Whether the file page is mapped here yet, for the installed-programs table (first image request).
         fs_mapped: false,
         // The spawn endpoint, its reaped messages, and the windows they free (milestone 685).
         spawn: SpawnEndpoint::new(spawn_ep, resolver),
@@ -416,9 +416,10 @@ impl Service<'_> {
             );
             return;
         }
-        // **An edit to the activation set, not a spawn** (milestone 198 rung 3a's installer). Asked
-        // first, because under this bit no other bit of word 2 means anything. On the spawn
-        // endpoint this is the owner's console: `vouch`, and nothing else sends it since `jig`.
+        // **An edit to the installed-programs table, not a spawn** (milestone 198 (a package
+        // manager) rung 3a's installer). Asked first, because under this bit no other bit of
+        // word 2 means anything. On the spawn endpoint this is the owner's console: `vouch`, and
+        // nothing else sends it since `jig`.
         if let Some(verb) = spawnproto::activation(w1, w2) {
             let answer = activate(
                 verb,
@@ -429,7 +430,7 @@ impl Service<'_> {
                     images_ut,
                     fs,
                     catalog: self.c.catalogue,
-                    manager: activation_set::OWNER,
+                    manager: installed_programs::OWNER,
                 },
                 &mut self.fs_mapped,
             );

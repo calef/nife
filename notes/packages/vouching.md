@@ -33,7 +33,7 @@ $ caps installed/unvouched
 The shell sends the file as frames, the way it sends an image to run, and then the name to record
 it under: the path's last component, at most sixteen bytes (`grant_plan::vouched_name`). The
 progenitor hashes its own copy, checks that it parses as an executable, and writes the next
-generation with an entry `<name> owner <digest>` (`activation_set::OWNER` in the package column).
+generation with an entry `<name> owner <digest>` (`installed_programs::OWNER` in the package column).
 It commits exactly as an install does, so the only change that makes the vouch live is the rename
 of `current`. The bytes are not copied anywhere: a digest vouches for itself wherever the file is.
 A later vouch or install of the same name replaces the entry, which is what an edit loop wants.

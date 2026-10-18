@@ -237,7 +237,7 @@ fn help_is_a_builtin_and_everything_else_is_a_program() {
 }
 
 /// **`vouch` takes one file and records it by its last component** (DECISIONS §221). A bare
-/// name is not a file by the prompt's rule, and a name the activation set could not read back
+/// name is not a file by the prompt's rule, and a name the installed-programs table could not read back
 /// as itself is refused before anything is sent.
 /// **`user` takes a verb and one name** (milestone 152's §108 ruling), and anything else is
 /// [`UserVerb::Usage`], so a line the list could not hold never reaches it.

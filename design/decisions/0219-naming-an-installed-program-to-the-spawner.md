@@ -51,7 +51,7 @@ These are the maintainer's, raised with the ruling. They are not part of it.
 
 ## What is being decided
 
-§208 (installing a package is granting it, and the activation set is versioned) ruled that
+§208 (installing a package is granting it, and the installed programs are versioned) ruled that
 installing makes a package's digest and manifest *spawnable*. It also named the cost: "naming a
 program that was not there at boot is a change two programs agree on." This section is that change.
 One question: when a person runs a program the boot image did not carry, what travels from the shell

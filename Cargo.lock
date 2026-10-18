@@ -16,13 +16,6 @@ name = "abi"
 version = "0.1.0"
 
 [[package]]
-name = "activation_set"
-version = "0.1.0"
-dependencies = [
- "measured_boot",
-]
-
-[[package]]
 name = "address_space_identifier"
 version = "0.1.0"
 
@@ -200,7 +193,6 @@ name = "components"
 version = "0.1.0"
 dependencies = [
  "abi",
- "activation_set",
  "address_space_map",
  "bitmap_font",
  "block_roster",
@@ -232,6 +224,7 @@ dependencies = [
  "graphics_contract",
  "hot_swap_contract",
  "http_response",
+ "installed_programs",
  "jh7110_entropy",
  "line_editor",
  "login_contract",
@@ -648,6 +641,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "installed_programs"
+version = "0.1.0"
+dependencies = [
+ "measured_boot",
+]
+
+[[package]]
 name = "inter_process_communication"
 version = "0.1.0"
 dependencies = [
@@ -682,7 +682,6 @@ version = "0.1.0"
 dependencies = [
  "aarch64-cpu",
  "abi",
- "activation_set",
  "address_space_identifier",
  "address_space_map",
  "bitmap_font",
@@ -714,6 +713,7 @@ dependencies = [
  "generational_table",
  "grant_plan",
  "graphics_contract",
+ "installed_programs",
  "inter_process_communication",
  "intrusive_fifo",
  "jh7110_clock_and_reset",
@@ -1166,12 +1166,12 @@ dependencies = [
 name = "swish"
 version = "0.1.0"
 dependencies = [
- "activation_set",
  "documentation",
  "environment_contract",
  "filesystem_contract",
  "glob",
  "grant_plan",
+ "installed_programs",
  "std_runtime_contract",
 ]
 
@@ -1202,7 +1202,6 @@ name = "system_initializer"
 version = "0.1.0"
 dependencies = [
  "abi",
- "activation_set",
  "address_space_map",
  "byte_sink_contract",
  "credential_contract",
@@ -1212,6 +1211,7 @@ dependencies = [
  "filesystem_contract",
  "grant_plan",
  "graphics_contract",
+ "installed_programs",
  "line_editor",
  "login_contract",
  "machine_statistics_contract",

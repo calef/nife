@@ -4,7 +4,7 @@
 //! lists it in `packaged_only`, so no archive packs it (`script/swish-check` reads the archive to
 //! make sure), and the only way onto a machine is the
 //! package `packages/greeting.recipe.toml` builds. So when it runs at the prompt, the image's catalogue,
-//! the fetch, the digest check and the activation set are the only things that could have put it
+//! the fetch, the digest check and the installed-programs table are the only things that could have put it
 //! there. Every earlier install line ran a copy of the image's own `uptime`, which proved the path
 //! and not novelty.
 //!

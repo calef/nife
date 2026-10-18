@@ -244,7 +244,7 @@ pub fn user_verb(tail: &[u8]) -> UserVerb<'_> {
 }
 
 /// Classify [`Command::Vouch`]'s tail: one operand, a path (it has a `/`), whose last component
-/// ([`vouched_name`]) the activation set can record. `None` for anything else, which the shell
+/// ([`vouched_name`]) the installed-programs table can record. `None` for anything else, which the shell
 /// answers with what it takes.
 pub fn vouch_verb(tail: &[u8]) -> Option<&[u8]> {
     let path = trim(tail);
@@ -258,7 +258,7 @@ pub fn vouch_verb(tail: &[u8]) -> Option<&[u8]> {
 /// **The name a vouched file is recorded under**: its path's last component, which is what a
 /// person sees in `caps`. `None` when it is empty, longer than the
 /// sixteen bytes a packed name carries (`filesystem_contract::grant::MAX_NAME`), `.` or `..`, or
-/// holds a `#`, which the activation set's lines cannot carry.
+/// holds a `#`, which the installed-programs table's lines cannot carry.
 pub fn vouched_name(path: &[u8]) -> Option<&[u8]> {
     let name = path.rsplit(|&b| b == b'/').next().unwrap_or(path);
     let recordable = !name.is_empty()

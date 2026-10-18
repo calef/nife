@@ -12,7 +12,7 @@ was written. Raised by milestone 809 (the package client becomes a program)'s pl
 (UTC), as its fork 1, and written by its building lane on 2026-10-10.*
 
 calef ruled the package client a program, `jig`, on 2026-10-06 (UTC). The progenitor stays the
-installer (§208 (installing a package is granting it, and the activation set is versioned)), so the
+installer (§208 (installing a package is granting it, and the installed programs are versioned)), so the
 program needs a way to ask it. On 2026-10-10 (UTC) calef answered fork 1, the block's design for
 that request, with *"Yes"*. This section records the method's semantics, which §10 (process model:
 capability-based, microkernel) requires written here.

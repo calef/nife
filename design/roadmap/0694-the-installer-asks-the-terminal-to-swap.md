@@ -41,7 +41,7 @@ waits. And a replacement today is the same image the supervisor was handed at bi
    (`SEND_CAP`), so `SWAP` carries its image and the supervisor maps it where it maps its own.
    Refused: a second copy at build time, which would make the supervisor carry every future build.
 3. What an activation does when the swap rolls back. The new build refused the old state, so
-   the old instance serves on. The activation set would then say the new build is active while the
+   the old instance serves on. The installed-programs table would then say the new build is active while the
    old one runs; the recommendation is that activation waits for `SWAPPED` and records a refusal as
    a failed activation, which the installer already has a verdict for.
 

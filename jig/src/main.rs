@@ -25,7 +25,7 @@
 //! for a command word (DECISIONS §219 (how the shell names an installed program to the spawner)).
 //!
 //! The progenitor stays the installer (DECISIONS §208 (installing a package is granting it, and the
-//! activation set is versioned)) and checks every package against its own copy of the catalog.
+//! installed programs are versioned)) and checks every package against its own copy of the catalog.
 //! This is the client. It asks on an installer endpoint that serves install, remove and rollback
 //! and nothing else (DECISIONS §270 (a package manager holds an installer endpoint, not the spawn
 //! endpoint)), with `spawnproto`'s activation request unchanged. It fetches a package itself, so
@@ -722,7 +722,7 @@ fn answer(verb: Activation, fetched: bool, reply: Reply, program: Option<&str>) 
         }
         (S::NotInstalled, _) => "refused: no package of that name is in the live generation",
         (S::NoEarlier, _) => "refused: there is no generation before the live one",
-        (S::StoreFailed, _) => "could not write the activation set",
+        (S::StoreFailed, _) => "could not write the installed programs",
         // calef, 2026-10-14 (UTC): "If two packages offer the same program name, refuse the
         // second package. Need to remove the first one before installing the second one."
         (S::NameTaken, _) => {

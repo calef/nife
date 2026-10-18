@@ -46,7 +46,7 @@ system needs before `jig` runs reach it this way. They are the kernel, the proge
    describes. The image names basalt's index (§250 (an image names its distribution's package
    index, at `basalt.nifeos.org`, and a package's bytes may live anywhere)).
 3. Each package in the image passes 911's host-side check against the image's approval file, and
-   the image's first activation set holds the resulting grant records. A package whose manifest
+   the image's first installed-programs table holds the resulting grant records. A package whose manifest
    asks for more than the file allows fails the build, naming the extra grant.
 4. basalt's gate boots the composed image rather than the one nife's tree built.
 5. nife's own image build stays for nife's tests, composed from the same package definitions, so a

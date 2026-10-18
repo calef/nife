@@ -38,6 +38,7 @@ looked when the options were written.
   section after the manifest's.
 - Activation (what installing *does*) is untouched by this and is its own ruling. It has
   since been ruled: §208 (installing a package is granting it), 2026-09-23.
+- The open parts of the 2026-10-18 encoding, listed in §307's amendment.
 
 ## Where the manifest travels: M2, ruled 2026-09-26
 
@@ -113,6 +114,14 @@ What lane/digest-label built on it, 2026-10-07:
   file. `measured_boot`'s `Digest` documentation carries the argument.
 - The kernel's bare-hex diagnostics and `sealed_pair`'s, which a person compares against
   `shasum -a 256` and nothing parses, are unchanged.
+
+## The container's encoding: tar with a manifest, zstd in transit, ruled 2026-10-18
+
+calef, 2026-10-18 (UTC): *"tar with a manifest"*, compressed with zstd for download. A package is
+a jig package: a tar whose first member, `package_measurements`, names it and lists each member's
+digest, compressed whole with zstd as `.jig.tar.zst`.
+§307 (how long a name may be)'s amendment of the same date holds the rules, because its migration
+is what builds them.
 
 ## The proposal as calef ruled on it
 

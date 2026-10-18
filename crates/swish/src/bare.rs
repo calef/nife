@@ -3,7 +3,7 @@
 //!
 //! A word with a `/` in it is a path and always means that file; that is decided before anything
 //! here is asked. A word without one is a builtin, a program the image carries, or the live
-//! activation set's default for that name, found with `activation_set::lookup`, which reads the
+//! installed-programs table's default for that name, found with `installed_programs::lookup`, which reads the
 //! generation's default pointer and then the row it names, and so never answers with an owner's
 //! vouch. Since milestone 614 (two installed versions of one program, each runnable, and a caller
 //! granted the one it needs), ruling 3, that pointer is what "the newest install" means: every
@@ -177,7 +177,7 @@ pub fn write_divergence(word: &[u8], notice: &Notice, out: &mut dyn FnMut(&[u8])
 /// **Resolve a bare word.** `image` is whether the image carries a program of that name, `table`
 /// the live generation when the shell could read one, and `set` the nearest version set's text
 /// when the caller read one. The bare-word answer is the generation's default
-/// (`activation_set::lookup`), refined by the set when it names the program; `program@version` is
+/// (`installed_programs::lookup`), refined by the set when it names the program; `program@version` is
 /// an explicit ask and answers only that row.
 pub fn resolve(word: &[u8], image: bool, table: Option<&str>, set: Option<&str>) -> Bare {
     // **The explicit ask first**: `@` is reserved for it, so a word with one and two halves is
@@ -191,7 +191,7 @@ pub fn resolve(word: &[u8], image: bool, table: Option<&str>, set: Option<&str>)
     {
         let picked = table
             .and_then(|t| {
-                activation_set::lookup_version(t, program, version)
+                installed_programs::lookup_version(t, program, version)
                     .ok()
                     .flatten()
             })
@@ -204,7 +204,7 @@ pub fn resolve(word: &[u8], image: bool, table: Option<&str>, set: Option<&str>)
     let name = core::str::from_utf8(word).ok();
     let default = name
         .zip(table)
-        .and_then(|(name, table)| activation_set::lookup(table, name).ok().flatten());
+        .and_then(|(name, table)| installed_programs::lookup(table, name).ok().flatten());
     let Some(default) = default else {
         return if image { Bare::Image } else { Bare::Unknown };
     };
@@ -225,7 +225,7 @@ pub fn resolve(word: &[u8], image: bool, table: Option<&str>, set: Option<&str>)
     {
         let selected = table
             .and_then(|t| {
-                activation_set::lookup_version(t, name, asked)
+                installed_programs::lookup_version(t, name, asked)
                     .ok()
                     .flatten()
             })

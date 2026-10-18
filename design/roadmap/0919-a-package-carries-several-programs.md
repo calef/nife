@@ -41,7 +41,7 @@ and `solo` (`alto` again). `script/swish-check` passes on aarch64, riscv64 and x
 2. The progenitor's `install` places every program under `packages/<package>/<version>/` and
    writes one generation holding a row and a default pointer for each. A refusal of any one
    program, `ImageName` or `Taken`, refuses the whole package, and nothing is committed. That keeps
-   §208 (installing a package is granting it, and the activation set is versioned): one install is
+   §208 (installing a package is granting it, and the installed programs are versioned): one install is
    one generation, and one rollback undoes it.
 3. `jig remove` takes every row a package wrote (ruling 2 below).
 4. §229's lookup needs no new rule. The lane proves it finds each program by its own name, and

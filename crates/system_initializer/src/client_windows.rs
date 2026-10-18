@@ -187,7 +187,7 @@ pub(super) fn bound_index_store(
 ) -> Option<Fs> {
     let files = FsCalls::map(Some(fs), own_ut, mapped)?;
     files.unbind(windows, w);
-    let act = files.directory(fs_operation::ROOT, activation_set::DIRECTORY);
+    let act = files.directory(fs_operation::ROOT, installed_programs::DIRECTORY);
     if act < 0 {
         return None;
     }
@@ -261,7 +261,7 @@ pub(super) fn job_channel(
 }
 
 /// **The progenitor's calls on the file service**, through the page it maps at
-/// [`ACTIVATION_FS_VA`]. Shared by [`vouched`], which reads the activation set, and [`activate`](activation::activate),
+/// [`ACTIVATION_FS_VA`]. Shared by [`vouched`], which reads the installed-programs table, and [`activate`](activation::activate),
 /// which writes it (milestone 198 rung 3a).
 ///
 /// What is mapped there is the whole client-window pool (milestone 599), and these calls use its
@@ -390,7 +390,7 @@ impl FsCalls {
         let h = self.named(
             fs_operation::OPEN,
             act,
-            activation_set::generation_name(number, &mut name),
+            installed_programs::generation_name(number, &mut name),
             0,
         );
         if h >= 0 {
@@ -409,7 +409,7 @@ impl FsCalls {
         act: u64,
         out: &mut [u8; PAGE_BYTES],
     ) -> Result<(u32, usize), ()> {
-        let c = self.named(fs_operation::OPEN, act, activation_set::CURRENT, 0);
+        let c = self.named(fs_operation::OPEN, act, installed_programs::CURRENT, 0);
         if c < 0 {
             return Ok((0, 0));
         }
@@ -418,7 +418,7 @@ impl FsCalls {
         self.close(c);
         let number = got
             .and_then(|n| core::str::from_utf8(&line[..n]).ok())
-            .and_then(activation_set::parse_current)
+            .and_then(installed_programs::parse_current)
             .ok_or(())?;
         Ok((number, self.generation(act, number, out)?))
     }
@@ -466,7 +466,7 @@ impl FsCalls {
         let t = self.named(
             fs_operation::OPEN,
             act,
-            activation_set::generation_name(number, &mut name),
+            installed_programs::generation_name(number, &mut name),
             0,
         );
         if t < 0 {
@@ -475,7 +475,7 @@ impl FsCalls {
         let n = self.read(t as u64, &mut out[..]);
         self.close(t);
         // A page and not a byte more: a generation that fills one may have been cut short, and a
-        // table that ends mid-line vouches for nothing. `activation_set`'s BUGS: forty entries fit.
+        // table that ends mid-line vouches for nothing. `installed_programs`'s BUGS: forty entries fit.
         match n {
             Some(n) if n < PAGE_BYTES => Ok(n),
             _ => Err(()),
@@ -493,7 +493,7 @@ impl FsCalls {
             let g = self.named(
                 fs_operation::CREATE,
                 act,
-                activation_set::generation_name(number, &mut name),
+                installed_programs::generation_name(number, &mut name),
                 0,
             );
             if g < 0 {
@@ -506,10 +506,10 @@ impl FsCalls {
             }
         }
         let mut line = [0u8; 16];
-        let Ok(n) = activation_set::format_current(number, &mut line) else {
+        let Ok(n) = installed_programs::format_current(number, &mut line) else {
             return false;
         };
-        let staged = self.open_or_create(act, activation_set::CURRENT_STAGED);
+        let staged = self.open_or_create(act, installed_programs::CURRENT_STAGED);
         if staged < 0 {
             return false;
         }
@@ -520,8 +520,8 @@ impl FsCalls {
         }
         // RENAME: both names in the page, source first; the destination's handle and length ride
         // in the second word.
-        let src = activation_set::CURRENT_STAGED.as_bytes();
-        let dst = activation_set::CURRENT.as_bytes();
+        let src = installed_programs::CURRENT_STAGED.as_bytes();
+        let dst = installed_programs::CURRENT.as_bytes();
         // SAFETY: the page is mapped read/write and both names together are a few bytes.
         unsafe {
             core::ptr::copy_nonoverlapping(src.as_ptr(), Self::page(), src.len());

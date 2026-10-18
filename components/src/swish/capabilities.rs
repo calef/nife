@@ -218,17 +218,18 @@ fn nearest_version_set(nav: &Nav) -> Option<&'static str> {
 }
 
 /// **The live generation, if it lists `digest`, and whether the owner vouched for it**, looked up
-/// with the progenitor's own `activation_set::lookup_digest` in [`with_live_table`]'s read.
+/// with the progenitor's own `installed_programs::lookup_digest` in [`with_live_table`]'s read.
 fn live_generation_listing(nav: &Nav, digest: &measured_boot::Digest) -> Option<swish::Vouched> {
-    with_live_table(nav, |text, number| {
-        match activation_set::lookup_digest(text, digest) {
+    with_live_table(
+        nav,
+        |text, number| match installed_programs::lookup_digest(text, digest) {
             Ok(Some(entry)) => Some(swish::Vouched {
                 generation: number,
-                by_owner: entry.package == activation_set::OWNER,
+                by_owner: entry.package == installed_programs::OWNER,
             }),
             _ => None,
-        }
-    })
+        },
+    )
 }
 
 /// **Read the live generation and hand it to `f`**, with its number: `activation/current`, then the
@@ -243,7 +244,7 @@ pub(super) fn with_live_table<R>(nav: &Nav, f: impl FnOnce(&str, u32) -> Option<
         t,
         fs::OPENDIR,
         fs::ROOT,
-        activation_set::DIRECTORY.as_bytes(),
+        installed_programs::DIRECTORY.as_bytes(),
         filesystem_contract::dir::READ,
     );
     if act < 0 {
@@ -252,12 +253,18 @@ pub(super) fn with_live_table<R>(nav: &Nav, f: impl FnOnce(&str, u32) -> Option<
     let act = act as u64;
     let found = (|| {
         let mut line = [0u8; 16];
-        let n = read_named(nav, t, act, activation_set::CURRENT.as_bytes(), &mut line)?;
+        let n = read_named(
+            nav,
+            t,
+            act,
+            installed_programs::CURRENT.as_bytes(),
+            &mut line,
+        )?;
         let number = core::str::from_utf8(&line[..n])
             .ok()
-            .and_then(activation_set::parse_current)?;
+            .and_then(installed_programs::parse_current)?;
         let mut name = [0u8; 10];
-        let generation = activation_set::generation_name(number, &mut name);
+        let generation = installed_programs::generation_name(number, &mut name);
         // SAFETY: this shell is one thread and `GENERATION_TABLE` is used here and nowhere else,
         // so no other reference to it can exist while this one does.
         let table = unsafe { &mut *core::ptr::addr_of_mut!(GENERATION_TABLE) };
@@ -283,7 +290,7 @@ pub(super) fn bare(nav: &Nav, word: &[u8]) -> swish::bare::Bare {
         // saved.
         let set = core::str::from_utf8(word)
             .ok()
-            .and_then(|name| activation_set::lookup(text, name).ok().flatten())
+            .and_then(|name| installed_programs::lookup(text, name).ok().flatten())
             .and_then(|_| nearest_version_set(nav));
         Some(swish::bare::resolve(word, image, Some(text), set))
     })

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # Provisional name, calef has not ruled on it. A PreToolUse hook on Bash (wired in
 # .claude/settings.json) that refuses the shapes of CI polling calef ruled out on 2026-09-26: a lane
-# never polls CI, it ends its turn with `WAITING <run_id> [<run_id>...] on <what>` and lets the
+# never polls CI, it ends its turn with `WAITING [<owner>/<repo>:]<run_id> [...] on <what>` and lets the
 # maintainer's watch list wake it (briefs/session-start.md, briefs/gate-in-ci.md). Those briefs are
 # rung three of AGENTS.md's ladder, a written record; this hook is rung two, the same rule enforced
 # so it fires whether or not the reader remembers the prose.

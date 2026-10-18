@@ -64,7 +64,7 @@ CONTRACTS = (
     'entropy_contract', 'environment_contract', 'filesystem_contract', 'graphics_contract',
     'login_contract', 'socket_contract', 'std_runtime_contract', 'supervision_protocol',
     'hot_swap_contract',
-    'elf', 'measured_boot', 'package_archive', 'activation_set', 'boot_slot', 'nifefs',
+    'elf', 'measured_boot', 'package_archive', 'installed_programs', 'boot_slot', 'nifefs',
     'globally_unique_identifier_partition_table', 'grant_plan', 'component_plan', 'compositor',
     'line_editor', 'manifest_note',
 )
