@@ -20,7 +20,7 @@ calef, 2026-10-18 (UTC), recorded by the maintainer at 22:02Z.
 - **The entry stays 8 bytes** (question 2, layout A): an ordinal and a transport kind, for NVMe as
   for virtio. A holder that needs more asks the server that owns the disk.
 - **The NVMe kind is `TRANSPORT_NON_VOLATILE_MEMORY_EXPRESS = 2`** (question 1, spelling A), by
-  §154's own row for `nvme`. No exception is made for a wire constant.
+  §154's (the acronym test is whether the phrase is spoken) row for `nvme`. No exception is made for a wire constant.
 - **The two virtio kinds say virtio, and `mmio` expands:** `TRANSPORT_MMIO` becomes
   `TRANSPORT_VIRTIO_MEMORY_MAPPED_IO` and `TRANSPORT_PCI` becomes `TRANSPORT_VIRTIO_PCI`. An NVMe
   disk is also a PCI device, so a bare `PCI` beside it would claim NVMe too. Their wire values
@@ -122,4 +122,4 @@ Milestone 421, which is gate `DECISION` for exactly this and nothing else. Its o
 is closed: QEMU's NVMe is attached on every leg of all three runners (`NIFE_NVME`) and the
 surveyor's two clients run there today. The roster is correct as it stands for the two transports
 it names; what it cannot do is name the one device in this tree whose driver is a confined process,
-which is the irony milestone 421's index row records.
+which is the irony milestone 421 (a block roster that can name an NVMe disk) records.
