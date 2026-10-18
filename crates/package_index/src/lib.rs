@@ -565,6 +565,14 @@ fn entry(line: &str) -> Result<Entry<'_>, Option<LocationRefusal<'_>>> {
     if stem.is_empty() || stem.len() > STEM_LEN {
         return Err(None);
     }
+    // **A version dpkg could not order refuses the line** (calef, 2026-10-18 UTC: "Debian dpkg
+    // order"), so `jig update` keeps no copy that `jig list -u` would have to guess about.
+    let version = stem
+        .rsplit_once('-')
+        .and_then(|(rest, _architecture)| rest.rsplit_once('-'))
+        .map(|(_name, version)| version)
+        .ok_or(None)?;
+    version::check(version).map_err(|_| None)?;
     if !listed.is_empty() {
         for location in listed.split(' ') {
             Location::parse(location).map_err(Some)?;
@@ -591,6 +599,227 @@ pub fn accept<'b>(entry: &Entry<'_>, bytes: &'b [u8]) -> Result<Installable<'b>,
     // ASCII by construction: a stem `Index::parse` admitted and a digest's text form.
     let catalog = core::str::from_utf8(&line[..end]).map_err(|_| Refusal::NotCataloged)?;
     installable_as(catalog, entry.stem, bytes)
+}
+
+/// **Which of two package versions is newer: Debian's order, as dpkg computes it.** calef ruled it
+/// on 2026-10-18 (UTC), asked "How should jig order versions?": *"Debian dpkg order"*. It is the
+/// order `jig list -u` reports against (milestone 809 (the package client becomes a program)), and
+/// the one the reserved `upgrade` verb will install by.
+///
+/// A version here is what a stem carries between its name and its architecture, so it is dpkg's
+/// upstream version with neither an epoch (`1:`) nor a revision (`-1`): a stem is split at its
+/// hyphens, and an epoch's colon has no meaning without the rest of dpkg's syntax. [`check`] admits
+/// a version only if dpkg would read it without complaint, and refuses everything dpkg refuses or
+/// warns about: an empty string, a first character that is not a digit, or any character outside
+/// `0-9 A-Z a-z . + ~`. basalt writes these strings and `jig` reads them, so a string one side
+/// could not order is refused where the index is read ([`crate::Index::parse`]), not guessed at.
+///
+/// [`compare`] is dpkg's `verrevcmp` (`lib/dpkg/version.c`): the strings alternate between runs of
+/// non-digits, compared character by character with letters before other symbols and `~` before
+/// everything, even the end of the string, and runs of digits, compared as numbers. So `1.10` is
+/// newer than `1.9`, `1.0~rc1` is older than `1.0`, and `1.0` and `1.00` are the same version.
+///
+/// # EXAMPLES
+///
+/// ```
+/// use core::cmp::Ordering;
+/// use package_index::version::{BadVersion, compare};
+///
+/// assert_eq!(compare("1.10", "1.9"), Ok(Ordering::Greater));
+/// assert_eq!(compare("1.0~rc1", "1.0"), Ok(Ordering::Less));
+/// assert_eq!(compare("2.11", "2.11"), Ok(Ordering::Equal));
+/// assert_eq!(compare("v1.3", "1.3"), Err(BadVersion::NoLeadingDigit));
+/// ```
+///
+/// Name: provisional, minted 2026-10-18 (UTC) by lane `milestone/809-jig-list-u`.
+pub mod version {
+    use core::cmp::Ordering;
+
+    /// Why [`check`] refused a version string.
+    ///
+    /// Name: provisional, minted 2026-10-18 (UTC) by lane `milestone/809-jig-list-u`.
+    #[derive(Clone, Copy, Debug, PartialEq, Eq)]
+    pub enum BadVersion {
+        /// Nothing between the name and the architecture. dpkg: "version string is empty".
+        Empty,
+        /// The first character is not a digit. dpkg: "version number does not start with digit".
+        NoLeadingDigit,
+        /// A character outside `0-9 A-Z a-z . + ~`. dpkg: "invalid character in version number".
+        BadCharacter,
+    }
+
+    /// **Whether `version` is one dpkg reads without complaint**, as an upstream version with no epoch
+    /// and no revision. See the module's documentation for the rule.
+    ///
+    /// Name: provisional, minted 2026-10-18 (UTC) by lane `milestone/809-jig-list-u`.
+    pub fn check(version: &str) -> Result<(), BadVersion> {
+        let bytes = version.as_bytes();
+        match bytes.first() {
+            None => Err(BadVersion::Empty),
+            Some(b) if !b.is_ascii_digit() => Err(BadVersion::NoLeadingDigit),
+            Some(_)
+                if bytes
+                    .iter()
+                    .all(|&b| b.is_ascii_alphanumeric() || b"+.~".contains(&b)) =>
+            {
+                Ok(())
+            }
+            Some(_) => Err(BadVersion::BadCharacter),
+        }
+    }
+
+    /// **`a` against `b`, in Debian's order**, or why one of them has no place in it. `Greater` means
+    /// `a` is the newer.
+    ///
+    /// Name: provisional, minted 2026-10-18 (UTC) by lane `milestone/809-jig-list-u`.
+    pub fn compare(a: &str, b: &str) -> Result<Ordering, BadVersion> {
+        check(a)?;
+        check(b)?;
+        Ok(verrevcmp(a.as_bytes(), b.as_bytes()))
+    }
+
+    /// **The newest of `versions`**, the first of any that are equal, or `None` for none. Every one is
+    /// checked, so the first that [`check`] refuses is handed back with why, even when it would not
+    /// have been the newest.
+    ///
+    /// Name: provisional, minted 2026-10-18 (UTC) by lane `milestone/809-jig-list-u`.
+    pub fn newest<'a, I>(versions: I) -> Result<Option<&'a str>, (&'a str, BadVersion)>
+    where
+        I: IntoIterator<Item = &'a str>,
+    {
+        let mut best: Option<&'a str> = None;
+        for v in versions {
+            check(v).map_err(|why| (v, why))?;
+            if best.is_none_or(|b| verrevcmp(v.as_bytes(), b.as_bytes()) == Ordering::Greater) {
+                best = Some(v);
+            }
+        }
+        Ok(best)
+    }
+
+    /// dpkg's weight for one character of a non-digit run, with `None` for the end of the string: the
+    /// end and a digit weigh nothing, letters weigh their own byte, `~` less than nothing, and anything
+    /// else after every letter.
+    fn weight(c: Option<u8>) -> i32 {
+        match c {
+            None => 0,
+            Some(c) if c.is_ascii_digit() => 0,
+            Some(c) if c.is_ascii_alphabetic() => i32::from(c),
+            Some(b'~') => -1,
+            Some(c) => i32::from(c) + 256,
+        }
+    }
+
+    /// dpkg's `verrevcmp`, over two strings [`check`] admitted.
+    fn verrevcmp(mut a: &[u8], mut b: &[u8]) -> Ordering {
+        while !a.is_empty() || !b.is_empty() {
+            // A run of non-digits, character by character. One side may end first: its end weighs
+            // nothing, so `~` still sorts before it and a letter after it.
+            while a.first().is_some_and(|c| !c.is_ascii_digit())
+                || b.first().is_some_and(|c| !c.is_ascii_digit())
+            {
+                let (wa, wb) = (weight(a.first().copied()), weight(b.first().copied()));
+                if wa != wb {
+                    return wa.cmp(&wb);
+                }
+                a = a.get(1..).unwrap_or_default();
+                b = b.get(1..).unwrap_or_default();
+            }
+            let (digits_a, rest_a) = digit_run(a);
+            let (digits_b, rest_b) = digit_run(b);
+            let by_number = digits_a
+                .len()
+                .cmp(&digits_b.len())
+                .then_with(|| digits_a.cmp(digits_b));
+            if by_number != Ordering::Equal {
+                return by_number;
+            }
+            (a, b) = (rest_a, rest_b);
+        }
+        Ordering::Equal
+    }
+
+    /// The run of digits `s` starts with, its leading zeros dropped, and what follows it. Two runs
+    /// without leading zeros compare as numbers by length first, then bytewise.
+    fn digit_run(s: &[u8]) -> (&[u8], &[u8]) {
+        let end = s
+            .iter()
+            .position(|c| !c.is_ascii_digit())
+            .unwrap_or(s.len());
+        let (run, rest) = s.split_at(end);
+        let zeros = run.iter().take_while(|&&c| c == b'0').count();
+        (&run[zeros..], rest)
+    }
+
+    #[cfg(test)]
+    mod tests {
+        use Ordering::{Equal, Greater, Less};
+
+        use super::*;
+
+        /// **Pairs whose order dpkg states**, each checked both ways round. Read from
+        /// `dpkg --compare-versions`' documented behavior and its own test suite's cases
+        /// (`lib/dpkg/t/t-version.c`, the `verrevcmp` block), with the epoch and revision cases left out
+        /// because a stem carries neither.
+        #[test]
+        fn dpkg_orders_these_pairs() {
+            let pairs = [
+                ("1.10", "1.9", Greater),
+                ("1.0", "1.00", Equal),
+                ("1.0", "1.0.0", Less),
+                ("1.0~rc1", "1.0", Less),
+                ("1.0~~", "1.0~", Less),
+                ("1.0~", "1.0", Less),
+                ("1.0a", "1.0", Greater),
+                ("1.0a", "1.0+", Less),
+                ("1.0+", "1.0.", Less),
+                ("1.0.", "1.0", Greater),
+                ("2.11", "2.9", Greater),
+                ("14.1.1", "14.1.0", Greater),
+                ("3.50.4", "3.50.10", Less),
+                ("0.1.0", "0.3.0", Less),
+                ("1.3", "1.3", Equal),
+                ("007", "7", Equal),
+                ("1a", "1b", Less),
+                ("1Z", "1a", Less),
+            ];
+            for (a, b, order) in pairs {
+                assert_eq!(compare(a, b), Ok(order), "{a} against {b}");
+                assert_eq!(compare(b, a), Ok(order.reverse()), "{b} against {a}");
+            }
+        }
+
+        /// **The newest is found by number, not by text, the first of equals wins, and one version the
+        /// order cannot read refuses the set** even when it is not the newest.
+        #[test]
+        fn newest_orders_by_number_and_refuses_what_it_cannot_read() {
+            assert_eq!(newest(["1.9", "1.10", "1.2"]), Ok(Some("1.10")));
+            assert_eq!(newest(["1.0", "1.00"]), Ok(Some("1.0")));
+            assert_eq!(newest(["1.00", "1.0"]), Ok(Some("1.00")));
+            assert_eq!(newest([]), Ok(None));
+            assert_eq!(
+                newest(["2.0", "v1.0"]),
+                Err(("v1.0", BadVersion::NoLeadingDigit))
+            );
+        }
+
+        /// **What dpkg would not read is refused, not ordered.** A version that names an epoch or a
+        /// revision, which a stem cannot carry, is a bad character here.
+        #[test]
+        fn what_dpkg_rejects_is_refused() {
+            assert_eq!(check(""), Err(BadVersion::Empty));
+            assert_eq!(check("v1.3"), Err(BadVersion::NoLeadingDigit));
+            assert_eq!(check("~1"), Err(BadVersion::NoLeadingDigit));
+            for bad in ["1.3 beta", "1:2.0", "1.0-1", "1_0", "1.0/2", "1.0é"] {
+                assert_eq!(check(bad), Err(BadVersion::BadCharacter), "{bad}");
+            }
+            assert_eq!(compare("1.0", "v1"), Err(BadVersion::NoLeadingDigit));
+            assert_eq!(compare("x", "1.0"), Err(BadVersion::NoLeadingDigit));
+            for good in ["0", "1.3", "2.11", "1.0~rc1+dfsg", "9.0.0.0A"] {
+                assert_eq!(check(good), Ok(()), "{good}");
+            }
+        }
+    }
 }
 
 /// **The boot test's names, in one place for the programs that must agree on them**:
@@ -1446,6 +1675,24 @@ mod tests {
             let refused = Index::parse(&text).unwrap_err();
             assert_eq!((refused.number, refused.line), (2, bad));
         }
+    }
+
+    /// **A version dpkg would not read refuses the index**, wherever its line is and whatever
+    /// architecture it is for, because basalt and `jig` must order the same strings the same way.
+    #[test]
+    fn a_version_dpkg_would_not_read_refuses_the_index() {
+        let good = line("greeting-1.3-aarch64", b"a", "");
+        for stem in [
+            "greeting-v1.3-riscv64",
+            "greeting-1.3_1-aarch64",
+            "greeting-aarch64",
+        ] {
+            let bad = line(stem, b"b", "");
+            let text = format!("{good}{bad}");
+            let refused = Index::parse(&text).unwrap_err();
+            assert_eq!((refused.number, refused.location), (2, None), "{stem}");
+        }
+        assert!(Index::parse(&good).is_ok());
     }
 
     #[test]
