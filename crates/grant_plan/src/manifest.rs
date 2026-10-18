@@ -768,7 +768,7 @@ pub struct Manifest {
 /// **How much of the machine's index store a program holds** (milestone 801 (packages over the
 /// internet)); [`Manifest::indexes`] says what the store is. `jig update` writes the copy, and
 /// `jig list` and `jig install <name>` only read it, so a verb chooses between the two
-/// ([`crate::verbs::Grants::INDEXES_WRITE`]).
+/// ([`crate::verbs::ManifestAuthorities::INDEXES_WRITE`]).
 ///
 /// Name: provisional 2026-10-12 (UTC), lane `milestone/801-jig-installs-from-the-index`, as are
 /// the variants.
