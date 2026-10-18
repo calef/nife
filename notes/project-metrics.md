@@ -139,8 +139,8 @@ a status existing at all, counted as having none rather than as `DECIDED`.
 
 What each name's own provenance block says, for every name `script/names` tracks: crates,
 programs, packages, scripts, every module (each `.rs` file under a `src/` directory), every
-documentation directory and document, and every `pub` item (functions, methods, constants, statics,
-types and traits). A name a rule covers counts as ratified. `Ruled, rename owed` is a provisional
+documentation directory and document, and every `pub` item. An item is a function, method,
+constant, static, type or trait. A name a rule covers counts as ratified. `Ruled, rename owed` is a provisional
 name calef has ruled whose rename has not landed. `No provenance block` is named things with no
 readable block. Every kind is counted from the tree, so writing a block moves a name out of that
 band without changing the bar's height. The current week's total is checked against
