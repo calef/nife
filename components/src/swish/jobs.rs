@@ -1,7 +1,9 @@
 //! **Interruptible jobs**, the shell's side of the two-tier `^C` path (DECISIONS §24
 //! (interrupting the foreground process)): `spawn_interruptible`, `watch`, `forcible` and `reclaim`.
-//! And **background jobs** (milestone 48 (job control), phase one): a trailing `&`, `jobs`,
-//! `wait`, `kill` and `fg`, all acting on the capabilities this shell holds for a supervised job.
+//! And **job control** (milestone 48 (job control)): a trailing `&`, `jobs`, `wait`, `kill`, `fg`,
+//! `bg` and `^Z`, all acting on the capabilities this shell holds for a supervised job, its TCB
+//! included (DECISIONS §309 (a supervised job's `ThreadControlBlock` goes to the shell that asked
+//! for it)).
 //!
 //! # BUGS
 //!
