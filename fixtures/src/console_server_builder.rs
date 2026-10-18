@@ -1,4 +1,4 @@
-//! **Builds the real console server and then plays its client** (milestone 19d.2b).
+//! **Builds the real console server and then plays its client** (milestone 19d.2b (run a real workload)).
 //! `kernel::user::spawn_elf_child_builder` enters this program holding a building budget (slot 0),
 //! a report endpoint (slot 1) and the console UART's registers as a device capability (slot 2). It
 //! reads `console` out of the archive by name and builds it with the four things a console server
@@ -77,7 +77,7 @@ pub extern "C" fn _start(_arg0: u64, initial_ramdisk_len: u64, _arg2: u64) -> ! 
         maps: &maps,
         stack_pages: system_initializer::CHILD_STACK_PAGES,
         // `Retention::Nothing`: nothing here ever stops the server, and this program exits once
-        // it has its answer (DECISIONS §142).
+        // it has its answer (DECISIONS §142 (what a spawner retains over a child after `START`)).
         ..ChildEndowment::new(Retention::Nothing)
     };
     let Ok(child) = build_child(MEMORY_REGION, MEMORY_REGION, &elf, &endowment) else {

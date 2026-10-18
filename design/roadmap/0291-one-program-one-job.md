@@ -186,7 +186,7 @@ See the proposal below.
 
 ## Follow-on
 
-- **Milestone 405.** The nine roles this milestone left in `hello`. Numbered on 2026-09-19 by
+- **Milestone 405 (the nine `INIT` roles).** The nine roles this milestone left in `hello`. Numbered on 2026-09-19 by
   milestone 433's drain of the pile. `spawn_progenitor` (`spawn_hello` since milestone
   166) takes the archive entry as a parameter (or a role-to-entry table), the three children
   become their own programs, and the six parents name their child's entry instead of re-entering

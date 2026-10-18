@@ -1,5 +1,5 @@
 //! **Reads a device's identity registers through a mapping it was handed, and reports them**
-//! (milestone 19d.2). `device_child_builder` maps the PL011 UART's registers, device-typed, at
+//! (milestone 19d.2 (run a real workload)). `device_child_builder` maps the PL011 UART's registers, device-typed, at
 //! [`UART_VA`] before starting this program, and grants it a report endpoint in slot 0. The four
 //! PrimeCell identification bytes of every real PL011 read `0xB105F00D`, so sending that word
 //! proves the mapping is a real view of the UART rather than normal memory or the wrong page.
@@ -7,8 +7,8 @@
 //! Name: ratified 2026-10-18 (calef), as the child `DEVICE_CHILD_BUILDER` builds.
 
 #![no_std]
-// Program entry points, not the crates/ library surface milestone 68's ratchet tracks
-// (DECISIONS §107): each `[[bin]]` is its own crate root with one `_start`, and 58 of them
+// Program entry points, not the crates/ library surface milestone 68 (code-quality gates)'s ratchet tracks
+// (DECISIONS §107 (`missing_docs` moves to the workspace lints)): each `[[bin]]` is its own crate root with one `_start`, and 58 of them
 // documenting an OS-facing ABI entry point is not what the lint is for.
 #![allow(missing_docs)]
 #![no_main]

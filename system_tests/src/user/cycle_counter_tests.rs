@@ -184,7 +184,7 @@ fn el0_cycle_counter_is_known_to_run() -> bool {
     }
 }
 
-/// **Milestone 19e: a userspace builder runs a real compute workload and it comes out right.** The
+/// **Milestone 19e (run a real workload): a userspace builder runs a real compute workload and it comes out right.** The
 /// `least_authority_demo`'s `n*n` proved the mechanism; this proves a *substantial* program.
 /// `coremark_builder` builds the `"coremark"` binary (a CoreMark-derived run: list sort, matrix
 /// multiply, state machine, folded into a CRC), starts it, and the workload SENDs the run's checksum home. Receiving `coremark::PINNED_CRC_64`

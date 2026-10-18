@@ -1,4 +1,4 @@
-//! **Builds a driver out of an ELF and delegates it an interrupt** (milestone 19d.2b), the third
+//! **Builds a driver out of an ELF and delegates it an interrupt** (milestone 19d.2b (run a real workload)), the third
 //! delegatable device authority after endpoints and device memory.
 //! `kernel::user::spawn_elf_child_builder` enters this program holding a building budget (slot 0),
 //! a report endpoint (slot 1) and an interrupt capability for the test interrupt the kernel routed
@@ -17,8 +17,8 @@
 //! Name: ratified 2026-10-18 (calef), as `INTERRUPT_CHILD_BUILDER`, written here in program form.
 
 #![no_std]
-// Program entry points, not the crates/ library surface milestone 68's ratchet tracks
-// (DECISIONS §107): each `[[bin]]` is its own crate root with one `_start`, and 58 of them
+// Program entry points, not the crates/ library surface milestone 68 (code-quality gates)'s ratchet tracks
+// (DECISIONS §107 (`missing_docs` moves to the workspace lints)): each `[[bin]]` is its own crate root with one `_start`, and 58 of them
 // documenting an OS-facing ABI entry point is not what the lint is for.
 #![allow(missing_docs)]
 #![no_main]
@@ -52,7 +52,7 @@ pub extern "C" fn _start(_arg0: u64, initial_ramdisk_len: u64, _arg2: u64) -> ! 
         caps: &caps,
         stack_pages: system_initializer::CHILD_STACK_PAGES,
         // `Retention::Nothing`: this program exits a few lines after `START`, so keeping the child's
-        // thread control block capability would be keeping it for nobody (DECISIONS §142).
+        // thread control block capability would be keeping it for nobody (DECISIONS §142 (what a spawner retains over a child after `START`)).
         ..ChildEndowment::new(Retention::Nothing)
     };
     let Ok(child) = build_child(MEMORY_REGION, MEMORY_REGION, &elf, &endowment) else {

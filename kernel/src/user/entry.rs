@@ -76,8 +76,8 @@ pub const DELEGATED_TEST_INTERRUPT: u32 = 10;
 #[cfg(target_arch = "x86_64")]
 pub const DELEGATED_TEST_INTERRUPT: u32 = crate::arch::irq::SELF_TEST_VECTOR as u32;
 
-/// **Spawn one of milestone 19d's and 19e's ELF child builders**, the archive entry `entry`
-/// (milestone 19d.2c; the boot half of this function became [`boot_progenitor`] at milestone 166).
+/// **Spawn one of milestone 19d (run a real workload)'s and 19e's ELF child builders**, the archive entry `entry`
+/// (milestone 19d.2c; the boot half of this function became [`boot_progenitor`] at milestone 166 (one boot loader, reached two inconsistent ways)).
 ///
 /// A builder is a userspace parent: it reads its child out of the archive by name, builds it out of
 /// an ELF it parsed and reports. There are six (`report_child_builder`, `device_child_builder`,
@@ -136,7 +136,7 @@ pub fn spawn_elf_child_builder(
         crate::arch::irq::enable(uart_rx_intid);
     }
 
-    // Read and MEASURE the builder here, before the thread is created (milestone 22 phase B.1): the
+    // Read and MEASURE the builder here, before the thread is created (milestone 22 (trusted init) phase B.1): the
     // check has to be the thing that decides whether a thread is created at all, not something the
     // new thread does to itself. `trust::require` halts on a mismatch, so past this line the bytes
     // are the ones this kernel image was built against. The program-measurement table (milestone

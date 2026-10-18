@@ -19,7 +19,7 @@ use crate::host::workspace_root;
 /// architecture, and this table was where that showed.
 ///
 /// **The six ELF child builders are on every list too, and they are not boot programs in the
-/// ordinary sense.** They are milestone 19d's and 19e's userspace parents, and
+/// ordinary sense.** They are milestone 19d (run a real workload)'s and 19e's userspace parents, and
 /// `spawn_elf_child_builder` enters each directly; `trust::require` refuses any entry the trust root
 /// does not name. A kernel that could enter a program it never
 /// measured would be the hole measured boot exists to close, so the entry is here rather than the
