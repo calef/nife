@@ -65,10 +65,10 @@ line."
 
 ## What moved, and what stays the progenitor's
 
-The builtin's two reasons were checked first. The progenitor alone holds what installing needs: a
-reason for the installer to stay there, never for the client to live in the shell. And a program
-could not be told which package: stale since milestone 205 (how a foreign program is told what to
-do) built `ArgSpec::Words` on 2026-09-27.
+The builtin's two reasons were checked first. The progenitor alone holds what installing needs,
+which keeps the installer there, not the client in the shell. And a program could not be told which
+package: stale since milestone 205 (how a foreign program is told what to do) built
+`ArgSpec::Words` on 2026-09-27.
 
 So the builtin left the shell and the fetch left the progenitor, in one change, so the owner never
 had two clients for one store. Under §195 (a reviewed recipe vouches for a package) the digest
@@ -102,9 +102,9 @@ calef, 2026-10-06 (UTC): *"One program."* That refuses V3. V1 against V2 is deta
 this block keeps V2.
 
 calef's principle, from §226 (`pidwait` takes tids): a program does one thing. Milestone 281
-(`watch` holds exactly what `ps` holds) turned that into a test a capability system can measure. Two programs are two
-programs when they hold different authority. By the table above, these verbs do. `list` needs one
-directory, `remove` needs only the installer, and `update` needs the network and a write.
+(`watch` holds exactly what `ps` holds) made that measurable: two programs are two programs when
+they hold different authority. These verbs do. `list` needs one directory, `remove` only the
+installer, and `update` the network and a write.
 
 | Option | What it is | Verdict |
 |---|---|---|
@@ -128,8 +128,7 @@ the image's catalog, whoever writes the index copy decides which digests the pro
 | I3. A signature over the index | The progenitor verifies the copy against a key in the image | A long-lived key, which §195 clause 4 deferred and named irreversible |
 
 I2 widens nothing, since the owner may already vouch for any bytes (§195 clause 3, §221). Until
-I3, `jig` is inside the trusted base for installs; I3 waits on a key-custody ruling. The image's
-own catalog is untouched.
+I3, which waits on a key-custody ruling, `jig` is inside the trusted base for installs.
 
 ## Many indexes per machine: ruled
 
@@ -150,10 +149,13 @@ To settle before `add-repository` is built (item 1 is ruled):
    authority list as a package and a capability](https://github.com/nifeos/nife/pull/2277)
    (proposed, unmerged), may later change what added indexes are checked against; this ruling does not
    decide it.
-2. Two indexes may vouch for different bytes under one name. The tree's analogous case is milestone
-   614: a bare name the catalog vouches for at several versions is refused as `Ambiguous`, and
-   `name@version` picks one. The same refusal, with an index-qualified name to pick, is one answer.
-   First-index-wins is another, and it is the shape behind dependency-confusion attacks.
+2. The same name in two indexes: ruled 2026-10-17 (UTC). calef chose *"A"*: a bare name offered by
+   two indexes is refused as `Ambiguous`, as milestone 614 does for versions, and an
+   index-qualified name picks one. First-index-wins is refused as the dependency-confusion shape.
+   The qualifier is `jig install --from <index> <name>`, with the index's URL exactly as added. The
+   spelling is provisional (`Name: provisional` in
+   [design/naming/README.md](../naming/README.md), tracked by `script/names --unratified`). It is
+   a flag because §219 reads a word containing `/` as a file, and `@` already means a version.
 3. The activation set records `OWNER` for a vouch. It would need to record which source vouched,
    or a rollback cannot say what it is undoing.
 4. Whether a second index may carry §250's "moved to" field, and whether the client follows it.
@@ -198,12 +200,11 @@ meets a program, not a builtin.
    recomputed after download. A mismatch refuses (calef, 2026-10-07, "Yes"). The needs
    come from [#1797's fork 1 ruling](https://github.com/nifeos/nife/pull/1797#issuecomment-6029565630):
    written only in program manifests, computed by the build into metadata and index. These checks
-   keep resolution correct and records honest; they are not the security boundary. Enforcement
-   stays at spawn, where a program gets only what its manifest names and the grant plan approves
-   (§208).
+   keep resolution correct and records honest; they are not the security boundary, which stays at
+   spawn, where a program gets only what its manifest names and the grant plan approves (§208).
 
-Items 1, 2, 3 and 5 wait on nothing.
-Every item is proved on aarch64, riscv64 and x86_64 by the same gate, per rule 5.
+Items 1, 2, 3 and 5 wait on nothing. Every item is proved on aarch64, riscv64 and x86_64 by the
+same gate (rule 5).
 
 Reuse: all inside the tree (`package_archive`, `http_response`, `socket_protocol`'s fixture peer,
 `activation_set`, `spawnproto`'s activation request, swish's frame sender, milestone 205's argv and
