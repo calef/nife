@@ -113,9 +113,9 @@ fn of_kind(msgs: &[[u64; 5]; EXPECTED_REPORTS], kind: u64) -> impl Iterator<Item
 /// It is reported from inside the process on purpose: what matters is what the *holder* can do,
 /// and only the holder can ask.
 ///
-/// Falsification: replayable `system_tests/falsifications/user.authority_tests.init_drops_its_construction_authority_and_cannot_build_again.patch`
+/// Falsification: replayable `system_tests/falsifications/user.authority_tests.the_root_supervisor_drops_its_construction_authority_and_cannot_build_again.patch`
 #[test_case]
-fn init_drops_its_construction_authority_and_cannot_build_again() {
+fn the_root_supervisor_drops_its_construction_authority_and_cannot_build_again() {
     let msgs = run_tree();
     let dropped = of_kind(&msgs, REPORT_INIT_DROPPED)
         .next()
@@ -155,7 +155,7 @@ fn init_drops_its_construction_authority_and_cannot_build_again() {
 /// Dropping the label fails this in `run_tree` (stage 23), not at an assertion below, so the kernel
 /// claim's falsification lives in `supervision_tests::a_supervisor_tells_two_dead_children_apart_by_label`.
 #[test_case]
-fn a_dead_sub_server_is_restarted_by_its_supervisor_not_by_init() {
+fn a_dead_sub_server_is_restarted_by_its_supervisor_not_by_the_root() {
     let msgs = run_tree();
 
     let attempts = |n: u64| {

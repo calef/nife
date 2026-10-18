@@ -192,8 +192,10 @@ fn el0_cycle_counter_is_known_to_run() -> bool {
 /// `coremark` test also pins) proves a real workload ran correctly against the native ABI, and that
 /// the same computation gives the same answer on the kernel's target as on the host, which is the
 /// property a cross-OS comparison will rest on.
+///
+/// Name: provisional (milestone 405 (the nine `INIT` roles)), named for the builder it drives.
 #[test_case]
-fn init_runs_the_coremark_workload_and_it_checks_out() {
+fn the_coremark_builder_runs_the_workload_and_it_checks_out() {
     let report_region =
         crate::memory_region::create(1).expect("no region for the builder's report");
     let report =

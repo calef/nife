@@ -79,7 +79,7 @@ init's spawn service (the shell's `run <n>`) is the payoff. The shell SENDs `n`,
 least_authority_demo endowed with a result endpoint and `START`s it with `n` in `x1`. The
 least_authority_demo squares it and SENDs the answer straight to the endpoint the shell is waiting
 on. init only builds the pipe; it
-never sees the number. The kernel test `init_builds_the_demo_and_passes_it_an_argument` proves the
+never sees the number. The kernel test `the_least_authority_demo_builder_passes_its_demo_an_argument` proves the
 argument survives the crossing: the least_authority_demo reports `n*n`, not `n` and not garbage.
 
 ## Two hardware details a userspace loader must respect
@@ -167,8 +167,8 @@ feature was `shell`) deleted that feature, so read `initboot` in the record as t
 
 Each split was proved by breaking the old call sites and fixing them, and by a test that still
 passes: `a_spawned_least_authority_demo_computes_and_reports`,
-`init_builds_the_demo_and_passes_it_an_argument` and
-`userspace_init_brings_up_the_console_server`. The finished stack was proved by piping keystrokes
+`the_least_authority_demo_builder_passes_its_demo_an_argument` and
+`the_console_server_builder_brings_up_a_console_that_prints_for_it`. The finished stack was proved by piping keystrokes
 into QEMU's serial: `run 9` came back as `9*9 = 81`, from four separate programs plus init.
 
 One wrinkle surfaced and is still a limitation: a line burst-piped before the prompt appears loses

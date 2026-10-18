@@ -143,9 +143,11 @@ fn a_process_spends_memory_region_and_the_kernel_never_allocates() {
 /// `riscv_virtio_tests::a_userspace_driver_reads_a_file_from_a_virtio_disk`, which asserts
 /// `ROUTED_IRQS` rises while a userspace driver waits on its own Irq cap, and by
 /// `sched::tests::an_interrupt_becomes_a_message`. See notes/interrupts.md.
+///
+/// Name: provisional (milestone 405 (the nine `INIT` roles)), named for the builder it drives.
 #[cfg(target_arch = "aarch64")]
 #[test_case]
-fn userspace_init_delegates_an_interrupt_to_a_child() {
+fn the_interrupt_child_builder_delegates_an_interrupt_to_its_child() {
     let report_region =
         crate::memory_region::create(1).expect("no region for the builder's report");
     let report =
@@ -178,8 +180,10 @@ fn userspace_init_delegates_an_interrupt_to_a_child() {
 /// builder reports that length. Receiving the exact line length proves a userspace-built console
 /// works end to end: a driver the builder constructed, on a channel it created, driving hardware it
 /// delegated. This is the shape the real boot path (19d.2c) uses.
+///
+/// Name: provisional (milestone 405), named for the builder it drives.
 #[test_case]
-fn userspace_init_brings_up_the_console_server() {
+fn the_console_server_builder_brings_up_a_console_that_prints_for_it() {
     if crate::user::machine_has_no_device_page_for_the_console() {
         crate::testing::skip!(crate::user::NO_UART_PAGE);
     }
@@ -221,9 +225,11 @@ fn userspace_init_brings_up_the_console_server() {
 /// name. Device delegation to a userspace driver *is* proved on RISC-V, by
 /// `riscv_virtio_tests::a_userspace_driver_reads_a_file_from_a_virtio_disk`, which is a stronger
 /// version of the same claim (device MMIO, a DMA region, and an interrupt, all delegated).
+///
+/// Name: provisional (milestone 405), named for the builder it drives.
 #[cfg(target_arch = "aarch64")]
 #[test_case]
-fn userspace_init_builds_a_driver_that_reads_real_hardware() {
+fn the_device_child_builder_builds_a_driver_that_reads_real_hardware() {
     const PL011_PRIMECELL_ID: u64 = 0xB105_F00D;
 
     let report_region =
@@ -255,8 +261,10 @@ fn userspace_init_builds_a_driver_that_reads_real_hardware() {
 /// start. The child runs code the kernel never parsed and reports the agreed word. Receiving it is
 /// the whole thesis of milestone 19 working end to end: a verified kernel that runs a workload it
 /// did not load.
+///
+/// Name: provisional (milestone 405), named for the builder it drives.
 #[test_case]
-fn userspace_init_parses_an_elf_and_builds_a_running_child() {
+fn the_report_child_builder_parses_an_elf_and_builds_a_running_child() {
     let report_region =
         crate::memory_region::create(1).expect("no region for the builder's report");
     let report =
@@ -285,8 +293,10 @@ fn userspace_init_parses_an_elf_and_builds_a_running_child() {
 /// `least_authority_demo` squares it and reports. Receiving `n*n` (not `n`, not garbage) proves the
 /// argument crossed `START` into a fresh EL0 thread's registers intact. This is the mechanism a
 /// real spawn service runs on: a workload parameterized by data, not just identity.
+///
+/// Name: provisional (milestone 405), named for the builder it drives.
 #[test_case]
-fn init_builds_the_demo_and_passes_it_an_argument() {
+fn the_least_authority_demo_builder_passes_its_demo_an_argument() {
     let input = capability_witness_contract::LEAST_AUTHORITY_DEMO_INPUT;
 
     let report_region =
