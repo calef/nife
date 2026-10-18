@@ -69,7 +69,7 @@ pub(super) fn spawn_std(
     let mut maps_used = 1 + STD_FS_STACK_PAGES as usize;
     if let Some(phys) = args {
         maps[maps_used] = Mapping {
-            va: std_runtime_protocol::ARGS_PAGE,
+            va: std_runtime_contract::ARGS_PAGE,
             phys,
             flags: Flags::user_rodata(),
         };
@@ -80,7 +80,7 @@ pub(super) fn spawn_std(
     // mapping is what says so, as `std_service::spawn_std` grants it.
     if let Some(phys) = clock_page {
         maps[maps_used] = Mapping {
-            va: std_runtime_protocol::CLOCK_PAGE,
+            va: std_runtime_contract::CLOCK_PAGE,
             phys,
             flags: Flags::user_rodata(),
         };
@@ -100,8 +100,8 @@ pub(super) fn spawn_std(
         crate::sched::grant_at(FS_DIR_SLOT, dir).expect("the std fs slot was already occupied");
         // The argument page and the clock page, each a READ page at its named slot when given.
         let pages = [
-            (std_runtime_protocol::ARGS_SLOT, args),
-            (std_runtime_protocol::CLOCK_SLOT, clock_page),
+            (std_runtime_contract::ARGS_SLOT, args),
+            (std_runtime_contract::CLOCK_SLOT, clock_page),
         ];
         for (slot, phys) in pages {
             if let Some(phys) = phys {

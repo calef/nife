@@ -50,8 +50,8 @@
 #![allow(missing_docs)]
 #![no_main]
 
-use byte_sink_protocol::fixture;
-use filesystem_protocol::fs;
+use byte_sink_contract::fixture;
+use filesystem_contract::fs;
 use user_mode_runtime::mapped_window::MappedWindow;
 use user_mode_runtime::{call, exit, send};
 
@@ -66,7 +66,7 @@ const REPORT: u64 = 2;
 /// The page shared with the FS server. Matches `fs_service`'s `FILE_VA_CLIENT`.
 const PAGE_VA: u64 = address_space_map::pair_page(0x0000_0000_0060_0000);
 /// Its size, the FS contract's transfer unit.
-const PAGE: usize = filesystem_protocol::PAGE;
+const PAGE: usize = filesystem_contract::PAGE;
 
 // SAFETY: the wiring maps one page read/write at PAGE_VA before this program runs (milestone 139
 // round 2; see `user_mode_runtime::mapped_window`, which is what collapsed the hand-rolled read_volatile/
@@ -123,19 +123,19 @@ pub extern "C" fn _start(_a0: u64, _a1: u64, _a2: u64) -> ! {
         // and it is the whole of what a sink adapter is.
         let mut i = 0usize;
         while i < got as usize {
-            let mut chunk = [0u8; byte_sink_protocol::INLINE_MAX];
-            let n = (got as usize - i).min(byte_sink_protocol::INLINE_MAX);
+            let mut chunk = [0u8; byte_sink_contract::INLINE_MAX];
+            let n = (got as usize - i).min(byte_sink_contract::INLINE_MAX);
             for (k, b) in chunk[..n].iter_mut().enumerate() {
                 *b = get(i + k);
             }
-            let (w0, w1, w2, _) = byte_sink_protocol::pack(&chunk[..n]);
+            let (w0, w1, w2, _) = byte_sink_contract::pack(&chunk[..n]);
             send(SINK, w0, w1, w2);
             i += n;
         }
         off += got as u64;
     }
 
-    send(SINK, byte_sink_protocol::eof(), 0, 0);
+    send(SINK, byte_sink_contract::eof(), 0, 0);
     let _ = fs_call(fs::req(fs::CLOSE, handle, 0), 0);
     send(REPORT, fixture::DONE, size, 0);
     exit();

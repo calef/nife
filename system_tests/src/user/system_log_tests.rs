@@ -8,8 +8,8 @@
 //! copy of the intake endpoint and a report endpoint, so the badge reaches the service through the
 //! syscall path every writer will use.
 
-use byte_sink_protocol::fixture;
-use system_log_protocol::{control, read};
+use byte_sink_contract::fixture;
+use system_log_contract::{control, read};
 
 use super::*;
 use crate::cap::{Rights, notification_cap, rendezvous_cap, rendezvous_cap_badged};
@@ -255,7 +255,7 @@ fn run_the_writers(writer: &'static [u8], intake: RendezvousId, report: Rendezvo
         let [class, total, ..] = crate::sched::ipc_receive(report);
         assert_eq!(
             class,
-            fixture::code(byte_sink_protocol::Sent::Ok),
+            fixture::code(byte_sink_contract::Sent::Ok),
             "a writer's log sink refused it"
         );
         assert_eq!(total as usize, fixture::TRANSCRIPT.len());
@@ -284,10 +284,10 @@ fn badge_of_every_message(ep: RendezvousId) -> u64 {
             "the badge changed between messages"
         );
         seen = Some(m[3]);
-        if m[0] == byte_sink_protocol::eof() {
+        if m[0] == byte_sink_contract::eof() {
             break;
         }
-        bytes += byte_sink_protocol::len(m[0]);
+        bytes += byte_sink_contract::len(m[0]);
     }
     assert_eq!(bytes, fixture::TRANSCRIPT.len());
     seen.unwrap()
@@ -312,7 +312,7 @@ fn a_plain_send_arrives_with_its_capabilitys_badge_on_receive_and_receive_cap() 
     spawn_writer(writer, ep, 0x5a5a, report);
     assert_eq!(badge_of_every_message(ep), 0x5a5a);
     let [class, ..] = crate::sched::ipc_receive(report);
-    assert_eq!(class, fixture::code(byte_sink_protocol::Sent::Ok));
+    assert_eq!(class, fixture::code(byte_sink_contract::Sent::Ok));
 
     crate::sched::spawn(move || {
         run(
@@ -332,7 +332,7 @@ fn a_plain_send_arrives_with_its_capabilitys_badge_on_receive_and_receive_cap() 
     .expect("could not spawn the unbadged writer");
     assert_eq!(badge_of_every_message(ep), 0);
     let [class, ..] = crate::sched::ipc_receive(report);
-    assert_eq!(class, fixture::code(byte_sink_protocol::Sent::Ok));
+    assert_eq!(class, fixture::code(byte_sink_contract::Sent::Ok));
 
     assert!(
         wait_for(|| crate::sched::reclaim_region(region).is_ok()),
@@ -352,7 +352,7 @@ fn spin_for(nanos: u64) {
 
 /// The flags record `seq` carries in the kernel's ring.
 fn ring_flags(seq: u64) -> u8 {
-    let mut text = [0u8; system_log_protocol::record::TEXT_MAX];
+    let mut text = [0u8; system_log_contract::record::TEXT_MAX];
     crate::kernel_log::test_read(seq, &mut text)
         .1
         .expect("the record left the ring")
@@ -369,15 +369,15 @@ fn ring_flags(seq: u64) -> u8 {
 /// and itself, flags both `DIRECT`, and counts two fallbacks.
 #[test_case]
 fn a_held_line_waits_for_its_drainer_and_a_stalled_drainer_falls_back_counted() {
-    use system_log_protocol::kernel_ring::DETACHED;
-    use system_log_protocol::record::flags;
+    use system_log_contract::kernel_ring::DETACHED;
+    use system_log_contract::record::flags;
     // The interactive boot publishes the ring as it builds the progenitor; the test kernel builds
     // none, so it publishes here. Idempotent, and every later line simply also lands in the ring.
     crate::kernel_log::publish();
     // End the harness's own `test name ... ` line first: a line already begun goes where it
     // began, and that one began on the UART.
     crate::println!();
-    let mut text = [0u8; system_log_protocol::record::TEXT_MAX];
+    let mut text = [0u8; system_log_contract::record::TEXT_MAX];
     let (next, _) = crate::kernel_log::test_read(0, &mut text);
     let fallbacks = crate::kernel_log::fallback_count();
     crate::kernel_log::test_set_cursor(next);
@@ -418,14 +418,14 @@ fn a_held_line_waits_for_its_drainer_and_a_stalled_drainer_falls_back_counted() 
 /// here without dying, it must put the held line on the UART, and the line after it must not wait.
 #[test_case]
 fn a_panic_prints_the_held_lines_first_and_holds_nothing_after() {
-    use system_log_protocol::kernel_ring::DETACHED;
+    use system_log_contract::kernel_ring::DETACHED;
     // The interactive boot publishes the ring as it builds the progenitor; the test kernel builds
     // none, so it publishes here. Idempotent, and every later line simply also lands in the ring.
     crate::kernel_log::publish();
     // End the harness's own `test name ... ` line first: a line already begun goes where it
     // began, and that one began on the UART.
     crate::println!();
-    let mut text = [0u8; system_log_protocol::record::TEXT_MAX];
+    let mut text = [0u8; system_log_contract::record::TEXT_MAX];
     let (next, _) = crate::kernel_log::test_read(0, &mut text);
     crate::kernel_log::test_set_cursor(next);
     let tx = crate::console::tx_bytes();

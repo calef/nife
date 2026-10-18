@@ -21,7 +21,7 @@ client tests are in [`ntp/`](ntp/README.md).
 
 ## Why the protocol is a crate and not part of a component
 
-The same reason `filesystem_protocol` and `graphics_protocol` are crates. A wire format is arithmetic and byte layout,
+The same reason `filesystem_contract` and `graphics_contract` are crates. A wire format is arithmetic and byte layout,
 cheap to get wrong and expensive to debug from inside a QEMU boot against a live server. Here it is 21 host tests and 7 Kani harnesses, all done in
 under a second with no emulator.
 
@@ -211,7 +211,7 @@ touches the network at all*: no socket, no frame, no datagram. Falling back to t
 be §42 (a filesystem must be truthful)'s silent degradation, in the one place where the entire value
 of the number is that nobody can predict it. It is the same call `SystemRng` makes when it panics
 rather than degrading. The two
-failures stay distinguishable with no probe, because `entropy_protocol::delivered` reads a byte count of
+failures stay distinguishable with no probe, because `entropy_contract::delivered` reads a byte count of
 `0..=8` and every kernel `CALL` error is one of the small negatives: `NoSuchSlot` means "there is no
 entropy service", 0 means "the service has none".
 

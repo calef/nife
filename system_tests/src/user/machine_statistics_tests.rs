@@ -100,7 +100,7 @@ fn the_machine_statistics_page_is_published_and_its_counters_move() {
     assert_ne!(phys, 0, "sched::init did not publish the page");
     let va = crate::arch::mmu::phys_to_virt(phys);
     // SAFETY: the frame `publish` allocated and never frees, reached through the direct map.
-    let before = unsafe { machine_statistics_protocol::Snapshot::read(va) }
+    let before = unsafe { machine_statistics_contract::Snapshot::read(va) }
         .expect("the page carries its magic");
     assert!(before.total_frames > 0 && before.free_frames <= before.total_frames);
     assert_eq!(before.frame_bytes, page_frames::FRAME_SIZE);
@@ -111,7 +111,7 @@ fn the_machine_statistics_page_is_published_and_its_counters_move() {
     let frame = crate::memory::alloc().expect("a frame");
     let allocator_says = crate::memory::free_page_frames() as u64;
     // SAFETY: as above.
-    let taken = unsafe { machine_statistics_protocol::Snapshot::read(va) }.unwrap();
+    let taken = unsafe { machine_statistics_contract::Snapshot::read(va) }.unwrap();
     crate::memory::free(frame);
     assert_eq!(taken.free_frames, allocator_says);
     assert!(
@@ -125,13 +125,13 @@ fn the_machine_statistics_page_is_published_and_its_counters_move() {
     // race, and it failed on x86_64 in run 37089625155 (#1486's group, base d6a902a9b) with "the
     // tick was not counted as an interrupt". So the loop waits on the whole claim, bounded by 50
     // ticks of progress, and only a counter that never moves fails.
-    let ticks = |s: &machine_statistics_protocol::Snapshot| s.busy_ticks() + s.idle_ticks();
+    let ticks = |s: &machine_statistics_contract::Snapshot| s.busy_ticks() + s.idle_ticks();
     let start = ticks(&before);
     let mut now = before;
     for _ in 0..100_000_000u64 {
         sched::yield_now();
         // SAFETY: as above.
-        now = unsafe { machine_statistics_protocol::Snapshot::read(va) }.unwrap();
+        now = unsafe { machine_statistics_contract::Snapshot::read(va) }.unwrap();
         let moved = ticks(&now) > start && now.interrupts() > before.interrupts();
         if moved || ticks(&now) > start + 50 {
             break;
@@ -161,16 +161,16 @@ fn the_machine_statistics_page_is_published_and_its_counters_move() {
 fn the_pages_switch_count_is_each_cpus_exact_count_as_of_its_last_tick() {
     use core::sync::atomic::Ordering;
 
-    use machine_statistics_protocol::CPU_ID_BOUND;
+    use machine_statistics_contract::CPU_ID_BOUND;
 
     let va = crate::arch::mmu::phys_to_virt(crate::machine_statistics::page_phys());
     // SAFETY: the frame `publish` allocated and never frees, reached through the direct map.
-    let read = || unsafe { machine_statistics_protocol::Snapshot::read(va) }.unwrap();
+    let read = || unsafe { machine_statistics_contract::Snapshot::read(va) }.unwrap();
     let count = |c: usize| crate::cpu::of(c).switches.load(Ordering::Relaxed);
 
     let before = read();
     let counted: [u64; CPU_ID_BOUND] = core::array::from_fn(count);
-    let ticks = |s: &machine_statistics_protocol::Snapshot, c: usize| {
+    let ticks = |s: &machine_statistics_contract::Snapshot, c: usize| {
         s.cpus[c].busy_ticks + s.cpus[c].idle_ticks
     };
 
@@ -181,10 +181,10 @@ fn the_pages_switch_count_is_each_cpus_exact_count_as_of_its_last_tick() {
     // last copy, which the protocol's BUGS allow, so the wait is bounded by 50 ticks of progress
     // per core and the lower bound is asserted only for cores that ticked.
     let ticked =
-        |now: &machine_statistics_protocol::Snapshot, c: usize| ticks(now, c) > ticks(&before, c);
+        |now: &machine_statistics_contract::Snapshot, c: usize| ticks(now, c) > ticks(&before, c);
     let online = || (0..CPU_ID_BOUND).filter(|&c| before.cpus[c].online);
     let total =
-        |s: &machine_statistics_protocol::Snapshot| online().map(|c| ticks(s, c)).sum::<u64>();
+        |s: &machine_statistics_contract::Snapshot| online().map(|c| ticks(s, c)).sum::<u64>();
     let budget = total(&before) + 50 * online().count() as u64;
     let mut now = before;
     for _ in 0..100_000_000u64 {

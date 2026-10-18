@@ -101,7 +101,7 @@ because the statistics half runs after the timer is re-armed.
 - **Refused.** Feature-gating the count, as milestone 300 (decompose the icount baseline drift) did
   with the cycle-counter grant. The shipping build would lose the `cs` column altogether.
 - **Recorded.** The page's switch count is up to one tick old. That is written in the BUGS of
-  `crates/machine_statistics_protocol` and `kernel/src/machine_statistics.rs`.
+  `crates/machine_statistics_contract` and `kernel/src/machine_statistics.rs`.
 
 ## BUGS
 

@@ -77,7 +77,7 @@ no manifest declares both ([this note's BUGS](../pipes.md#bugs) has carried the 
 milestone landed). A third stream makes an ordered slot convention untenable and forces a numbered
 one first.
 
-An opcode on the one endpoint. `byte_sink_protocol` puts the operation in the top byte of the
+An opcode on the one endpoint. `byte_sink_contract` puts the operation in the top byte of the
 request word, so `OPERATION_BYTES = 0` and `OPERATION_EOF = 1` leave 254 spellings free. A third, "these bytes are
 a diagnostic", would carry the distinction on the wire the writer already holds: no second
 capability, no second slot, no spawnproto change, no progenitor change, and §51 intact word for

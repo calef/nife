@@ -24,7 +24,7 @@ The rest waits on a wire change.
 
 Parity with Linux on the same hardware tier for the walk `ripgrep`'s `ignore` crate performs: list
 every directory, read every file. The instrument is milestone 121's (`walk_pricing` over
-`filesystem_protocol::fixture::walk`), through the grant a confined `rg pattern src/` will hold.
+`filesystem_contract::fixture::walk`), through the grant a confined `rg pattern src/` will hold.
 
 ## What is built
 
@@ -60,7 +60,7 @@ calef ruled on #1387. Each option was prototyped and measured first; the note ha
 - T1 (15:22Z), built on `milestone/606-progenitor`: the server says it is eligible in a second ELF
   note, and `script/lint` checks it against a package field. The progenitor gives a directory grant
   a bound badge when the note is there and a caretaker otherwise.
-- E, not built and not asked: a 64 KiB channel for `std`, which `std_runtime_protocol` fixes at
+- E, not built and not asked: a 64 KiB channel for `std`, which `std_runtime_contract` fixes at
   one page.
 
 ## Follow-on

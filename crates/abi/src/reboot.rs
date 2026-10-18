@@ -6,7 +6,7 @@
 /// on §251's amendment, item 3).
 ///
 /// **It syncs nothing.** A caller with a writable filesystem sends
-/// `filesystem_protocol::fs::SYNC` and waits for the reply first, or loses what the device had
+/// `filesystem_contract::fs::SYNC` and waits for the reply first, or loses what the device had
 /// not flushed. A firmware that accepts the call and hangs looks the same as a slow reset from
 /// inside the machine.
 pub const REBOOT: u64 = 0;

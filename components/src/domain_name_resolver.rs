@@ -1,6 +1,6 @@
 //! **The name resolver** (§248 (the name resolver is its own confined program)): host names to
 //! IPv4 addresses for a client holding a grant to ask, and nobody else. A client of `net_stack` and
-//! a server to its own clients; the contract is `crates/name_resolution_protocol`, and
+//! a server to its own clients; the contract is `crates/domain_name_resolution_contract`, and
 //! `crates/domain_name_system`'s `Query::accept` decides what is believed.
 //!
 //! ```text
@@ -13,7 +13,7 @@
 //! Slots: 0, its own endpoint for grants and requests (`READ`); 1, `net_stack`'s `Stack`, its whole
 //! network authority (`WRITE`); 2, an untyped budget for the socket page and clients' page tables;
 //! 3, the entropy service (`WRITE`); 4, its own address space, to give up a forgotten client's page
-//! (`WRITE`). The start words ([`name_resolution_protocol::endowment`]) name the server and
+//! (`WRITE`). The start words ([`domain_name_resolution_contract::endowment`]) name the server and
 //! transport, which the spawner reads from the DHCP lease.
 //!
 //! **A name is judged against the zone its badge was granted before anything is sent**, so a client
@@ -46,12 +46,12 @@
 #![no_main]
 
 use abi::rights;
-use domain_name_system::{Answer, Name, Query, Reject, TcpReply};
-use name_resolution_protocol::{
+use domain_name_resolution_contract::{
     self as protocol, Grants, MAX_ADDRESSES, NAME_TEXT_MAX, OFF_ADDRESSES, OFF_NAME, Outcome,
     endowment, network_step, status,
 };
-use socket_protocol as socket;
+use domain_name_system::{Answer, Name, Query, Reject, TcpReply};
+use socket_contract as socket;
 use user_mode_runtime::mapped_window::{MappedWindow, PAGE};
 use user_mode_runtime::{
     Delivered, call, call_receiving, cap_delete, map_page_frame, receive_request, reply,
@@ -335,13 +335,13 @@ fn ask(state: &mut State, server: &Server, name: Name) -> Result<Answer, Fail> {
 /// Sixteen unguessable bits, or the refusal to ask at all.
 fn transaction_id() -> Result<u16, Fail> {
     let no_entropy = Fail::Status(Outcome::of(status::NO_ENTROPY));
-    let (r0, r1) = call(ENTROPY, entropy_protocol::req(entropy_protocol::GET, 2), 0);
-    let n = entropy_protocol::delivered(r0).ok_or(no_entropy)?;
+    let (r0, r1) = call(ENTROPY, entropy_contract::req(entropy_contract::GET, 2), 0);
+    let n = entropy_contract::delivered(r0).ok_or(no_entropy)?;
     if n < 2 {
         return Err(Fail::Status(Outcome::of(status::NO_ENTROPY)));
     }
     let mut bytes = [0u8; 2];
-    entropy_protocol::take(n, r1, &mut bytes);
+    entropy_contract::take(n, r1, &mut bytes);
     Ok(u16::from_le_bytes(bytes))
 }
 
@@ -403,7 +403,7 @@ fn exchange_udp(
                 break; // nothing came: the next attempt
             }
             // A UDP RECEIVE reply carries the datagram's source in the destination fields
-            // (socket_protocol's layout). Anything not from the server is not an answer.
+            // (socket_contract's layout). Anything not from the server is not an answer.
             if source() != (server.ip, server.port) {
                 continue;
             }

@@ -101,7 +101,7 @@ The three that survived the same question, and each for its own reason:
 
 | Name | Why the terminus is structural |
 |---|---|
-| `byte_sink_protocol` | A wire contract named for what it carries. It makes no disposal claim at all |
+| `byte_sink_contract` | A wire contract named for what it carries. It makes no disposal claim at all |
 | `terminal_sink_caretaker` | It holds the terminal endpoint, which also carries `OP_READLINE`, and hands out a sink that **cannot read**. `sink` names what it hands out, `caretaker` names what it is. calef already caught this class once here, ratifying the longer form over `terminal_sink` on 2026-08-03 |
 | `sink` (the program) | Not a terminus at all. Three roles, and `ROLE_FILE` is a real file behind a sink: the process can open, read, write at offsets, truncate and stat, while its client can only say *here are sixteen bytes, append them*. Renaming it `receiver` would name one end of a three-role program |
 
@@ -176,7 +176,7 @@ docs should know the word is doing two jobs.
 ## The `login` stem stays
 
 Ratified 2026-09-15 by calef, for the whole family: `components/src/login.rs`,
-`crates/login_protocol`, `fixtures/src/login_test_client.rs`, and the kernel's `login_service` and
+`crates/login_contract`, `fixtures/src/login_test_client.rs`, and the kernel's `login_service` and
 `login_tests`. About 700 occurrences across 94 files keep the word.
 
 The case against was real, which is why this was parked on 2026-09-14 rather than signed. Two facts
@@ -193,7 +193,7 @@ a login.
 
 Why the stem stays anyway. `login` is the field's name for this role whoever speaks it, and a reader
 arriving from Unix lands in the right place. The program's docs say plainly where it departs
-(capabilities instead of a mutated user ID). And the stem is carried by `login_protocol`, a wire
+(capabilities instead of a mutated user ID). And the stem is carried by `login_contract`, a wire
 vocabulary two programs agree on, which is the expensive kind of name to move.
 
 Considered and refused, as a program name:
@@ -203,7 +203,7 @@ Considered and refused, as a program name:
   calls logging in.
 - `powerbox` is the right term of art for the pattern and one almost no reader would recognise.
 
-Milestone 265 (`_proto` is a truncation) accepted a second rename of `login_protocol` if the stem
+Milestone 265 (`_proto` is a truncation) accepted a second rename of `login_contract` if the stem
 moved. There is none.
 
 ## The casing of `nife`, considered and settled

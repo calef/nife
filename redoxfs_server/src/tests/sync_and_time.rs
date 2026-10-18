@@ -7,7 +7,7 @@ use super::*;
 /// **A sync is a write-side authority, and a read-only capability may not ask for one**
 /// (milestone 55).
 ///
-/// The rights question here is not obvious and the answer is argued at `filesystem_protocol::fs::SYNC`,
+/// The rights question here is not obvious and the answer is argued at `filesystem_contract::fs::SYNC`,
 /// so what this pins is the choice rather than a mechanism: a sync is an *action on the
 /// device*, and a device flush stalls the queue for every client of the image. Letting a
 /// read-only holder ask would hand it a lever on everybody else's write latency for no
@@ -31,7 +31,7 @@ fn a_sync_needs_write_and_takes_a_handle_of_either_kind() {
 
     // The bound directory carries every right, so it may ask.
     assert!(
-        srv.sync_permitted(filesystem_protocol::fs::ROOT as u32)
+        srv.sync_permitted(filesystem_contract::fs::ROOT as u32)
             .is_ok()
     );
 
@@ -45,7 +45,7 @@ fn a_sync_needs_write_and_takes_a_handle_of_either_kind() {
     // have said yes.
     let ro = srv
         .open_dir(
-            filesystem_protocol::fs::ROOT as u32,
+            filesystem_contract::fs::ROOT as u32,
             &named("sub"),
             dir::ENUMERATE | dir::READ | dir::DESCEND,
         )
@@ -68,7 +68,7 @@ fn a_sync_needs_write_and_takes_a_handle_of_either_kind() {
 #[test]
 fn setting_mtime_to_now_twice_observes_two_different_times_and_neither_is_the_callers_choice() {
     let mut srv = server_with_tree();
-    let root = filesystem_protocol::fs::ROOT as u32;
+    let root = filesystem_contract::fs::ROOT as u32;
 
     let before = srv
         .mtime(root, &named("motd"))
@@ -103,7 +103,7 @@ fn setting_mtime_to_now_twice_observes_two_different_times_and_neither_is_the_ca
 #[test]
 fn setting_an_arbitrary_mtime_round_trips_exactly_and_is_not_now() {
     let mut srv = server_with_tree();
-    let root = filesystem_protocol::fs::ROOT as u32;
+    let root = filesystem_contract::fs::ROOT as u32;
 
     // The same instant the kernel-booted witness asserts with a real `touch -t` command line
     // (`filesystem_fixture::tree::NAV_TOUCH_AT_UNIX`), reused here rather than a second

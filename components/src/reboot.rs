@@ -19,7 +19,7 @@
 //! §251's clause 3 says the sync comes before the reset, and the kernel does none of it. `SYNC`
 //! needs `dir::WRITE` on a handle for an ordinary client, which is also the right to open and
 //! truncate files by name. So the file server binds this program's badge sync-only
-//! (`filesystem_protocol::fs::BIND_SYNC`): it answers `SYNC` and refuses every other verb, and
+//! (`filesystem_contract::fs::BIND_SYNC`): it answers `SYNC` and refuses every other verb, and
 //! nothing here can reach a file. calef ruled against the progenitor syncing on this program's
 //! behalf (2026-10-06 UTC, #1783), so the sync is this program's own act.
 //!
@@ -79,7 +79,7 @@ pub extern "C" fn _start(_a0: u64, _a1: u64, _a2: u64) -> ! {
     // filesystem (the progenitor refuses the spawn when there is one it could not bind), so there
     // is nothing to sync. Otherwise the reply is the device's flush count, or a negative errno.
     let synced = if is_granted(SYNC_SLOT) {
-        use filesystem_protocol::fs;
+        use filesystem_contract::fs;
         call(SYNC_SLOT, fs::req(fs::SYNC, fs::ROOT, 0), 0).0 as i64
     } else {
         0
@@ -103,7 +103,7 @@ pub extern "C" fn _start(_a0: u64, _a1: u64, _a2: u64) -> ! {
     }
     write_on(REPORT, line.bytes());
     // The barrier: the shell takes end-of-stream only after it has passed the line on.
-    send(REPORT, byte_sink_protocol::eof(), 0, 0);
+    send(REPORT, byte_sink_contract::eof(), 0, 0);
 
     // **Why not, in words** (calef's ruling on §251's amendment, item 3): the kernel answers one
     // of four portable reasons, and the firmware's raw code is on the kernel console above.
@@ -125,7 +125,7 @@ pub extern "C" fn _start(_a0: u64, _a1: u64, _a2: u64) -> ! {
     };
     write_on(if has_diag { DIAG_SLOT } else { REPORT }, reason);
     if has_diag {
-        send(DIAG_SLOT, byte_sink_protocol::eof(), 0, 0);
+        send(DIAG_SLOT, byte_sink_contract::eof(), 0, 0);
     }
     exit();
 }
@@ -133,9 +133,9 @@ pub extern "C" fn _start(_a0: u64, _a1: u64, _a2: u64) -> ! {
 /// End both streams and exit, for the two paths that never reached the reset.
 fn finish(has_diag: bool) -> ! {
     if has_diag {
-        send(DIAG_SLOT, byte_sink_protocol::eof(), 0, 0);
+        send(DIAG_SLOT, byte_sink_contract::eof(), 0, 0);
     }
-    send(REPORT, byte_sink_protocol::eof(), 0, 0);
+    send(REPORT, byte_sink_contract::eof(), 0, 0);
     exit();
 }
 
@@ -181,7 +181,7 @@ impl Line {
 fn write_on(slot: u64, bytes: &[u8]) {
     let mut rest = bytes;
     while !rest.is_empty() {
-        let (w0, w1, w2, n) = byte_sink_protocol::pack(rest);
+        let (w0, w1, w2, n) = byte_sink_contract::pack(rest);
         send(slot, w0, w1, w2);
         rest = &rest[n..];
     }

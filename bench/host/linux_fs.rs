@@ -111,7 +111,7 @@ fn next_offset(state: &mut u64, unit: usize) -> i64 {
 /// medium before it returns). The two are separate because **nife sits between them**: the FS
 /// server puts every write through a RedoxFS transaction that commits to the header ring before it
 /// replies, so there is no dirty state anywhere above the device, but it issues no
-/// `VIRTIO_BLK_T_FLUSH` unless a client asks for one (`filesystem_protocol::fs::SYNC`, milestone 55). So
+/// `VIRTIO_BLK_T_FLUSH` unless a client asks for one (`filesystem_contract::fs::SYNC`, milestone 55 (time Machine: SMB3 with Apple's extensions, and mDNS)). So
 /// `direct` alone is the closest analogue for where the bytes are, and `direct` plus `dsync` is the
 /// closest analogue for the metadata commit, and quoting only one of them would be picking the
 /// answer.
@@ -281,7 +281,7 @@ fn main() {
     phases(b"/mnt/throughput\0", "buffered", false, false, UNIT);
     phases(b"/mnt/throughput\0", "direct", true, false, UNIT);
     phases(b"/mnt/throughput\0", "direct_dsync", true, true, UNIT);
-    // **What our 4 KiB cap costs, priced on the other system.** A `filesystem_protocol` request carries at
+    // **What our 4 KiB cap costs, priced on the other system.** A `filesystem_contract` request carries at
     // most one page because the payload travels through one shared page, so nife has no choice
     // about the unit; a Linux program has, and would take 64 KiB without thinking about it. This
     // row is the same ext4, the same flags and the same total bytes, with the unit a real program

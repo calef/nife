@@ -14,11 +14,11 @@ needs_person: no
 Raised by milestone 205 (how a foreign program is told what to do), which built the layout below provisionally so nothing
 waits on this. §170 (how a foreign program is told what to do) left the layout open because two
 programs agree on it: the shell writes the page and `std` reads it. The slug, the crate name
-`argument_protocol` and every constant here are a lane's coinage.
+`program_argument_contract` and every constant here are a lane's coinage.
 
 ## What is being decided
 
-Six things, all in `crates/argument_protocol` and `crates/std_runtime_protocol`:
+Six things, all in `crates/program_argument_contract` and `crates/std_runtime_contract`:
 
 | | built provisionally | the alternative |
 |---|---|---|
@@ -36,7 +36,7 @@ configuration is a validated page)'s page, and this one carries argv alone.
 
 What the tree already does. Slot 7 and the configuration page are the exact precedent: a fixed
 slot, a read-only page at a fixed address, a magic checked first, and a zeroed frame reading as
-nothing (`environment_protocol`). Every choice above copies it except the validation, which §170
+nothing (`environment_contract`). Every choice above copies it except the validation, which §170
 ruled out: a regex is arbitrary bytes.
 
 Prior art, read. The measurement in

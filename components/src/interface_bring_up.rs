@@ -35,15 +35,15 @@ pub(super) fn dhcp_lease(iface: &mut Interface, dev: &mut Nic, sockets: &mut Soc
             if let Some(router) = cfg.router {
                 let _ = iface.routes_mut().add_default_ipv4_route(router);
             }
-            // The lease report's layout is `socket_protocol::lease`: the address, then the first
+            // The lease report's layout is `socket_contract::lease`: the address, then the first
             // DNS server the lease named, which a resolver's spawner hands on (§248 (the name
             // resolver is its own confined program)).
-            let address = socket_protocol::lease::ipv4_word(cfg.address.address().octets());
+            let address = socket_contract::lease::ipv4_word(cfg.address.address().octets());
             let nameserver = cfg
                 .dns_servers
                 .first()
-                .map_or(socket_protocol::lease::NO_NAMESERVER, |a| {
-                    socket_protocol::lease::ipv4_word(a.octets())
+                .map_or(socket_contract::lease::NO_NAMESERVER, |a| {
+                    socket_contract::lease::ipv4_word(a.octets())
                 });
             send(REPORT, address, nameserver, 0);
             break;

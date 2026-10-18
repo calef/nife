@@ -144,7 +144,7 @@ fn the_std_copy_drops_doc_examples_and_keeps_the_prose() {
 //! # Examples
 //!
 //! ```
-//! # use entropy_protocol::GET;
+//! # use entropy_contract::GET;
 //! assert_eq!(GET, 1);
 //! ```
 //!
@@ -169,7 +169,7 @@ pub const GET: u64 = 1;
     assert!(got.contains("pub const GET: u64 = 1;"));
     assert!(!got.contains("# Examples"));
     assert!(
-        !got.contains("entropy_protocol"),
+        !got.contains("entropy_contract"),
         "the copy is an inner module of std, where that crate does not exist"
     );
     assert!(
@@ -178,8 +178,9 @@ pub const GET: u64 = 1;
     );
 }
 
-/// A crate root split into module files generates the text it did as one file: milestone 845
-/// (§274) relies on this to split `filesystem_protocol` without changing what std builds.
+/// A crate root split into module files generates the text it did as one file: milestone 845 (the
+/// filesystem-protocol crate root is split along its seams) relies on this to split
+/// `filesystem_contract` without changing what std builds.
 #[test]
 fn an_out_of_line_module_is_inlined_as_it_was_written_inline() {
     let split = "/// Docs.\npub mod fs;\n\nmod private;\npub const PAGE: usize = 4096;";

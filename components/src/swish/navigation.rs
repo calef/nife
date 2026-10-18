@@ -26,7 +26,7 @@ pub(super) struct Nav {
     /// **The rights the root capability carries**, as this shell was told at spawn.
     ///
     /// It is told rather than asking, and that is a gap in the contract rather than a shortcut:
-    /// `filesystem_protocol` has no verb that reports what a handle carries. It matters because `OPENDIR`
+    /// `filesystem_contract` has no verb that reports what a handle carries. It matters because `OPENDIR`
     /// refuses (`EPERM`) when the intersection is smaller than the request, so a shell that asked
     /// for `dir::ALL` from a narrower capability could not `cd` at all. See notes/shell-navigation.md.
     pub(super) rights: u64,
@@ -459,7 +459,7 @@ impl Nav {
                 let errno = -r as i32;
                 // `CREATE` is create, not create-or-open (DECISIONS §27): an existing name answers
                 // `EEXIST`, which is exactly the outcome this half of `touch` wants for a name that
-                // is already there. Not in `filesystem_protocol::dir`'s named list, for
+                // is already there. Not in `filesystem_contract::dir`'s named list, for
                 // `components/src/rm.rs::ENOENT`'s reason: this contract answers it from one rung only,
                 // so there is nothing else in this program that would collide with a local name for
                 // it.

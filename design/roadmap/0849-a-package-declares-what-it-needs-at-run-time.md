@@ -16,7 +16,7 @@ needs_person: no
 calef asked on 2026-10-06 (UTC) how a nife package says what it needs at run time, as distinct from
 what it links. Written by lane `package-runtime-requirements`, which built nothing but this file.
 
-Reuse: the per-program half reuses `grant_plan::Manifest` and `crates/manifest_note` as they
+Reuse: the per-program half reuses `grant_plan::Manifest` and `crates/capability_manifest_note` as they
 stand, and the gate extends `helpers/packages.py`. No outside tool fits, for the reasons in
 [the appendix](0849-a-package-declares-what-it-needs-at-run-time/prior-art.md).
 
@@ -28,7 +28,7 @@ A package has one relationship to another today: linking.
   allows a link if the target crate is an `interface` or its package is in `depends`, and nothing
   else reads `depends` except the kind rules below it. `script/lint:3298-3313` runs it.
 - So a client of a service never declares the service. `system_log`'s clients link
-  `system_log_protocol`, which `contracts` exports as an interface, so calef's ruling on #1796 (fork
+  `system_log_contract`, which `contracts` exports as an interface, so calef's ruling on #1796 (fork
   1, 2026-10-07 UTC) added no `depends` edge to `system-log` anywhere. That is right for linking. It
   also means no record anywhere says "this program needs a log service running".
 
@@ -38,7 +38,7 @@ What a program needs at run time is declared, but per program and in code, never
   be endowed with: `clock`, `domain`, `config`, `entropy` (`:1836`), `network` (`:1857`), `machine`
   and `share`. Its `runtime` field (`:1888`) says whether capabilities land in native order or at
   `std`'s fixed slots. An archive program's manifest is a `match` arm. A foreign program's travels
-  as an ELF note (milestone 597 (a program carries its manifest in an ELF note), `crates/manifest_note`).
+  as an ELF note (milestone 597 (a program carries its manifest in an ELF note), `crates/capability_manifest_note`).
 - Who provides each service is a string at a call site. `crates/system_initializer/src/lib.rs:1168`
   looks up `"system_log"`, `:1190` `"entropy"`, `:1194` `"net_stack"` and `:1244` `"redoxfs_server"`.
   Each is optional by design: a missing provider costs a feature, and a declaring child gets an empty
@@ -88,7 +88,7 @@ shape, and a word such as `.` then designates the directory, as §170 (how a for
 ## What a runtime need is here
 
 A need is a capability, not a process: a program needs a `WRITE` endpoint that answers
-`entropy_protocol`, not "the entropy package". And absence is supported (every provider in
+`entropy_contract`, not "the entropy package". And absence is supported (every provider in
 `system_initializer` is optional), so most needs are wants in systemd's sense, not requirements.
 
 ## Options and prior art
@@ -251,7 +251,7 @@ B. How a program names what runs it. Options:
    runners = { python = "python3" }
    ```
 
-   A contract is named by an identifier, and the Rust crate (`entropy_protocol`) is one binding of
+   A contract is named by an identifier, and the Rust crate (`entropy_contract`) is one binding of
    it, so a Python or WASI client names the same contract.
 3. How hard an unmet need fails. Ruled by calef, 2026-10-07 (UTC), reworded: the gate requires at
    least one `base` provider for every contract a `base` program needs, rather than naming a

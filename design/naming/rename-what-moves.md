@@ -59,7 +59,7 @@ It is sharper than reading the diff. It is the only thing that would have caught
 incident, where a maintainer reformatting a `Name:` block pushed three refusals out of the parsed
 paragraph. The tree-wide count fell from 171 to 168. Nobody was reading for that; the number was
 what spoke. The first performed rename under this procedure (`capability_demo_protocol` to
-`capability_witness_protocol`) held at 273 across the change, which is the result to expect.
+`capability_witness_contract`) held at 273 across the change, which is the result to expect.
 
 Contributed by that lane, which was asked what the next rename should do differently and answered
 with this first.

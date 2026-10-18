@@ -31,7 +31,7 @@
 //!   direction: the pool refuses spawns, it never shares a window.
 
 /// The most windows a pool can track. The file service's pool has seven
-/// (`login_protocol::DURABLE_WINDOW` is the last), so this is room, not a target.
+/// (`login_contract::DURABLE_WINDOW` is the last), so this is room, not a target.
 pub const MAX_WINDOWS: usize = 16;
 
 /// **A job's label**: the badge the progenitor puts on the job's supervision capability, which the

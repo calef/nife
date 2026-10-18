@@ -41,7 +41,7 @@ pub(super) fn build_grant(
 ) -> Option<u64> {
     let words = match manifest.map(|m| m.arg) {
         Some(grant_plan::ArgSpec::Words(g)) => {
-            use filesystem_protocol::grant as gr;
+            use filesystem_contract::grant as gr;
             let rights = gr::spec_rights(care_words.2) & g.rights();
             (
                 care_words.0,
@@ -154,7 +154,7 @@ pub(super) fn build_caretaker(
     // it will reach through the handle that one request minted.
     let (verdict, _, _) = receive(ready);
     cap_delete(ready);
-    if verdict == filesystem_protocol::READY {
+    if verdict == filesystem_contract::READY {
         Some(narrow_ep)
     } else {
         // A refused descent. The caretaker has already exited; the endpoint goes back, and the
@@ -215,12 +215,12 @@ const RECLAIM_ATTEMPTS: usize = 64;
 /// **Build `net_stack` from the NIC trio and wait for its DHCP lease** (milestone 590
 /// (provisional)). Returns `(stack, lease, name server)`: the full-rights endpoint its clients
 /// `CALL`, which this process keeps, the IPv4 address `net_stack` reported, big-endian in the low
-/// 32 bits, and the lease's name server in `socket_protocol::lease`'s encoding.
+/// 32 bits, and the lease's name server in `socket_contract::lease`'s encoding.
 ///
 /// The endowment is `kernel::user::virtio_service::wire_net_server`'s, slot for slot, because that
 /// is the one every network test proves: report `WRITE` (0), interrupt `READ` (1), transport
 /// `WRITE` (2), heap budget `WRITE` (3), client endpoint `READ` (4), the DMA page at
-/// [`NET_DMA_VA`], and `socket_protocol::NO_LISTEN_GRANT` as its third argument. The caller
+/// [`NET_DMA_VA`], and `socket_contract::NO_LISTEN_GRANT` as its third argument. The caller
 /// deletes the trio; this deletes everything else it made except the endpoint it returns.
 ///
 /// Failures trap, as the entropy build's do: every step here is a retype or a build out of this
@@ -266,15 +266,15 @@ pub(super) fn build_net_stack(ut: u64, program: &elf::Elf, g: &BootEndowment) ->
             ],
             // §255 (each socket is its own capability): slot 7, our endpoint again with `WRITE |
             // GRANT`, which each socket's capability is minted from; slot 8, its own address
-            // space, so `CLOSE` can take a socket's page back. `socket_protocol::stack_slots`.
+            // space, so `CLOSE` can take a socket's page back. `socket_contract::stack_slots`.
             placed: &[
                 (
-                    socket_protocol::stack_slots::MINT,
+                    socket_contract::stack_slots::MINT,
                     stack,
                     abi::rights::WRITE | abi::rights::GRANT,
                 ),
                 (
-                    socket_protocol::stack_slots::OWN_SPACE,
+                    socket_contract::stack_slots::OWN_SPACE,
                     supervision_protocol::CHILDS_OWN_SPACE,
                     abi::rights::WRITE,
                 ),
@@ -288,7 +288,7 @@ pub(super) fn build_net_stack(ut: u64, program: &elf::Elf, g: &BootEndowment) ->
         child,
         NET_STACK_ROLE_SERVER,
         direct_memory_access_phys,
-        socket_protocol::NO_LISTEN_GRANT,
+        socket_contract::NO_LISTEN_GRANT,
     ));
     cap_delete(budget);
     // `net_stack`'s first and only message on this endpoint: the lease, sent with a blocking
@@ -303,7 +303,7 @@ pub(super) fn build_net_stack(ut: u64, program: &elf::Elf, g: &BootEndowment) ->
 /// service runs inside for the life of the boot ([`graphical_terminal_grants`]' reason).
 /// `None` too with no stack, no entropy (it asks nothing without unguessable ids), or a lease that
 /// named no name server. `network` is `(stack, lease, name server)`, the server in
-/// `socket_protocol::lease`'s encoding.
+/// `socket_contract::lease`'s encoding.
 #[inline(never)]
 pub(super) fn start_domain_name_resolver(
     (fs, table, ut): (&nifefs::Fs<'static>, &str, u64),
@@ -311,7 +311,7 @@ pub(super) fn start_domain_name_resolver(
     entropy: Option<u64>,
 ) -> Option<u64> {
     let (stack, _, name_server) = network?;
-    let server = socket_protocol::lease::word_ipv4(name_server)?;
+    let server = socket_contract::lease::word_ipv4(name_server)?;
     let program = measured(fs, table, "domain_name_resolver").elf?;
     Some(build_domain_name_resolver(
         ut, &program, stack, entropy?, server,
@@ -370,7 +370,7 @@ pub(super) fn build_domain_name_resolver(
     entropy: u64,
     server: [u8; 4],
 ) -> u64 {
-    use name_resolution_protocol::endowment;
+    use domain_name_resolution_contract::endowment;
     let service = must(retype_obj(ut, abi::objtype::RENDEZVOUS));
     let budget = must(memory_region_split(ut, RESOLVER_BUDGET_PAGES));
     let child = must(build_child(
@@ -729,7 +729,7 @@ fn start_gpu_driver(l: &GraphicalTerminalLaunch, gpu_program: &elf::Elf) -> Resu
         return Err(());
     }
     let (up, _, _) = receive(driver_report);
-    if up != graphics_protocol::status::UP {
+    if up != graphics_contract::status::UP {
         drop_caps(&[display, driver_report]);
         return Err(());
     }
@@ -799,7 +799,7 @@ fn start_display_terminal(
     }
     cap_delete(term_report);
     let (tag, _, _) = receive(driver_report);
-    if tag != graphics_protocol::status::FLUSHED {
+    if tag != graphics_contract::status::FLUSHED {
         drop_caps(&[driver_report, term, out]);
         return Err(());
     }

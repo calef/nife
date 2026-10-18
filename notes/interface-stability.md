@@ -108,7 +108,7 @@ recorded at the format, AGENTS.md's rung 3, in the crate's own module documentat
 ```
 
 One list item per amendment, opening with its UTC date. The heading and the shape are this lane's,
-provisional. No crate carries one yet. `manifest_note`'s version 1, amended in place on 2026-09-27
+provisional. No crate carries one yet. `capability_manifest_note`'s version 1, amended in place on 2026-09-27
 on a branch not yet merged, is the first that should.
 
 ## First reading, and the trend
@@ -170,7 +170,7 @@ either, and taking one is a §46 (thin primitives or whole subsystems) decision 
   fingerprint cannot tell two same-shaped types apart.
 - Items that reach a consumer only through a glob re-export (`pub use module::*`) are unseen: the
   glob is keyed by its source text and not expanded. No measured crate re-exports this way today;
-  `name_resolution_protocol` and `user_mode_runtime` do, and are not measured.
+  `domain_name_resolution_contract` and `user_mode_runtime` do, and are not measured.
 - The syscall rename rule overcounts on purpose: `CSPACE_SLOTS` becoming `CAPABILITY_TABLE_SLOTS`
   in 2026W35 had no unique successor, so it counts as removed.
 - A macro's fingerprint is its source text, so an edit to its body is a change even when its

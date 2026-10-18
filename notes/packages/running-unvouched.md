@@ -40,7 +40,7 @@ Considered and refused:
 |---|---|---|
 | the progenitor | full (it retyped it), receives on it | itself, after `login` is built |
 | `login` | `WRITE`, `GRANT` at slot 62 | the progenitor, into `login`'s unstarted thread |
-| a session `login` builds for a listed identity | `WRITE`, the sixth capability of an `OK` | `login` (`login_protocol::RUN_UNVOUCHED_FOLLOWS`) |
+| a session `login` builds for a listed identity | `WRITE`, the sixth capability of an `OK` | `login` (`login_contract::RUN_UNVOUCHED_FOLLOWS`) |
 | the boot prompt | `WRITE` at slot 62 | the progenitor, one call |
 
 The boot prompt's grant is one call in `crates/system_initializer`. calef ruled on 2026-09-26 that

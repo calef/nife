@@ -21,7 +21,7 @@
 //!
 //! # What this program holds
 //!
-//! Slot 0, its output: the sink contract (`crates/byte_sink_protocol`). Nothing else, which is the
+//! Slot 0, its output: the sink contract (`crates/byte_sink_contract`). Nothing else, which is the
 //! no-note default and the thing the gate's `caps` line checks.
 //!
 //! # BUGS
@@ -46,11 +46,11 @@ const LINE: &[u8] = b"noteless: installed, and carrying no manifest note\n";
 pub extern "C" fn _start(_a0: u64, _a1: u64, _a2: u64) -> ! {
     let mut rest = LINE;
     while !rest.is_empty() {
-        let (w0, w1, w2, n) = byte_sink_protocol::pack(rest);
+        let (w0, w1, w2, n) = byte_sink_contract::pack(rest);
         send(OUT, w0, w1, w2);
         rest = &rest[n..];
     }
-    send(OUT, byte_sink_protocol::eof(), 0, 0);
+    send(OUT, byte_sink_contract::eof(), 0, 0);
     exit();
 }
 

@@ -156,8 +156,9 @@ To settle before `add-repository` is built (item 1 is ruled):
    spelling is provisional (`Name: provisional` in
    [design/naming/README.md](../naming/README.md), tracked by `script/names --unratified`). It is
    a flag because §219 reads a word containing `/` as a file, and `@` already means a version.
-3. The installed-programs table records `OWNER` for a vouch. It would need to record which source vouched,
-   or a rollback cannot say what it is undoing.
+3. Provenance: ruled 2026-10-17 (UTC). Asked *"Record each row's vouching index by its URL?"*, calef
+   answered *"Yes"*. Each installed-programs table row records the URL of the index that vouched
+   for it, exactly as added, in place of `OWNER` alone, so a rollback can say what it is undoing.
 4. Whether a second index may carry §250's "moved to" field, and whether the client follows it.
 
 ## Other package managers, against the same contracts
@@ -206,7 +207,7 @@ meets a program, not a builtin.
 Items 1, 2, 3 and 5 wait on nothing. Every item is proved on aarch64, riscv64 and x86_64 by the
 same gate (rule 5).
 
-Reuse: all inside the tree (`package_archive`, `http_response`, `socket_protocol`'s fixture peer,
+Reuse: all inside the tree (`package_archive`, `http_response`, `socket_contract`'s fixture peer,
 `installed_programs`, `spawnproto`'s activation request, swish's frame sender, milestone 205's argv and
 designation). Writing the program was forced: no existing client speaks this capability ABI. The
 apt, pkg and Homebrew manuals §46 (thin primitives or whole subsystems) owed were read 2026-10-10;

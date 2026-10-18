@@ -44,8 +44,8 @@
 
 #![cfg_attr(not(test), no_std)]
 
-use filesystem_protocol::dir::{self, Rights};
-use filesystem_protocol::fs::ROOT;
+use filesystem_contract::dir::{self, Rights};
+use filesystem_contract::fs::ROOT;
 
 /// Why a path or a request was refused. Each maps to one errno at the server's boundary
 /// ([`Refusal::errno`]); the crate itself speaks no wire.

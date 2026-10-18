@@ -222,3 +222,10 @@ twice: `counter_frequency_proto` was ruled and `timebase_proto` refused, and `md
 `mdns_responder` moved with their protocol's stem. `login_protocol` took the suffix and is final,
 since calef ruled that the `login` stem stays (2026-09-15). The appendix records the five records
 the sweep took and restored, and why `script/lint`'s `crates/*proto` glob had to move with it.
+
+## The suffix is `_contract` now
+
+calef ruled on 2026-10-18 (UTC) that nife's wire-contract crates end in `_contract`; the crates this
+block renamed to `_protocol` took the new suffix in one pass, except `network_time_protocol` (the
+NTPv4 standard's own name) and `supervision_protocol` (waiting for its split).
+design/naming/convention-rulings.md has his words and the reason.

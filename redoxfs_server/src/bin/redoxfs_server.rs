@@ -24,7 +24,7 @@
 //!   bytes of contiguous pages (a name on open, file bytes on read/write).
 //!
 //! The server only ever OPENS the image (never creates: creation is std-gated and host-side), and
-//! it maps RedoxFS's error type to the wire exactly once, in `Server::handle`, via `filesystem_protocol::reply_err`.
+//! it maps RedoxFS's error type to the wire exactly once, in `Server::handle`, via `filesystem_contract::reply_err`.
 //!
 //! # BUGS
 //!
@@ -43,11 +43,11 @@
 // `subtree_scope::walk` and every handle through `subtree_scope::admit`, in `redoxfs_server`'s
 // core. The note is what the progenitor reads to give this server's clients a bound badge instead of
 // a caretaker; `script/lint` checks it against the package declaration and the dependency.
-manifest_note::carry_subtree_grants!(manifest_note::Scope::SubtreeScope);
+capability_manifest_note::carry_subtree_grants!(capability_manifest_note::Scope::SubtreeScope);
 
 extern crate alloc;
 
-use filesystem_protocol::{blk, fs};
+use filesystem_contract::{blk, fs};
 use redoxfs::Disk;
 use redoxfs_server::{CachedDisk, ServeEdges, Server};
 use syscall::error::{EIO, Error, Result};
@@ -165,7 +165,7 @@ struct IpcDisk;
 
 impl IpcDisk {
     /// One blk `CALL` for `count` contiguous blocks starting at `block` (milestone 138 step 4):
-    /// opcode and count pack into the first word ([`filesystem_protocol::blk::req`]), the starting block index
+    /// opcode and count pack into the first word ([`filesystem_contract::blk::req`]), the starting block index
     /// is the second. Returns the reply's first word as a signed result (negative is an error, per
     /// the wire convention). The bulk rides in [`BLK_PAGE`], `count * BLOCK` bytes of it.
     fn blk_n(operation_code: u64, block: u64, count: usize) -> i64 {
@@ -346,7 +346,7 @@ impl Disk for IpcDisk {
 }
 
 impl IpcDisk {
-    /// **Make the device durable** (milestone 55): one `filesystem_protocol::blk::FLUSH`, and the block
+    /// **Make the device durable** (milestone 55 (time Machine: SMB3 with Apple's extensions, and mDNS)): one `filesystem_contract::blk::FLUSH`, and the block
     /// server's answer handed back untouched.
     ///
     /// Not part of the `Disk` trait, because RedoxFS's `Disk` has no sync method and this tree does
@@ -358,7 +358,7 @@ impl IpcDisk {
     /// block-protocol errno reaches a file-service client, and it is deliberate: `EOPNOTSUPP` from
     /// a device with no flush and `EIO` from a device that refused one are different facts, and
     /// folding either into the other would leave a caller unable to tell "this storage cannot be
-    /// made durable" from "this storage failed to". `filesystem_protocol::fs::SYNC` documents the boundary.
+    /// made durable" from "this storage failed to". `filesystem_contract::fs::SYNC` documents the boundary.
     fn sync() -> i64 {
         Self::blk(blk::FLUSH, 0)
     }
@@ -480,7 +480,7 @@ pub extern "C" fn _start(crash_at_write: u64, crash_after_blocks: u64, crash_tea
     };
     // The image is open: signal readiness (so the test can tell an open-path hang from a serve-path
     // one), then serve forever.
-    send(READY, filesystem_protocol::READY, 0, 0);
+    send(READY, filesystem_contract::READY, 0, 0);
     serve(&mut server);
 }
 

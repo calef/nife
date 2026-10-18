@@ -113,7 +113,7 @@ fn a_granted_thread_reads_the_cycle_counter_and_an_ungranted_one_faults() {
     let message = sched::ipc_receive(result);
     assert_eq!(
         message[0],
-        capability_witness_protocol::CYCLE_COUNTER_WORD,
+        capability_witness_contract::CYCLE_COUNTER_WORD,
         "the granted thread did not report: it was killed reading a counter it was granted",
     );
     assert_eq!(

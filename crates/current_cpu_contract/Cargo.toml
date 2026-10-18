@@ -1,0 +1,21 @@
+[package]
+name = "current_cpu_contract"
+version = "0.1.0"
+edition = "2024"
+publish = false     # the default; the allowlist lint holds the exception (crates/publish-allowlist.txt)
+license.workspace = true
+
+# A thread's own CPU, as a page rather than a crossing (calef's 2026-09-21 ruling on how
+# userspace asks where a thread runs, whose decision section is on another branch): one
+# definition of the read-only page the kernel writes the running core's id into at every
+# switch-in, so the kernel (the one writer) and `user_mode_runtime::current_cpu` (every reader)
+# cannot drift on the layout or the fixed virtual address. The same shape
+# `counter_frequency_contract` uses for the counter frequency, with one difference that is the
+# whole point: this page's word changes while the process runs.
+
+[lints]
+workspace = true
+
+[dependencies]
+# Where the page goes (milestone 206 (a program image has under 896 KiB)): `PAGE_VA` is the map's `CURRENT_CPU_PAGE`.
+address_space_map = { version = "0.1.0", path = "../address_space_map" }

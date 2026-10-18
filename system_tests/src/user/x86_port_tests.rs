@@ -214,7 +214,7 @@ fn port_holder_transmits_then_a_non_holder_faults() {
         "the port holder's `out` should have been permitted, and its report should have arrived",
     );
     assert!(
-        cpu_before < current_cpu_protocol::CPU_ID_BOUND as u64,
+        cpu_before < current_cpu_contract::CPU_ID_BOUND as u64,
         "the holder read core {cpu_before:#x}: its current-cpu page was never written, so which \
          core's bitmap it set is unknown",
     );

@@ -1,7 +1,7 @@
 //! **`disk_partitioner`**: writes the map `disk_surveyor` reads
 //! (notes/globally-unique-identifier-partition-table.md). The destructive half of the pair, and its
-//! endowment is the point: a block-service endpoint for **one** disk (`filesystem_protocol::blk`),
-//! the authority to destroy that disk and no other, and an entropy endpoint (`entropy_protocol`),
+//! endowment is the point: a block-service endpoint for **one** disk (`filesystem_contract::blk`),
+//! the authority to destroy that disk and no other, and an entropy endpoint (`entropy_contract`),
 //! which reaches random bytes and not the device. **Both are required and neither is sufficient**:
 //! a GPT's unique ids must be random, the partition-table crate refuses to invent one, so without
 //! entropy this program writes nothing rather than fall back to a counter. Compare `parted
@@ -46,8 +46,8 @@
 #![allow(missing_docs)]
 #![no_main]
 
+use filesystem_contract::{blk, req};
 use filesystem_fixture::blank;
-use filesystem_protocol::{blk, req};
 use globally_unique_identifier_partition_table::entry::{Entry, NAME_UNITS};
 use globally_unique_identifier_partition_table::guid::types;
 use globally_unique_identifier_partition_table::span::Span;

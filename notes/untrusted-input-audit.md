@@ -32,7 +32,7 @@ Two things make it the right lens for today's tree rather than a re-run of
   read the tree, and both take input from a party the threat model (DECISIONS §20, §23, §30, and
   SECURITY.md) declares untrusted.
 - The secret-material crates were explicitly out of the previous scope. The shared-page audit
-  recorded that `crates/credential_protocol` and `components/src/credentialer.rs` were "being substantially
+  recorded that `crates/credential_contract` and `components/src/credentialer.rs` were "being substantially
   rewritten with an NTLM path" and that "the clearance recorded below is of the version on `main` and
   does not transfer." That rewrite has landed (`crates/ntlm`, `crates/credentialer`), so §79's secret-material
   rules want a fresh read.

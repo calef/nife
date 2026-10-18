@@ -8,8 +8,8 @@
 //! Name: provisional (lane maintainer/files-over-1500, 2026-10-12 UTC), for the module and the
 //! file.
 
+use filesystem_contract::fs;
 use filesystem_fixture as fixture;
-use filesystem_protocol::fs;
 use user_mode_runtime::{call, exit, now, require, send};
 
 use crate::channel::{FILE, REPORT, STAGE_WRITE, WINDOW, fail, open, put_page, read};
@@ -20,7 +20,7 @@ use crate::channel::{FILE, REPORT, STAGE_WRITE, WINDOW, fail, open, put_page, re
 /// payload cost. The bench boot turns those into the `fs_seq_write` / `fs_seq_read` /
 /// `fs_rand_read` / `fs_record_read` / `fs_rand_write` / `fs_payload_fill` lines and into MiB/s.
 ///
-/// **What one transfer is, and why that is the whole story.** One `filesystem_protocol` request moves at most
+/// **What one transfer is, and why that is the whole story.** One `filesystem_contract` request moves at most
 /// `fs::TRANSFER_MAX` bytes, because the payload travels through the region the client shares with
 /// the server. That was one page until milestone 138 step 3 and is sixteen now, so a phase here is
 /// `UNIT` per request and the throughput is the request rate times `UNIT`. A Linux program reading
@@ -36,10 +36,10 @@ use crate::channel::{FILE, REPORT, STAGE_WRITE, WINDOW, fail, open, put_page, re
 /// allocation, and the read phases have something laid out by the server under test rather than by
 /// the host tool. It is also the reason there is no separate "create" number.
 ///
-/// **What a write here promises, which decides what it compares against.** Every `filesystem_protocol` write
+/// **What a write here promises, which decides what it compares against.** Every `filesystem_contract` write
 /// goes through one RedoxFS transaction that commits to the header ring before the reply, so the
 /// filesystem's own state is durable per request the way `O_DSYNC` makes ext4's; but no device
-/// flush is issued unless a client asks for one (`filesystem_protocol::fs::SYNC`), so the bytes sit where
+/// flush is issued unless a client asks for one (`filesystem_contract::fs::SYNC`), so the bytes sit where
 /// `O_DIRECT` alone leaves them. This sits **between** Linux's two, and notes/benchmarks.md prints
 /// both rather than picking one.
 ///
@@ -160,7 +160,7 @@ pub(crate) fn throughput() -> ! {
 }
 
 /// Open the throughput file, creating it if this is the first run against this image and emptying
-/// it if it is not. `CREATE` answers `EEXIST` rather than opening (`filesystem_protocol`'s note says why), so
+/// it if it is not. `CREATE` answers `EEXIST` rather than opening (`filesystem_contract`'s note says why), so
 /// the fallback is an explicit open-and-truncate.
 fn throughput_file() -> u64 {
     let name = fixture::THROUGHPUT_NAME;

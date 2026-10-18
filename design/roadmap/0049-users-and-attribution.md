@@ -106,7 +106,7 @@ that is decided at run time rather than baked into `crates/system_initializer`'s
 
 ## What is built
 
-`login` (provisional name) is `components/src/login.rs`, with its wire contract `crates/login_protocol`
+`login` (provisional name) is `components/src/login.rs`, with its wire contract `crates/login_contract`
 (provisional). It holds the credential service's verify endpoint (milestone 56, unmodified), the file
 service's root directory capability, and a construction budget. A client first sends
 `login_protocol::CONNECT` and gets a private request/result pair and staging page of its own. It then

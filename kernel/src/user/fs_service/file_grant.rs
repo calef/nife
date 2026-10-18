@@ -36,7 +36,7 @@ use super::*;
 /// invites a caller to get `rights` and `role` the wrong way round, and both are bare integers.
 #[cfg_attr(not(any(test, feature = "system_tests")), allow(dead_code))]
 pub struct Grant {
-    /// The one name the caretaker will answer for. Must fit [`filesystem_protocol::grant::MAX_NAME`].
+    /// The one name the caretaker will answer for. Must fit [`filesystem_contract::grant::MAX_NAME`].
     pub name: &'static str,
     /// `grant::READ`, or `READ | WRITE`.
     pub rights: u64,
@@ -60,15 +60,15 @@ pub fn start_granted(
         arg: client_arg,
     } = grant;
     assert!(
-        filesystem_protocol::grant::fits(name.as_bytes()),
+        filesystem_contract::grant::fits(name.as_bytes()),
         "a granted name rides in two argument words; this one does not fit",
     );
     let (file_ep, file_shared, readiness) = ensure(blk_image, fs_server_image)?;
     let narrow_ep = crate::sched::create_rendezvous();
     let caretaker_ready = crate::sched::create_rendezvous();
 
-    let (lo, hi) = filesystem_protocol::grant::pack_name(name.as_bytes());
-    let spec = filesystem_protocol::grant::spec(name.len(), rights);
+    let (lo, hi) = filesystem_contract::grant::pack_name(name.as_bytes());
+    let spec = filesystem_contract::grant::spec(name.len(), rights);
 
     // The caretaker: the directory capability, the narrowed endpoint it serves, and the shared
     // page. The grant itself (the name and the direction) rides in its START arguments, so a

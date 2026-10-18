@@ -199,7 +199,7 @@ fn a_read_only_per_file_grant_survives_an_attacker() {
     if fs_service::fs_server_image().is_none() {
         crate::testing::skip!(fs_service::NO_FS_SERVER);
     }
-    let Some(verdict) = attack_a_grant(filesystem_protocol::grant::READ, false) else {
+    let Some(verdict) = attack_a_grant(filesystem_contract::grant::READ, false) else {
         crate::testing::skip!("no RedoxFS disk attached");
     };
     assert_eq!(
@@ -229,7 +229,7 @@ fn a_read_only_per_file_grant_reads_its_files_attributes_and_writes_none() {
         crate::testing::skip!(fs_service::NO_FS_SERVER);
     }
     use filesystem_fixture::escape;
-    let Some(verdict) = attack_a_grant(filesystem_protocol::grant::READ, false) else {
+    let Some(verdict) = attack_a_grant(filesystem_contract::grant::READ, false) else {
         crate::testing::skip!("no RedoxFS disk attached");
     };
     assert_eq!(
@@ -270,7 +270,7 @@ fn a_writable_per_file_grant_writes_that_file_and_still_only_that_file() {
     }
     use filesystem_fixture::escape;
     let Some(verdict) = attack_a_grant(
-        filesystem_protocol::grant::READ | filesystem_protocol::grant::WRITE,
+        filesystem_contract::grant::READ | filesystem_contract::grant::WRITE,
         true,
     ) else {
         crate::testing::skip!("no RedoxFS disk attached");

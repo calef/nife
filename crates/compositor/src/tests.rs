@@ -305,7 +305,7 @@ fn every_screen_pixel_distinguishes_its_owner() {
     }
 }
 
-/// A window's pattern is not a fill, is not symmetric, and is nobody else's. The `graphics_protocol`
+/// A window's pattern is not a fill, is not symmetric, and is nobody else's. The `graphics_contract`
 /// pattern tests' properties, per window.
 #[test]
 fn a_window_pattern_cannot_be_produced_by_accident() {
@@ -362,7 +362,7 @@ fn compositing_the_whole_screen_matches_the_expected_picture() {
         }
     }
     assert_eq!(
-        graphics_protocol::checksum(|i| screen[i]),
+        graphics_contract::checksum(|i| screen[i]),
         expected_screen_checksum(SCENE.len()),
         "the digest the guest reports and the picture the host checks must agree",
     );
@@ -455,7 +455,7 @@ fn an_uncommitted_window_is_not_drawn() {
         }
     }
     assert_eq!(
-        graphics_protocol::checksum(|i| screen[i]),
+        graphics_contract::checksum(|i| screen[i]),
         expected_screen_checksum(0),
         "the empty screen must be the n=0 expected picture",
     );
@@ -526,10 +526,10 @@ fn only_an_on_screen_rectangle_becomes_a_flush() {
     // And what the driver is handed round-trips through its own packing.
     let (x, y, w, h) = Rect::new(9, 8, 7, 6).as_flush_rect().unwrap();
     assert_eq!(
-        graphics_protocol::unrect(graphics_protocol::rect(x, y, w, h)),
+        graphics_contract::unrect(graphics_contract::rect(x, y, w, h)),
         (9, 8, 7, 6)
     );
-    assert!(graphics_protocol::rect_in_surface(x, y, w, h));
+    assert!(graphics_contract::rect_in_surface(x, y, w, h));
 }
 
 /// The control page and the window list fit in one frame each, with no field overlapping another.

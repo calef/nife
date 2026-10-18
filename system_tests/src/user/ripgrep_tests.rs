@@ -198,7 +198,7 @@ macro_rules! skip_without_the_walk {
 ///
 /// The negative half milestone 121 calls load-bearing: the same tree, the same walker, and one right
 /// withheld. A search that silently finds no matches because it could not look is the worst
-/// failure a search tool can have, and `filesystem_protocol` chose `EPERM` over an empty listing
+/// failure a search tool can have, and `filesystem_contract` chose `EPERM` over an empty listing
 /// for exactly this reason, in §47 (a directory capability carries six rights). This proves that
 /// choice survives every layer above it: the caretaker, `std`'s `read_dir`, and a stranger-shaped
 /// recursive walker that
@@ -209,7 +209,7 @@ macro_rules! skip_without_the_walk {
 /// refusals are about enumeration alone.
 #[test_case]
 fn a_walk_without_enumerate_is_refused_rather_than_empty() {
-    use filesystem_protocol::dir;
+    use filesystem_contract::dir;
     skip_without_the_walk!();
     let mut got = [0u8; 1024];
     let Some(len) = walk_with(dir::READ | dir::DESCEND, &mut got) else {
@@ -258,8 +258,8 @@ impl core::fmt::Write for Line {
 fn a_walk_through_a_confined_grant_is_priced() {
     use core::fmt::Write;
 
+    use filesystem_contract::dir;
     use filesystem_fixture::walk as tree;
-    use filesystem_protocol::dir;
     skip_without_the_walk!();
     let mut got = [0u8; 2048];
     let Some(len) = walk_with(dir::ENUMERATE | dir::READ | dir::DESCEND, &mut got) else {
@@ -312,8 +312,8 @@ fn a_walk_through_a_confined_grant_is_priced() {
 /// the tree, fails here. The timings print beside the caretaker's for the comparison.
 #[test_case]
 fn a_walk_through_a_bound_grant_is_priced() {
+    use filesystem_contract::dir;
     use filesystem_fixture::walk as tree;
-    use filesystem_protocol::dir;
     skip_without_the_walk!();
     let Some(spawned) = fs_service::start_std_bound(
         block_server_image(),
@@ -364,8 +364,8 @@ fn a_walk_through_a_bound_grant_is_priced() {
 /// and after the grant is taken back even its own root is gone.
 #[test_case]
 fn a_bound_grant_reaches_nothing_outside_it() {
+    use filesystem_contract::{dir, fs};
     use filesystem_fixture::walk as tree;
-    use filesystem_protocol::{dir, fs};
     skip_without_the_walk!();
     let Some(grant) = fs_service::bind_subtree(
         block_server_image(),
@@ -521,8 +521,8 @@ impl Line {
 /// `cargo xtask basalt-fetch`, so a replay that does not run that first would skip here.
 #[test_case]
 fn ripgrep_searches_the_tree_it_was_granted() {
+    use filesystem_contract::dir;
     use filesystem_fixture::walk as tree;
-    use filesystem_protocol::dir;
     skip_without_rg!();
     let mut got = [0u8; 8192];
     let Some(len) = rg_with(
@@ -569,8 +569,8 @@ fn ripgrep_searches_the_tree_it_was_granted() {
 /// `cargo xtask basalt-fetch`, so a replay that does not run that first would skip here.
 #[test_case]
 fn ripgrep_without_enumerate_is_refused_rather_than_empty() {
+    use filesystem_contract::dir;
     use filesystem_fixture::walk as tree;
-    use filesystem_protocol::dir;
     skip_without_rg!();
     let mut got = [0u8; 8192];
     let Some(len) = rg_with(dir::READ | dir::DESCEND, tree::RG_SEARCH, &mut got) else {
@@ -604,8 +604,8 @@ fn ripgrep_without_enumerate_is_refused_rather_than_empty() {
 /// `cargo xtask basalt-fetch`, so a replay that does not run that first would skip here.
 #[test_case]
 fn ripgrep_reaches_a_named_file_without_enumerate() {
+    use filesystem_contract::dir;
     use filesystem_fixture::walk as tree;
-    use filesystem_protocol::dir;
     skip_without_rg!();
     let mut got = [0u8; 1024];
     let Some(len) = rg_with(dir::READ | dir::DESCEND, tree::RG_NAMED, &mut got) else {

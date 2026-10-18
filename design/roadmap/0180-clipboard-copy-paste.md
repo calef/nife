@@ -36,7 +36,7 @@ paste target is anything a shell or an editor (milestone 169 (the smallest real 
 
 **Every existing multi-client object in this tree is minted, held, and delegated explicitly.** A
 directory capability is handed to exactly the principal it names (DECISIONS §117 (a principal's subtree is named by its identity string)).
-A channel endpoint is minted per connection (milestone 49 (users, login, attribution)'s login front door, `login_protocol::CONNECT`).
+A channel endpoint is minted per connection (milestone 49 (users, login, attribution)'s login front door, `login_contract::CONNECT`).
 Even the compositor's shared windows are each their own object, not one global surface every client can
 address. A clipboard, in the form anyone has ever used one, is the opposite of all of that.
 One slot, last-writer-wins, readable by whoever asks, with the OS deliberately not checking who "whoever"

@@ -139,7 +139,7 @@ pub(super) unsafe fn switch_operands(
     // field over: this is the one point every path to a CPU passes through, whatever moved the
     // thread. And on this core rather than the one that queued it, which is what makes writer
     // and reader the same hardware thread and the ordering argument a short one
-    // (`crates/current_cpu_protocol`). A kernel thread has no space and needs no page: it has
+    // (`crates/current_cpu_contract`). A kernel thread has no space and needs no page: it has
     // no userspace to read one from.
     let next_root = match sched.threads.get(next).unwrap().space.as_ref() {
         Some(space) => {

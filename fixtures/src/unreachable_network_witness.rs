@@ -36,13 +36,13 @@
 //!
 //! **And the reboot object** (milestone 805 (`reboot` at the prompt)), probed by invoking it: a
 //! spawn service that endowed it would reset the machine mid-`script/swish-check`, and the gate
-//! fails on the lines that never come back. A note cannot spell it (`manifest_note::encode`).
+//! fails on the lines that never come back. A note cannot spell it (`capability_manifest_note::encode`).
 //!
 //! **The census asks the kernel.** Each slot below the reserved fault slot is invoked with a method
 //! no object defines (`user_mode_runtime::is_granted`): an empty slot answers `NoSuchSlot`, so a
 //! capability at a slot nobody thought to probe is still counted.
 //!
-//! It holds slot 0, its output (`crates/byte_sink_protocol`), and, only when run unvouched, slots
+//! It holds slot 0, its output (`crates/byte_sink_contract`), and, only when run unvouched, slots
 //! 1 and 2, the clock and configuration pages, which it does not read.
 //!
 //! # BUGS
@@ -56,7 +56,7 @@
 #![allow(missing_docs)]
 #![no_main]
 
-use socket_protocol::{OPERATION_CLOSE, OPERATION_OPEN_TCP};
+use socket_contract::{OPERATION_CLOSE, OPERATION_OPEN_TCP};
 use user_mode_runtime::{call, call_receiving, exit, is_granted, send, survey};
 
 /// The output slot: the sink contract.
@@ -72,7 +72,7 @@ const NOTE_ASKS: grant_plan::Manifest = grant_plan::Manifest {
     ..grant_plan::Prog::UnreachableNetworkWitness.manifest()
 };
 
-manifest_note::carry!(NOTE_ASKS);
+capability_manifest_note::carry!(NOTE_ASKS);
 
 // The lines below name the slots in prose; this keeps the prose honest if a constant moves.
 const _: () = assert!(grant_plan::NETWORK_SLOT == 10);
@@ -104,7 +104,7 @@ pub extern "C" fn _start(_a0: u64, _a1: u64, _a2: u64) -> ! {
     });
     let (r0, _) = call(
         grant_plan::ENTROPY_SLOT,
-        entropy_protocol::req(entropy_protocol::GET, entropy_protocol::MAX_BYTES),
+        entropy_contract::req(entropy_contract::GET, entropy_contract::MAX_BYTES),
         0,
     );
     say(match r0 as i64 {
@@ -134,7 +134,7 @@ pub extern "C" fn _start(_a0: u64, _a1: u64, _a2: u64) -> ! {
     });
 
     say(&line[..n]);
-    send(OUT, byte_sink_protocol::eof(), 0, 0);
+    send(OUT, byte_sink_contract::eof(), 0, 0);
     exit();
 }
 
@@ -164,7 +164,7 @@ fn census(line: &mut [u8; 96]) -> usize {
 fn say(line: &[u8]) {
     let mut rest = line;
     while !rest.is_empty() {
-        let (w0, w1, w2, n) = byte_sink_protocol::pack(rest);
+        let (w0, w1, w2, n) = byte_sink_contract::pack(rest);
         send(OUT, w0, w1, w2);
         rest = &rest[n..];
     }

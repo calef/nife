@@ -1,10 +1,10 @@
 //! **The login service's test client**: one binary and one endowment, run as `_start(behaviour,
-//! identity, secret)`, the last two indices into [`credential_protocol::fixture::PEOPLE`]. So
+//! identity, secret)`, the last two indices into [`credential_contract::fixture::PEOPLE`]. So
 //! `(ALICE, WRONG)` is the honest program presenting a secret that is nobody's, and a refusal is
 //! tested on the honest path. Each behaviour constant ([`LOGIN`] through [`EMPTY_SCHEDULE`])
 //! documents its own flow; the properties they share:
 //!
-//! - After any refusal ([`login_protocol::DENIED`], [`login_protocol::NO_TERMINAL`]) nothing
+//! - After any refusal ([`login_contract::DENIED`], [`login_contract::NO_TERMINAL`]) nothing
 //!   follows, so a run never calls `RECEIVE_CAP`, which would block forever. An identity with no
 //!   subtree is refused identically to a wrong secret (§117 (a principal's subtree is named by its
 //!   identity string)).
@@ -19,14 +19,14 @@
 //! # Capability contract
 //!
 //! - slot 0: the front-door request endpoint, `WRITE`; it only ever carries
-//!   [`login_protocol::connect_word`] and, for [`FREE_TERMINAL`], [`login_protocol::logout_word`].
-//! - slot 1: the front-door result endpoint, `READ`: [`login_protocol::CONNECTED`], then a private
+//!   [`login_contract::connect_word`] and, for [`FREE_TERMINAL`], [`login_contract::logout_word`].
+//! - slot 1: the front-door result endpoint, `READ`: [`login_contract::CONNECTED`], then a private
 //!   request endpoint, a private result endpoint and a staging page, on which the login happens.
 //! - slot 2: a report endpoint, `WRITE`.
 //! - slot 3: a small `MemoryRegion`, `WRITE`, for the page tables of mapping the staging page
 //!   (`kernel::user::login_service::CLIENT_SCRATCH_UT_PAGES`).
 //! - `a0` the behaviour, `a1` the identity, `a2` the secret: the same index for the person's own,
-//!   [`credential_protocol::fixture::WRONG`] for nobody's, [`credential_protocol::fixture::NONE`]
+//!   [`credential_contract::fixture::WRONG`] for nobody's, [`credential_contract::fixture::NONE`]
 //!   for none.
 //!
 //! # BUGS
@@ -59,10 +59,10 @@ const RESULT: u64 = 1;
 /// The report endpoint (slot 2), `WRITE`.
 const REPORT: u64 = 2;
 /// This program's own scratch `MemoryRegion` (slot 3), `WRITE`. Used once, for `map_page_frame`'s
-/// own page-table cost when this program self-maps the page [`login_protocol::CONNECTED`] delegates.
+/// own page-table cost when this program self-maps the page [`login_contract::CONNECTED`] delegates.
 const SCRATCH: u64 = 3;
 
-/// Where this program maps the private staging page [`login_protocol::CONNECTED`] delegates, at
+/// Where this program maps the private staging page [`login_contract::CONNECTED`] delegates, at
 /// runtime, once `CONNECT` hands back the capability naming it (milestone 49's channel-per-client
 /// update; see `_start`'s own `map_page_frame` call). Not a `MappedWindow` (round 6's usual
 /// collapse for a statically pre-mapped page): nothing is mapped here before this process runs.
@@ -78,7 +78,7 @@ const FS_VA: u64 = address_space_map::pair_page(0x0000_0000_00f0_0000);
 // ..)` having already returned true), the same condition the hand-rolled comment this replaces
 // relied on (milestone 139 round 2; see `user_mode_runtime::mapped_window`).
 const FS_WINDOW: MappedWindow =
-    unsafe { MappedWindow::new(FS_VA, filesystem_protocol::PAGE as u64) };
+    unsafe { MappedWindow::new(FS_VA, filesystem_contract::PAGE as u64) };
 
 /// **Present the credential and prove what came back.** The whole of what every credential case
 /// needs: two identities' correct credentials, a wrong secret, an identity with no home subtree, and
@@ -90,10 +90,10 @@ pub const LOGIN: u64 = 0;
 pub const WRITE_MARKER: u64 = 1;
 /// Log in in an independent channel and read the marker [`WRITE_MARKER`] wrote, packed into the
 /// report the same way `login`'s own audit trail packs an identity
-/// ([`login_protocol::identity_hint`]). See the module docs.
+/// ([`login_contract::identity_hint`]). See the module docs.
 pub const READ_MARKER: u64 = 2;
 /// Log in, prove the directory and budget work exactly like [`LOGIN`], then use the fourth delegated
-/// capability (the logout ticket; [`login_protocol::OK`]'s doc) to tear the session down and
+/// capability (the logout ticket; [`login_contract::OK`]'s doc) to tear the session down and
 /// confirm it actually came down: a further `READDIR` through the now-`DESTROY`ed directory
 /// capability must fail. See the module docs.
 pub const LOGOUT: u64 = 3;
@@ -101,8 +101,8 @@ pub const LOGOUT: u64 = 3;
 /// through it, then tear the session down like [`LOGOUT`] **without** freeing the terminal. See the
 /// module docs.
 pub const HOLD_TERMINAL: u64 = 4;
-/// Send [`login_protocol::logout_word`] on the front door directly; no identity involved, and the one
-/// behaviour that takes [`credential_protocol::fixture::NONE`] for both halves of its credential. See
+/// Send [`login_contract::logout_word`] on the front door directly; no identity involved, and the one
+/// behaviour that takes [`credential_contract::fixture::NONE`] for both halves of its credential. See
 /// the module docs.
 pub const FREE_TERMINAL: u64 = 5;
 /// Log in, and prove the sixth delegated capability (the run-unvouched one, DECISIONS §219 gate D2)
@@ -112,7 +112,7 @@ pub const PRESENT_RUN_UNVOUCHED: u64 = 6;
 /// Log in, split a pending-job child off the budget, and prove the logout is refused while it lives
 /// and goes through once it is gone. Milestone 152; see the module docs. Provisional name.
 pub const PENDING_WORK: u64 = 7;
-/// Log in with `login_protocol::SCHEDULE`, replace the new timetable's empty document with
+/// Log in with `login_contract::SCHEDULE`, replace the new timetable's empty document with
 /// [`SCHEDULED`], then detach: tear the directory down and leave the budget, which must refuse its
 /// own `DESTROY` because `user_timetable_keeper` lives on it. Milestone 152. Provisional name.
 pub const OPEN_SCHEDULE: u64 = 8;
@@ -146,13 +146,13 @@ const MARKER_NAME: &str = "whoami";
 const TERM_MAGIC: u64 = 0x_7e12_0000_0000_0001;
 
 /// The report's first word: what the service answered.
-pub const RPT_OK: u64 = login_protocol::OK;
-pub const RPT_DENIED: u64 = login_protocol::DENIED;
-pub const RPT_MALFORMED: u64 = login_protocol::MALFORMED;
+pub const RPT_OK: u64 = login_contract::OK;
+pub const RPT_DENIED: u64 = login_contract::DENIED;
+pub const RPT_MALFORMED: u64 = login_contract::MALFORMED;
 /// Milestone 49's terminal update: the terminal was already on loan to another session.
-pub const RPT_NO_TERMINAL: u64 = login_protocol::NO_TERMINAL;
+pub const RPT_NO_TERMINAL: u64 = login_contract::NO_TERMINAL;
 /// [`FREE_TERMINAL`]'s own answer: the terminal is free again.
-pub const RPT_LOGGED_OUT: u64 = login_protocol::LOGGED_OUT;
+pub const RPT_LOGGED_OUT: u64 = login_contract::LOGGED_OUT;
 
 /// Bits of the report's second word, set only when [`RPT_OK`] is the first: which of the delegated
 /// capabilities this process proved actually work, rather than merely that they arrived.
@@ -170,7 +170,7 @@ pub const F_NOT_SHARED_SUBTREE: u64 = 1 << 2;
 pub const F_MARKER_WRITTEN: u64 = 1 << 3;
 /// **Set when the fourth capability's `MemoryRegion::DESTROY` returned success.** Set only by
 /// [`LOGOUT`]; retried on refusal until the region comes down or [`DESTROY_WAIT_SECS`] runs out
-/// ([`login_protocol::OK`]'s doc, on the fourth capability, name the transient window this
+/// ([`login_contract::OK`]'s doc, on the fourth capability, name the transient window this
 /// covers, and `destroy_with_retry` says why the bound is a clock).
 pub const F_TEARDOWN_OK: u64 = 1 << 4;
 /// **Set when a `READDIR` through the directory capability failed *after* teardown.** Set only by
@@ -200,7 +200,7 @@ pub const F_RUN_UNVOUCHED_NOT_GRANTABLE: u64 = 1 << 9;
 /// **Set when [`RUN_UNVOUCHED_MAGIC`] was taken on the sixth capability.** Set only by
 /// [`PRESENT_RUN_UNVOUCHED`]; like [`F_TERM_WORKS`], `send` returns only once a receiver matched.
 pub const F_RUN_UNVOUCHED_WORKS: u64 = 1 << 10;
-/// **Set when `OK` announced a sixth capability at all** ([`login_protocol::RUN_UNVOUCHED_FOLLOWS`]),
+/// **Set when `OK` announced a sixth capability at all** ([`login_contract::RUN_UNVOUCHED_FOLLOWS`]),
 /// for every behaviour. Its absence is how the kernel test sees an identity that is not on the
 /// owner's list (DECISIONS §221 (the boot prompt is the owner's console), ruling 2) without waiting
 /// on an endpoint nothing will send to.
@@ -215,7 +215,7 @@ pub const F_SESSION_SURVIVED_REFUSAL: u64 = 1 << 13;
 /// **Set when the pending-job child itself was destroyed.** Set only by [`PENDING_WORK`], and it is
 /// what makes the budget destroyable again.
 pub const F_PENDING_WORK_DESTROYED: u64 = 1 << 14;
-/// **Set when the reply announced the registration page** (`login_protocol::SCHEDULE_FOLLOWS`),
+/// **Set when the reply announced the registration page** (`login_contract::SCHEDULE_FOLLOWS`),
 /// by any behaviour. Milestone 152.
 pub const F_SCHEDULE_ANNOUNCED: u64 = 1 << 15;
 /// **Set when a replace was in force**: [`OPEN_SCHEDULE`]'s document replaced with its one entry
@@ -241,10 +241,10 @@ pub const F_NO_REPORT: u64 = 1 << 20;
 #[unsafe(no_mangle)]
 pub extern "C" fn _start(behaviour: u64, identity: u64, secret: u64) -> ! {
     if behaviour == FREE_TERMINAL {
-        // **Never calls `CONNECT` at all.** `login_protocol::logout_word` travels on the shared front
-        // door directly (`login_protocol`'s own module docs): there is no secret to protect, so there
+        // **Never calls `CONNECT` at all.** `login_contract::logout_word` travels on the shared front
+        // door directly (`login_contract`'s own module docs): there is no secret to protect, so there
         // is nothing a private channel would buy here.
-        send(SERVICE, login_protocol::logout_word(), 0, 0);
+        send(SERVICE, login_contract::logout_word(), 0, 0);
         let (verdict, _, _) = receive(RESULT);
         done(verdict, 0, 0);
     }
@@ -255,18 +255,18 @@ pub extern "C" fn _start(behaviour: u64, identity: u64, secret: u64) -> ! {
     // index zero: a run that silently logged in as `alice` would pass every assertion that follows
     // and prove nothing about the identity the caller meant.
     let (Some(identity), Some(secret)) = (
-        credential_protocol::fixture::identity(identity),
-        credential_protocol::fixture::secret(secret),
+        credential_contract::fixture::identity(identity),
+        credential_contract::fixture::secret(secret),
     ) else {
         done(RPT_MALFORMED, 0, 0);
     };
 
     // **Milestone 49's channel-per-client update: connect first.** The front door's only legal
-    // word; see `login_protocol`'s own module docs for the two-phase exchange. Nothing is staged for
+    // word; see `login_contract`'s own module docs for the two-phase exchange. Nothing is staged for
     // this step, so there is no page to write before sending it.
-    send(SERVICE, login_protocol::connect_word(), 0, 0);
+    send(SERVICE, login_contract::connect_word(), 0, 0);
     let (connect_verdict, _, _) = receive(RESULT);
-    if connect_verdict != login_protocol::CONNECTED {
+    if connect_verdict != login_contract::CONNECTED {
         // The front door answered something other than CONNECTED (MALFORMED or DENIED): nothing
         // follows, the same promise the private channel's own OK/DENIED gives.
         done(connect_verdict, 0, 0);
@@ -288,20 +288,20 @@ pub extern "C" fn _start(behaviour: u64, identity: u64, secret: u64) -> ! {
     // process runs, which milestone 49's channel-per-client update made false here specifically:
     // the page is now mapped dynamically, per connection, from a capability CONNECT hands back at
     // runtime, so there is nothing for a compile-time-constant window to be a window onto yet.
-    let page = unsafe { core::slice::from_raw_parts_mut(PAGE_VA as *mut u8, login_protocol::PAGE) };
+    let page = unsafe { core::slice::from_raw_parts_mut(PAGE_VA as *mut u8, login_contract::PAGE) };
     let operation = if behaviour == OPEN_SCHEDULE {
-        login_protocol::SCHEDULE
+        login_contract::SCHEDULE
     } else {
-        login_protocol::LOGIN
+        login_contract::LOGIN
     };
-    let Some(w0) = login_protocol::place(page, identity, secret, operation) else {
+    let Some(w0) = login_contract::place(page, identity, secret, operation) else {
         done(RPT_MALFORMED, 0, 0);
     };
     send(priv_request, w0, 0, 0);
     let (verdict, extra, _) = receive(priv_result);
 
-    if verdict != login_protocol::OK {
-        // `login_protocol`'s own promise: nothing follows a refusal. Reporting here, rather than
+    if verdict != login_contract::OK {
+        // `login_contract`'s own promise: nothing follows a refusal. Reporting here, rather than
         // attempting `RECEIVE_CAP`, is the check that the promise holds; a service that sent a fourth
         // message anyway would leave the *next* login's first `RECEIVE_CAP` reading this one's leftover
         // word instead of blocking as it should, which is exactly the kind of protocol desync a
@@ -309,7 +309,7 @@ pub extern "C" fn _start(behaviour: u64, identity: u64, secret: u64) -> ! {
         done(verdict, 0, 0);
     }
 
-    // Five capabilities, in login_protocol's fixed order, on the private channel `priv_result` names.
+    // Five capabilities, in login_contract's fixed order, on the private channel `priv_result` names.
     let (_, dir_ep, _) = receive_cap(priv_result);
     let (_, fs_page_frame, _) = receive_cap(priv_result);
     let (_, budget, _) = receive_cap(priv_result);
@@ -319,10 +319,10 @@ pub extern "C" fn _start(behaviour: u64, identity: u64, secret: u64) -> ! {
     // it, and anything this process sends first (the terminal's proof below) waits on a kernel test
     // that is itself waiting on `login`.
     let run_unvouched =
-        (extra & login_protocol::RUN_UNVOUCHED_FOLLOWS != 0).then(|| receive_cap(priv_result).1);
+        (extra & login_contract::RUN_UNVOUCHED_FOLLOWS != 0).then(|| receive_cap(priv_result).1);
     // The registration page, last, and only as announced (milestone 152).
     let registration =
-        (extra & login_protocol::SCHEDULE_FOLLOWS != 0).then(|| receive_cap(priv_result).1);
+        (extra & login_contract::SCHEDULE_FOLLOWS != 0).then(|| receive_cap(priv_result).1);
 
     let mut flags = 0u64;
     if run_unvouched.is_some() {
@@ -391,8 +391,8 @@ pub extern "C" fn _start(behaviour: u64, identity: u64, secret: u64) -> ! {
     // on both calls, so every flag below still sets, but `CONSTRUCTION_UT`'s reusable capacity never
     // recovers: `kernel::user::login_tests::caretaker_teardown_reclaims_a_full_session_worth_of_memory`
     // starved a *later*, unrelated test in this suite of real login attempts before this ordering was
-    // fixed, which is exactly the anti-oracle failure `login_protocol::DENIED`'s own fold exists to
-    // prevent (a real password silently answered as though it were wrong). See `login_protocol`'s own
+    // fixed, which is exactly the anti-oracle failure `login_contract::DENIED`'s own fold exists to
+    // prevent (a real password silently answered as though it were wrong). See `login_contract`'s own
     // module docs on the fourth capability for the client-facing version of this note.
     if (behaviour == LOGOUT
         || behaviour == HOLD_TERMINAL
@@ -415,7 +415,7 @@ pub extern "C" fn _start(behaviour: u64, identity: u64, secret: u64) -> ! {
 
     // **`LOGOUT` deliberately does not also free the terminal here.** `login`'s own thread is
     // blocked inside `send(AUDIT, ...)` (a blocking rendezvous) until the *caller* drains it, which
-    // happens after this behaviour's report, not before; sending `login_protocol::logout_word` from inside
+    // happens after this behaviour's report, not before; sending `login_contract::logout_word` from inside
     // this behaviour and waiting for its answer here would deadlock against that (its own report
     // would never arrive, because `login` cannot get back to `RECEIVE(REQUEST)` to answer the logout
     // until the caller has already drained `AUDIT`, which it does *after* waiting for this report).
@@ -432,15 +432,15 @@ fn prove_the_directory(behavior: u64, identity: &[u8], dir_ep: u64, region: u64)
     let mut hint = 0u64;
     let (r0, _) = call(
         dir_ep,
-        filesystem_protocol::fs::req(
-            filesystem_protocol::fs::READDIR,
-            filesystem_protocol::fs::ROOT,
+        filesystem_contract::fs::req(
+            filesystem_contract::fs::READDIR,
+            filesystem_contract::fs::ROOT,
             0,
         ),
         0,
     );
     // `call` returns the reply word as a `u64`; a negative errno reads as a huge one
-    // (`entropy_protocol`'s convention, followed here and by `smb_server.rs`'s own `fs_readdir`).
+    // (`entropy_contract`'s convention, followed here and by `smb_server.rs`'s own `fs_readdir`).
     // A `READDIR` answers the byte count written (>= 0) or a negative errno. Any non-negative
     // answer is the capability working; this test does not pin the fixture's exact contents,
     // which is a fact about the image and not about this capability.
@@ -608,7 +608,7 @@ fn schedule(behaviour: u64, budget: u64, dir: u64) -> u64 {
 /// the root of the delegated directory, which is the identity's own subtree), replacing whatever
 /// was there. `true` when every byte landed.
 fn store_schedule(dir: u64, doc: &[u8]) -> bool {
-    use filesystem_protocol::fs;
+    use filesystem_contract::fs;
     let name = schedule_store::SCHEDULE_FILE_NAME.as_bytes();
     put_page(name);
     let (mut h, _) = call(dir, fs::req(fs::CREATE, fs::ROOT, name.len() as u64), 0);
@@ -654,14 +654,14 @@ fn get_page(n: usize, out: &mut [u8]) {
 
 /// `CREATE` [`MARKER_NAME`] under `dir` and `WRITE` `content` into it, then `CLOSE` the handle.
 /// `true` only if every step succeeded. Create is create, not create-or-open
-/// (`filesystem_protocol::fs::CREATE`'s own contract), so this fails loudly rather than overwriting a marker a
+/// (`filesystem_contract::fs::CREATE`'s own contract), so this fails loudly rather than overwriting a marker a
 /// previous run left behind, which would silently defeat the isolation proof this behaviour exists
 /// for.
 fn write_marker(dir: u64, content: &[u8]) -> bool {
     put_page(MARKER_NAME.as_bytes());
     let (h, _) = call(
         dir,
-        filesystem_protocol::fs::req(filesystem_protocol::fs::CREATE, 0, MARKER_NAME.len() as u64),
+        filesystem_contract::fs::req(filesystem_contract::fs::CREATE, 0, MARKER_NAME.len() as u64),
         0,
     );
     if (h as i64) < 0 {
@@ -670,13 +670,13 @@ fn write_marker(dir: u64, content: &[u8]) -> bool {
     put_page(content);
     let (w, _) = call(
         dir,
-        filesystem_protocol::fs::req(filesystem_protocol::fs::WRITE, h, content.len() as u64),
+        filesystem_contract::fs::req(filesystem_contract::fs::WRITE, h, content.len() as u64),
         0,
     );
     let ok = w as i64 == content.len() as i64;
     let _ = call(
         dir,
-        filesystem_protocol::fs::req(filesystem_protocol::fs::CLOSE, h, 0),
+        filesystem_contract::fs::req(filesystem_contract::fs::CLOSE, h, 0),
         0,
     );
     ok
@@ -689,21 +689,21 @@ fn is_absent(dir: u64, name: &str) -> bool {
     put_page(name.as_bytes());
     let (r0, _) = call(
         dir,
-        filesystem_protocol::fs::req(filesystem_protocol::fs::OPEN, 0, name.len() as u64),
+        filesystem_contract::fs::req(filesystem_contract::fs::OPEN, 0, name.len() as u64),
         0,
     );
     (r0 as i64) < 0
 }
 
 /// `OPEN` and `READ` [`MARKER_NAME`] under `dir`, packed the same way `login`'s own audit trail
-/// packs an identity ([`login_protocol::identity_hint`]), so the kernel test can compare what this run
+/// packs an identity ([`login_contract::identity_hint`]), so the kernel test can compare what this run
 /// read against what [`write_marker`]'s caller wrote without a second encoding to keep in sync.
 /// `None` if the marker could not be opened or read.
 fn read_marker(dir: u64) -> Option<u64> {
     put_page(MARKER_NAME.as_bytes());
     let (h, _) = call(
         dir,
-        filesystem_protocol::fs::req(filesystem_protocol::fs::OPEN, 0, MARKER_NAME.len() as u64),
+        filesystem_contract::fs::req(filesystem_contract::fs::OPEN, 0, MARKER_NAME.len() as u64),
         0,
     );
     if (h as i64) < 0 {
@@ -711,12 +711,12 @@ fn read_marker(dir: u64) -> Option<u64> {
     }
     let (n, _) = call(
         dir,
-        filesystem_protocol::fs::req(filesystem_protocol::fs::READ, h, 16),
+        filesystem_contract::fs::req(filesystem_contract::fs::READ, h, 16),
         0,
     );
     let _ = call(
         dir,
-        filesystem_protocol::fs::req(filesystem_protocol::fs::CLOSE, h, 0),
+        filesystem_contract::fs::req(filesystem_contract::fs::CLOSE, h, 0),
         0,
     );
     if (n as i64) < 0 {
@@ -724,12 +724,12 @@ fn read_marker(dir: u64) -> Option<u64> {
     }
     let mut buf = [0u8; 16];
     get_page((n as usize).min(buf.len()), &mut buf);
-    Some(login_protocol::identity_hint(
+    Some(login_contract::identity_hint(
         &buf[..(n as usize).min(buf.len())],
     ))
 }
 
-/// **The fourth capability, `login_protocol`'s own logout ticket: `MemoryRegion::DESTROY` reclaims the
+/// **The fourth capability, `login_contract`'s own logout ticket: `MemoryRegion::DESTROY` reclaims the
 /// caretaker `dir` names.** Sets [`F_TEARDOWN_OK`] on success and, only then, re-checks `dir` with a
 /// `READDIR`: [`F_DEAD_AFTER_TEARDOWN`] if it now fails, which is the proof that the capability, not
 /// merely the syscall, came down.
@@ -739,9 +739,9 @@ fn teardown_directory(dir: u64, region: u64) -> u64 {
     };
     let (r0, _) = call(
         dir,
-        filesystem_protocol::fs::req(
-            filesystem_protocol::fs::READDIR,
-            filesystem_protocol::fs::ROOT,
+        filesystem_contract::fs::req(
+            filesystem_contract::fs::READDIR,
+            filesystem_contract::fs::ROOT,
             0,
         ),
         0,
@@ -774,7 +774,7 @@ const DESTROY_WAIT_SECS: u64 = 5;
 
 /// **`MemoryRegion::DESTROY` on `ut`, retried until the region actually becomes destroyable.** Used
 /// on both the fourth delegated capability (the caretaker's construction region) and the third (the
-/// client's own budget, already held with `WRITE` by every behaviour): `login_protocol::OK`'s doc, on
+/// client's own budget, already held with `WRITE` by every behaviour): `login_contract::OK`'s doc, on
 /// the fourth capability, name the one transient refusal the *caretaker's* region can give
 /// (mid-`forward` to the file service, blocked on an endpoint the region does not own, at the exact
 /// instant `DESTROY` is attempted; that window closes on its own). The budget has no such window:

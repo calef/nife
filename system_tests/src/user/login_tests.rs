@@ -1,4 +1,4 @@
-use credential_protocol::fixture::{ALICE, BOB, CAROL, NONE, WRONG};
+use credential_contract::fixture::{ALICE, BOB, CAROL, NONE, WRONG};
 use login_service as ls;
 
 use super::*;
@@ -23,9 +23,9 @@ use crate::sched;
 pub(super) const CONSTRUCTION_PAGES: u64 = 3088;
 
 /// **What `login` splits off its construction budget at start-up for durable sessions** (milestone
-/// 152): one durable session's budget, `login_protocol::durable::BUDGET_PAGES`, the constant `login`
+/// 152): one durable session's budget, `login_contract::durable::BUDGET_PAGES`, the constant `login`
 /// splits by. Kept apart from [`CONSTRUCTION_PAGES`] so the account above stays the account it was.
-pub(super) const DURABLE_UT_PAGES: u64 = login_protocol::durable::BUDGET_PAGES;
+pub(super) const DURABLE_UT_PAGES: u64 = login_contract::durable::BUDGET_PAGES;
 
 /// **Install the one program the durable tests schedule**, as an installer would (milestone 152,
 /// Fork 8 ruled D by calef on 2026-09-27, on #1377): a scheduled job runs what the live activation
@@ -55,7 +55,7 @@ const EEXIST: i32 = 17;
 
 /// **Ensure `name` exists as a subtree under `fs_ep`'s root, tolerating `EEXIST`** exactly as
 /// `identity_provisioner.rs`'s own `mkdir_home` does: the same opcode
-/// ([`filesystem_protocol::fs::MKDIR`]), the same rights ([`filesystem_protocol::dir::ALL`]), and the identity string
+/// ([`filesystem_contract::fs::MKDIR`]), the same rights ([`filesystem_contract::dir::ALL`]), and the identity string
 /// itself as the name (DECISIONS §117). Issued directly from this test rather than through a
 /// spawned `identity_provisioner`, because this suite's fs root is the tree-wide shared fixture
 /// (`fs_service`'s own memoized `ensure`, one FS server for the whole kernel test binary): another
@@ -75,22 +75,22 @@ fn ensure_home_subtree(fs_ep: sched::RendezvousId, fs_page_frame: u64, name: &[u
     let page = unsafe {
         core::slice::from_raw_parts_mut(
             mmu::phys_to_virt(fs_page_frame) as *mut u8,
-            filesystem_protocol::PAGE,
+            filesystem_contract::PAGE,
         )
     };
     page[..name.len()].copy_from_slice(name);
     let r = sched::ipc_call(
         fs_ep,
         [
-            filesystem_protocol::fs::req(
-                filesystem_protocol::fs::MKDIR,
-                filesystem_protocol::fs::ROOT,
+            filesystem_contract::fs::req(
+                filesystem_contract::fs::MKDIR,
+                filesystem_contract::fs::ROOT,
                 name.len() as u64,
             ),
-            filesystem_protocol::dir::ALL,
+            filesystem_contract::dir::ALL,
         ],
     );
-    match filesystem_protocol::reply_errno(r[0] as i64) {
+    match filesystem_contract::reply_errno(r[0] as i64) {
         Some(errno) => assert_eq!(
             errno,
             EEXIST,
@@ -105,7 +105,7 @@ fn ensure_home_subtree(fs_ep: sched::RendezvousId, fs_page_frame: u64, name: &[u
             let _ = sched::ipc_call(
                 fs_ep,
                 [
-                    filesystem_protocol::fs::req(filesystem_protocol::fs::CLOSE, r[0], 0),
+                    filesystem_contract::fs::req(filesystem_contract::fs::CLOSE, r[0], 0),
                     0,
                 ],
             );
@@ -113,7 +113,7 @@ fn ensure_home_subtree(fs_ep: sched::RendezvousId, fs_page_frame: u64, name: &[u
     }
 }
 
-/// **Write the owner's run-unvouched list** (`login_protocol::RUN_UNVOUCHED_LIST`, DECISIONS §221
+/// **Write the owner's run-unvouched list** (`login_contract::RUN_UNVOUCHED_LIST`, DECISIONS §221
 /// (the boot prompt is the owner's console), ruling 2) at the root of the shared test file service,
 /// as the boot prompt would; `None` removes it, which is the default: no list lists nobody.
 ///
@@ -122,7 +122,7 @@ fn ensure_home_subtree(fs_ep: sched::RendezvousId, fs_page_frame: u64, name: &[u
 /// that page. Every test that depends on the list sets it first, because the file service is one
 /// fixture for the whole suite and a test order is not a contract.
 fn set_run_unvouched_list(list: Option<&[u8]>) {
-    fs_service::set_root_list(login_protocol::RUN_UNVOUCHED_LIST, list);
+    fs_service::set_root_list(login_contract::RUN_UNVOUCHED_LIST, list);
 }
 
 /// **Wire the whole system once**: entropy, the credential service (`credential_tests::provisioned`'s
@@ -217,22 +217,22 @@ pub(super) fn redoxfs_server_image() -> &'static [u8] {
 /// **Free the terminal directly, without spawning a client** (milestone 49's terminal update).
 ///
 /// Every successful login now also claims the single, shared terminal
-/// (`login_protocol::NO_TERMINAL` denies any concurrent second one until it is freed), and `wired()`
+/// (`login_contract::NO_TERMINAL` denies any concurrent second one until it is freed), and `wired()`
 /// memoizes **one** login instance across this entire file. Every test below that performs a
 /// successful login and does not itself exercise the terminal property calls this first, as a
-/// defensive, idempotent reset: `login_protocol::LOGOUT` is answered `LOGGED_OUT` whether or not
-/// anything was actually held (`login_protocol::LOGGED_OUT`'s own doc), so this is safe to call
+/// defensive, idempotent reset: `login_contract::LOGOUT` is answered `LOGGED_OUT` whether or not
+/// anything was actually held (`login_contract::LOGGED_OUT`'s own doc), so this is safe to call
 /// regardless of what a previous test (in whatever order this suite happens to run them) left
 /// behind. Issued as a raw front-door exchange rather than through `login_test_client`, since
-/// freeing the terminal needs no identity and carries no secret (`login_protocol`'s own module docs on
+/// freeing the terminal needs no identity and carries no secret (`login_contract`'s own module docs on
 /// why `LOGOUT` travels on the shared front door at all).
 pub(super) fn free_terminal(w: &ls::Wiring) {
-    sched::ipc_send(w.request, [login_protocol::logout_word(), 0, 0]);
+    sched::ipc_send(w.request, [login_contract::logout_word(), 0, 0]);
     let r = sched::ipc_receive(w.result);
     assert_eq!(
         r[0],
-        login_protocol::LOGGED_OUT,
-        "login_protocol::logout_word on the front door was not answered LOGGED_OUT",
+        login_contract::LOGGED_OUT,
+        "login_contract::logout_word on the front door was not answered LOGGED_OUT",
     );
 }
 
@@ -284,7 +284,7 @@ fn login_grants_a_working_capability_set_to_the_identity_it_verified() {
     let a = sched::ipc_receive(w.audit);
     assert_eq!(
         a[0],
-        login_protocol::ATTRIBUTED,
+        login_contract::ATTRIBUTED,
         "no attribution record followed a successful login",
     );
 }
@@ -345,12 +345,12 @@ fn two_different_identities_get_independently_working_channels_and_correct_attri
     let a_alice = sched::ipc_receive(w.audit);
     assert_eq!(
         a_alice[0],
-        login_protocol::ATTRIBUTED,
+        login_contract::ATTRIBUTED,
         "no attribution record followed alice's login",
     );
     assert_eq!(
         a_alice[2],
-        login_protocol::identity_hint(b"alice"),
+        login_contract::identity_hint(b"alice"),
         "the attribution record named the wrong identity for the first channel",
     );
     // Free the terminal before bob's login (milestone 49 (users, login, and attribution)'s
@@ -363,12 +363,12 @@ fn two_different_identities_get_independently_working_channels_and_correct_attri
     let a_bob = sched::ipc_receive(w.audit);
     assert_eq!(
         a_bob[0],
-        login_protocol::ATTRIBUTED,
+        login_contract::ATTRIBUTED,
         "no attribution record followed bob's login",
     );
     assert_eq!(
         a_bob[2],
-        login_protocol::identity_hint(b"bob"),
+        login_contract::identity_hint(b"bob"),
         "the attribution record named the wrong identity for the second channel",
     );
 
@@ -423,7 +423,7 @@ fn two_different_identities_get_independently_working_channels_and_correct_attri
 /// **Rewritten for milestone 49's terminal update.** Before it, both concurrent logins succeeded
 /// and this test's own property was that the two attribution records named exactly one alice and
 /// one bob, never crossed. Now only one of them *can* succeed: the single, shared terminal has
-/// exactly one holder at a time, and the loser is refused `login_protocol::NO_TERMINAL` before its
+/// exactly one holder at a time, and the loser is refused `login_contract::NO_TERMINAL` before its
 /// identity or secret is even relayed to the credential service (`login.rs`'s own `serve_login`
 /// checks this first, deliberately, so the refusal cannot become a timing or outcome oracle about a
 /// specific identity). The property this test can still prove, and does: whichever one wins, its
@@ -459,7 +459,7 @@ fn two_clients_connecting_together_get_independent_channels_and_neither_observes
     let a = sched::ipc_receive(w.audit);
     assert_eq!(
         a[0],
-        login_protocol::ATTRIBUTED,
+        login_contract::ATTRIBUTED,
         "no attribution record followed the winning login",
     );
 
@@ -499,7 +499,7 @@ fn two_clients_connecting_together_get_independent_channels_and_neither_observes
 
     // The property under test, stated positively: the one attribution record names exactly the
     // identity that won, never the other one and never a garbled third value.
-    let expected_hint = login_protocol::identity_hint(winner_label.as_bytes());
+    let expected_hint = login_contract::identity_hint(winner_label.as_bytes());
     assert_eq!(
         a[2], expected_hint,
         "the attribution record named the wrong identity for the winning channel \
@@ -514,7 +514,7 @@ fn two_clients_connecting_together_get_independent_channels_and_neither_observes
 /// untyped), and before `components/src/login.rs`'s `mint` learned to drop its own copy of the
 /// caretaker's construction region, that region's capability was never freed on a successful
 /// login. That left room for exactly eight successful logins ever; a ninth, correctly
-/// authenticated, was silently answered [`login_protocol::DENIED`], indistinguishable from a wrong
+/// authenticated, was silently answered [`login_contract::DENIED`], indistinguishable from a wrong
 /// password, at a far tighter ceiling than the memory bound `components/src/login.rs`'s BUGS documents.
 ///
 /// This performs **six** successful logins against one service instance, on top of the three the
@@ -571,7 +571,7 @@ fn the_login_service_serves_past_the_old_capability_table_ceiling() {
         let a = sched::ipc_receive(w.audit);
         assert_eq!(
             a[0],
-            login_protocol::ATTRIBUTED,
+            login_contract::ATTRIBUTED,
             "no attribution record followed login {i}",
         );
         // Free the terminal so login {i+1} is authenticated rather than refused NO_TERMINAL
@@ -596,9 +596,9 @@ fn the_login_service_serves_past_the_old_capability_table_ceiling() {
 /// later write would have overwritten `alice`'s marker in the one subtree they would have shared,
 /// and this final read would come back `bob`'s instead).
 ///
-/// `wired`'s own `ensure_home_subtree` issues the identical `filesystem_protocol::fs::MKDIR` request
+/// `wired`'s own `ensure_home_subtree` issues the identical `filesystem_contract::fs::MKDIR` request
 /// `identity_provisioner.rs`'s own `mkdir_home` does (same opcode, same
-/// [`filesystem_protocol::dir::ALL`] rights, the identity string as the name); that milestone's own suite
+/// [`filesystem_contract::dir::ALL`] rights, the identity string as the name); that milestone's own suite
 /// (`identity_provisioning_tests.rs`, `provisioning_creates_a_working_credential_and_a_real_subtree`)
 /// already proves the *tool* produces a real, descendable subtree end to end, so this test's job is
 /// the other half: that `login`, given one, finds and attenuates to the *right* one.
@@ -630,7 +630,7 @@ fn login_scopes_each_identity_to_its_own_provisioned_subtree() {
     let a_alice = sched::ipc_receive(w.audit);
     assert_eq!(
         a_alice[0],
-        login_protocol::ATTRIBUTED,
+        login_contract::ATTRIBUTED,
         "no attribution record followed alice's marking login",
     );
     // Free the terminal before bob's own login (milestone 49's terminal update): unrelated to
@@ -654,7 +654,7 @@ fn login_scopes_each_identity_to_its_own_provisioned_subtree() {
     let a_bob = sched::ipc_receive(w.audit);
     assert_eq!(
         a_bob[0],
-        login_protocol::ATTRIBUTED,
+        login_contract::ATTRIBUTED,
         "no attribution record followed bob's marking login",
     );
     free_terminal(&w);
@@ -672,7 +672,7 @@ fn login_scopes_each_identity_to_its_own_provisioned_subtree() {
     );
     assert_eq!(
         r_check[2],
-        login_protocol::identity_hint(b"alice"),
+        login_contract::identity_hint(b"alice"),
         "alice's second, independent login did not read back alice's own marker: either it did \
          not land in alice's subtree, or bob's write clobbered it, which is exactly the \
          everyone-shares-one-subtree bug this milestone fixes",
@@ -680,7 +680,7 @@ fn login_scopes_each_identity_to_its_own_provisioned_subtree() {
     let a_check = sched::ipc_receive(w.audit);
     assert_eq!(
         a_check[0],
-        login_protocol::ATTRIBUTED,
+        login_contract::ATTRIBUTED,
         "no attribution record followed alice's second login",
     );
     free_terminal(&w);
@@ -694,7 +694,7 @@ fn login_scopes_each_identity_to_its_own_provisioned_subtree() {
 /// and `bob`): the case `identity_provisioner` never having run for a real identity, or its
 /// `MKDIR` never reaching this file service's disk. `mint`'s caretaker construction reaches the
 /// same `OPENDIR`-against-a-missing-name refusal, and `login`'s existing fold answers it with
-/// [`login_protocol::DENIED`], the same code [`login_denies_a_wrong_secret_and_sends_nothing_further`]
+/// [`login_contract::DENIED`], the same code [`login_denies_a_wrong_secret_and_sends_nothing_further`]
 /// above already proves a wrong password gets. See `components/src/login.rs`'s own BUGS for the reasoning
 /// (a caller must not be able to tell "your identity has no home" from "your password is wrong" by
 /// comparing outcomes across attempts).
@@ -728,7 +728,7 @@ fn login_denies_an_authenticated_identity_with_no_provisioned_subtree() {
 /// build a caretaker from those bytes, the identical check `crates/system_initializer::measured`
 /// performs for its own six boot components (see `components/src/login.rs`'s own BUGS, "Resolved,
 /// 2026-08-24", for the full reasoning, including why this is a boot-time check rather than a
-/// per-login one, and why the fold into [`login_protocol::DENIED`] it produces on refusal is not the
+/// per-login one, and why the fold into [`login_contract::DENIED`] it produces on refusal is not the
 /// same anti-oracle reasoning a wrong password or a missing subtree gets).
 ///
 /// **This suite cannot make the real, already-booted archive disagree with itself** to prove a live
@@ -866,7 +866,7 @@ fn caretaker_teardown_reclaims_a_full_session_worth_of_memory() {
         let a = sched::ipc_receive(w.audit);
         assert_eq!(
             a[0],
-            login_protocol::ATTRIBUTED,
+            login_contract::ATTRIBUTED,
             "no attribution record followed login {i}",
         );
         // **Free the terminal, after draining `AUDIT`, not before.** `LOGOUT` deliberately
@@ -887,13 +887,13 @@ fn caretaker_teardown_reclaims_a_full_session_worth_of_memory() {
 ///    role sends through it on `w.term_ep` -- the stand-in terminal this suite's own harness wires
 ///    in place of a real one (`ls::Wiring::term_ep`'s own doc). `alice` then tears the *session*
 ///    down (the same `MemoryRegion::DESTROY` pair [`ls::LOGOUT`] already proves) **without**
-///    freeing the terminal: no `login_protocol::logout_word` is ever sent.
+///    freeing the terminal: no `login_contract::logout_word` is ever sent.
 /// 2. `bob` then presents a **real, correct** credential (a plain [`ls::LOGIN`], which is all
 ///    that case ever was) while the
-///    terminal is still on loan. He is refused [`login_protocol::NO_TERMINAL`], not `DENIED`: this is
+///    terminal is still on loan. He is refused [`login_contract::NO_TERMINAL`], not `DENIED`: this is
 ///    provably not about his identity or secret, both of which are genuine.
 /// 3. [`ls::FREE_TERMINAL`] frees the terminal, a bare word on the front door with no identity
-///    involved at all, and is answered [`login_protocol::LOGGED_OUT`].
+///    involved at all, and is answered [`login_contract::LOGGED_OUT`].
 /// 4. `alice` logs in again ([`ls::HOLD_TERMINAL`], a second, independent time) and receives the
 ///    terminal a second time, proven the same way as step 1 -- the property stated positively: a
 ///    session freeing the terminal is what makes it available to the *next* login, not merely what
@@ -925,7 +925,7 @@ fn login_hands_out_the_terminal_once_and_denies_a_concurrent_second_login_until_
     let a1 = sched::ipc_receive(w.audit);
     assert_eq!(
         a1[0],
-        login_protocol::ATTRIBUTED,
+        login_contract::ATTRIBUTED,
         "no attribution record followed alice's first terminal login",
     );
     let term_msg = sched::ipc_receive(w.term_ep);
@@ -975,7 +975,7 @@ fn login_hands_out_the_terminal_once_and_denies_a_concurrent_second_login_until_
     assert_eq!(
         r3[0],
         ls::RPT_LOGGED_OUT,
-        "login_protocol::logout_word on the front door was not answered LOGGED_OUT",
+        "login_contract::logout_word on the front door was not answered LOGGED_OUT",
     );
 
     // Step 4: alice again, a second, independent time, and the terminal is available once more.
@@ -983,7 +983,7 @@ fn login_hands_out_the_terminal_once_and_denies_a_concurrent_second_login_until_
     let a4 = sched::ipc_receive(w.audit);
     assert_eq!(
         a4[0],
-        login_protocol::ATTRIBUTED,
+        login_contract::ATTRIBUTED,
         "no attribution record followed alice's second terminal login",
     );
     let term_msg2 = sched::ipc_receive(w.term_ep);
@@ -1037,7 +1037,7 @@ fn login_hands_a_listed_session_the_run_unvouched_capability_and_it_cannot_be_pa
     let a = sched::ipc_receive(w.audit);
     assert_eq!(
         a[0],
-        login_protocol::ATTRIBUTED,
+        login_contract::ATTRIBUTED,
         "no attribution record followed the login",
     );
     let presented = sched::ipc_receive(w.run_unvouched);

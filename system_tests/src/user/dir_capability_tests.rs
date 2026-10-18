@@ -1,5 +1,5 @@
+use filesystem_contract::dir;
 use filesystem_fixture::dirscape as esc;
-use filesystem_protocol::dir;
 
 use super::*;
 use crate::sched;

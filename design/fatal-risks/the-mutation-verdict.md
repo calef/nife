@@ -80,7 +80,7 @@ It ran at the milestone 636 branch's head, which differs from `main` only by tha
 
 The published rows disagree about what a timeout is: the baseline and the 2026-09-14 figures follow
 `notes/mutation-testing.md`'s rule that a timeout is a kill, while the 2026-09-19 figures (now in
-`notes/mutation-testing/regressions-capability-to-dtb.md`) scored that run's 205 timeouts as
+`notes/mutation-testing/regressions-2026-09-14-capability-to-device-tree-blob.md`) scored that run's 205 timeouts as
 survivors. And the crate those rows call `cred` is `credentialer`, so the join dropped it: 103 viable mutants at
 100%. Reproducing the published 37 crates and 6,472 viable requires resolving two crates by hand and
 missing that one.
@@ -165,7 +165,7 @@ weeks ago. There were 205 on 2026-09-19 and 206 on 2026-09-21, and none of them 
 
 The first amber half: seven crates regressed, and three of the baseline's five perfect crates lost
 that score. `memory_regions` 100% to 88.9%, `elf` 100% to 94.2%, `capability` 97.4% to 88.2%, with
-`clock_protocol`, `swish`, `dtb` and `filesystem_protocol` behind them. Each is a property that used
+`clock_contract`, `swish`, `dtb` and `filesystem_contract` behind them. Each is a property that used
 to hold and no longer does, which is a different object from a crate that was never covered. A
 sample cannot surface these at all, because it cannot tell an absent mutant from a killed one, so
 this is the first time in the project's life that the question has been askable.

@@ -39,7 +39,7 @@
 //!   `DENIED` and the next exchange must work; anything subtler than that and the two counters is
 //!   not checked.
 
-use credential_protocol::fixture::BOB;
+use credential_contract::fixture::BOB;
 use login_service as ls;
 
 use super::login_tests::{free_terminal, wired};
@@ -117,7 +117,7 @@ fn one_login(cli: &'static [u8], w: &ls::Wiring) -> u64 {
         let a = sched::ipc_receive(w.audit);
         assert_eq!(
             a[0],
-            login_protocol::ATTRIBUTED,
+            login_contract::ATTRIBUTED,
             "no attribution record followed a login"
         );
     }

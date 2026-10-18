@@ -44,7 +44,7 @@
 #![no_main]
 
 use abi::rights;
-use clock_protocol::propose;
+use clock_contract::propose;
 use network_time_protocol::{Query, Reject, Timestamp};
 // The socket contract, verbatim from the file `net_stack` compiles, so this client and the test
 // server cannot drift from the real server's idea of the wire format.
@@ -52,7 +52,7 @@ use network_time_protocol::{Query, Reject, Timestamp};
 // file is dead here. Allowed rather than trimmed: the value of compiling the *same file* net_stack
 // does is that the two cannot drift, and a per-consumer subset would throw that away.
 #[allow(dead_code)]
-use socket_protocol::*;
+use socket_contract::*;
 use user_mode_runtime::socket_frame::Frame;
 use user_mode_runtime::{
     call, call_receiving, cntfrq, exit, map_page_frame, now, retype_into_page_frame,
@@ -81,7 +81,7 @@ const PROPOSE: u64 = 3;
 /// Slot 4: the entropy service's endpoint (WRITE): "you may obtain randomness", naming no device.
 const ENTROPY: u64 = 4;
 
-/// A sample was accepted and proposed. `w1` is the `clock_protocol::status` the service answered with,
+/// A sample was accepted and proposed. `w1` is the `clock_contract::status` the service answered with,
 /// `w2` the nanoseconds proposed.
 pub const RPT_SYNCED: u64 = 1;
 /// A reply arrived and `Query::accept` refused it. `w1` is a [`reject_code`], `w2` the number of
@@ -110,7 +110,7 @@ const RETRY_GAP_NANOS: u64 = 2 * 1_000_000;
 /// Where this client maps the shared socket frame in its own address space. Above the program's
 /// segments; the same address `socket_test_client` uses, and each address space is its own. The
 /// test server picks its own, and the two do not have to agree: what they share is the frame's
-/// *layout*, which is `socket_protocol`'s.
+/// *layout*, which is `socket_contract`'s.
 const PAGE_FRAME_VA: u64 = address_space_map::pair_page(0x0000_0000_00A0_0000);
 
 /// The shared frame at that address, read and written through
@@ -238,20 +238,20 @@ fn client(server_ip: u64, server_port: u64) -> ! {
 
 /// **Eight unguessable bytes, or an error word that says why not.**
 ///
-/// `entropy_protocol::delivered` is what makes the two failures distinguishable with no probe: a byte
+/// `entropy_contract::delivered` is what makes the two failures distinguishable with no probe: a byte
 /// count is `0..=8`, and every error a `CALL` can return is one of the kernel's small negatives,
 /// which read as enormous `u64`s. So `Err(0)` is "the service has no entropy" and `Err(huge)` is
 /// "there is no entropy service in slot 4". Both stop the client; only the report tells them apart.
 fn nonce_bits() -> Result<u64, u64> {
-    let (r0, r1) = call(ENTROPY, entropy_protocol::req(entropy_protocol::GET, 8), 0);
-    let Some(n) = entropy_protocol::delivered(r0) else {
+    let (r0, r1) = call(ENTROPY, entropy_contract::req(entropy_contract::GET, 8), 0);
+    let Some(n) = entropy_contract::delivered(r0) else {
         return Err(r0);
     };
     if n < 8 {
         return Err(r0);
     }
     let mut bytes = [0u8; 8];
-    entropy_protocol::take(n, r1, &mut bytes);
+    entropy_contract::take(n, r1, &mut bytes);
     Ok(u64::from_le_bytes(bytes))
 }
 
@@ -284,7 +284,7 @@ fn monotonic_nanos() -> u64 {
     let ticks = now();
     let secs = ticks / freq;
     let rem = ticks % freq;
-    secs * clock_protocol::NANOS_PER_SEC + rem * clock_protocol::NANOS_PER_SEC / freq
+    secs * clock_contract::NANOS_PER_SEC + rem * clock_contract::NANOS_PER_SEC / freq
 }
 
 /// Unix nanoseconds to an NTP timestamp. `None` outside the crate's representable window, which the
@@ -292,8 +292,8 @@ fn monotonic_nanos() -> u64 {
 /// alternative to checking is a timestamp 136 years out.
 fn stamp(unix_nanos: u64) -> Option<Timestamp> {
     Timestamp::from_unix(
-        unix_nanos / clock_protocol::NANOS_PER_SEC,
-        (unix_nanos % clock_protocol::NANOS_PER_SEC) as u32,
+        unix_nanos / clock_contract::NANOS_PER_SEC,
+        (unix_nanos % clock_contract::NANOS_PER_SEC) as u32,
     )
 }
 

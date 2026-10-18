@@ -28,7 +28,7 @@ keeps the count it was filed under.
 
 Closed 2026-10-16 (UTC). The three socket-contract programs construct
 `user_mode_runtime::socket_frame::Frame`, and their absolute-VA accessors are gone. The type had
-this block's first home, `crates/socket_protocol` beside the offsets it reads, and moved. It is
+this block's first home, `crates/socket_contract` beside the offsets it reads, and moved. It is
 built on `user_mode_runtime::mapped_window`, which cannot compile for the host, and a dependency
 from `socket_protocol` to `user_mode_runtime` lands `socket_protocol` in the host pass's derived
 exclusion set. That costs the crate its own host tests. The gate's alternative, an optional
@@ -80,7 +80,7 @@ fn read_payload(n: usize, out: &mut [u8]) -> usize { ... OFF_PAYLOAD ... }
 
 **This is code, not a fact two binaries agree on**, which is why AGENTS.md rule 7 does not already
 forbid it and why `script/lint` check 5 does not fire. The layout the accessors read is
-`crates/socket_protocol`'s, and it is a crate already. What is copied is the arithmetic that turns an
+`crates/socket_contract`'s, and it is a crate already. What is copied is the arithmetic that turns an
 absolute virtual address back into the offset `MappedWindow` bounds-checks.
 
 ## Why it is worth closing anyway
@@ -96,7 +96,7 @@ if the window abstraction moves again.
 
 ## The shape, and the one question a lane has to answer
 
-Four of the six speak the socket contract, and for those the natural home is `crates/socket_protocol`
+Four of the six speak the socket contract, and for those the natural home is `crates/socket_contract`
 beside the offsets they already use: a small type holding the window and the base address. Its
 methods are `payload_write`, `payload_read`, `dst_ip`, `dst_port` and `len`, rather than free functions
 over an absolute VA.
@@ -125,7 +125,7 @@ Six programs each carried their own copy of the same accessors over
 offset the window bounds-checks. The retirement of `multicast_dns_responder` at milestone 298 (retire
 the multicast DNS responder) left
 five. The three that speak the socket contract belong beside the offsets they already use in
-`crates/socket_protocol`. The two virtio DMA users read descriptor rings instead, and this block's
+`crates/socket_contract`. The two virtio DMA users read descriptor rings instead, and this block's
 own instruction is to price them separately rather than force one abstraction over both. The part
 that is not mechanical is that `PAGE_FRAME_VA` is genuinely per-program, since each address space is
 its own. So the type is constructed with its base, and a lane that hoisted the constant into the

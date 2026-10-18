@@ -2,7 +2,7 @@ diff --git a/kernel/src/cpu.rs b/kernel/src/cpu.rs
 index 0c22dda52..ecf9779d4 100644
 --- a/kernel/src/cpu.rs
 +++ b/kernel/src/cpu.rs
-@@ -57,7 +57,7 @@ pub const MAX_CPUS: usize = current_cpu_protocol::CPU_ID_BOUND;
+@@ -57,7 +57,7 @@ pub const MAX_CPUS: usize = current_cpu_contract::CPU_ID_BOUND;
  /// padding also keeps its size a power of two (see the assertion below [`PERCPU`]). The assertion
  /// below [`FALSE_SHARING_SPAN`] is what fails if either attribute is lost or lowered.
  #[cfg_attr(target_arch = "x86_64", repr(align(256)))]

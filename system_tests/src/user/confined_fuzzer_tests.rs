@@ -39,8 +39,8 @@
 //! Name: provisional, as are the fixture's and the protocol crate's.
 
 use abi::Error;
-use confined_fuzz_protocol as proto;
-use confined_fuzz_protocol::report;
+use confined_syscall_fuzzer_contract as proto;
+use confined_syscall_fuzzer_contract::report;
 
 use super::*;
 // The `cap` module and these constructors still carry their pre-sweep names
@@ -1072,7 +1072,7 @@ impl Rng {
     }
 }
 
-/// The endowment, in the slot order `confined_fuzz_protocol` lays out, plus how many slots of it
+/// The endowment, in the slot order `confined_syscall_fuzzer_contract` lays out, plus how many slots of it
 /// this fuzzer gets: seven for a fuzzer, one for the witness (GO alone). The unused tail of the
 /// witness's array holds its GO capability again, which `run` never sees, because the slice stops first:
 /// there is no filler capability to invent.

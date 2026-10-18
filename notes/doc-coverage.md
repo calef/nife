@@ -17,7 +17,7 @@ Measured 2026-08-17, against the block's 2026-08-02 numbers.
 |---|---|
 | 28 host crates with no doc example | **31**, before this pass. Now **0** |
 | 23 doctests in the host workspace | **49**, before this pass. Now **116** (109 of them run by `script/test`'s selection; see BUGS) |
-| Item coverage 36.4% (`socket_protocol`) to 100% | **50.0%** (`intrusive_fifo`) to 100%; `socket_protocol` is now 57.6% |
+| Item coverage 36.4% (`socket_contract`) to 100% | **50.0%** (`intrusive_fifo`) to 100%; `socket_contract` is now 57.6% |
 
 **The deficit grew while work was being done, and both halves of that are worth seeing.** Three of
 the four crates the block named as the hard ones left (`dtb`, `nifefs`, `gpt`) got their examples in
@@ -53,18 +53,18 @@ recorded limitation rather than a pass:
    machine with no nife kernel under it is a fault, not a syscall. The examples are type-checked
    against the real signatures and executed by the QEMU boot and `script/swish-check`.
 
-3. An executing doctest that the gate does not run (`swap_protocol`, `supervision_protocol`, and the
+3. An executing doctest that the gate does not run (`hot_swap_contract`, `supervision_protocol`, and the
    two above that are not `no_run`). See BUGS below; this is the one honest gap.
 
 ## BUGS
 
-- **Five crates' doctests are never run by `script/test`.** `user_mode_runtime`, `swap_protocol`, `virtio`,
+- **Five crates' doctests are never run by `script/test`.** `user_mode_runtime`, `hot_swap_contract`, `virtio`,
   `supervision_protocol` and `system_initializer` take unconditional `user_mode_runtime` dependencies, so the host
   test selection excludes them (the list is in `xtask/src/suite.rs`, derived and checked by
   `script/lint`). Their examples run under `cargo test --doc -p <crate>` on an aarch64 host and
   are checked by nothing in CI. On an x86_64 host they do not even compile, which is a property of the
   packages and not of the examples. The fix is to split each crate's pure half out from its syscall
-  half. That is a lane of its own, and is what would let the arithmetic in `swap_protocol::digest`
+  half. That is a lane of its own, and is what would let the arithmetic in `hot_swap_contract::digest`
   and
   the constants in `supervision_protocol` be gate-checked like every other wire contract.
 
@@ -97,14 +97,14 @@ of those 404, crate by crate, re-measuring the same way after every batch: 235 i
 a hard gate, so those crates cannot regress:
 
 `abi`, `address_space_identifier`, `bitmap_font`, `block_roster`, `c_seam`, `calendar`, `memory_corruption_canary_gate`, `capability`,
-`clock_protocol`, `component_plan`, `coremark`, `cpu_set`, `cred`, `credential_protocol`,
-`dma_validator`, `device_tree_blob`. `elf`, `entropy_protocol`, `page_frames`,
-`filesystem_protocol`, `graphics_protocol`, `glob`, `inter_process_communication`, `intrusive_fifo`,
+`clock_contract`, `component_plan`, `coremark`, `cpu_set`, `cred`, `credential_contract`,
+`dma_validator`, `device_tree_blob`. `elf`, `entropy_contract`, `page_frames`,
+`filesystem_contract`, `graphics_contract`, `glob`, `inter_process_communication`, `intrusive_fifo`,
 `line_editor`,
 `manual`, `measured_boot`, `nifefs`, `network_time_protocol`, `non_volatile_memory_express`,
-`paging`, `pgrep`. `ps`, `memory_regions`, `byte_sink_protocol`, `generational_table`,
-`socket_protocol`, `work_steal_slot`, `supervision_protocol`,
-`swap_protocol`, `swish`, `system_initializer`, `timetable`, `user_mode_heap`, `user_mode_runtime`, `video_terminal`,
+`paging`, `pgrep`. `ps`, `memory_regions`, `byte_sink_contract`, `generational_table`,
+`socket_contract`, `work_steal_slot`, `supervision_protocol`,
+`hot_swap_contract`, `swish`, `system_initializer`, `timetable`, `user_mode_heap`, `user_mode_runtime`, `video_terminal`,
 `virtio`, `thread_wake_handshake`.
 
 The worklist, largest first, so the next person can take one crate and turn its line on:

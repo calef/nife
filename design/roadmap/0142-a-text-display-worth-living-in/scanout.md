@@ -92,8 +92,8 @@ roughly double any terminal anyone runs, most being 80x24 up to maybe 160x50 on 
 
 So on 2026-08-27 the target became 132x43, the classic VT100/VT220 "wide mode" size. The scanout is
 924x344, sized directly against the shipping 7x8 cell instead of the future one: 924 = 132 * 7 and
-344 = 43 * 8, both exact. This drops `graphics_protocol::SURFACE_PAGE_FRAMES` to 311.
-`crates/graphics_protocol/src/lib.rs`'s `WIDTH` doc comment has the full arithmetic. It includes
+344 = 43 * 8, both exact. This drops `graphics_contract::SURFACE_PAGE_FRAMES` to 311.
+`crates/graphics_contract/src/lib.rs`'s `WIDTH` doc comment has the full arithmetic. It includes
 the one property lost: 924x344's byte count is no longer an exact multiple of 4096, unlike
 1280x720's, and no nearby resolution that still delivers exactly 132x43 recovers it. When the atlas
 lands and the cell widens, the grid shrinks with it.

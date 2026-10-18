@@ -38,32 +38,32 @@ pub(crate) fn std_inputs_stamp() -> u64 {
         root.join("crates/allocation_cache/src/lib.rs"),
         // The net PAL generates its wire constants verbatim from the net_stack contract; a change to it
         // must rebuild the farm just like a change to the ABI crate.
-        root.join("crates/socket_protocol/src/lib.rs"),
+        root.join("crates/socket_contract/src/lib.rs"),
         // Likewise the FS-service contract: `std::fs` is a client of it (milestone 27 phase two),
         // and its wire constants are generated verbatim into the PAL.
-        root.join("crates/filesystem_protocol/src/lib.rs"),
+        root.join("crates/filesystem_contract/src/lib.rs"),
         // The wall-clock and entropy contracts, for the same reason: `sys/time` reads the clock
         // page's layout out of one and `sys/random` packs its requests with the other, so a change
         // to either must rebuild the farm or the PAL silently drifts from the service.
-        root.join("crates/clock_protocol/src/lib.rs"),
-        root.join("crates/entropy_protocol/src/lib.rs"),
+        root.join("crates/clock_contract/src/lib.rs"),
+        root.join("crates/entropy_contract/src/lib.rs"),
         // The inert-configuration contract (milestone 47's environment-variable fork, DECISIONS
         // §111): `sys/env` reads the page's layout and `PageBuilder`'s validated domains out of
         // this crate, generated verbatim into the PAL, so a change to either must rebuild the
         // farm or the PAL silently drifts from what assembles the page.
-        root.join("crates/environment_protocol/src/lib.rs"),
+        root.join("crates/environment_contract/src/lib.rs"),
         // The argument page (milestone 205, DECISIONS §170 (how a foreign program is told what to do)): `sys/args` reads the byte argv's
         // layout out of this crate, so a change to it must rebuild the farm.
-        root.join("crates/argument_protocol/src/lib.rs"),
+        root.join("crates/program_argument_contract/src/lib.rs"),
         // The byte-sink contract, generated into the PAL as `sinkproto` like the rest, and missing
         // from this list until 2026-10-09 (UTC): a change to it did not rebuild the farm.
-        root.join("crates/byte_sink_protocol/src/lib.rs"),
+        root.join("crates/byte_sink_contract/src/lib.rs"),
         // The std runtime contract (milestone 595 (provisional)): `rt`'s slot numbers and page
         // addresses, generated verbatim into the PAL, so the loader and the PAL read one file.
-        root.join("crates/std_runtime_protocol/src/lib.rs"),
+        root.join("crates/std_runtime_contract/src/lib.rs"),
         // The name resolver's client wire (milestone 801 (packages over the internet)): `sys/net`'s
         // `lookup_host` speaks it.
-        root.join("crates/name_resolution_protocol/src/wire.rs"),
+        root.join("crates/domain_name_resolution_contract/src/wire.rs"),
         root.join("targets/aarch64-unknown-nife.json"),
         root.join("targets/riscv64-unknown-nife.json"),
         root.join("targets/x86_64-unknown-nife.json"),
@@ -71,11 +71,11 @@ pub(crate) fn std_inputs_stamp() -> u64 {
         // 2026-09-21. `rt::cntfrq` reads it on
         // the two architectures with no register stating the rate, and its layout is generated
         // verbatim into the PAL like every contract above.
-        root.join("crates/counter_frequency_protocol/src/lib.rs"),
+        root.join("crates/counter_frequency_contract/src/lib.rs"),
         // The current-CPU page and the map it is placed by (milestone 812 (`std::thread::spawn`
         // runs real threads in one address space)): `available_parallelism` reads the allowance
         // off it, so a change to either must rebuild the farm.
-        root.join("crates/current_cpu_protocol/src/lib.rs"),
+        root.join("crates/current_cpu_contract/src/lib.rs"),
         root.join("crates/address_space_map/src/lib.rs"),
     ];
     // A crate root that names its modules out of line (`pub mod x;`) is copied with each `x.rs`

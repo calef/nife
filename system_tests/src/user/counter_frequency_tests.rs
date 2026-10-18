@@ -58,14 +58,14 @@ fn a_userspace_program_reads_the_frequency_the_kernel_measured() {
 /// exists to prevent one layer up.
 ///
 /// This asserts the band accepts *this* machine, which is the half a host test cannot do: the unit
-/// tests in `counter_frequency_protocol` pin the bounds against values somebody typed, and this pins
+/// tests in `counter_frequency_contract` pin the bounds against values somebody typed, and this pins
 /// them against a rate a real (or emulated) machine actually reported. A band narrowed until it
 /// rejected a machine we run on would fail here rather than in a boot nobody watched.
 #[test_case]
 fn the_machines_own_rate_is_inside_the_plausibility_band() {
     let hz = crate::arch::timer::frequency();
     assert!(
-        counter_frequency_protocol::is_plausible(hz),
+        counter_frequency_contract::is_plausible(hz),
         "this machine's counter runs at {hz} Hz, which the plausibility band refuses; either the \
          band is wrong or the boot should not have got this far",
     );

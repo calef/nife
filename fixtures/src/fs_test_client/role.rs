@@ -37,7 +37,7 @@ const ROLE_DIR_ATTACKER: u64 = 5;
 const ROLE_SET_ATTRS: u64 = 6;
 /// Milestone 38: sequential and random read/write throughput through the FS server, the four
 /// phases `filesystem_fixture::throughput` names. The `--real --smp` bench boot spawns it after
-/// [`ROLE_BENCH`], on the service that role already wired. The number lives in `filesystem_protocol` because
+/// [`ROLE_BENCH`], on the service that role already wired. The number lives in `filesystem_contract` because
 /// the kernel passes it and this program matches on it, which is rule 7's case exactly.
 const ROLE_THROUGHPUT: u64 = fixture::throughput::ROLE;
 /// Milestone 154: the confined program that holds **two** directory capabilities at once, one at

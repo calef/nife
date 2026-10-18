@@ -1,7 +1,7 @@
 # The component manifest
 
 *Milestone 23's second residual, built 2026-08-17. `crates/component_plan`, the four declarations in
-`crates/swap_protocol`, and the operator that no longer contains an endowment. The mechanism it serves
+`crates/hot_swap_contract`, and the operator that no longer contains an endowment. The mechanism it serves
 is DECISIONS §41 and notes/live-replacement.md; read those first if you want the swap itself.*
 
 ## The defect, in the roadmap's own six words
@@ -14,10 +14,10 @@ milestone was built. The capability half was four arrays inside `swapper`:
 
 ```rust
 let instance_caps = [
-    (w.svc, abi::rights::READ),   // swap_protocol::SVC:  we may answer here
-    (REPORT, abi::rights::WRITE), // swap_protocol::RPT
-    (w.note, abi::rights::WRITE), // swap_protocol::NOTE
-    (w.poke, abi::rights::READ),  // swap_protocol::POKE
+    (w.svc, abi::rights::READ),   // hot_swap_contract::SVC:  we may answer here
+    (REPORT, abi::rights::WRITE), // hot_swap_contract::RPT
+    (w.note, abi::rights::WRITE), // hot_swap_contract::NOTE
+    (w.poke, abi::rights::READ),  // hot_swap_contract::POKE
 ];
 ```
 
@@ -27,7 +27,7 @@ A different vendor's build is not a drop-in, because what to hand a component li
 program that starts one. Swapping in `c_swappable` worked because somebody had typed its endowment
 into `swapper` too.
 
-The slot agreement was a comment. `swap_protocol`'s own header said "the operator's
+The slot agreement was a comment. `hot_swap_contract`'s own header said "the operator's
 `ChildEndowment.caps` lists them in this order, so they land in these slots", and that sentence was
 the only thing holding two files together. A reordered array would have produced a component
 receiving on its report channel and sending its answers to the operator's coordination channel, with
@@ -83,7 +83,7 @@ echo is the part worth teaching, and the distinguishing word carries the differe
 
 ## Where a manifest lives, and why it is the contract's and not the build's
 
-The declarations are `const` values in `crates/swap_protocol`, next to the wire format they belong to.
+The declarations are `const` values in `crates/hot_swap_contract`, next to the wire format they belong to.
 Four of them: `CONSOLE`, `BACKEND`, `CLIENT`, `BROKER`.
 
 A `*_proto` crate declares what two programs agree on, and what a component must hold is the other
@@ -108,7 +108,7 @@ The corollary is the property that makes a component substitutable at all:
 
 > The name is the component's and the object is the supervisor's.
 
-`swap_protocol::CLIENT` asks to *use* an endpoint it calls `service`. On the direct channel the operator
+`hot_swap_contract::CLIENT` asks to *use* an endpoint it calls `service`. On the direct channel the operator
 routes that name to the shared service endpoint; on the queued channel it routes the same name to the
 queue broker's front endpoint. One declaration, two routings, and `chatty` cannot tell which it got.
 That is what makes a component's **peer** substitutable and not only the component.
@@ -143,7 +143,7 @@ not compile, on both architectures, without any test having to run. Each of thos
 that would otherwise be invisible at run time: a component reading one of two slots, one mapping
 silently winning, or a region split refusing for no visible reason.
 
-The slot numbers are derived, which is the same rung reached a second way. `swap_protocol::SVC` is
+The slot numbers are derived, which is the same rung reached a second way. `hot_swap_contract::SVC` is
 not `0` any more; it is `component_plan::slot_of(&CONSOLE, "service")`, computed at compile time from
 the declaration the operator wires from. A role the manifest does not declare **does not compile**.
 `chatty` and `broker` derive their own the same way, and because one binary serves both `CONSOLE` and
@@ -192,7 +192,7 @@ Read what a component needs, without running anything. The declaration is a `con
 contract crate, so it is the thing to open:
 
 ```sh
-grep -A20 'pub const CONSOLE' crates/swap_protocol/src/lib.rs
+grep -A20 'pub const CONSOLE' crates/hot_swap_contract/src/lib.rs
 ```
 
 Add a component to a system that already has one. Three steps, and none of them is in the
@@ -257,7 +257,7 @@ calef ruled on 2026-09-26 (UTC): *"M2 is right."* The manifest travels inside th
 ELF note found through a `PT_NOTE` program header. DECISIONS §197 (a package is one archive file)
 has the ruling, and draft pull request #1319 has the evidence. Milestone 597 (provisional) built it
 for a program run by its path: owner `nife`, type 1 and the encoding were ratified 2026-09-26, and
-`crates/manifest_note` is the format. This entry stays because a boot image's programs and every
+`crates/capability_manifest_note` is the format. This entry stays because a boot image's programs and every
 component are still endowed from a manifest compiled into their supervisor, not read from their
 own bytes; see `design/roadmap/0597-a-program-carries-its-manifest-in-an-elf-note.md`.
 

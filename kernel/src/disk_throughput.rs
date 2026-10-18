@@ -37,7 +37,7 @@
 //!   a process. The server is the thing risk 6 is about, and it is the same process either way.
 //! - **Sequential only**, one pass, no warm-up and no repeats. A second boot is the repeat.
 
-use filesystem_protocol::blk;
+use filesystem_contract::blk;
 
 use crate::non_volatile_memory_express::{Absent, BLOCK_SIZE, Error};
 use crate::user::non_volatile_memory_express_service::{self as service, Wiring};
@@ -212,7 +212,7 @@ fn bring_up(image: &'static [u8]) -> Result<Wiring, Verdict> {
     #[cfg(target_arch = "x86_64")]
     crate::arch::iommu::print_context(disk.rid);
     if let Some(report) = disk.wait_for_ready()
-        && report[0] != filesystem_protocol::READY
+        && report[0] != filesystem_contract::READY
     {
         println!(
             "disk-throughput: the server did not come up: step word {:#x}, first-read status {:#x}",

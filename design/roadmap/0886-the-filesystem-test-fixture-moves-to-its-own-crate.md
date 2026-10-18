@@ -47,7 +47,7 @@ Reuse: not applicable; this moves code and adds none.
 ## What `fixture` is
 
 Measured at `9532eeb53`. `pub mod fixture` is lines 2566 to 3806 of
-`crates/filesystem_protocol/src/lib.rs`: 1,241 lines, 842 of them comments, 255 public items. It
+`crates/filesystem_contract/src/lib.rs`: 1,241 lines, 842 of them comments, 255 public items. It
 holds the names and contents of the files the test image ships, the witnesses' verdict words and
 the shapes of the `walk` and `throughput` benchmarks. It also holds the layout of the blank disk
 that milestone 57 (partitioning and formatting a real drive) writes.

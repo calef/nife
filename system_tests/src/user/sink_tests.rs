@@ -1,4 +1,4 @@
-use byte_sink_protocol::fixture;
+use byte_sink_contract::fixture;
 
 use super::*;
 use crate::cap::{Rights, rendezvous_cap};
@@ -151,11 +151,11 @@ fn one_reader_two_sources_and_the_same_answer() {
     let out = spawn_wc(pipe, endpoints);
     let mut off = 0usize;
     while off < fixture::TRANSCRIPT.len() {
-        let (w0, w1, w2, n) = byte_sink_protocol::pack(&fixture::TRANSCRIPT[off..]);
+        let (w0, w1, w2, n) = byte_sink_contract::pack(&fixture::TRANSCRIPT[off..]);
         crate::sched::ipc_send(pipe, [w0, w1, w2]);
         off += n;
     }
-    crate::sched::ipc_send(pipe, [byte_sink_protocol::eof(), 0, 0]);
+    crate::sched::ipc_send(pipe, [byte_sink_contract::eof(), 0, 0]);
     let piped = wc_counts(out, "wc reading a pipe");
 
     // The transcript's own numbers, so the pipe arm is anchored to something rather than only
@@ -195,7 +195,7 @@ fn one_reader_two_sources_and_the_same_answer() {
     let [code, total, ..] = crate::sched::ipc_receive(wrote);
     assert_eq!(
         code,
-        fixture::code(byte_sink_protocol::Sent::Ok),
+        fixture::code(byte_sink_contract::Sent::Ok),
         "the writer did not deliver the transcript to the file sink",
     );
     let [done, wrote_total, ..] = crate::sched::ipc_receive(file_sink.report);
@@ -391,7 +391,7 @@ fn a_destroyed_sink_ends_the_writer_and_an_absent_one_does_not() {
     assert_eq!(
         (class, total as usize),
         (
-            fixture::code(byte_sink_protocol::Sent::Ok),
+            fixture::code(byte_sink_contract::Sent::Ok),
             fixture::TRANSCRIPT.len()
         ),
         "a writer whose sink stayed put must classify Ok",
@@ -412,7 +412,7 @@ fn a_destroyed_sink_ends_the_writer_and_an_absent_one_does_not() {
     let [class, total, ..] = crate::sched::ipc_receive(report);
     assert_eq!(
         class,
-        fixture::code(byte_sink_protocol::Sent::Gone),
+        fixture::code(byte_sink_contract::Sent::Gone),
         "a writer whose sink was destroyed classified {class} rather than Gone. Before \
          milestone 50 this arrived as NoSuchSlot, indistinguishable from never having had a \
          sink, which is exactly why `yes | head` could not end.",
@@ -428,7 +428,7 @@ fn a_destroyed_sink_ends_the_writer_and_an_absent_one_does_not() {
     let [class, total, ..] = crate::sched::ipc_receive(report);
     assert_eq!(
         (class, total),
-        (fixture::code(byte_sink_protocol::Sent::NoSink), 0),
+        (fixture::code(byte_sink_contract::Sent::NoSink), 0),
         "a program with an empty output slot must keep running and print into the void, which \
          is what every OS does to a process whose stdout is closed",
     );
@@ -534,7 +534,7 @@ fn the_terminal_is_a_sink_like_any_other_and_the_writer_cannot_tell() {
     assert_eq!(
         (class, total as usize),
         (
-            fixture::code(byte_sink_protocol::Sent::Ok),
+            fixture::code(byte_sink_contract::Sent::Ok),
             fixture::TRANSCRIPT.len()
         ),
         "the writer should have classified a terminal exactly as it classifies a pipe and a file",

@@ -2,7 +2,7 @@
 //! See notes/installing.md and notes/boot-slots.md.
 //!
 //! It is the most destructive program in the tree, so what stands between a stranger and a wiped
-//! disk is its authority, not its judgement. It holds one disk as a `filesystem_protocol::blk`
+//! disk is its authority, not its judgement. It holds one disk as a `filesystem_contract::blk`
 //! endpoint, with no path to type, and an entropy endpoint so GPT ids are drawn (no entropy, no
 //! write). It is spawned only after a person answers a question naming the disk, asked by
 //! `kernel/src/user/install_service.rs`, because a confirmation it printed itself could be skipped.
@@ -48,7 +48,7 @@
 
 use boot_slot::{SlotHeader, State};
 use file_allocation_table as fat;
-use filesystem_protocol::{blk, req};
+use filesystem_contract::{blk, req};
 use globally_unique_identifier_partition_table::entry::Entry;
 use globally_unique_identifier_partition_table::guid::types;
 use globally_unique_identifier_partition_table::{

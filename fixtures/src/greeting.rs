@@ -17,7 +17,7 @@
 //!
 //! # What this program holds
 //!
-//! Slot 0, its output: the sink contract (`crates/byte_sink_protocol`). Slot 1, the clock page,
+//! Slot 0, its output: the sink contract (`crates/byte_sink_contract`). Slot 1, the clock page,
 //! because its manifest asks for one, and that is the second line it prints.
 //!
 //! **The manifest travels in its own bytes** (milestone 597 (a program carries its manifest in an
@@ -60,7 +60,7 @@ const MANIFEST: grant_plan::Manifest = grant_plan::Manifest {
     ..grant_plan::Prog::Uptime.manifest()
 };
 
-manifest_note::carry!(MANIFEST);
+capability_manifest_note::carry!(MANIFEST);
 
 /// The line. The gate asserts it, so a copy of any program the image carries could not print it.
 const LINE: &[u8] = b"hello from a package this image never carried\n";
@@ -73,13 +73,13 @@ pub extern "C" fn _start(_a0: u64, _a1: u64, _a2: u64) -> ! {
     } else {
         b"clock: not held; slot 1 is empty\n"
     });
-    send(OUT, byte_sink_protocol::eof(), 0, 0);
+    send(OUT, byte_sink_contract::eof(), 0, 0);
     exit();
 }
 
 fn say(mut rest: &[u8]) {
     while !rest.is_empty() {
-        let (w0, w1, w2, n) = byte_sink_protocol::pack(rest);
+        let (w0, w1, w2, n) = byte_sink_contract::pack(rest);
         send(OUT, w0, w1, w2);
         rest = &rest[n..];
     }

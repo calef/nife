@@ -19,7 +19,7 @@
 //! a crate, and there is no second consumer to justify one (AGENTS.md's rule 7 is about what two
 //! binaries must agree on). The marginal cost is nil because `script/test --arch x86_64` boots
 //! this kernel anyway. If the rule ever gains a second caller, it belongs in
-//! `crates/counter_frequency_protocol`, which already holds `is_plausible` and is the same kind of
+//! `crates/counter_frequency_contract`, which already holds `is_plausible` and is the same kind of
 //! thing.
 //!
 //! See design/roadmap/0571-the-x86-boot-calibrates-once-and-can-be-wrong-by-4x.md (the x86 boot

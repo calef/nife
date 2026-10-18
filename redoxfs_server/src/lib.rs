@@ -18,9 +18,9 @@
 //!
 //! # The directory capability (milestone 47)
 //!
-//! The bound directory is [`filesystem_protocol::fs::ROOT`], handle 0, an ordinary entry in the same table, so
+//! The bound directory is [`filesystem_contract::fs::ROOT`], handle 0, an ordinary entry in the same table, so
 //! every name-taking verb names a directory rather than resolving against a hidden field. A
-//! directory handle carries a [`filesystem_protocol::dir::Rights`] set, [`Server::open_dir`] hands back a
+//! directory handle carries a [`filesystem_contract::dir::Rights`] set, [`Server::open_dir`] hands back a
 //! handle to a child, and a child's rights are the parent's intersected with what was asked for.
 //! **That intersection is the only constructor for a non-root rights set**, so no descendant can
 //! carry a right its ancestor lacked, at any depth, without a check anyone could forget. A file
@@ -37,7 +37,7 @@
 //! # The error boundary
 //!
 //! Every method here returns `syscall::error::Result`, RedoxFS's own error type, unmapped. The
-//! translation to the wire (a negated errno, `filesystem_protocol::reply_err`) happens once, in the serve loop
+//! translation to the wire (a negated errno, `filesystem_contract::reply_err`) happens once, in the serve loop
 //! at the process boundary, and nowhere else. Keeping the core in RedoxFS's error vocabulary is what
 //! makes that rule enforceable: there is no ABI type in here to leak.
 
@@ -66,8 +66,8 @@ use alloc::vec::Vec;
 
 pub use block::{BLOCK, BlockDisk, BlockIo, CACHE_SLOTS, CachedDisk};
 pub use dispatch::ServeEdges;
-use filesystem_protocol::dir::{self, Rights};
-use filesystem_protocol::xattr;
+use filesystem_contract::dir::{self, Rights};
+use filesystem_contract::xattr;
 use redoxfs::{Disk, FileSystem, Node, Transaction, TreePtr};
 use subtree_scope::Kind;
 /// **The engine's error type, for a host caller that implements [`redoxfs::Disk`]** (a fuzz target's
