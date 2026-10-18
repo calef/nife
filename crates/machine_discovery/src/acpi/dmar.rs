@@ -38,7 +38,7 @@ const DMAR_INTR_REMAP: u8 = 1 << 0;
 impl Dmar {
     /// **Does the platform claim interrupt remapping** (the table's `INTR_REMAP` flag)?
     ///
-    /// Name: provisional (milestone 378 (read the DMAR on xenon), 2026-10-18 UTC).
+    /// Name: provisional (milestone 378 (read the DMAR), 2026-10-18 UTC).
     pub const fn claims_interrupt_remapping(&self) -> bool {
         self.flags & DMAR_INTR_REMAP != 0
     }
@@ -51,7 +51,7 @@ impl Dmar {
 ///
 /// Here rather than in the kernel's print so a host test holds the wording.
 ///
-/// Name: provisional (milestone 378 (read the DMAR on xenon), 2026-10-18 UTC).
+/// Name: provisional (milestone 378 (read the DMAR), 2026-10-18 UTC).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct InterruptRemappingClaims {
     /// The unit's `ECAP.IR`.
