@@ -8,11 +8,9 @@ priority, not an exemption. `script/names --unratified` ranks the items and modu
 **The measure is a stated heuristic, not the compiler.** A compiler-backed answer (`cargo doc`
 JSON, rust-analyzer) means building eight workspaces, minutes per run, and `script/names` is run
 for a single name. `Reach` below reads text: a name crosses when another package that depends on
-its own reaches it through the defining crate's path, which is §310 (a name read only inside its
-package is ratified by rule)'s definition, and `helpers/name_local.py` ratifies and re-queues by
-the same measure. A bare word never counts: the first version of this ranking counted any file
-naming the word and reported every crate's `Error` as reaching 38 packages. What it still misses
-is in `Reach`'s docstring and §310's BUGS.
+its own reaches it through the defining crate's path, and `helpers/name_checks.py` reports reach
+by the same measure. A bare word never counts: matched that way, every crate's `Error` reached 38
+packages. What it still misses is in `Reach`'s docstring and design/naming/rules-a-script-can-check.md.
 
 **A program is a `[[bin]]`** (calef's tiering, 2026-10-17). A file in `components/src/` that another
 program includes through `mod` or `#[path]` and that has no `[[bin]]` entry is a module of the
@@ -223,9 +221,8 @@ def enclosers(stripped):
 class Reach:
     """Which packages read each `pub` name of each package, measured by the defining crate's path.
 
-    §310 (a name read only inside its package is ratified by rule) is the definition, and this is
-    the one implementation of it: `script/names --unratified` ranks by it and
-    `helpers/name_local.py` ratifies and re-queues by it. A package Q reads a name of package P
+    The one implementation of a read: `script/names --unratified` ranks by it and
+    `helpers/name_checks.py` reports reach by it. A package Q reads a name of package P
     only when Q depends on P, and then only through P's path, in comments and strings blanked:
     `p::a::name`, a `use p::...;` listing it, `m::name` for an `m` imported from `p`, or any word
     of a file holding a glob import from `p`. A member (a method or associated constant) is read

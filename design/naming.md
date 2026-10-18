@@ -8,7 +8,7 @@ architect's call, ship a provisional one and say so, never rename on your own in
 two disagree, this file is the rule and `AGENTS.md` is the bug. The headline rule is
 [§39 (a component is named for what it is)](decisions/0039-component-names.md).
 
-The argument, worked examples and refusals live in the [appendices](#appendices).
+The argument, examples and refusals live in the [appendices](#appendices).
 
 ## Who names things
 
@@ -21,8 +21,7 @@ a name is often the only thing that says what a program may do.
 - Nobody renames on their own initiative. A rename is a naming decision with extra steps.
 - A function name is more reversible than a crate's, so the "recommend on reversible forks" latitude
   applies more freely there.
-- The conventions below matter at ratification and at rename. A lane inventing a provisional name
-  need not have read this file.
+- A lane minting a provisional name need not read this; `script/lint` names a broken rule.
 
 ## A name is a claim
 
@@ -308,8 +307,9 @@ This is rung three of the ladder: no gate can tell an account from an intention 
 A separate check refuses a count above two before "halves". `linedisc` would pass every check. What
 caught it was a person not knowing the word, and that remains the test.
 
-`python3 helpers/name_checks.py` lists the unratified names that break a rule a script can see,
-with each one's reach. [rules-a-script-can-check.md](naming/rules-a-script-can-check.md) says which.
+Names meet the current rules (calef, 2026-10-18 UTC). A revised rule lands with its check, a new
+or renamed name passes each check, and lanes rename unratified violators, still
+`provisional`. [rules-a-script-can-check.md](naming/rules-a-script-can-check.md) has the gate.
 
 ## Appendices
 

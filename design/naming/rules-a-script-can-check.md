@@ -1,13 +1,34 @@
 # Rules a script can check
 
 *An appendix to [`design/naming.md`](../naming.md), which is the rule. It says which of that page's
-rules a script can apply to a name, and how a lane works the list of names that break one. The file
+rules a script can apply to a name, the gate that holds them, and how a lane works the list. The file
 and its stem are provisional names; naming is an architect's.*
 
-calef, 2026-10-18 (UTC): "I really feel like ideally we would fix unratified names to comply with
-our rules, but we would not ratify them until we've done the actual ratification and review yet."
-So a name that breaks a rule is renamed to comply and stays unratified. Passing every check below
-ratifies nothing, because most of the rules need a reader.
+calef, 2026-10-18 (UTC): "Honestly I think we could automate making our existing unratified names
+meet our existing rules. But we need to continue to ratify and revise our rules." Nothing is
+ratified by rule, because "the rules are not yet complete enough to ratify using."
+
+## The cycle
+
+1. calef ratifies names and revises rules.
+2. A revised rule lands with its check in `helpers/name_checks.py`, and that change bumps `RULES`.
+   It is the one change whose new baseline rows the gate admits, so new debt arrives with its
+   cause.
+3. Lanes rename the unratified names that break it until they comply. A renamed name takes
+   `Name: provisional, minted <date> (UTC) by <lane>.` and is never `ratified`.
+
+## The gate
+
+`script/lint`'s step "names meet the current naming rules" runs `name_checks.py --check`:
+
+- A name a change adds or renames, and that is not ratified, passes every gated check, with no
+  baseline allowance.
+- The unratified names that break one today are `design/naming-rule-baseline.txt`, which only
+  shrinks. The change that fixes a name runs `--bank` to drop its row.
+- A ratified name is exempt, since a later rule never silently overrules calef's ruling. The
+  worklist ends with each ratified name that fails a current check, so he can reopen it.
+- Spelling and `cap` are reported, and held by `helpers/house_style.py` and
+  `helpers/cap_abbreviation.py` rather than twice.
 
 ## The worklist
 
@@ -16,7 +37,7 @@ python3 helpers/name_checks.py                    # every unratified name that b
 python3 helpers/name_checks.py crates/e1000e      # one area
 ```
 
-Each line gives the name, its reach and the checks it fails. The list is in the order to work it:
+Each line gives the name, its reach and the checks it fails, in the order to work them:
 
 1. `local`: no other Cargo package reads it. Rename it in its package, one area per pull request.
 2. `crosses into N`: N other packages read it. Rename by family, so a type and the names that follow
@@ -26,9 +47,9 @@ Each line gives the name, its reach and the checks it fails. The list is in the 
    `supervision_protocol` or a format §307 (how long a name may be) lists. Another program parses
    these, so list them for calef and never rename them in a lane.
 
-A renamed name takes `Name: provisional, minted <date> (UTC) by <lane>.` It is never `ratified`.
 A hit that is a foreign identifier (DesignWare's `PA` for a PHY address, Intel's `IA32_*`) keeps its
-owner's spelling, and the lane says so in its pull request rather than renaming it.
+owner's spelling. A lane adding one writes it into `name_checks.py`'s `KEPT` with its owner, and
+the gate passes it. Names in an `extern` block are their owner's and are never checked.
 
 ## Which rules a script can check
 
@@ -54,8 +75,8 @@ names the crate. `helpers/name_crossings.py`'s `Reach` is the measure, and
 ## BUGS
 
 - The question-shape check reads a first word ending in `s` as a finite verb, so a plural noun
-  (`bits_set`) passes. An action that reports success (`insert`) is listed though the rule exempts
-  it.
+  (`bits_set`) passes. An action that reports success is told from a question only by taking
+  `&mut`, so one that reports through a shared reference is listed.
 - The measure reads text, not types. A method called on a value whose type the reader never names,
   through a call that is not `.name(`, is missed, and so is a re-export under another name. A reader
   outside every Cargo package (a script that parses a constant out of a `.rs` file) is not counted.

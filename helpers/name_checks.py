@@ -1,24 +1,34 @@
-"""Unratified names that break a naming rule a script can check, and how far each one reaches.
+"""Names meet the current naming rules: the gate, the ratchet on what does not yet, and the worklist.
 
-calef, 2026-10-18 (UTC): "I really feel like ideally we would fix unratified names to comply with
-our rules, but we would not ratify them until we've done the actual ratification and review yet."
-This is the worklist for that fix. It lists every name that is not ratified (no block, or a block
-that is `provisional`, `recorded` or `unrecorded`) and fails a check below, with the check and the
-name's reach. Nothing here ratifies anything, and a name that passes every check is not thereby
-right: design/naming/rules-a-script-can-check.md lists the rules no script can apply.
+calef, 2026-10-18 (UTC): "Honestly I think we could automate making our existing unratified names
+meet our existing rules. But we need to continue to ratify and revise our rules." So the cycle is:
+calef ratifies names and revises rules, a revised rule lands with its check here, and lanes rename
+unratified names that break it until they comply. A renamed name stays `provisional`. Nothing is
+ratified by rule.
 
-    python3 helpers/name_checks.py [PREFIX..]   # the worklist, local names first
-    python3 helpers/name_checks.py --selftest   # the checks and the reach, as fixtures
+    python3 helpers/name_checks.py [PREFIX..]   # the worklist, local names first, and a report
+    python3 helpers/name_checks.py --check      # the gate script/lint runs
+    python3 helpers/name_checks.py --bank       # drop the rows of names that now comply
+    python3 helpers/name_checks.py --selftest   # the checks, the reach and the ratchet, as fixtures
 
-**Reach** is one of three, in the order a fix lane works them:
+**The gate.** A name a change adds or renames, and that is not ratified, passes every check in
+`GATED`, with no baseline allowance. The unratified names that break one today are the baseline
+(`BASELINE`), which only shrinks. A row is added only in the change that bumps `RULES`, because it
+adds or revises a check, so new debt arrives with its cause. Ratified names are exempt, since a
+later rule never silently overrules calef's ruling, and the worklist reports each one that fails a
+current check so he can reopen it. Spelling and `cap` have ratchets of their own
+(`helpers/house_style.py`, `helpers/cap_abbreviation.py`) and are reported here, not held twice.
+
+**Reach**, in the order a fix lane works the list:
 
 - `local`: no other Cargo package reads it, so a rename touches one package.
 - `crosses into N`: N other packages read it, measured by the defining crate's path
   (`name_crossings.Reach`, never the bare word). Renamed by family.
-- `wire or format`: it is defined in a package two programs agree through (`WIRE`). A rename
-  there changes what another program parses, so it is listed for calef and never renamed by a lane.
+- `wire or format`: defined in a package two programs agree through (`WIRE`). A rename there
+  changes what another program parses, so it is listed for calef and never renamed by a lane.
 
-A renamed name takes `Name: provisional, minted <date> (UTC) by <lane>.` and stays unratified.
+A name that passes every check is not thereby right: design/naming/rules-a-script-can-check.md
+lists the rules no script can apply.
 
 Name: provisional, minted 2026-10-18 (UTC) by lane maintainer/names-ratify-local-by-rule. A shared
 helper under `helpers/`, which `script/names` puts out of its own scope, so this paragraph is the
@@ -59,6 +69,11 @@ WIRE = {"abi", "network_time_protocol", "supervision_protocol", "nifefs", "packa
         "documentation"}
 # Spelled in two halves because script/lint's naming check refuses the word outside design/.
 _SERVICE_WORD = "dae" + "mon"
+_CAP = {"cap", "caps"}
+# Names that keep a spelling a check refuses, each with its owner: an identifier another project or
+# a specification coined (design/naming.md: a foreign identifier keeps its owner's spelling). Keyed
+# by `path::name`. An entry is added in the change that adds the name, and removed by renaming it.
+KEPT = {}
 # design/naming.md's question shapes. A finite verb first (`contains`, `starts_with`) is read as a
 # first word ending in `s`, which also passes a plural noun: the check's one known false pass.
 _QUESTION_FIRST = {"is", "has", "can", "was", "will", "all", "any"}
@@ -86,18 +101,22 @@ def failures(name, kind, returns_bool, british):
     if shape and not re.fullmatch(shape, name):
         out.append(f"casing: not this tree's casing for a {kind}")
     words = components(name)
-    ruled = [w for w in words if w in SPELLED_OUT]
+    # "opt in" and "opt out" are English verbs, not `option` abbreviated.
+    ruled = [w for i, w in enumerate(words) if w in SPELLED_OUT and w not in _CAP
+             and not (w == "opt" and words[i + 1:i + 2] in (["in"], ["out"]))]
     if ruled:
-        out.append(f"spelled out: `{ruled[0]}` is ruled to expand")
+        out.append(f"spelled-out: `{ruled[0]}` is ruled to expand")
+    elif any(w in _CAP for w in words):
+        out.append("cap: `cap` is ruled to expand (helpers/cap_abbreviation.py holds it)")
     if name in british:
-        out.append(f"spelling: `{british[name]}` is British")
+        out.append(f"spelling: `{british[name]}` is British (helpers/house_style.py holds it)")
     if _SERVICE_WORD in words or (len(words) > 1 and words[-1] == "d"):
-        out.append("service model: claims a Unix service")
+        out.append("service-model: claims a Unix service")
     if kind == "fn" and returns_bool and words:
         first = words[0]
         if not (first in _QUESTION_FIRST or (first.endswith("s") and not first.endswith("ss"))
                 or any(w in _QUESTION_INNER for w in words[1:])):
-            out.append("question shape: returns `bool` and is not `is_`, `has_`, `can_` or a "
+            out.append("question-shape: returns `bool` and is not `is_`, `has_`, `can_` or a "
                        "finite verb")
     return out
 
@@ -123,9 +142,13 @@ def british_of(names):
 
 
 def _returns_bool(stripped_lines, line):
+    """Whether the function on `line` answers a question: returns `bool` and takes no `&mut`.
+
+    One taking `&mut` acts and reports whether it worked (`insert`), which design/naming.md exempts.
+    """
     sig = " ".join(stripped_lines[line - 1:line + 11])
     sig = re.split(r"[{;]", sig, maxsplit=1)[0]
-    return re.search(r"->\s*bool\b", sig) is not None
+    return re.search(r"->\s*bool\b", sig) is not None and "&mut" not in sig
 
 
 def _declaration_line(lines, header):
@@ -141,11 +164,14 @@ def is_wire(package):
     return package is not None and (package in WIRE or package.endswith("_contract"))
 
 
-def candidates(records, unblocked, sources):
-    """`(kind, name, path, line)` for every unratified name: blocked but not ratified, or unblocked."""
+def candidates(records, unblocked, sources, ratified=False):
+    """`(kind, name, path, line)` for every unratified name: blocked but not ratified, or unblocked.
+
+    With `ratified`, the ratified names instead, which the gate exempts and the report lists.
+    """
     out = []
     for r in records:
-        if r["status"] == "ratified":
+        if (r["status"] == "ratified") != ratified:
             continue
         if r["kind"] == "item":
             path, _, header = r["path"].partition(":")
@@ -157,7 +183,7 @@ def candidates(records, unblocked, sources):
             out.append((kind, r["name"], path, line))
         elif r["kind"] in ("module", "crate", "program", "script", "document"):
             out.append((r["kind"], r["name"], r["path"], 1))
-    for row in unblocked:
+    for row in ([] if ratified else unblocked):
         path, sep, name = row.partition("::")
         if sep:
             lines = sources.get(path, "").split("\n")
@@ -187,6 +213,8 @@ def survey(cands, sources, manifests, british=None, reach=None):
         returns_bool = (kind == "fn" and path in reach.stripped
                         and _returns_bool(reach.stripped[path].split("\n"), line))
         if path in reach.stripped and any(k == "extern" for k, _ in reach.stack(path, line)):
+            continue
+        if f"{path}::{name}" in KEPT:
             continue
         why = failures(name, kind, returns_bool, british)
         if not why:
@@ -232,6 +260,112 @@ def load(root):
     return records, unblocked, manifests, sources
 
 
+# --- the ratchet: names meet the current rules ------------------------------------------------------
+
+BASELINE = "design/naming-rule-baseline.txt"
+# The rules' revision. Bump it in the change that adds or revises a check, and only then: that is
+# the one change whose new rows the merge-base comparison admits, so new debt arrives with its cause.
+# This is an exception and a foot gun on purpose, the module-block ratchet's FORMAT line one door
+# over: a bump with no revised check behind it would admit any violation, and nothing else stops it.
+RULES = 1
+# The checks the gate holds. `spelling` and `cap` have ratchets of their own
+# (helpers/house_style.py, helpers/cap_abbreviation.py), so they are listed but not held twice.
+GATED = ("casing", "spelled-out", "service-model", "question-shape")
+_RULES_LINE = "# rules {}"
+HEADER = """# rules {rules}
+# The naming-rule ratchet's baseline: helpers/name_checks.py, whose header is the manual. One row per
+# unratified name that broke a checked naming rule when this list was written, as
+# `<path>::<name> <check>`, once per break. The list only shrinks: a fixed name's row goes in the
+# change that fixes it (`python3 helpers/name_checks.py --bank`). A row may be added only by the
+# change that bumps the rules line above, because it adds or revises the check.
+"""
+
+
+def rows_of(survey_rows):
+    """The baseline rows for a survey: one `path::name check` per gated failure."""
+    return collections.Counter(f"{r['path']}::{r['name']} {f.split(':')[0]}" for r in survey_rows
+                               for f in r["failures"] if f.split(":")[0] in GATED)
+
+
+def read_baseline(text):
+    rules = next((int(line.split()[-1]) for line in text.splitlines()
+                  if re.fullmatch(r"# rules \d+", line.strip())), None)
+    rows = collections.Counter(line.strip() for line in text.splitlines()
+                               if line.strip() and not line.startswith("#"))
+    return rules, rows
+
+
+def write_baseline(root, rows):
+    with open(os.path.join(root, BASELINE), "w") as f:
+        f.write(HEADER.format(rules=RULES) + "".join(f"{row}\n" for row in sorted(rows.elements())))
+
+
+def _git(root, *args):
+    r = subprocess.run(("git", "-C", root) + args, capture_output=True, text=True)
+    return r.stdout if r.returncode == 0 else None
+
+
+def ratchet_problems(judged, tree, rows, rules, base=None, renames=()):
+    """Every failure of the gate. `base` is `(rules, rows)` at the merge base, or None."""
+    if not judged:
+        return ["the check judged no name at all. A selector that matches nothing passes by "
+                "checking nothing (design/roadmap/0401-a-gate-that-selects-the-set-it-judges.md)"]
+    bad = []
+    if rules != RULES:
+        bad.append(f"{BASELINE}: its rules line says {rules} and name_checks.py's RULES is {RULES}. "
+                   f"Run --bank in the change that revised the check")
+    for row, n in sorted((tree - rows).items()):
+        name, check = row.rsplit(" ", 1)
+        bad.append(f"{name} breaks the {check} rule, and it is not on the baseline. A name a change "
+                   f"adds or renames meets the current naming rules (design/naming.md); rename it "
+                   f"to comply and mark it `Name: provisional, minted <date> (UTC) by <lane>.`")
+    for row, n in sorted((rows - tree).items()):
+        bad.append(f"{BASELINE}: {row} no longer breaks its rule. Remove it (--bank); the list "
+                   f"cannot go stale")
+    if base is not None and base[0] == RULES:
+        was = {new: old for old, new in renames}
+
+        def before(row):
+            path = row.split("::", 1)[0]
+            return row if path not in was else was[path] + row[len(path):]
+        moved = collections.Counter()
+        for row, n in rows.items():
+            moved[before(row)] += n
+        for row in sorted(moved - base[1]):
+            bad.append(f"{BASELINE}: {row} was added. The list only shrinks, except in the change "
+                       f"that bumps RULES because it adds or revises a check")
+    return bad
+
+
+def run_check(root, rows_now, judged):
+    path = os.path.join(root, BASELINE)
+    if not os.path.exists(path):
+        print(f"names: {BASELINE} is missing. The gate and its list are one change",
+              file=sys.stderr)
+        return 1
+    rules, rows = read_baseline(open(path).read())
+    base, renames = None, ()
+    merge = (_git(root, "merge-base", "HEAD", "origin/main") or "").strip()
+    head = (_git(root, "rev-parse", "HEAD") or "").strip()
+    if merge and merge != head:
+        old = _git(root, "show", f"{merge}:{BASELINE}")
+        if old is not None:
+            base = read_baseline(old)
+        for line in (_git(root, "diff", "--name-status", "-M", merge) or "").splitlines():
+            cells = line.split("\t")
+            if cells[0].startswith("R") and len(cells) == 3:
+                renames += ((cells[1], cells[2]),)
+    bad = ratchet_problems(judged, rows_now, rows, rules, base, renames)
+    if bad:
+        print("names: unratified names must meet the current naming rules:", file=sys.stderr)
+        for b in bad:
+            print(f"  {b}", file=sys.stderr)
+        return 1
+    print(f"names: {judged} unratified names judged against rules revision {RULES}; "
+          f"{sum(rows.values())} known breaks held to the baseline, none new")
+    return 0
+
+
 def _selftest():
     manifests = {"lib_a": '[package]\nname = "lib-a"\n',
                  "app": '[package]\nname = "app"\n[dependencies]\nlib-a = { path = "../lib_a" }\n',
@@ -265,34 +399,50 @@ def _selftest():
     assert ("fn", "op_ok", "lib_a/src/lib.rs", 9) not in cands, "a ratified name is not a candidate"
     rows = survey(cands, sources, manifests, {"tint": "tint"})
     got = {r["name"]: (r["reach"], r["failures"][0].split(":")[0]) for r in rows}
-    assert got == {"mem_size": ("local", "spelled out"),
-                   "arg_count": ("crosses into 1", "spelled out"),
-                   "pending": ("crosses into 1", "question shape"),
+    assert got == {"mem_size": ("local", "spelled-out"),
+                   "arg_count": ("crosses into 1", "spelled-out"),
+                   "pending": ("crosses into 1", "question-shape"),
                    "tint": ("local", "spelling"),
-                   "CONFIG_WORD": ("wire or format", "spelled out")}, got
+                   "CONFIG_WORD": ("wire or format", "spelled-out")}, got
     order = [r["name"] for r in sorted(rows, key=_order)]
     assert order[-1] == "CONFIG_WORD" and order.index("mem_size") < order.index("arg_count"), order
     assert failures("kernel-print-d", "script", False, {})[0].startswith("service"), \
         "a trailing `d` component claims a service"
     assert failures("BadCase", "fn", False, {})[0].startswith("casing")
+    assert failures("why-opt-in", "document", False, {}) == [], "opt in is a verb"
     extern = 'extern "system" {\n    pub fn GetLogicalDrives() -> u32;\n}\n'
     assert survey([("fn", "GetLogicalDrives", "lib_a/src/ffi.rs", 2)],
                   dict(sources, **{"lib_a/src/ffi.rs": extern}), manifests, {}) == [], \
         "an extern block's name is its owner's"
+    KEPT["lib_a/src/lib.rs::mem_size"] = "fixture"
+    assert "mem_size" not in {r["name"] for r in survey(cands, sources, manifests, {"tint": "tint"})}
+    del KEPT["lib_a/src/lib.rs::mem_size"]
+    acting = "pub fn insert(&mut self) -> bool { true }\n"
+    assert not _returns_bool(acting.split("\n"), 1), "an action that reports success is exempt"
+    cases = rows_of(rows)
+    assert cases["lib_a/src/lib.rs::mem_size spelled-out"] == 1, cases
+    assert not any(k.endswith(" spelling") for k in cases), "house_style holds spelling"
+    base_rows = collections.Counter(cases)
+    assert ratchet_problems(5, cases, cases, RULES, (RULES, base_rows)) == []
+    fixed = cases - collections.Counter(["lib_a/src/lib.rs::mem_size spelled-out"])
+    stale = ratchet_problems(5, fixed, cases, RULES)
+    assert len(stale) == 1 and "--bank" in stale[0], "a fixed name's row is removed"
+    new = cases + collections.Counter(["lib_a/src/lib.rs::dir_len spelled-out"])
+    bad = ratchet_problems(5, new, cases, RULES)
+    assert len(bad) == 1 and "dir_len breaks the spelled-out rule" in bad[0], "a new break fails"
+    added = ratchet_problems(5, new, new, RULES, (RULES, base_rows))
+    assert len(added) == 1 and "was added" in added[0], "a row added against the base fails"
+    assert ratchet_problems(5, new, new, RULES, (RULES - 1, base_rows)) == [], \
+        "a rules bump admits the rows its revised check finds"
+    moved = collections.Counter(r.replace("lib_a/src/lib.rs", "lib_a/src/b.rs") for r in
+                                cases.elements())
+    assert ratchet_problems(5, moved, moved, RULES, (RULES, base_rows),
+                            (("lib_a/src/lib.rs", "lib_a/src/b.rs"),)) == [], "a rename moves rows"
+    assert "judged no name" in ratchet_problems(0, cases, cases, RULES)[0]
     print("name_checks: selftest ok")
 
 
-def main(argv):
-    root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-    if argv == ["--selftest"]:
-        _selftest()
-        return 0
-    if any(a.startswith("-") for a in argv):
-        sys.exit(__doc__.split("\n\n")[2])
-    records, unblocked, manifests, sources = load(root)
-    rows = survey(candidates(records, unblocked, sources), sources, manifests)
-    if argv:
-        rows = [r for r in rows if r["path"].startswith(tuple(argv))]
+def _report(rows, ratified_rows):
     by_reach = collections.Counter("crosses" if r["readers"] else r["reach"] for r in rows)
     by_check = collections.Counter(f.split(":")[0] for r in rows for f in r["failures"])
     print(f"unratified names failing a naming rule: {len(rows)} "
@@ -310,6 +460,43 @@ def main(argv):
         seen = f"  <- {', '.join(r['readers'][:3])}" if r["readers"] else ""
         print(f"  {r['path']}:{r['line']} {r['kind']} {r['name']} [{r['reach']}] "
               f"{'; '.join(r['failures'])}{seen}")
+    print(f"\nRATIFIED, FAILING A CURRENT CHECK ({len(ratified_rows)}): exempt from the gate, since a "
+          f"later rule never overrules calef's ruling; listed so he can reopen one")
+    for r in sorted(ratified_rows, key=lambda r: (r["path"], r["line"])):
+        print(f"  {r['path']}:{r['line']} {r['kind']} {r['name']} {'; '.join(r['failures'])}")
+
+
+def main(argv):
+    root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    if argv == ["--selftest"]:
+        _selftest()
+        return 0
+    mode = argv[0] if argv and argv[0].startswith("-") else "--list"
+    prefixes = tuple(a for a in argv if not a.startswith("-"))
+    if mode not in ("--list", "--check", "--bank", "--init"):
+        sys.exit(__doc__.split("\n\n")[2])
+    records, unblocked, manifests, sources = load(root)
+    reach = name_crossings.Reach(manifests, sources)
+    cands = candidates(records, unblocked, sources)
+    kept = candidates(records, unblocked, sources, ratified=True)
+    british = british_of(c[1] for c in cands + kept)
+    rows = survey(cands, sources, manifests, british, reach)
+    if mode == "--check":
+        return run_check(root, rows_of(rows), len(cands))
+    if mode in ("--bank", "--init"):
+        path = os.path.join(root, BASELINE)
+        if mode == "--init" and os.path.exists(path):
+            sys.exit(f"name_checks: {BASELINE} exists; --bank lowers it")
+        now = rows_of(rows)
+        if mode == "--bank":
+            rules, old = read_baseline(open(path).read())
+            now = now if rules != RULES else old & now
+        write_baseline(root, now)
+        print(f"name_checks: {sum(now.values())} rows written to {BASELINE} (rules {RULES})")
+        return 0
+    if prefixes:
+        rows = [r for r in rows if r["path"].startswith(prefixes)]
+    _report(rows, survey(kept, sources, manifests, british, reach))
     return 0
 
 
