@@ -11,16 +11,6 @@
 # two counts). Median and bold are not asked of documents under 200 words.
 # measure: 3
 path	words	median	longest	bold_lead	bold_inline
-design/decisions/0023-multi-queue-dma-confinement.md	-	22.5	67	-	-
-design/decisions/0025-socket-identity.md	-	-	47	-	-
-design/decisions/0026-fault-endpoint.md	-	-	76	-	-
-design/decisions/0027-filesystem-service.md	-	-	76	-	-
-design/decisions/0028-smp-placement.md	-	-	66	-	-
-design/decisions/0029-framebuffer-grant.md	-	21	65	-	-
-design/decisions/0030-dma-boundary-proof.md	-	-	64	-	-
-design/decisions/0031-foreign-language-seam.md	-	-	62	-	-
-design/decisions/0033-compositor-authority.md	-	22	74	-	-
-design/decisions/0034-redoxfs-primary.md	-	-	71	-	-
 design/decisions/0035-scanner-findings.md	-	-	59	-	-
 design/decisions/0036-repository-in-the-tcb.md	-	22	62	-	-
 design/decisions/0037-text-as-a-value.md	-	-	82	-	-

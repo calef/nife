@@ -8,11 +8,11 @@ ratified_by: calef
 # 27. The filesystem service: a capability-shaped contract over a component we did not write (milestone 32 phase 2)
 
 RedoxFS runs confined as a userspace FS-server component, and its interface is **capability-shaped
-from birth**. Three processes, wired by the kernel and named by nobody else: a **block server** (a
-role of the virtio driver) that serves blocks over blk IPC with the DMA confinement unchanged; an
-FS server (`fs_server/`, its own workspace because it links the vendored engine) that runs the
-no_std RedoxFS core behind a `Disk` trait over blk IPC and allocates from its own untyped budget
-through §22's `GlobalAlloc`; and a **client** that holds only a directory capability. The contract
+from birth**. Three processes, wired by the kernel and named by nobody else. A **block server** (a
+role of the virtio driver) serves blocks over blk IPC with the DMA confinement unchanged. An FS
+server (`fs_server/`, its own workspace because it links the vendored engine) runs the no_std
+RedoxFS core behind a `Disk` trait over blk IPC. It allocates from its own untyped budget through
+§22's `GlobalAlloc`. A **client** holds only a directory capability. The contract
 and both wire protocols live in `crates/fs_proto`, host-tested, the way the terminal contract lives
 in `line_editor::proto`. Full design in notes/fs-server.md.
 
@@ -21,8 +21,8 @@ directory capability: it is bound, in the server, to one directory node, and eve
 is resolved under that directory. There is no absolute path, no `..`, no global namespace; a client
 without the endpoint can open nothing, and the refusal is "no such capability", not a permission
 check. A handle is a server-minted token, validated against the session's table in one place, so
-forging one is meaningless. Open-by-path exists only inside the server. None of this adds a syscall:
-the kernel routes these words the way it routes any IPC (§10, §12) and never reads an opcode, so
+forging one is meaningless. Open-by-path exists only inside the server. None of this adds a syscall.
+The kernel routes these words the way it routes any IPC (§10, §12) and never reads an opcode. So
 adding a method is a change to `fs_proto` and the note, not to the surface (the §16 discipline).
 
 The error boundary is mapped exactly once. RedoxFS's error type (`syscall::error::Error`) rides
@@ -33,7 +33,7 @@ leak, which is what makes the rule enforceable rather than aspirational.
 The block server moves a whole block per request, and waits on the interrupt. RedoxFS scans a
 256-entry header ring at mount, so an open is hundreds of reads. The block server moves a whole
 4096-byte block per virtio request (its DMA region's second page IS the FS server's block page, so
-the device DMAs straight in, no copy), which is what keeps the mount's request count in the low
+the device DMAs straight in, no copy). That is what keeps the mount's request count in the low
 hundreds and affordable. It then WAITs on the device's completion interrupt, the milestone-9
 driver discipline, and lets `used.idx` decide when a wakeup is really its own.
 
@@ -52,9 +52,9 @@ made by `tools/redoxfs_host` with the same pinned engine (roadmap §32 item 4).
 
 Proven. The read path is proven end to end on both ISAs (the §19 gate): a host-made image,
 mounted by the confined FS server over blk IPC, its `motd` opened through a granted directory
-capability and read back byte for byte, plus a host-tool consistency check after the run. The sans-IO
-core is host-tested for read AND write (`fs_server` lib), so the filesystem logic is proven both ways
-independently of any device.
+capability and read back byte for byte. There is also a host-tool consistency check after the run.
+The sans-IO core is host-tested for read AND write (`fs_server` lib), so the filesystem logic is
+proven both ways independently of any device.
 
 **Amendment (2026-07-29). There was never a filesystem bug. The write always succeeded.**
 
@@ -62,18 +62,18 @@ independently of any device.
 account of the missing `TRUNCATE`, its lessons, the hypotheses measured and the errno plumbing.
 
 Driven through `std::fs` (§22 (Rust `std` on the native ABI)'s phase-two amendment), the write
-completes on both ISAs and reads back byte for byte when the host tool reopens the image afterwards
-with the pinned engine, which is the half a cache cannot fake; that reopen is part of the gate.
+completes on both ISAs. It reads back byte for byte when the host tool reopens the image afterwards
+with the pinned engine, which is the half a cache cannot fake. That reopen is part of the gate.
 
 ## Amendment (milestone 31 phase 2, 2026-07-30): `CREATE` and `TRUNCATE` exist, and a per-file grant is a caretaker process
 
 The two verbs are built. `CREATE` (opcode 6) resolves a name under the bound directory and makes
-it, answering `EEXIST` if it is already there and modifying nothing: create is create, not
-create-or-open, because a caller that wants either has to say which it got, and the alternative is
-what makes a partly-working write read as a working one. `TRUNCATE` (opcode 7) sets a file's size in
-both directions, growing with zeroes and shrinking by discarding, with the new size in the second
-word rather than the length field (the length field is clamped to one page, which would silently cap
-a truncate at 4096 bytes). Both are host-tested in the sans-IO core and bound in `std::fs`, so
+it, answering `EEXIST` if it is already there and modifying nothing. Create is create, not
+create-or-open, because a caller that wants either has to say which it got. The alternative is
+what makes a partly-working write read as a working one. `TRUNCATE` (opcode 7) sets a file's size
+in both directions, growing with zeroes and shrinking by discarding. The new size is in the second
+word rather than the length field. The length field is clamped to one page, which would silently
+cap a truncate at 4096 bytes. Both are host-tested in the sans-IO core and bound in `std::fs`, so
 `File::create` and `std::fs::write` work rather than returning `Unsupported` (§22's amendment).
 
 One gap closed while adding them, and it was ours rather than RedoxFS's. RedoxFS's `check_name`
@@ -101,7 +101,7 @@ what the holder has rather than as a permission refusal, because there is no pol
 
 **Why a process and not a check inside the FS server.** The server receives on one endpoint. Serving
 a second, narrower one would need a receive over a *set* of endpoints, which this kernel does not
-offer; adding it means giving endpoint capabilities a badge (seL4's answer), which is a design
+offer. Adding it means giving endpoint capabilities a badge (seL4's answer). That is a design
 fork and is recorded here as the alternative rather than taken. The caretaker needs nothing new: it
 is an ordinary FS client above and an ordinary FS server below. And it is the stronger form of the
 claim. The confined program holds an endpoint to the caretaker and nothing that names the FS server,
@@ -109,9 +109,9 @@ so "it cannot reach a second file" is a property of its cspace rather than of a 
 to take. The boundary is an address space, which is the same reason §31's checker lives outside the
 component it checks.
 
-The grant costs no memory: the name and direction ride in the caretaker's three `START` argument
-words (`fs_proto::grant`, 16 bytes of name), and the one frame is shared by all three processes,
-which is sound because every request on both hops is a blocking `CALL`, so the client is parked
+The grant costs no memory. The name and direction ride in the caretaker's three `START` argument
+words (`fs_proto::grant`, 16 bytes of name), and the one frame is shared by all three processes.
+That is sound because every request on both hops is a blocking `CALL`, so the client is parked
 inside its own call for the whole time the caretaker is using the page.
 
 Proven on both ISAs by an attacker, twice, and the second run is what makes the first mean
@@ -130,13 +130,13 @@ nothing in the suite gates that boot, which is why it is recorded here instead o
 
 Also settled, by measurement: the FS server's stack. RedoxFS recurses in 8 KiB frames, and a server
 that runs out dies mid-request while its client blocks forever on a `CALL` nobody will answer. The
-size is measured rather than chosen: the kernel poisons every FS-server stack page and
-`fs_service::fs_stack_used` reports the deepest word that is no longer poison, as a maximum over
-every FS server a boot starts, so the mount that recovers a crashed disk is measured too.
-Milestone 37 (prove RedoxFS's crash consistency) measures 127,408 bytes on aarch64 and 127,536 on
-riscv64, of a 397,312-byte grant, and a test on both ISAs prints it every run and fails under a quarter left. notes/fs-server.md
-carries the incident, including the two instruments it blinded and why a ceiling failure reports the
-ceiling and not the cost.
+size is measured rather than chosen. The kernel poisons every FS-server stack page and
+`fs_service::fs_stack_used` reports the deepest word that is no longer poison. The figure is a
+maximum over every FS server a boot starts, so the mount that recovers a crashed disk is measured
+too. Milestone 37 (prove RedoxFS's crash consistency) measures 127,408 bytes on aarch64 and 127,536
+on riscv64, of a 397,312-byte grant, and a test on both ISAs prints it every run and fails under a
+quarter left. notes/fs-server.md carries the incident, including the two instruments it blinded and
+why a ceiling failure reports the ceiling and not the cost.
 
 The remaining honest gap: a client of a dead server blocks forever. §26's fault endpoint is the
 mechanism that would turn that into a message a supervisor can act on, and wiring the FS service into

@@ -8,16 +8,16 @@ ratified_by: calef
 # 25. Socket identity: a socket id in phase one, minted endpoints as the tracked later step
 
 **Decided 2026-07-28 (calef), resolving the milestone 30 (the network stack as a confined component) piece-3 fork (notes/net/prior-art-and-the-contract.md).** A process
-holds one `Stack` endpoint capability; opening a connection yields a **socket id**, a small
-integer carried in the message words, with the per-connection **shared frame** as the real granted
-resource. Chosen because milestone 27's `std::net` PAL wants a file-descriptor-like handle, and
-because a minted kernel endpoint per TCP connection spends a bounded kernel object per socket
-(the endpoint budget is finite, as the 27+28 merge demonstrated).
+holds one `Stack` endpoint capability. Opening a connection yields a **socket id**, a small
+integer carried in the message words. The per-connection **shared frame** is the real granted
+resource. Chosen because milestone 27's `std::net` PAL wants a file-descriptor-like handle. Also
+chosen because a minted kernel endpoint per TCP connection spends a bounded kernel object per
+socket (the endpoint budget is finite, as the 27+28 merge demonstrated).
 
 **The purer capability story is deferred, not rejected, and calef's direction is explicit: come
 back for it.** Minted-endpoint-per-socket makes a socket an unforgeable, individually delegatable,
 individually revocable object. **Triggers to build:** (1) a socket needs to be delegated to a
-third process (the id is meaningless outside the holder of the stack cap, which is a feature until
-it is a limit); (2) milestone 23's hot-swap work wants per-connection revocation during a net
-server swap. The contract keeps the shared frame as the per-connection resource precisely so this
-migration changes the handle, not the data plane.
+third process; (2) milestone 23's hot-swap work wants per-connection revocation during a net
+server swap. For the first, the id is meaningless outside the holder of the stack cap, which is a
+feature until it is a limit. The contract keeps the shared frame as the per-connection resource
+precisely so this migration changes the handle, not the data plane.

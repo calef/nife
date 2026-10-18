@@ -19,9 +19,9 @@ anything to another project's toolchain and API churn. Concept note: notes/c-sea
 
 **Why C is the right thing to run, not a dilution of the thesis.** §14 promises a verified core that
 confines unverified workloads. C is the most unverified workload available, so it is the strongest
-available test rather than a compromise, and the contrast with a monolith is concrete: in-kernel C
+available test rather than a compromise. The contrast with a monolith is concrete. In-kernel C
 means one bad index is a kernel compromise (the peer project Atom keeps FAT32, AHCI, and xHCI in the
-kernel today); confined C means one bad index scribbles its own grant and gets restarted. Isolation
+kernel today). Confined C means one bad index scribbles its own grant and gets restarted. Isolation
 here is enforced by mechanisms that do not know what a language is: page tables, unforgeable
 capabilities, the DMA validator, the IOMMU.
 
@@ -47,12 +47,13 @@ process's capability table, not by what it can name. The text below is the July 
    be for a real API. Same sans-IO shape RedoxFS's `Disk` trait already uses (§27), across a language
    boundary instead of a trait boundary.
 3. The libc is two symbols, `malloc` and `free`. Tier two of the roadmap's three tiers
-   (freestanding / a handful of symbols / full POSIX; design/roadmap/0036-foreign-component.md). The C object references five (`malloc`, `free`,
-   `memcpy`, `memset`, `strlen`, identical on both ISAs at every optimization level, with no
-   compiler-rt helper and no `__stack_chk_fail`), and the linker demands only two, because
-   `compiler_builtins` already supplies the other three weakly for the bare targets. **Tier three is
-   not walked**: a component needing `open`, `fork`, `socket`, or threads needs a real libc port, which
-   is §15's "later, if ever" road, and saying so is what keeps this from becoming that project.
+   (freestanding / a handful of symbols / full POSIX; design/roadmap/0036-foreign-component.md).
+   The C object references five (`malloc`, `free`, `memcpy`, `memset`, `strlen`, identical on both
+   ISAs at every optimization level, with no compiler-rt helper and no `__stack_chk_fail`). The
+   linker demands only two, because `compiler_builtins` already supplies the other three weakly for
+   the bare targets. **Tier three is not walked**: a component needing `open`, `fork`, `socket`, or
+   threads needs a real libc port, which is §15's "later, if ever" road, and saying so is what keeps
+   this from becoming that project.
 4. `malloc` comes from the process's own untyped budget (§22 / milestone 27's `UntypedHeap`), wired
    to the very region the instance was built in. So the C heap is the process's own memory, a C leak
    exhausts that instance and nothing else, and the single `Untyped::DESTROY` that reaps the corpse
@@ -117,11 +118,12 @@ construction authority, or proxies the reap through something that does.
 ## The honest caveats, including what a spike does not prove
 
 - A throwaway component does not prove a vendor component. What is untested: a real build system
-  (this is one `clang -c` invocation, not autotools, CMake, or `build.zig`), multiple translation units
-  and their link order, headers we do not control, a component that wants `errno`, `assert`, `stdio`,
-  locales, `setjmp`, floating point, or thread-local storage, and API churn across upstream versions.
-  Milestone 29's libghostty-vt is a tier-one (freestanding) component by design, which is the cheapest
-  possible next step up from here, and that sequencing is deliberate.
+  (this is one `clang -c` invocation, not autotools, CMake, or `build.zig`), multiple translation
+  units and their link order, headers we do not control. Also untested: a component that wants
+  `errno`, `assert`, `stdio`, locales, `setjmp`, floating point, or thread-local storage, and API
+  churn across upstream versions. Milestone 29's libghostty-vt is a tier-one (freestanding)
+  component by design, which is the cheapest possible next step up from here, and that sequencing
+  is deliberate.
 - The C ABI's surface is one function shape. No struct passed by value, no varargs, no callback
   from C into Rust, no C++ (name mangling, exceptions, static initializers, `operator new`), and no
   bitfield or enum-width question. Each of those is a real seam decision this spike did not have to
@@ -131,7 +133,7 @@ construction authority, or proxies the reap through something that does.
 - `-mgeneral-regs-only` is load-bearing on aarch64, and the reason is worth keeping. Without it
   clang vectorizes the component's byte loops into NEON (53 vector-register operands in the object).
   The Rust target is `-softfloat`, the kernel never enables FP/SIMD for EL0, and the context switch
-  saves no FP state, so vector registers in a confined component would be a trap or a corruption
+  saves no FP state. So vector registers in a confined component would be a trap or a corruption
   depending on which of those two bit first.
 - A cross-ISA difference in fault reporting, found here. aarch64's `ESR_EL1` distinguishes the two
   bugs (`0x9200004f` permission, `0x92000047` translation); RISC-V's `scause` reports both as `0xf`,

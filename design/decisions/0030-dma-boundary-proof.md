@@ -9,9 +9,9 @@ ratified_by: calef
 
 The decision. DMA confinement was the one isolation boundary in the system carried by tests rather
 than proof, and it is the boundary that makes "you need not trust the driver" true. It is now
-machine-checked, and the milestone's deliverable is as much the boundary statement as the proof:
-the record must not let a reader conclude the whole DMA surface is proved when one path is proved and
-another is mitigated by hardware we will not always have.
+machine-checked, and the milestone's deliverable is as much the boundary statement as the proof.
+The record must not let a reader conclude the whole DMA surface is proved when one path is proved
+and another is mitigated by hardware we will not always have.
 
 **Why now, and why it is not merely tidiness.** Milestone 16a's board, the VisionFive 2, has no IOMMU.
 §20 (IOMMU-backed DMA isolation)'s hardware confinement demoted the software validator to defense in depth; on first silicon there
@@ -22,13 +22,13 @@ is exactly the wrong thing to put in that position, and the ordering follows: pr
 What is proved. Three things, all `#[cfg(kani)]`, all in `script/verify`:
 
 1. The validator (`crates/dma_validator`, seven harnesses). No descriptor the kernel copies into the
-   shadow ring the device reads is ever out-of-region or indirect, for every descriptor bit pattern and
-   every region: both directions (flags fully symbolic, so RX device-writes are covered), indirect
-   descriptors, chains including cycles, ring-index wraparound through `u16`, overflowing address
-   arithmetic, multi-queue block isolation, the oversized-batch bound, and the
-   mutated-after-validation (TOCTOU) case the shadow ring exists to close. Termination is part of the
-   property, not an assumption: the loop bounds are set one above what the code can need, so Kani's
-   unwinding assertion fails if any input could spin the walk.
+   shadow ring the device reads is ever out-of-region or indirect, for every descriptor bit pattern
+   and every region. The proof covers both directions (flags fully symbolic, so RX device-writes are
+   covered), indirect descriptors, and chains including cycles. It also covers ring-index wraparound
+   through `u16`, overflowing address arithmetic, multi-queue block isolation, the oversized-batch
+   bound, and the mutated-after-validation (TOCTOU) case the shadow ring exists to close.
+   Termination is part of the property, not an assumption: the loop bounds are set one above what
+   the code can need, so Kani's unwinding assertion fails if any input could spin the walk.
 2. The `Untyped::SPLIT` mint site (`capability::split_never_widens_rights`). See the amendment below for
    what the property actually is, because §16's `GRANT` change makes the naive phrasing wrong.
 3. The IOMMU domain's page set (`paging::domain`, six harnesses). The domain maps every whole page
@@ -46,29 +46,30 @@ The amendment §16 forces on the SPLIT property. `Untyped::SPLIT` grants the chi
 budget is delegable, so "SPLIT never changes rights" is false and "SPLIT never widens rights" needs
 saying precisely. The property proved is: the child's rights are exactly the parent's, `SPLIT`
 being an *inheriting* mint (`Cap::mint_child`) with no rights argument at all. That is strictly
-stronger than "no wider" and it is the shape that makes the delegable-budget behavior correct rather
-than an exception: a root untyped is minted once with `READ|WRITE|GRANT` (`untyped_root_cap`), `SPLIT`
-inherits whatever the parent holds, and `CAP_INSERT` narrows on the way into a child. So rights along a
-budget tree are monotonically non-increasing from the root, `GRANT` reaches a child only because the
-root had it, and a spend-only untyped provably cannot split itself a `GRANT`-bearing child. The
-delegability is a property of the *root's* mint, not a widening at `SPLIT`. Because `SPLIT` takes no
-rights argument, there is no input by which a caller could ask for more.
+stronger than "no wider". It is the shape that makes the delegable-budget behavior correct rather
+than an exception. A root untyped is minted once with `READ|WRITE|GRANT` (`untyped_root_cap`),
+`SPLIT` inherits whatever the parent holds, and `CAP_INSERT` narrows on the way into a child. So
+rights along a budget tree are monotonically non-increasing from the root, `GRANT` reaches a child
+only because the root had it, and a spend-only untyped provably cannot split itself a
+`GRANT`-bearing child. The delegability is a property of the *root's* mint, not a widening at
+`SPLIT`. Because `SPLIT` takes no rights argument, there is no input by which a caller could ask
+for more.
 
 The residual gap, stated as the deliverable it is. Milestone 29 (§29) found that a virtio-gpu's
 backing addresses ride in a `RESOURCE_ATTACH_BACKING` **command payload**, not in a descriptor. The
 validator **structurally cannot see them**: they are not in its input, so no amount of proving it
-harder reaches them, and teaching the transport to parse device commands would put device knowledge in
+harder reaches them. Teaching the transport to parse device commands would put device knowledge in
 the layer §18 keeps neutral and start a per-device arms race. So:
 
 - an address reaching a device through a descriptor is *provably* confined to the driver's grant;
-- an address reaching a device inside a command payload is confined by the IOMMU alone. Item 3
-  above is the one useful thing this milestone could prove about that path, and it is a narrowing rather
-  than a closing: such an address is stopped by having no translation in the device's domain, so "the
-  domain maps exactly the grant" is precisely the property the barrier rests on, and it is now proved for
-  every grant. That the hardware then faults an out-of-grant address stays an attacker test
-  (`the_iommu_refuses_the_gpu_a_framebuffer_outside_the_drivers_grant`, both ISAs, asserting on the
-  hardware's own fault queue). The transport still cannot see these addresses, and the enforcement is
-  still the hardware's;
+- an address reaching a device inside a command payload is confined by the IOMMU alone. Item 3 above
+  is the one useful thing this milestone could prove about that path, and it is a narrowing rather
+  than a closing. Such an address is stopped by having no translation in the device's domain. So
+  "the domain maps exactly the grant" is precisely the property the barrier rests on, and it is now
+  proved for every grant. That the hardware then faults an out-of-grant address stays an attacker
+  test (`the_iommu_refuses_the_gpu_a_framebuffer_outside_the_drivers_grant`, both ISAs, asserting on
+  the hardware's own fault queue). The transport still cannot see these addresses, and the
+  enforcement is still the hardware's;
 - on a board with **no IOMMU, nothing confines the payload path.** Not the validator, not the hardware.
 
 That last point is where 16a's reasoning inverts, and it is the thing this section exists to prevent

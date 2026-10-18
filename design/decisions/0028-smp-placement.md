@@ -29,11 +29,12 @@ against the alternatives on the record:
    17's message-passing direction rather than away. Cost accepted: a steal lands at the victim's
    next scheduler pass, bounded by the tick.
 
-Deferred, with triggers: an explicit placement grant in the spawn manifest (milestone 23's
-contract; overrides the default, recovering seL4's userspace-owns-placement story for pinned
-components); priorities and CPU budgets (no mechanism today, round-robin is the whole story; the
-trigger is a real workload where fairness visibly fails, and the design starts from budgets as
-narrowing grants, not from nice); §12's dormant priority-donation item wakes only with priorities.
+Deferred, with triggers. An explicit placement grant in the spawn manifest (milestone 23's
+contract) overrides the default, recovering seL4's userspace-owns-placement story for pinned
+components. Priorities and CPU budgets have no mechanism today; round-robin is the whole story.
+Their trigger is a real workload where fairness visibly fails, and the design starts from budgets
+as narrowing grants, not from nice. §12's dormant priority-donation item wakes only with
+priorities.
 
 Changeability, stated at ratification: this is scheduler-internal policy. No ABI, no
 capability semantics, no baseline movement (the icount benches are hart-pinned). The one-time cost
@@ -56,10 +57,10 @@ notes/scheduler.md; cross-core stress tests in `sched.rs`, `smp.rs`, and `user/t
   benches reproducible. On one online core it is a no-op.
 
 - Stealing, as built. An idle core's `try_initiate_steal` picks the most-loaded other core by run
-  queue depth alone (never its inbox, which is work already in flight to it), CASes a one-slot steal
-  request, and pokes it with the reschedule SGI; the victim's `serve_steal_request` hands back one
-  queued thread through the requester's inbox at its next scheduler entry. Pull-based, no cross-core
-  run-queue lock.
+  queue depth alone (never its inbox, which is work already in flight to it). It CASes a one-slot
+  steal request and pokes that core with the reschedule SGI. The victim's `serve_steal_request`
+  hands back one queued thread through the requester's inbox at its next scheduler entry.
+  Pull-based, no cross-core run-queue lock.
 
 - The wake SPLIT (the addition). §28.2 said "wake stays local." That is right for an IPC
   rendezvous: the partner wakes on the waker's core, message in registers, cache warm, and the
@@ -82,7 +83,7 @@ notes/scheduler.md; cross-core stress tests in `sched.rs`, `smp.rs`, and `user/t
 
 - **Correction: the hang watchdog now credits real progress, not test starts.** With migration and a
   slow-but-live workload, the old "did a new test begin in the last 60 s" heartbeat could not tell a
-  deadlock from a slow test, and it tripped std_net, which legitimately runs about 300 s in net_stack's
+  deadlock from a slow test. It tripped std_net, which legitimately runs about 300 s in net_stack's
   userspace smoltcp poll (CPU-bound, no wakes and no output for stretches over a minute). The
   watchdog now counts progress as a completed wake or a line of output OR any core running a
   non-idle thread; only a genuine lost wakeup (every thread blocked, every core on its idle thread)
@@ -92,8 +93,8 @@ notes/scheduler.md; cross-core stress tests in `sched.rs`, `smp.rs`, and `user/t
   test harness also enforces a per-test wall-clock ceiling (2026-07-29). The caveat recorded above,
   that the progress heartbeat cannot see a busy-spin livelock, was accepted on the argument that the
   leaked-spinner regression test and `helpers/qemu-bounded.sh` covered it. That reasoning was
-  incomplete, and the machine showed it: the RedoxFS repeat-write livelock spins in an allocator
-  commit *while still serving blk IPC*, so every rendezvous reset the heartbeat, and a failure that
+  incomplete, and the machine showed it. The RedoxFS repeat-write livelock spins in an allocator
+  commit *while still serving blk IPC*, so every rendezvous reset the heartbeat. A failure that
   had been a loud 60 s watchdog trip became an infinite silent hang at about 400% CPU with no
   watchdog fire at all. A livelock that makes IPC progress is indistinguishable from healthy work to a
   progress-only instrument, and turning a loud failure into a silent one is strictly worse than the
@@ -107,8 +108,8 @@ notes/scheduler.md; cross-core stress tests in `sched.rs`, `smp.rs`, and `user/t
   failures it is, so a livelock is diagnosable rather than an anonymous timeout.
 
   **Budgets are per test, not one global ceiling**, and that is the judgment call worth recording.
-  std_net honestly runs 300 to 344 s, so a single ceiling would have to sit near 700 s, which would
-  let a two-second unit test spin for eleven minutes before failing: a limit that catches almost
+  std_net honestly runs 300 to 344 s, so a single ceiling would have to sit near 700 s. That would
+  let a two-second unit test spin for eleven minutes before failing. A limit that catches almost
   nothing is not worth the false confidence. Instead the default is a tight 90 s and the known-slow
   tests declare their own cost in `SLOW_TESTS`, each entry carrying the reason. The exception stays
   visible and reviewable instead of being absorbed into a number that protects nothing, and the cost
@@ -120,6 +121,6 @@ notes/scheduler.md; cross-core stress tests in `sched.rs`, `smp.rs`, and `user/t
   cost, separates them. A feature-gated probe (`watchdog_probe`) loops forever doing a full rendezvous
   each pass, so the heartbeat sees a healthy kernel and only the ceiling stops it; it is expected to
   fail and stays out of the normal suite. And `qemu-bounded.sh` remains the outermost backstop, for a
-  kernel wedged so hard the timer IRQ stops: it did not fire in the reported case only because that
-  run invoked `cargo` directly instead of the wrapper, which is the argument for the in-kernel check.
+  kernel wedged so hard the timer IRQ stops. It did not fire in the reported case only because that
+  run invoked `cargo` directly instead of the wrapper. That is the argument for the in-kernel check.
   **A bypassable backstop is not a backstop.**

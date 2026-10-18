@@ -52,23 +52,24 @@ its own piece of work because endpoint teardown does not exist (§13 pins a regi
 The isolation is proved, not asserted, and the attacker is given every advantage short of a
 capability. It is the same binary as an honest client with the same grants, it paints its own window
 correctly first, and the kernel hands it the exact virtual address of its neighbor's pixels. That
-address is real twice over: every client maps its surface at the same virtual address (so it is the
-number the neighbor itself uses), and the kernel allocates all the clients' frames as one contiguous
-run so the page past a client's grant genuinely is its neighbor's memory, which the test asserts
-before believing anything else. Then: the write faults (both ISAs, exact address checked on aarch64,
-which is the ISA that records one); the attacker's report endpoint stays silent, so the "I read it back"
-message it would otherwise send did not happen; the victim's witness pattern digests identically before
-and after through the kernel's direct map; and the victim, held in a `CALL` across the whole attack,
-re-reads its own surface afterwards and reports the same digest from its own address space.
+address is real twice over. Every client maps its surface at the same virtual address (so it is the
+number the neighbor itself uses). And the kernel allocates all the clients' frames as one contiguous
+run so the page past a client's grant genuinely is its neighbor's memory; the test asserts this
+before believing anything else. Then the write faults (both ISAs, exact address checked on aarch64,
+which is the ISA that records one). The attacker's report endpoint stays silent, so the "I read it
+back" message it would otherwise send did not happen. The victim's witness pattern digests
+identically before and after through the kernel's direct map. And the victim, held in a `CALL`
+across the whole attack, re-reads its own surface afterwards and reports the same digest from its
+own address space.
 
 No ambient display, and the refusal has two dialects. A client not granted an input endpoint has an
 *empty cspace slot*: `NoSuchSlot` (-1), "there is nothing there", asserted by value because
 `NotPermitted` would describe a weaker world. A client not granted the screen has *no mapping* where the
 screen would be: its read faults. Same sentence, one in the cspace and one in the address space. A
 capture client holds the screen and the window list read-only, so it can screenshot and enumerate
-with no server involved, and its attempt to write the screen faults: a thing that may look at the screen
-may not draw on it. Screen sharing is that grant aimed at a third party, and being a frame mapping it is
-revocable through §13.
+with no server involved. Its attempt to write the screen faults: a thing that may look at the screen
+may not draw on it. Screen sharing is that grant aimed at a third party, and being a frame mapping
+it is revocable through §13.
 
 The boundary this rung proves is client-to-client, and that is stated rather than implied. The
 compositor sees every client's pixels because compositing is reading them, so `compositor` is in every
@@ -77,25 +78,26 @@ never whether a compositor could be prevented from reading a surface; it was whe
 be. What the capability model buys is that the compositor's authority is enumerated in one spawn literal
 and cannot grow: no device, no interrupt, no DMA authority, no physical address, no way to name a frame
 it was not handed. A compromised compositor can lie about the screen and read the windows it
-composites, and cannot reach the disk, the network, another process, or the GPU's command stream (that
-last one being rung one's confinement, and the reason the driver is a separate process).
+composites. It cannot reach the disk, the network, another process, or the GPU's command stream.
+That last one is rung one's confinement, and the reason the driver is a separate process.
 
 Damage is honored, and that is observed rather than claimed. The kernel plays the display server in
-three tests precisely so the flush rectangle is a value it can compare: one commit produces one flush,
-the flush is exactly the client's rectangle placed on the screen, and the poison the kernel wrote over
-the rest of the scanout between two frames is still there afterwards. The same property is checked on
-the host in microseconds by `crates/compositor`.
+three tests precisely so the flush rectangle is a value it can compare. One commit produces one
+flush, and the flush is exactly the client's rectangle placed on the screen. The poison the kernel
+wrote over the rest of the scanout between two frames is still there afterwards. The same property
+is checked on the host in microseconds by `crates/compositor`.
 
-The picture is proved by four witnesses, one of which has to be the host. The driver's digest of the
-frames the device read (the compositor's startup frame, which is the background alone, so an empty screen
-is a defined picture); the kernel's own pixel-for-pixel comparison through the direct map; a capture
-client's digest taken in a third address space; and QEMU's `screendump` compared against the same
-per-pixel definition. The fourth is not decoration: `-display none` means no in-guest witness can see the
-device's own surface, so a wrong format or scanout rectangle would satisfy all three and show garbage.
-Milestone 29's checker now proves two pictures over one boot in order (composed screen, then rung
-one's pattern), both must be seen, and the composed check has its own negative control because rung two's
-failure modes are not rung one's: it must reject a z-order inversion and a missing window, pictures made
-entirely of correct pixels in almost the right places.
+The picture is proved by four witnesses, one of which has to be the host. The first is the driver's
+digest of the frames the device read (the compositor's startup frame, which is the background alone,
+so an empty screen is a defined picture). The second is the kernel's own pixel-for-pixel comparison
+through the direct map. The third is a capture client's digest taken in a third address space. The
+fourth is QEMU's `screendump` compared against the same per-pixel definition. The fourth is not
+decoration: `-display none` means no in-guest witness can see the device's own surface, so a wrong
+format or scanout rectangle would satisfy all three and show garbage. Milestone 29's checker now
+proves two pictures over one boot in order (composed screen, then rung one's pattern), and both must
+be seen. The composed check has its own negative control because rung two's failure modes are not
+rung one's. It must reject a z-order inversion and a missing window, pictures made entirely of
+correct pixels in almost the right places.
 
 The open fork, and it is the most useful finding of the milestone: this kernel has no wait-any. A
 process has exactly one blocking wait point (a thread parks in one `RECV`; there is no non-blocking
@@ -105,13 +107,13 @@ input source, a screen reader), and distinguishing classes of sender is what end
 endpoint per class needs one wait point per class. The constraint is structural: a component that must
 distinguish more than one class of sender must be more than one process, or carry authority somewhere
 other than its messages. This rung took the second road and it turned out stronger than the first
-would have been. But if the primitive existed, a compositor could hold one endpoint per client and get
-unforgeable identity for free (letting a bad damage rectangle be *refused to its author* rather than
-clipped), a screenshot could be a served consistent snapshot rather than a live read-only mapping that
-can tear, and input delivery would stop being a blocking `CALL` into a client. Both candidate forms are
-real work with real consequences (a shared address space raises lifetime and revocation questions; a
-wait-any widens §4), so this is calef's call, not a thing to build quietly. notes/compositor.md
-carries the full argument.
+would have been. But if the primitive existed, a compositor could hold one endpoint per client and
+get unforgeable identity for free (letting a bad damage rectangle be *refused to its author* rather
+than clipped). With the primitive, a screenshot could be a served consistent snapshot rather than a
+live read-only mapping that can tear. And input delivery would stop being a blocking `CALL` into a
+client. Both candidate forms are real work with real consequences (a shared address space raises
+lifetime and revocation questions; a wait-any widens §4), so this is calef's call, not a thing to
+build quietly. notes/compositor.md carries the full argument.
 
 **Honest limits, recorded because a demonstrator's caveats are part of the deliverable.** The scene is a
 compile-time constant: three windows, fixed sizes, positions and stacking order, no surface negotiation,
