@@ -12,11 +12,9 @@ needs_person: no
 
 **PARTIAL, 2026-10-18 (UTC).** Items 1 to 6 and item 8's digest check are built, and pass
 `script/swish-check` on aarch64, riscv64 and x86_64 under QEMU; `update` and the index copy are
-milestone 801 (packages over the internet)'s. Two items wait on work outside this block. Item 7
-(`add-repository`) waits on the web's authority list, which §306 (the web's authority list is a
-package and a capability) rule 5 checks an added index against and no milestone builds yet. Item
-8's index half waits on milestone 849 (a package declares what it needs at run time), whose item 4
-puts the needs into the metadata and the index. The program is
+milestone 801 (packages over the internet)'s. Item 7 (`add-repository`) waits on the web's
+authority list (§306 (the web's authority list is a package and a capability) rule 5). Item 8's
+index half waits on milestone 849 (a package declares what it needs at run time)'s item 4. The program is
 [notes/packages/jig.md](../../notes/packages/jig.md).
 
 *(calef, 2026-10-07 (UTC): "Promote jig to a milestone." `jig` is ratified; the title, slug and
@@ -64,11 +62,9 @@ long spellings and `-u`, and `apt update` prints `apt list --upgradable`
 (`apt-private/private-update.cc:159-160`). `-u` is ratified under "We abbreviate on the command
 line."
 
-Newer means newer in Debian's order: ruled 2026-10-18 21:38 (UTC). Asked *"How should jig order
-versions?"*, with "No order" the other option, calef answered *"Debian dpkg order"*. The order is
-dpkg's `verrevcmp`, `package_index::version`. basalt writes the version strings and `jig` reads
-them, so an index line whose version dpkg would refuse or warn about refuses the whole index at
-`Index::parse`, and an installed row's is refused by name at `list -u`.
+Newer is Debian's order, ruled 2026-10-18 21:38 (UTC): asked *"How should jig order versions?"*,
+calef answered *"Debian dpkg order"*. It is `package_index::version`. A version dpkg would refuse
+refuses the index at `Index::parse`, and an installed row's is refused by name.
 
 *calef, 2026-10-07 (UTC), on #1805: `jig` must update base packages; only the slot reboots. See §159 (only a new kernel needs a reboot).*
 
@@ -141,34 +137,12 @@ I3, which waits on a key-custody ruling, `jig` is inside the trusted base for in
 
 ## Many indexes per machine: ruled
 
-calef, 2026-10-06 (UTC): *"A machine may write many indexes."* So a machine holds several, as apt's
-`sources.list` does; details below.
-
-§250 (an image names its distribution's package index) fixes only an image's one index, basalt's;
-an index the owner adds is the machine's. §195 clause 2 scopes trust per source, and §196 clause 4
-holds roots per source.
-
-Its four details are all ruled:
-
-1. How an added index is authenticated: ruled 2026-10-17 (UTC). calef: *"Just a URL."*
-   `jig add-repository <url>` takes only a URL, and a refusal names the root the server needed.
-   He first ruled that the index is checked against the roots the image pins for basalt (ISRG Root
-   X1 today). §306 (the web's authority list is a package and a capability), decided 2026-10-18,
-   replaces that set. An added index is trusted at the channel as a website is, by the list's
-   authorities; basalt's own channel never depends on the list.
-2. The same name in two indexes: ruled 2026-10-17 (UTC). calef chose *"A"*: a bare name offered by
-   two indexes is refused as `Ambiguous`, as milestone 614 (two installed versions of one program, each runnable) does for versions, and an
-   index-qualified name picks one. First-index-wins is refused as the dependency-confusion shape.
-   The qualifier is `jig install --from <index> <name>`, with the index's URL exactly as added. The
-   spelling is provisional (`Name: provisional` in
-   [design/naming/README.md](../naming/README.md), tracked by `script/names --unratified`). It is
-   a flag because §219 reads a word containing `/` as a file, and `@` already means a version.
-3. Provenance: ruled 2026-10-17 (UTC). Asked *"Record each row's vouching index by its URL?"*, calef
-   answered *"Yes"*. Each installed-programs table row records the URL of the index that vouched
-   for it, exactly as added, in place of `OWNER` alone, so a rollback can say what it is undoing.
-4. An added index that says it moved: ruled 2026-10-17 (UTC). calef chose *"B"*: `jig` does not
-   follow an added index's "moved to" field. It reports it and names the `jig add-repository <new
-   url>` command. basalt's own index keeps following §250's field.
+calef, 2026-10-06 (UTC): *"A machine may write many indexes."* He ruled all four details on
+2026-10-17 (UTC). An added index is just a URL, trusted at the channel by the web's authority list
+(§306). A bare name two indexes offer is refused as `Ambiguous`, and `jig install --from <index>
+<name>` picks one. A row records the URL of the index that vouched for it. `jig` reports an added
+index's "moved to" field and does not follow it. [The appendix](0809-the-package-client-becomes-a-program/many-indexes.md) has each ruling in
+calef's words.
 
 ## Other package managers, against the same contracts
 
@@ -238,10 +212,7 @@ unvouched and refused the installer. The progenitor's stack went from twelve pag
 measured.
 
 `list -u`, built 2026-10-18 (UTC), passes the same gate on all three. Its line holds
-`activation/` read only and nothing else; `caps jig list -u` shows it. The verb table keys it as
-two words, `list -u`, so `jig list` keeps its own narrower grant. After `update` it prints
-`greeting 0.2.0 -> 0.3.0`, and after `greeting` 0.3.0 is installed, that nothing is outdated. `jig
-list --upgradable` is refused naming `-u`.
+`activation/` read only and nothing else, keyed in the verb table as the two words `list -u`.
 
 ## Follow-on
 
@@ -288,8 +259,7 @@ list --upgradable` is refused naming `-u`.
   an index install is `jig`'s claim.
 - `jig`'s own refusals name no generation, and a `remove <package>@<version>` that cannot pick a
   default names no candidates: only `list -u` holds a view of `activation/`.
-- `list -u` compares versions only. A package whose index entry changed its digest at the same
-  version is not reported, and nothing yet installs what it lists (`upgrade` is reserved).
+- `list -u` compares versions only, so a digest changed at the same version is not reported.
 - A package file at the root of the shell's namespace cannot be installed by path from the root,
   because the root cannot be narrowed to one name; `cd` to its directory first.
 - An installer holder is built from the image pool, so a file run by its path in the same pipeline
