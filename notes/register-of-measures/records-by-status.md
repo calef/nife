@@ -72,11 +72,11 @@ A module's block is its `//!` header, an item's a `/// Name:` paragraph, and a d
 directory's and its documents' the directory's README. A name a rule on
 `design/naming/convention-rulings.md` covers counts as `ratified`.
 
-**The total counts files, not blocks.** Every `.rs` file under a `src/` directory is a module, and
-every document under `design/`, `notes/` or `briefs/` counts, block or no block. Writing a block
-moves a name between bands; only adding or removing a file moves the total.
-`helpers/module_block_ratchet.py` holds the unblocked ones to a list that only shrinks. Items are
-the exception: one counts only where its block exists, until "item" has a definition.
+**The total counts what the tree defines, not blocks.** Every `.rs` file under a `src/` directory
+is a module, every document under `design/`, `notes/` or `briefs/` counts, and so does every `pub`
+item, constants included (calef, 2026-10-18 UTC), block or no block. Writing a block moves a name
+between bands; only adding or removing code or a document moves the total.
+`helpers/module_block_ratchet.py` holds the unblocked ones to a list that only shrinks.
 
 `script/names` and this series share `helpers/name_census.py`, and `script/metrics` fails when the
 current week's totals disagree.
@@ -96,17 +96,18 @@ difference: named things with no block, or a block that fails `script/names`' fo
 differs from `Unrecorded`, which is a block saying the history is silent. The two are kept apart for
 the same reason the decisions chart above will not read a statusless decision as `DECIDED`.
 
-In the first three weeks that band is the whole bar: 83 named things at 2026W29 and 300 at
+In the first three weeks that band is the whole bar: 479 named things at 2026W29 and 2,458 at
 2026W31, none carrying provenance, because the convention that records it did not exist until
 2026-08-04. The first blue bar is a convention arriving, not 72 names ratified in a week. Backfilling them was
 refused: an invented ratification would put a false claim in the record of who claimed what. The
 band stays large until 2026W39, when module, directory and document blocks were first written.
 
-The three steepest weeks are files being made. 2026W39 adds 537 names: 245 documents and 29
-directories from the §212 (a prose budget) splits, which turned long documents
-into directories of pages, and 193 item blocks. 2026W41 adds 699, 345 of them documents from more
-splits and 165 modules. 2026W42 adds 579, 415 of them modules from the §266 (a Rust source file
-stays under 2,000 lines) splits.
+Most of the band is `pub` items: 7,111 of 7,976 at 2026W42. The steepest weeks are code and
+documents being written. 2026W31 adds 1,777 names, 1,608 of them items. 2026W39 adds 1,303: 959
+items, and 245 documents and 29 directories from the §212 (a prose budget) splits, which turned
+long documents into directories of pages. 2026W41 adds 2,018: 1,407 items, 345 documents and 165
+modules. 2026W42's 415 new modules are the §266 (a Rust source file stays under 2,000 lines)
+splits.
 
 2026W36 is one milestone doing one thing. `Unrecorded` goes from 64 to 2, `Recorded` from 9 to 37
 and `Provisional` from 26 to 66. That is milestone 264 (sixty names git history cannot justify, and
