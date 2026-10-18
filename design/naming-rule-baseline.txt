@@ -79,10 +79,6 @@ crates/designware_mobile_storage/src/serve.rs::TRANSFER_VA spelled-out
 crates/direct_memory_access_validator/src/lib.rs::check_descriptor question-shape
 crates/documentation/src/index.rs::STORE_DIR spelled-out
 crates/e1000e/src/pch/flush.rs::required question-shape
-crates/e1000e/src/pch/phy.rs::LED_CONFIG spelled-out
-crates/e1000e/src/pch/phy.rs::OP_READ spelled-out
-crates/e1000e/src/pch/phy.rs::OP_WRITE spelled-out
-crates/e1000e/src/pch/phy.rs::ULP_CONFIG1 spelled-out
 crates/e1000e/src/pch/ulp.rs::done question-shape
 crates/e1000e/src/process.rs::DATA_PLANE_VA spelled-out
 crates/e1000e/src/process.rs::RX_QUEUE_VA spelled-out
