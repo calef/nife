@@ -48,8 +48,8 @@
 
 use filesystem_contract::blk;
 use non_volatile_memory_express::{
-    CLIENT_WINDOWS, Command, Completion, CqState, Doorbell, Handoff, SqState, client_window,
-    window_writes,
+    CLIENT_WINDOWS, Command, Completion, CqState, Doorbell, Handoff, SqState, can_write,
+    client_window,
 };
 use user_mode_runtime::mapped_window::{MappedWindow, PAGE};
 use user_mode_runtime::{exit, receive_request, reply, send};
@@ -326,7 +326,7 @@ fn serve(mut plane: Plane) -> ! {
             continue;
         };
         let op = filesystem_contract::operation(w0);
-        if (op == blk::WRITE || op == blk::FLUSH) && !window_writes(req.badge) {
+        if (op == blk::WRITE || op == blk::FLUSH) && !can_write(req.badge) {
             reply(reply_cap, filesystem_contract::reply_err(30) as u64, 0); // EROFS
             continue;
         }

@@ -543,12 +543,14 @@ pub const DISK_TREE_WINDOW: u64 = 2;
 /// view at the prompt (calef, 2026-10-18 21:36 UTC), and refusing its `WRITE` and `FLUSH` here makes
 /// that a property of the capability it holds rather than of the code it runs.
 ///
+/// Name: provisional, minted 2026-10-18 (UTC) by lane/ioping-direct-io.
+///
 /// ```
-/// use non_volatile_memory_express::{DISK_TREE_WINDOW, FILESYSTEM_WINDOW, window_writes};
-/// assert!(window_writes(FILESYSTEM_WINDOW));
-/// assert!(!window_writes(DISK_TREE_WINDOW));
+/// use non_volatile_memory_express::{DISK_TREE_WINDOW, FILESYSTEM_WINDOW, can_write};
+/// assert!(can_write(FILESYSTEM_WINDOW));
+/// assert!(!can_write(DISK_TREE_WINDOW));
 /// ```
-pub const fn window_writes(window: u64) -> bool {
+pub const fn can_write(window: u64) -> bool {
     window != DISK_TREE_WINDOW
 }
 

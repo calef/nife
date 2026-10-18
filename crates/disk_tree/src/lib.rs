@@ -11,7 +11,7 @@
 //!
 //! Read-only by construction twice over: no mutating verb is answered (each is
 //! [`dir::EROFS`]), and the server's block endpoint is badged with a window the NVMe server never
-//! writes from (`non_volatile_memory_express::window_writes`).
+//! writes from (`non_volatile_memory_express::can_write`).
 //!
 //! **What the shell sees** (calef, 2026-10-18 21:36 UTC, "Yes, read-only at prompt"): this tree is
 //! the shell's second mounted tree, so `cd` into [`DIRECTORY`] and name [`FILE`]:

@@ -246,7 +246,7 @@ fn each_client_stages_in_the_window_its_badge_names() {
         "the disk tree's read landed in window 0"
     );
 
-    // **Read-only is the capability's, not the disk tree's code** (`window_writes`).
+    // **Read-only is the capability's, not the disk tree's code** (`can_write`).
     let erofs = filesystem_contract::reply_err(30);
     assert_eq!(
         call(blk::WRITE, DISK_TREE_WINDOW),
