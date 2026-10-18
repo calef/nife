@@ -11,16 +11,6 @@
 # two counts). Median and bold are not asked of documents under 200 words.
 # measure: 3
 path	words	median	longest	bold_lead	bold_inline
-design/decisions/0112-touch-mtime-authority.md	-	22	-	-	-
-design/decisions/0113-kernel-object-plain-names.md	-	-	63	-	-
-design/decisions/0114-aspace-enumerate.md	-	22	49	-	-
-design/decisions/0115-no-sysctl.md	-	22	51	-	-
-design/decisions/0116-state-handoff-declined.md	-	-	58	-	-
-design/decisions/0117-subtree-name-is-identity.md	-	22	60	-	-
-design/decisions/0118-ipc-tables-name.md	-	27	62	-	-
-design/decisions/0119-oom-causes-declined.md	-	20.5	45	-	-
-design/decisions/0120-boot-entropy-stopgap-declined.md	-	21	82	-	-
-design/decisions/0121-port-io-capability.md	-	21	67	-	-
 design/decisions/0122-durable-schedule-store-format.md	-	27	60	-	-
 design/decisions/0123-boot-time-rederivation-privilege.md	-	24	72	-	-
 design/decisions/0124-x86-64-syscall-abi.md	-	21.5	52	-	-
