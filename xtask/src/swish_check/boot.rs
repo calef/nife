@@ -587,7 +587,7 @@ struct OptionalPrograms {
 
 impl OptionalPrograms {
     /// Look for each program's image, and say on the first boot what is skipped and why. `None`
-    /// when the leg must refuse instead: `jig` is missing, or CI is missing one it always builds.
+    /// when the leg must refuse instead: CI is missing one it always builds.
     fn find(arch: &str, fresh: bool) -> Option<Self> {
         // **`std_exerciser` is in this boot's archive only if it was built** (milestone 595
         // (provisional)): `cargo xtask std-exerciser` compiles it against this worktree's patched std farm, which
@@ -596,18 +596,8 @@ impl OptionalPrograms {
         // than the boot, so the line is skipped and says why. **Not in CI**, where `test` always builds
         // it first: a missing image there means the build broke, and skipping would hide exactly that.
         let std_built = crate::farm::std_exerciser_elf(&format!("{arch}-unknown-nife")).exists();
-        // **`jig` is built by the same step, and is not skippable** (milestone 809 (the package client
-        // becomes a program)): every package line from the first install to the second boot's
-        // rollback goes through it, and each later line reads the generation the one before wrote, so
-        // skipping its lines would fail the rest for a reason nobody typed. Refused up front instead,
-        // naming the step, on both boots and everywhere.
-        if !crate::farm::jig_elf(&format!("{arch}-unknown-nife")).exists() {
-            eprintln!(
-                "swish-check ({arch}): no jig was built for this architecture, and every package line \
-                 needs it; run `cargo xtask std-exerciser` (or `script/test`) first"
-            );
-            return None;
-        }
+        // `jig` is not optional: every archive builds it for its own target and refuses to pack
+        // without it (`crate::archive`'s `SHIPPED_STD_PROGRAMS`), so its lines are never skipped.
         // Said once per leg, on the first boot: the second boot types no `std` line.
         if fresh && !std_built {
             if std::env::var_os("CI").is_some() {

@@ -185,7 +185,7 @@ pub(super) struct Fs {
 /// second party in the teardown path for memory that is not ours, racing the shell's `DESTROY`.
 pub(super) fn spawn_service(
     c: Channels,
-    progs: &[Option<elf::Elf>; grant_plan::PROGRAM_COUNT],
+    spawnable: &crate::boot_steps::Spawnable,
     care: Caretakers,
     discipline: SessionDiscipline,
     fs_scoped: bool,
@@ -194,7 +194,8 @@ pub(super) fn spawn_service(
     let resolver = c.resolver;
     let mut service = Service {
         c,
-        progs,
+        progs: &spawnable.progs,
+        absent: &spawnable.absent,
         care,
         discipline,
         fs_scoped,
@@ -213,6 +214,7 @@ pub(super) fn spawn_service(
 struct Service<'a> {
     c: Channels,
     progs: &'a [Option<elf::Elf<'a>>; grant_plan::PROGRAM_COUNT],
+    absent: &'a [bool; grant_plan::PROGRAM_COUNT],
     care: Caretakers,
     discipline: SessionDiscipline,
     fs_scoped: bool,
@@ -478,7 +480,7 @@ impl Service<'_> {
         };
 
         if req.interruptible {
-            self.spawn_interruptible(&req, elf);
+            self.spawn_interruptible(&req, elf, job.failure);
         } else {
             self.spawn_job(&req, &job, elf, image_region, staging);
         }
@@ -775,6 +777,8 @@ impl Service<'_> {
         };
         let failure = if unvouched && !presented {
             spawnproto::SPAWN_UNVOUCHED
+        } else if !wiring.image && prog.is_some_and(|p| self.absent[p.id() as usize]) {
+            spawnproto::SPAWN_NOT_IN_IMAGE
         } else if refused_by_manifest {
             spawnproto::SPAWN_REFUSED_BY_MANIFEST
         } else {
@@ -790,7 +794,7 @@ impl Service<'_> {
     }
 
     /// Build and start an interruptible job from the shell's own job untyped, and answer it.
-    fn spawn_interruptible(&self, req: &Request, elf: Option<&elf::Elf>) {
+    fn spawn_interruptible(&self, req: &Request, elf: Option<&elf::Elf>, failure: u64) {
         let Channels {
             result_ep, own_ut, ..
         } = self.c;
@@ -824,6 +828,9 @@ impl Service<'_> {
                     0,
                     0,
                 );
+            }
+            None if failure == spawnproto::SPAWN_NOT_IN_IMAGE => {
+                send(result_ep, failure, 0, 0);
             }
             None => {
                 send(result_ep, spawnproto::SPAWN_FAILED, 0, 0);

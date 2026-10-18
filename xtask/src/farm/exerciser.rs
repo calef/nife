@@ -118,36 +118,11 @@ pub(crate) fn std_exerciser() -> bool {
             return false;
         }
     }
-    // **And `jig`** (milestone 809 (the package client becomes a program)), its own workspace. A
-    // program in the image rather than an exerciser, built here because this is the step every
-    // gate already runs before it packs an archive. Since milestone 801 (packages over the
-    // internet) it speaks TLS to the index, so it builds with the TLS graph's flags, read from the
-    // one file that lists them (`--config`, so there is no second copy), into that graph's target
-    // directory.
+    // **And `jig`**, for every target, because this is the step every gate already runs before it
+    // packs an archive. Each archive also builds it for its own target ([`build_jig`]).
     for triple in STD_TARGETS {
-        let spec = s(workspace_root().join(format!("targets/{triple}.json")));
-        let ok = Command::new("cargo")
-            .env("RUSTUP_TOOLCHAIN", farm_dir())
-            .env("CARGO_TARGET_DIR", workspace_root().join(TLS_GRAPH_TARGET))
-            .args([
-                "build",
-                "--release",
-                "--locked",
-                "--manifest-path",
-                &s(workspace_root().join("jig/Cargo.toml")),
-                "--config",
-                &s(workspace_root().join("cryptography_exerciser/.cargo/config.toml")),
-                "-Zjson-target-spec",
-                "-Zbuild-std=core,alloc,std,panic_abort",
-                "-Zbuild-std-features=compiler-builtins-mem",
-                "--target",
-                &spec,
-            ])
-            .status()
-            .map(|st| st.success())
-            .unwrap_or(false);
-        if !ok {
-            eprintln!("std-exerciser: building jig for {triple} failed");
+        if let Err(e) = build_jig(triple) {
+            eprintln!("std-exerciser: {e}");
             return false;
         }
     }
@@ -155,4 +130,50 @@ pub(crate) fn std_exerciser() -> bool {
     // nothing else. Running it here rather than in `script/lint` is deliberate: the sweep's input
     // is "which std sources did rustc actually compile for nife", which only exists after a build.
     std_aborts()
+}
+
+/// **Build `jig` for `triple`, farm first** (milestone 809 (the package client becomes a
+/// program)): its own workspace, a program every image ships rather than an exerciser. Every
+/// archive calls this for its own target, so an image built in a fresh worktree carries `jig`
+/// without `std-exerciser` having run, and `crate::archive` refuses an archive that still lacks
+/// it. Measured 2026-10-18 (UTC) on patagonia: 16 s for a cold farm and 30 s for a cold `jig`
+/// on one target, once per worktree; under a second warm.
+///
+/// Since milestone 801 (packages over the internet) it speaks TLS to the index, so it builds with
+/// the TLS graph's flags, read from the one file that lists them (`--config`, so there is no second
+/// copy), into that graph's target directory.
+///
+/// Name: provisional, minted 2026-10-18 (UTC) by lane/image-needs-jig.
+pub(crate) fn build_jig(triple: &str) -> Result<(), String> {
+    if !std_src() {
+        return Err(format!(
+            "building jig for {triple}: the std farm did not build"
+        ));
+    }
+    let spec = s(workspace_root().join(format!("targets/{triple}.json")));
+    let ok = Command::new("cargo")
+        .env("RUSTUP_TOOLCHAIN", farm_dir())
+        .env("CARGO_TARGET_DIR", workspace_root().join(TLS_GRAPH_TARGET))
+        .args([
+            "build",
+            "--release",
+            "--locked",
+            "--manifest-path",
+            &s(workspace_root().join("jig/Cargo.toml")),
+            "--config",
+            &s(workspace_root().join("cryptography_exerciser/.cargo/config.toml")),
+            "-Zjson-target-spec",
+            "-Zbuild-std=core,alloc,std,panic_abort",
+            "-Zbuild-std-features=compiler-builtins-mem",
+            "--target",
+            &spec,
+        ])
+        .status()
+        .map(|st| st.success())
+        .unwrap_or(false);
+    if ok {
+        Ok(())
+    } else {
+        Err(format!("building jig for {triple} failed"))
+    }
 }

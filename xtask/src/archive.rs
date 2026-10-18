@@ -279,7 +279,7 @@ const BUILT_ELSEWHERE: [&str; 15] = [
     "std_resolve",
     "package_fetch_exerciser",
     // Milestone 809 (the package client becomes a program): the package manager, a `std` program
-    // in the image, built by `cargo xtask std-exerciser` beside the exerciser.
+    // in the image, built by every archive for its own target (`farm::build_jig`).
     "jig",
 ];
 
@@ -551,17 +551,23 @@ pub(crate) fn initial_ramdisk_aarch64() -> bool {
     .is_some()
 }
 
-/// **The `std` programs the patched farm builds for `triple`**, each packed iff it was built: an
+/// **The `std` programs the patched farm builds for `triple`.** `jig` is built here for `triple`
+/// ([`crate::farm::build_jig`]), and [`write_archive`] refuses an archive without it
+/// ([`SHIPPED_STD_PROGRAMS`]). The rest are exercisers, each packed iff it was built: an
 /// interactive `run` that never built them simply ships an archive without them, and nothing loads
 /// them there. Every archive packs them in this order.
 fn std_program_blobs(triple: &str) -> Vec<(&'static str, Vec<u8>)> {
+    // Said here and refused by `write_archive`, which names the fix.
+    if let Err(e) = crate::farm::build_jig(triple) {
+        eprintln!("{e}");
+    }
     let programs: [FarmProgram; 6] = [
         // The std demo (milestone 27 (Rust `std` on the native ABI)), built by `cargo xtask
         // std-exerciser`, which `test` runs, through a separate toolchain and target.
         ("std_exerciser", std_exerciser_elf),
         // `std_resolve` (milestone 801 (packages over the internet)), built by the same step.
         ("std_resolve", std_resolve_elf),
-        // `jig` (milestone 809 (the package client becomes a program)), built by the same step.
+        // `jig` (milestone 809 (the package client becomes a program)), built above.
         ("jig", jig_elf),
         // Milestone 812 (`std::thread::spawn` runs real threads in one address space)'s exit test,
         // on the same terms, and its two companions.
@@ -648,6 +654,29 @@ fn file_server_blobs(target: &str) -> Vec<(&'static str, Vec<u8>)> {
     blobs
 }
 
+/// **The `std` programs no image ships without**, though they are built outside `components/` and
+/// packed by [`std_program_blobs`] rather than by the `[[bin]]` reader. `jig` is the package
+/// client (milestone 809 (the package client becomes a program)); an image without it boots, and
+/// the shell answers `jig` with a spawn failure, so the archive is refused instead.
+///
+/// Name: provisional, minted 2026-10-18 (UTC) by lane/image-needs-jig.
+const SHIPPED_STD_PROGRAMS: [&str; 1] = ["jig"];
+
+/// Refuse `files` if one of [`SHIPPED_STD_PROGRAMS`] is not among them, naming the command that
+/// builds it.
+fn shipped_std_programs_present(arch: &str, files: &[(&str, &[u8])]) -> Result<(), String> {
+    match SHIPPED_STD_PROGRAMS
+        .iter()
+        .find(|p| !files.iter().any(|(name, _)| name == *p))
+    {
+        None => Ok(()),
+        Some(missing) => Err(format!(
+            "the {arch} archive has no `{missing}`, which every image ships; building it failed \
+             (the error is above), and `cargo xtask std-exerciser` builds it on its own"
+        )),
+    }
+}
+
 /// **Pack `blobs` and the entries every archive carries into one nifefs image**, write it to
 /// `path`, and write the measurement manifest the kernel build reads. `Some((bytes, entries))` on
 /// success; `None` after saying why, prefixed with `label`. `what` names the archive in the one
@@ -682,6 +711,10 @@ fn write_archive(
         }
     };
     files.push((package_index::SOURCES_ENTRY, sources.as_bytes()));
+    if let Err(complaint) = shipped_std_programs_present(arch, &files) {
+        eprintln!("{label}: {complaint}");
+        return None;
+    }
     // **The measurement table, last, so it measures everything above it** (milestone 104). The progenitor
     // reads this entry out of the archive it already holds and refuses to load a program whose
     // bytes it does not match, vouched for by the kernel's trust root so its refusals mean
@@ -788,6 +821,16 @@ mod tests {
 
         let nameless = "[[bin]]\npath = \"src/x.rs\"\n[[bin]]\nname = \"y\"\n";
         assert!(bin_names(nameless).unwrap_err().contains("no `name`"));
+    }
+
+    /// An archive without `jig` is refused with the command that builds it, rather than packed
+    /// into an image whose shell answers `jig` with a spawn failure.
+    #[test]
+    fn an_archive_without_jig_is_refused_naming_the_build() {
+        let e = shipped_std_programs_present("x86_64", &[("progenitor", b"")]).unwrap_err();
+        assert!(e.contains("no `jig`"), "{e}");
+        assert!(e.contains("cargo xtask std-exerciser"), "{e}");
+        assert!(shipped_std_programs_present("x86_64", &[("jig", b"")]).is_ok());
     }
 
     /// A program linked where the map says passes, and one linked at lld's default base, where
