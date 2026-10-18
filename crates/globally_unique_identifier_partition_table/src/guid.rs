@@ -95,7 +95,7 @@ pub mod types {
 
     /// BIOS boot partition, where GRUB puts its core image on a legacy-booted GPT disk. The GUID
     /// spells `Hah!IdontNeedEFI` in ASCII, which is the only joke in the UEFI ecosystem.
-    pub const BIOS_BOOT: Uuid = Uuid::from_fields(
+    pub(crate) const BIOS_BOOT: Uuid = Uuid::from_fields(
         0x2168_6148,
         0x6449,
         0x6E6F,
@@ -121,7 +121,7 @@ pub mod types {
     );
 
     /// Linux swap.
-    pub const LINUX_SWAP: Uuid = Uuid::from_fields(
+    pub(crate) const LINUX_SWAP: Uuid = Uuid::from_fields(
         0x0657_FD6D,
         0xA4AB,
         0x43C4,
@@ -131,7 +131,7 @@ pub mod types {
     /// Linux root filesystem, arm64. From the Discoverable Partitions Specification, which is how a
     /// systemd machine finds its root without a kernel command line. Here because arm64 is the
     /// architecture this OS runs on and a disk shared with Linux may carry one.
-    pub const LINUX_ROOT_ARM64: Uuid = Uuid::from_fields(
+    pub(crate) const LINUX_ROOT_ARM64: Uuid = Uuid::from_fields(
         0xB921_B045,
         0x1DF0,
         0x41C3,
@@ -140,7 +140,7 @@ pub mod types {
 
     /// LUKS, Linux's encrypted-volume container. Recognised so that a tool can say "encrypted, and
     /// this crate does not open it" instead of reporting an unreadable filesystem.
-    pub const LINUX_LUKS: Uuid = Uuid::from_fields(
+    pub(crate) const LINUX_LUKS: Uuid = Uuid::from_fields(
         0xCA7D_7CCB,
         0x63ED,
         0x4C53,
