@@ -202,7 +202,7 @@ pub fn verb_of_page(page: &[u8]) -> Option<&[u8]> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{Prog, Runtime, argv, image_can_carry};
+    use crate::{Prog, StartupContract, argv, image_can_carry};
 
     /// **A verb narrows and never widens** (milestone 809, option V2). `jig list` holds the catalog
     /// alone, `jig remove` the installer alone, `jig install` all three, and a word that is no verb
@@ -239,7 +239,7 @@ mod tests {
         assert_eq!(as_typed(b"jig"), nothing);
         // Everything else about the manifest is untouched.
         assert_eq!(list.arg, jig.arg);
-        assert_eq!(list.runtime, jig.runtime);
+        assert_eq!(list.startup, jig.startup);
         for &p in Prog::ALL {
             let m = p.manifest();
             for v in p.verbs() {
@@ -364,7 +364,7 @@ mod tests {
                 p.name()
             );
             if m.installer || m.catalog || m.indexes != IndexStore::Forbidden {
-                assert_eq!(m.runtime, Runtime::Std, "{}", p.name());
+                assert_eq!(m.startup, StartupContract::Std, "{}", p.name());
             }
         }
         let jig = Prog::Jig.manifest();
