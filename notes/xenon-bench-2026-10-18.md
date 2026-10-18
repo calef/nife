@@ -11,8 +11,8 @@ in this order, because each needs the one before:
 2. On patagonia: flip `PCH_PROVEN_ON_SILICON` in a commit citing that log, and build the
    installer from it. About 5 minutes.
 3. Milestone 801 (packages over the internet)'s exit criterion: install, boot from the disk, then
-   `jig update` and `jig install ioping` from `basalt.nifeos.org`. About 15 minutes. Blocked on
-   name resolution at the prompt (below).
+   `jig update` and `jig install ioping` from `basalt.nifeos.org`. About 15 minutes. Waits on
+   #2370 (below).
 4. Risk 6, step 1 of its path back to GREEN: ioping on nife (the package step 3 installed), then on
    Linux, three boots of five passes each. About an hour.
 5. Risk 5: the first of the three boots §259 (a multicore soak counts toward risk 5 at ten million
@@ -23,7 +23,7 @@ Where this card and a procedure page disagree, the machine decides and the page 
 
 ## Status
 
-Not ready to run: step 3 is blocked (below). Every image below was built from main at
+Not ready to run (see "What stands between this card and the evening"). Every image below was built from main at
 `805620590` and booted under OVMF.
 
 | image | build | under OVMF | SHA-256 |
@@ -37,17 +37,23 @@ The I219 image's peer address is compiled in, so there is one image per network 
 installer that goes to xenon is built at the bench in step 2, so its hash is recorded then. Copies
 are kept off-tree by the maintainers.
 
-## Step 3 is blocked: name resolution at the prompt has never worked
+## What stands between this card and the evening
 
-Rehearsed under QEMU at `805620590`: the installed system runs `jig update`, reaches the network
-and fails with `index unreachable at basalt.nifeos.org: NetworkUnreachable`. `jig` prints only the error's kind,
-which here means the resolver was refused a network step. `progenitor: name resolver up; asks
-10.0.2.3, the lease's name server` printed first. Whether this is QEMU's user-mode network or nife
-is not known. No boot anywhere has resolved a name at the prompt, as milestone 892 (a std program at
-the prompt holds the network and a name resolver)'s block records. A lane to find the cause is
-proposed and not started. The card is not ready to run until that lane either makes `jig update`
-read the index under QEMU or shows the fault is QEMU's alone. Without step 3 there is no nife row
-in step 4, since nife's ioping is the package step 3 installs.
+Two things, neither a bench step.
+
+- Step 3 needs #2370 (the name resolver gets a budget it can lend from) on main. Rehearsed under
+  QEMU on its branch at `3ed3256c9`, from an installed disk, the whole of step 3 passes:
+  `index updated: 6 packages for x86_64, from basalt.nifeos.org over TLS`, then `fetched
+  ioping-1.3-x86_64 from release-assets.githubusercontent.com via github.com over TLS` and
+  `fetched and installed; generation 1 is live`. On main at `805620590` the same `jig update`
+  fails with `NetworkUnreachable`. The images in the table are rebuilt once #2370 merges.
+- Step 4's nife row does not yet measure the device. In the same rehearsal, `ioping -c 20 -i 0 -s
+  4k ioping/1.3/ioping` runs but prints `non-cached I/O not supported by this platform`. It sees
+  the file as `0 B`, so every request reads offset 0, and steady reads take 41 to 42 us. That is a
+  cached read of one 4 KiB block, not the NVMe, so it cannot explain or correct the 2.16x. What
+  nife's target is and what direct I/O means on nife are milestone 834 (ioping on nife and Linux)'s
+  open questions, and they want answers before the evening. Until then the nife row is recorded as
+  what it is, beside the Linux row.
 
 ## What calef needs at the bench
 
@@ -145,7 +151,7 @@ cd <checkout>/target && screen -L /dev/cu.usbserial-<id> 115200     # ctrl-a k e
 | `index updated: N packages for x86_64, from basalt.nifeos.org over TLS` | the index came by name over pinned TLS |
 | `fetched ioping-1.3-x86_64 from ... over TLS`, then `fetched and installed; generation N is live` | milestone 801's exit criterion is met |
 | `ioping 1.3` | the installed program runs |
-| `index unreachable at basalt.nifeos.org: NetworkUnreachable` | the resolver was refused a network step: the open risk above |
+| `index unreachable at basalt.nifeos.org: NetworkUnreachable (<step>)` | the resolver was refused a network step, and the parenthesis names which |
 | `index unreachable at basalt.nifeos.org: <other>` | the name resolved and the connection or TLS failed; the text says which |
 | `passed over https://...: <why>` | the Release location was refused; `jig` falls back to Pages' `targets/` |
 | `no source sent the package; nothing was installed` or `refused: the index does not vouch for the bytes` | a fetch or digest failure; stop |
@@ -166,8 +172,9 @@ wc ioping/1.3/ioping
 ioping -c 1000 -i 0 -s 4k ioping/1.3/ioping
 ```
 
-Type the `ioping` line five times. The `wc` line's third number is the file's size in bytes, `F`,
-which the Linux run uses. Power off fully between boots.
+Type the `ioping` line five times. The `wc` line's third number is the file's size in bytes, `F`
+(208440 in the rehearsal), which the Linux run uses. Power off fully between boots. ioping's first
+line, `non-cached I/O not supported by this platform`, is expected and goes in the log.
 
 ### Linux, three boots
 
