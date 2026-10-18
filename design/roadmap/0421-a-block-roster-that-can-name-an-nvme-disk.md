@@ -12,9 +12,10 @@ needs_person: no
 # 421. The block roster names an NVMe disk
 
 `block_roster` is the read-only page a process holds when it may know which block devices exist
-without holding any of them (milestone 57, `notes/block-devices.md`). It lists NVMe controllers
-beside the virtio disks, so `disk_surveyor` sees the one disk in this tree whose driver is a
-confined process (milestone 261).
+without holding any of them (milestone 57 (partitioning and formatting a real drive),
+`notes/block-devices.md`). It lists NVMe controllers beside the virtio disks, so `disk_surveyor`
+sees the one disk in this tree whose driver is a confined process (milestone 261 (the NVMe driver
+leaves the kernel)).
 
 ## What is built
 
@@ -51,7 +52,7 @@ server. The roster's shape is about block devices, not about virtio.
 
 - **Recorded.** No program is handed the NVMe endpoint because the roster lists it, and the FS
   server's default disk is still virtio-blk. Which program holds which device is decided at wiring
-  time (§86, milestone 57). `notes/non-volatile-memory-express.md`'s `BUGS` says so beside the
+  time (§86 (whether an NVMe driver can leave the kernel), milestone 57). `notes/non-volatile-memory-express.md`'s `BUGS` says so beside the
   driver.
 - **Decision.** An NVMe ordinal counts controllers, which identifies a disk only while each
   controller has one namespace, as every controller this tree drives does.
