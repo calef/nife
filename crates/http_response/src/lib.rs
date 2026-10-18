@@ -33,7 +33,7 @@
 //!   disagree with a proxy about where a line stops), a header section is at most [`HEAD_MAX`]
 //!   bytes, a duplicated `Content-Length` must agree with itself, and a body longer than it said is
 //!   refused.
-//!
+
 //! # BUGS
 //!
 //! - **No redirects, no keep-alive, no `Range`.** One request per connection, and a `3xx` is a
