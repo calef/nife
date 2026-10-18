@@ -36,15 +36,14 @@ files apart rather than in the archive. The binary links everything every role n
 spawned to prove one syscall drags in an ELF parser. And the program's name has to describe all of
 them at once, which it stops doing at about the third.
 
-Milestone 291 (fixtures) is the worked example. `fixtures/src/hello.rs` reached thirty-one roles one
+Milestones 291 and 405 are the worked example. One fixture, `hello`, reached thirty-one roles one
 convenient arm at a time over two months. Seven of them were an exact duplicate of
-`components/src/block_driver.rs`, kept alive only because one archive table did not pack it; fourteen more became programs. See
-[291](../design/roadmap/0291-one-program-one-job.md).
+`components/src/block_driver.rs`, kept alive only because one archive table did not pack it; the
+other twenty-four became programs. See [291](../design/roadmap/0291-one-program-one-job.md) and
+[405](../design/roadmap/0405-nine-init-roles-and-the-entry-the-kernel-picks.md).
 
 The exception is allowed and has to say so (AGENTS.md's ladder, rung four's rule). If two
 behaviors genuinely are one program, write down in the module doc why, where a reader meets it.
-`hello`'s remaining nine do: six of them build a child and three of them *are* that child, which is
-a relationship rather than a convenience.
 
 ## The steps
 
@@ -138,8 +137,8 @@ Three edits, and after the first the machine names each of the others.
    progenitor decodes it, so it is a thing two programs agree on and changing it later is a flag
    day. Take the next unused number; never reuse a removed program's id (the build refuses a
    duplicate, and `the_wire_ids_already_shipped_never_move` refuses reuse of any id shipped before
-   milestone 150). The enum, `name()`, `id()`, `from_id()`, `from_name()`, `Prog::ALL` and
-   `PROG_COUNT` are all generated from the row.
+   milestone 150). The enum, `name()`, `id()`, `from_id()`, `from_name()`, `Program::ALL` and
+   `PROGRAM_COUNT` are all generated from the row.
 2. Its `manifest()` arm, which the compiler asks for (`E0004` in `grant_plan`). This carries all
    of the actual meaning: see "What you declare" below.
 3. A row in the swish-check script: in the topic file under `xtask/src/swish_check/script/` whose
@@ -149,7 +148,7 @@ Three edits, and after the first the machine names each of the others.
    `every_spawnable_program_has_a_swish_check_line` fails until the row exists, and names the one
    exception it allows (a program a transcript cannot drive, listed with the reason).
 
-And a fourth only if your manifest says `output: OutputSpec::Words`, meaning the answer is a
+And a fourth only if your manifest says `output: OutputDeclaration::Words`, meaning the answer is a
 number in a register rather than a stream: an arm in `write_outcome` in `crates/swish/src/sentences.rs`
 that renders it. `every_program_that_answers_in_words_renders_its_answer` fails without one. A
 byte-stream program needs nothing there.
@@ -178,7 +177,7 @@ Delete its source file and its `[[bin]]` block. It leaves all three archives at 
 If the shell could spawn it, also delete its `programs!` row. The compiler then points at its
 `manifest()` arm and any `write_outcome` arm that named it; delete those, and its
 `SWISH_CHECK_SCRIPT` lines, which nothing on the host flags (see `BUGS`) and which
-`script/swish-check` answers with `no such program`. **Leave its id unused.** The table's holes are expected: `PROG_COUNT` is
+`script/swish-check` answers with `no such program`. **Leave its id unused.** The table's holes are expected: `PROGRAM_COUNT` is
 one past the highest id, not the number of programs.
 
 **What catches a removal you did not mean to make**: `xtask`'s host test

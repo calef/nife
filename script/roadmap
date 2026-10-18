@@ -35,7 +35,7 @@
 #     helpers/roadmap_block.py and notes/roadmap.md. Before 596 each was a bold line in the prose,
 #     read by regex; a block still in that form fails with the `--migrate` command that converts it,
 #     and a field-shaped line in a block's opening prose fails as a second copy of its key;
-#   - **every non-lettered block carries one `## Index row` section** holding exactly one summary
+#   - **every block carries one `## Index row` section** holding exactly one summary
 #     paragraph, the one fact nothing else in the block states. The heading keeps the name
 #     milestone 294 gave it although the index it was named for is retired: renaming it would touch
 #     every block in this directory, and a name is an architect's;
@@ -82,8 +82,9 @@
 # citation that resolves points where its author meant (well-formed-but-wrong is invisible here, the
 # same blind spot CLAUDE.md records for §N citations; check by content after any renumber).
 #
-# Lettered milestones (20a) are addenda: the file needs its base milestone to exist, but carries no
-# row of its own, and therefore no frontmatter and no `## Index row` section.
+# A lettered file (`0020b-x.md`) is refused (calef, 2026-10-18 UTC: "Yes, please"). A lettered
+# addendum carried no frontmatter and no row, so every check below needed a second path for it; an
+# addendum is an appendix in its block's directory instead, which `is_appendix_dir` already admits.
 #
 # With no arguments it prints the normalized status report, statuses first and gates after it.
 # `--ready` prints only the milestones a lane could start today (nothing it depends on is open, no
@@ -547,7 +548,8 @@ generated = {}
 # ---- the files ----------------------------------------------------------------
 
 # ---- the files, which are now the SOURCE of the index -------------------------
-FNAME = re.compile(r"(\d+)([a-z]?)-[a-z0-9][a-z0-9-]*\.md")
+FNAME = re.compile(r"(\d+)-[a-z0-9][a-z0-9-]*\.md")
+LETTERED = re.compile(r"(\d+)[a-z]+-[a-z0-9][a-z0-9-]*\.md")
 INDEX_HEADING = "## Index row"
 # ---- the `## Revisit` section, which REFUSED owes (milestone 448) --------------
 # **What would change this.** calef, 2026-09-20: "ensure we capture what would change for a
@@ -641,6 +643,8 @@ assert is_appendix_dir("0047-navigation-and-naming", True, {"0047-navigation-and
 assert not is_appendix_dir("0047-navigation-and-naming", False, {"0047-navigation-and-naming.md"})
 assert not is_appendix_dir("0048-no-such-block", True, {"0047-navigation-and-naming.md"})
 assert not is_appendix_dir("notes", True, {"notes.md"})
+# A lettered file must reach the refusal, never the generic "not a milestone file" or a block.
+assert LETTERED.fullmatch("0020b-x.md") and not FNAME.fullmatch("0020b-x.md")
 
 # ---- the frontmatter form (milestone 596) -------------------------------------
 # calef, 2026-09-26 (UTC): the roadmap follows milestone 582 (a decision's status becomes a field,
@@ -781,12 +785,21 @@ for fname in sorted(entries):
     if is_appendix_dir(fname, os.path.isdir(os.path.join(d, fname)), entries):
         continue
     m = FNAME.fullmatch(fname)
+    lettered = LETTERED.fullmatch(fname)
+    if lettered:
+        n = int(lettered.group(1))
+        base = next((e[:-3] for e in entries if FNAME.fullmatch(e) and int(e.split("-")[0]) == n),
+                    f"<milestone {n}'s block>")
+        problems.append(f"{fname}: a lettered block. Milestones carry no letters; an addendum to "
+                        f"a milestone is an appendix in its block's directory, "
+                        f"design/roadmap/{base}/<slug>.md (design/roadmap/README.md)")
+        continue
     if not m:
         problems.append(f"{fname}: not the index and not a milestone file "
-                        f"(expected <number>[letter]-<slug>.md); nothing else lives here")
+                        f"(expected <number>-<slug>.md); nothing else lives here")
         continue
-    num, letter = int(m.group(1)), m.group(2)
-    mid = f"{num}{letter}"
+    num = int(m.group(1))
+    mid = str(num)
     if mid in ids:
         problems.append(f"milestone {mid} is claimed by two files: {ids[mid]} and {fname} "
                         f"(as one file this is a visible conflict; as two it merges silently)")
@@ -799,18 +812,18 @@ for fname in sorted(entries):
     # before 596 is refused, with the command that converts it: a lane that crossed the switch on
     # a branch takes its own side of the block and runs it (briefs/rebase-onto-main.md). `lines` is
     # the body, so everything below reads the H1 at lines[0], and `off` puts a reported line number
-    # back where it is in the file. A lettered addendum (20a) carries no fields and no frontmatter.
+    # back where it is in the file.
     fields, off, fm_problems = roadmap_block.frontmatter(raw)
     for n, p in fm_problems:
         problems.append(f"{fname}:{n}: {p}")
-    if fields is None and not letter:
+    if fields is None:
         problems.append(f"{fname}: no frontmatter. A block opens with '---', its fields one per "
                         f"line, and '---' (helpers/roadmap_block.py has the schema). A block in "
                         f"the old prose form converts with `script/roadmap --migrate "
                         f"design/roadmap/{fname}`")
         continue
-    lines = raw[off:] if fields is not None else raw  # the addendum has no frontmatter
-    h = re.match(rf"# ({num}{letter})\. (\S.*)$", lines[0] if lines else "")
+    lines = raw[off:]
+    h = re.match(rf"# ({num})\. (\S.*)$", lines[0] if lines else "")
     if not h:
         problems.append(f"{fname}: the line after the frontmatter must be '# {mid}. <title>' "
                         f"(found {(lines[0] if lines else '')[:40]!r})")
@@ -826,10 +839,6 @@ for fname in sorted(entries):
             # something that already existed. No legitimate subheading is numbered like a milestone.
             problems.append(f"{fname}:{n}: a milestone-shaped heading ({l[:40]!r}) inside another "
                             f"milestone's file")
-
-    if letter:
-        # A lettered addendum (20a) takes no index row, so it has no status and no `## Index row`.
-        continue
 
     # The frontmatter is the record, so a field-shaped line in the block's opening prose is a
     # second copy of it: the defect 582 removed from design/decisions/ (see `script/decisions`'
@@ -1377,8 +1386,6 @@ partial_swept = 0
 unclaimed = []
 outstanding = []
 for mid, fname in sorted(ids.items()):
-    if not mid.isdigit():
-        continue
     num = int(mid)
     if num not in milestones:
         continue
@@ -1608,7 +1615,7 @@ if in_progress_branches:
                             f"thirteen days). Set the status from the tree and give it a Built date")
 
 # ---- citations, tree-wide ----------------------------------------------------
-# `milestone 16a` must resolve as 16: sub-lettered blocks exist. Case-insensitive on the M because
+# `milestone 16a` resolves as 16, since prose names a block's phases with a letter. Case-insensitive on the M because
 # prose starts sentences with it. vendor/ and patches/ are other people's text.
 grep = subprocess.run(
     ["git", "-C", root, "grep", "-I", "-n", "-E", "[Mm]ilestone [0-9]+",
@@ -1650,7 +1657,6 @@ if mode == "--check":
         print(f"roadmap: {p}", file=sys.stderr)
     if problems:
         sys.exit(1)
-    lettered = sorted(i for i in ids if not i.isdigit())
     print(f"roadmap: {len(milestones)} milestones, {len(ids)} files, status vocabulary clean, "
           f"every '## Index row' parses, every tree-wide citation resolves")
     print(f"roadmap: {len(gates)} of them classified by gate, {len(ready)} ready to start "
@@ -1671,8 +1677,6 @@ if mode == "--check":
     print(f"roadmap: {sum(o for o, _c in coe_counts.values())} correction action items open, "
           f"{sum(c for _o, c in coe_counts.values())} closed, across {len(coe_counts)} "
           f"corrections (script/roadmap --coe-actions)")
-    if lettered:
-        print(f"roadmap: lettered addenda: {', '.join(lettered)}")
     sys.exit(0)
 
 if mode == "--revisit":

@@ -9,14 +9,15 @@ Sorted by breaking changes in the last four weeks (2026W39 to 2026W42), then by 
 | crate | breaking, 4 weeks | additions, 4 weeks | breaking | additions | commits | crossing another division |
 |---|---:|---:|---:|---:|---:|---:|
 | `filesystem_contract` | 251 | 59 | 284 | 459 | 122 | 111 (91%) |
-| `grant_plan` | 104 | 344 | 151 | 976 | 179 | 146 (82%) |
+| `grant_plan` | 224 | 450 | 271 | 1082 | 182 | 148 (81%) |
 | `globally_unique_identifier_partition_table` | 64 | 5 | 91 | 281 | 42 | 33 (79%) |
 | `login_contract` | 22 | 69 | 30 | 91 | 38 | 37 (97%) |
 | `package_archive` | 19 | 129 | 19 | 129 | 27 | 20 (74%) |
 | `socket_contract` | 17 | 32 | 20 | 70 | 35 | 33 (94%) |
+| `hot_swap_contract` | 17 | 36 | 19 | 126 | 53 | 52 (98%) |
+| `component_plan` | 16 | 26 | 16 | 138 | 36 | 30 (83%) |
+| `line_editor` | 14 | 74 | 15 | 119 | 39 | 33 (85%) |
 | `abi` | 11 | 72 | 41 | 170 | 117 | 110 (94%) |
-| `hot_swap_contract` | 11 | 34 | 13 | 124 | 50 | 49 (98%) |
-| `line_editor` | 11 | 73 | 12 | 118 | 36 | 30 (83%) |
 | `credential_contract` | 9 | 6 | 36 | 70 | 37 | 34 (92%) |
 | `installed_programs` | 9 | 72 | 9 | 72 | 25 | 23 (92%) |
 | `byte_sink_contract` | 5 | 10 | 7 | 48 | 32 | 32 (100%) |
@@ -24,16 +25,15 @@ Sorted by breaking changes in the last four weeks (2026W39 to 2026W42), then by 
 | `compositor` | 4 | 4 | 14 | 99 | 35 | 28 (80%) |
 | `graphics_contract` | 3 | 2 | 12 | 33 | 31 | 31 (100%) |
 | `entropy_contract` | 3 | 3 | 4 | 18 | 26 | 24 (92%) |
-| `component_plan` | 3 | 14 | 3 | 126 | 34 | 28 (82%) |
+| `capability_manifest_note` | 3 | 58 | 3 | 58 | 24 | 17 (71%) |
 | `current_cpu_contract` | 3 | 17 | 3 | 17 | 16 | 9 (56%) |
 | `nifefs` | 2 | 0 | 9 | 41 | 44 | 32 (73%) |
-| `measured_boot` | 2 | 24 | 2 | 65 | 25 | 21 (84%) |
+| `measured_boot` | 2 | 24 | 2 | 65 | 26 | 21 (81%) |
 | `std_runtime_contract` | 2 | 24 | 2 | 24 | 14 | 13 (93%) |
 | `supervision_protocol` | 1 | 10 | 22 | 70 | 55 | 50 (91%) |
 | `counter_frequency_contract` | 1 | 3 | 2 | 15 | 18 | 16 (89%) |
 | `environment_contract` | 1 | 0 | 2 | 44 | 13 | 13 (100%) |
-| `capability_manifest_note` | 1 | 58 | 1 | 58 | 22 | 16 (73%) |
-| `capability_witness_contract` | 1 | 7 | 1 | 10 | 19 | 16 (84%) |
+| `capability_witness_contract` | 1 | 11 | 1 | 14 | 21 | 18 (86%) |
 | `program_argument_contract` | 1 | 29 | 1 | 29 | 0 | 0 |
 | `elf` | 0 | 30 | 3 | 82 | 48 | 38 (79%) |
 | `user_mode_heap` | 0 | 0 | 1 | 11 | 0 | 0 |
@@ -43,7 +43,7 @@ Sorted by breaking changes in the last four weeks (2026W39 to 2026W42), then by 
 
 ## What broke in 2026W42
 
-Read at `e35371c91204` against the week before. Each line is one removed or changed public item, quoted as it stood that week; a crate rename is one line for the whole crate.
+Read at `55b5ece9478a` against the week before. Each line is one removed or changed public item, quoted as it stood that week; a crate rename is one line for the whole crate.
 
 > - `abi`: syscall renamed, number kept (method or encoding), now `interrupt::ACK` `irq::ACK`
 > - `abi`: syscall renamed, number kept (method or encoding), now `interrupt::WAIT` `irq::WAIT`
@@ -51,8 +51,23 @@ Read at `e35371c91204` against the week before. Each line is one removed or chan
 > - `abi`: syscall renamed, number kept (method or encoding), now `virtio::WRITE_REGISTER` `virtio::WRITE_REG`
 > - `byte_sink_contract`: crate renamed `byte_sink_protocol -> byte_sink_contract`
 > - `capability_manifest_note`: crate renamed `manifest_note -> capability_manifest_note`
+> - `capability_manifest_note`: changed `Verbs::grants_for`
+> - `capability_manifest_note`: changed `Verbs::iter`
 > - `capability_witness_contract`: crate renamed `capability_witness_protocol -> capability_witness_contract`
 > - `clock_contract`: crate renamed `clock_protocol -> clock_contract`
+> - `component_plan`: removed `HANDOFF_ROLE`
+> - `component_plan`: removed `Handoff`
+> - `component_plan`: removed `Handoff: impl Clone`
+> - `component_plan`: removed `Handoff: impl Copy`
+> - `component_plan`: removed `Handoff: impl Debug`
+> - `component_plan`: removed `Handoff: impl Eq`
+> - `component_plan`: removed `Handoff: impl PartialEq`
+> - `component_plan`: removed `Handoff: impl StructuralPartialEq`
+> - `component_plan`: removed `Handoff::pages`
+> - `component_plan`: removed `Handoff::va`
+> - `component_plan`: removed `Plan::handoff`
+> - `component_plan`: changed `Requirements`
+> - `component_plan`: removed `Requirements::handoff`
 > - `compositor`: changed `proto::operand`
 > - `compositor`: changed `proto::operation`
 > - `compositor`: changed `proto::req`
@@ -308,14 +323,143 @@ Read at `e35371c91204` against the week before. Each line is one removed or chan
 > - `filesystem_contract`: removed `fixture::walk::sized_byte`
 > - `filesystem_contract`: removed `fixture::walk::wide_name`
 > - `filesystem_contract`: changed `verb::file_grant::POLICY`
+> - `grant_plan`: changed `Command::Run`
+> - `grant_plan`: changed `Command::Touch`
+> - `grant_plan`: removed `DirGrant`
+> - `grant_plan`: removed `DirGrant: impl Clone`
+> - `grant_plan`: removed `DirGrant: impl Copy`
+> - `grant_plan`: removed `DirGrant: impl Debug`
+> - `grant_plan`: removed `DirGrant: impl Eq`
+> - `grant_plan`: removed `DirGrant: impl PartialEq`
+> - `grant_plan`: removed `DirGrant: impl StructuralPartialEq`
+> - `grant_plan`: removed `DirGrant::dir`
+> - `grant_plan`: removed `DirGrant::names`
+> - `grant_plan`: removed `DirGrant::subtree`
+> - `grant_plan`: removed `DirGrant::which`
+> - `grant_plan`: changed `Endowment`
+> - `grant_plan`: removed `Endowment::arg`
+> - `grant_plan`: removed `Endowment::dir`
+> - `grant_plan`: removed `Endowment::mem_pages`
+> - `grant_plan`: changed `FileGrant`
+> - `grant_plan`: removed `FileGrant::dir`
+> - `grant_plan`: removed `Grants`
+> - `grant_plan`: removed `Grants: impl Clone`
+> - `grant_plan`: removed `Grants: impl Copy`
+> - `grant_plan`: removed `Grants: impl Debug`
+> - `grant_plan`: removed `Grants: impl Eq`
+> - `grant_plan`: removed `Grants: impl PartialEq`
+> - `grant_plan`: removed `Grants: impl StructuralPartialEq`
+> - `grant_plan`: removed `Grants::ALL`
+> - `grant_plan`: removed `Grants::CATALOG`
+> - `grant_plan`: removed `Grants::CLOCK`
+> - `grant_plan`: removed `Grants::CONFIG`
+> - `grant_plan`: removed `Grants::DOMAIN`
+> - `grant_plan`: removed `Grants::ENTROPY`
+> - `grant_plan`: removed `Grants::INSTALLER`
+> - `grant_plan`: removed `Grants::MACHINE`
+> - `grant_plan`: removed `Grants::NETWORK`
+> - `grant_plan`: removed `Grants::NONE`
+> - `grant_plan`: removed `Grants::SHARE`
+> - `grant_plan`: removed `Grants::bits`
+> - `grant_plan`: removed `Grants::contains`
+> - `grant_plan`: removed `Grants::from_bits`
+> - `grant_plan`: removed `Grants::union`
+> - `grant_plan`: changed `Holdings`
+> - `grant_plan`: removed `Holdings::dir`
+> - `grant_plan`: removed `Holdings::second`
 > - `grant_plan`: changed `Manifest`
+> - `grant_plan`: removed `Manifest::runtime`
+> - `grant_plan`: removed `RunSpec`
+> - `grant_plan`: removed `RunSpec: impl Clone`
+> - `grant_plan`: removed `RunSpec: impl Copy`
+> - `grant_plan`: removed `RunSpec: impl Debug`
+> - `grant_plan`: removed `RunSpec: impl Eq`
+> - `grant_plan`: removed `RunSpec: impl PartialEq`
+> - `grant_plan`: removed `RunSpec: impl StructuralPartialEq`
+> - `grant_plan`: removed `RunSpec::is_quoted`
+> - `grant_plan`: removed `RunSpec::line`
+> - `grant_plan`: removed `RunSpec::mem`
+> - `grant_plan`: removed `RunSpec::misquoted`
+> - `grant_plan`: removed `RunSpec::options`
+> - `grant_plan`: removed `RunSpec::positionals`
+> - `grant_plan`: removed `RunSpec::prog`
+> - `grant_plan`: removed `RunSpec::unexpected`
+> - `grant_plan`: removed `Runtime`
+> - `grant_plan`: removed `Runtime: impl Clone`
+> - `grant_plan`: removed `Runtime: impl Copy`
+> - `grant_plan`: removed `Runtime: impl Debug`
+> - `grant_plan`: removed `Runtime: impl Eq`
+> - `grant_plan`: removed `Runtime: impl PartialEq`
+> - `grant_plan`: removed `Runtime: impl StructuralPartialEq`
+> - `grant_plan`: removed `Runtime::Native`
+> - `grant_plan`: removed `Runtime::Std`
+> - `grant_plan`: removed `SecondDir`
+> - `grant_plan`: removed `SecondDir: impl Clone`
+> - `grant_plan`: removed `SecondDir: impl Copy`
+> - `grant_plan`: removed `SecondDir: impl Debug`
+> - `grant_plan`: removed `SecondDir: impl Eq`
+> - `grant_plan`: removed `SecondDir: impl PartialEq`
+> - `grant_plan`: removed `SecondDir: impl StructuralPartialEq`
+> - `grant_plan`: removed `SecondDir::mount`
+> - `grant_plan`: removed `SecondDir::mounted_at`
+> - `grant_plan`: removed `TouchArgs`
+> - `grant_plan`: removed `TouchArgs: impl Clone`
+> - `grant_plan`: removed `TouchArgs: impl Copy`
+> - `grant_plan`: removed `TouchArgs: impl Debug`
+> - `grant_plan`: removed `TouchArgs: impl Eq`
+> - `grant_plan`: removed `TouchArgs: impl PartialEq`
+> - `grant_plan`: removed `TouchArgs: impl StructuralPartialEq`
+> - `grant_plan`: removed `TouchArgs::at`
+> - `grant_plan`: removed `TouchArgs::name`
 > - `grant_plan`: changed `UNVOUCHED_MANIFEST`
+> - `grant_plan`: changed `UNVOUCHED_STD_MANIFEST`
+> - `grant_plan`: changed `VerbGrant`
+> - `grant_plan`: removed `VerbGrant::grants`
+> - `grant_plan`: changed `image_region_pages`
+> - `grant_plan`: changed `parse_run`
+> - `grant_plan`: changed `plan`
+> - `grant_plan`: changed `plan_against`
+> - `grant_plan`: changed `plan_against_with`
+> - `grant_plan`: changed `plan_stage`
 > - `grant_plan`: changed `spawnproto::activation_reply`
+> - `grant_plan`: removed `verbs::Grants`
+> - `grant_plan`: removed `verbs::Grants: impl Clone`
+> - `grant_plan`: removed `verbs::Grants: impl Copy`
+> - `grant_plan`: removed `verbs::Grants: impl Debug`
+> - `grant_plan`: removed `verbs::Grants: impl Eq`
+> - `grant_plan`: removed `verbs::Grants: impl PartialEq`
+> - `grant_plan`: removed `verbs::Grants: impl StructuralPartialEq`
+> - `grant_plan`: removed `verbs::Grants::ALL`
+> - `grant_plan`: removed `verbs::Grants::CATALOG`
+> - `grant_plan`: removed `verbs::Grants::CLOCK`
+> - `grant_plan`: removed `verbs::Grants::CONFIG`
+> - `grant_plan`: removed `verbs::Grants::DOMAIN`
+> - `grant_plan`: removed `verbs::Grants::ENTROPY`
+> - `grant_plan`: removed `verbs::Grants::INSTALLER`
+> - `grant_plan`: removed `verbs::Grants::MACHINE`
+> - `grant_plan`: removed `verbs::Grants::NETWORK`
+> - `grant_plan`: removed `verbs::Grants::NONE`
+> - `grant_plan`: removed `verbs::Grants::SHARE`
+> - `grant_plan`: removed `verbs::Grants::bits`
+> - `grant_plan`: removed `verbs::Grants::contains`
+> - `grant_plan`: removed `verbs::Grants::from_bits`
+> - `grant_plan`: removed `verbs::Grants::union`
+> - `grant_plan`: changed `verbs::VerbGrant`
+> - `grant_plan`: removed `verbs::VerbGrant::grants`
 > - `graphics_contract`: crate renamed `graphics_protocol -> graphics_contract`
 > - `hot_swap_contract`: crate renamed `swap_protocol -> hot_swap_contract`
+> - `hot_swap_contract`: changed `BACKEND`
+> - `hot_swap_contract`: changed `BROKER`
+> - `hot_swap_contract`: changed `CLIENT`
+> - `hot_swap_contract`: changed `CONSOLE`
+> - `hot_swap_contract`: removed `NOTE_REFUSED`
+> - `hot_swap_contract`: removed `TALLY`
 > - `installed_programs`: crate renamed `activation_set -> installed_programs`
 > - `installed_programs`: removed `without_entry`
 > - `installed_programs`: removed `without_version`
+> - `line_editor`: changed `component::CONSOLE`
+> - `line_editor`: changed `component::DISPLAY`
+> - `line_editor`: removed `proto::NOTE_REFUSED`
 > - `login_contract`: crate renamed `login_protocol -> login_contract`
 > - `login_contract`: changed `MAX_IDENTITY`
 > - `login_contract`: changed `MAX_SECRET`

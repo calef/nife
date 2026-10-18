@@ -1,5 +1,20 @@
 //! **Interruptible jobs**, the shell's side of the two-tier `^C` path (DECISIONS §24
 //! (interrupting the foreground process)): `spawn_interruptible`, `watch`, `forcible` and `reclaim`.
+//! And **background jobs** (milestone 48 (job control), phase one): a trailing `&`, `jobs`,
+//! `wait`, `kill` and `fg`, all acting on the capabilities this shell holds for a supervised job.
+//!
+//! # BUGS
+//!
+//! - Only a supervised job can run in the background. It is the one kind of job this shell holds
+//!   capabilities for (the region it was built from and its shared frame). Every other program is
+//!   built in the progenitor's pool, answers on the one result rendezvous every job shares, and is
+//!   reaped by `job_undertaker`, so the shell would hold nothing to wait on or stop it with, and
+//!   its answer would be read as the next command's. `&` on one is refused with a sentence.
+//! - A finished background job is reported when `jobs`, `wait` or `fg` next looks, not before the
+//!   prompt: the shell is blocked reading the line while it waits for one.
+//! - A background job's region is split off this shell's budget under whatever comes after it, so
+//!   finishing jobs out of order leaves a hole until the later ones go
+//!   (notes/object-revocation.md, LIFO return of pages).
 //!
 //! Moved whole out of `components/src/swish.rs` by milestone 844 (the shell program is split
 //! along its seams), as §273 (the shell program becomes a directory of modules) lays out.
@@ -55,18 +70,47 @@ pub(super) static CONSUMED: core::sync::atomic::AtomicU64 = core::sync::atomic::
 /// from a region we hold, then watch it under the two-tier `^C` escalation until it stops or we tear
 /// it down. This is the whole of DECISIONS §24 on the shell's side.
 pub(super) fn spawn_interruptible(e: Endowment) {
+    let Some(h) = start_supervised(e, true) else {
+        return;
+    };
+    print(b"  running ");
+    print(h.program.name().as_bytes());
+    print(b" in the foreground. ^C interrupts it.\n");
+    watch_to_the_end(h);
+}
+
+/// Watch a job in the foreground until it ends, then account for every `^C` it was sent and give
+/// back the capabilities this shell held for it.
+fn watch_to_the_end(h: Held) {
+    watch(h.jf, h.job_ut);
+    // Account for every ^C up to now, so the job's interrupts do not leak into the next one.
+    CONSUMED.store(intr_count(), core::sync::atomic::Ordering::Relaxed);
+    release(h);
+}
+
+/// Give back the slots this shell held for a job. If the job was reclaimed, the region's slot is
+/// already stale and deleting it only frees the slot.
+fn release(h: Held) {
+    cap_delete(h.job_fr);
+    cap_delete(h.job_ut);
+}
+
+/// **Mint, direct and start a supervised job**, and hand back what this shell holds for it once the
+/// progenitor says it is running. `None` has already said why. `foreground` is whether the shell
+/// will watch it now, which decides whether the terminal leaves raw mode before it exists.
+fn start_supervised(e: Endowment, foreground: bool) -> Option<Held> {
     // Mint the job's resources. RETYPE the shared frame first, then SPLIT the construction budget,
     // so the budget is the top of our watermark and DESTROY returns its pages cleanly (LIFO).
     let Some(job_fr) = retype_page_frame() else {
         failed();
         print(b"  this shell's memory budget is exhausted; nothing left to grant\n");
-        return;
+        return None;
     };
     let Some(job_ut) = memory_region_split(JOB_UNTYPED_PAGES) else {
         cap_delete(job_fr);
         failed();
         print(b"  this shell's memory budget is exhausted; nothing left to grant\n");
-        return;
+        return None;
     };
 
     // Map the shared frame into our own space so we can signal the job and read its status.
@@ -76,14 +120,14 @@ pub(super) fn spawn_interruptible(e: Endowment) {
         cap_delete(job_ut);
         failed();
         print(b"  this shell has run as many supervised jobs as it has room to watch\n");
-        return;
+        return None;
     }
     if !map_page_frame(job_fr, va) {
         cap_delete(job_fr);
         cap_delete(job_ut);
         failed();
         print(b"  could not map the job frame\n");
-        return;
+        return None;
     }
     // SAFETY: `map_page_frame` just mapped one page read/write at `va`, above, and it stays mapped for
     // the rest of this job's life (no unmap syscall exists), so the window's `new` asserts that
@@ -103,29 +147,29 @@ pub(super) fn spawn_interruptible(e: Endowment) {
     // progenitor maps it). We keep our own copies: the untyped to tear the job down, the frame to
     // signal it and read it.
     let (w0, w1, w2) = spawnproto::request(
-        e.prog.id(),
-        e.arg,
-        e.mem_pages,
+        e.program.id(),
+        e.program_argument,
+        e.memory_grant_pages,
         spawnproto::Wiring {
             interruptible: true,
             sink: false,
             source: false,
             // A supervised job reports through the shared frame, not through a stream, and neither
-            // demonstrator declares a second one. `OutputSpec::Silent` and a diagnostic rendezvous
+            // demonstrator declares a second one. `OutputDeclaration::Silent` and a diagnostic rendezvous
             // would be a contradiction the manifest can already refuse.
             diagnostics: false,
             // Neither demonstrator declares a directory either, and a supervised job is built out of
             // *this shell's* untyped rather than the progenitor's pool, so there is no region a caretaker
             // could share with it (DECISIONS §92).
-            dir: false,
-            dir2: false,
+            directory_grant: false,
+            second_directory_grant: false,
             // A supervised job's completion signal is already the shared job frame's `DONE` flag,
             // not `result_ep`, so there is nothing here for DECISIONS §106's narrowing to replace.
             screen: false,
             image: false,
             run_unvouched: false,
             // No `std` manifest is interruptible, so no supervised job hears words.
-            args: false,
+            program_arguments: false,
             nameset: false,
             // An interruptible child is built with no capabilities at all (it reports through the
             // job frame), so there is nowhere to put the machine page.
@@ -140,8 +184,12 @@ pub(super) fn spawn_interruptible(e: Endowment) {
     // option D). [`watch`] learns of `^C` from the terminal's count, and the terminal counts only
     // in its line discipline. The watermark is taken after the switch, so a `^C` from here on is
     // this job's, and one pressed at the prompt, which was a byte to [`edit_line`], never is.
-    leave_raw();
-    CONSUMED.store(intr_count(), core::sync::atomic::Ordering::Relaxed);
+    // A background job stays in raw mode: the prompt comes straight back, and a `^C` typed there
+    // is a byte to the line editor, never this job's.
+    if foreground {
+        leave_raw();
+        CONSUMED.store(intr_count(), core::sync::atomic::Ordering::Relaxed);
+    }
     send(SPAWN, w0, w1, w2);
     delegate(job_ut, abi::rights::ALL);
     send_cap(job_fr);
@@ -152,20 +200,15 @@ pub(super) fn spawn_interruptible(e: Endowment) {
         print(b"  could not spawn (the progenitor is out of memory)\n");
         cap_delete(job_fr);
         cap_delete(job_ut);
-        return;
+        return None;
     }
-    print(b"  running ");
-    print(e.prog.name().as_bytes());
-    print(b" in the foreground. ^C interrupts it.\n");
-
-    watch(jf, job_ut);
-
-    // Account for every ^C up to now, so the job's interrupts do not leak into the next one.
-    CONSUMED.store(intr_count(), core::sync::atomic::Ordering::Relaxed);
-    // Drop our caps. If the job was reclaimed, the untyped cap is already stale; cap_delete just
-    // frees the slot.
-    cap_delete(job_fr);
-    cap_delete(job_ut);
+    Some(Held {
+        jf,
+        job_ut,
+        job_fr,
+        program: e.program,
+        started: 0,
+    })
 }
 
 /// Watch a running supervised job: poll its done flag and the terminal's `^C` count, drive the
@@ -327,4 +370,254 @@ fn map_page_frame(slot: u64, va: u64) -> bool {
 /// Ask the terminal how many `^C` it has seen (a non-blocking poll; see `proto::OPERATION_INTRCOUNT`).
 pub(super) fn intr_count() -> u64 {
     call(TERM, proto::req(proto::OPERATION_INTRCOUNT, 0), 0).0
+}
+
+// ---- background jobs (milestone 48 (job control), phase one) ----
+
+/// The most background jobs this shell holds at once. Each costs [`JOB_UNTYPED_PAGES`] plus a frame
+/// of this shell's budget for as long as it runs, so the budget is the real bound; this is the
+/// table's.
+pub(super) const MAX_JOBS: usize = 8;
+
+/// **What this shell holds for one supervised job**: the shared frame it signals and reads, the
+/// region the job was built from, and the frame's capability. Nothing else is needed to watch it,
+/// ask it to stop, or tear it down, which is why a job is exactly this.
+#[derive(Clone, Copy)]
+pub(super) struct Held {
+    jf: MappedWindow,
+    job_ut: u64,
+    job_fr: u64,
+    program: grant_plan::Program,
+    /// When it went into the background, counted in jobs started, so `fg` with no operand takes
+    /// the newest. Zero for a job that never left the foreground.
+    started: u64,
+}
+
+impl Held {
+    fn done(&self) -> bool {
+        self.jf.read::<u64>(job_page_frame::DONE as u64) != 0
+    }
+}
+
+/// **The background jobs**, numbered from one as `jobs` prints them. A finished job keeps its number
+/// until it is reported, so `[2]` never silently becomes another job.
+pub(super) struct Jobs {
+    held: [Option<Held>; MAX_JOBS],
+    started: u64,
+}
+
+impl Jobs {
+    pub(super) const fn new() -> Self {
+        Jobs {
+            held: [None; MAX_JOBS],
+            started: 0,
+        }
+    }
+
+    fn get(&self, n: usize) -> Option<Held> {
+        self.held.get(n.wrapping_sub(1)).copied().flatten()
+    }
+
+    fn take(&mut self, n: usize) -> Option<Held> {
+        self.held.get_mut(n.wrapping_sub(1)).and_then(Option::take)
+    }
+
+    fn newest(&self) -> Option<usize> {
+        (1..=MAX_JOBS)
+            .filter_map(|n| self.get(n).map(|h| (h.started, n)))
+            .max()
+            .map(|(_, n)| n)
+    }
+
+    fn is_empty(&self) -> bool {
+        self.held.iter().all(Option::is_none)
+    }
+}
+
+/// **Run a line that ended in `&`** ([`swish::sequence::background`]). Exactly one command, and it
+/// must plan to a supervised job; anything else is refused with nothing spawned.
+pub(super) fn background(nav: &mut Nav, cmd: &[u8]) {
+    let one = matches!(sequence::split(cmd), Ok(s) if s.len() == 1)
+        && matches!(swish::route(cmd), Route::One(_));
+    if cmd.is_empty() || !one {
+        refused();
+        print(b"  & runs one command in the background, not a chain or a pipeline\n");
+        return;
+    }
+    let spec = match grant_plan::parse(cmd) {
+        Command::Run(spec) if !spec.program.contains(&b'/') => spec,
+        _ => return not_supervised(),
+    };
+    let expanded = match expansion(nav, &spec) {
+        Ok(e) => e,
+        Err(Say::Cannot(r)) => return refuse(spec, r),
+        Err(said) => return say(said),
+    };
+    match grant_plan::plan(&spec, holdings(nav), expanded) {
+        Err(r) => refuse(spec, r),
+        Ok(endow) if endow.interruptible => spawn_background(&mut nav.jobs, endow),
+        Ok(_) => not_supervised(),
+    }
+}
+
+fn not_supervised() {
+    refused();
+    print(b"  & runs only a supervised job: for any other program this shell holds nothing to wait on or stop\n");
+}
+
+/// Start a supervised job and keep what this shell holds for it, without watching it.
+fn spawn_background(jobs: &mut Jobs, e: Endowment) {
+    // The slot is found before anything is minted, so a full table spawns nothing.
+    let Some(i) = jobs.held.iter().position(Option::is_none) else {
+        refused();
+        print(b"  this shell already holds as many background jobs as it can list\n");
+        return;
+    };
+    let Some(mut h) = start_supervised(e, false) else {
+        return;
+    };
+    jobs.started += 1;
+    h.started = jobs.started;
+    jobs.held[i] = Some(h);
+    print(b"  [");
+    print_num(i as u64 + 1);
+    print(b"] ");
+    print(h.program.name().as_bytes());
+    print(b" running in the background\n");
+}
+
+/// Reclaim a finished job's region and give back its slots.
+fn collect(h: Held) -> bool {
+    let ok = reclaim(h.job_ut);
+    release(h);
+    ok
+}
+
+fn no_such_job(word: &[u8]) {
+    refused();
+    print(b"  ");
+    print(word);
+    print(b": this shell holds no such job\n");
+}
+
+fn print_job(n: usize, h: &Held) {
+    print(b"  [");
+    print_num(n as u64);
+    print(b"] ");
+    print(h.program.name().as_bytes());
+}
+
+/// `jobs`: every background job, running or done. A done job is reported once and collected.
+pub(super) fn list_jobs(jobs: &mut Jobs) {
+    if jobs.is_empty() {
+        print(b"  no jobs\n");
+        return;
+    }
+    for n in 1..=MAX_JOBS {
+        let Some(h) = jobs.get(n) else { continue };
+        print_job(n, &h);
+        if h.done() {
+            let beats = h.jf.read::<u64>(job_page_frame::HEARTBEAT as u64);
+            print(b" done after ");
+            print_num(beats);
+            print(b" work units\n");
+            jobs.take(n);
+            collect(h);
+        } else {
+            print(b" running\n");
+        }
+    }
+}
+
+/// `wait [%N]`: until the named job finishes, or every job. A `^C` stops the waiting and leaves
+/// the jobs running, which is bash's behavior and the only one that fits: the jobs are in the
+/// background precisely so a keystroke at the terminal is not theirs.
+pub(super) fn wait_jobs(jobs: &mut Jobs, tail: &[u8]) {
+    let only = match grant_plan::job_operand(tail) {
+        Ok(Some(n)) if jobs.get(n).is_none() => return no_such_job(b"wait"),
+        Ok(only) => only,
+        Err(()) => return no_such_job(b"wait"),
+    };
+    if jobs.is_empty() {
+        print(b"  no jobs to wait for\n");
+        return;
+    }
+    let waited = |n: usize| only.is_none_or(|m| m == n);
+    leave_raw();
+    let base = intr_count();
+    CONSUMED.store(base, core::sync::atomic::Ordering::Relaxed);
+    print(b"  waiting. ^C interrupts it.\n");
+    loop {
+        let mut left = 0;
+        for n in (1..=MAX_JOBS).filter(|&n| waited(n)) {
+            let Some(h) = jobs.get(n) else { continue };
+            if !h.done() {
+                left += 1;
+                continue;
+            }
+            let status = h.jf.read::<u64>(job_page_frame::STATUS as u64);
+            let beats = h.jf.read::<u64>(job_page_frame::HEARTBEAT as u64);
+            jobs.take(n);
+            collect(h);
+            print_job(n, &h);
+            print(b":\n");
+            report_finished(status, beats);
+        }
+        if left == 0 {
+            break;
+        }
+        if intr_count() != base {
+            failed();
+            print(b"  ^C: stopped waiting; the job keeps running in the background\n");
+            break;
+        }
+        watch_pause();
+    }
+    CONSUMED.store(intr_count(), core::sync::atomic::Ordering::Relaxed);
+}
+
+/// `kill [-9] %N`: DECISIONS §24's two tiers, aimed at a background job.
+pub(super) fn kill_job(jobs: &mut Jobs, tail: &[u8]) {
+    let Ok((force, n)) = grant_plan::kill_operands(tail) else {
+        refused();
+        print(b"  kill: name a job, as kill %N or kill -9 %N\n");
+        return;
+    };
+    let Some(h) = jobs.get(n) else {
+        return no_such_job(b"kill");
+    };
+    if !force {
+        h.jf.write(job_page_frame::INTERRUPT as u64, 1u64);
+        print(b"  asked job ");
+        print_num(n as u64);
+        print(b" to stop\n");
+        return;
+    }
+    jobs.take(n);
+    print_job(n, &h);
+    if collect(h) {
+        print(b": its process was torn down and its memory reclaimed\n");
+    } else {
+        failed();
+        print(b": teardown refused, and the job is no longer listed\n");
+    }
+}
+
+/// `fg [%N]`: watch a background job as if it had been started in the foreground. Nothing is
+/// revoked or granted, because no job holds terminal input; foreground is the shell watching.
+pub(super) fn foreground(jobs: &mut Jobs, tail: &[u8]) {
+    let n = match grant_plan::job_operand(tail) {
+        Ok(Some(n)) => Some(n),
+        Ok(None) => jobs.newest(),
+        Err(()) => None,
+    };
+    let Some(h) = n.and_then(|n| jobs.take(n)) else {
+        return no_such_job(b"fg");
+    };
+    leave_raw();
+    CONSUMED.store(intr_count(), core::sync::atomic::Ordering::Relaxed);
+    print(b"  running ");
+    print(h.program.name().as_bytes());
+    print(b" in the foreground. ^C interrupts it.\n");
+    watch_to_the_end(h);
 }

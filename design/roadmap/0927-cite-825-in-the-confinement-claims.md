@@ -1,5 +1,6 @@
 ---
-status: PROPOSED
+status: NOT-STARTED
+promoted_from: cite-825-in-the-confinement-claims
 raised: 2026-10-15
 milestone_dependencies: 825
 decision_dependencies: none
@@ -7,7 +8,7 @@ machine_requirements: none
 specific_machine: none
 needs_person: no
 ---
-# Cite milestone 825's test in the confinement records
+# 927. Cite milestone 825's test in the confinement records
 
 *(Title and slug provisional.)*
 
@@ -33,3 +34,7 @@ is written.
 These are the confinement claim's own records, which a developer lane does not own. The milestone 825
 lane left them to the confinement owner rather than editing them (`design/fatal-risks/7-the-confinement-claim.md`
 already carries the dated 2026-10-15 correction that the fatal-risks gate required).
+
+## Index row
+
+Milestone 825 closed the file server's name-window race with a test, and the confinement records still call it open. Rows 19 and 24 of `notes/confinement-claims.md` and the pass-4 refusal log need to cite that test.

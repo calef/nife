@@ -24,7 +24,8 @@
 //!
 //! - No grouping: `a && b || c` runs left to right as in bash, with no `{ }` or `( )`, so
 //!   `time a && b` times only `a` and a whole chain has no spelling.
-//! - A single `&` is an ordinary byte, kept free for job control to give it a meaning.
+//! - A single `&` means background only as the last byte of a line ([`background`]), and only on a
+//!   line with no connector; anywhere else it is an ordinary byte.
 //! - A skipped segment leaves `$?` alone, as bash does.
 
 use grant_plan::word::Cursor;
@@ -143,7 +144,7 @@ pub fn split(line: &[u8]) -> Result<Sequence<'_>, Refusal> {
 
     while i < line.len() {
         // A single `|` is the pipe operator and belongs to `line::split`; only the doubled form is
-        // a connector. A single `&` is left alone for milestone 48's job control.
+        // a connector. A single `&` is left alone: [`background`] reads it, at the line's end only.
         let (found, width) = match (c.is_open(), line[i]) {
             (false, b';') => (Joint::Always, 1),
             (false, b'&') if line.get(i + 1) == Some(&b'&') => (Joint::OnSuccess, 2),
@@ -191,6 +192,45 @@ pub fn split(line: &[u8]) -> Result<Sequence<'_>, Refusal> {
     }
     segments[n] = (joint, tail);
     Ok(Sequence { segments, n: n + 1 })
+}
+
+/// **The command a line asks to run in the background, if it ends in a single `&`** (milestone 48
+/// (job control), phase one). `None` for a line that does not, which runs in the foreground as it
+/// always did.
+///
+/// Only the line's last unquoted byte counts, and only when it is not half of `&&`. A `&` anywhere
+/// else stays an ordinary byte, so `echo a & b` still prints its `&`; bash's `a & b`, two commands
+/// with the first in the background, has no spelling yet. What comes back is trimmed and may hold
+/// connectors or be empty: the shell refuses those, since backgrounding a chain is a different
+/// claim than backgrounding one job.
+///
+/// Name: provisional, minted 2026-10-18 (UTC) by milestone/48-job-control.
+///
+/// ```
+/// use swish::sequence::background;
+/// assert_eq!(background(b"interrupt_heeder &"), Some(&b"interrupt_heeder"[..]));
+/// assert_eq!(background(b"interrupt_heeder&"), Some(&b"interrupt_heeder"[..]));
+/// assert_eq!(background(b"date"), None);
+/// assert_eq!(background(b"echo '&'"), None);
+/// assert_eq!(background(b"date &&"), None);
+/// ```
+#[must_use]
+pub fn background(line: &[u8]) -> Option<&[u8]> {
+    let t = trim(line);
+    let (&last, before) = t.split_last()?;
+    if last != b'&' || before.last() == Some(&b'&') {
+        return None;
+    }
+    // A `&` inside quotes is text. The cursor walks the bytes before it, and a quote still open
+    // there means the `&` is quoted.
+    let mut c = Cursor::new();
+    for &b in before {
+        c.step(b);
+    }
+    if c.is_open() {
+        return None;
+    }
+    Some(trim(before))
 }
 
 #[cfg(test)]

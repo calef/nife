@@ -18,19 +18,19 @@ use super::*;
 /// read a pattern needs and the terminal to print to.
 pub(super) fn caps(nav: &mut Nav, tail: &[u8]) {
     if let Some(spec) = plain_line(tail) {
-        if spec.prog.contains(&b'/') {
+        if spec.program.contains(&b'/') {
             return caps_image(nav, spec);
         }
         // A bare word previews what running it would do (§229 (how a bare name at the prompt
         // reaches an installed program), B2), through the same resolution [`run`] uses.
-        match bare(nav, spec.prog) {
+        match bare(nav, spec.program) {
             swish::bare::Bare::Installed { path, .. } => {
                 let mut by_path = spec;
-                by_path.prog = path.as_bytes();
+                by_path.program = path.as_bytes();
                 return caps_image(nav, by_path);
             }
             swish::bare::Bare::Both(path) => {
-                return swish::bare::write_both(spec.prog, &path, &mut print);
+                return swish::bare::write_both(spec.program, &path, &mut print);
             }
             swish::bare::Bare::Image | swish::bare::Bare::Unknown => {}
         }
@@ -43,11 +43,13 @@ pub(super) fn caps(nav: &mut Nav, tail: &[u8]) {
         NO_CLOCK => None,
         slot => Some(slot),
     };
-    // SAFETY: the progenitor maps the page at `SHELL_CONFIG_VA` read-only in the same build that
+    // SAFETY: the progenitor maps the page at `SHELL_CONFIGURATION_VIRTUAL_ADDRESS` read-only in the same build that
     // places its capability, and never unmaps it; [`HOLDS_CONFIG`] is that capability's presence.
     let config = HOLDS_CONFIG
         .load(core::sync::atomic::Ordering::Relaxed)
-        .then(|| unsafe { environment_contract::ConfigPage::new(grant_plan::SHELL_CONFIG_VA) });
+        .then(|| unsafe {
+            environment_contract::ConfigPage::new(grant_plan::SHELL_CONFIGURATION_VIRTUAL_ADDRESS)
+        });
     swish::write_capabilities(
         tail,
         SH_BUDGET_PAGES,
@@ -73,7 +75,7 @@ pub(super) fn caps(nav: &mut Nav, tail: &[u8]) {
 /// **The line is a plain run**: one stage, no operator. The shape [`run`] hands to [`run_image`]
 /// when its program token has a `/` in it or names an installed program, so `caps` previews
 /// exactly what would run.
-fn plain_line(tail: &[u8]) -> Option<RunSpec<'_>> {
+fn plain_line(tail: &[u8]) -> Option<ParsedInvocation<'_>> {
     let l = line::split(grant_plan::trim(tail)).ok()?;
     let [stage] = l.stages() else {
         return None;
@@ -91,11 +93,11 @@ fn plain_line(tail: &[u8]) -> Option<RunSpec<'_>> {
 /// read the file's manifest note and bind the line against it as [`run_image`] would, hash the
 /// file's bytes as the progenitor will, look the digest up in the live generation, and say what
 /// would be granted, what the note asked for, and on whose word. Nothing is sent to the progenitor.
-fn caps_image(nav: &mut Nav, spec: RunSpec) {
+fn caps_image(nav: &mut Nav, spec: ParsedInvocation) {
     if nav.dir.is_none() {
         return say(Say::NoDirectory);
     }
-    let Some((t, handle, size)) = open_for_bytes(nav, spec.prog) else {
+    let Some((t, handle, size)) = open_for_bytes(nav, spec.program) else {
         return;
     };
     let declared = match read_manifest_note(t.slot, handle, size) {
@@ -115,8 +117,8 @@ fn caps_image(nav: &mut Nav, spec: RunSpec) {
     // **Expanded, or designated, once the note says which** (milestone 205): bytes that hear words
     // have their words designated rather than their patterns expanded, and only the note says
     // whether these do.
-    let expanded = match m.arg {
-        grant_plan::ArgSpec::Words(grant) => {
+    let expanded = match m.program_argument {
+        grant_plan::ProgramArgumentDeclaration::Words(grant) => {
             swish::designation(spec.line(), grant, &mut |token| nav.expand(token))
         }
         _ => expansion(nav, &spec),
@@ -167,7 +169,7 @@ fn caps_image(nav: &mut Nav, spec: RunSpec) {
     let text = measured_boot::digest_text(&digest);
     let vouched_by = live_generation_listing(nav, &digest);
     swish::write_image_capabilities(
-        spec.prog,
+        spec.program,
         &text,
         vouched_by,
         HOLDS_RUN_UNVOUCHED.load(core::sync::atomic::Ordering::Relaxed),
@@ -283,7 +285,7 @@ pub(super) fn with_live_table<R>(nav: &Nav, f: impl FnOnce(&str, u32) -> Option<
 /// program), B2), from the image's programs and the live table, refined by the nearest version set
 /// when it names the program (milestone 614, ruling 4). See `swish::bare`.
 pub(super) fn bare(nav: &Nav, word: &[u8]) -> swish::bare::Bare {
-    let image = grant_plan::Prog::from_name(word).is_some();
+    let image = grant_plan::Program::from_name(word).is_some();
     with_live_table(nav, |text, _| {
         // The set is consulted only for a name the table answers at all: it selects among
         // installed versions, so for anything else it can only change nothing, and the reads are

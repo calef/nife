@@ -36,7 +36,7 @@ pub fn write_holdings(
     out(b"           the first ");
     write_num(HEAP_MAX_BYTES / 1024, out);
     out(b" KiB of them, and their page tables, are the shell's own heap\n");
-    match (&holdings.second, holdings.dir) {
+    match (&holdings.mounted, holdings.directory) {
         (Some(sd), _) => {
             // **Two rows, one tree**: the second capability is a row of its own, because it is one
             // more thing this shell holds, and the namespace line says where it appears. Which
@@ -63,7 +63,7 @@ pub fn write_holdings(
     // header above; a one-grant shell with something bound gets one here, because otherwise a
     // bound row would appear with no heading to explain it.
     if holdings.binds.iter().next().is_some() {
-        if holdings.second.is_none() {
+        if holdings.mounted.is_none() {
             out(b"    namespace: names bound beside the one root ('bind', milestone 47)\n");
         }
         for entry in holdings.binds.iter() {
@@ -97,7 +97,7 @@ pub fn write_holdings(
     // `caps <command>` reads it, and says there what it cannot show.
     if let Some(page) = config {
         out(b"    cap ");
-        write_num(grant_plan::SHELL_CONFIG_SLOT, out);
+        write_num(grant_plan::SHELL_CONFIGURATION_SLOT, out);
         out(b" frame     config     READ only, NOT delegable: the page a child declaring\n");
         out(b"                                  config is endowed with, so 'caps' can show its values\n");
         write_config_values(&page, b"                                  ", out);

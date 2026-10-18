@@ -9,7 +9,7 @@ the half after that: the real `swish` builtins and the per-command grant planner
 trees, presented the way calef ruled.
 
 The pure half is `crates/grant_plan` (`Holdings::anchor`, `locate`, `place`, and a `which` on
-`FileGrant` and `DirGrant`). The requests are `components/src/swish/navigation.rs` (`Nav`, `Tree`, the
+`FileGrant` and `DirectoryGrant`). The requests are `components/src/swish/navigation.rs` (`Nav`, `Tree`, the
 `two_trees` witness). The guest proof is
 `a_shell_holding_two_trees_moves_between_them_and_crosses_neither`.
 
@@ -28,7 +28,7 @@ point open: the shell goes to the parent, and design/roadmap/0683-what-dot-dot-d
 asks calef to confirm.
 
 So the shell's position is one path, `Holdings::cwd`, and a second tree is only a mount point,
-`SecondDir::mount`. Everything that resolves a path does it the same way:
+`MountedTree::mount`. Everything that resolves a path does it the same way:
 
 1. `Holdings::anchor` says where the steps start: where the shell stands for a relative path, a
    bound name's position when the first component is bound, the root otherwise.
@@ -92,7 +92,7 @@ All of it is design/roadmap/0660-a-second-filesystem-mounts-in-the-boot-shell.md
 - `rm` under a mount point is refused at delivery. The progenitor builds a directory grant's
   caretaker from the one filesystem it holds, and the spawn words do not say which tree, so sending
   them would hand the program a same-named directory in the first tree. It waits on the proposal.
-- `spawnproto::DIR2_BIT` has no emitter and no decoder in init. A second directory grant for one
+- `spawnproto::SECOND_DIRECTORY_GRANT_BIT` has no emitter and no decoder in init. A second directory grant for one
   spawned program needs a manifest declaring two directory operands, and none does. §170 (how a
   foreign program is told what to do), ruled 2026-09-26 to grant a named file or directory per the
   manifest, makes the manifest the only source of one.

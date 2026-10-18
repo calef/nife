@@ -56,7 +56,7 @@ so a refused program is treated as a missing one:
 |---|---|---|
 | `console`, `input`, `line_editor`, `swish`, `job_undertaker` | The progenitor traps; the system does not come up | The progenitor names it, then traps |
 | `terminal_sink_caretaker` | the boot comes up without a second stream | the same, and the progenitor names it |
-| the spawnable programs (`grant_plan::Prog`) | the prompt answers "could not spawn" | the same, and the progenitor names it at boot |
+| the spawnable programs (`grant_plan::Program`) | the prompt answers "could not spawn" | the same, and the progenitor names it at boot |
 
 Halting the machine for a leaf program was rejected: it turns a build defect in `wc` into an
 unbootable machine and buys nothing, because not spawning an archive program is the guarantee.
@@ -147,11 +147,11 @@ nife: handing the system to userspace init.
 - Both ISAs (`system_tests/src/user/measured_boot_tests.rs`):
   - `the_measurement_table_measures_to_the_compiled_in_trust_root`, the build-composition proof one
     link down from the boot program's.
-  - `every_program_init_loads_is_vouched_for_by_the_measurement_table`, which is the one that earns
+  - `every_program_the_progenitor_loads_is_vouched_for_by_the_measurement_table`, which is the one that earns
     its keep. The failure that threatens this mechanism is not a substituted program, which is loud;
     it is a program packed into the archive and left out of the table, which boots fine and is
     silently unspawnable. So the test asserts completeness, over the six boot components and over
-    `grant_plan::Prog` (so a new prompt command is covered without anyone remembering).
+    `grant_plan::Program` (so a new prompt command is covered without anyone remembering).
   - `the_measurement_table_refuses_a_tampered_program_and_an_unnamed_one`, the two axes the trust
     root already gets, plus the assertion that the table does not claim to measure itself.
 

@@ -52,7 +52,7 @@ pub const OPERATION_PUT: u64 = 1;
 /// **Keyed on the request rather than on a count, and that is what makes it deterministic.** A wedge
 /// that fired after N requests would depend on how far the conversation had got when the operator
 /// was ready, which is a race. This fires on the identity of one request, so the same thing happens
-/// in the same place whatever order the scheduler picked, on either architecture, under TCG or HVF.
+/// in the same place whatever order the scheduler picked, on every architecture, under TCG or HVF.
 /// It sits between [`SWAP_TRIGGER`] and the end of the conversation so there is a real conversation
 /// on both sides of the hang.
 ///
@@ -62,19 +62,6 @@ pub const OPERATION_PUT: u64 = 1;
 /// is at least the word this tree already uses for the condition: DECISIONS §26 calls it "alive but
 /// wedged" and milestone 62's block calls its own stuck test "wedged".
 pub const WEDGE_SEQ: u64 = 24;
-
-/// **What a released caller gets instead of an answer.** Not an error code, because nothing failed
-/// in a way the ABI can name: the caller's request was taken by a component that then stopped
-/// answering, and the only thing in the system that could ever free it was that component's own
-/// cooperation.
-///
-/// **This is the shape of the gap, and it is worth reading the constant as evidence.**
-/// [`abi::Error::Gone`] covers a caller whose *endpoint* was destroyed; it does not reach a caller
-/// whose *server is alive and silent*, because a caller parked awaiting a reply is woken by exactly
-/// one thing (`sched::ipc_reply`, addressed by tid) and nothing else in the kernel wakes it. So the
-/// release has to travel as an ordinary reply, from the component, in band. See
-/// notes/hung-component.md.
-pub const WEDGE_RELEASED: u64 = 0x5245_4c53; // "RELS"
 
 /// `call(SVC, OPERATION_QUIESCE, 0)` -> `(QUIESCED, served)`. The operator's in-band drain.
 ///
@@ -204,14 +191,26 @@ pub const RPT_DEPUTY: u64 = 16;
 /// tid is which, and asking about all of them is the stronger statement anyway.
 pub const RPT_UNCOLLECTABLE: u64 = 13;
 
-/// **An instance stopped answering without dying.** `w1` = its version, `w2` = how many requests it
-/// had served first.
+/// **The incumbent did not answer `OPERATION_QUIESCE` within the operator's bound, so the operator
+/// treats it as hung.** `w1` = the bound, `w2` = how long the operator actually waited, both in the
+/// counter's ticks (`user_mode_runtime::now`, at `user_mode_runtime::cntfrq` ticks a second).
 ///
-/// Reported by the *operator*, after the instance told it on the coordination channel. That
-/// announcement is scaffolding and the note says so: a real hang announces nothing, and what is
-/// under test is what a supervisor can do once it knows, not how it found out. How it could find out
-/// is the part behind a decision (notes/hung-component.md).
-pub const RPT_WEDGED: u64 = 14;
+/// The operator's own verdict, reached by milestone 106 (a wait that ends on either the interrupt
+/// or the deadline)'s timed wait and by nothing the incumbent said: a hung instance announces
+/// nothing, and the trigger that started the swap is the same [`NOTE_SWAP_NOW`] a healthy one
+/// sends. Wire number 14 is unused, and stays so.
+///
+/// Name: provisional.
+pub const RPT_UNANSWERED: u64 = 17;
+
+/// **The hung incumbent's region was destroyed while the incumbent was still hung** (milestone 133
+/// (ending a permanently blocked thread, and deciding who may)'s `DESTROY` finishing a `Blocked`
+/// resident in place). `w1` = the pages the operator's budget had in live child regions before the
+/// `DESTROY`, `w2` = after, both read by `MemoryRegion::USAGE`'s `CHILDREN` record. The difference
+/// is the instance's region coming home.
+///
+/// Name: provisional.
+pub const RPT_RECLAIMED: u64 = 18;
 
 /// A death reached the operator. `w1` = tid, `w2` = event.
 pub const RPT_DEATH: u64 = 8;
@@ -289,14 +288,18 @@ pub mod client_checks {
     /// call that did not got `ACCEPTED`. Nothing was refused, and the queue never overflowed.
     pub const NONE_REFUSED: u64 = 1 << 6;
     /// **The hung rung only.** One of this client's calls was swallowed by a component that stopped
-    /// answering, and it came back [`super::WEDGE_RELEASED`] rather than an answer, later, when the
-    /// operator got that component to let go.
+    /// answering, and it came back [`abi::Error::Gone`] when the operator destroyed that
+    /// component's region: milestone 254 (a caller stranded by a server that died)'s
+    /// `sched::strand_callers_of` answering every caller a finished server still held a reply
+    /// capability for.
     ///
     /// Without this bit the hung run would be indistinguishable from a run in which the component
     /// simply happened to be replaced between two calls, which is the ordinary swap and proves
-    /// nothing new. With it, the client is saying: *I was stranded inside a `CALL`, and I was freed
-    /// by the component that stranded me.*
-    pub const WAS_RELEASED: u64 = 1 << 7;
+    /// nothing new. With it, the client is saying: *I was stranded inside a `CALL`, and the kernel
+    /// freed me when my server's region was destroyed, with no help from my server.*
+    ///
+    /// Name: provisional.
+    pub const WAS_GONE: u64 = 1 << 7;
 }
 
 /// **Pack the survey's state histogram into one report word.** Four counts, a byte each, in the
@@ -397,6 +400,17 @@ pub const ROLE_CONFUSED: u64 = 3;
 /// starts it once the last receiver on the endpoint is retired, so the parked message is the
 /// only thing there. Name provisional.
 pub const ROLE_PLANT: u64 = 4;
+/// **The operator's stand-in for a `CALL` it cannot bound.** It calls [`OPERATION_QUIESCE`] on the
+/// stable endpoint and forwards the answer to the operator as [`NOTE_QUIESCE_ANSWERED`], then exits.
+///
+/// A `CALL` cannot be ended by a deadline: a bound notification ends a `RECEIVE` (milestone 106) and
+/// nothing ends a caller parked on a sender queue or awaiting a reply. So the operator delegates the
+/// one call it needs to bound, and waits on the forwarded answer with a deadline instead. When the
+/// deadline wins, this instance is still queued on the endpoint holding a quiesce request, and the
+/// operator destroys its region before any replacement can receive that request.
+///
+/// Name: provisional, minted 2026-10-18 (UTC) by milestone/23-reclaim-a-hung-incumbent.
+pub const ROLE_QUIESCER: u64 = 5;
 
 /// `swapper`'s roles. Three systems, one operator, because they share every helper: the loader, the
 /// endowments, the log page and the reporting.
@@ -405,8 +419,9 @@ pub const ROLE_DIRECT: u64 = 0;
 /// from [`ROLE_DIRECT`].
 pub const ROLE_QUEUED: u64 = 1;
 /// **The hung component** (milestone 23's third residual, notes/hung-component.md). The direct
-/// channel's system, with one difference: the incumbent stops answering instead of being drained, so
-/// the operator has to run the swap against a component that never cooperates.
+/// channel's system, with one difference: the incumbent stops answering instead of being drained.
+/// The operator notices because `OPERATION_QUIESCE` goes unanswered within its bound, replaces the
+/// service, and destroys the hung incumbent's region.
 pub const ROLE_HUNG: u64 = 2;
 /// **State handoff** (DECISIONS §209, milestone 23's last residual). A component that carries state
 /// across the swap, and a swap that is tried twice: once against a replacement that cannot absorb the
@@ -434,6 +449,13 @@ pub const ROLE_LATE_WARNING: u64 = 5;
 /// page. The operator starts both, collects the attacker's report, retires the incumbent and reads
 /// the log, so the run reclaims itself like every other channel. Name provisional.
 pub const ROLE_DEPUTY: u64 = 6;
+/// **The hung component, on a machine with no device page** (`x86_64`, whose console is in the I/O
+/// port space). [`ROLE_HUNG`]'s system with the [`BACKEND`] contract in place of [`CONSOLE`]: no
+/// device to lend, revoke or probe, and everything else identical, so the detection and the
+/// reclamation run on all three architectures.
+///
+/// Name: provisional, minted 2026-10-18 (UTC) by milestone/23-reclaim-a-hung-incumbent.
+pub const ROLE_HUNG_WITHOUT_DEVICE: u64 = 7;
 
 /// **How the operator starts a stateful instance** (the first `_start` argument, where the other
 /// systems pass a device flag of `0` or `1`). A fresh instance begins at a tally of zero, which is
@@ -451,7 +473,7 @@ pub const START_FRESH: u64 = 2;
 pub const START_ABSORB: u64 = 3;
 
 /// **Where the stateful component's handoff page sits** in both instances (DECISIONS §209), declared
-/// by [`TALLY`]'s `handoff` field.
+/// by [`STATEFUL_BACKEND`]'s `handoff` field.
 pub const STATE_VA: u64 = 0x0320_0000;
 
 /// **The blob layouts.** The bytes on the handoff page are this component's business and nobody
@@ -576,7 +598,7 @@ pub const CONSOLE: Requirements = Requirements {
     // through the stable endpoint, and DECISIONS §41's own sender-queue argument is what makes
     // that need no explicit orchestration (see `Requirements::depends_on`'s doc comment).
     depends_on: &[],
-    handoff: None,
+    state_handoff: None,
 };
 
 /// **The same programs behind a queue broker, with no device.** A different contract rather than a
@@ -593,7 +615,7 @@ pub const BACKEND: Requirements = Requirements {
     }],
     pages: INSTANCE_PAGES,
     depends_on: &[],
-    handoff: None,
+    state_handoff: None,
 };
 
 /// **The client** (`chatty`, in all three of its roles). It *uses* the service and never serves it,
@@ -623,7 +645,7 @@ pub const CLIENT: Requirements = Requirements {
     // channel it is wired to. See `Requirements::depends_on`'s doc comment for why this is empty
     // rather than naming whichever contract `service` happens to resolve to on a given wiring.
     depends_on: &[],
-    handoff: None,
+    state_handoff: None,
 };
 
 /// **The queue broker**, the latency ladder's opt-in rung. It serves the endpoint producers hold and
@@ -664,7 +686,7 @@ pub const BROKER: Requirements = Requirements {
     // signal and page, which it never waits on), and it is the edge milestone 23's dependency graph exists to
     // name so that sequencing can be derived rather than hand-coded per system.
     depends_on: &["backend"],
-    handoff: None,
+    state_handoff: None,
 };
 
 /// **The stateful component** (DECISIONS §209). The backend contract, plus a handoff page: it keeps
@@ -676,15 +698,15 @@ pub const BROKER: Requirements = Requirements {
 /// contract: whether a component has state to move is decided by what it is, and two builds of one
 /// contract that disagreed about it would not be substitutable.
 ///
-/// Name: provisional (milestone 23's lane, 2026-09-26), for both the constant and the contract
-/// string `tally`.
-pub const TALLY: Requirements = Requirements {
-    contract: "tally",
+/// Name: ratified 2026-10-18 (calef: "Yes"), for both the constant and the contract string
+/// `stateful_backend`.
+pub const STATEFUL_BACKEND: Requirements = Requirements {
+    contract: "stateful_backend",
     caps: CONSOLE.caps,
     maps: BACKEND.maps,
     pages: INSTANCE_PAGES,
     depends_on: &[],
-    handoff: Some(component_plan::Handoff {
+    state_handoff: Some(component_plan::StateHandoff {
         va: STATE_VA,
         // Two, and the tally is written on the second: a blob that only used the first page would
         // pass whether or not the operator's run reached past it.
@@ -699,7 +721,7 @@ const _: () = assert!(CONSOLE.problem().is_none());
 const _: () = assert!(BACKEND.problem().is_none());
 const _: () = assert!(CLIENT.problem().is_none());
 const _: () = assert!(BROKER.problem().is_none());
-const _: () = assert!(TALLY.problem().is_none());
+const _: () = assert!(STATEFUL_BACKEND.problem().is_none());
 
 // ===========================================================================================
 // The component's work, defined once so two implementations can be checked against each other.
@@ -878,10 +900,10 @@ const _: () = assert!(component_plan::slot_of(&BACKEND, "service") == SVC);
 const _: () = assert!(component_plan::slot_of(&BACKEND, "report") == RPT);
 const _: () = assert!(component_plan::slot_of(&BACKEND, "operator") == NOTE);
 const _: () = assert!(component_plan::slot_of(&BACKEND, "control") == POKE);
-const _: () = assert!(component_plan::slot_of(&TALLY, "service") == SVC);
-const _: () = assert!(component_plan::slot_of(&TALLY, "report") == RPT);
-const _: () = assert!(component_plan::slot_of(&TALLY, "operator") == NOTE);
-const _: () = assert!(component_plan::slot_of(&TALLY, "control") == POKE);
+const _: () = assert!(component_plan::slot_of(&STATEFUL_BACKEND, "service") == SVC);
+const _: () = assert!(component_plan::slot_of(&STATEFUL_BACKEND, "report") == RPT);
+const _: () = assert!(component_plan::slot_of(&STATEFUL_BACKEND, "operator") == NOTE);
+const _: () = assert!(component_plan::slot_of(&STATEFUL_BACKEND, "control") == POKE);
 
 /// **Touch the device one last time.** The operator sends this to an instance it has already
 /// revoked, and the fault that follows is the receipt.
@@ -912,12 +934,12 @@ pub fn start(version: u64, xform: fn(u64) -> u64, a0: u64, log_base: u64, a2: u6
     }
 }
 
-/// **Serve the stateful contract** ([`TALLY`], DECISIONS §209).
+/// **Serve the stateful contract** ([`STATEFUL_BACKEND`], DECISIONS §209).
 ///
 /// [`serve`]'s loop with one word of state and three differences:
 ///
 /// - **An absorbing instance reads the handoff page before it serves anything**, and either
-///   announces the tally it took over ([`NOTE_ABSORBED`]) or refuses ([`NOTE_REFUSED`]) and exits
+///   announces the tally it took over ([`NOTE_ABSORBED`]) or refuses ([`NOTE_NOT_ABSORBED`]) and exits
 ///   without ever receiving on the service endpoint. The refusal is what lets the operator not
 ///   commit. An instance that served first and checked later would already have answered a request
 ///   with the wrong tally, which is the loss the check is for.
@@ -944,7 +966,7 @@ pub fn serve_with_state(
             Err(found) => {
                 // Refuse and leave. Nothing was received, nothing was answered, and the page is
                 // untouched, so the incumbent's blob is still there if anyone wants it.
-                user_mode_runtime::send(NOTE, NOTE_REFUSED, version, found);
+                user_mode_runtime::send(NOTE, NOTE_NOT_ABSORBED, version, found);
                 user_mode_runtime::exit()
             }
         }
@@ -997,7 +1019,7 @@ pub fn serve_with_state(
 /// The handoff page's two words, read volatile for [`log_get`]'s reason: another address space wrote
 /// them, and the read is ordered after the write by the IPC that started this instance.
 fn read_state() -> [u64; 2] {
-    // SAFETY: the handoff page is mapped read/write at STATE_VA in every instance of TALLY, by the
+    // SAFETY: the handoff page is mapped read/write at STATE_VA in every instance of STATEFUL_BACKEND, by the
     // operator's plan, before the instance is started.
     unsafe {
         [
@@ -1052,31 +1074,24 @@ pub fn serve(version: u64, xform: fn(u64) -> u64, log_base: u64, device: bool, w
             // system reads it as a healthy server between requests, **because that is what a healthy
             // server between requests looks like.**
             //
-            // The hang is a `CALL` on the coordination channel that the operator never replies to,
-            // which is the commonest real hang there is: blocked awaiting a peer that will not
-            // answer. It is also the only shape whose blocked-ness is *provable* rather than raced.
-            // A `SEND` followed by a `RECEIVE` would leave a window in which this thread was still
-            // `Ready`, and the operator surveying inside that window would read a state it must not
-            // be able to read, which is why the reply is kept:
-            // notes/hung-component.md, "The wedge is a CALL whose reply the operator keeps".
+            // **It announces nothing.** The one message it sends is the ordinary swap trigger, the
+            // same three words a healthy incumbent sends after `SWAP_TRIGGER` requests, so the
+            // operator learns nothing from it that it would not learn from a healthy run. It is sent
+            // here, at the swallowed request, rather than earlier, for determinism alone: the
+            // operator's quiesce must arrive after this request was taken, or a healthy-looking
+            // incumbent would answer it and the run would test the healthy path. The operator finds
+            // the hang the only way a real supervisor could, by its quiesce going unanswered.
             //
-            // What is deliberately *not* done first: no `log_put`, so the witness page carries a
-            // real gap at this sequence number, and no `reply`, so the caller stays parked awaiting
-            // a reply that is not coming. Both are facts the operator reads afterwards.
+            // Then it parks in `RECEIVE` on its control endpoint, which nothing in the hung system
+            // ever sends to: blocked awaiting a peer that will not speak, the commonest real hang.
+            // `slot`, the caller's one-shot `Reply`, stays in this process's table and is never used,
+            // and no `log_put` is made, so the witness page carries a real gap at this sequence number
+            // until the caller asks again.
             OPERATION_PUT if wedge != 0 && arg == wedge => {
-                let (what, _) = user_mode_runtime::call(NOTE, NOTE_WEDGED, served);
-                // Reached only because the operator answered, which in a real hang it cannot do.
-                // **The caller first, then the device**, because the device read is expected to
-                // fault and a fault takes this reply capability to the grave with the capability table holding
-                // it, leaving that caller blocked for the life of the machine.
-                if what == NOTE_RELEASE {
-                    user_mode_runtime::reply(slot, WEDGE_RELEASED, 0);
+                user_mode_runtime::send(NOTE, NOTE_SWAP_NOW, version, served);
+                loop {
+                    let _ = user_mode_runtime::receive(POKE);
                 }
-                if device {
-                    let _ = probe_device();
-                    user_mode_runtime::send(RPT, RPT_PROBE_SURVIVED, version, 0);
-                }
-                user_mode_runtime::exit()
             }
             OPERATION_PUT => {
                 if !log_put(log_base.saturating_add(arg), version) {
@@ -1085,9 +1100,10 @@ pub fn serve(version: u64, xform: fn(u64) -> u64, log_base: u64, device: bool, w
                 }
                 served += 1;
                 user_mode_runtime::reply(slot, xform(arg), tag(version, arg));
-                if served == SWAP_TRIGGER && version == V1 {
+                if served == SWAP_TRIGGER && version == V1 && wedge == 0 {
                     // Tell the operator the conversation is well under way. Sent *after* the reply,
-                    // so the client is already waiting on its next call when the swap begins.
+                    // so the client is already waiting on its next call when the swap begins. A
+                    // wedging instance sends the same trigger at the request it swallows instead.
                     user_mode_runtime::send(NOTE, NOTE_SWAP_NOW, version, served);
                 }
             }
@@ -1139,31 +1155,6 @@ pub const NOTE_ATTACK_DONE: u64 = 2;
 pub const NOTE_CLIENT_DONE: u64 = 3;
 /// The broker quiesced and is about to exit.
 pub const NOTE_BROKER_DONE: u64 = 4;
-/// **This instance has stopped answering and is not coming back on its own.** `w1` = version,
-/// `w2` = requests served first. **A `CALL`, not a `SEND`**, and that is the mechanism rather than a
-/// style choice: the `CALL` is what parks the instance, so it is hung *because* it announced.
-///
-/// The operator serves this one message with `RECEIVE_CAP` and keeps the reply capability, which is the
-/// only handle anything in the system has on a wedged component. Everything the operator does next
-/// is done while that component is genuinely, provably stuck.
-///
-/// The announcement itself is scaffolding and must be read as such: a component that announces its
-/// own hang is not a hang anyone had to detect. It is here because *detection* is behind a decision
-/// (a deadline needs a timed wait, which is milestone 106's fork) while *what a supervisor can do
-/// about a hang it already knows about* is not, and the second is what this run measures.
-/// notes/hung-component.md says which is which and why the announcement does not weaken the
-/// assertions that follow it.
-pub const NOTE_WEDGED: u64 = 5;
-/// **The operator's answer to [`NOTE_WEDGED`]: let go.** The only thing in this system that can free
-/// a caller stranded inside a `CALL`, and it has to travel this way round.
-///
-/// The operator cannot answer the stranded caller itself. The one-shot `Reply` capability the kernel
-/// minted names that caller, lives in the *component's* capability table, carries `WRITE` without `GRANT`, and
-/// is consumed on use (DECISIONS §12). So the operator cannot be handed it, cannot forge it, and
-/// cannot reach it by revoking anything. Freeing a stranded caller requires the cooperation of the
-/// component whose lack of cooperation is the definition of the hang, which is the finding rather
-/// than a limitation of this fixture.
-pub const NOTE_RELEASE: u64 = 6;
 /// **An incoming stateful instance absorbed the handoff page.** `w1` = version, `w2` = the tally it
 /// took over. Sent before it receives anything, so the operator hears it before any request is
 /// served under the new instance, and only then retires the old one.
@@ -1173,8 +1164,14 @@ pub const NOTE_ABSORBED: u64 = 7;
 /// **An incoming stateful instance could not absorb the handoff page and is leaving.** `w1` =
 /// version, `w2` = the layout it found (`0` for no blob at all). The swap does not commit.
 ///
-/// Name: provisional (milestone 23's lane, 2026-09-26).
-pub const NOTE_REFUSED: u64 = 8;
+/// Name: ratified 2026-10-18 (calef: "Approve both"), the negation of [`NOTE_ABSORBED`].
+pub const NOTE_NOT_ABSORBED: u64 = 8;
+/// **The incumbent answered the quiesce the operator delegated** ([`ROLE_QUIESCER`]). `w1` = the
+/// answer's first word ([`QUIESCED`] from a healthy incumbent), `w2` = its second (requests served).
+/// Wire numbers 5 and 6 are unused, and stay so.
+///
+/// Name: provisional.
+pub const NOTE_QUIESCE_ANSWERED: u64 = 9;
 /// What the plant parks on the stable endpoint: a word no honest exchange produces, so a would-be
 /// server whose `RECEIVE_CAP` was let through reports a value nothing else could have put there
 /// (milestone 800 (a non-Anthropic model attacks the confinement claim), fourth pass).
@@ -1238,9 +1235,9 @@ mod tests {
             ],
         };
         assert_eq!(
-            component_plan::plan(&TALLY, &without),
+            component_plan::plan(&STATEFUL_BACKEND, &without),
             Err(component_plan::Refusal::Unprovided {
-                role: component_plan::HANDOFF_ROLE
+                role: component_plan::STATE_HANDOFF_ROLE
             })
         );
         let with = component_plan::Provisions {
@@ -1250,11 +1247,11 @@ mod tests {
                 ("operator", 3),
                 ("control", 4),
                 ("witness", 5),
-                (component_plan::HANDOFF_ROLE, 6),
+                (component_plan::STATE_HANDOFF_ROLE, 6),
             ],
         };
-        let p = component_plan::plan(&TALLY, &with).unwrap();
-        assert_eq!(p.handoff().map(|h| h.va), Some(STATE_VA));
+        let p = component_plan::plan(&STATEFUL_BACKEND, &with).unwrap();
+        assert_eq!(p.state_handoff().map(|h| h.va), Some(STATE_VA));
         assert!(p.devices().is_empty());
     }
 }

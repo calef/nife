@@ -17,7 +17,8 @@ const RPT_DRAINED: u64 = 10;
 const RPT_REFUSED: u64 = 11;
 const RPT_SURVEY: u64 = 12;
 const RPT_UNCOLLECTABLE: u64 = 13;
-const RPT_WEDGED: u64 = 14;
+const RPT_UNANSWERED: u64 = 17;
+const RPT_RECLAIMED: u64 = 18;
 const RPT_DEPENDENTS: u64 = 15;
 /// The confused-deputy attacker's out-of-log `OPERATION_PUT` result (milestone 633, third pass).
 const RPT_DEPUTY: u64 = 16;
@@ -33,7 +34,6 @@ const STEP_BUILT: u64 = 1;
 const STEP_DRAINED: u64 = 2;
 const STEP_REVOKED: u64 = 3;
 const STEP_STARTED: u64 = 4;
-const STEP_REAPED: u64 = 5;
 const STEP_ABSORBED: u64 = 6;
 const STEP_ROLLED_BACK: u64 = 7;
 
@@ -51,7 +51,7 @@ const CL_ONE_TRANSITION: u64 = 1 << 3;
 const CL_SPANNED_SWAP: u64 = 1 << 4;
 const CL_WAS_BUFFERED: u64 = 1 << 5;
 const CL_NONE_REFUSED: u64 = 1 << 6;
-const CL_WAS_RELEASED: u64 = 1 << 7;
+const CL_WAS_GONE: u64 = 1 << 7;
 
 /// The roles, and the two versions.
 const ROLE_DIRECT: u64 = 0;
@@ -62,6 +62,11 @@ const ROLE_UNWARNED: u64 = 4;
 const ROLE_LATE_WARNING: u64 = 5;
 /// The confused-deputy channel (milestone 633, third pass).
 const ROLE_DEPUTY: u64 = 6;
+/// The hung channel with no device page to lend (`x86_64`).
+const ROLE_HUNG_WITHOUT_DEVICE: u64 = 7;
+/// The pages one instance's region holds (`hot_swap_contract::INSTANCE_PAGES`). The hung test asserts
+/// the operator's budget got exactly one instance back, so both sides name one constant.
+const INSTANCE_PAGES: u64 = 32;
 /// The one blob layout any build in this tree writes (`hot_swap_contract::LAYOUT_1`). The refusing
 /// replacement names it as the layout it could not read, so both sides name one constant.
 const LAYOUT_1: u64 = 1;
@@ -120,7 +125,7 @@ const MAX_REPORTS: usize = 42;
 /// **Spawn the operator the way the kernel spawns the progenitor**, and return the report rendezvous every
 /// process in the run holds a WRITE view of.
 ///
-/// Deliberately the same endowment `spawn_hello` gives (the archive read-only at
+/// Deliberately the same endowment `spawn_elf_child_builder` gives (the archive read-only at
 /// `INITIAL_RAMDISK_VA`, an untyped in slot 0, a report rendezvous in slot 1), **plus** the one
 /// thing this milestone is about: a device capability in slot 2, `WRITE|GRANT`, exactly as the progenitor gets one at boot. So
 /// what is under test is the operator's choices, not a privileged shortcut.
@@ -194,9 +199,9 @@ fn run_swap(role: u64) -> ([[u64; 5]; MAX_REPORTS], usize) {
              honest kernel), \
              40-51 the queued rung, \
              60-63 the component manifests (60 means an unsatisfiable declaration was WIRED), \
-             64 the dependency graph query (more live instances than MAX_LIVE), 70-87 the \
-             hung-component rung (81 means the incumbent did not announce its hang with a CALL, \
-             so nothing held a reply capability on it), 90-108 state handoff (92 means a \
+             64 the dependency graph query (more live instances than MAX_LIVE), 70-87 and 110-119 \
+             the hung-component rung (81 means the incumbent answered the bounded quiesce, so \
+             it never hung; 117 and 119 a region DESTROY that never succeeded), 90-108 state handoff (92 means a \
              stateful component was wired by a supervisor with no handoff page to give it, 100 \
              means the refusing replacement did not refuse, 106 means the absorbing one did not \
              absorb).",
@@ -694,75 +699,100 @@ fn survey_awake(w: u64) -> u64 {
     (w & 0xff) + ((w >> 8) & 0xff)
 }
 
-/// **A component that stops answering without dying is invisible to its supervisor, and the service
-/// can be restored anyway** (milestone 23's third residual; notes/hung-component.md).
+/// **A supervisor notices a component that stops answering without dying, restores the service, and
+/// reclaims the hung component** (milestone 23's third residual; notes/hung-component.md and its
+/// `the-wedge-test.md`, which argues each result).
 ///
-/// Every failure this system handles elsewhere is a *death*: the kernel witnesses a fault or an exit,
-/// stamps a five-word message onto the supervision rendezvous (DECISIONS §26), `Rendezvous::REAP`
-/// collects the corpse (§32), and the region comes home. A component that merely stops answering
-/// produces none of it, and this test is the machine saying so rather than a paragraph claiming it.
+/// A component that merely stops answering produces no death message (DECISIONS §26 (the fault
+/// endpoint)) and no corpse to reap. **Its wedge is silent**: it swallows one request and parks,
+/// and the only message it sends is the ordinary swap trigger a healthy incumbent sends too.
 ///
-/// **Four results, and the first two are negative.**
+/// 1. **The operator notices on its own**: its `OPERATION_QUIESCE` goes unanswered within its bound
+///    (milestone 106 (a wait that ends on either the interrupt or the deadline)'s timed wait).
+/// 2. **The domain does not report a hang**: every member `BLOCKED`, none `DEAD`, exactly what a
+///    healthy idle system reads as.
+/// 3. **The reap vocabulary is refused**: `StillAlive` for every member, since §32 (a supervisor may
+///    collect a corpse) authorizes collecting a corpse and a hung component is not one.
+/// 4. **The service is restored with no new authority**, and the client's stream is unbroken.
+/// 5. **The hung component's region comes back while it is still hung**: `DESTROY` after `STARTED`
+///    finishes it in place (milestone 133 (ending a permanently blocked thread, and deciding who
+///    may)), the budget's live-children count falls by one instance, and it leaves no corpse.
+/// 6. **The caller it stranded sees `Gone`** (milestone 254 (a caller stranded by a server that
+///    died)) and asks the replacement again: the composition milestone 133's block argued, run.
 ///
-/// 1. **The domain does not report a hang.** Every member of the survey is `BLOCKED`, none is `DEAD`,
-///    and that is byte for byte what a healthy idle system reads as: `abi::survey::BLOCKED` is the
-///    state of a server parked in `RECEIVE_CAP`, which is every healthy server between requests. The
-///    view milestone 126 built is the widest one a supervisor has and it cannot tell the difference.
-/// 2. **The supervisor's whole vocabulary over its domain is refused.** `Rendezvous::REAP` is asked
-///    about every member and answers `StillAlive` every time, on purpose: §32 authorizes collecting a
-///    corpse and not killing. Against a hung component there is no corpse, so there is nothing to
-///    say.
-/// 3. **The service is restored with no authority the operator did not already hold**, which
-///    contradicts §32's sentence that a supervisor restarting a hung child "still needs the stronger
-///    right". The device comes back by `PageFrame::REVOKE` take-back, which asks the holder for nothing;
-///    the replacement parks on the stable rendezvous and drains what queued behind the silence; the
-///    client's stream closes over the hang. §32 is right about *reclaiming the hung component's
-///    memory* and wrong about restarting its service, and those are different acts.
-/// 4. **Restoring the service does not recover the caller that was mid-`CALL`.** That caller is
-///    parked awaiting a reply, and a caller awaiting a reply is woken by `sched::ipc_reply` and by
-///    nothing else in the kernel: `abi::Error::Gone` reaches a caller whose *rendezvous* died and never
-///    one whose *server is alive and silent*. The one-shot `Reply` capability naming it is `WRITE`
-///    without `GRANT`, inside the hung component's capability table, so the operator cannot answer on its
-///    behalf, forge one, or revoke its way to it. In this run the wedge is deliberate and lets go
-///    when asked. A real one does not, and `CL_WAS_RELEASED` is the bit that marks which of the two
-///    this was.
+/// On `x86_64` there is no device page (`NO_UART_PAGE`), so the run uses
+/// `ROLE_HUNG_WITHOUT_DEVICE`, the same system with nothing to revoke, and every result but the
+/// take-back holds there unchanged.
 ///
-/// **Nothing here waits on a clock**, and that is deliberate rather than incidental: the wedge fires
-/// on the identity of one request, the hang is a `CALL` whose parked state is established inside the
-/// same critical section that wakes the operator, and every assertion below is about program order.
-/// A watchdog that decided "hung" from elapsed time would need the timed wait milestone 106 has not
-/// decided, and a *test* that did would be the next load-sensitive assertion (milestone 62, 78).
+/// **The only clock is the operator's bound, and it is not asserted on.** Against a hung incumbent
+/// any bound is eventually reached; what it decides is whether a healthy incumbent would be
+/// convicted, which is measured in `components/src/swapper.rs` rather than tested here.
+///
+/// Falsification: replayable `system_tests/falsifications/user.live_swap_tests.a_supervisor_notices_a_hung_component_and_reclaims_it.patch`
 #[test_case]
-fn a_component_that_stops_answering_without_dying_is_invisible_to_its_supervisor() {
-    if machine_has_no_device_page_for_the_console() {
-        crate::testing::skip!(NO_UART_PAGE);
-    }
-    let (msgs, n) = run_swap(ROLE_HUNG);
+fn a_supervisor_notices_a_hung_component_and_reclaims_it() {
+    let device = !machine_has_no_device_page_for_the_console();
+    let (msgs, n) = run_swap(if device {
+        ROLE_HUNG
+    } else {
+        ROLE_HUNG_WITHOUT_DEVICE
+    });
     let msgs = &msgs[..n];
 
-    // The hang landed inside a real conversation. A component that stopped answering before anyone
-    // was talking, or after everyone had finished, would make the rest of this vacuous.
-    let wedged = of_kind(msgs, RPT_WEDGED)
-        .next()
-        .expect("the incumbent never stopped answering, so this run tested the healthy path");
-    assert_eq!(wedged[1], V1, "the wrong instance wedged");
-    assert!(
-        wedged[2] > 0 && wedged[2] < REQUESTS,
-        "the incumbent had served {} of {REQUESTS} requests when it stopped answering: the hang \
-         did not land inside the conversation",
-        wedged[2],
-    );
+    the_operator_noticed_the_hang_on_its_own(msgs);
 
     a_hang_reads_as_an_idle_domain(msgs);
 
     no_member_of_a_hung_domain_can_be_collected(msgs);
 
-    let (client, log) = the_hung_service_is_restored(msgs);
+    let (client, log) = the_hung_service_is_restored(msgs, device);
 
-    the_stranded_caller_is_released_only_by_its_server(msgs, client, log);
+    the_hung_component_is_reclaimed_while_still_hung(msgs);
+
+    the_stranded_caller_sees_gone(client, log);
 }
 
-/// Result 1 of the hung case: the domain does not report a hang.
+/// Result 1 of the hung case: the operator's quiesce went unanswered, and it never drained.
+fn the_operator_noticed_the_hang_on_its_own(msgs: &[[u64; 5]]) {
+    let unanswered = of_kind(msgs, RPT_UNANSWERED).next().expect(
+        "the operator never reached a hang verdict, so its quiesce was answered or it hung itself",
+    );
+    assert!(
+        unanswered[1] > 0 && unanswered[2] >= unanswered[1],
+        "the operator called the incumbent hung after waiting {} ticks of a {}-tick bound: the \
+         verdict came before the deadline, so something other than the timed wait ended the wait",
+        unanswered[2],
+        unanswered[1],
+    );
+    // The deadline is not asserted further, but it is printed, so a run's log carries the figure
+    // the bound in `swapper.rs` was chosen against.
+    crate::println!(
+        "  hung channel: quiesce unanswered after {} of a {}-tick bound",
+        unanswered[2],
+        unanswered[1]
+    );
+    assert!(
+        !had_step(msgs, STEP_DRAINED),
+        "the operator reported a drain: OPERATION_QUIESCE needs the incumbent to answer, which is \
+         the one thing a hung component does not do. A run that drained did not test a hang.",
+    );
+    assert!(
+        of_kind(msgs, RPT_QUIESCED).all(|m| m[1] != V1),
+        "the incumbent reported answering a quiesce, so it was not hung",
+    );
+    // The verdict precedes everything the operator did about it.
+    let at_verdict = msgs.iter().position(|m| m[0] == RPT_UNANSWERED).unwrap();
+    for (kind, what) in [(RPT_SURVEY, "surveyed"), (RPT_RECLAIMED, "reclaimed")] {
+        let at = msgs.iter().position(|m| m[0] == kind).unwrap_or(usize::MAX);
+        assert!(
+            at_verdict < at,
+            "the operator {what} (report {at}) before its quiesce went unanswered (report \
+             {at_verdict})",
+        );
+    }
+}
+
+/// Result 2 of the hung case: the domain does not report a hang.
 fn a_hang_reads_as_an_idle_domain(msgs: &[[u64; 5]]) {
     let survey = of_kind(msgs, RPT_SURVEY)
         .next()
@@ -775,20 +805,20 @@ fn a_hang_reads_as_an_idle_domain(msgs: &[[u64; 5]]) {
         survey[2],
     );
     assert_eq!(
-        survey[1], 2,
-        "the domain should hold exactly the incumbent and the client ({} reported). The \
-         replacement is built but never started, and a thread's supervision rendezvous is recorded \
-         at START, so an embryo is not yet a member.",
+        survey[1], 3,
+        "the domain should hold exactly the incumbent, the client and the stand-in carrying the \
+         quiesce ({} reported). The replacement is built but never started, and a thread's \
+         supervision rendezvous is recorded at START, so an embryo is not yet a member.",
         survey[1],
     );
     assert_eq!(
         survey_blocked(survey[2]),
-        2,
-        "the survey found {} blocked members and {} awake, of 2. **This assertion is the finding**: \
-         the hung component and the caller it stranded both read as BLOCKED, which is exactly what \
-         a healthy server waiting for work and a client waiting for its answer read as. If this \
-         ever fails because a member read READY or RUNNING, the wedge stopped being a CALL and the \
-         test is measuring a race instead of a state.",
+        3,
+        "the survey found {} blocked members and {} awake, of 3. **This assertion is the finding**: \
+         the hung component, the caller it stranded and the quiesce queued behind it all read as \
+         BLOCKED, which is exactly what a healthy server waiting for work and its clients read as. \
+         A member reading READY or RUNNING here was still on its way to its park when the bound \
+         expired, which at the bound swapper.rs uses means the bound is far too tight.",
         survey_blocked(survey[2]),
         survey_awake(survey[2]),
     );
@@ -815,14 +845,14 @@ fn a_hang_reads_as_an_idle_domain(msgs: &[[u64; 5]]) {
     );
 }
 
-/// Result 2 of the hung case: every member refuses to be collected.
+/// Result 3 of the hung case: every member refuses to be collected.
 fn no_member_of_a_hung_domain_can_be_collected(msgs: &[[u64; 5]]) {
     let uncollectable = of_kind(msgs, RPT_UNCOLLECTABLE)
         .next()
         .expect("the operator never tried to collect its domain");
     assert_eq!(
-        uncollectable[1], 2,
-        "the operator asked about {} members, expected 2",
+        uncollectable[1], 3,
+        "the operator asked about {} members, expected 3",
         uncollectable[1],
     );
     assert_eq!(
@@ -835,42 +865,40 @@ fn no_member_of_a_hung_domain_can_be_collected(msgs: &[[u64; 5]]) {
     );
 }
 
-/// Result 3 of the hung case: the service comes back, and step 2 of the four never happened.
-/// Returns the client's verdict and the operator's log, which result 4 reads again.
-fn the_hung_service_is_restored(msgs: &[[u64; 5]]) -> (&[u64; 5], &[u64; 5]) {
+/// Result 4 of the hung case: the service comes back. Returns the client's verdict and the
+/// operator's log, which result 6 reads again.
+fn the_hung_service_is_restored(msgs: &[[u64; 5]], device: bool) -> (&[u64; 5], &[u64; 5]) {
     for (step, what) in [
         (STEP_BUILT, "build the replacement"),
-        (
-            STEP_REVOKED,
-            "take the device back from the live, wedged holder",
-        ),
         (
             STEP_STARTED,
             "start the replacement on the stable rendezvous",
         ),
-        (STEP_REAPED, "collect the incumbent once it finally died"),
     ] {
         assert!(
             had_step(msgs, step),
             "the operator never got as far as: {what}"
         );
     }
-    assert!(
-        !had_step(msgs, STEP_DRAINED),
-        "the operator reported a drain: OPERATION_QUIESCE needs the incumbent to answer, which is the one \
-         thing a hung component does not do. A run that drained did not test a hang.",
+    assert_eq!(
+        had_step(msgs, STEP_REVOKED),
+        device,
+        "the device take-back from the live, wedged holder should run exactly when there is a \
+         device page to take back",
     );
 
-    // Both instances ran and both reached the device, so the registers were where the swap thinks
-    // they were on each side of a revoke that the outgoing holder never consented to.
+    // Both instances ran, and where there is a device both reached it, so the registers were where
+    // the swap thinks they were on each side of a revoke the outgoing holder never consented to.
     let mut ups = of_kind(msgs, RPT_UP);
     let first = ups.next().expect("the incumbent never started");
     let second = ups.next().expect("the replacement never started");
     assert_eq!(first[1], V1);
     assert_eq!(second[1], V2);
     assert!(
-        first[2] == 1 && second[2] == 1,
-        "an instance could not read the device it was endowed with",
+        first[2] == device as u64 && second[2] == device as u64,
+        "an instance's device reach ({}, {}) does not match the channel's (device page: {device})",
+        first[2],
+        second[2],
     );
 
     // The client's own verdict, from its own replies, in its own address space. Every check the
@@ -888,41 +916,78 @@ fn the_hung_service_is_restored(msgs: &[[u64; 5]]) -> (&[u64; 5], &[u64; 5]) {
         CLIENT_UNBROKEN & !client[1],
     );
 
-    // The operator's independent witness: the shared page, read after every writer is dead.
+    // The operator's independent witness: the shared page, read after every writer is gone. No
+    // REVOKE_ENFORCED here: the holder the device was taken from never runs again, so nothing can
+    // fault on the registers to prove the take-back. The direct channel carries that receipt.
     let log = of_kind(msgs, RPT_LOG)
         .next()
         .expect("the operator never reported its verdict");
-    const LOG_CLEAN: u64 = LOG_NO_GAP | LOG_MONOTONE | LOG_BOTH_VERSIONS | LOG_REVOKE_ENFORCED;
+    const LOG_CLEAN: u64 = LOG_NO_GAP | LOG_MONOTONE | LOG_BOTH_VERSIONS;
     assert_eq!(
         log[1] & LOG_CLEAN,
         LOG_CLEAN,
         "the hung channel's log is not clean (verdict {:#x}): NO_GAP={} (a request nobody ever \
-         served, so the swallowed one was never re-asked), MONOTONE={} (the wedged instance \
-         answered after the replacement had, so there were two owners), BOTH_VERSIONS={}, \
-         REVOKE_ENFORCED={} (the wedged instance's post-revoke device read did not fault, so the \
-         take-back did not reach a live holder)",
+         served, so the swallowed one was never asked again), MONOTONE={} (the wedged instance \
+         answered after the replacement had, so there were two owners), BOTH_VERSIONS={}",
         log[1],
         log[1] & LOG_NO_GAP != 0,
         log[1] & LOG_MONOTONE != 0,
         log[1] & LOG_BOTH_VERSIONS != 0,
-        log[1] & LOG_REVOKE_ENFORCED != 0,
     );
     (client, log)
 }
 
-/// Result 4 of the hung case: the caller was stranded, and only the component that stranded it
-/// could let go.
-fn the_stranded_caller_is_released_only_by_its_server(
-    msgs: &[[u64; 5]],
-    client: &[u64; 5],
-    log: &[u64; 5],
-) {
+/// Result 5 of the hung case: the incumbent's region came back, after the service did, and the
+/// incumbent never died.
+fn the_hung_component_is_reclaimed_while_still_hung(msgs: &[[u64; 5]]) {
+    let reclaimed = of_kind(msgs, RPT_RECLAIMED)
+        .next()
+        .expect("the operator never destroyed the hung incumbent's region");
+    assert_eq!(
+        reclaimed[1].checked_sub(reclaimed[2]),
+        Some(INSTANCE_PAGES),
+        "the operator's budget had {} pages in live child regions before the DESTROY and {} \
+         after; exactly one instance ({INSTANCE_PAGES} pages) should have come back. Without \
+         milestone 133 the DESTROY of a region holding a Blocked thread is refused for the life \
+         of the machine.",
+        reclaimed[1],
+        reclaimed[2],
+    );
+    let at_started = msgs
+        .iter()
+        .position(|m| m[0] == RPT_STEP && m[1] == STEP_STARTED)
+        .unwrap();
+    let at_reclaimed = msgs.iter().position(|m| m[0] == RPT_RECLAIMED).unwrap();
+    assert!(
+        at_started < at_reclaimed,
+        "the incumbent was destroyed (report {at_reclaimed}) before the replacement started \
+         (report {at_started})",
+    );
+    // Two deaths, the client's exit and the replacement's retirement, and neither a fault. A third
+    // would be the incumbent dying, which would mean it ran again after the DESTROY: milestone
+    // 133 finishes a Blocked resident without waking it, and a finished thread sends no death.
+    assert_eq!(
+        of_kind(msgs, RPT_DEATH).count(),
+        2,
+        "the operator collected {} deaths; the hung incumbent should have left none",
+        of_kind(msgs, RPT_DEATH).count(),
+    );
+    assert!(
+        of_kind(msgs, RPT_DEATH).all(|m| m[2] != abi::fault::EVENT_FAULT),
+        "a child faulted: the incumbent ran again after its region was destroyed",
+    );
+}
+
+/// Result 6 of the hung case: the caller the incumbent stranded was freed by the kernel, with
+/// `Gone`, and asked the replacement again.
+fn the_stranded_caller_sees_gone(client: &[u64; 5], log: &[u64; 5]) {
     assert_ne!(
-        client[1] & CL_WAS_RELEASED,
+        client[1] & CL_WAS_GONE,
         0,
-        "the client never saw WEDGE_RELEASED (verdict {:#x}), so its call was answered normally \
-         and it was never stranded. Without that bit this run is indistinguishable from an \
-         ordinary swap that happened between two calls, which proves nothing about a hang.",
+        "the client never saw abi::Error::Gone (verdict {:#x}). Either its call was answered \
+         normally, and it was never stranded, which proves nothing about a hang; or the DESTROY \
+         finished the incumbent without answering the callers it held reply capabilities for, \
+         and the client would still be parked (milestone 254's sched::strand_callers_of).",
         client[1],
     );
     // The swap landed exactly at the swallowed request, on both witnesses. Not a coincidence and
@@ -939,19 +1004,6 @@ fn the_stranded_caller_is_released_only_by_its_server(
         "the operator's log and the client's replies disagree about where the replacement took \
          over ({} vs {})",
         log[2], client[2],
-    );
-    // And the release came after the service was already back, which is what makes the two
-    // recoveries separable rather than one act: restoring a service and recovering a caller are
-    // different problems, and only the second needed the hung component's cooperation.
-    let at_started = msgs
-        .iter()
-        .position(|m| m[0] == RPT_STEP && m[1] == STEP_STARTED)
-        .unwrap();
-    let at_client = msgs.iter().position(|m| m[0] == RPT_CLIENT).unwrap();
-    assert!(
-        at_started < at_client,
-        "the client finished (report {at_client}) before the replacement was started (report \
-         {at_started}): the hang did not actually block it",
     );
 }
 

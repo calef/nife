@@ -21,10 +21,10 @@ fn word_rights_are_the_filesystem_contracts() {
 fn the_index_store_opens_with_a_word_grants_rights() {
     use filesystem_contract::dir;
     let read = dir::ENUMERATE | dir::READ | dir::DESCEND;
-    assert_eq!(IndexStore::Forbidden.rights(), None);
-    assert_eq!(IndexStore::ReadOnly.rights(), Some(read));
+    assert_eq!(IndexStoreDeclaration::Forbidden.rights(), None);
+    assert_eq!(IndexStoreDeclaration::ReadOnly.rights(), Some(read));
     assert_eq!(
-        IndexStore::ReadWrite.rights(),
+        IndexStoreDeclaration::ReadWrite.rights(),
         Some(read | dir::WRITE | dir::CREATE)
     );
 }
@@ -35,36 +35,36 @@ fn the_index_store_opens_with_a_word_grants_rights() {
 #[test]
 fn an_option_set_may_hold_exactly_its_maximum_and_no_repeat() {
     let sixteen = b"abcdefghijklmnop";
-    assert_eq!(sixteen.len(), MAX_DECLARED_FLAGS);
-    assert!(Flags::try_new(sixteen).is_some());
-    assert!(Flags::try_new(b"abcdefghijklmnopq").is_none());
-    assert!(Flags::try_new(b"aa").is_none());
-    assert!(Flags::try_new(b"aba").is_none());
-    assert!(Flags::try_new(b"ab").is_some());
-    assert!(Flags::try_new(b"a-").is_none());
+    assert_eq!(sixteen.len(), MAX_DECLARED_SHORT_OPTIONS);
+    assert!(ShortOptions::try_new(sixteen).is_some());
+    assert!(ShortOptions::try_new(b"abcdefghijklmnopq").is_none());
+    assert!(ShortOptions::try_new(b"aa").is_none());
+    assert!(ShortOptions::try_new(b"aba").is_none());
+    assert!(ShortOptions::try_new(b"ab").is_some());
+    assert!(ShortOptions::try_new(b"a-").is_none());
 }
 
 /// The `std` unvouched manifest is in the `std` layout, which is what makes it that manifest.
 #[test]
 fn the_std_unvouched_manifest_is_a_std_manifest() {
-    assert_eq!(UNVOUCHED_STD_MANIFEST.runtime, Runtime::Std);
-    assert_eq!(UNVOUCHED_MANIFEST.runtime, Runtime::Native);
+    assert_eq!(UNVOUCHED_STD_MANIFEST.startup, StartupContract::Std);
+    assert_eq!(UNVOUCHED_MANIFEST.startup, StartupContract::Native);
 }
 
 /// A file's region is the image's own pages and the runtime's region, added.
 #[test]
 fn an_image_region_is_its_pages_plus_its_runtimes() {
     assert_eq!(STD_REGION_PAGES, 384);
-    assert_eq!(image_region_pages(10, Runtime::Std, 99), 10 + 384);
-    assert_eq!(image_region_pages(10, Runtime::Native, 99), 10 + 99);
-    assert_eq!(image_region_pages(0, Runtime::Native, 0), 0);
+    assert_eq!(image_region_pages(10, StartupContract::Std, 99), 10 + 384);
+    assert_eq!(image_region_pages(10, StartupContract::Native, 99), 10 + 99);
+    assert_eq!(image_region_pages(0, StartupContract::Native, 0), 0);
 }
 
 /// **A package manager's region carries one package more**: a named `std` program's region is
 /// [`STD_REGION_PAGES`], and one declaring the installer adds the largest image it may read.
 #[test]
 fn an_installer_region_holds_one_more_package() {
-    let jig = Prog::Jig.manifest();
+    let jig = Program::Jig.manifest();
     assert!(jig.installer);
     assert_eq!(
         named_std_region_pages(&jig),

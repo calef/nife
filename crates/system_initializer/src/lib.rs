@@ -66,11 +66,11 @@ use announcement::*;
 pub use boot_sequence::boot;
 use children::*;
 use client_windows::*;
-pub use endowment::{BootEndowment, SecondDirGrant};
+pub use endowment::{BootEndowment, MountedTreeGrant};
 use fault::*;
 use filesystem_contract::{dir, fs as fs_operation};
 use grant_plan::job_windows::{ReapsDue, Windows};
-use grant_plan::{Prog, spawnproto};
+use grant_plan::{Program, spawnproto};
 use image_request::*;
 use layout::*;
 pub use layout::{

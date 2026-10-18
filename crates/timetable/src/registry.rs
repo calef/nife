@@ -113,8 +113,8 @@ impl<'a> Registry<'a> {
     ///
     /// // Planned, and the endowment is the whole of what the child will hold.
     /// let e = reg.rows()[0].endowment().expect("least_authority_demo 7 is a legal line");
-    /// assert_eq!(e.arg, 7);
-    /// assert_eq!(e.mem_pages, 0);
+    /// assert_eq!(e.program_argument, 7);
+    /// assert_eq!(e.memory_grant_pages, 0);
     ///
     /// // The manifest refuses the line, exactly as the prompt would.
     /// assert!(matches!(reg.rows()[1].admission, Admission::Refused(_)));
@@ -211,7 +211,7 @@ impl<'a> Registry<'a> {
             .count()
     }
 
-    /// **The programs this timetable will ever build**, as a bitmask over `Prog::id`.
+    /// **The programs this timetable will ever build**, as a bitmask over `Program::id`.
     ///
     /// The point of it being computable at registration: reading the printed plan tells you the
     /// complete set of programs this process will ever start, and a Kani-free host test can hold
@@ -222,7 +222,7 @@ impl<'a> Registry<'a> {
         let mut set = 0u64;
         for r in self.rows() {
             if let Some(e) = r.endowment() {
-                set |= 1 << e.prog.id();
+                set |= 1 << e.program.id();
             }
         }
         set

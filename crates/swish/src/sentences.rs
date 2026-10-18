@@ -43,6 +43,11 @@ pub fn write_help(out: &mut dyn FnMut(&[u8])) {
     out(
         b"  apropos <word>          name the installed pages that mention it (it grants nothing)\n",
     );
+    out(b"  <command> &             run a supervised job in the background (jobs, wait, kill, fg)\n");
+    out(b"  jobs                    the background jobs this shell holds\n");
+    out(b"  wait [%N]               until that job (or every job) finishes; ^C stops waiting\n");
+    out(b"  kill [-9] %N            ask job N to stop; -9 tears it down and takes its memory back\n");
+    out(b"  fg [%N]                 watch job N (or the newest) in the foreground; ^C interrupts it\n");
     out(b"  jig install <file>      install every program of a package this image vouches for\n");
     out(b"  jig install <name>      fetch a package and install it\n");
     out(
@@ -114,19 +119,19 @@ pub fn write_help(out: &mut dyn FnMut(&[u8])) {
 ///     "  no such program (try 'help' for the builtins)\n"
 /// );
 /// ```
-pub fn write_refusal(spec: &RunSpec, refusal: Refusal, out: &mut dyn FnMut(&[u8])) {
+pub fn write_refusal(spec: &ParsedInvocation, refusal: Refusal, out: &mut dyn FnMut(&[u8])) {
     out(b"  ");
     // A named-but-unresolvable program, or an un-grantable resource, name the offending thing. A
     // line of nothing but flags (`--mem 16`) names no program at all, and printing an empty name
     // followed by a colon would be worse than printing the bare refusal.
     match refusal {
-        Refusal::NoSuchProgram if !spec.prog.is_empty() => {
-            out(spec.prog);
+        Refusal::NoSuchProgram if !spec.program.is_empty() => {
+            out(spec.program);
             out(b": ");
         }
         Refusal::NoSuchProgram => {}
         _ => {
-            if let Some(p) = Prog::from_name(spec.prog) {
+            if let Some(p) = Program::from_name(spec.program) {
                 out(p.name().as_bytes());
                 out(b": ");
             }
@@ -238,33 +243,33 @@ pub fn write_outcome(e: &Endowment, answer: u64, out: &mut dyn FnMut(&[u8])) {
         out(FAULTED_SENTENCE);
         return;
     }
-    match e.prog {
-        Prog::LeastAuthorityDemo => {
+    match e.program {
+        Program::LeastAuthorityDemo => {
             out(b"  a process at EL0 computed ");
-            write_num(e.arg, out);
+            write_num(e.program_argument, out);
             out(b"*");
-            write_num(e.arg, out);
+            write_num(e.program_argument, out);
             out(b" = ");
             write_num(answer, out);
             out(b"\n");
         }
-        Prog::MemoryGrantDepleter => {
+        Program::MemoryGrantDepleter => {
             out(b"  the process mapped ");
             write_num(answer, out);
             out(b" pages out of the ");
-            write_num(e.mem_pages, out);
+            write_num(e.memory_grant_pages, out);
             out(b"-page budget you granted (the rest paid for its page tables)\n");
         }
         // Milestone 632 (graphics on demand): the session's one word says it ended. It is always 0
         // today (`components/src/graphical_terminal.rs`'s `end`), and the number is printed anyway
         // so a future status has somewhere to show rather than a sentence that lies about it.
-        Prog::GraphicalTerminal => {
+        Program::GraphicalTerminal => {
             out(b"  the graphical terminal session ended, status ");
             write_num(answer, out);
             out(b"\n");
         }
         // **Every other program answers somewhere else, so there is nothing to render here.** Only a
-        // program whose manifest says `OutputSpec::Words` answers in a register, and those are
+        // program whose manifest says `OutputDeclaration::Words` answers in a register, and those are
         // the arms above. Supervised jobs report through the job frame and the interruptible path;
         // byte-stream programs (`date`, `wc`, `ps`, ...) are drained by the byte-stream reader
         // before this is reached.

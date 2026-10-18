@@ -134,24 +134,24 @@ fn write_u64(v: u64, out: &mut [u8]) -> usize {
 /// **What the child will hold, and nothing else.** The `caps` half.
 fn write_grant(e: &Endowment, command: &[u8], report: bool, out: &mut dyn FnMut(&[u8])) {
     out(b"    grants ");
-    // The word typed, not `e.prog`'s name: an installed program's endowment is filed under
+    // The word typed, not `e.program`'s name: an installed program's endowment is filed under
     // `grant_plan::IMAGE_ROW`, whose name is not the program's.
-    out(grant_plan::parse_run(command).prog);
+    out(grant_plan::parse_run(command).program);
     out(b" exactly:\n");
     if report {
         out(b"      cap 0  endpoint  report its answer to this timetable\n");
     }
-    if e.mem_pages > 0 {
+    if e.memory_grant_pages > 0 {
         out(b"      cap 1  untyped   ");
         let mut buf = [0u8; 20];
-        let n = write_u64(e.mem_pages, &mut buf);
+        let n = write_u64(e.memory_grant_pages, &mut buf);
         out(&buf[..n]);
         out(b" pages  split from this timetable's budget\n");
     }
-    if e.arg != 0 {
+    if e.program_argument != 0 {
         out(b"      arg      ");
         let mut buf = [0u8; 20];
-        let n = write_u64(e.arg, &mut buf);
+        let n = write_u64(e.program_argument, &mut buf);
         out(&buf[..n]);
         out(b"\n");
     }
@@ -228,7 +228,7 @@ impl Audit {
     /// something, and a reader would rather be told the endowment is wide than be told nothing.
     pub fn saw(&mut self, name: &str) {
         self.held += 1;
-        let planned = grant_plan::Prog::from_name(name.as_bytes())
+        let planned = grant_plan::Program::from_name(name.as_bytes())
             .is_some_and(|p| self.plan & (1 << p.id()) != 0);
         if !planned {
             self.beyond += 1;
@@ -285,7 +285,7 @@ impl Audit {
 
 #[cfg(test)]
 mod tests {
-    use grant_plan::Prog;
+    use grant_plan::Program;
 
     use super::*;
     use crate::test_support::{REFERENCE, shown};
@@ -393,7 +393,7 @@ mod tests {
         // crate carries this same set as a written list and this is what keeps it true.
         assert_eq!(
             reg.programs(),
-            1 << Prog::LeastAuthorityDemo.id() | 1 << Prog::MemoryGrantDepleter.id(),
+            1 << Program::LeastAuthorityDemo.id() | 1 << Program::MemoryGrantDepleter.id(),
             "the shipped document's plan changed; \
              system_tests/src/user/timetable_tests.rs's PLANNED_PROGRAMS must change with it",
         );

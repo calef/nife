@@ -1,6 +1,6 @@
 //! Tests of the shell's own endowment, its `bind` rows and the census of held slots.
 
-use grant_plan::SecondDir;
+use grant_plan::MountedTree;
 use grant_plan::nav::Cwd;
 
 use super::*;
@@ -18,8 +18,8 @@ fn a_bound_name_prints_its_own_namespace_row() {
     let mut binds = nav::Bindings::none();
     binds.add(b"recent", target).unwrap();
     let holdings = Holdings {
-        dir: true,
-        second: None,
+        directory: true,
+        mounted: None,
         cwd: Cwd::root(),
         binds,
     };
@@ -34,8 +34,8 @@ fn a_bound_name_prints_its_own_namespace_row() {
         write_holdings(
             128,
             Holdings {
-                dir: true,
-                second: None,
+                directory: true,
+                mounted: None,
                 cwd: Cwd::root(),
                 binds: nav::Bindings::none(),
             },
@@ -54,8 +54,8 @@ fn holding_a_directory_changes_exactly_one_line_of_the_endowment() {
         write_holdings(
             128,
             Holdings {
-                dir: true,
-                second: None,
+                directory: true,
+                mounted: None,
                 cwd: Cwd::root(),
                 binds: nav::Bindings::none(),
             },
@@ -91,8 +91,8 @@ fn at(components: &[&[u8]]) -> Cwd {
 #[test]
 fn a_second_grant_prints_its_row_and_where_it_is_mounted() {
     let holdings = Holdings {
-        dir: true,
-        second: SecondDir::mounted_at(at(&[b"media", b"usb"])),
+        directory: true,
+        mounted: MountedTree::mounted_at(at(&[b"media", b"usb"])),
         cwd: Cwd::root(),
         binds: nav::Bindings::none(),
     };
@@ -107,7 +107,7 @@ fn a_second_grant_prints_its_row_and_where_it_is_mounted() {
         write_holdings(
             128,
             Holdings {
-                dir: true,
+                directory: true,
                 ..Holdings::default()
             },
             None,
@@ -124,8 +124,8 @@ fn a_second_grant_prints_its_row_and_where_it_is_mounted() {
 #[test]
 fn a_mounted_tree_prints_as_paths_in_the_one_tree() {
     let mut holdings = Holdings {
-        dir: true,
-        second: SecondDir::mounted_at(at(&[b"media", b"usb"])),
+        directory: true,
+        mounted: MountedTree::mounted_at(at(&[b"media", b"usb"])),
         cwd: at(&[b"media", b"usb", b"logs"]),
         binds: nav::Bindings::none(),
     };

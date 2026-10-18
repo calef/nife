@@ -1,6 +1,6 @@
 //! Tests of reading a line: tokens, quoting, builtins, `--mem`, and the words `argv` carries.
 
-use crate::test_support::{WITH_DIR, plan};
+use crate::test_support::{WITH_DIRECTORY, plan};
 use crate::*;
 
 /// Every listed builtin is one `parse` answers as a builtin, and none is also a program, so
@@ -13,7 +13,7 @@ fn every_listed_builtin_is_a_builtin_and_no_program() {
             "{:?} is not a builtin",
             b
         );
-        assert!(Prog::from_name(b).is_none(), "{:?} is also a program", b);
+        assert!(Program::from_name(b).is_none(), "{:?} is also a program", b);
     }
     assert!(
         matches!(parse(b"wc"), Command::Run(_)),
@@ -61,7 +61,7 @@ fn a_quoted_span_is_one_token_however_many_spaces_are_in_it() {
 #[test]
 fn a_quoted_operand_designates_the_bytes_between_the_quotes() {
     let r = parse_run(b"wc \"my notes.txt\"");
-    assert_eq!(r.prog, b"wc");
+    assert_eq!(r.program, b"wc");
     assert_eq!(r.positionals(), [&b"my notes.txt"[..]]);
     assert!(r.is_quoted(0), "the flag is what stops it being expanded");
     assert_eq!(r.misquoted, None);
@@ -80,11 +80,11 @@ fn quoting_keeps_a_dash_from_widening_a_grant() {
     assert_eq!(parse_run(b"rm -r x").options(), b"r");
     // Same rule for `--mem`, which is an option that moves memory.
     let r = parse_run(b"memory_grant_depleter \"--mem\" 16");
-    assert_eq!(r.mem, None);
+    assert_eq!(r.memory_grant, None);
     assert_eq!(r.positionals(), [&b"--mem"[..], &b"16"[..]]);
     // ... while a quoted *value* is still the number it says.
     assert_eq!(
-        parse_run(b"memory_grant_depleter --mem \"16\"").mem,
+        parse_run(b"memory_grant_depleter --mem \"16\"").memory_grant,
         Some(16)
     );
 }
@@ -104,10 +104,10 @@ fn a_quoted_builtin_name_still_names_the_builtin() {
 fn a_misquoted_line_is_refused_ahead_of_everything_else() {
     let r = parse_run(b"wc 'my notes.txt");
     assert_eq!(r.misquoted, Some(Refusal::UnclosedQuote));
-    assert_eq!(plan(&r, WITH_DIR), Err(Refusal::UnclosedQuote));
+    assert_eq!(plan(&r, WITH_DIRECTORY), Err(Refusal::UnclosedQuote));
     // Even when the program does not exist, so the ordering is real rather than incidental.
     let r = parse_run(b"nosuchprog 'x");
-    assert_eq!(plan(&r, WITH_DIR), Err(Refusal::UnclosedQuote));
+    assert_eq!(plan(&r, WITH_DIRECTORY), Err(Refusal::UnclosedQuote));
     // And the joining case.
     assert_eq!(
         parse_run(b"wc a\"b\"").misquoted,
@@ -120,8 +120,8 @@ fn a_misquoted_line_is_refused_ahead_of_everything_else() {
 #[test]
 fn a_trailing_mem_flag_is_a_missing_value_not_a_read_past_the_line() {
     let r = parse_run(b"memory_grant_depleter --mem");
-    assert_eq!(r.prog, b"memory_grant_depleter");
-    assert_eq!(r.mem, None);
+    assert_eq!(r.program, b"memory_grant_depleter");
+    assert_eq!(r.memory_grant, None);
 }
 
 /// `--mem N` is exactly two tokens: the value is consumed with the flag and must not reappear
@@ -130,7 +130,7 @@ fn a_trailing_mem_flag_is_a_missing_value_not_a_read_past_the_line() {
 #[test]
 fn a_mem_flag_consumes_its_value_and_nothing_after_it() {
     let r = parse_run(b"memory_grant_depleter --mem 4");
-    assert_eq!(r.mem, Some(4));
+    assert_eq!(r.memory_grant, Some(4));
     assert!(r.positionals().is_empty(), "the value became an operand");
     assert_eq!(r.unexpected, None);
 }
@@ -139,7 +139,7 @@ fn a_mem_flag_consumes_its_value_and_nothing_after_it() {
 /// so an off-by-one here is a write past the end, not a smaller refusal.
 #[test]
 fn the_flag_and_positional_ceilings_refuse_rather_than_overflow() {
-    // Nine letters in one cluster, and MAX_FLAGS is eight.
+    // Nine letters in one cluster, and MAX_SHORT_OPTIONS is eight.
     let r = parse_run(b"rm -abcdefghi x");
     assert_eq!(r.options(), b"");
     assert_eq!(r.unexpected, Some(&b"-abcdefghi"[..]));
@@ -159,7 +159,7 @@ fn help_is_a_builtin_and_everything_else_is_a_program() {
     let Command::Run(r) = parse(b"frobnicate") else {
         panic!("a bare word must be a program invocation")
     };
-    assert_eq!(r.prog, b"frobnicate");
+    assert_eq!(r.program, b"frobnicate");
 
     // Milestone 47's navigation builtins. They parse to themselves, and, because builtins win
     // over programs, **the program namespace must never learn one of these names**: it would be
@@ -172,14 +172,14 @@ fn help_is_a_builtin_and_everything_else_is_a_program() {
     assert_eq!(parse(b"mkdir logs"), Command::Mkdir(b"logs"));
     assert_eq!(
         parse(b"touch logs"),
-        Command::Touch(TouchArgs {
+        Command::Touch(TouchOperands {
             at: None,
             name: b"logs"
         })
     );
     assert_eq!(
         parse(b"touch"),
-        Command::Touch(TouchArgs {
+        Command::Touch(TouchOperands {
             at: None,
             name: b""
         }),
@@ -189,7 +189,7 @@ fn help_is_a_builtin_and_everything_else_is_a_program() {
     // (kept exactly as typed, unparsed) and the name.
     assert_eq!(
         parse(b"touch -t 2030-01-01T00:00:00Z logs"),
-        Command::Touch(TouchArgs {
+        Command::Touch(TouchOperands {
             at: Some(b"2030-01-01T00:00:00Z"),
             name: b"logs"
         })
@@ -198,7 +198,7 @@ fn help_is_a_builtin_and_everything_else_is_a_program() {
     // end-of-input right after it.
     assert_eq!(
         parse(b"touch -template"),
-        Command::Touch(TouchArgs {
+        Command::Touch(TouchOperands {
             at: None,
             name: b"-template"
         }),
@@ -298,19 +298,19 @@ fn jig_is_a_program_and_package_is_not_a_builtin() {
     let Command::Run(r) = parse(b"jig install greeting") else {
         panic!("`jig` must parse as a program invocation");
     };
-    assert_eq!(Prog::from_name(r.prog), Some(Prog::Jig));
+    assert_eq!(Program::from_name(r.program), Some(Program::Jig));
     let Command::Run(r) = parse(b"package install greeting") else {
         panic!("`package` is no longer a builtin");
     };
-    assert_eq!(Prog::from_name(r.prog), None);
+    assert_eq!(Program::from_name(r.program), None);
     // **And `rm` is a program**, which is the whole of milestone 47's rmdir lane at this level.
     // A builtin would have shadowed the name, so this line is also the check that it no longer
     // does; the manifest is what decides what the operand grants.
     let Command::Run(r) = parse(b"rm old.txt") else {
         panic!("`rm` must parse as a program invocation, not a builtin")
     };
-    assert_eq!(r.prog, b"rm");
-    assert_eq!(Prog::from_name(b"rm"), Some(Prog::Rm));
+    assert_eq!(r.program, b"rm");
+    assert_eq!(Program::from_name(b"rm"), Some(Program::Rm));
     for reserved in [
         &b"help"[..],
         b"echo",
@@ -324,7 +324,7 @@ fn jig_is_a_program_and_package_is_not_a_builtin() {
         b"bind",
     ] {
         assert!(
-            Prog::from_name(reserved).is_none(),
+            Program::from_name(reserved).is_none(),
             "`{}` is a builtin, so a program of that name could never be run",
             core::str::from_utf8(reserved).unwrap(),
         );
@@ -354,8 +354,11 @@ fn mem_flag_must_have_a_numeric_value() {
     let Command::Run(r) = parse(b"memory_grant_depleter --mem twelve") else {
         panic!()
     };
-    assert_eq!(r.mem, None);
-    assert_eq!(plan(&r, Holdings::default()), Err(Refusal::MemRequired));
+    assert_eq!(r.memory_grant, None);
+    assert_eq!(
+        plan(&r, Holdings::default()),
+        Err(Refusal::MemoryGrantRequired)
+    );
 }
 
 #[test]
@@ -500,4 +503,24 @@ fn a_line_that_exactly_fills_the_argument_page_is_taken() {
     let mut two = [b'a'; 2201];
     two[1100] = b' ';
     assert_eq!(check_words(&two), Ok(()));
+}
+
+/// A job number is read in base ten and bounded at two digits, so `%12` is job twelve and `%123`
+/// names no job rather than wrapping or being truncated to one. Each case here is one an
+/// off-by-one in the bound or the digit sum would get wrong (milestone 48 (job control)).
+#[test]
+fn a_job_operand_is_two_decimal_digits_at_most() {
+    assert_eq!(job_operand(b"%12"), Ok(Some(12)));
+    assert_eq!(job_operand(b"99"), Ok(Some(99)));
+    assert_eq!(job_operand(b"%123"), Err(()));
+    assert_eq!(job_operand(b"%"), Err(()));
+    assert_eq!(job_operand(b"%1a"), Err(()));
+}
+
+/// `-9` is the forcible tier only as a word of its own: `kill -9%1` names no job, rather than
+/// being read as `kill -9 %1`.
+#[test]
+fn kill_reads_dash_nine_only_as_its_own_word() {
+    assert_eq!(kill_operands(b"-9 %1"), Ok((true, 1)));
+    assert_eq!(kill_operands(b"-9%1"), Err(()));
 }

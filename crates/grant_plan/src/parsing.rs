@@ -1,5 +1,5 @@
 //! **Reading a line**: `tokenize`, `argv`, `parse`, the `user` and `vouch` verbs, `parse_run`,
-//! and `RunSpec`. `parse_run` is the only thing that builds a `RunSpec`, so its fields stay private
+//! and `ParsedInvocation`. `parse_run` is the only thing that builds a `ParsedInvocation`, so its fields stay private
 //! here (§272, fork 3).
 //!
 //! Moved out of the crate's root unchanged by milestone 842 (the grant-plan crate root is split
@@ -8,7 +8,9 @@
 //!
 //! Name: provisional (milestone 842, 2026-10-11), as are its sibling modules' names.
 
-use crate::{Command, MAX_FLAGS, Refusal, TouchArgs, parse_u64, split_first_word, trim, word};
+use crate::{
+    Command, MAX_SHORT_OPTIONS, Refusal, TouchOperands, parse_u64, split_first_word, trim, word,
+};
 
 /// Split a command line into whitespace-separated tokens, writing them into `out` and returning
 /// the filled prefix. A tiny `no_std` tokenizer: no allocation, bounded by `out.len()`. Tokens
@@ -43,7 +45,7 @@ pub fn tokenize<'a, 'b>(line: &'a [u8], out: &'b mut [&'a [u8]]) -> &'b [&'a [u8
 }
 
 /// **Assemble the argv of a program that hears words** (milestone 205 (how a foreign program is
-/// told what to do), DECISIONS §170; see [`ArgSpec::Words`](crate::ArgSpec::Words)), onto `page`, and return how many
+/// told what to do), DECISIONS §170; see [`ProgramArgumentDeclaration::Words`](crate::ProgramArgumentDeclaration::Words)), onto `page`, and return how many
 /// words it carries.
 ///
 /// `line` is one command: the program's name and its words, with no operator on it. Every word is
@@ -113,8 +115,8 @@ pub fn each_word(
 ///
 /// Name: provisional (milestone 47, 2026-09-26).
 pub const BUILTINS: &[&[u8]] = &[
-    b"apropos", b"bind", b"caps", b"cd", b"echo", b"help", b"ls", b"mkdir", b"pwd", b"time",
-    b"touch", b"xargs",
+    b"apropos", b"bind", b"caps", b"cd", b"echo", b"fg", b"help", b"jobs", b"kill", b"ls",
+    b"mkdir", b"pwd", b"time", b"touch", b"wait", b"xargs",
 ];
 
 /// Parse a whole command line into a [`Command`]. Pure and allocation-free.
@@ -124,7 +126,7 @@ pub const BUILTINS: &[&[u8]] = &[
 /// rest of the line verbatim (so `echo   two  spaces` prints its spaces); everything else works on
 /// tokens.
 ///
-/// Builtins win over programs, which is why [`Prog::from_name`](crate::Prog::from_name) must never learn a name that is
+/// Builtins win over programs, which is why [`Program::from_name`](crate::Program::from_name) must never learn a name that is
 /// also a builtin. A handful of reserved words is the whole cost of a shell where every command is
 /// typed the same way.
 ///
@@ -163,7 +165,7 @@ pub fn parse(line: &[u8]) -> Command<'_> {
         b"mkdir" => Command::Mkdir(trim(rest)),
         // `touch` takes one word (`cd`/`ls`/`mkdir`'s reason: `trim` is all the classification a
         // bare path needs) unless it starts with `-t`, DECISIONS §112's arbitrary-instant form,
-        // which is two words: the RFC 3339 text (unparsed here, see `TouchArgs`'s own doc) and then
+        // which is two words: the RFC 3339 text (unparsed here, see `TouchOperands`'s own doc) and then
         // the name.
         b"touch" => {
             let rest = trim(rest);
@@ -172,12 +174,12 @@ pub fn parse(line: &[u8]) -> Command<'_> {
                     if after_flag.is_empty() || after_flag[0].is_ascii_whitespace() =>
                 {
                     let (at, name) = split_first_word(trim(after_flag));
-                    Command::Touch(TouchArgs {
+                    Command::Touch(TouchOperands {
                         at: Some(at),
                         name: trim(name),
                     })
                 }
-                _ => Command::Touch(TouchArgs {
+                _ => Command::Touch(TouchOperands {
                     at: None,
                     name: rest,
                 }),
@@ -205,14 +207,77 @@ pub fn parse(line: &[u8]) -> Command<'_> {
         // only when this shell is the owner's console: a confined shell's root is its own subtree,
         // where a `suspended` file is one nothing reads.
         b"user" => Command::User(trim(rest)),
+        // **Job control** (milestone 48 (job control), phase one). Builtins because a job is what this shell
+        // holds capabilities for, and only the holder can act on them.
+        b"jobs" => Command::Jobs,
+        b"wait" => Command::Wait(trim(rest)),
+        b"kill" => Command::Kill(trim(rest)),
+        b"fg" => Command::Fg(trim(rest)),
         // **`rm` is deliberately not here.** It was a builtin in the commands lane and is a program
         // now (milestone 47's rmdir lane): a builtin runs with the shell's whole endowment, and a
         // destructive loop should take an explicit attenuated grant instead. Since builtins are
-        // matched first, deleting the line is the entire change at this level; `Prog::from_name`
+        // matched first, deleting the line is the entire change at this level; `Program::from_name`
         // picks the word up.
         // Not a builtin, so it is a program invocation, and the whole line (name included) is the
         // grant expression. Whether the program exists is `plan`'s question, not the parser's.
         _ => Command::Run(parse_run(trimmed)),
+    }
+}
+
+/// **Which job an operand names** (milestone 48): `%N` or a bare `N`, counted from one as `jobs`
+/// prints them. `Ok(None)` is an empty operand, which `wait` reads as every job and `fg` as the
+/// most recent; `Err(())` is anything else, which names no job.
+///
+/// Name: provisional, minted 2026-10-18 (UTC) by milestone/48-job-control.
+///
+/// ```
+/// use grant_plan::job_operand;
+/// assert_eq!(job_operand(b"%2"), Ok(Some(2)));
+/// assert_eq!(job_operand(b"2"), Ok(Some(2)));
+/// assert_eq!(job_operand(b""), Ok(None));
+/// assert_eq!(job_operand(b"%0"), Err(()));
+/// assert_eq!(job_operand(b"%1 %2"), Err(()));
+/// ```
+#[allow(clippy::result_unit_err)]
+pub fn job_operand(tail: &[u8]) -> Result<Option<usize>, ()> {
+    let t = trim(tail);
+    if t.is_empty() {
+        return Ok(None);
+    }
+    let digits = t.strip_prefix(b"%").unwrap_or(t);
+    // Two digits is the whole range a job number can have; anything longer names no job, and
+    // refusing it here keeps the sum below from overflowing.
+    if digits.is_empty() || digits.len() > 2 || !digits.iter().all(u8::is_ascii_digit) {
+        return Err(());
+    }
+    let n = digits
+        .iter()
+        .fold(0usize, |n, d| n * 10 + usize::from(d - b'0'));
+    if n == 0 { Err(()) } else { Ok(Some(n)) }
+}
+
+/// **`kill`'s operands** (milestone 48 (job control)): whether `-9` asked for the forcible tier, and the job.
+/// A job is required, because `kill` with nothing named would have to guess which job to stop.
+///
+/// Name: provisional, minted 2026-10-18 (UTC) by milestone/48-job-control.
+///
+/// ```
+/// use grant_plan::kill_operands;
+/// assert_eq!(kill_operands(b"%1"), Ok((false, 1)));
+/// assert_eq!(kill_operands(b"-9 %3"), Ok((true, 3)));
+/// assert_eq!(kill_operands(b""), Err(()));
+/// assert_eq!(kill_operands(b"-15 %1"), Err(()));
+/// ```
+#[allow(clippy::result_unit_err)]
+pub fn kill_operands(tail: &[u8]) -> Result<(bool, usize), ()> {
+    let t = trim(tail);
+    let (force, job) = match t.strip_prefix(b"-9") {
+        Some(rest) if rest.first().is_some_and(u8::is_ascii_whitespace) => (true, rest),
+        _ => (false, t),
+    };
+    match job_operand(job) {
+        Ok(Some(n)) => Ok((force, n)),
+        _ => Err(()),
     }
 }
 
@@ -269,7 +334,7 @@ pub fn vouched_name(path: &[u8]) -> Option<&[u8]> {
     recordable.then_some(name)
 }
 
-/// Parse a whole program invocation (the line, starting at the program name) into a [`RunSpec`].
+/// Parse a whole program invocation (the line, starting at the program name) into a [`ParsedInvocation`].
 ///
 /// It recognizes `--mem N` in any position and takes the first other token as the program name;
 /// every token after that is kept **in order and unclassified**, because deciding which one is the
@@ -277,17 +342,17 @@ pub fn vouched_name(path: &[u8]) -> Option<&[u8]> {
 /// classify is a flag: a token starting with `-` that is not `--mem` is refused rather than allowed
 /// to fall into the file position, which is the single way a typo could otherwise become a
 /// capability transfer.
-pub fn parse_run(line: &[u8]) -> RunSpec<'_> {
+pub fn parse_run(line: &[u8]) -> ParsedInvocation<'_> {
     let mut toks: [&[u8]; 16] = [b""; 16];
     let toks = tokenize(line, &mut toks);
 
-    let mut mem = None;
-    let mut prog: &[u8] = b"";
-    let mut pos = [&b""[..]; MAX_POSITIONALS];
-    let mut posq = [false; MAX_POSITIONALS];
-    let mut npos = 0;
-    let mut opts = [0u8; MAX_FLAGS];
-    let mut nopts = 0;
+    let mut memory_grant = None;
+    let mut program: &[u8] = b"";
+    let mut positional_tokens = [&b""[..]; MAX_POSITIONALS];
+    let mut quoted_positionals = [false; MAX_POSITIONALS];
+    let mut positional_count = 0;
+    let mut short_options = [0u8; MAX_SHORT_OPTIONS];
+    let mut short_option_count = 0;
     let mut unexpected = None;
     let mut misquoted = None;
     let mut have_prog = false;
@@ -308,12 +373,12 @@ pub fn parse_run(line: &[u8]) -> RunSpec<'_> {
             }
         };
         if !quoted && t == b"--mem" {
-            // The next token is the page count. A missing or non-numeric value leaves mem None,
-            // which the plan turns into MemRequired for a program that needs it.
+            // The next token is the page count. A missing or non-numeric value leaves memory_grant None,
+            // which the plan turns into MemoryGrantRequired for a program that needs it.
             if i + 1 < toks.len() {
                 // Unquoted first, so `--mem "16"` is the same grant as `--mem 16`. Quoting decides
                 // what a word is and this one has to be a number either way.
-                mem = word::read(toks[i + 1]).ok().and_then(|w| parse_u64(w.text));
+                memory_grant = word::read(toks[i + 1]).ok().and_then(|w| parse_u64(w.text));
                 i += 2;
             } else {
                 i += 1;
@@ -331,42 +396,42 @@ pub fn parse_run(line: &[u8]) -> RunSpec<'_> {
             // of that job worth keeping.
             let letters = &t[1..];
             let short = !letters.is_empty() && letters.iter().all(u8::is_ascii_alphabetic);
-            if short && nopts + letters.len() <= MAX_FLAGS {
+            if short && short_option_count + letters.len() <= MAX_SHORT_OPTIONS {
                 for &c in letters {
-                    opts[nopts] = c;
-                    nopts += 1;
+                    short_options[short_option_count] = c;
+                    short_option_count += 1;
                 }
             } else if unexpected.is_none() {
                 unexpected = Some(t);
             }
         } else if !have_prog {
-            prog = t;
+            program = t;
             have_prog = true;
-        } else if npos < MAX_POSITIONALS {
-            pos[npos] = t;
-            posq[npos] = quoted;
-            npos += 1;
+        } else if positional_count < MAX_POSITIONALS {
+            positional_tokens[positional_count] = t;
+            quoted_positionals[positional_count] = quoted;
+            positional_count += 1;
         } else if unexpected.is_none() {
             unexpected = Some(t);
         }
         i += 1;
     }
 
-    RunSpec {
-        prog,
+    ParsedInvocation {
+        program,
         line,
-        mem,
-        pos,
-        posq,
-        npos,
-        opts,
-        nopts,
+        memory_grant,
+        positional_tokens,
+        quoted_positionals,
+        positional_count,
+        short_options,
+        short_option_count,
         unexpected,
         misquoted,
     }
 }
 
-/// The most positional tokens a [`RunSpec`] keeps. Two would cover every manifest shape today (an
+/// The most positional tokens a [`ParsedInvocation`] keeps. Two would cover every manifest shape today (an
 /// argument and a file); the headroom exists so a third token is *refused* rather than dropped
 /// before anything looks at it.
 pub const MAX_POSITIONALS: usize = 4;
@@ -379,31 +444,33 @@ pub const MAX_POSITIONALS: usize = 4;
 /// only the program's [`Manifest`](crate::Manifest) can answer, and milestone 47 removed the `file:` prefix precisely
 /// because the manifest was already answering it. Keeping them in order and letting [`plan_against`](crate::plan_against)
 /// place them is what makes that true in the code rather than only in the prose.
+///
+/// Name: ratified 2026-10-18 (calef: "Approve the family").
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
-pub struct RunSpec<'a> {
+pub struct ParsedInvocation<'a> {
     /// The program name as typed (may not resolve).
-    pub prog: &'a [u8],
+    pub program: &'a [u8],
     /// **The whole invocation as it was typed**, which is what a program that hears words is given
-    /// ([`ArgSpec::Words`], milestone 205). Everything else here is a classification of it, and a
+    /// ([`ProgramArgumentDeclaration::Words`], milestone 205). Everything else here is a classification of it, and a
     /// classification is exactly what §170 (how a foreign program is told what to do) said such a
     /// program must not get.
     line: &'a [u8],
     /// `--mem N`, if given. Recognized before or after the program name, because with the `run`
     /// verb gone the line reads `memory_grant_depleter --mem 16` the way every other command line does.
-    pub mem: Option<u64>,
-    /// The positional tokens after the program name, in order, filled prefix in `pos[..npos]`.
-    pos: [&'a [u8]; MAX_POSITIONALS],
-    npos: usize,
-    /// The short-option letters typed, in order, filled prefix in `opts[..nopts]`. Collected without
+    pub memory_grant: Option<u64>,
+    /// The positional tokens after the program name, in order, filled prefix in `positional_tokens[..positional_count]`.
+    positional_tokens: [&'a [u8]; MAX_POSITIONALS],
+    positional_count: usize,
+    /// The short-option letters typed, in order, filled prefix in `short_options[..short_option_count]`. Collected without
     /// knowing the program, because **an option letter is not authority**: what it may do is widen a
     /// grant, and that is decided in [`plan_against`] against the manifest, at the prompt, before
     /// anything is spawned. A letter no manifest declares is [`Refusal::NoSuchOption`] there.
-    opts: [u8; MAX_FLAGS],
-    nopts: usize,
-    /// Which of [`positionals`](RunSpec::positionals) were quoted, in the same order. A quoted word
+    short_options: [u8; MAX_SHORT_OPTIONS],
+    short_option_count: usize,
+    /// Which of [`positionals`](ParsedInvocation::positionals) were quoted, in the same order. A quoted word
     /// is **never a pattern**, whatever bytes are in it, which is the one authority-visible thing
     /// quoting does: `rm "*.txt"` designates one name and `rm *.txt` designates a set.
-    posq: [bool; MAX_POSITIONALS],
+    quoted_positionals: [bool; MAX_POSITIONALS],
     /// A token nothing can place: a flag-shaped token that is not `--mem`, or one past
     /// [`MAX_POSITIONALS`]. Kept so the shell refuses it rather than silently ignoring authority the
     /// user thought they were granting. A **flag** that fell through to the file position would be
@@ -419,11 +486,11 @@ pub struct RunSpec<'a> {
     pub misquoted: Option<Refusal>,
 }
 
-impl<'a> RunSpec<'a> {
+impl<'a> ParsedInvocation<'a> {
     /// The positional tokens, in the order typed. [`plan_against`](crate::plan_against) places them into the slots the
     /// manifest declares; nothing else should interpret them.
     pub fn positionals(&self) -> &[&'a [u8]] {
-        &self.pos[..self.npos]
+        &self.positional_tokens[..self.positional_count]
     }
 
     /// The whole invocation as typed, for [`argv`]. See the field.
@@ -433,7 +500,7 @@ impl<'a> RunSpec<'a> {
 
     /// The short-option letters typed, in order. Meaningless until a manifest says which exist.
     pub fn options(&self) -> &[u8] {
-        &self.opts[..self.nopts]
+        &self.short_options[..self.short_option_count]
     }
 
     /// **Whether positional `i` was quoted**, which is the whole of what quoting decides about
@@ -442,7 +509,7 @@ impl<'a> RunSpec<'a> {
     ///
     /// `false` for an index past the end, because a word that is not there was not quoted.
     pub fn is_quoted(&self, i: usize) -> bool {
-        i < self.npos && self.posq[i]
+        i < self.positional_count && self.quoted_positionals[i]
     }
 }
 

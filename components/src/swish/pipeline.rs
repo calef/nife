@@ -72,9 +72,9 @@ pub(super) fn pipeline(nav: &mut Nav, l: Line<'_>) {
             Command::Run(spec) => {
                 // A name the image and an installed package both have is refused wherever it
                 // stands (§229 (how a bare name at the prompt reaches an installed program), B2).
-                if let swish::bare::Bare::Both(path) = bare(nav, spec.prog) {
+                if let swish::bare::Bare::Both(path) = bare(nav, spec.program) {
                     refused();
-                    return swish::bare::write_both(spec.prog, &path, &mut print);
+                    return swish::bare::write_both(spec.program, &path, &mut print);
                 }
                 let expanded = match expansion(nav, &spec) {
                     Ok(e) => e,
@@ -320,7 +320,7 @@ fn say_chain_refused(plans: &[Option<Endowment>], r: Refusal) {
     // Named after the first stage that answers while it reads, which is the one a person would
     // reach for `| wc` about. The sentence itself is about the *line* and says so.
     if let Some(e) = plans.iter().flatten().find(|e| e.writes_while_reading) {
-        print(e.prog.name().as_bytes());
+        print(e.program.name().as_bytes());
         print(b": ");
     }
     print(r.message().as_bytes());
@@ -450,19 +450,21 @@ fn write_stage_words(
     head_builtin: bool,
     argvs: &mut [Option<Argv>],
     sets: &mut [Option<WordsGrant>],
-) -> Result<(), (grant_plan::Prog, Option<&'static [u8]>)> {
+) -> Result<(), (grant_plan::Program, Option<&'static [u8]>)> {
     for i in 0..plans.len() {
         let Some(e) = plans[i].filter(|_| !(i == 0 && head_builtin)) else {
             continue;
         };
-        let grant_plan::ArgSpec::Words(grant) = e.prog.manifest().arg else {
+        let grant_plan::ProgramArgumentDeclaration::Words(grant) =
+            e.program.manifest().program_argument
+        else {
             continue;
         };
         let assembled = assemble_argv(l.stages()[i], i)
             .map_err(|why| why.map(|r| r.message().as_bytes()))
             .and_then(|a| {
                 argvs[i] = Some(a);
-                match e.dir {
+                match e.directory {
                     Some(g) => words_grant(&g, grant, i).map(|w| {
                         sets[i] = Some(w);
                     }),
@@ -470,7 +472,7 @@ fn write_stage_words(
                 }
             });
         if let Err(why) = assembled {
-            return Err((e.prog, why));
+            return Err((e.program, why));
         }
     }
     Ok(())
@@ -478,7 +480,7 @@ fn write_stage_words(
 
 /// Say why [`write_stage_words`] could not write `prog`'s words: its sentence, or that the
 /// budget ran out.
-fn say_stage_words_failed(prog: grant_plan::Prog, why: Option<&[u8]>) {
+fn say_stage_words_failed(prog: grant_plan::Program, why: Option<&[u8]>) {
     match why {
         Some(sentence) => {
             refused();
@@ -726,7 +728,7 @@ fn open_at(
 fn open_sink(nav: &mut Nav, g: grant_plan::FileGrant, mode: line::Mode) -> Result<FileOut, Say> {
     let t = nav.tree(g.which);
     let mut tmp = [0u64; nav::MAX_DEPTH];
-    let (dir_handle, opened) = open_at(nav, t, g.dir, &mut tmp)?;
+    let (dir_handle, opened) = open_at(nav, t, g.directory, &mut tmp)?;
     let name = g.name.as_bytes();
     let dir = t.slot;
     let mut handle = nav.name_call_in(t, fs::CREATE, dir_handle, name, 0);
@@ -777,7 +779,7 @@ fn open_sink(nav: &mut Nav, g: grant_plan::FileGrant, mode: line::Mode) -> Resul
 pub(super) fn open_source(nav: &mut Nav, g: grant_plan::FileGrant) -> Result<FileIn, Say> {
     let t = nav.tree(g.which);
     let mut tmp = [0u64; nav::MAX_DEPTH];
-    let (dir_handle, opened) = open_at(nav, t, g.dir, &mut tmp)?;
+    let (dir_handle, opened) = open_at(nav, t, g.directory, &mut tmp)?;
     let handle = nav.name_call_in(t, fs::OPEN, dir_handle, g.name.as_bytes(), 0);
     for h in tmp.iter().take(opened) {
         nav.close_in(t, *h);
@@ -963,8 +965,8 @@ fn spawn_stage(
     argv: Option<Argv>,
     words: Option<WordsGrant>,
 ) -> bool {
-    let mem_slot = if e.mem_pages > 0 {
-        match memory_region_split(e.mem_pages) {
+    let mem_slot = if e.memory_grant_pages > 0 {
+        match memory_region_split(e.memory_grant_pages) {
             Some(slot) => Some(slot),
             None => {
                 // The argv frame was never sent, so its slot is still ours; its region is the
@@ -991,27 +993,32 @@ fn spawn_stage(
         diagnostics: diagnostics.is_some(),
         // **A stage is directory-granted only for words** (milestone 205): a program that hears
         // words is granted what they designated, here as on a plain line. `rm`'s grant is still
-        // met only in `spawn`: the one program with `DirSpec::Required` writes a byte stream and
+        // met only in `spawn`: the one program with `DirectoryGrantDeclaration::Required` writes a byte stream and
         // takes no input, so `rm x | wc` puts it at the head, and delivering it here would be a
         // second copy of `dir_grant`'s refusals. See notes/dir-capability.md's BUGS.
-        dir: words.is_some(),
-        dir2: false,
+        directory_grant: words.is_some(),
+        second_directory_grant: false,
         screen: screen.is_some(),
         // A pipeline stage is always a program the image names (§219 D's first cut runs an image
         // only on a plain line; see `run_image`).
         image: false,
         run_unvouched: false,
-        args: argv.is_some(),
+        program_arguments: argv.is_some(),
         nameset: words.is_some_and(|w| w.set.is_some()),
         machine: machine_wiring(&e),
         // **A stage never promises devices** (milestone 632 (provisional)): `graphical_terminal`'s manifest
         // refuses every operator that builds a stage (`Words` output refuses `>` and a pipe's
-        // left, `InputSpec::Forbidden` its right), so this is false by construction rather than
+        // left, `InputDeclaration::Forbidden` its right), so this is false by construction rather than
         // by decision, and says so for the reader checking the wire.
         graphics: false,
         keyboard: false,
     };
-    let (w0, w1, w2) = spawnproto::request(e.prog.id(), e.arg, e.mem_pages, wiring);
+    let (w0, w1, w2) = spawnproto::request(
+        e.program.id(),
+        e.program_argument,
+        e.memory_grant_pages,
+        wiring,
+    );
     send(SPAWN, w0, w1, w2);
     // The words grant's two data messages first, as `spawn` sends a directory grant's.
     if let Some(DirWords { caretaker, child }) = words.map(|w| w.words) {
@@ -1019,7 +1026,7 @@ fn spawn_stage(
         send(SPAWN, child.0, child.1, child.2);
     }
     // **The argv's frame, then the name set's, before every other capability**
-    // (`spawnproto::ARGS_BIT`, `NAMESET_BIT`), as `spawn` sends them.
+    // (`spawnproto::PROGRAM_ARGUMENTS_BIT`, `NAMESET_BIT`), as `spawn` sends them.
     if let Some(a) = argv {
         user_mode_runtime::send_capability(SPAWN, a.frame, abi::rights::READ, 0);
         cap_delete(a.frame);

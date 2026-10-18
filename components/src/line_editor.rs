@@ -248,7 +248,7 @@ impl Terminal {
                 send(notify, proto::NOTE_ABSORBED, 0, 0);
             }
             Err(why) => {
-                send(notify, proto::NOTE_REFUSED, why, 0);
+                send(notify, proto::NOTE_NOT_ABSORBED, why, 0);
                 user_mode_runtime::exit()
             }
         }

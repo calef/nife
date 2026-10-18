@@ -49,8 +49,9 @@
 //! - **IPv6.** net_stack is IPv4-only (smoltcp built with `proto-ipv4`).
 //! - **`peek`, `duplicate`, multicast join/leave.** No contract verb backs them.
 //!
-//! Advisory knobs with no contract effect (`set_nodelay`, `set_ttl`, `set_linger`, broadcast,
-//! multicast options) accept and return plausible values; they change nothing on the wire.
+//! Advisory knobs with no contract effect (`set_nodelay`, `set_ttl`, the IPv6 hop limits,
+//! `set_linger`, broadcast, multicast options) accept and return plausible values; they change
+//! nothing on the wire.
 
 #![allow(dead_code)]
 
@@ -580,6 +581,14 @@ impl TcpStream {
         Ok(64)
     }
 
+    pub fn set_hop_limit_v6(&self, _: u8) -> io::Result<()> {
+        Ok(())
+    }
+
+    pub fn hop_limit_v6(&self) -> io::Result<u8> {
+        Ok(64)
+    }
+
     pub fn take_error(&self) -> io::Result<Option<io::Error>> {
         Ok(None)
     }
@@ -743,6 +752,14 @@ impl TcpListener {
     }
 
     pub fn ttl(&self) -> io::Result<u32> {
+        Ok(64)
+    }
+
+    pub fn set_hop_limit_v6(&self, _: u8) -> io::Result<()> {
+        Ok(())
+    }
+
+    pub fn hop_limit_v6(&self) -> io::Result<u8> {
         Ok(64)
     }
 
@@ -969,6 +986,14 @@ impl UdpSocket {
         Ok(false)
     }
 
+    pub fn set_multicast_hop_limit_v6(&self, _: u8) -> io::Result<()> {
+        Ok(())
+    }
+
+    pub fn multicast_hop_limit_v6(&self) -> io::Result<u8> {
+        Ok(1)
+    }
+
     pub fn join_multicast_v4(&self, _: &Ipv4Addr, _: &Ipv4Addr) -> io::Result<()> {
         unsupported()
     }
@@ -990,6 +1015,14 @@ impl UdpSocket {
     }
 
     pub fn ttl(&self) -> io::Result<u32> {
+        Ok(64)
+    }
+
+    pub fn set_hop_limit_v6(&self, _: u8) -> io::Result<()> {
+        Ok(())
+    }
+
+    pub fn hop_limit_v6(&self) -> io::Result<u8> {
         Ok(64)
     }
 

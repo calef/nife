@@ -89,8 +89,8 @@ pub(super) struct LoginPrograms {
 
 /// The programs the shell can spawn, and the names the measurement refused among them.
 pub(super) struct Spawnable {
-    pub(super) progs: [Option<elf::Elf<'static>>; grant_plan::PROG_COUNT],
-    pub(super) refused: [&'static str; grant_plan::PROG_COUNT],
+    pub(super) progs: [Option<elf::Elf<'static>>; grant_plan::PROGRAM_COUNT],
+    pub(super) refused: [&'static str; grant_plan::PROGRAM_COUNT],
     pub(super) refused_n: usize,
 }
 
@@ -377,18 +377,18 @@ pub(super) fn measure_spawnable(fs: &nifefs::Fs<'static>, table: &str) -> Spawna
     // after the giveaway: the announcement further down is the only thing the progenitor ever says, so the
     // verdicts have to exist before it. One `Option<elf::Elf>` is five words, so moving the whole
     // table up the frame costs a few hundred bytes and buys a person being told at boot instead of
-    // at the prompt. (It said "seven of them" while `PROG_COUNT` was nine and then ten; a count
+    // at the prompt. (It said "seven of them" while `PROGRAM_COUNT` was nine and then ten; a count
     // written beside a constant that moves is a count that goes stale, so this one is not written.)
     //
     // The refusals are collected in the same pass, because a second pass would hash every program a
     // second time. Only entries the archive **has** count as refusals: `rm` is deliberately not
     // loadable here, and a program this initial ramdisk never packed was never spawnable, so
     // neither is news.
-    let mut progs: [Option<elf::Elf>; grant_plan::PROG_COUNT] = core::array::from_fn(|_| None);
-    let mut refused = [""; grant_plan::PROG_COUNT];
+    let mut progs: [Option<elf::Elf>; grant_plan::PROGRAM_COUNT] = core::array::from_fn(|_| None);
+    let mut refused = [""; grant_plan::PROGRAM_COUNT];
     let mut refused_n = 0usize;
     for (id, slot) in progs.iter_mut().enumerate() {
-        let Some(name) = Prog::from_id(id as u64).and_then(archive_name) else {
+        let Some(name) = Program::from_id(id as u64).and_then(archive_name) else {
             continue;
         };
         let found = measured(fs, table, name);
@@ -1118,9 +1118,9 @@ pub(super) fn retype_spawn_channel(ut: u64) -> SpawnChannel {
 /// Build the caretaker for a configured second directory grant, before the shell that will hold
 /// its endpoint. `None` when there is no grant or it cannot be built.
 #[inline(never)]
-pub(super) fn start_second_dir_caretaker(
+pub(super) fn start_mounted_tree_caretaker(
     w: &Wiring,
-    second_dir: Option<SecondDirGrant>,
+    mounted_tree: Option<MountedTreeGrant>,
     care_elf: Option<&elf::Elf<'static>>,
 ) -> Option<u64> {
     let (g, ut) = (w.g, w.ut);
@@ -1129,7 +1129,7 @@ pub(super) fn start_second_dir_caretaker(
     // `build_caretaker` is always called before the process that will hold its endpoint: the
     // caretaker must exist and answer ready before anything could `CALL` it.
     //
-    // Meaningless without a first directory ([`SecondDirGrant`]'s own doc), so this is `None`
+    // Meaningless without a first directory ([`MountedTreeGrant`]'s own doc), so this is `None`
     // whenever the boot has no filesystem at all, and it degrades to "no second grant" rather
     // than a boot failure whenever the caretaker cannot be built, the same posture this file
     // already takes toward a missing `sink_elf` or `care_elf`: a component the archive did not
@@ -1137,7 +1137,7 @@ pub(super) fn start_second_dir_caretaker(
     //
     // # BUGS
     //
-    // **Unverified against a real boot.** `second_dir` is `None` at every shipped entry point
+    // **Unverified against a real boot.** `mounted_tree` is `None` at every shipped entry point
     // (DECISIONS §126 (a real, single, moving `cwd`): what the subtree should be is an architect's
     // call), so this branch has never
     // run
@@ -1148,7 +1148,7 @@ pub(super) fn start_second_dir_caretaker(
     // the progenitor over sixteen slots is exactly that one: a boot that reaches userspace and prints
     // nothing. Whoever first passes `Some` here should watch for it and run `script/swish-check`
     // before trusting this path.
-    second_dir.filter(|_| w.with_fs).and_then(|sd| {
+    mounted_tree.filter(|_| w.with_fs).and_then(|sd| {
         assert!(
             filesystem_contract::grant::fits(sd.name.as_bytes()),
             "a granted directory's name rides in two argument words; this one does not fit",
@@ -1176,7 +1176,7 @@ pub(super) fn build_shell(
     sh_elf: &elf::Elf<'static>,
     chan: SpawnChannel,
     sh_budget: u64,
-    second_dir_ep: Option<u64>,
+    mounted_tree_ep: Option<u64>,
 ) -> (supervision_protocol::Child, u64) {
     let (g, ut, with_fs) = (w.g, w.ut, w.with_fs);
     // Slot 4 is the filesystem when this boot has one, which is the whole of what `>` and `<` need
@@ -1184,7 +1184,7 @@ pub(super) fn build_shell(
     // file itself. Narrowed to WRITE, which on an endpoint is the right to CALL, and without GRANT,
     // so the shell can hand it to nobody.
     //
-    // **Slot 5, when this boot also has a second grant**, is [`second_dir_ep`]: the narrowed
+    // **Slot 5, when this boot also has a second grant**, is [`mounted_tree_ep`]: the narrowed
     // caretaker endpoint built above. It shares [`SH_FS_VA`] rather than needing a map of its own,
     // for `narrow_dir`'s own reason one level narrower: caretaker and client both map the *same*
     // physical frame the FS server shares with everything downstream of it, and the shell is one
@@ -1236,7 +1236,7 @@ pub(super) fn build_shell(
         sh_maps[n_maps] = (SH_FS_VA, zero.page, abi::address_space::MAP_RW);
         n_maps += 1;
     }
-    if let Some(ep) = second_dir_ep {
+    if let Some(ep) = mounted_tree_ep {
         sh_caps[n_caps] = (ep, abi::rights::WRITE);
         n_caps += 1;
     }
@@ -1246,12 +1246,12 @@ pub(super) fn build_shell(
     n_maps += 1;
     // **The inert-configuration page, mapped for `caps` to read** (milestone 47 (navigation and
     // naming), DECISIONS §111 (inert configuration is a validated page)'s "extend that preview to
-    // print the actual values"). The frame every child declaring `Manifest::config` is endowed
+    // print the actual values"). The frame every child declaring `Manifest::configuration` is endowed
     // with, so what the shell prints is what the child will read. Its capability is placed at a
     // named slot after the build (below), not in this list, because the list's slots move with what
     // the boot granted and the shell probes rather than being told.
     sh_maps[n_maps] = (
-        grant_plan::SHELL_CONFIG_VA,
+        grant_plan::SHELL_CONFIGURATION_VIRTUAL_ADDRESS,
         g.config_page,
         abi::address_space::MAP_RO,
     );
@@ -1285,7 +1285,7 @@ pub(super) fn build_shell(
         shell.tcb,
         g.config_page,
         abi::rights::READ,
-        grant_plan::SHELL_CONFIG_SLOT,
+        grant_plan::SHELL_CONFIGURATION_SLOT,
     ));
     (shell, sh_clock_slot)
 }
@@ -1296,7 +1296,7 @@ pub(super) fn build_shell(
 pub(super) fn finish_shell_endowment(
     g: &BootEndowment,
     shell_tcb: u64,
-    second_dir_ep: Option<u64>,
+    mounted_tree_ep: Option<u64>,
 ) {
     // **The machine statistics page goes to the session, and this process keeps no copy**
     // (milestone 126, DECISIONS §225). Placed now, before the login block, because that block is
@@ -1325,7 +1325,7 @@ pub(super) fn finish_shell_endowment(
     // The caretaker's endpoint was only ever the means of wiring: the shell holds its own copy and
     // the caretaker holds the other end, the same disposal `spawn_service`'s dynamic directory
     // grants already give their own narrowed endpoint below.
-    if let Some(ep) = second_dir_ep {
+    if let Some(ep) = mounted_tree_ep {
         cap_delete(ep);
     }
 }

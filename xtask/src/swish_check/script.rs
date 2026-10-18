@@ -76,7 +76,8 @@ pub(super) static SWISH_CHECK_SCRIPT: LazyLock<Vec<Line>> = LazyLock::new(|| {
 /// **The lines after which this gate presses `^C`**, once the shell has said the job is running.
 /// Each runs until interrupted, so without the keystroke the prompt never comes back. A program
 /// here is also one `every_spawnable_program_has_a_swish_check_line` would otherwise have to excuse.
-pub(super) const SWISH_CHECK_INTERRUPTED: [&str; 2] = ["interrupt_heeder", "interrupt_ignorer"];
+pub(super) const SWISH_CHECK_INTERRUPTED: [&str; 4] =
+    ["interrupt_heeder", "interrupt_ignorer", "wait", "fg %1"];
 
 /// What the shell prints once a supervised job is running and watched. Pressing `^C` before it
 /// would still be counted (the shell's watermark catches an early one), but after it is the case a
