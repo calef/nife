@@ -15,9 +15,9 @@ What a program that is not the kernel is written against, and what would break i
 The headline measures the boundary, two parts:
 
 - The syscall surface: every public constant in `abi`, the `SYS_*` numbers, the `objtype::*`
-  object types, and the method numbers and argument or result encodings in the object modules,
-  plus the values of `abi`'s enums (the `Error::*` codes), which a program matches by number
-  exactly as it does a constant.
+  object types, and the method numbers and argument or result encodings in the object modules.
+  The values of `abi`'s enums (the `Error::*` codes) count too, because a program matches
+  them by number exactly as it does a constant.
   A new syscall number or a method outside the capability model is a design fork, so this
   surface moves by decision.
 - The wire formats: a contract crate's public constant named `*VERSION*`, `*MAGIC*` or
