@@ -144,7 +144,7 @@ pub mod supervisor {
     /// gone. Second word: how many instances this supervisor has started.
     pub const SWAPPED: u64 = 0x5357_4150;
     /// Supervisor → requester: the replacement refused, and the incumbent serves on. Second
-    /// word: the refusal `NOTE_REFUSED` carried.
+    /// word: the refusal `NOTE_NOT_ABSORBED` carried.
     pub const ROLLED_BACK: u64 = 0x524f_4c4c;
 }
 

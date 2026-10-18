@@ -1018,7 +1018,7 @@ mod tests {
     /// A console that also carries state: the widest shape a handoff can land in, with a device on
     /// the far side of it.
     const STATEFUL: Requirements = Requirements {
-        contract: "tally",
+        contract: "stateful_backend",
         caps: &[SERVICE],
         maps: &[UART, WITNESS],
         pages: 32,

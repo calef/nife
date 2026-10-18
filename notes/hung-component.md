@@ -282,7 +282,7 @@ State handoff is still the crux, and a hang makes it harder: a hung component ca
 anything. Dependency-aware orchestration has since been built (notes/dependency-orchestration.md),
 and its quiescence step is the one a hang makes unavailable, so each edge still needs a
 non-cooperative fallback, which is not built. See
-[`hung-component/milestone-23-residuals.md`](hung-component/milestone-23-residuals.md).
+[`hung-component/what-is-left-of-milestone-23.md`](hung-component/what-is-left-of-milestone-23.md).
 
 ## See also
 
