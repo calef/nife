@@ -55,7 +55,7 @@ pub(super) fn piping() -> ! {
         // The shell as the producer: a builtin's bytes into a pipe, counted by a real process.
         &b"echo hello world | wc"[..],
         // Three stages, so a middle stage is a real middle: `wc`'s own output is a byte stream, so
-        // it composes, which is what `OutputSpec::Bytes` on `wc` is for.
+        // it composes, which is what `OutputDeclaration::Bytes` on `wc` is for.
         b"echo hello world | wc | wc",
         // The same unmodified `date`, twice, to two different destinations.
         b"date",
@@ -767,7 +767,7 @@ fn two_tree_rm(nav: &mut Nav) -> u64 {
             grant_plan::plan(&rspec, holdings(nav), grant_plan::expand::Expansion::none())
         && let Some(g) = e.directory
         && g.which == nav::Which::B
-        && dir_grant(&g, e.flags).is_err()
+        && dir_grant(&g, e.short_options).is_err()
     {
         return tt::RM_IN_MOUNT_REFUSED;
     }

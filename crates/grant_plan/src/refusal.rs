@@ -23,7 +23,7 @@ pub enum Refusal {
     /// milestone's inversion cuts both ways: a name the program has no use for is authority the user
     /// did not mean to move, so it is refused rather than granted-and-ignored. **This is the refusal
     /// the `file:` prefix was wrongly credited with**: `least_authority_demo 5 extra` stops here because `least_authority_demo`'s
-    /// manifest says `FileSpec::Forbidden`, which is what refused it before the prefix went away.
+    /// manifest says `FileGrantDeclaration::Forbidden`, which is what refused it before the prefix went away.
     FileForbidden,
     /// The program is endowed a file and the command named none. Naming it on the line is the only
     /// way it can get one, so this is caught at the prompt rather than as an empty slot at runtime.
@@ -42,15 +42,25 @@ pub enum Refusal {
     /// shell tracks, or a path that designates a directory rather than a file.
     FileNotNameable,
     /// The program takes no memory grant, but `--mem` was given.
-    MemForbidden,
+    ///
+    /// Name: ratified 2026-10-18 (calef: "Approve the family").
+    MemoryGrantForbidden,
     /// The program requires a memory grant, but none was given.
-    MemRequired,
+    ///
+    /// Name: ratified 2026-10-18 (calef: "Approve the family").
+    MemoryGrantRequired,
     /// `--mem N` was outside the program's declared range.
-    MemOutOfRange { min: u64, max: u64 },
+    ///
+    /// Name: ratified 2026-10-18 (calef: "Approve the family").
+    MemoryGrantOutOfRange { min: u64, max: u64 },
     /// The program requires an integer argument, but none was given.
-    ArgRequired,
+    ///
+    /// Name: ratified 2026-10-18 (calef: "Approve the family").
+    ProgramArgumentRequired,
     /// The program takes no argument, but one was given.
-    ArgForbidden,
+    ///
+    /// Name: ratified 2026-10-18 (calef: "Approve the family").
+    ProgramArgumentForbidden,
     /// **A pattern matched no name here** (milestone 47's globbing lane). zsh's default rather than
     /// bash's pass-the-pattern-through, and the model forces it: the expansion *is* the grant, so an
     /// empty expansion is an empty grant and running the command would be running it with an
@@ -110,7 +120,7 @@ pub enum Refusal {
     /// the line writes to depend on what is in the directory.
     PatternInRedirect,
     /// **This program's output is not a byte stream**, so there is nothing for `>` or `|` to
-    /// substitute. See [`OutputSpec`](crate::OutputSpec): `least_authority_demo 9` answers with a number in a register, and a file
+    /// substitute. See [`OutputDeclaration`](crate::OutputDeclaration): `least_authority_demo 9` answers with a number in a register, and a file
     /// sink handed that word would write nothing legible into the file.
     NotAByteStream,
     /// **This program declares no second output stream**, and the line put a `2>` on it (DECISIONS
@@ -128,7 +138,7 @@ pub enum Refusal {
     InputRequired,
     /// **This shell would be both the writer and the reader of the line, and it can only wait on
     /// one thing.** Every stage declares that it writes while it reads
-    /// ([`InputSpec::Required::writes_while_reading`](crate::InputSpec::Required::writes_while_reading)), so nothing in the chain absorbs the stream,
+    /// ([`InputDeclaration::Required::writes_while_reading`](crate::InputDeclaration::Required::writes_while_reading)), so nothing in the chain absorbs the stream,
     /// and the shell's feed would block against a stage that is blocked writing back.
     ///
     /// It is a fact about **this shell** rather than about the program, which is why the fix is to
@@ -232,11 +242,11 @@ impl Refusal {
             Refusal::AmbiguousFile => {
                 "is granted one file, and that pattern matched more than one name"
             }
-            Refusal::MemForbidden => "takes no memory grant; drop the --mem",
-            Refusal::MemRequired => "needs a memory grant; add --mem <pages>",
-            Refusal::MemOutOfRange { .. } => "memory grant is out of the range it declares",
-            Refusal::ArgRequired => "needs an integer argument",
-            Refusal::ArgForbidden => "takes no argument",
+            Refusal::MemoryGrantForbidden => "takes no memory grant; drop the --mem",
+            Refusal::MemoryGrantRequired => "needs a memory grant; add --mem <pages>",
+            Refusal::MemoryGrantOutOfRange { .. } => "memory grant is out of the range it declares",
+            Refusal::ProgramArgumentRequired => "needs an integer argument",
+            Refusal::ProgramArgumentForbidden => "takes no argument",
             Refusal::Unexpected => {
                 "unexpected argument (this shell will not grant what it cannot place)"
             }

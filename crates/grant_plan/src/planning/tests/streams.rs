@@ -25,12 +25,12 @@ fn redirecting_and_piping_change_one_field_and_nothing_else() {
     // And everything else is identical, which is the claim. Compared field by field rather than
     // by clearing `sink` and comparing wholes, so a field added later has to be thought about.
     for other in [b, c] {
-        assert_eq!(a.prog, other.prog);
+        assert_eq!(a.program, other.program);
         assert_eq!(a.program_argument, other.program_argument);
         assert_eq!(a.memory_grant_pages, other.memory_grant_pages);
         assert_eq!(a.file, other.file);
         assert_eq!(a.directory, other.directory);
-        assert_eq!(a.flags, other.flags);
+        assert_eq!(a.short_options, other.short_options);
         assert_eq!(a.source, other.source);
         assert_eq!(a.reports, other.reports);
         assert_eq!(a.interruptible, other.interruptible);
@@ -115,7 +115,7 @@ fn naming_a_file_to_a_reader_is_the_operator_left_out() {
     assert!(!g.writable, "a reader reads");
     assert!(
         e.file.is_none(),
-        "this is a stream, not the per-file capability FileSpec describes",
+        "this is a stream, not the per-file capability FileGrantDeclaration describes",
     );
     // The same line against a shell that holds no directory is the milestone's headline
     // refusal, and it is a statement about a capability table rather than about the calendar.
@@ -277,7 +277,7 @@ fn a_diagnostic_redirection_changes_one_field_and_nothing_else() {
 /// under the program, and the program probes one number.
 #[test]
 fn the_declared_slot_is_out_of_reach_of_the_ordinary_grants() {
-    let slot = Prog::Date
+    let slot = Program::Date
         .manifest()
         .output
         .diagnostics_slot()
@@ -288,12 +288,12 @@ fn the_declared_slot_is_out_of_reach_of_the_ordinary_grants() {
     assert!(slot > 4 && slot < 15, "slot {slot} is not out of the way");
     // And every other program declares none, so nothing else needs the slot at all.
     for p in [
-        Prog::LeastAuthorityDemo,
-        Prog::MemoryGrantDepleter,
-        Prog::InterruptHeeder,
-        Prog::InterruptIgnorer,
-        Prog::Rm,
-        Prog::Wc,
+        Program::LeastAuthorityDemo,
+        Program::MemoryGrantDepleter,
+        Program::InterruptHeeder,
+        Program::InterruptIgnorer,
+        Program::Rm,
+        Program::Wc,
     ] {
         assert_eq!(p.manifest().output.diagnostics_slot(), None, "{p:?}");
     }
@@ -304,7 +304,7 @@ fn the_declared_slot_is_out_of_reach_of_the_ordinary_grants() {
 /// unpipeable, which would be a cost §67 does not pay.
 #[test]
 fn declaring_a_second_stream_leaves_the_first_one_redirectable() {
-    assert!(Prog::Date.manifest().output.is_byte_stream());
+    assert!(Program::Date.manifest().output.is_byte_stream());
     assert!(plan_line(b"date | wc", WITH_DIRECTORY).is_ok());
     assert!(plan_line(b"date > out.txt", WITH_DIRECTORY).is_ok());
     // And `2>` rides alongside a pipe, at the tail where it is written.
@@ -321,7 +321,7 @@ fn a_missing_argument_is_reported_before_a_missing_byte_stream() {
     // `least_authority_demo` needs an integer AND has no bytes to redirect. Both are true; one is printed.
     assert_eq!(
         plan_line(b"least_authority_demo > out.txt", WITH_DIRECTORY),
-        Err((0, Refusal::ArgRequired)),
+        Err((0, Refusal::ProgramArgumentRequired)),
     );
 }
 
@@ -417,22 +417,22 @@ fn an_input_operand_survives_a_pipeline() {
 
 /// A filter that answers while it reads: the manifest shape no shipped program declares yet.
 /// Planned through [`plan_against_with`] so [`check_chain`] is live, tested logic rather than a
-/// branch nothing reaches, exactly as [`READS_A_FILE`] keeps `FileSpec::Required` live.
+/// branch nothing reaches, exactly as [`READS_A_FILE`] keeps `FileGrantDeclaration::Required` live.
 const RENDERS_AS_IT_READS: Manifest = Manifest {
-    arg: ArgSpec::Forbidden,
-    mem: MemSpec::Forbidden,
-    file: FileSpec::Forbidden,
-    dir: DirSpec::Forbidden,
-    flags: NO_FLAGS,
-    output: OutputSpec::Bytes,
-    input: InputSpec::Required {
+    program_argument: ProgramArgumentDeclaration::Forbidden,
+    memory_grant: MemoryGrantDeclaration::Forbidden,
+    file: FileGrantDeclaration::Forbidden,
+    directory: DirectoryGrantDeclaration::Forbidden,
+    short_options: NO_SHORT_OPTIONS,
+    output: OutputDeclaration::Bytes,
+    input: InputDeclaration::Required {
         writes_while_reading: true,
     },
     reports: true,
     interruptible: false,
     clock: false,
     domain: false,
-    config: false,
+    configuration: false,
     entropy: false,
     network: false,
     machine: false,
@@ -441,7 +441,7 @@ const RENDERS_AS_IT_READS: Manifest = Manifest {
     sync: false,
     installer: false,
     catalog: false,
-    indexes: IndexStore::Forbidden,
+    indexes: IndexStoreDeclaration::Forbidden,
     startup: StartupContract::Native,
 };
 
@@ -450,7 +450,15 @@ fn plan_as(m: Manifest, text: &[u8], streams: Streams) -> Endowment {
     let Command::Run(r) = parse(text) else {
         panic!()
     };
-    plan_against_with(&r, Prog::Wc, m, WITH_DIRECTORY, Expansion::none(), streams).unwrap()
+    plan_against_with(
+        &r,
+        Program::Wc,
+        m,
+        WITH_DIRECTORY,
+        Expansion::none(),
+        streams,
+    )
+    .unwrap()
 }
 
 /// **The declaration reaches the endowment**, which is what lets a whole line be checked rather
@@ -467,7 +475,7 @@ fn writing_while_reading_is_a_declaration_the_plan_carries() {
         ..Streams::default()
     };
     assert!(plan_as(RENDERS_AS_IT_READS, b"wc", streams).writes_while_reading);
-    assert!(!plan_as(Prog::Wc.manifest(), b"wc", streams).writes_while_reading);
+    assert!(!plan_as(Program::Wc.manifest(), b"wc", streams).writes_while_reading);
 }
 
 /// **One wait point, stated as a rule about a line.**
@@ -492,7 +500,7 @@ fn a_chain_this_shell_feeds_needs_one_stage_that_reads_to_the_end() {
         ..src
     };
     let renderer = plan_as(RENDERS_AS_IT_READS, b"wc", src);
-    let counter = plan_as(Prog::Wc.manifest(), b"wc", src);
+    let counter = plan_as(Program::Wc.manifest(), b"wc", src);
     let renderer_piped = plan_as(RENDERS_AS_IT_READS, b"wc", piped);
 
     // `mdr page.md`: this shell writes the file in, and DECISIONS §106 gives the render

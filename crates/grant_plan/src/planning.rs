@@ -10,8 +10,9 @@
 use crate::expand::{Expansion, Name, NameSet};
 use crate::line::{Sink, Source};
 use crate::{
-    ArgSpec, CapabilityKind, DirSpec, DirectoryGrant, Endowment, FileGrant, FileSpec, Holdings,
-    InputSpec, Manifest, MemSpec, ParsedInvocation, Prog, Refusal, check_words, expand, line, nav,
+    CapabilityKind, DirectoryGrant, DirectoryGrantDeclaration, Endowment, FileGrant,
+    FileGrantDeclaration, Holdings, InputDeclaration, Manifest, MemoryGrantDeclaration,
+    ParsedInvocation, Program, ProgramArgumentDeclaration, Refusal, check_words, expand, line, nav,
     parse_u64,
 };
 
@@ -67,14 +68,14 @@ pub fn plan_stage(
     if let Some(r) = run.misquoted {
         return Err(r);
     }
-    let prog = Prog::from_name(run.program).ok_or(Refusal::NoSuchProgram)?;
+    let prog = Program::from_name(run.program).ok_or(Refusal::NoSuchProgram)?;
     plan_against_with(run, prog, prog.manifest(), holds, expanded, streams)
 }
 
 /// [`plan`]'s second half, against an **explicit** manifest rather than the static table.
 ///
 /// Split out for two reasons, and the first is immediate: it is the only way to exercise a manifest
-/// shape no shipped program declares yet (a program endowed a file), so `FileSpec::Required` is live,
+/// shape no shipped program declares yet (a program endowed a file), so `FileGrantDeclaration::Required` is live,
 /// tested logic instead of a branch nothing reaches. The second is milestone 23, where a manifest
 /// travels *with* a component rather than living in this table, and the composer checks a program it
 /// did not write. That is the same call with a different source of the manifest.
@@ -99,7 +100,7 @@ pub fn plan_stage(
 ///   designates itself.
 pub fn plan_against(
     run: &ParsedInvocation<'_>,
-    prog: Prog,
+    prog: Program,
     m: Manifest,
     holds: Holdings,
     expanded: Expansion,
@@ -111,7 +112,7 @@ pub fn plan_against(
 /// spellings without a pipeline on the line.
 pub fn plan_against_with(
     run: &ParsedInvocation<'_>,
-    prog: Prog,
+    prog: Program,
     m: Manifest,
     holds: Holdings,
     expanded: Expansion,
@@ -130,7 +131,7 @@ pub fn plan_against_with(
     //
     // **Not for a program that hears words** (§170): its line is its argv, a flag-shaped token is
     // one of its words, and the shell has no business refusing an option it never had to know.
-    let words = m.arg.hears_words();
+    let words = m.program_argument.hears_words();
     if run.unexpected.is_some() && !words {
         return Err(Refusal::Unexpected);
     }
@@ -139,7 +140,7 @@ pub fn plan_against_with(
     // at the prompt, never a letter passed along for the program to ignore. It comes first because
     // one of them may *widen the directory grant* below, so the line has to be known-good before
     // anything is decided about how much authority it moves.
-    let flags = plan_options(run, &m, words)?;
+    let short_options = plan_options(run, &m, words)?;
 
     let pos = run.positionals();
     let mut next = 0usize;
@@ -161,8 +162,8 @@ pub fn plan_against_with(
     // the leading path is walked here, once, against where the shell is standing now, and the
     // result is recorded as a value. The child is handed a capability to the directory the names
     // are **in**, plus the names, because taking a name away is an operation on the directory that
-    // holds it and no per-file capability can express it. See [`DirSpec`].
-    let dir = plan_directory_grant(&m, flags, pos, &mut next, &holds, expanded)?;
+    // holds it and no per-file capability can express it. See [`DirectoryGrantDeclaration`].
+    let dir = plan_directory_grant(&m, short_options, pos, &mut next, &holds, expanded)?;
 
     // **A program that hears words is granted what its words designate** (milestone 205, §170
     // (how a foreign program is told what to do) clauses 2 to 5): one directory grant at the
@@ -176,16 +177,16 @@ pub fn plan_against_with(
     //
     // This is milestone 47's move applied to the other direction. The `file:` prefix came out on the
     // finding that the manifest was doing all the work, and it is doing all of it here too: a
-    // program that declares `InputSpec::Required` reads a stream and nothing else, so a bare name in
+    // program that declares `InputDeclaration::Required` reads a stream and nothing else, so a bare name in
     // the position after its declared grants can only be the thing feeding it. There is nothing for
     // the parser to classify and no ambiguity to resolve, because a manifest declaring an input
     // never also declares a file (a program that wanted both would need positional arity, which is
-    // the same widening `ArgSpec` is waiting on; `no_program_declares_both_a_file_and_an_input`
+    // the same widening `ProgramArgumentDeclaration` is waiting on; `no_program_declares_both_a_file_and_an_input`
     // holds every manifest to it since milestone 150).
     //
-    // **That widening is `FileSpec` + `InputSpec`'s problem, not `ArgSpec` + `InputSpec`'s.** An
+    // **That widening is `FileGrantDeclaration` + `InputDeclaration`'s problem, not `ProgramArgumentDeclaration` + `InputDeclaration`'s.** An
     // argument is numeric-shaped and `arg` above already claims a fixed earlier position, so a
-    // manifest declaring both `ArgSpec::Required` and `InputSpec::Required` has nothing left to
+    // manifest declaring both `ProgramArgumentDeclaration::Required` and `InputDeclaration::Required` has nothing left to
     // disambiguate: `arg` takes position 0, `input`'s fallback takes whatever bare name is left,
     // exactly as `arg` and `file` already compose for [`STAMPS_A_FILE`] below. No shipped program
     // has declared the combination, and whether one should is an open question for an architect
@@ -199,7 +200,7 @@ pub fn plan_against_with(
     // stat, or name a second thing, and it cannot tell a file from a pipe from a builtin. Typing the
     // name is still what moves the authority (`wc` alone is refused at the prompt, before anything
     // is spawned), which is designation-is-authorization; what it is *not* is the per-file capability
-    // `FileSpec::Required` describes, because `wc` deliberately does not speak the filesystem
+    // `FileGrantDeclaration::Required` describes, because `wc` deliberately does not speak the filesystem
     // contract at all (milestone 50: "a `wc` that could open the file it counts would be a `wc` that
     // could open any file").
     //
@@ -220,12 +221,12 @@ pub fn plan_against_with(
     let diagnostics = check_streams(m, streams)?;
 
     Ok(Endowment {
-        prog,
+        program: prog,
         program_argument: arg,
         memory_grant_pages: mem_pages,
         file,
         directory: dir,
-        flags,
+        short_options,
         sink: streams.sink,
         source: streams.source,
         diagnostics,
@@ -233,27 +234,27 @@ pub fn plan_against_with(
         interruptible: m.interruptible,
         writes_while_reading: matches!(
             m.input,
-            InputSpec::Required {
+            InputDeclaration::Required {
                 writes_while_reading: true
             }
         ),
     })
 }
 
-/// [`plan_against_with`]'s options: each letter on the line as its bit in `m`'s flags, or
+/// [`plan_against_with`]'s options: each letter on the line as its bit in `m`'s short options, or
 /// [`Refusal::NoSuchOption`]. A program that hears words has none.
 fn plan_options(run: &ParsedInvocation<'_>, m: &Manifest, words: bool) -> Result<u64, Refusal> {
-    let mut flags = 0u64;
+    let mut short_options = 0u64;
     for &letter in run.options().iter().filter(|_| !words) {
         let bit = m
-            .flags
+            .short_options
             .letters()
             .iter()
             .position(|&d| d == letter)
             .ok_or(Refusal::NoSuchOption)?;
-        flags |= 1 << bit;
+        short_options |= 1 << bit;
     }
-    Ok(flags)
+    Ok(short_options)
 }
 
 /// [`plan_against_with`]'s integer argument, taken from the positional at `next`.
@@ -263,17 +264,17 @@ fn plan_program_argument(
     pos: &[&[u8]],
     next: &mut usize,
 ) -> Result<u64, Refusal> {
-    let arg = match m.arg {
-        ArgSpec::Required => {
-            let first = pos.get(*next).ok_or(Refusal::ArgRequired)?;
-            let v = parse_u64(first).ok_or(Refusal::ArgRequired)?;
+    let arg = match m.program_argument {
+        ProgramArgumentDeclaration::Required => {
+            let first = pos.get(*next).ok_or(Refusal::ProgramArgumentRequired)?;
+            let v = parse_u64(first).ok_or(Refusal::ProgramArgumentRequired)?;
             *next += 1;
             v
         }
-        ArgSpec::Forbidden => 0,
+        ProgramArgumentDeclaration::Forbidden => 0,
         // Every positional is a word of the argv the shell assembles at spawn ([`argv`]), so none
         // is left to place and none is unplaceable.
-        ArgSpec::Words(_) => {
+        ProgramArgumentDeclaration::Words(_) => {
             check_words(run.line())?;
             *next = pos.len();
             0
@@ -291,8 +292,8 @@ fn plan_file(
     expanded: Expansion,
 ) -> Result<Option<FileGrant>, Refusal> {
     let file = match m.file {
-        FileSpec::Forbidden => None,
-        FileSpec::Required { writable } => {
+        FileGrantDeclaration::Forbidden => None,
+        FileGrantDeclaration::Required { writable } => {
             let token = *pos.get(*next).ok_or(Refusal::FileRequired)?;
             let at = *next;
             *next += 1;
@@ -318,18 +319,18 @@ fn plan_file(
 }
 
 /// [`plan_against_with`]'s directory grant, designated by the positional at `next`, widened to the
-/// subtree when its recursion option is in `flags`.
+/// subtree when its recursion option is in `short`.
 fn plan_directory_grant(
     m: &Manifest,
-    flags: u64,
+    short_options: u64,
     pos: &[&[u8]],
     next: &mut usize,
     holds: &Holdings,
     expanded: Expansion,
 ) -> Result<Option<DirectoryGrant>, Refusal> {
-    let dir = match m.dir {
-        DirSpec::Forbidden => None,
-        DirSpec::Required { subtree_flag } => {
+    let dir = match m.directory {
+        DirectoryGrantDeclaration::Forbidden => None,
+        DirectoryGrantDeclaration::Required { subtree_option } => {
             let token = *pos.get(*next).ok_or(Refusal::PathRequired)?;
             let at = *next;
             *next += 1;
@@ -340,9 +341,9 @@ fn plan_directory_grant(
             // Typing the recursion option is what widens the capability from "take names out of
             // this directory" to "walk what is under it". A program run without it holds no way to
             // descend, so its recursion is not disabled by a branch anybody has to get right.
-            let subtree = match subtree_flag {
-                Some(letter) => match m.flags.letters().iter().position(|&d| d == letter) {
-                    Some(bit) => flags & (1 << bit) != 0,
+            let subtree = match subtree_option {
+                Some(letter) => match m.short_options.letters().iter().position(|&d| d == letter) {
+                    Some(bit) => short_options & (1 << bit) != 0,
                     // A manifest naming an option it does not declare is a bug in the manifest, and
                     // the safe reading is the narrow one: no widening.
                     None => false,
@@ -368,8 +369,8 @@ fn words_directory_grant(
     expanded: Expansion,
     dir: Option<DirectoryGrant>,
 ) -> Result<Option<DirectoryGrant>, Refusal> {
-    let dir = match (m.arg, expanded.designation()) {
-        (ArgSpec::Words(_), Some(d)) if !d.is_empty() => {
+    let dir = match (m.program_argument, expanded.designation()) {
+        (ProgramArgumentDeclaration::Words(_), Some(d)) if !d.is_empty() => {
             if !holds.directory {
                 return Err(Refusal::NoSuchCapability(CapabilityKind::File));
             }
@@ -399,7 +400,7 @@ fn plan_input_operand(
     holds: &Holdings,
     expanded: Expansion,
 ) -> Result<(), Refusal> {
-    if matches!(m.input, InputSpec::Required { .. })
+    if matches!(m.input, InputDeclaration::Required { .. })
         && matches!(streams.source, Source::None)
         && let Some(&token) = pos.get(*next)
     {
@@ -417,7 +418,7 @@ fn plan_input_operand(
             directory: dir,
             name: Name::new(name).ok_or(Refusal::FileNotNameable)?,
             // A reader reads. The direction is the manifest's here as everywhere else, and
-            // `InputSpec` has only the one.
+            // `InputDeclaration` has only the one.
             writable: false,
         });
     }
@@ -426,13 +427,15 @@ fn plan_input_operand(
 
 /// [`plan_against_with`]'s memory grant: `--mem` checked against what `m` declares.
 fn plan_memory_grant(run: &ParsedInvocation<'_>, m: &Manifest) -> Result<u64, Refusal> {
-    let mem_pages = match (m.mem, run.memory_grant) {
-        (MemSpec::Forbidden, None) => 0,
-        (MemSpec::Forbidden, Some(_)) => return Err(Refusal::MemForbidden),
-        (MemSpec::Required { .. }, None) => return Err(Refusal::MemRequired),
-        (MemSpec::Required { min, max }, Some(n)) => {
+    let mem_pages = match (m.memory_grant, run.memory_grant) {
+        (MemoryGrantDeclaration::Forbidden, None) => 0,
+        (MemoryGrantDeclaration::Forbidden, Some(_)) => return Err(Refusal::MemoryGrantForbidden),
+        (MemoryGrantDeclaration::Required { .. }, None) => {
+            return Err(Refusal::MemoryGrantRequired);
+        }
+        (MemoryGrantDeclaration::Required { min, max }, Some(n)) => {
             if n < min || n > max {
-                return Err(Refusal::MemOutOfRange { min, max });
+                return Err(Refusal::MemoryGrantOutOfRange { min, max });
             }
             n
         }
@@ -499,10 +502,10 @@ fn check_streams(m: Manifest, streams: Streams) -> Result<line::Diagnostics, Ref
         (Some(_), Some((g, mode))) => line::Diagnostics::File(g, mode),
     };
     match (m.input, streams.source) {
-        (InputSpec::Required { .. }, Source::None) => Err(Refusal::InputRequired),
-        (InputSpec::Forbidden, Source::None) => Ok(diagnostics),
-        (InputSpec::Forbidden, _) => Err(Refusal::InputForbidden),
-        (InputSpec::Required { .. }, _) => Ok(diagnostics),
+        (InputDeclaration::Required { .. }, Source::None) => Err(Refusal::InputRequired),
+        (InputDeclaration::Forbidden, Source::None) => Ok(diagnostics),
+        (InputDeclaration::Forbidden, _) => Err(Refusal::InputForbidden),
+        (InputDeclaration::Required { .. }, _) => Ok(diagnostics),
     }
 }
 
@@ -528,7 +531,7 @@ fn check_streams(m: Manifest, streams: Streams) -> Result<line::Diagnostics, Ref
 ///
 /// # What makes a line runnable anyway: one barrier
 ///
-/// A stage that declares [`InputSpec::Required::writes_while_reading`] `false` absorbs the whole
+/// A stage that declares [`InputDeclaration::Required::writes_while_reading`] `false` absorbs the whole
 /// stream before it answers. One of those anywhere in the chain is enough: everything upstream of it
 /// can stream freely, the shell's feed completes, and only then does anything travel back. So
 /// `mdr page.md | wc` runs and `mdr page.md` is refused, with `| wc` being the fix the message names.
@@ -563,11 +566,11 @@ pub fn check_chain(shell_feeds_head: bool, plans: &[Option<Endowment>]) -> Resul
         // **The tail's own output goes to the terminal's sink adapter, not back to this shell.**
         //
         // This trusts that `writes_while_reading` never rides on anything but a byte-stream output,
-        // rather than re-checking `is_byte_stream` here off `e.prog.manifest()`: `e` may have been
-        // planned against an explicit manifest that differs from `e.prog`'s real one
-        // ([`plan_against_with`]'s whole reason to exist), so re-deriving from `e.prog` would answer
+        // rather than re-checking `is_byte_stream` here off `e.program.manifest()`: `e` may have been
+        // planned against an explicit manifest that differs from `e.program`'s real one
+        // ([`plan_against_with`]'s whole reason to exist), so re-deriving from `e.program` would answer
         // a question about the wrong manifest. No shipped program declares
-        // `writes_while_reading: true` next to anything but `OutputSpec::Bytes` today, and a
+        // `writes_while_reading: true` next to anything but `OutputDeclaration::Bytes` today, and a
         // filter's whole shape (writing before it has read to the end) presupposes the streaming
         // sink contract; a manifest that paired the two would be declaring a filter with no stream
         // to filter into.
@@ -653,11 +656,11 @@ pub(crate) fn nav_refusal(_r: nav::Refused) -> Refusal {
 /// the generic unexpected-argument line.
 fn unplaceable(tok: &[u8], m: Manifest) -> Refusal {
     let numeric = parse_u64(tok).is_some();
-    if numeric && matches!(m.arg, ArgSpec::Forbidden) {
-        Refusal::ArgForbidden
+    if numeric && matches!(m.program_argument, ProgramArgumentDeclaration::Forbidden) {
+        Refusal::ProgramArgumentForbidden
     } else if !numeric
-        && matches!(m.file, FileSpec::Forbidden)
-        && matches!(m.dir, DirSpec::Forbidden)
+        && matches!(m.file, FileGrantDeclaration::Forbidden)
+        && matches!(m.directory, DirectoryGrantDeclaration::Forbidden)
     {
         // Only when the program can be handed **neither** a file nor a directory does "takes no
         // file" read true. A second name at `rm` is a name it has nowhere to put, which is the

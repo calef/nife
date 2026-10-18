@@ -24,7 +24,7 @@ pub(super) struct Caretakers {
 /// the worst failure this model has, a program told to destroy something, holding nothing, saying
 /// nothing. Milestone 31 phase 3 removed the cause rather than the symptom, so the exception is gone
 /// and every spawnable program is loaded the same way.
-pub(super) fn archive_name(p: Prog) -> Option<&'static str> {
+pub(super) fn archive_name(p: Program) -> Option<&'static str> {
     Some(p.name())
 }
 
@@ -67,7 +67,7 @@ pub(super) struct Channels {
     /// READ on the wall clock, endowed to a child whose manifest declares one (DECISIONS §43).
     pub(super) clock_page: u64,
     /// READ on the inert-configuration page, endowed to a child whose manifest declares
-    /// [`grant_plan::Manifest::config`] (DECISIONS §111). [`clock_page`](Channels::clock_page)'s
+    /// [`grant_plan::Manifest::configuration`] (DECISIONS §111 (inert configuration is a read-only page)). [`clock_page`](Channels::clock_page)'s
     /// twin in every respect: unconditional, read-only, and handed on only where the manifest asks.
     pub(super) config_page: u64,
     /// WRITE-delegable: the endpoint the terminal's sink adapter serves, which is where a declared
@@ -175,8 +175,8 @@ pub(super) struct Fs {
 /// **supervised** (interruptible) job: the shell leads the delegation with a job untyped and a shared
 /// job frame; we build the whole child *from that untyped* (so the shell's region owns it and can
 /// `DESTROY` it to tear it down, DECISIONS §24), map the job frame in, endow nothing else, start it,
-/// and send `SPAWN_OK` once as the shell's go-ahead. The `progs` array is indexed by [`Prog::id`], so
-/// it is [`grant_plan::PROG_COUNT`] long: a variant added to `grant_plan` without a slot here would
+/// and send `SPAWN_OK` once as the shell's go-ahead. The `progs` array is indexed by [`Program::id`], so
+/// it is [`grant_plan::PROGRAM_COUNT`] long: a variant added to `grant_plan` without a slot here would
 /// be an out-of-bounds read in the progenitor.
 ///
 /// **Only the normal shape is supervised**, and that is not an oversight. An interruptible job's
@@ -185,7 +185,7 @@ pub(super) struct Fs {
 /// second party in the teardown path for memory that is not ours, racing the shell's `DESTROY`.
 pub(super) fn spawn_service(
     c: Channels,
-    progs: &[Option<elf::Elf>; grant_plan::PROG_COUNT],
+    progs: &[Option<elf::Elf>; grant_plan::PROGRAM_COUNT],
     care: Caretakers,
     discipline: SessionDiscipline,
     fs_scoped: bool,
@@ -212,7 +212,7 @@ pub(super) fn spawn_service(
 /// authority, the boot's measured images, and the two pieces of state a request can change.
 struct Service<'a> {
     c: Channels,
-    progs: &'a [Option<elf::Elf<'a>>; grant_plan::PROG_COUNT],
+    progs: &'a [Option<elf::Elf<'a>>; grant_plan::PROGRAM_COUNT],
     care: Caretakers,
     discipline: SessionDiscipline,
     fs_scoped: bool,
@@ -232,7 +232,7 @@ struct Request {
     mem_pages: u64,
     wiring: spawnproto::Wiring,
     interruptible: bool,
-    prog: Option<Prog>,
+    prog: Option<Program>,
     grant: Option<GrantWords>,
     frames: Option<Frames>,
     args_seen: Option<u64>,
@@ -297,8 +297,8 @@ impl Wants {
         let wants_domain = manifest.is_some_and(|m| m.domain);
         // `clock`'s twin again: the inert-configuration page is the progenitor's to endow, not something a
         // command line can designate, so there is no bit on the wire for it either
-        // (`Manifest::config`).
-        let wants_config = manifest.is_some_and(|m| m.config);
+        // (`Manifest::configuration`).
+        let wants_config = manifest.is_some_and(|m| m.configuration);
         // `clock`'s family a fourth time, and the first member of it that is an endpoint rather
         // than a page (milestone 111). Randomness is not something a command line designates, so
         // there is no bit on the wire for it either; the program's own declaration is what decides,
@@ -443,7 +443,7 @@ impl Service<'_> {
         let (image_region, staging) = self.carve_image(&req);
 
         // **A `graphical_terminal` spawn** (milestone 632 (provisional)): graphics is launched from the prompt,
-        // and this is the launch. The request must be the program and the bit together (`Prog::
+        // and this is the launch. The request must be the program and the bit together (`Program::
         // GraphicalTerminal` *and* [`spawnproto::Wiring::graphics`], and never
         // [`spawnproto::Wiring::keyboard`], which no capability follows since milestone 715);
         // anything else is refused rather than half-endowed. A well-formed request on a boot with
@@ -464,7 +464,7 @@ impl Service<'_> {
         // (`build_graphical_terminal_session` owns that disposal). The boot version of this builder trapped
         // because a boot that cannot come up is a dead machine; a launch that cannot is just a
         // command that failed.
-        if req.wiring.graphics || req.prog == Some(Prog::GraphicalTerminal) {
+        if req.wiring.graphics || req.prog == Some(Program::GraphicalTerminal) {
             self.launch_graphical_terminal(&req);
             return;
         }
@@ -513,8 +513,8 @@ impl Service<'_> {
             ..
         } = self.c;
         let spawn = &mut self.spawn;
-        let arg = spawnproto::arg(w1);
-        let mem_pages = spawnproto::mem_pages(w2);
+        let arg = spawnproto::program_argument(w1);
+        let mem_pages = spawnproto::memory_grant_pages(w2);
         let wiring = spawnproto::wiring(w2);
         let interruptible = wiring.interruptible;
         // **Under `IMAGE_BIT` word 0 is a length, not a program** (DECISIONS §219 option D), so no
@@ -522,14 +522,16 @@ impl Service<'_> {
         let prog = if wiring.image {
             None
         } else {
-            Prog::from_id(spawnproto::prog_id(w0))
+            Program::from_id(spawnproto::prog_id(w0))
         };
 
         // **The directory grant's two data messages, before any capability** (milestone 31 phase 3).
         // They are read here rather than inside the branch that uses them because the shell has
         // already sent them: a request that announced them and a progenitor that did not drain them would
         // leave the endpoint holding words the *next* command would read as its own.
-        let grant = wiring.dir.then(|| (spawn.receive(), spawn.receive()));
+        let grant = wiring
+            .directory_grant
+            .then(|| (spawn.receive(), spawn.receive()));
 
         // **The image's frames, after the data and before every other capability** (§219 D),
         // taken and mapped here and copied once the request has been read to its end
@@ -540,9 +542,9 @@ impl Service<'_> {
             .then(|| take_frames(spawn, spawnproto::image_len(w0), own_ut));
 
         // **The argv's one frame, after the image's and before every other capability**
-        // (milestone 205 (how a foreign program is told what to do), DECISIONS §170; `spawnproto::ARGS_BIT`). Taken on every request that
+        // (milestone 205 (how a foreign program is told what to do), DECISIONS §170; `spawnproto::PROGRAM_ARGUMENTS_BIT`). Taken on every request that
         // announced it, whatever program it turns out to be for, so both sides stay in lockstep.
-        let args_seen = if wiring.args {
+        let args_seen = if wiring.program_arguments {
             receive_args(spawn, own_ut)
         } else {
             None
@@ -609,12 +611,15 @@ impl Service<'_> {
         //
         // **From the image pool, and as large as the image** (milestone 595): see
         // [`IMAGE_POOL_PAGES`] and `grant_plan::image_region_pages`.
-        let image_region = if wiring.image && !interruptible && (!wiring.dir || wiring.args) {
+        let image_region = if wiring.image
+            && !interruptible
+            && (!wiring.directory_grant || wiring.program_arguments)
+        {
             spawn.split(
                 images_ut,
                 grant_plan::image_region_pages(
                     spawnproto::image_pages(spawnproto::image_len(w0)),
-                    if wiring.args {
+                    if wiring.program_arguments {
                         grant_plan::StartupContract::Std
                     } else {
                         grant_plan::StartupContract::Native
@@ -659,40 +664,40 @@ impl Service<'_> {
         if let Some(p) = req.delegated.machine_page {
             cap_delete(p);
         }
-        let answer = if prog != Some(Prog::GraphicalTerminal) || !wiring.graphics || wiring.keyboard
-        {
-            spawnproto::SPAWN_FAILED
-        } else if !graphical_terminal_caps.held {
-            spawnproto::SPAWN_NO_DISPLAY
-        } else {
-            let built = match (
-                self.progs[Prog::GraphicalTerminal.id() as usize].as_ref(),
-                self.spawn.split(jobs_ut, GRAPHICAL_TERMINAL_SESSION_PAGES),
-            ) {
-                (Some(elf), Some(region)) => build_graphical_terminal_session(
-                    &GraphicalTerminalLaunch {
-                        own_ut,
-                        region,
-                        deaths,
-                        boot_terminal,
-                        result_ep,
-                        gpu: &graphical_terminal_caps.gpu,
-                        kbd: graphical_terminal_caps
-                            .keyboard
-                            .then_some(&graphical_terminal_caps.kbd),
-                        program: elf,
-                    },
-                    graphical_terminal_caps,
-                    &self.discipline,
-                ),
-                _ => Err(()),
+        let answer =
+            if prog != Some(Program::GraphicalTerminal) || !wiring.graphics || wiring.keyboard {
+                spawnproto::SPAWN_FAILED
+            } else if !graphical_terminal_caps.held {
+                spawnproto::SPAWN_NO_DISPLAY
+            } else {
+                let built = match (
+                    self.progs[Program::GraphicalTerminal.id() as usize].as_ref(),
+                    self.spawn.split(jobs_ut, GRAPHICAL_TERMINAL_SESSION_PAGES),
+                ) {
+                    (Some(elf), Some(region)) => build_graphical_terminal_session(
+                        &GraphicalTerminalLaunch {
+                            own_ut,
+                            region,
+                            deaths,
+                            boot_terminal,
+                            result_ep,
+                            gpu: &graphical_terminal_caps.gpu,
+                            kbd: graphical_terminal_caps
+                                .keyboard
+                                .then_some(&graphical_terminal_caps.kbd),
+                            program: elf,
+                        },
+                        graphical_terminal_caps,
+                        &self.discipline,
+                    ),
+                    _ => Err(()),
+                };
+                // A session that came up answers for itself; only a failure is ours to say.
+                match built {
+                    Ok(()) => return,
+                    Err(()) => spawnproto::SPAWN_FAILED,
+                }
             };
-            // A session that came up answers for itself; only a failure is ours to say.
-            match built {
-                Ok(()) => return,
-                Err(()) => spawnproto::SPAWN_FAILED,
-            }
-        };
         send(result_ep, answer, 0, 0);
     }
 
@@ -731,7 +736,7 @@ impl Service<'_> {
                 None
             };
             let elf = elf?;
-            match endowed_image(&elf, vouch, arg, mem_pages, wiring.args) {
+            match endowed_image(&elf, vouch, arg, mem_pages, wiring.program_arguments) {
                 Some(m) => {
                     image_manifest = Some(m);
                     Some(elf)
@@ -743,7 +748,7 @@ impl Service<'_> {
             }
         });
         // **The one manifest everything below reads**, so an image is endowed from what
-        // `endowed_image` decided and never from a `Prog` row: `prog` stays `None` for it, and no
+        // `endowed_image` decided and never from a `Program` row: `prog` stays `None` for it, and no
         // row's authority can reach it by a path this line does not name.
         // **Narrowed by the line's verb** for a program with a verb table (milestone 809 (the
         // package client becomes a program), option V2): `jig list` is endowed with the catalog
@@ -864,7 +869,7 @@ impl Service<'_> {
         // what it lacks.
         let index_rights = manifest
             .and_then(|m| m.indexes.rights())
-            .filter(|_| std_layout && !req.wiring.dir && req.badge == 0);
+            .filter(|_| std_layout && !req.wiring.directory_grant && req.badge == 0);
         let dir = self.wire_directory(req, manifest, region, (wants.sync, index_rights));
         // **And its copy of the image's index sources**, beside the store and only with it.
         let sources_page = match (dir.index_store, region) {
@@ -884,7 +889,10 @@ impl Service<'_> {
         // before the child exists, since the resolver deletes a page attached to a badge it does
         // not know yet. A job that should hold one and could not is refused, `dir_failed`'s rule.
         let eligible = std_layout && wants.network && req.delegated.screen.is_none();
-        let zone = req.prog.and_then(Prog::resolver_zone).filter(|_| eligible);
+        let zone = req
+            .prog
+            .and_then(Program::resolver_zone)
+            .filter(|_| eligible);
         let (resolver, resolver_failed) = self.spawn.resolver_for(dir.label, zone);
 
         let out = self.output(req);
@@ -983,7 +991,7 @@ impl Service<'_> {
         } else {
             self.spawn.split(
                 jobs_ut,
-                if req.wiring.dir {
+                if req.wiring.directory_grant {
                     DIR_JOB_REGION_PAGES
                 } else {
                     JOB_REGION_PAGES
@@ -1074,10 +1082,10 @@ impl Service<'_> {
         // `activation/indexes` with the verb's rights, on a line that named no directory. Only a
         // server that enforces bindings itself can make one, since the path is longer than a
         // caretaker's name; on any other the store is not granted and `jig` says so.
-        let index_store = !wiring.dir && self.fs_scoped && index_rights.is_some();
+        let index_store = !wiring.directory_grant && self.fs_scoped && index_rights.is_some();
         // A sync-only grant takes a window too (milestone 805): its badge is bound sync-only
         // rather than to a directory, and it is held until the reap like any other.
-        let window = if (wiring.dir || wants_sync || index_store) && fs.is_some() {
+        let window = if (wiring.directory_grant || wants_sync || index_store) && fs.is_some() {
             spawn.until_reaped(|s| s.windows.take(label))
         } else {
             None
@@ -1092,7 +1100,7 @@ impl Service<'_> {
             ),
             _ => None,
         };
-        let bound = match (wiring.dir && self.fs_scoped, fs, grant, window) {
+        let bound = match (wiring.directory_grant && self.fs_scoped, fs, grant, window) {
             _ if bound.is_some() => bound,
             (true, Some(f), Some((care_words, _)), Some(w)) => bound_channel(
                 f,
@@ -1105,7 +1113,7 @@ impl Service<'_> {
         };
         let channel = match (bound, fs, window) {
             (Some(b), ..) => Some(b),
-            (None, Some(f), Some(w)) if wiring.dir => {
+            (None, Some(f), Some(w)) if wiring.directory_grant => {
                 job_channel(f, (&mut spawn.windows, w), own_ut, &mut self.fs_mapped)
             }
             _ => None,
@@ -1113,7 +1121,7 @@ impl Service<'_> {
         let narrowed = if let Some(b) = bound {
             // The job holds the file server's own endpoint, badged and bound: no caretaker.
             Some(b.ep)
-        } else if wiring.dir {
+        } else if wiring.directory_grant {
             match (region, channel, grant) {
                 (Some(r), Some(ch), Some((care_words, _))) => {
                     build_grant(own_ut, r, ch, &self.care, care_words, set_seen, manifest)
@@ -1126,7 +1134,7 @@ impl Service<'_> {
         // A directory grant that produced no capability. The program is not built: it was told
         // to act on something and holds nothing, which is the one outcome this model must never
         // trade away.
-        let dir_failed = wiring.dir && narrowed.is_none();
+        let dir_failed = wiring.directory_grant && narrowed.is_none();
         // **The sync-only capability** (milestone 805, `fs::BIND_SYNC`): the window's badge
         // bound so the file server answers `SYNC` on it and refuses everything else, and the
         // endpoint badged with it. No page: a sync carries no bytes. Only a server that

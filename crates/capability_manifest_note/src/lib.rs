@@ -55,7 +55,7 @@
 //! | 33 | 1 | `entropy` | 0 or 1 |
 //! | 34 | 1 | `network` | 0 or 1 |
 //! | 35 | 1 | `startup` | 0 native, 1 std |
-//! | 36 | 1 | option count | at most `grant_plan::MAX_DECLARED_FLAGS` (16) |
+//! | 36 | 1 | option count | at most `grant_plan::MAX_DECLARED_SHORT_OPTIONS` (16) |
 //! | 37 | 16 | option letters | the first *count* are the letters in bit order, the rest 0 |
 //! | 53 | 1 | `machine` | 0 or 1 (milestone 126, the machine statistics page) |
 //! | 54 | 1 | `share` | 0 or 1 (milestone 126, a view of the job budget) |
@@ -71,8 +71,9 @@
 #![no_std]
 
 use grant_plan::{
-    ArgSpec, DIAGNOSTICS_SLOT, DirSpec, FileSpec, Flags, IndexStore, InputSpec, MAX_DECLARED_FLAGS,
-    Manifest, MemSpec, OutputSpec, StartupContract, WordGrant,
+    DIAGNOSTICS_SLOT, DirectoryGrantDeclaration, FileGrantDeclaration, IndexStoreDeclaration,
+    InputDeclaration, MAX_DECLARED_SHORT_OPTIONS, Manifest, MemoryGrantDeclaration,
+    OutputDeclaration, ProgramArgumentDeclaration, ShortOptions, StartupContract, WordGrant,
 };
 
 /// **The note's owner string**, without its NUL: the project's name, lowercase as
@@ -142,7 +143,7 @@ const NETWORK: usize = 34;
 const RUNTIME: usize = 35;
 const FLAG_COUNT: usize = 36;
 const FLAG_LETTERS: usize = 37;
-const MACHINE: usize = FLAG_LETTERS + MAX_DECLARED_FLAGS;
+const MACHINE: usize = FLAG_LETTERS + MAX_DECLARED_SHORT_OPTIONS;
 const SHARE: usize = MACHINE + 1;
 const TAIL: usize = SHARE + 1;
 
@@ -202,7 +203,7 @@ pub const fn encode(m: &Manifest) -> [u8; DESCRIPTOR_LEN] {
     );
     // Milestone 801 (packages over the internet): the index store likewise, for the same reason.
     assert!(
-        matches!(m.indexes, IndexStore::Forbidden),
+        matches!(m.indexes, IndexStoreDeclaration::Forbidden),
         "a manifest note cannot carry `indexes`: only the owner's console grants the index store"
     );
     let mut out = [0u8; DESCRIPTOR_LEN];
@@ -211,30 +212,30 @@ pub const fn encode(m: &Manifest) -> [u8; DESCRIPTOR_LEN] {
     out[1] = v[1];
     out[2] = v[2];
     out[3] = v[3];
-    out[ARG] = match m.arg {
-        ArgSpec::Forbidden => 0,
-        ArgSpec::Required => 1,
+    out[ARG] = match m.program_argument {
+        ProgramArgumentDeclaration::Forbidden => 0,
+        ProgramArgumentDeclaration::Required => 1,
         // A program whose line is its argv (milestone 205 (how a foreign program is told what to
         // do), §170 (how a foreign program is told what to do)). Added to version 1 in place on 2026-09-27; see the module's "one encoding"
         // paragraph for calef's ruling.
-        ArgSpec::Words(WordGrant::ReadOnly) => 2,
-        ArgSpec::Words(WordGrant::ReadWrite) => 3,
-        ArgSpec::Words(WordGrant::Create) => 4,
+        ProgramArgumentDeclaration::Words(WordGrant::ReadOnly) => 2,
+        ProgramArgumentDeclaration::Words(WordGrant::ReadWrite) => 3,
+        ProgramArgumentDeclaration::Words(WordGrant::Create) => 4,
     };
-    if let MemSpec::Required { min, max } = m.mem {
+    if let MemoryGrantDeclaration::Required { min, max } = m.memory_grant {
         out[MEM] = 1;
         put8(&mut out, MEM_MIN, min);
         put8(&mut out, MEM_MAX, max);
     }
     out[FILE] = match m.file {
-        FileSpec::Forbidden => 0,
-        FileSpec::Required { writable: false } => 1,
-        FileSpec::Required { writable: true } => 2,
+        FileGrantDeclaration::Forbidden => 0,
+        FileGrantDeclaration::Required { writable: false } => 1,
+        FileGrantDeclaration::Required { writable: true } => 2,
     };
-    let letters = m.flags.letters();
-    if let DirSpec::Required { subtree_flag } = m.dir {
+    let letters = m.short_options.letters();
+    if let DirectoryGrantDeclaration::Required { subtree_option } = m.directory {
         out[DIR] = 1;
-        if let Some(letter) = subtree_flag {
+        if let Some(letter) = subtree_option {
             let mut i = 0;
             let mut declared = false;
             while i < letters.len() {
@@ -249,10 +250,10 @@ pub const fn encode(m: &Manifest) -> [u8; DESCRIPTOR_LEN] {
         }
     }
     out[OUTPUT] = match m.output {
-        OutputSpec::Silent => 0,
-        OutputSpec::Words => 1,
-        OutputSpec::Bytes => 2,
-        OutputSpec::BytesAndDiagnostics { slot } => {
+        OutputDeclaration::Silent => 0,
+        OutputDeclaration::Words => 1,
+        OutputDeclaration::Bytes => 2,
+        OutputDeclaration::BytesAndDiagnostics { slot } => {
             assert!(
                 slot == DIAGNOSTICS_SLOT,
                 "a second stream lands at grant_plan::DIAGNOSTICS_SLOT"
@@ -260,7 +261,7 @@ pub const fn encode(m: &Manifest) -> [u8; DESCRIPTOR_LEN] {
             3
         }
     };
-    if let InputSpec::Required {
+    if let InputDeclaration::Required {
         writes_while_reading,
     } = m.input
     {
@@ -271,7 +272,7 @@ pub const fn encode(m: &Manifest) -> [u8; DESCRIPTOR_LEN] {
     out[INTERRUPTIBLE] = m.interruptible as u8;
     out[CLOCK] = m.clock as u8;
     out[DOMAIN] = m.domain as u8;
-    out[CONFIG] = m.config as u8;
+    out[CONFIG] = m.configuration as u8;
     out[ENTROPY] = m.entropy as u8;
     out[NETWORK] = m.network as u8;
     out[MACHINE] = m.machine as u8;
@@ -320,7 +321,7 @@ fn zero(d: &[u8], at: usize, len: usize) -> Result<(), Error> {
 /// # Examples
 ///
 /// ```
-/// let m = grant_plan::Prog::Uptime.manifest();
+/// let m = grant_plan::Program::Uptime.manifest();
 /// let bytes = capability_manifest_note::encode(&m);
 /// assert_eq!(capability_manifest_note::decode(&bytes), Ok(m));
 ///
@@ -332,7 +333,7 @@ fn zero(d: &[u8], at: usize, len: usize) -> Result<(), Error> {
 /// A program carries its note with one line at module scope:
 ///
 /// ```ignore
-/// capability_manifest_note::carry!(grant_plan::Prog::Uptime.manifest());
+/// capability_manifest_note::carry!(grant_plan::Program::Uptime.manifest());
 /// ```
 pub fn decode(d: &[u8]) -> Result<Manifest, Error> {
     if d.len() < 4 {
@@ -348,30 +349,30 @@ pub fn decode(d: &[u8]) -> Result<Manifest, Error> {
     let mem = decode_mem(d)?;
     let file = decode_file(d)?;
     let count = d[FLAG_COUNT] as usize;
-    if count > MAX_DECLARED_FLAGS {
+    if count > MAX_DECLARED_SHORT_OPTIONS {
         return Err(Error::BadField(FLAG_COUNT));
     }
     let letters = &d[FLAG_LETTERS..FLAG_LETTERS + count];
-    let flags = Flags::try_new(letters).ok_or(Error::BadField(FLAG_LETTERS))?;
-    zero(d, FLAG_LETTERS + count, MAX_DECLARED_FLAGS - count)?;
+    let short_options = ShortOptions::try_new(letters).ok_or(Error::BadField(FLAG_LETTERS))?;
+    zero(d, FLAG_LETTERS + count, MAX_DECLARED_SHORT_OPTIONS - count)?;
     let dir = decode_dir(d, letters)?;
     let output = decode_output(d)?;
     let input = decode_input(d)?;
     let startup = decode_runtime(d)?;
     zero(d, TAIL, DESCRIPTOR_LEN - TAIL)?;
     Ok(Manifest {
-        arg,
-        mem,
+        program_argument: arg,
+        memory_grant: mem,
         file,
-        dir,
-        flags,
+        directory: dir,
+        short_options,
         output,
         input,
         reports: flag(d, REPORTS)?,
         interruptible: flag(d, INTERRUPTIBLE)?,
         clock: flag(d, CLOCK)?,
         domain: flag(d, DOMAIN)?,
-        config: flag(d, CONFIG)?,
+        configuration: flag(d, CONFIG)?,
         entropy: flag(d, ENTROPY)?,
         network: flag(d, NETWORK)?,
         machine: flag(d, MACHINE)?,
@@ -381,60 +382,60 @@ pub fn decode(d: &[u8]) -> Result<Manifest, Error> {
         sync: false,
         installer: false,
         catalog: false,
-        indexes: IndexStore::Forbidden,
+        indexes: IndexStoreDeclaration::Forbidden,
         startup,
     })
 }
 
 /// The `arg` field.
-fn decode_arg(d: &[u8]) -> Result<ArgSpec, Error> {
+fn decode_arg(d: &[u8]) -> Result<ProgramArgumentDeclaration, Error> {
     Ok(match d[ARG] {
-        0 => ArgSpec::Forbidden,
-        1 => ArgSpec::Required,
-        2 => ArgSpec::Words(WordGrant::ReadOnly),
-        3 => ArgSpec::Words(WordGrant::ReadWrite),
-        4 => ArgSpec::Words(WordGrant::Create),
+        0 => ProgramArgumentDeclaration::Forbidden,
+        1 => ProgramArgumentDeclaration::Required,
+        2 => ProgramArgumentDeclaration::Words(WordGrant::ReadOnly),
+        3 => ProgramArgumentDeclaration::Words(WordGrant::ReadWrite),
+        4 => ProgramArgumentDeclaration::Words(WordGrant::Create),
         _ => return Err(Error::BadField(ARG)),
     })
 }
 
 /// The `mem` field and its bounds, which are zero when it is absent.
-fn decode_mem(d: &[u8]) -> Result<MemSpec, Error> {
+fn decode_mem(d: &[u8]) -> Result<MemoryGrantDeclaration, Error> {
     Ok(match d[MEM] {
         0 => {
             zero(d, MEM_MIN, 16)?;
-            MemSpec::Forbidden
+            MemoryGrantDeclaration::Forbidden
         }
         1 => {
             let (min, max) = (get8(d, MEM_MIN), get8(d, MEM_MAX));
             if min > max {
                 return Err(Error::BadField(MEM_MIN));
             }
-            MemSpec::Required { min, max }
+            MemoryGrantDeclaration::Required { min, max }
         }
         _ => return Err(Error::BadField(MEM)),
     })
 }
 
 /// The `file` field.
-fn decode_file(d: &[u8]) -> Result<FileSpec, Error> {
+fn decode_file(d: &[u8]) -> Result<FileGrantDeclaration, Error> {
     Ok(match d[FILE] {
-        0 => FileSpec::Forbidden,
-        1 => FileSpec::Required { writable: false },
-        2 => FileSpec::Required { writable: true },
+        0 => FileGrantDeclaration::Forbidden,
+        1 => FileGrantDeclaration::Required { writable: false },
+        2 => FileGrantDeclaration::Required { writable: true },
         _ => return Err(Error::BadField(FILE)),
     })
 }
 
 /// The `dir` field and its subtree letter, which must be one of the declared `letters`.
-fn decode_dir(d: &[u8], letters: &[u8]) -> Result<DirSpec, Error> {
+fn decode_dir(d: &[u8], letters: &[u8]) -> Result<DirectoryGrantDeclaration, Error> {
     Ok(match d[DIR] {
         0 => {
             zero(d, SUBTREE, 1)?;
-            DirSpec::Forbidden
+            DirectoryGrantDeclaration::Forbidden
         }
-        1 => DirSpec::Required {
-            subtree_flag: match d[SUBTREE] {
+        1 => DirectoryGrantDeclaration::Required {
+            subtree_option: match d[SUBTREE] {
                 0 => None,
                 l if letters.contains(&l) => Some(l),
                 _ => return Err(Error::BadField(SUBTREE)),
@@ -445,12 +446,12 @@ fn decode_dir(d: &[u8], letters: &[u8]) -> Result<DirSpec, Error> {
 }
 
 /// The `output` field.
-fn decode_output(d: &[u8]) -> Result<OutputSpec, Error> {
+fn decode_output(d: &[u8]) -> Result<OutputDeclaration, Error> {
     Ok(match d[OUTPUT] {
-        0 => OutputSpec::Silent,
-        1 => OutputSpec::Words,
-        2 => OutputSpec::Bytes,
-        3 => OutputSpec::BytesAndDiagnostics {
+        0 => OutputDeclaration::Silent,
+        1 => OutputDeclaration::Words,
+        2 => OutputDeclaration::Bytes,
+        3 => OutputDeclaration::BytesAndDiagnostics {
             slot: DIAGNOSTICS_SLOT,
         },
         _ => return Err(Error::BadField(OUTPUT)),
@@ -458,13 +459,13 @@ fn decode_output(d: &[u8]) -> Result<OutputSpec, Error> {
 }
 
 /// The `input` field and whether it writes while reading, which is zero when it is absent.
-fn decode_input(d: &[u8]) -> Result<InputSpec, Error> {
+fn decode_input(d: &[u8]) -> Result<InputDeclaration, Error> {
     Ok(match d[INPUT] {
         0 => {
             zero(d, WRITES_WHILE_READING, 1)?;
-            InputSpec::Forbidden
+            InputDeclaration::Forbidden
         }
-        1 => InputSpec::Required {
+        1 => InputDeclaration::Required {
             writes_while_reading: flag(d, WRITES_WHILE_READING)?,
         },
         _ => return Err(Error::BadField(INPUT)),
@@ -684,7 +685,7 @@ pub const fn verbs_len(count: usize) -> usize {
 /// the compiler; `LEN` is [`verbs_len`] of the table's length, named by the caller's type:
 ///
 /// ```
-/// const TABLE: &[grant_plan::VerbGrant] = grant_plan::Prog::Jig.verbs();
+/// const TABLE: &[grant_plan::VerbGrant] = grant_plan::Program::Jig.verbs();
 /// const BYTES: [u8; capability_manifest_note::verbs_len(TABLE.len())] = capability_manifest_note::encode_verbs(TABLE);
 /// assert_eq!(capability_manifest_note::decode_verbs(&BYTES).unwrap().len(), TABLE.len());
 /// ```
@@ -890,11 +891,11 @@ mod verification {
 mod verb_tests {
     extern crate std;
 
-    use grant_plan::{ManifestAuthorities, Prog, VerbGrant};
+    use grant_plan::{ManifestAuthorities, Program, VerbGrant};
 
     use super::*;
 
-    const JIG: &[VerbGrant] = Prog::Jig.verbs();
+    const JIG: &[VerbGrant] = Program::Jig.verbs();
     const JIG_BYTES: [u8; verbs_len(JIG.len())] = encode_verbs(JIG);
 
     /// **`jig`'s verb table round-trips, and so does an empty one** (milestone 809, fork 2: a list
@@ -1056,7 +1057,7 @@ mod verb_tests {
 
 #[cfg(test)]
 mod tests {
-    use grant_plan::Prog;
+    use grant_plan::Program;
 
     use super::*;
 
@@ -1085,14 +1086,18 @@ mod tests {
     }
 
     /// Every manifest the tree compiles in has a spelling, and reads back as itself. A program
-    /// added to `Prog` with a manifest this layout cannot carry fails here rather than in a build
+    /// added to `Program` with a manifest this layout cannot carry fails here rather than in a build
     /// that tries to carry it.
     #[test]
     fn every_compiled_in_manifest_round_trips() {
-        for p in Prog::ALL {
+        for p in Program::ALL {
             let m = p.manifest();
             // The two manifests with no note, by design (milestones 805 and 809): see `encode`.
-            if m.reboot || m.sync || m.installer || m.catalog || m.indexes != IndexStore::Forbidden
+            if m.reboot
+                || m.sync
+                || m.installer
+                || m.catalog
+                || m.indexes != IndexStoreDeclaration::Forbidden
             {
                 continue;
             }
@@ -1103,7 +1108,7 @@ mod tests {
         // Each word grant a program that hears words may declare (milestone 205).
         for g in [WordGrant::ReadOnly, WordGrant::ReadWrite, WordGrant::Create] {
             let m = Manifest {
-                arg: ArgSpec::Words(g),
+                program_argument: ProgramArgumentDeclaration::Words(g),
                 ..grant_plan::UNVOUCHED_STD_MANIFEST
             };
             assert_eq!(decode(&encode(&m)), Ok(m), "{g:?}");
@@ -1112,7 +1117,7 @@ mod tests {
 
     #[test]
     fn a_later_version_is_refused_rather_than_guessed_at() {
-        let mut d = encode(&Prog::Uptime.manifest());
+        let mut d = encode(&Program::Uptime.manifest());
         d[0] = 2;
         assert_eq!(decode(&d), Err(Error::UnknownVersion));
         assert_eq!(decode(&d[..3]), Err(Error::NoVersion));
@@ -1120,7 +1125,7 @@ mod tests {
 
     #[test]
     fn a_descriptor_one_byte_long_or_short_is_refused() {
-        let d = encode(&Prog::Uptime.manifest());
+        let d = encode(&Program::Uptime.manifest());
         assert_eq!(decode(&d[..DESCRIPTOR_LEN - 1]), Err(Error::WrongLength));
         let mut long = [0u8; DESCRIPTOR_LEN + 1];
         long[..DESCRIPTOR_LEN].copy_from_slice(&d);
@@ -1129,7 +1134,7 @@ mod tests {
 
     #[test]
     fn every_field_refuses_a_value_outside_its_range() {
-        let base = encode(&Prog::Uptime.manifest());
+        let base = encode(&Program::Uptime.manifest());
         for at in [
             ARG,
             MEM,
@@ -1154,7 +1159,7 @@ mod tests {
 
     #[test]
     fn a_byte_the_layout_says_is_zero_is_refused() {
-        let base = encode(&Prog::Uptime.manifest());
+        let base = encode(&Program::Uptime.manifest());
         // Uptime declares no memory, no input, no directory and no options, so all of these are
         // absent fields, and the three trailing bytes are always zero.
         for at in [
@@ -1174,7 +1179,7 @@ mod tests {
 
     #[test]
     fn options_are_distinct_letters_and_the_subtree_option_is_one_of_them() {
-        let rm = encode(&Prog::Rm.manifest());
+        let rm = encode(&Program::Rm.manifest());
         assert_eq!(&rm[FLAG_LETTERS..FLAG_LETTERS + 3], b"rfv");
         assert_eq!(rm[SUBTREE], b'r');
 
@@ -1187,15 +1192,15 @@ mod tests {
         assert_eq!(decode(&undeclared), Err(Error::BadField(SUBTREE)));
 
         let mut too_many = rm;
-        too_many[FLAG_COUNT] = MAX_DECLARED_FLAGS as u8 + 1;
+        too_many[FLAG_COUNT] = MAX_DECLARED_SHORT_OPTIONS as u8 + 1;
         assert_eq!(decode(&too_many), Err(Error::BadField(FLAG_COUNT)));
     }
 
     #[test]
     fn a_memory_range_upside_down_is_refused() {
         let m = Manifest {
-            mem: MemSpec::Required { min: 4, max: 8 },
-            ..Prog::Uptime.manifest()
+            memory_grant: MemoryGrantDeclaration::Required { min: 4, max: 8 },
+            ..Program::Uptime.manifest()
         };
         let mut d = encode(&m);
         assert_eq!(decode(&d), Ok(m));
@@ -1205,13 +1210,13 @@ mod tests {
 
     #[test]
     fn the_note_is_what_elf_finds() {
-        let n = Note::of(&Prog::Uptime.manifest());
+        let n = Note::of(&Program::Uptime.manifest());
         assert_eq!(n.0.len(), NOTE_LEN);
         assert_eq!(&n.0[0..4], &5u32.to_le_bytes());
         assert_eq!(&n.0[4..8], &(DESCRIPTOR_LEN as u32).to_le_bytes());
         assert_eq!(&n.0[8..12], &MANIFEST.to_le_bytes());
         assert_eq!(&n.0[12..20], b"nife\0\0\0\0");
-        assert_eq!(decode(&n.0[20..]), Ok(Prog::Uptime.manifest()));
+        assert_eq!(decode(&n.0[20..]), Ok(Program::Uptime.manifest()));
     }
 
     /// The manifest every field of which is at a non-default value except those a test sets, so a
@@ -1226,33 +1231,44 @@ mod tests {
     #[test]
     fn every_value_of_every_field_round_trips() {
         let args = [
-            ArgSpec::Forbidden,
-            ArgSpec::Required,
-            ArgSpec::Words(WordGrant::ReadOnly),
-            ArgSpec::Words(WordGrant::ReadWrite),
-            ArgSpec::Words(WordGrant::Create),
+            ProgramArgumentDeclaration::Forbidden,
+            ProgramArgumentDeclaration::Required,
+            ProgramArgumentDeclaration::Words(WordGrant::ReadOnly),
+            ProgramArgumentDeclaration::Words(WordGrant::ReadWrite),
+            ProgramArgumentDeclaration::Words(WordGrant::Create),
         ];
         for arg in args {
-            let m = Manifest { arg, ..base() };
+            let m = Manifest {
+                program_argument: arg,
+                ..base()
+            };
             assert_eq!(decode(&encode(&m)), Ok(m), "{arg:?}");
         }
         for file in [
-            FileSpec::Forbidden,
-            FileSpec::Required { writable: false },
-            FileSpec::Required { writable: true },
+            FileGrantDeclaration::Forbidden,
+            FileGrantDeclaration::Required { writable: false },
+            FileGrantDeclaration::Required { writable: true },
         ] {
             let m = Manifest { file, ..base() };
             assert_eq!(decode(&encode(&m)), Ok(m), "{file:?}");
         }
-        for dir in [DirSpec::Forbidden, DirSpec::Required { subtree_flag: None }] {
-            let m = Manifest { dir, ..base() };
+        for dir in [
+            DirectoryGrantDeclaration::Forbidden,
+            DirectoryGrantDeclaration::Required {
+                subtree_option: None,
+            },
+        ] {
+            let m = Manifest {
+                directory: dir,
+                ..base()
+            };
             assert_eq!(decode(&encode(&m)), Ok(m), "{dir:?}");
         }
         for output in [
-            OutputSpec::Silent,
-            OutputSpec::Words,
-            OutputSpec::Bytes,
-            OutputSpec::BytesAndDiagnostics {
+            OutputDeclaration::Silent,
+            OutputDeclaration::Words,
+            OutputDeclaration::Bytes,
+            OutputDeclaration::BytesAndDiagnostics {
                 slot: DIAGNOSTICS_SLOT,
             },
         ] {
@@ -1267,7 +1283,7 @@ mod tests {
     #[should_panic(expected = "DIAGNOSTICS_SLOT")]
     fn a_second_stream_at_any_other_slot_has_no_encoding() {
         let m = Manifest {
-            output: OutputSpec::BytesAndDiagnostics {
+            output: OutputDeclaration::BytesAndDiagnostics {
                 slot: DIAGNOSTICS_SLOT + 1,
             },
             ..base()
@@ -1280,7 +1296,7 @@ mod tests {
     #[test]
     #[should_panic(expected = "cannot carry `reboot`")]
     fn the_reboot_object_has_no_encoding() {
-        let _ = encode(&grant_plan::Prog::Reboot.manifest());
+        let _ = encode(&grant_plan::Program::Reboot.manifest());
     }
 
     /// A subtree option is accepted when it is one of the declared letters, including when it is
@@ -1288,9 +1304,9 @@ mod tests {
     #[test]
     fn a_subtree_option_must_be_a_declared_letter_even_the_only_one() {
         let with = |letters: &[u8], flag: u8| Manifest {
-            flags: Flags::try_new(letters).unwrap(),
-            dir: DirSpec::Required {
-                subtree_flag: Some(flag),
+            short_options: ShortOptions::try_new(letters).unwrap(),
+            directory: DirectoryGrantDeclaration::Required {
+                subtree_option: Some(flag),
             },
             ..base()
         };
@@ -1313,15 +1329,15 @@ mod tests {
         assert_eq!(decode(&VERSION.to_le_bytes()), Err(Error::WrongLength));
         assert_eq!(decode(&2u32.to_le_bytes()), Err(Error::UnknownVersion));
 
-        let letters: [u8; MAX_DECLARED_FLAGS] = core::array::from_fn(|i| b'a' + i as u8);
+        let letters: [u8; MAX_DECLARED_SHORT_OPTIONS] = core::array::from_fn(|i| b'a' + i as u8);
         let m = Manifest {
-            flags: Flags::try_new(&letters).unwrap(),
+            short_options: ShortOptions::try_new(&letters).unwrap(),
             ..base()
         };
         assert_eq!(decode(&encode(&m)), Ok(m));
 
         let m = Manifest {
-            mem: MemSpec::Required { min: 8, max: 8 },
+            memory_grant: MemoryGrantDeclaration::Required { min: 8, max: 8 },
             ..base()
         };
         assert_eq!(decode(&encode(&m)), Ok(m));

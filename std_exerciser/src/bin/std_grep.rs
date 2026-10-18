@@ -21,7 +21,9 @@ use std::process::ExitCode;
 // and §170 say whatever this declares; it declares what is
 // true: it hears words, reads what they name, and runs on `std`.
 capability_manifest_note::carry!(grant_plan::Manifest {
-    arg: grant_plan::ArgSpec::Words(grant_plan::WordGrant::ReadOnly),
+    program_argument: grant_plan::ProgramArgumentDeclaration::Words(
+        grant_plan::WordGrant::ReadOnly
+    ),
     startup: grant_plan::StartupContract::Std,
     ..grant_plan::UNVOUCHED_MANIFEST
 });

@@ -103,7 +103,7 @@ pub(super) fn spawn_interruptible(e: Endowment) {
     // progenitor maps it). We keep our own copies: the untyped to tear the job down, the frame to
     // signal it and read it.
     let (w0, w1, w2) = spawnproto::request(
-        e.prog.id(),
+        e.program.id(),
         e.program_argument,
         e.memory_grant_pages,
         spawnproto::Wiring {
@@ -111,21 +111,21 @@ pub(super) fn spawn_interruptible(e: Endowment) {
             sink: false,
             source: false,
             // A supervised job reports through the shared frame, not through a stream, and neither
-            // demonstrator declares a second one. `OutputSpec::Silent` and a diagnostic rendezvous
+            // demonstrator declares a second one. `OutputDeclaration::Silent` and a diagnostic rendezvous
             // would be a contradiction the manifest can already refuse.
             diagnostics: false,
             // Neither demonstrator declares a directory either, and a supervised job is built out of
             // *this shell's* untyped rather than the progenitor's pool, so there is no region a caretaker
             // could share with it (DECISIONS §92).
-            dir: false,
-            dir2: false,
+            directory_grant: false,
+            second_directory_grant: false,
             // A supervised job's completion signal is already the shared job frame's `DONE` flag,
             // not `result_ep`, so there is nothing here for DECISIONS §106's narrowing to replace.
             screen: false,
             image: false,
             run_unvouched: false,
             // No `std` manifest is interruptible, so no supervised job hears words.
-            args: false,
+            program_arguments: false,
             nameset: false,
             // An interruptible child is built with no capabilities at all (it reports through the
             // job frame), so there is nowhere to put the machine page.
@@ -155,7 +155,7 @@ pub(super) fn spawn_interruptible(e: Endowment) {
         return;
     }
     print(b"  running ");
-    print(e.prog.name().as_bytes());
+    print(e.program.name().as_bytes());
     print(b" in the foreground. ^C interrupts it.\n");
 
     watch(jf, job_ut);

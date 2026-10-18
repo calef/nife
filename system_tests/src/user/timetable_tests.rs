@@ -533,7 +533,7 @@ fn the_plan_is_complete_before_the_first_tick(out: RendezvousId) {
         saw_domain_refusal |= s.contains("this timetable holds no process view to grant");
         // The prompt's own refusals, arriving unchanged. `memory_grant_depleter` with no `--mem` and `wc` with
         // nothing feeding it are wrong wherever they are typed.
-        saw_mem_refusal |= s.contains(grant_plan::Refusal::MemRequired.message());
+        saw_mem_refusal |= s.contains(grant_plan::Refusal::MemoryGrantRequired.message());
         saw_input_refusal |= s.contains(grant_plan::Refusal::InputRequired.message());
     }
     assert!(
@@ -692,7 +692,7 @@ fn await_reply(t: &Spawned, page: &[u8], seq: u64) {
 /// knows, and only image programs are known there. The store's own document names the suite's
 /// installed fixture `scheduled_demo`, which §229 (how a bare name at the prompt reaches an
 /// installed program) keeps off an image program's name and no
-/// `grant_plan::Prog` knows, so a store-mode timetable plans it against the bytes' own manifest
+/// `grant_plan::Program` knows, so a store-mode timetable plans it against the bytes' own manifest
 /// instead; that difference is Fork 8 D's, and it is why this control copies the shape rather than
 /// the very bytes. Provisional name.
 const STORED_SCHEDULE_CONTROL: &str =

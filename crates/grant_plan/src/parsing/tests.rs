@@ -13,7 +13,7 @@ fn every_listed_builtin_is_a_builtin_and_no_program() {
             "{:?} is not a builtin",
             b
         );
-        assert!(Prog::from_name(b).is_none(), "{:?} is also a program", b);
+        assert!(Program::from_name(b).is_none(), "{:?} is also a program", b);
     }
     assert!(
         matches!(parse(b"wc"), Command::Run(_)),
@@ -139,7 +139,7 @@ fn a_mem_flag_consumes_its_value_and_nothing_after_it() {
 /// so an off-by-one here is a write past the end, not a smaller refusal.
 #[test]
 fn the_flag_and_positional_ceilings_refuse_rather_than_overflow() {
-    // Nine letters in one cluster, and MAX_FLAGS is eight.
+    // Nine letters in one cluster, and MAX_SHORT_OPTIONS is eight.
     let r = parse_run(b"rm -abcdefghi x");
     assert_eq!(r.options(), b"");
     assert_eq!(r.unexpected, Some(&b"-abcdefghi"[..]));
@@ -298,11 +298,11 @@ fn jig_is_a_program_and_package_is_not_a_builtin() {
     let Command::Run(r) = parse(b"jig install greeting") else {
         panic!("`jig` must parse as a program invocation");
     };
-    assert_eq!(Prog::from_name(r.program), Some(Prog::Jig));
+    assert_eq!(Program::from_name(r.program), Some(Program::Jig));
     let Command::Run(r) = parse(b"package install greeting") else {
         panic!("`package` is no longer a builtin");
     };
-    assert_eq!(Prog::from_name(r.program), None);
+    assert_eq!(Program::from_name(r.program), None);
     // **And `rm` is a program**, which is the whole of milestone 47's rmdir lane at this level.
     // A builtin would have shadowed the name, so this line is also the check that it no longer
     // does; the manifest is what decides what the operand grants.
@@ -310,7 +310,7 @@ fn jig_is_a_program_and_package_is_not_a_builtin() {
         panic!("`rm` must parse as a program invocation, not a builtin")
     };
     assert_eq!(r.program, b"rm");
-    assert_eq!(Prog::from_name(b"rm"), Some(Prog::Rm));
+    assert_eq!(Program::from_name(b"rm"), Some(Program::Rm));
     for reserved in [
         &b"help"[..],
         b"echo",
@@ -324,7 +324,7 @@ fn jig_is_a_program_and_package_is_not_a_builtin() {
         b"bind",
     ] {
         assert!(
-            Prog::from_name(reserved).is_none(),
+            Program::from_name(reserved).is_none(),
             "`{}` is a builtin, so a program of that name could never be run",
             core::str::from_utf8(reserved).unwrap(),
         );
@@ -355,7 +355,10 @@ fn mem_flag_must_have_a_numeric_value() {
         panic!()
     };
     assert_eq!(r.memory_grant, None);
-    assert_eq!(plan(&r, Holdings::default()), Err(Refusal::MemRequired));
+    assert_eq!(
+        plan(&r, Holdings::default()),
+        Err(Refusal::MemoryGrantRequired)
+    );
 }
 
 #[test]

@@ -34,7 +34,7 @@
 //!   positional tokens**: which token is the argument and which the file is the manifest's job.
 //! - A [`Manifest`] is a program's declared endowment: does it take an argument, does it require
 //!   (or forbid) a memory grant, may it be granted a file and in which direction, does it report
-//!   back. [`Prog::manifest`] is the static table.
+//!   back. [`Program::manifest`] is the static table.
 //! - [`plan`] checks a parsed invocation against the named program's manifest, **placing the
 //!   positional tokens into the slots the manifest declares**, and yields an [`Endowment`] or a
 //!   [`Refusal`], at the prompt, before anything is spawned.
@@ -76,8 +76,8 @@ mod test_support;
 mod tests;
 
 pub use command::{
-    Command, DirectoryGrant, Endowment, FileGrant, Holdings, MAX_FLAGS, MountedTree, TouchOperands,
-    rmopt,
+    Command, DirectoryGrant, Endowment, FileGrant, Holdings, MAX_SHORT_OPTIONS, MountedTree,
+    TouchOperands, rmopt,
 };
 pub use escalation::{Action, COOP_GRACE_TICKS, Escalation};
 pub use image::{
@@ -85,11 +85,13 @@ pub use image::{
     image_request_fits,
 };
 pub use manifest::{
-    ArgSpec, CATALOG_SLOT, DIAGNOSTICS_SLOT, DOMAIN_SLOT, DirSpec, ENTROPY_SLOT, FileSpec, Flags,
-    INDEX_SOURCES_SLOT, INSTALLER_REPLY_SLOT, INSTALLER_SLOT, IndexStore, InputSpec, MACHINE_SLOT,
-    MAX_DECLARED_FLAGS, Manifest, MemSpec, NETWORK_SLOT, NO_FLAGS, OutputSpec, REBOOT_SLOT,
-    SHARE_SLOT, SHELL_CONFIG_SLOT, SHELL_CONFIG_VA, STD_REGION_PAGES, SYNC_SLOT, StartupContract,
-    UNVOUCHED_MANIFEST, UNVOUCHED_STD_MANIFEST, WordGrant, image_region_pages,
+    CATALOG_SLOT, DIAGNOSTICS_SLOT, DOMAIN_SLOT, DirectoryGrantDeclaration, ENTROPY_SLOT,
+    FileGrantDeclaration, INDEX_SOURCES_SLOT, INSTALLER_REPLY_SLOT, INSTALLER_SLOT,
+    IndexStoreDeclaration, InputDeclaration, MACHINE_SLOT, MAX_DECLARED_SHORT_OPTIONS, Manifest,
+    MemoryGrantDeclaration, NETWORK_SLOT, NO_SHORT_OPTIONS, OutputDeclaration,
+    ProgramArgumentDeclaration, REBOOT_SLOT, SHARE_SLOT, SHELL_CONFIGURATION_SLOT,
+    SHELL_CONFIGURATION_VIRTUAL_ADDRESS, STD_REGION_PAGES, SYNC_SLOT, ShortOptions,
+    StartupContract, UNVOUCHED_MANIFEST, UNVOUCHED_STD_MANIFEST, WordGrant, image_region_pages,
     named_std_region_pages,
 };
 pub use parsing::{
@@ -100,7 +102,7 @@ pub(crate) use planning::nav_refusal;
 pub use planning::{
     Streams, check_chain, plan, plan_against, plan_against_with, plan_stage, redirect_target,
 };
-pub use program::{PROG_COUNT, Prog};
+pub use program::{PROGRAM_COUNT, Program};
 pub use refusal::{CapabilityKind, Refusal};
 pub use verbs::{MAX_VERB, ManifestAuthorities, VerbGrant, narrow_by_verb, verb_of, verb_of_page};
 
