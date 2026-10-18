@@ -38,10 +38,10 @@ $ jig list
   uptime 0.1.0
   greeting 0.3.0
 $ jig install uptime
-  passed over https://packages.basalt.test:8443/rolling/targets/uptime-0.1.0-riscv64.nifepkg: NotFound
+  passed over https://packages.basalt.test:8443/rolling/targets/uptime-0.1.0-riscv64.nifepkg: not resolved: NotFound
   refused: the index does not vouch for the bytes that arrived; nothing was sent to the installer
 $ jig install greeting@0.3.0
-  passed over https://packages.basalt.test:8443/rolling/targets/greeting-0.3.0-riscv64.nifepkg: NotFound
+  passed over https://packages.basalt.test:8443/rolling/targets/greeting-0.3.0-riscv64.nifepkg: not resolved: NotFound
   fetched greeting-0.3.0-riscv64 from basalt.test over TLS
   fetched and installed; generation 6 is live
 ```
