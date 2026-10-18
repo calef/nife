@@ -67,8 +67,8 @@ total 6.00 MiB, static. An event kernel would spend `MAX_CPUS` (8) stacks, 192 K
 TCBs for the continuations. The saving is 5.81 MiB.
 
 Against what. **No board's memory size is recorded anywhere in this tree**, so a percentage of a
-board is an assumption rather than a measurement, and against an assumed 4 GiB board it flatters
-the argument by more than an order of magnitude. The number that is measured is the machine this
+board is an assumption rather than a measurement. Against an assumed 4 GiB board it flatters the
+argument by more than an order of magnitude. The number that is measured is the machine this
 kernel runs on: all three QEMU runners use `-m 256M`. So:
 
 | denominator | share |
@@ -78,7 +78,7 @@ kernel runs on: all three QEMU runners use `-m 256M`. So:
 
 The conclusion survives, and it is worth being precise about why, because the honest denominator
 removes the easy version of the argument. 2.27% is not a rounding error and should not be waved
-away as one. It is still not a reason to change kernel models: Warton's result came from
+away as one. It is still not a reason to change kernel models. Warton's result came from
 resource-starved embedded systems, ours is a deliberate emulator setting rather than a hardware
 limit, and 5.81 MiB buys nothing if the performance case (input 3, the live one) does not hold. The
 memory argument is dead here because it is **not decisive**, not because it is too small to see.
@@ -100,8 +100,8 @@ A 2026-09-13 caveat on how this input reads Warton's paper is in
 
 What would revive it, stated so a future reader does not have to re-derive it. A target where
 `MAX_THREADS * STACK_SLOT_SPAN` is a material fraction of RAM. notes/target-hardware.md's
-requirements do not exclude such a machine: an application-class SoC with an MMU, 32 KB of L1i and a
-few tens of megabytes clears every one of them, and the form factors that shape belongs to (a watch,
+requirements do not exclude such a machine. An application-class SoC with an MMU, 32 KB of L1i and
+a few tens of megabytes clears every one of them. The form factors that shape belongs to (a watch,
 a sensor, an appliance) are exactly where an open MMU-class device does not exist today.
 
 This is not an argument for changing kernel models. It is a note that input 1 is answered for the
@@ -111,7 +111,7 @@ Input 3, performance, remains the live one, and milestone 168's instrument was b
 to produce its number.
 
 A larger reservation sits behind this one and is worth naming, since a reader who checks the
-stacks will find it: `kmem::KERNEL_OBJ_PAGES` is 2048 pages, and its carve is eager
+stacks will find it. `kmem::KERNEL_OBJ_PAGES` is 2048 pages, and its carve is eager
 (`memory_region::create` takes the whole thing on the first kernel-object need and never returns
 it). That is 8.00 MiB, 3.1% of the 256 MiB machine, and the kernel stacks above are a subset of
 it rather than additional to it.
@@ -147,14 +147,14 @@ Three more facts the retrospective compresses away, each of which this section h
 without. Warton's run disabled AIM7's filesystem jobs (the ramdisk was too small) and its network
 jobs (Wombat had no `GetHost`), so two of the three categories `crates/job_mix` records as missing
 were absent from the cited run too. It was *"2 clients with the normal workload file"*, run in two
-user tasks, so there was no task-count sweep. And Warton doubted the result himself: he expected
+user tasks, so there was no task-count sweep. And Warton doubted the result himself. He expected
 the single-stack kernel to perform similarly or worse, called the outcome something to treat *"with
 skepticism until it can be satisfactorily explained"*, and records that the cache simulation which
 would have explained it was never run for lack of time.
 
 What this section should take from it is the mechanism, not the number. The only explanation
 Warton offered is reduced kernel cache and TLB footprint. Whether per-thread kernel stacks displace
-enough cache to cost throughput on this kernel is local, open and measurable: it is what
+enough cache to cost throughput on this kernel is local, open and measurable. It is what
 `app_displacement` measures in isolation, what milestone 134's E1 found bending 8 to 11% by 64 to 96
 threads, and what a knee in milestone 168's jobs-per-minute curve would confirm under load. That is a
 real input to this decision. Matching somebody else's 20% was never available. See

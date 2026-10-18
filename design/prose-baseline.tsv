@@ -11,16 +11,6 @@
 # two counts). Median and bold are not asked of documents under 200 words.
 # measure: 3
 path	words	median	longest	bold_lead	bold_inline
-design/decisions/0089-provisional-versus-unrecorded.md	-	-	54	-	-
-design/decisions/0090-claiming-and-closing.md	-	-	44	-	-
-design/decisions/0091-endpoints-before-the-refusal.md	-	-	62	-	-
-design/decisions/0093-filesystem-wire-protocol.md	-	-	42	-	-
-design/decisions/0094-what-may-live-in-a-library.md	-	-	55	-	-
-design/decisions/0095-a-proven-ipc-fastpath.md	-	-	64	-	-
-design/decisions/0096-process-kernel-or-event-kernel.md	-	-	54	-	-
-design/decisions/0097-advisory-checks.md	-	-	51	-	-
-design/decisions/0098-opendir-cannot-attenuate.md	-	-	41	-	-
-design/decisions/0099-apple-metadata-at-rest.md	-	-	48	-	-
 design/decisions/0100-the-terminal-font.md	-	-	54	-	-
 design/decisions/0101-notification-objects.md	-	-	65	-	-
 design/decisions/0103-what-a-frame-names.md	-	-	54	-	-
