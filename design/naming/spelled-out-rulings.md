@@ -62,3 +62,17 @@ over Rust identifiers that fails when the count rises, 2,890 on the ruling's day
 kept names and a proposed spelling for each public name are in
 [capability-worklist.md](capability-worklist.md). The proposals are not ruled. The ABI names
 (`SEND_CAP`, `RECEIVE_CAP`, `CAP_INSERT`, `SYS_CAP_DELETE`) and the `Cap` type go last, as one batch.
+
+## Abbreviation sweeps owed under §154
+
+calef ruled on 2026-10-18 (UTC) that `config`, `spec`, `arg`, `mem`, `dir`, `va`, `pa`, `ipi`, `nmi`, `ist` and `msr` expand under §154 (the acronym test is whether the phrase is spoken); the table there holds his words. The rulings are in force; the identifiers are not yet spelled out. Measured on 2026-10-18 in tracked Rust outside `vendor/` and `patches/`, by a broad pattern that over-counts:
+
+| Family | Hits | Files (summed per pattern) |
+|---|---|---|
+| `config` | 659 | 109 |
+| `_VA`, `_PA` | 1,366 | 192 |
+| `ipi`, `nmi`, `ist`, `msr` | 355 | 75 |
+| `spec`, `arg`, `mem`, `dir` | 4,206 | 556 |
+| `ipc`, ruled by §154 on 2026-09-18 | 1,668 | 285 |
+
+Each family lands as its own pull request, serially. `ipc_receive_cap` also carries `cap`, which the section above already rules. A site where the owner's spelling is unclear goes to the architect as a list.
