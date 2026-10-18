@@ -17,7 +17,7 @@ the kernel tells the IOMMU the controller may reach, which is the whole of the c
 
 Expected to fail: the `fault.unwrap_or_else(|| panic!(...))` in the test. With the victim frame
 inside the domain the READ escape (disk -> victim) completes, so the IOMMU records no fault and the
-bounded poll finds none. The `esc.canary_intact()` assertion also flips, because that completed READ
+bounded poll finds none. The `esc.is_canary_intact()` assertion also flips, because that completed READ
 copies the disk image's zero bytes over the canary; either failure is the escape landing.
 diff --git a/kernel/src/user/non_volatile_memory_express_service.rs b/kernel/src/user/non_volatile_memory_express_service.rs
 index 60c85c7d2..06dabb056 100644
