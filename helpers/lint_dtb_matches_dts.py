@@ -265,9 +265,12 @@ def selftest():
             subprocess.run(["git", "-c", "user.email=t@t", "-c", "user.name=t", "commit",
                             "-qm", "fixtures"], cwd=str(repo), check=True,
                            env={**os.environ, "PATH": str(bin_dir)})
+            # CI itself sets CI=true, which turns this skip into a failure; the skip case must
+            # not inherit it.
+            skip_env = {k: v for k, v in os.environ.items() if k != "CI"}
             proc = subprocess.run([sys.executable, os.path.abspath(__file__)],
                                   cwd=str(repo), capture_output=True, text=True,
-                                  env={**os.environ, "PATH": str(bin_dir)})
+                                  env={**skip_env, "PATH": str(bin_dir)})
             expect("the skip path", proc.returncode, 0, "exit code")
             ci = subprocess.run([sys.executable, os.path.abspath(__file__)],
                                 cwd=str(repo), capture_output=True, text=True,
