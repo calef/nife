@@ -147,7 +147,7 @@ them needs a marker to be found again: `git grep -wiE '[a-z_]*(rx|tx)[a-z_]*'` i
 ## Fits as written
 
 A finite verb or a quantifier already says "this is a question" (see
-[functions-that-answer-yes-or-no.md](boolean-predicates.md#why-a-verb-phrase-is-allowed)). The 57, by name:
+[functions-that-answer-yes-or-no.md](functions-that-answer-yes-or-no.md#why-a-verb-phrase-is-allowed)). The 57, by name:
 
 `allows` (twice), `survey_includes`, `denies_all`, `carries_len`, `takes_name`, `mutates`, `fits`
 (twice), `is`, `matches_with`, `opens_with_a_literal_dot`, `overlaps` (twice), `overlaps_ram`.
