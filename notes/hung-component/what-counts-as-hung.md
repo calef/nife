@@ -1,8 +1,8 @@
 # The hung component: what counts as hung, argued
 
 An appendix to [`notes/hung-component.md`](../hung-component.md), whose question 2 states the
-answer: not elapsed time but unserved work, with the bound held by the supervisor. This is the
-argument for it, owner by owner, and what is missing to build it.
+answer: the bound is held by the supervisor. This is the argument, owner by owner, for what a bound
+should be denominated in, and where the built one, a duration on the swap's quiesce, sits against it.
 
 Take the three candidate owners in turn, because the manifest answer is genuinely attractive and it
 is wrong.
@@ -20,7 +20,7 @@ never met. Fuchsia does not put timeouts in a `.cm` either.
 The client's, and not alone. The client is the party harmed, which is a real argument for its
 deadline being the one that matters. But a client cannot act on it, so a client deadline is only
 ever a report. Worse, a client on the default rung of the latency ladder is *blocked* by the time it
-would like to give up: there is no timed `CALL`, so it has no moment at which to notice.
+would like to give up: a `CALL` takes no deadline, so it has no moment at which to notice.
 
 The supervisor's, denominated in progress. This is milestone 62 (tests)'s argument, one level out,
 and the fact that this tree has already made it about its own test harness is why it is a
@@ -48,17 +48,26 @@ Two honest costs, and the first is the one to design against:
   looks hung throughout a single legitimately long request. One that bumps inside its work loop does
   not. This is 62's own finding and it does not go away by moving up a level; it becomes a property of
   the contract, which is at least a property somebody writes down.
-- Separating k observations still needs the watcher to wait, and there is no timed wait. See the
-  next paragraph, because this is the fork.
+- Separating k observations needs the watcher to wait, which milestone 106 (a wait that ends on
+  either the interrupt or the deadline)'s timed wait now provides: a `Timer` signaling a
+  notification bound to the watcher's thread.
 
-What is genuinely missing, precisely. Measuring a duration needs nothing: `user_mode_runtime::now()`
-is a plain register read (`CNTVCT_EL0` / `rdtime`), ambient by design, so any process can time
-anything. Waiting on one is what does not exist. There is no timed wait anywhere in the kernel; the
-syscall surface is `EXIT`, `YIELD`, `INVOKE`, `CAP_DELETE`. So a watchdog today must yield-spin
-between observations, which burns a core and makes its own timing load-sensitive, exactly as
-`net_stack`'s retransmit window does (`wait_for_nic`, and milestone 106 (wait) records the price).
-That is milestone 106's fork, and 106 says in its own words not to settle it by accident. This lane
-did not.
+## What is built, and how it departs from this
+
+`swapper`'s operator bounds one thing, its `OPERATION_QUIESCE`, and in time: `QUIESCE_BOUND_MS`, 250
+ms, chosen as about forty times the slowest healthy answer measured on three ISAs under a loaded
+host (the measurements are beside the constant). It reads no progress counter. Two things make the
+duration acceptable for this one question where the argument above rejects it in general. The
+quiesce is owed work of known size. It waits in the endpoint's FIFO behind at most the requests
+already queued, one per client here, so the bound covers one answer plus that queue rather than a
+component's whole workload. And the question is asked only at a swap, by a supervisor about to
+replace the component anyway, so a false conviction costs a replacement the operator had already
+decided on, plus a `Gone` to a caller mid-request.
+
+The departure is real, and a component with a long queue ahead of the quiesce or slow requests
+would meet it: its quiesce could miss a time bound while its counter still moved. The progress
+counter above is the answer for that component, and for any watch that runs between swaps, where
+neither condition holds. Neither is built.
 
 A citation to fix while passing through, because it is the exact failure `script/decisions
 --check` cannot catch: milestone 106's block attributes the fork's three candidate shapes to

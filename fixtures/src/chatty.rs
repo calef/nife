@@ -1,16 +1,18 @@
 //! **The client that does not notice, and the attacker that cannot** (milestone 23, DECISIONS §41).
 //!
-//! One binary, three roles, because an attacker that holds the honest client's own capabilities is
-//! a fair test of the boundary rather than a different program failing for its own reasons. The
-//! third is `ROLE_PRODUCER`, the same conversation one rung up the latency ladder on the queued
-//! channel. (This line said "two roles" until 2026-09-13; the producer arrived with the queue
-//! broker and nothing updated the count.)
+//! One binary, six roles, because an attacker that holds the honest client's own capabilities is
+//! a fair test of the boundary rather than a different program failing for its own reasons. Besides
+//! the client and the attacker below: `ROLE_PRODUCER`, the same conversation one rung up the latency
+//! ladder on the queued channel; `ROLE_CONFUSED` and `ROLE_PLANT`, a second attacker and the
+//! instrument that lets the first one fail rather than hang; and `ROLE_QUIESCER`, the operator's
+//! stand-in for the one `CALL` it has to bound.
 //!
 //! # The client (`ROLE_CLIENT`)
 //!
 //! It calls a stable endpoint sixty-four times in a loop and checks every answer. It holds one
-//! capability to that endpoint for its whole life, it never reconnects, it never retries, and it
-//! has no code path for "the server went away", because there is no such event to have a path for.
+//! capability to that endpoint for its whole life and it never reconnects. Its one retry is for a
+//! request the kernel answered `Gone`, which happens only on the hung channel, when the server that
+//! took the request was destroyed without answering it.
 //! Somewhere in the middle of that loop the server is torn down and a different program, written in
 //! a different language, takes its place.
 //!
@@ -93,6 +95,7 @@ pub extern "C" fn _start(role: u64, _a1: u64, _a2: u64) -> ! {
         hot_swap_contract::ROLE_CONFUSED => confused_deputy(),
         hot_swap_contract::ROLE_PRODUCER => produce(),
         hot_swap_contract::ROLE_PLANT => plant(),
+        hot_swap_contract::ROLE_QUIESCER => quiesce_for_the_operator(),
         _ => converse(),
     }
 }
@@ -107,18 +110,21 @@ fn converse() -> ! {
     for seq in 0..hot_swap_contract::REQUESTS {
         let (mut got, mut tag) = call(SVC, hot_swap_contract::OPERATION_PUT, seq);
 
-        // **We were stranded inside this call, and the thing that stranded us let go** (milestone
-        // 23's hung-component channel). A component took this request and then stopped answering
-        // without dying, so nothing in the kernel could wake us: a caller awaiting a reply is woken
-        // by the reply and by nothing else, and `abi::Error::Gone` reaches a caller whose *endpoint*
-        // died, never one whose *server is alive and silent*.
+        // **We were stranded inside this call, and the kernel freed us** (milestone 23 (a
+        // capability-routed component OS with live replacement)'s hung-component channel). A
+        // component took this request and then stopped answering without dying. The operator
+        // destroyed its region, which finished it where it sat (milestone 133 (ending a permanently
+        // blocked thread, and deciding who may)), and the kernel answered every caller it still
+        // held a reply capability for with `Gone` (milestone 254 (a caller stranded by a server
+        // that died)). Our server did nothing: it never ran again.
         //
         // So this arm is not error handling. It is the tail of a request that took a detour through
-        // the operator's recovery, and the only honest thing to do with it is ask again: a released
-        // caller has learned that its request was never served, not that it failed. On the healthy
-        // channels this value never arrives and this branch is dead.
-        if got == hot_swap_contract::WEDGE_RELEASED {
-            bits |= ck::WAS_RELEASED;
+        // the operator's recovery, and the only honest thing to do with it is ask again: `Gone` here
+        // says the request was never served, not that it failed. The endpoint we call is the
+        // operator's and still exists, so the second call reaches whoever serves it now. On the
+        // healthy channels this value never arrives and this branch is dead.
+        if got == abi::Error::Gone as i64 as u64 {
+            bits |= ck::WAS_GONE;
             let again = call(SVC, hot_swap_contract::OPERATION_PUT, seq);
             got = again.0;
             tag = again.1;
@@ -165,6 +171,24 @@ fn converse() -> ! {
     // Tell the operator the conversation is over, so it reads the witness page after the last
     // request rather than in the middle of one.
     send(NOTE, hot_swap_contract::NOTE_CLIENT_DONE, changed_at, 0);
+    user_mode_runtime::exit()
+}
+
+/// **The operator's stand-in for a `CALL` it cannot bound** (`hot_swap_contract::ROLE_QUIESCER`).
+/// One quiesce on the stable endpoint, its answer forwarded on the operator's channel, and out.
+///
+/// It holds exactly the client's capabilities, and needs no more: `OPERATION_QUIESCE` travels on the
+/// endpoint every client holds `WRITE` on, which is the denial-of-service gap `hot_swap_contract`'s
+/// `serve` records in its `BUGS`, used here by the party it was meant for. Against a hung incumbent
+/// this never returns from its call, and the operator destroys its region.
+fn quiesce_for_the_operator() -> ! {
+    let (answer, served) = call(SVC, hot_swap_contract::OPERATION_QUIESCE, 0);
+    send(
+        NOTE,
+        hot_swap_contract::NOTE_QUIESCE_ANSWERED,
+        answer,
+        served,
+    );
     user_mode_runtime::exit()
 }
 

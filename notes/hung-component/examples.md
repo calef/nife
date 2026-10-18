@@ -28,12 +28,15 @@ sched::tcb_insert_cap(tid, cap::endpoint_cap(deaths, Rights::ENUMERATE), None)
 "`ENUMERATE` alone, deliberately. Granting `READ` here would hand a viewer [the authority] to
 collect a child rather than to name one."
 
-Restore a service under a hung component, which is the four steps minus one:
+Restore a service under a hung component, which is the four steps minus one, and then reclaim it:
 
 ```rust
 // 1 BUILT: the replacement, endowed without the device, unconfigured.
-// 2 DRAINED: skipped. A component that is not receiving needs no quiesce.
+// 2 DRAINED: asked with a deadline, and unanswered. That is how the hang was noticed.
 // 3 REVOKED: take the device back from a holder that consents to nothing.
 invoke(DEVICE, abi::frame::REVOKE, 0, 0, 0);
 // 4 STARTED: map, configure, start. It drains what queued behind the silence.
+// 5 DESTROYED: the region kept at build. Finishes the incumbent in place, and its
+//   stranded caller gets abi::Error::Gone.
+invoke(incumbent_region, abi::memory_region::DESTROY, 0, 0, 0);
 ```

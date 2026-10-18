@@ -248,10 +248,12 @@ which is the control this whole milestone rests on and which the test asserts on
   given contract is swapped. `queued()`'s `BOP_DOWN`/`BOP_UP` are driven by that answer rather than
   sent unconditionally. Direct dependents only; see notes/dependency-orchestration.md.
 - **A hung component**: `swapper`'s `ROLE_HUNG` runs the swap against an incumbent that stops
-  answering. It gets the service back with no authority the operator did not already hold, because
-  the one step that needed the incumbent's cooperation (`OPERATION_QUIESCE`) is the step a hang
-  makes redundant. Reclaiming a livelocked instance's memory still needs the stronger right, §32's
-  recorded watchdog case; restarting its service does not.
+  answering, and notices because its bounded `OPERATION_QUIESCE` goes unanswered. It gets the
+  service back with no authority the operator did not already hold, because the step that needed the
+  incumbent's cooperation is the step a hang makes redundant. It then destroys the hung instance's
+  region, which it kept at build. Milestone 133 (ending a permanently blocked thread, and deciding
+  who may) finishes the instance in place, and its stranded caller gets `Gone` (milestone 254 (a
+  caller stranded by a server that died)).
 - **A dependent that will not answer its warning**: skipping the warning costs latency and loses
   nothing (`ROLE_UNWARNED`), and the warning is advisory, per DECISIONS §231 (a swap's warning to a
   dependent is advisory, and the supervisor never waits for it). See
@@ -260,11 +262,10 @@ which is the control this whole milestone rests on and which the test asserts on
 ## What this does not yet demonstrate
 
 - A hung component a supervisor can *see*. The domain reports the hang as `BLOCKED`, which is what a
-  healthy idle server reports as, and `Rendezvous::REAP` answers `StillAlive` for every member. See
-  notes/hung-component.md, including the two decisions this cannot pass without. One is how a
-  supervisor *notices*, which needs the timed wait of milestone 106 (a wait that ends on either the
-  interrupt or the deadline). The other is what it may do to a component that never cooperates. It
-  also has the finding that `abi::Error::Gone` does not reach a caller stranded mid-`CALL`.
+  healthy idle server reports as, and `Rendezvous::REAP` answers `StillAlive` for every member. The
+  operator notices a hang only at a swap, when its quiesce goes unanswered within a bound, and then
+  destroys the hung component's region, which answers its stranded caller `Gone`. Nothing watches a
+  component between swaps. See notes/hung-component.md.
 - The whole console. The component swapped here owns the real UART and is shaped like a console
   server. `line_editor` is swapped live by `terminal_supervisor`; `display_terminal` and
   `compositor` are not, and each is a different problem. See notes/interactive-stack-swap.md.

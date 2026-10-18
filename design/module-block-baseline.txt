@@ -3148,9 +3148,7 @@ crates/hot_swap_contract/src/lib.rs::NOTE
 crates/hot_swap_contract/src/lib.rs::NOTE_ATTACK_DONE
 crates/hot_swap_contract/src/lib.rs::NOTE_BROKER_DONE
 crates/hot_swap_contract/src/lib.rs::NOTE_CLIENT_DONE
-crates/hot_swap_contract/src/lib.rs::NOTE_RELEASE
 crates/hot_swap_contract/src/lib.rs::NOTE_SWAP_NOW
-crates/hot_swap_contract/src/lib.rs::NOTE_WEDGED
 crates/hot_swap_contract/src/lib.rs::NO_GAP
 crates/hot_swap_contract/src/lib.rs::ONE_TRANSITION
 crates/hot_swap_contract/src/lib.rs::OPERATION_PUT
@@ -3193,7 +3191,6 @@ crates/hot_swap_contract/src/lib.rs::RPT_STEP
 crates/hot_swap_contract/src/lib.rs::RPT_SURVEY
 crates/hot_swap_contract/src/lib.rs::RPT_UNCOLLECTABLE
 crates/hot_swap_contract/src/lib.rs::RPT_UP
-crates/hot_swap_contract/src/lib.rs::RPT_WEDGED
 crates/hot_swap_contract/src/lib.rs::SEQ_ECHOED
 crates/hot_swap_contract/src/lib.rs::SPANNED_SWAP
 crates/hot_swap_contract/src/lib.rs::STARTED
@@ -3207,8 +3204,6 @@ crates/hot_swap_contract/src/lib.rs::V2
 crates/hot_swap_contract/src/lib.rs::WANT_DOWN
 crates/hot_swap_contract/src/lib.rs::WANT_UP
 crates/hot_swap_contract/src/lib.rs::WAS_BUFFERED
-crates/hot_swap_contract/src/lib.rs::WAS_RELEASED
-crates/hot_swap_contract/src/lib.rs::WEDGE_RELEASED
 crates/hot_swap_contract/src/lib.rs::WEDGE_SEQ
 crates/hot_swap_contract/src/lib.rs::absorb
 crates/hot_swap_contract/src/lib.rs::broker_wants_down

@@ -11,9 +11,9 @@ needs_person: no
 
 Every residual this block named is built, and so are the advisory warning (§231) and the live
 swap of `line_editor` (§232 (the line editor swap contract), with a terminal supervisor). What keeps
-it PARTIAL: the installer does not yet ask the terminal to swap (proposed, an architect's).
-`display_terminal` and `compositor` are not swapped, and no supervisor yet ends a hung incumbent,
-although the kernel can (milestone 133 (ending a permanently blocked thread, and deciding who may)).
+it PARTIAL: the installer does not yet ask the terminal to swap (milestone 694, an architect's).
+`display_terminal` and `compositor` are not swapped, and `terminal_supervisor` does not bound its
+quiesce, so only `swapper` notices a hang.
 
 ## The idea
 
@@ -80,11 +80,11 @@ notes/hung-component.md. Against an incumbent that stops answering without dying
 steps are unchanged: the one that needs its cooperation, the drain, is the one a hang makes
 redundant. So a supervisor restores the service with no authority it did not already hold, which
 corrects the sentence in §32 (a supervisor may collect a corpse) that restarting a hung child needs
-the stronger right. That sentence is right
-about reclaiming its memory. The harder half is measured. The domain reports a hang as `BLOCKED`,
-exactly what a healthy idle server reports. `Endpoint::REAP` answers `StillAlive` for every member;
-and `abi::Error::Gone` never reaches a caller stranded mid-`CALL`, because freeing it needs the
-cooperation whose absence is the hang.
+the stronger right. Reclaiming its memory needs the region capability, which the builder holds if it
+keeps it. The domain reports a hang as `BLOCKED`, exactly what a healthy idle server reports, and
+`Endpoint::REAP` answers `StillAlive` for every member, so a supervisor notices only by asking: its
+quiesce goes unanswered within a bound. Destroying the hung component's region then finishes it in
+place and answers its stranded caller `abi::Error::Gone`.
 
 ### Dependency-aware orchestration (2026-08-23)
 
@@ -129,24 +129,37 @@ warning is a `CALL`. notes/non-cooperative-fallback.md.
   manifest rather than a component's declaration; notes/component-manifest.md's `BUGS` carries the history.
 - **Done.** The timed wait a supervisor needs to notice a hang exists: milestone 106 (a wait that
   ends on either the interrupt or the deadline) is BUILT 2026-09-26. Milestone 263 (can a userspace process hold a timer, on all
-  three architectures) was RECORDED rather than a blocker. No swap supervisor uses it yet:
-  `components/src/swapper.rs` and `terminal_supervisor.rs` hold no deadline wait (checked
-  2026-10-03), so nothing notices a hang on its own yet: `ROLE_HUNG`'s wedge announces itself.
+  three architectures) was RECORDED rather than a blocker. `swapper` uses it for its bounded
+  quiesce (below); `terminal_supervisor` does not.
 - **Done.** What may be done to a component that never cooperates? Its region holder `DESTROY`s it.
   Milestone 133 (ending a permanently blocked thread, and deciding who may), ruled by calef on
   2026-09-03 (proposal A), finishes a `Blocked` resident in place without waking it
   (`sched::finish_blocked_resident`). Milestone 254 (a caller stranded by a server that died) wakes
   every caller such a server held a reply capability for with `abi::Error::Gone`
   (`sched::strand_callers_of`). Each is tested on all three architectures: 133 in
-  `system_tests/src/user/force_kill_tests.rs`, 254 in `kernel/src/sched.rs`. Their composition is
-  argued in 133's block and run nowhere. By the code, a hang costs no unreclaimable region. A holder
-  of only the supervision endpoint still cannot end a child. That is 133's refused proposal B, open
-  behind a customer, and every supervisor here is also its child's builder.
-- **Outstanding.** No supervisor demonstrates it. `swapper`'s `ROLE_HUNG` deletes the incumbent's
-  region capability in `start_child`. It frees the stranded client by a cooperative `NOTE_RELEASE`.
-  The task: keep the incumbent's region and `DESTROY` it after `STARTED`, with no release. Assert
-  that the region returns and that the swallowed request's caller sees `Gone`, on all three
-  architectures. Recorded 2026-10-08.
+  `system_tests/src/user/force_kill_tests.rs`, 254 in `kernel/src/sched.rs`, and their composition
+  in the hung test below. A holder of only the supervision endpoint still cannot end a child. That
+  is 133's refused proposal B, open behind a customer, and every supervisor here is also its child's
+  builder.
+- **Done.** A supervisor reclaims a hung incumbent, 2026-10-18. `swapper`'s `ROLE_HUNG` keeps the
+  incumbent's region capability and `DESTROY`s it after `STARTED`, with no release: milestone 133
+  finishes the `Blocked` incumbent in place and milestone 254 answers the client whose request it
+  swallowed with `Gone`. `live_swap_tests::a_supervisor_notices_a_hung_component_and_reclaims_it`
+  asserts that the budget's live-children pages fall by exactly one instance, that the incumbent
+  leaves no death, and that the client saw `Gone` and was served by the replacement. On all three
+  architectures: `ROLE_HUNG_WITHOUT_DEVICE` runs the same system on `x86_64`, which has no device
+  page. notes/hung-component.md.
+- **Done.** A supervisor notices a hang on its own, 2026-10-18. The incumbent's wedge is silent,
+  and `swapper` asks for the drain with milestone 106's timed wait, through a stand-in because a
+  `CALL` takes no deadline; no answer within `QUIESCE_BOUND_MS` (250 ms) is a hang. The bound is
+  about forty times the slowest healthy answer measured on three ISAs, in wall time, since
+  `script/test` runs TCG without `-icount`; the measurements are beside the constant in
+  `components/src/swapper.rs`. The same test asserts the verdict, its order before the survey and
+  the reclaim, and the absent drain.
+- **Outstanding.** `terminal_supervisor` does not bound its quiesce of `line_editor`. It would need a
+  notification and timer its spawner grants, a stand-in for the `CALL`, the incumbent's region kept,
+  and a typist that handles `Gone` from `line_editor`. The last is not in §232 (the line editor swap
+  contract), so it is a contract change and an architect's. Recorded 2026-10-18.
 - **Done.** The advisory warning, 2026-09-27, as ruled in DECISIONS §231 (a swap's warning to a
   dependent is advisory, and the supervisor never waits for it). `broker` reads a warning page on
   every wakeup, and `swapper` signals a notification bound to it and never waits. So a dependent that
@@ -160,8 +173,8 @@ warning is a `CALL`. notes/non-cooperative-fallback.md.
   `FLAG_RETRY` `swish` and `rmle` handle, and option A of `design/roadmap/0661-a-terminal-supervisor-holds-the-line-editor.md`
   on 2026-09-27. `kernel::user::terminal_swap_tests` swaps it twice under a typist on all three
   architectures, carrying the half-typed line and the history. notes/interactive-stack-swap.md.
-- **Milestone 694.** Milestone 694 (the installer asks the terminal to swap). `design/roadmap/0694-the-installer-asks-the-terminal-to-swap.md`, PROPOSED
-  2026-09-27: the trigger. Nothing on a real boot asks the supervisor to swap yet.
+- **Milestone 694.** Milestone 694 (the installer asks the terminal to swap). `design/roadmap/0694-the-installer-asks-the-terminal-to-swap.md`, NOT-STARTED,
+  raised 2026-09-27: the trigger. Nothing on a real boot asks the supervisor to swap yet.
 - **Outstanding.** `display_terminal` and `compositor` are not swapped. Milestone 600 (the
   graphical terminal stack is built in userspace) moved `display_terminal`'s construction into
   `system_initializer`, so a supervisor could now hold it; what it lacks is a declaration and a
