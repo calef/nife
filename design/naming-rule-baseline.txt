@@ -173,8 +173,6 @@ crates/timetable/src/contract.rs::ARG_REGISTRATION_PAGE spelled-out
 crates/timetable/src/contract.rs::CLOCK_VA spelled-out
 crates/timetable/src/contract.rs::E_CONFIG spelled-out
 crates/timetable/src/contract.rs::STORE_PAGE_VA spelled-out
-crates/timetable/src/recurrence.rs::day_matches question-shape
-crates/timetable/src/recurrence.rs::month_day_matches question-shape
 crates/user_mode_runtime/src/heap.rs::commit_all question-shape
 crates/user_mode_runtime/src/ipc.rs::ipc spelled-out
 crates/user_mode_runtime/src/objects.rs::map_page_frame question-shape
