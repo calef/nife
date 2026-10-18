@@ -26,10 +26,10 @@ pub(crate) const WAKE: u64 = 5;
 pub(crate) const RETRANSMIT: u64 = 6;
 
 /// Our own endpoint again, `WRITE | GRANT`, and our own address space (§255 (each socket is its own
-/// capability)); `socket_protocol::stack_slots` says what each is for.
-pub(crate) const MINT: u64 = socket_protocol::stack_slots::MINT;
+/// capability)); `socket_contract::stack_slots` says what each is for.
+pub(crate) const MINT: u64 = socket_contract::stack_slots::MINT;
 
-pub(crate) const OWN_SPACE: u64 = socket_protocol::stack_slots::OWN_SPACE;
+pub(crate) const OWN_SPACE: u64 = socket_contract::stack_slots::OWN_SPACE;
 
 /// The heap smoltcp allocates against, capped under the granted budget.
 ///
@@ -49,8 +49,8 @@ pub(crate) static HEAP: user_mode_runtime::heap::MemoryRegionHeap =
 /// binary, so the initial ramdisk stays under its 15-file directory limit).
 ///
 /// `a2` is the server's **grant word**, both port authorities in one spawn argument: the TCP
-/// listen range in the low half (milestone 107, `socket_protocol::listen_grant`) and the fixed-UDP
-/// bind range in the high half (milestone 55's stack half, `socket_protocol::udp_bind_grant`).
+/// listen range in the low half (milestone 107, `socket_contract::listen_grant`) and the fixed-UDP
+/// bind range in the high half (milestone 55's stack half, `socket_contract::udp_bind_grant`).
 /// Whoever spawns the server decides both; a server spawned with zero (`NO_LISTEN_GRANT`, which
 /// every outbound-only test uses) refuses every `LISTEN` and every `BIND_UDP`. The client half
 /// ignores it.
@@ -112,7 +112,7 @@ pub(crate) fn server(mut dev: Nic, grant_word: u64) -> ! {
     // --- Serve the socket contract. One synchronous exchange per request. ---
     let mut table = Table::new();
     // Local ports follow the boot clock, so a stack started after another starts past its ports
-    // (socket_protocol::ephemeral says why that matters to a peer in TIME_WAIT).
+    // (socket_contract::ephemeral says why that matters to a peer in TIME_WAIT).
     let mut ports = ephemeral::Ports::new();
     loop {
         let req = receive_request(STACK);

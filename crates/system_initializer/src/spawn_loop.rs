@@ -1430,7 +1430,7 @@ impl Service<'_> {
         }
         if let (true, Some(page)) = (wants.machine, req.delegated.machine_page) {
             map_buf[map_n] = (
-                machine_statistics_protocol::PAGE_VA,
+                machine_statistics_contract::PAGE_VA,
                 page,
                 abi::address_space::MAP_RO,
             );
@@ -1581,7 +1581,7 @@ impl Service<'_> {
         // come back. The progenitor closes it on the child's behalf. It is the same hole `SPAWN_OK`
         // closed for the output side, one stream over.
         if !ok && let Some(ep) = req.delegated.diagnostics {
-            send(ep, byte_sink_protocol::eof(), 0, 0);
+            send(ep, byte_sink_contract::eof(), 0, 0);
         }
     }
 }
@@ -1661,7 +1661,7 @@ fn start_job(built: Option<supervision_protocol::Child>, req: &Request, std_layo
         Some(child) => {
             // **A program behind a directory grant is started with the grant's own three
             // words** rather than with an integer, which is `rm`'s shape: a spec carrying
-            // the options and two words of name (`filesystem_protocol::grant`). The progenitor forwards what the
+            // the options and two words of name (`filesystem_contract::grant`). The progenitor forwards what the
             // shell packed and reads none of it; see `spawnproto::GRANT_WORDS`.
             //
             // **A `std` program is started with nothing in its argument registers**: nife's
@@ -1703,7 +1703,7 @@ fn build_job(
                     // Born supervised exactly as a native job is, so `job_undertaker`
                     // collects it and the region comes back.
                     fault,
-                    stack_pages: std_runtime_protocol::STACK_PAGES,
+                    stack_pages: std_runtime_contract::STACK_PAGES,
                     ..ChildEndowment::new(Retention::Nothing)
                 },
             )

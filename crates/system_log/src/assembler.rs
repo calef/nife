@@ -4,7 +4,7 @@
 //! console needs from this service. Milestone 342 (the kernel and the `console` server drive one
 //! UART from two address spaces) rests on it: the splice cannot happen with the drainer alive.
 
-use system_log_protocol::record::TEXT_MAX;
+use system_log_contract::record::TEXT_MAX;
 
 /// How many writers can be mid-line at once. See the crate's BUGS for the ninth.
 pub const SLOTS: usize = 8;

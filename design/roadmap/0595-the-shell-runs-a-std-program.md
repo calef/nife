@@ -50,7 +50,7 @@ rather than the kernel's harness:
 
 What it took:
 
-- `crates/std_runtime_protocol` (provisional name): the eight fixed slots, the three shared
+- `crates/std_runtime_contract` (provisional name): the eight fixed slots, the three shared
   pages' addresses and the 32 stack pages, in one crate. It is generated verbatim into the PAL as
   `runtimeproto`, which `rt.rs` now re-exports, and the kernel harness reads it too. Before this
   the numbers were written three times; the progenitor would have been a fourth.

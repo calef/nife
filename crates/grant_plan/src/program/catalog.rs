@@ -302,14 +302,14 @@ programs! {
         /// The reason [`Manifest::config`](crate::Manifest::config) exists, and the same asymmetry [`Prog::Date`] made for the
         /// clock: the grant is real and it is not something a person designates on the line. Before
         /// this program, the page existed and could be assembled and mapped
-        /// (`crates/environment_protocol`), but nothing in the shell's program table declared wanting one,
+        /// (`crates/environment_contract`), but nothing in the shell's program table declared wanting one,
         /// so `caps`'s preview of it had nothing to show and no boot granted it outside a kernel test
         /// harness standing in for a std program. `date` before `Prog::Date` existed is the position
         /// this section of the roadmap named; `printenv` is this milestone's `date`.
         ///
         /// Takes no argument, no memory, no file: its whole authority is the read-only page. `TZ`,
         /// `LANG` and `TERM` print as `KEY=value` when the key is present and `KEY (unset)` when the
-        /// page is valid but does not carry it (`environment_protocol`'s validated-domain shape makes both
+        /// page is valid but does not carry it (`environment_contract`'s validated-domain shape makes both
         /// states distinguishable from a page nobody has assembled at all, which reads as
         /// "no configuration was granted").
         ///
@@ -399,7 +399,7 @@ programs! {
         /// The first program this table names whose [`Manifest::runtime`](crate::Manifest::runtime) is [`Runtime::Std`](crate::Runtime::Std), and
         /// that is its whole reason to be here: it is how the progenitor's std layout is proven at
         /// the real prompt. Its transcript asserts the heap, the wall clock, randomness and the
-        /// configuration page each arrived at the slot `std_runtime_protocol` fixes, so a layout
+        /// configuration page each arrived at the slot `std_runtime_contract` fixes, so a layout
         /// that put one in the wrong place fails a line rather than printing something plausible.
         ///
         /// **Named through this enum as an archive program, which settles nothing about §219 (how

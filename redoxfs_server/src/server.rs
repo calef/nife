@@ -28,7 +28,7 @@ pub struct Server<D: Disk> {
     /// The open-handle table. `handles[h]` is what a handle names, or `None` for a freed slot; the
     /// index is the handle. A capability the server issues and checks, never trusts.
     ///
-    /// **Slot 0 is the bound directory** ([`filesystem_protocol::fs::ROOT`]), installed by [`Server::open`]
+    /// **Slot 0 is the bound directory** ([`filesystem_contract::fs::ROOT`]), installed by [`Server::open`]
     /// before anything is served and never closeable. It exists so the directory an endpoint
     /// designates is an ordinary handle: every name resolves under a handle, and there is no
     /// separate "the current directory" field for a verb to forget to consult.
@@ -45,7 +45,7 @@ pub struct Server<D: Disk> {
     /// 0 for a handle no bound badge minted (milestone 606, ruling D).
     owners: Vec<u64>,
     /// Which badges are scoped to a subtree grant (ruling D, `subtree_scope`).
-    bindings: subtree_scope::Bindings<{ filesystem_protocol::fs::CLIENT_WINDOWS }>,
+    bindings: subtree_scope::Bindings<{ filesystem_contract::fs::CLIENT_WINDOWS }>,
 }
 
 impl<D: Disk> Server<D> {
@@ -83,10 +83,10 @@ impl<D: Disk> Server<D> {
     }
 
     /// Resolve `name` under the **bound directory** and return a handle for it: the shorthand for
-    /// [`Server::open_file_at`] with [`filesystem_protocol::fs::ROOT`], which is what every caller that predates
+    /// [`Server::open_file_at`] with [`filesystem_contract::fs::ROOT`], which is what every caller that predates
     /// directory handles means.
     pub fn open_file(&mut self, name: &NameCopy) -> Result<u32> {
-        self.open_file_at(filesystem_protocol::fs::ROOT as u32, name)
+        self.open_file_at(filesystem_contract::fs::ROOT as u32, name)
     }
 
     /// Resolve `name` under the directory `handle` names and return a file handle for it.
@@ -192,7 +192,7 @@ impl<D: Disk> Server<D> {
         Ok(self.install(Entry::Dir(node.ptr(), granted)))
     }
 
-    /// **Enumerate the directory `handle` names**, filling `out` with [`filesystem_protocol::dirent`] records
+    /// **Enumerate the directory `handle` names**, filling `out` with [`filesystem_contract::dirent`] records
     /// and returning how many bytes were used. `cursor` is the index of the first entry to return;
     /// 0 bytes back means the cursor is past the end.
     ///
@@ -303,7 +303,7 @@ impl<D: Disk> Server<D> {
     /// Resolved under the bound directory like every other name, so this cannot create outside the
     /// granted subtree, and `check_component` rejects a path rather than walking one.
     pub fn create_file(&mut self, name: &NameCopy) -> Result<u32> {
-        self.create_file_at(filesystem_protocol::fs::ROOT as u32, name)
+        self.create_file_at(filesystem_contract::fs::ROOT as u32, name)
     }
 
     /// [`Server::create_file`], under the directory `handle` names. Needs [`dir::CREATE`] on it;
@@ -399,7 +399,7 @@ impl<D: Disk> Server<D> {
     /// # What it refuses, and why each refusal is the contract's rather than the backend's
     ///
     /// - A **directory** may be renamed in place but not moved between directories: `EINVAL`. See
-    ///   [`filesystem_protocol::fs::RENAME`] for the cycle argument. Keeping the parent unchanged is what makes
+    ///   [`filesystem_contract::fs::RENAME`] for the cycle argument. Keeping the parent unchanged is what makes
     ///   the in-place case provably safe without an ancestry walk.
     /// - Replacing a destination of a **different kind** is `EISDIR` (file over directory) or
     ///   `ENOTDIR` (directory over file). RedoxFS's own `rename_node` allows both, because it passes
@@ -471,7 +471,7 @@ impl<D: Disk> Server<D> {
     /// whether a name is there. `ENOENT` if there is no such entry, `EINVAL` if it is not a single
     /// component, and [`dir::EISDIR`] for a directory: `rm` takes a name of a file away, and this
     /// contract has no `RMDIR`, which is stated where a caller meets it
-    /// ([`filesystem_protocol::fs::UNLINK`]) rather than approximated by removing whatever is found.
+    /// ([`filesystem_contract::fs::UNLINK`]) rather than approximated by removing whatever is found.
     ///
     /// # What "unlink, not revoke" costs, and where it is paid
     ///
@@ -570,7 +570,7 @@ impl<D: Disk> Server<D> {
 
     // --- mtime (milestone 47's `touch`, DECISIONS §112) ---
     //
-    // Three methods, one per `filesystem_protocol::fs` verb, and all three resolve `name` directly
+    // Three methods, one per `filesystem_contract::fs` verb, and all three resolve `name` directly
     // under the directory `handle` names rather than taking an already-open file handle: `touch`
     // never opens what it acts on ([`Server::unlink`]'s shape, not [`Server::write`]'s). That also
     // sidesteps a real constraint rather than a stylistic one: a **file** handle's `Rights` are
@@ -579,7 +579,7 @@ impl<D: Disk> Server<D> {
     // Only a directory handle's rights carry the full seven-rung ladder, so these three check the
     // *parent's* rights, exactly as [`Server::unlink`] and [`Server::rmdir`] do.
 
-    /// **The modification time of `name`, in Unix seconds** (`filesystem_protocol::fs::GETMTIME`).
+    /// **The modification time of `name`, in Unix seconds** (`filesystem_contract::fs::GETMTIME`).
     ///
     /// Needs [`dir::READ`], and its absence is `ENOENT` rather than a mutating-right's `EROFS`:
     /// this is a naming right, [`Server::open_file_at`]'s own rule, checked before the name is
@@ -595,7 +595,7 @@ impl<D: Disk> Server<D> {
         Ok(node.data().mtime().0)
     }
 
-    /// **Set `name`'s modification time to now** (`filesystem_protocol::fs::SETMTIME`, bare `touch`).
+    /// **Set `name`'s modification time to now** (`filesystem_contract::fs::SETMTIME`, bare `touch`).
     ///
     /// "Now" is this server's own advancing logical clock, the exact value every mutating verb
     /// already stamps a node with ([`Server::write`], [`Server::create_file_at`],
@@ -604,7 +604,7 @@ impl<D: Disk> Server<D> {
     /// sequence is guaranteed to
     /// observe the second mtime greater than the first, which is what a staleness check actually
     /// depends on; it is not guaranteed to agree with a wall-clock reading taken at the same
-    /// instant. See `filesystem_protocol::fs::SETMTIME`'s doc and notes/touch.md's `BUGS`.
+    /// instant. See `filesystem_contract::fs::SETMTIME`'s doc and notes/touch.md's `BUGS`.
     ///
     /// Needs [`dir::WRITE`], refused with [`dir::EROFS`], checked before the name is resolved for
     /// [`Server::unlink`]'s reason. No more than [`dir::WRITE`], because the value recorded is one
@@ -625,7 +625,7 @@ impl<D: Disk> Server<D> {
     }
 
     /// **Set `name`'s modification time to a caller-supplied Unix-seconds value**
-    /// (`filesystem_protocol::fs::SETMTIME_AT`, `touch -t`; DECISIONS §112: the ability to *lie about
+    /// (`filesystem_contract::fs::SETMTIME_AT`, `touch -t`; DECISIONS §112: the ability to *lie about
     /// history*).
     ///
     /// Needs [`dir::WRITE`] **and** [`dir::SETTIME`], refused with [`dir::EROFS`] for either
@@ -650,9 +650,9 @@ impl<D: Disk> Server<D> {
     // --- Extended attributes (milestone 57, DECISIONS §34's 2026-07-31 amendment) ---
     //
     // The engine has none of this. The four methods below are a **layer**: a store the server keeps
-    // in the image, keyed on the node's `TreePtr` id, published as `filesystem_protocol::xattr::store`. What
+    // in the image, keyed on the node's `TreePtr` id, published as `filesystem_contract::xattr::store`. What
     // makes the layer legitimate here and worthless on Linux is that nothing can bypass it, because
-    // every path to these bytes goes through `filesystem_protocol`. See notes/xattr.md.
+    // every path to these bytes goes through `filesystem_contract`. See notes/xattr.md.
 
     /// **Read one extended attribute of the node `handle` names**, returning its type code and the
     /// number of bytes written into `out`.
@@ -682,7 +682,7 @@ impl<D: Disk> Server<D> {
     }
 
     /// **Set one extended attribute on the node `handle` names.** Creating and replacing are one
-    /// operation ([`filesystem_protocol::fs::SETXATTR`] says why).
+    /// operation ([`filesystem_contract::fs::SETXATTR`] says why).
     ///
     /// Needs [`dir::WRITE`], refused with [`dir::EROFS`], which is what [`Server::write`] needs and
     /// answers. The three ceilings answer their own words ([`xattr::ERANGE`], [`xattr::E2BIG`],
@@ -781,7 +781,7 @@ impl<D: Disk> Server<D> {
     /// while this handle was open (see [`Server::unlink`]). Nothing else collects it, so a close is
     /// not merely bookkeeping in a table this server owns.
     pub fn close(&mut self, handle: u32) -> Result<()> {
-        if handle as u64 == filesystem_protocol::fs::ROOT || self.is_grant_root(handle) {
+        if handle as u64 == filesystem_contract::fs::ROOT || self.is_grant_root(handle) {
             return Err(Error::new(EINVAL));
         }
         let entry = self.entry(handle)?;
@@ -810,14 +810,14 @@ impl<D: Disk> Server<D> {
         Ok(())
     }
 
-    /// **How much room the image has** ([`filesystem_protocol::fs::STATFS`], milestone 54), as
+    /// **How much room the image has** ([`filesystem_contract::fs::STATFS`], milestone 54), as
     /// `(block_size, total_blocks, free_blocks)`.
     ///
     /// The handle is validated and then not used, which looks odd and is the point: it is the
     /// qualification rather than the subject. Holding any handle this server minted is what
     /// entitles a caller to ask, and the answer is about the one image behind all of them, so
     /// `EBADF` for a handle that was never minted is the whole of the check. No right is demanded;
-    /// [`filesystem_protocol::fs::STATFS`] argues that at length.
+    /// [`filesystem_contract::fs::STATFS`] argues that at length.
     ///
     /// **Where the two numbers come from, and why one is not read inside a transaction.**
     /// `header.size()` is the filesystem's size in bytes as the newest committed header records it,
@@ -828,7 +828,7 @@ impl<D: Disk> Server<D> {
     ///
     /// A transaction in flight elsewhere would move `free`, and there is none: this server runs one
     /// request to completion before it receives the next, which is the same property
-    /// [`filesystem_protocol::fs::RENAME`]'s concurrency atomicity rests on.
+    /// [`filesystem_contract::fs::RENAME`]'s concurrency atomicity rests on.
     pub fn statfs(&mut self, handle: u32) -> Result<(u64, u64, u64)> {
         self.entry(handle)?;
         let block = redoxfs::BLOCK_SIZE;
@@ -844,8 +844,8 @@ impl<D: Disk> Server<D> {
     /// **May this handle ask for the storage to be made durable?** (milestone 55). `Ok(())` when it
     /// may; the caller then does the IO.
     ///
-    /// This is the permission half of `filesystem_protocol::fs::SYNC` and **it performs no flush**, which the
-    /// name is chosen to say. The flush is a `filesystem_protocol::blk::FLUSH` to the block server, so it lives
+    /// This is the permission half of `filesystem_contract::fs::SYNC` and **it performs no flush**, which the
+    /// name is chosen to say. The flush is a `filesystem_contract::blk::FLUSH` to the block server, so it lives
     /// in the binary with the rest of the IO; RedoxFS's `Disk` trait has no sync method and this
     /// crate does not modify vendored code to add one. A method here called `sync` would be the
     /// exact kind of claim-beyond-the-mechanism milestone 55 exists to remove.
@@ -853,7 +853,7 @@ impl<D: Disk> Server<D> {
     /// `node_at` with [`dir::WRITE`], so it takes a handle of **either kind** the
     /// way `STATFS` does (the answer is about the storage, not about the node), and refuses with
     /// [`dir::EROFS`] the way every mutating verb does. The rights argument is in
-    /// `filesystem_protocol::fs::SYNC`'s own documentation: a sync is an action on the device rather than a
+    /// `filesystem_contract::fs::SYNC`'s own documentation: a sync is an action on the device rather than a
     /// fact about it, and a read-only holder has nothing outstanding to make durable.
     ///
     /// Name: provisional, minted by milestone 55's durability lane on 2026-08-18.
@@ -892,7 +892,7 @@ impl<D: Disk> Server<D> {
 
     /// Whether some badge's grant is rooted at `handle` (see [`Server::close`]).
     fn is_grant_root(&self, handle: u32) -> bool {
-        (1..filesystem_protocol::fs::CLIENT_WINDOWS as u64).any(|b| {
+        (1..filesystem_contract::fs::CLIENT_WINDOWS as u64).any(|b| {
             self.bindings.of(b)
                 == subtree_scope::Binding::Bound {
                     root: handle as u64,
@@ -957,7 +957,7 @@ impl<D: Disk> Server<D> {
             self.owners[h as usize] = 0;
             let _ = self.close(h);
         }
-        if root != filesystem_protocol::fs::ROOT {
+        if root != filesystem_contract::fs::ROOT {
             let _ = self.close(root as u32);
         }
         Ok(())

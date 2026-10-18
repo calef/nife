@@ -221,7 +221,7 @@ pub fn offer() {
 /// capabilities: the report endpoint, the disk's `blk` endpoint, the page it shares with that
 /// disk's server, and a budget for the one page it maps. **No entropy endpoint**, so the only table
 /// it can write is the one it read; **no boot file**, so it cannot rewrite the image it vouches
-/// for. A `blk` endpoint is the whole disk (nothing in `filesystem_protocol::blk` bounds a client
+/// for. A `blk` endpoint is the whole disk (nothing in `filesystem_contract::blk` bounds a client
 /// to a block range), so it *could* write anywhere on that disk, as `system_installer`'s `BUGS`
 /// records.
 ///

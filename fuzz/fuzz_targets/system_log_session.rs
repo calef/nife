@@ -30,11 +30,11 @@
 
 use std::collections::{HashMap, HashSet};
 
-use byte_sink_protocol::{eof, pack, with_severity};
+use byte_sink_contract::{eof, pack, with_severity};
 use libfuzzer_sys::arbitrary::{Result as ArbResult, Unstructured};
 use libfuzzer_sys::fuzz_target;
 use system_log::{Handled, Log};
-use system_log_protocol::{control, read, severity};
+use system_log_contract::{control, read, severity};
 
 /// Steps per session. The ring is 64 KiB, so a long session also exercises eviction and the
 /// dropped-count line.

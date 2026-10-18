@@ -1,13 +1,13 @@
 //! **The JH7110 TRNG driver** (notes/entropy.md): an alternate backend for the entropy contract
-//! (`entropy_protocol`) beside `entropy.rs`'s virtio-rng one. Same contract, different device: no
+//! (`entropy_contract`) beside `entropy.rs`'s virtio-rng one. Same contract, different device: no
 //! virtqueue, no DMA page, just a register window. `kernel/src/user/entropy_service.rs` spawns it on
 //! the riscv64 boot tour; QEMU has no JH7110, so CI resolves that to a skip. The register decode,
 //! the device-tree query and the byte buffer are in `crates/jh7110_entropy`, host-tested and
 //! Kani-reachable; what is left here is the volatile access and two polling bounds.
 //!
-//! Slot 0 is the request endpoint (RECEIVE, `entropy_protocol`'s wire format) and slot 1 a
-//! readiness endpoint (WRITE) that gets one message: [`proto::READY`](entropy_protocol::READY) once
-//! a first generation is not all zero, or a [`bringup_failure`](entropy_protocol::bringup_failure)
+//! Slot 0 is the request endpoint (RECEIVE, `entropy_contract`'s wire format) and slot 1 a
+//! readiness endpoint (WRITE) that gets one message: [`proto::READY`](entropy_contract::READY) once
+//! a first generation is not all zero, or a [`bringup_failure`](entropy_contract::bringup_failure)
 //! word naming the failed step. Mapped: one device page at [`TRNG_VA`], placed by the spawner (rule
 //! 2); the binding's window is `0x4000`, but `jh7110_entropy::regs` reaches only `0x68`. Nothing
 //! else: no DMA page and no IRQ, so its authority is smaller than virtio-rng's by construction.
@@ -22,7 +22,7 @@
 //!   `SEC_MISCAHB_CLK` and releases the block's reset before spawning it, and nothing here checks
 //!   that happened; a boot where it did not presents as zeros.
 //! - An all-zero first generation condemns the device for the boot
-//!   ([`proto::STEP_FIRST_ALL_ZERO`](entropy_protocol::STEP_FIRST_ALL_ZERO)), even if it powers on
+//!   ([`proto::STEP_FIRST_ALL_ZERO`](entropy_contract::STEP_FIRST_ALL_ZERO)), even if it powers on
 //!   a moment later.
 //! - [`POLL_TRIES`] and [`LOCKUP_RETRIES`] are unmeasured guesses, and [`POLL_TRIES`] counts loop
 //!   iterations with no delay, so it is a guard against hanging, not a timeout in microseconds.
@@ -40,7 +40,7 @@
 #![allow(missing_docs)]
 #![no_main]
 
-use entropy_protocol as proto;
+use entropy_contract as proto;
 use jh7110_entropy::{
     CTRL_EXEC_RANDRESEED, CTRL_GENE_RANDNUM, ISTAT_ALL, ISTAT_RAND_RDY, ISTAT_SEED_DONE, MODE_R256,
     Outcome, Pool, interpret,
@@ -287,7 +287,7 @@ pub extern "C" fn _start(_arg0: u64, _arg1: u64, _arg2: u64) -> ! {
 }
 
 /// The serve loop: one endpoint, one wait point, forever. Identical in shape to `entropy.rs`'s,
-/// because the contract (`entropy_protocol`) is the thing that does not change between backends.
+/// because the contract (`entropy_contract`) is the thing that does not change between backends.
 fn serve(mut pool: Pool, refuse: bool) -> ! {
     loop {
         let req = receive_request(REQ);
@@ -309,7 +309,7 @@ fn serve(mut pool: Pool, refuse: bool) -> ! {
 }
 
 /// **The two 8s are the same 8.** `jh7110_entropy::Pool::take` clamps to the width of the word it
-/// answers with; `entropy_protocol::want` clamps to the width of the word the wire carries. This file
+/// answers with; `entropy_contract::want` clamps to the width of the word the wire carries. This file
 /// is the only one that depends on both, so it is where the agreement can be checked, and a
 /// compile-time assert is the rung this project reaches for when a fact can be made unrepresentable
 /// rather than remembered.

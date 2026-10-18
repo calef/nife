@@ -17,7 +17,7 @@ still declares exactly those nine roles (`INIT` 20, `CHILD` 21, `DEV_CHILD` 22, 
 `INIT_CONSOLE` 24, `INIT_IRQ` 25, `IRQ_CHILD` 26, `INIT_LEAST_AUTHORITY_DEMO` 28, `INIT_COREMARK`
 29). `ROLES_ENTRY` is still `"hello"` and is still read by `init_build` and one other parent to
 re-enter this binary's own image. `kernel::user::spawn_hello` still takes a role and always enters
-`HELLO_ENTRY`. `crates/capability_witness_protocol` is there for the agreed words. The gate was
+`HELLO_ENTRY`. `crates/capability_witness_contract` is there for the agreed words. The gate was
 `MILESTONE 268` and it is cleared: milestone 268 (every architecture boots the same way) turned
 BUILT on 2026-09-19, so nothing is rebuilding the boot sequence any more and this is ready to start.
 **This block also absorbs** milestone 399 (the six `init` roles in `hello`), which proposed
@@ -58,7 +58,7 @@ for two reasons:
 
 - Three child programs, provisionally `reporting_child`, `device_identifying_child` and
   `interrupt_waiting_child`, packed in all three archives. Their two agreed words (`CHILD_WORD`,
-  and the interrupt child's reported word) join `capability_witness_protocol`, which milestone 291
+  and the interrupt child's reported word) join `capability_witness_contract`, which milestone 291
   created for exactly this.
 - Six parent programs, each naming its child's entry.
 - `spawn_hello` taking the entry name, or a role-to-entry table beside `PROGENITOR_ROLE`.

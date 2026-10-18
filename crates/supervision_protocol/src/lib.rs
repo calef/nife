@@ -141,7 +141,7 @@ pub const CHILD_STACK_PAGES: u64 = 4;
 /// which addresses are free.
 ///
 /// **Siting.** In [`address_space_map::RUNTIME_WINDOWS`], starting where the cursor always started,
-/// and ending well under the progenitor's initial ramdisk window. `std_runtime_protocol`'s three
+/// and ending well under the progenitor's initial ramdisk window. `std_runtime_contract`'s three
 /// pages sit inside it, but only in a `std` program's space, and no `std` program builds children.
 /// A window some other party does map in a builder's space costs a probe, not a failure:
 /// [`map_scratch`] skips any page the kernel says is taken.
@@ -663,12 +663,12 @@ fn lay_out_child(
     // does its absence, which is the honest shape: a subtree cannot know more than its root did.
     #[cfg(any(target_arch = "x86_64", target_arch = "riscv64"))]
     {
-        let page = user_mode_runtime::cntfrq_checked().map(counter_frequency_protocol::build_page);
+        let page = user_mode_runtime::cntfrq_checked().map(counter_frequency_contract::build_page);
         fill_and_map(
             own_ut,
             build_ut,
             aspace,
-            counter_frequency_protocol::PAGE_VA,
+            counter_frequency_contract::PAGE_VA,
             page.as_ref().map(|bytes| (0usize, &bytes[..])),
             abi::address_space::MAP_RO,
         )?;
@@ -973,7 +973,7 @@ pub fn start_child(child: Child, a0: u64, a1: u64, a2: u64) -> bool {
 /// The instruction moved to [`user_mode_runtime::trap`] in milestone 130; this stays because callers here
 /// mean something more specific than "trap" (a supervision-protocol step failed, and limping on
 /// would build half a system), and that reason is worth a name. What it no longer does is spell
-/// the asm out: this body and `swap_protocol::fail`'s were byte-identical copies of each other and of
+/// the asm out: this body and `hot_swap_contract::fail`'s were byte-identical copies of each other and of
 /// forty-six other sites.
 pub fn fail() -> ! {
     user_mode_runtime::trap()

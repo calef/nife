@@ -13,13 +13,13 @@
 //! ```
 //!
 //! A process blocks on one endpoint at a time, so writing the store is a phase that ends:
-//! provision (each [`credential_protocol::provision::PUT`] derives a record with an
-//! entropy-service salt, [`credential_protocol::provision::SEAL`] ends it), then both ends of the
+//! provision (each [`credential_contract::provision::PUT`] derives a record with an
+//! entropy-service salt, [`credential_contract::provision::SEAL`] ends it), then both ends of the
 //! provision endpoint are deleted, then serve `VERIFY` forever. A client is not refused write
 //! permission; there is no object left through which a write could travel.
 //!
 //! It never invents a salt (§44 (entropy is a capability)): a `PUT` that cannot get one answers
-//! [`credential_protocol::NO_ENTROPY`], and a service that cannot draw its decoy record's salt and
+//! [`credential_contract::NO_ENTROPY`], and a service that cannot draw its decoy record's salt and
 //! tag at start-up refuses to start, since a weaker fallback would fail silently.
 //!
 //! Slots: 0, the provision endpoint (RECEIVE), deleted at the seal; 1, the verify endpoint
@@ -31,7 +31,7 @@
 //! # BUGS
 //!
 //! - One verify page means one client at a time (today `login`); a second needs a page per
-//!   channel, as `filesystem_protocol` has.
+//!   channel, as `filesystem_contract` has.
 //! - Nothing survives a reboot. No rate limit or lockout: a guess costs one Argon2id derivation.
 //! - Revocation is per holder, not per secret: the sealed store has no way to remove a record, so
 //!   rotating one means reprovisioning.
@@ -51,7 +51,7 @@ extern crate alloc;
 use alloc::vec;
 use alloc::vec::Vec;
 
-use credential_protocol as proto;
+use credential_contract as proto;
 use credentialer::{Block, Cost, Store, Verdict};
 use user_mode_runtime::mapped_window::MappedWindow;
 use user_mode_runtime::{call, cap_delete, exit, receive_request, reply, send};
@@ -233,7 +233,7 @@ fn serve(store: &Store<CAPACITY>, scratch: &mut [Block]) -> ! {
     }
 }
 
-/// One `VERIFY`. The reply is a verdict and nothing else; see `credential_protocol`'s module docs on why
+/// One `VERIFY`. The reply is a verdict and nothing else; see `credential_contract`'s module docs on why
 /// the reply channel has no room for data.
 fn answer(store: &Store<CAPACITY>, scratch: &mut [Block], w0: u64) -> u64 {
     // SAFETY: forwarded from VERIFY_WINDOW's own contract.
@@ -259,7 +259,7 @@ fn wipe(window: MappedWindow) {
     proto::wipe(page);
 }
 
-/// Fill `out` with bytes from the entropy service, `entropy_protocol::MAX_BYTES` at a time. `false`
+/// Fill `out` with bytes from the entropy service, `entropy_contract::MAX_BYTES` at a time. `false`
 /// when the service could not supply them, which every caller treats as fatal to the request.
 ///
 /// A short reply is a refusal here, not something to pad out. The entropy contract is explicit
@@ -267,21 +267,21 @@ fn wipe(window: MappedWindow) {
 fn fill(out: &mut [u8]) -> bool {
     let mut done = 0;
     while done < out.len() {
-        let want = (out.len() - done).min(entropy_protocol::MAX_BYTES as usize);
+        let want = (out.len() - done).min(entropy_contract::MAX_BYTES as usize);
         let (r0, r1) = call(
             ENTROPY,
-            entropy_protocol::req(entropy_protocol::GET, want as u64),
+            entropy_contract::req(entropy_contract::GET, want as u64),
             0,
         );
         // `delivered` is what makes "no entropy capability" distinguishable from "no entropy"
         // without a probe: a count is 0..=8 and every kernel error is a huge u64.
-        let Some(n) = entropy_protocol::delivered(r0) else {
+        let Some(n) = entropy_contract::delivered(r0) else {
             return false;
         };
         if n < want {
             return false;
         }
-        done += entropy_protocol::take(n, r1, &mut out[done..]);
+        done += entropy_contract::take(n, r1, &mut out[done..]);
     }
     true
 }

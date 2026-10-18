@@ -79,7 +79,7 @@ diff --git a/kernel/src/cpu.rs b/kernel/src/cpu.rs
 index 7fd982a82..4327ee9b2 100644
 --- a/kernel/src/cpu.rs
 +++ b/kernel/src/cpu.rs
-@@ -53,6 +53,8 @@ pub const MAX_CPUS: usize = current_cpu_protocol::CPU_ID_BOUND;
+@@ -53,6 +53,8 @@ pub const MAX_CPUS: usize = current_cpu_contract::CPU_ID_BOUND;
  ///
  /// Aligned to 256 on x86_64 so its size stays a power of two; see the assertion below [`PERCPU`].
  #[cfg_attr(target_arch = "x86_64", repr(align(256)))]

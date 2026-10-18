@@ -11,10 +11,10 @@
 //!
 //! **`update` and the index copy** (milestone 801 (packages over the internet), item 6 of
 //! milestone 809): the image names its index's addresses and the root their TLS must chain to
-//! (`package_index::Sources`, at `std_runtime_protocol::INDEX_SOURCES_PAGE`). `update` fetches
+//! (`package_index::Sources`, at `std_runtime_contract::INDEX_SOURCES_PAGE`). `update` fetches
 //! the index from the first that answers, pinned to that root, keeps this architecture's lines,
 //! and writes them to `package_index::IMAGE_INDEX_COPY` in the index store, the directory the
-//! owner's console grants at `std_runtime_protocol::FS_DIR_SLOT`. After that a name is looked up
+//! owner's console grants at `std_runtime_contract::FS_DIR_SLOT`. After that a name is looked up
 //! in the copy first, fetched from the entry's locations or the repository's own `targets/` over
 //! HTTPS, and judged by the entry's digest; the progenitor installs it on the same copy's word
 //! (ruling I2). Before any `update`, a name is looked up in the image's catalog and fetched from
@@ -52,7 +52,7 @@ use package_index::{
 };
 use pinned_tls_client::listed::{self, root_der};
 use pinned_tls_client::{PinnedPeer, Session};
-use socket_protocol::fixture::{PACKAGE_PEER_HOST, PACKAGE_PEER_IP, PACKAGE_PEER_PORT};
+use socket_contract::fixture::{PACKAGE_PEER_HOST, PACKAGE_PEER_IP, PACKAGE_PEER_PORT};
 use user_mode_runtime as rt;
 
 // **What these bytes ask for when they are run by path, as installed bytes** (milestone 597 (a
@@ -109,7 +109,7 @@ fn catalog() -> Option<&'static str> {
     // mapping lives as long as this process.
     let page = unsafe {
         std::slice::from_raw_parts(
-            std_runtime_protocol::CATALOG_PAGE as *const u8,
+            std_runtime_contract::CATALOG_PAGE as *const u8,
             spawnproto::IMAGE_PAGE as usize,
         )
     };
@@ -171,7 +171,7 @@ impl Staged {
         if pages == 0 || pages > spawnproto::IMAGE_MAX_PAGES {
             return Err("that package is empty, or larger than a package may be (4 MiB)");
         }
-        let run = rt::retype_page_frame_run(std_runtime_protocol::MEMORY_REGION_SLOT, pages);
+        let run = rt::retype_page_frame_run(std_runtime_contract::MEMORY_REGION_SLOT, pages);
         let Ok(run) = u64::try_from(run) else {
             return Err("this jig could not set aside the pages for that package");
         };
@@ -179,7 +179,7 @@ impl Staged {
             run,
             STAGING_VA,
             true,
-            std_runtime_protocol::MEMORY_REGION_SLOT,
+            std_runtime_contract::MEMORY_REGION_SLOT,
         ) {
             rt::cap_delete(run);
             return Err("this jig could not map the pages for that package");
@@ -230,7 +230,7 @@ fn ask(verb: Activation, staged: Option<&Staged>, name: Option<&str>) -> Reply {
         }
     }
     if let Some(name) = name {
-        let (lo, hi) = filesystem_protocol::grant::pack_name(name.as_bytes());
+        let (lo, hi) = filesystem_contract::grant::pack_name(name.as_bytes());
         rt::send(INSTALLER_SLOT, lo, hi, name.len() as u64);
     }
     let (r0, r1, r2) = rt::receive(INSTALLER_REPLY_SLOT);
@@ -413,7 +413,7 @@ fn sources_text() -> Option<&'static str> {
     // and the mapping lives as long as this process.
     let page = unsafe {
         std::slice::from_raw_parts(
-            std_runtime_protocol::INDEX_SOURCES_PAGE as *const u8,
+            std_runtime_contract::INDEX_SOURCES_PAGE as *const u8,
             spawnproto::IMAGE_PAGE as usize,
         )
     };
@@ -651,7 +651,7 @@ fn fill(
 /// installed, whatever its programs are called (calef, 2026-10-14 (UTC), milestone 919 (a package
 /// carries several programs): "jig remove should work on packages, not programs.").
 fn remove(package: &str) -> ExitCode {
-    if package.len() > filesystem_protocol::grant::MAX_NAME {
+    if package.len() > filesystem_contract::grant::MAX_NAME {
         println!("{USAGE}");
         return ExitCode::from(2);
     }

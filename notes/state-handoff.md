@@ -3,7 +3,7 @@
 *The last residual of milestone 23 (a capability-routed component OS with live replacement), built
 2026-09-26 to the ruling in DECISIONS §209 (state handoff is an opaque blob over a granted frame,
 and it is optional). `crates/component_plan`'s `Handoff` and `Requirements::handoff`,
-`crates/swap_protocol`'s `TALLY` and `serve_with_state`, `components/src/swapper.rs`'s `handoff()`,
+`crates/hot_swap_contract`'s `TALLY` and `serve_with_state`, `components/src/swapper.rs`'s `handoff()`,
 and the guest test
 `a_component_keeps_its_state_across_a_swap_and_a_swap_that_cannot_absorb_it_does_not_commit`. Read
 notes/live-replacement.md first; this builds on its four steps.*
@@ -14,7 +14,7 @@ notes/live-replacement.md first; this builds on its four steps.*
 
 1. An opaque blob over a granted frame. One frame, retyped out of the operator's budget and
    routed under the role name `component_plan::HANDOFF_ROLE` to every instance of the contract. The
-   operator never maps it and never reads it. The blob's layout is `swap_protocol`'s business,
+   operator never maps it and never reads it. The blob's layout is `hot_swap_contract`'s business,
    versioned there beside the only code that reads it (`LAYOUT_1`, `state_blob`, `absorb`).
 2. Optional, declared beside `depends_on`. `Requirements::handoff: Option<Handoff>`, a required
    field with no default, so a contract cannot be declared without answering the question. Every

@@ -222,7 +222,7 @@ Nothing blocks increment three now. The family was §104's (2026-08-20) and the 
   `design/decisions/0104-the-font-and-the-palette.md`, after this block's finding that "Higher
   Contrast" is a different palette rather than a contrast adjustment.
 - **Done.** §102 is built and consumed: the page-frame object in `kernel/src/cap.rs` carries a
-  count that is the run's length in pages, and `crates/graphics_protocol` sizes the scanout at
+  count that is the run's length in pages, and `crates/graphics_contract` sizes the scanout at
   924x344 over 311 frames.
 - **Done.** The screendump cost was measured and settled: the referee poll in `xtask/src/main.rs`
   records the 39x growth, that both suites still finish in normal time, and calef's call to leave

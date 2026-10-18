@@ -9,22 +9,22 @@
 //!
 //! # Four roles: two rungs of the latency ladder, one component that stops answering, and one that carries state
 //!
-//! - [`ROLE_DIRECT`](swap_protocol::ROLE_DIRECT): the default rung. The stable name a client holds is the
+//! - [`ROLE_DIRECT`](hot_swap_contract::ROLE_DIRECT): the default rung. The stable name a client holds is the
 //!   endpoint object itself, and the swap changes who is parked in `RECEIVE_CAP` on it. **No process
 //!   sits in the data path**, so the steady state costs exactly what an unbrokered call costs.
-//! - [`ROLE_QUEUED`](swap_protocol::ROLE_QUEUED): the opt-in rung. A `broker` stands between producer and
+//! - [`ROLE_QUEUED`](hot_swap_contract::ROLE_QUEUED): the opt-in rung. A `broker` stands between producer and
 //!   backend so the producer never blocks on an absent consumer. One extra hop, priced by the
 //!   `broker_rtt` benchmark, and chosen per channel rather than imposed on every IPC.
-//! - [`ROLE_HUNG`](swap_protocol::ROLE_HUNG): the same system as the direct rung, against an incumbent
+//! - [`ROLE_HUNG`](hot_swap_contract::ROLE_HUNG): the same system as the direct rung, against an incumbent
 //!   that **stops answering without dying** (milestone 23's third residual). Step 2 of the four is
 //!   unavailable, because draining needs the incumbent's cooperation and that is exactly what is
 //!   missing; the interesting result is that the other three steps do not. See
 //!   notes/hung-component.md, and read its two open decisions before extending this role.
-//! - [`ROLE_HANDOFF`](swap_protocol::ROLE_HANDOFF): **state handoff** (DECISIONS §209 (state handoff is an opaque blob over a granted frame, and it is optional)). The component
+//! - [`ROLE_HANDOFF`](hot_swap_contract::ROLE_HANDOFF): **state handoff** (DECISIONS §209 (state handoff is an opaque blob over a granted frame, and it is optional)). The component
 //!   carries a tally across the swap on a handoff page, and the swap is tried twice: against a
 //!   replacement that cannot absorb the state, which must not commit, and then against one that can.
 //!   See notes/state-handoff.md.
-//! - [`ROLE_UNWARNED`](swap_protocol::ROLE_UNWARNED): the queued system **with the dependent never
+//! - [`ROLE_UNWARNED`](hot_swap_contract::ROLE_UNWARNED): the queued system **with the dependent never
 //!   warned**, which is what a supervisor is left with when the dependent the graph names will not
 //!   answer. It measures what skipping the warning costs, and the answer is latency, not loss. See
 //!   notes/non-cooperative-fallback.md.
@@ -66,8 +66,8 @@
 // Two shared modules: the swap system's protocol and the supervision tree's loader. Each binary
 // uses a different slice of both, so the unused halves are expected (§38).
 use component_plan::Provisions;
+use hot_swap_contract::log_checks as lc;
 use supervision_protocol::{ChildEndowment, Retention};
-use swap_protocol::log_checks as lc;
 use user_mode_runtime::{
     address_space_map_into, cap_delete, cntfrq, map_page_frame, now, receive, receive_bound,
     receive_fault, revoke_page_frame, send, timer_arm,
@@ -84,7 +84,7 @@ const DEVICE: u64 = 2; // the UART's registers, WRITE|GRANT: ours to lend, and o
 const WAKE: u64 = 3;
 const TIMER: u64 = 4;
 
-// Pages per process we build is NOT here any more. It is `swap_protocol::INSTANCE_PAGES`, declared by
+// Pages per process we build is NOT here any more. It is `hot_swap_contract::INSTANCE_PAGES`, declared by
 // each contract, and it reaches this program through `component_plan::Plan::pages`. It is a **peak**,
 // because this operator never destroys a region: all five splits are live at once and the budget has
 // to cover them together.
@@ -120,21 +120,23 @@ pub extern "C" fn _start(role: u64, initial_ramdisk_len: u64, _a2: u64) -> ! {
         poke: obj(abi::objtype::RENDEZVOUS, 8),
         log_page_frame: page_frame(9),
     };
-    if !map_page_frame(w.log_page_frame, swap_protocol::LOG_VA, true, ROOT_UT) {
+    if !map_page_frame(w.log_page_frame, hot_swap_contract::LOG_VA, true, ROOT_UT) {
         bail(10)
     }
-    for i in 0..swap_protocol::PAGE {
+    for i in 0..hot_swap_contract::PAGE {
         // SAFETY: a page we just mapped read/write into our own address space.
-        unsafe { core::ptr::write_volatile((swap_protocol::LOG_VA as *mut u8).add(i as usize), 0) };
+        unsafe {
+            core::ptr::write_volatile((hot_swap_contract::LOG_VA as *mut u8).add(i as usize), 0)
+        };
     }
 
     match role {
-        swap_protocol::ROLE_QUEUED => queued(&fs, &w, Warn::OnTime),
-        swap_protocol::ROLE_UNWARNED => queued(&fs, &w, Warn::Never),
-        swap_protocol::ROLE_LATE_WARNING => queued(&fs, &w, Warn::Late),
-        swap_protocol::ROLE_HUNG => hung(&fs, &w),
-        swap_protocol::ROLE_HANDOFF => handoff(&fs, &w),
-        swap_protocol::ROLE_DEPUTY => deputy(&fs, &w),
+        hot_swap_contract::ROLE_QUEUED => queued(&fs, &w, Warn::OnTime),
+        hot_swap_contract::ROLE_UNWARNED => queued(&fs, &w, Warn::Never),
+        hot_swap_contract::ROLE_LATE_WARNING => queued(&fs, &w, Warn::Late),
+        hot_swap_contract::ROLE_HUNG => hung(&fs, &w),
+        hot_swap_contract::ROLE_HANDOFF => handoff(&fs, &w),
+        hot_swap_contract::ROLE_DEPUTY => deputy(&fs, &w),
         _ => direct(&fs, &w),
     }
 }
@@ -165,10 +167,10 @@ fn deputy(fs: &nifefs::Fs, w: &Wiring) -> ! {
     let to_client = Provisions {
         held: &[("service", w.svc), ("report", REPORT), ("operator", w.note)],
     };
-    let Ok(component) = component_plan::plan(&swap_protocol::CONSOLE, &to_component) else {
+    let Ok(component) = component_plan::plan(&hot_swap_contract::CONSOLE, &to_component) else {
         bail(61)
     };
-    let Ok(client) = component_plan::plan(&swap_protocol::CLIENT, &to_client) else {
+    let Ok(client) = component_plan::plan(&hot_swap_contract::CLIENT, &to_client) else {
         bail(62)
     };
 
@@ -183,16 +185,21 @@ fn deputy(fs: &nifefs::Fs, w: &Wiring) -> ! {
         &client_img,
         &client,
         w.faultep,
-        [swap_protocol::ROLE_CONFUSED, 0, 0],
+        [hot_swap_contract::ROLE_CONFUSED, 0, 0],
         30,
     );
-    expect_note(w.note, swap_protocol::NOTE_ATTACK_DONE, 33);
+    expect_note(w.note, hot_swap_contract::NOTE_ATTACK_DONE, 33);
 
     let mut corpses = 0u64;
     reap_to(w.faultep, &mut corpses, 1); // the attacker
     retire(w, &mut corpses, 2, 34); // quiesce the incumbent and collect it
 
-    send(REPORT, swap_protocol::RPT_LOG, verdict_from_log(0, true), 0);
+    send(
+        REPORT,
+        hot_swap_contract::RPT_LOG,
+        verdict_from_log(0, true),
+        0,
+    );
     user_mode_runtime::exit()
 }
 
@@ -239,15 +246,15 @@ fn direct(fs: &nifefs::Fs, w: &Wiring) -> ! {
     // instance's post-revoke probe surviving is.
     // ------------------------------------------------------------------------------------------
 
-    match component_plan::plan(&swap_protocol::BROKER, &to_component) {
+    match component_plan::plan(&hot_swap_contract::BROKER, &to_component) {
         Ok(_) => bail(60),
-        Err(refusal) => send(REPORT, swap_protocol::RPT_REFUSED, refusal.code(), 0),
+        Err(refusal) => send(REPORT, hot_swap_contract::RPT_REFUSED, refusal.code(), 0),
     };
 
-    let Ok(component) = component_plan::plan(&swap_protocol::CONSOLE, &to_component) else {
+    let Ok(component) = component_plan::plan(&hot_swap_contract::CONSOLE, &to_component) else {
         bail(61)
     };
-    let Ok(client) = component_plan::plan(&swap_protocol::CLIENT, &to_client) else {
+    let Ok(client) = component_plan::plan(&hot_swap_contract::CLIENT, &to_client) else {
         bail(62)
     };
 
@@ -281,10 +288,10 @@ fn direct(fs: &nifefs::Fs, w: &Wiring) -> ! {
         &client_img,
         &client,
         w.faultep,
-        [swap_protocol::ROLE_CLIENT, 0, 0],
+        [hot_swap_contract::ROLE_CLIENT, 0, 0],
         14,
     );
-    expect_note(w.note, swap_protocol::NOTE_SWAP_NOW, 17);
+    expect_note(w.note, hot_swap_contract::NOTE_SWAP_NOW, 17);
 
     // ------------------------------------------------------------------------------------------
     // **Dependency-aware orchestration's own question, asked and answered before step 2 acts.**
@@ -298,7 +305,7 @@ fn direct(fs: &nifefs::Fs, w: &Wiring) -> ! {
 
     let live = [component_plan::LiveInstance {
         id: 1,
-        reqs: &swap_protocol::CONSOLE,
+        reqs: &hot_swap_contract::CONSOLE,
     }];
     report_dependents("console", &live, 64);
 
@@ -330,14 +337,14 @@ fn direct(fs: &nifefs::Fs, w: &Wiring) -> ! {
     // it to read one register. If step 3 was real it faults, and the kernel tells us where.
     // ------------------------------------------------------------------------------------------
 
-    send(w.poke, swap_protocol::POKE_PROBE, 0, 0);
+    send(w.poke, hot_swap_contract::POKE_PROBE, 0, 0);
     let mut corpses = 0u64;
-    let revoke_enforced = wait_for_fault(w.faultep, &mut corpses, swap_protocol::DEV_VA);
+    let revoke_enforced = wait_for_fault(w.faultep, &mut corpses, hot_swap_contract::DEV_VA);
 
     // The conversation is still running: the client is somewhere in its sixties, being served by the
     // replacement. Wait for it to finish before reading the witness page, or the requests it has not
     // made yet would read as requests nobody served.
-    expect_note(w.note, swap_protocol::NOTE_CLIENT_DONE, 28);
+    expect_note(w.note, hot_swap_contract::NOTE_CLIENT_DONE, 28);
     reap_to(w.faultep, &mut corpses, 2); // the incumbent and the client
 
     attack_the_service(w, &client_img, &client, &mut corpses);
@@ -347,7 +354,7 @@ fn direct(fs: &nifefs::Fs, w: &Wiring) -> ! {
     // space and reaches the test on its own.
     send(
         REPORT,
-        swap_protocol::RPT_LOG,
+        hot_swap_contract::RPT_LOG,
         verdict_from_log(0, revoke_enforced),
         changed_at(0),
     );
@@ -391,7 +398,7 @@ fn attack_the_service(
         client_img,
         client,
         w.faultep,
-        [swap_protocol::ROLE_PLANT, 0, 0],
+        [hot_swap_contract::ROLE_PLANT, 0, 0],
         30,
     );
 
@@ -402,13 +409,13 @@ fn attack_the_service(
         client_img,
         client,
         w.faultep,
-        [swap_protocol::ROLE_USURPER, 0, 0],
+        [hot_swap_contract::ROLE_USURPER, 0, 0],
         31,
     );
     // The attacker's verdict, taken from the note rather than the report stream: `w1` is the
     // refusal code (positive) or `-PLANT_MARKER` on a let-through, mirroring `RPT_ATTACK`.
     let refused = {
-        let w1 = expect_note(w.note, swap_protocol::NOTE_ATTACK_DONE, 33);
+        let w1 = expect_note(w.note, hot_swap_contract::NOTE_ATTACK_DONE, 33);
         (w1 as i64) > 0
     };
 
@@ -429,8 +436,8 @@ fn attack_the_service(
         bail(35);
     }
     match receive_bound(w.svc) {
-        user_mode_runtime::Received::Message(word, _, _) if word == swap_protocol::PLANT_MARKER => {
-        }
+        user_mode_runtime::Received::Message(word, _, _)
+            if word == hot_swap_contract::PLANT_MARKER => {}
         user_mode_runtime::Received::Notification(_) if refused => bail(37),
         user_mode_runtime::Received::Notification(_) => {}
         _ => bail(36),
@@ -469,9 +476,9 @@ fn build_without_devices(
     };
     send(
         REPORT,
-        swap_protocol::RPT_STEP,
-        swap_protocol::step::BUILT,
-        swap_protocol::V2,
+        hot_swap_contract::RPT_STEP,
+        hot_swap_contract::step::BUILT,
+        hot_swap_contract::V2,
     );
     Unstarted {
         child,
@@ -487,8 +494,8 @@ fn revoke_device(stage: u64) {
     }
     send(
         REPORT,
-        swap_protocol::RPT_STEP,
-        swap_protocol::step::REVOKED,
+        hot_swap_contract::RPT_STEP,
+        hot_swap_contract::step::REVOKED,
         0,
     );
 }
@@ -509,9 +516,9 @@ fn endow_devices_and_start(
     launch(u, elf, [1, 0, 0], stage + 1);
     send(
         REPORT,
-        swap_protocol::RPT_STEP,
-        swap_protocol::step::STARTED,
-        swap_protocol::V2,
+        hot_swap_contract::RPT_STEP,
+        hot_swap_contract::step::STARTED,
+        hot_swap_contract::V2,
     );
 }
 
@@ -528,7 +535,7 @@ fn report_dependents(
     let order = deps.quiesce_order();
     send(
         REPORT,
-        swap_protocol::RPT_DEPENDENTS,
+        hot_swap_contract::RPT_DEPENDENTS,
         order.len() as u64,
         order.first().copied().unwrap_or(0),
     );
@@ -544,7 +551,7 @@ fn report_dependents(
 /// and each is a sentence of §209:
 ///
 /// - **No device.** The state is the point, and a device would put this system behind the same x86
-///   gap the other three are behind (`swap_protocol::probe_device`'s x86 arm). So it runs on all
+///   gap the other three are behind (`hot_swap_contract::probe_device`'s x86 arm). So it runs on all
 ///   three architectures.
 /// - **One frame routed to every instance under the handoff role**, installed at build time. The
 ///   operator never maps it itself and never reads it: the bytes are the component's.
@@ -564,7 +571,7 @@ fn handoff(fs: &nifefs::Fs, w: &Wiring) -> ! {
 
     // The handoff run, as many pages as the contract declares, minted as one frame capability
     // (`MemoryRegion::RETYPE`'s page count). A contract with no handoff would not reach this role.
-    let Some(declared) = swap_protocol::TALLY.handoff else {
+    let Some(declared) = hot_swap_contract::TALLY.handoff else {
         bail(90)
     };
     let state = match user_mode_runtime::retype_page_frame_run(ROOT_UT, declared.pages) {
@@ -579,7 +586,11 @@ fn handoff(fs: &nifefs::Fs, w: &Wiring) -> ! {
         &v1,
         &incumbent,
         w.faultep,
-        [swap_protocol::START_FRESH, 0, swap_protocol::LAYOUT_1],
+        [
+            hot_swap_contract::START_FRESH,
+            0,
+            hot_swap_contract::LAYOUT_1,
+        ],
         11,
     );
 
@@ -589,19 +600,19 @@ fn handoff(fs: &nifefs::Fs, w: &Wiring) -> ! {
     let absorber = build_unstarted(&v2, &replacement, w.faultep, 22);
     send(
         REPORT,
-        swap_protocol::RPT_STEP,
-        swap_protocol::step::BUILT,
-        swap_protocol::V2,
+        hot_swap_contract::RPT_STEP,
+        hot_swap_contract::step::BUILT,
+        hot_swap_contract::V2,
     );
 
     start_child(
         &client_img,
         &client,
         w.faultep,
-        [swap_protocol::ROLE_CLIENT, 0, 0],
+        [hot_swap_contract::ROLE_CLIENT, 0, 0],
         14,
     );
-    expect_note(w.note, swap_protocol::NOTE_SWAP_NOW, 17);
+    expect_note(w.note, hot_swap_contract::NOTE_SWAP_NOW, 17);
 
     // ------------------------------------------------------------------------------------------
     // Attempt one: a replacement that cannot read the incumbent's layout.
@@ -617,20 +628,20 @@ fn handoff(fs: &nifefs::Fs, w: &Wiring) -> ! {
 
     attempt_absorbed(w, absorber, &v2);
 
-    expect_note(w.note, swap_protocol::NOTE_CLIENT_DONE, 107);
+    expect_note(w.note, hot_swap_contract::NOTE_CLIENT_DONE, 107);
     reap_to(w.faultep, &mut corpses, 3); // the refuser, the incumbent, and the client
 
     // Retire the replacement on its own control endpoint, which is not `w.poke`.
-    let (verdict, _) = user_mode_runtime::call(w.svc, swap_protocol::OPERATION_QUIESCE, 0);
-    if verdict != swap_protocol::QUIESCED {
+    let (verdict, _) = user_mode_runtime::call(w.svc, hot_swap_contract::OPERATION_QUIESCE, 0);
+    if verdict != hot_swap_contract::QUIESCED {
         bail(108)
     }
-    send(replacement_control, swap_protocol::POKE_QUIT, 0, 0);
+    send(replacement_control, hot_swap_contract::POKE_QUIT, 0, 0);
     reap_to(w.faultep, &mut corpses, 4);
 
     send(
         REPORT,
-        swap_protocol::RPT_LOG,
+        hot_swap_contract::RPT_LOG,
         verdict_from_log(0, false),
         changed_at(0),
     );
@@ -680,18 +691,18 @@ fn plan_handoff(
     // table is such a supervisor, so asking it for the stateful contract is a real refusal.
     // ------------------------------------------------------------------------------------------
 
-    match component_plan::plan(&swap_protocol::TALLY, &to_client) {
+    match component_plan::plan(&hot_swap_contract::TALLY, &to_client) {
         Ok(_) => bail(92),
-        Err(refusal) => send(REPORT, swap_protocol::RPT_REFUSED, refusal.code(), 0),
+        Err(refusal) => send(REPORT, hot_swap_contract::RPT_REFUSED, refusal.code(), 0),
     };
 
-    let Ok(incumbent) = component_plan::plan(&swap_protocol::TALLY, &to_incumbent) else {
+    let Ok(incumbent) = component_plan::plan(&hot_swap_contract::TALLY, &to_incumbent) else {
         bail(93)
     };
-    let Ok(replacement) = component_plan::plan(&swap_protocol::TALLY, &to_replacement) else {
+    let Ok(replacement) = component_plan::plan(&hot_swap_contract::TALLY, &to_replacement) else {
         bail(94)
     };
-    let Ok(client) = component_plan::plan(&swap_protocol::CLIENT, &to_client) else {
+    let Ok(client) = component_plan::plan(&hot_swap_contract::CLIENT, &to_client) else {
         bail(95)
     };
     if incumbent.handoff() != Some(declared) {
@@ -707,11 +718,15 @@ fn attempt_refused(w: &Wiring, refuser: Unstarted, v2: &elf::Elf, corpses: &mut 
     launch(
         refuser,
         v2,
-        [swap_protocol::START_ABSORB, 0, swap_protocol::LAYOUT_2],
+        [
+            hot_swap_contract::START_ABSORB,
+            0,
+            hot_swap_contract::LAYOUT_2,
+        ],
         98,
     );
     let (kind, _, found) = receive(w.note);
-    if kind != swap_protocol::NOTE_REFUSED {
+    if kind != hot_swap_contract::NOTE_REFUSED {
         bail(100)
     }
     // The refuser's exit is the only death possible here: the incumbent is quiesced and alive, and
@@ -722,53 +737,57 @@ fn attempt_refused(w: &Wiring, refuser: Unstarted, v2: &elf::Elf, corpses: &mut 
     }
     send(
         REPORT,
-        swap_protocol::RPT_STEP,
-        swap_protocol::step::ROLLED_BACK,
+        hot_swap_contract::RPT_STEP,
+        hot_swap_contract::step::ROLLED_BACK,
         found,
     );
-    send(w.poke, swap_protocol::POKE_RESUME, 0, 0);
+    send(w.poke, hot_swap_contract::POKE_RESUME, 0, 0);
 }
 
 /// Attempt two: drain again, start the replacement that understands the layout, and commit the
 /// swap on its `NOTE_ABSORBED` by telling the incumbent to quit.
 fn attempt_absorbed(w: &Wiring, absorber: Unstarted, v2: &elf::Elf) {
-    expect_note(w.note, swap_protocol::NOTE_SWAP_NOW, 102);
+    expect_note(w.note, hot_swap_contract::NOTE_SWAP_NOW, 102);
     drain(w, 103);
     launch(
         absorber,
         v2,
-        [swap_protocol::START_ABSORB, 0, swap_protocol::LAYOUT_1],
+        [
+            hot_swap_contract::START_ABSORB,
+            0,
+            hot_swap_contract::LAYOUT_1,
+        ],
         104,
     );
     let (kind, _, carried) = receive(w.note);
-    if kind != swap_protocol::NOTE_ABSORBED {
+    if kind != hot_swap_contract::NOTE_ABSORBED {
         bail(106)
     }
     send(
         REPORT,
-        swap_protocol::RPT_STEP,
-        swap_protocol::step::ABSORBED,
+        hot_swap_contract::RPT_STEP,
+        hot_swap_contract::step::ABSORBED,
         carried,
     );
-    send(w.poke, swap_protocol::POKE_QUIT, 0, 0);
+    send(w.poke, hot_swap_contract::POKE_QUIT, 0, 0);
     send(
         REPORT,
-        swap_protocol::RPT_STEP,
-        swap_protocol::step::STARTED,
-        swap_protocol::V2,
+        hot_swap_contract::RPT_STEP,
+        hot_swap_contract::step::STARTED,
+        hot_swap_contract::V2,
     );
 }
 
 /// Quiesce whoever is serving the stable endpoint, and report the drain.
 fn drain(w: &Wiring, stage: u64) {
-    let (verdict, served) = user_mode_runtime::call(w.svc, swap_protocol::OPERATION_QUIESCE, 0);
-    if verdict != swap_protocol::QUIESCED {
+    let (verdict, served) = user_mode_runtime::call(w.svc, hot_swap_contract::OPERATION_QUIESCE, 0);
+    if verdict != hot_swap_contract::QUIESCED {
         bail(stage)
     }
     send(
         REPORT,
-        swap_protocol::RPT_STEP,
-        swap_protocol::step::DRAINED,
+        hot_swap_contract::RPT_STEP,
+        hot_swap_contract::step::DRAINED,
         served,
     );
 }
@@ -845,13 +864,13 @@ enum Warn {
 /// Write the broker's warning page and wake it. Never blocks, never waits for an answer.
 fn warn_broker(signal: u64, down: bool) {
     let want = if down {
-        swap_protocol::WANT_DOWN
+        hot_swap_contract::WANT_DOWN
     } else {
-        swap_protocol::WANT_UP
+        hot_swap_contract::WANT_UP
     };
     // SAFETY: the warning page is mapped read/write at BROKER_WARN_VA in this operator (and
     // read-only in the broker), by `queued` before the broker was built.
-    unsafe { core::ptr::write_volatile(swap_protocol::BROKER_WARN_VA as *mut u64, want) };
+    unsafe { core::ptr::write_volatile(hot_swap_contract::BROKER_WARN_VA as *mut u64, want) };
     let _ = user_mode_runtime::notification_signal(signal, 1);
 }
 
@@ -864,7 +883,7 @@ fn queued(fs: &nifefs::Fs, w: &Wiring, warn: Warn) -> ! {
     // `svc` is the *back* endpoint here: what the broker forwards to and what a backend receives
     // on. `front` is what the producer holds, and it is the stable name on this channel.
     let front = obj(abi::objtype::RENDEZVOUS, 41);
-    let base = swap_protocol::BROKER_LOG_BASE;
+    let base = hot_swap_contract::BROKER_LOG_BASE;
 
     let QueuedPlans {
         backend,
@@ -879,18 +898,18 @@ fn queued(fs: &nifefs::Fs, w: &Wiring, warn: Warn) -> ! {
         &client_img,
         &producer,
         w.faultep,
-        [swap_protocol::ROLE_PRODUCER, 0, 0],
+        [hot_swap_contract::ROLE_PRODUCER, 0, 0],
         44,
     );
 
-    expect_note(w.note, swap_protocol::NOTE_SWAP_NOW, 45);
+    expect_note(w.note, hot_swap_contract::NOTE_SWAP_NOW, 45);
 
     // ------------------------------------------------------------------------------------------
     // **Dependency-aware orchestration, for real this time.** The warning below used to be
     // unconditional: every system on this channel happens to have exactly one component
     // (`broker`) that forwards synchronously to the backend, so "always warn it" and "warn
     // whoever the graph names" have always produced the same four syscalls. What changed is which
-    // one this operator actually asked. `broker`'s own manifest (`swap_protocol::BROKER`) declares
+    // one this operator actually asked. `broker`'s own manifest (`hot_swap_contract::BROKER`) declares
     // `depends_on: &["backend"]`, so a two-instance live registry naming this system's broker and
     // backend, checked against `component_plan::dependents`, is what decides whether the broker is
     // warned at all -- not this function's own memory of what it built five lines up.
@@ -899,11 +918,11 @@ fn queued(fs: &nifefs::Fs, w: &Wiring, warn: Warn) -> ! {
     let live = [
         component_plan::LiveInstance {
             id: 1,
-            reqs: &swap_protocol::BACKEND,
+            reqs: &hot_swap_contract::BACKEND,
         },
         component_plan::LiveInstance {
             id: 2,
-            reqs: &swap_protocol::BROKER,
+            reqs: &hot_swap_contract::BROKER,
         },
     ];
     let deps = report_dependents("backend", &live, 64);
@@ -923,7 +942,7 @@ fn queued(fs: &nifefs::Fs, w: &Wiring, warn: Warn) -> ! {
 
     // Quiesce the backend and let it die, exactly as on the direct channel, minus the device.
     drain(w, 47);
-    send(w.poke, swap_protocol::POKE_QUIT, 0, 0);
+    send(w.poke, hot_swap_contract::POKE_QUIT, 0, 0);
     let mut corpses = 0u64;
     reap_to(w.faultep, &mut corpses, 1);
 
@@ -932,9 +951,9 @@ fn queued(fs: &nifefs::Fs, w: &Wiring, warn: Warn) -> ! {
     start_child(&v2, &backend, w.faultep, [0, base, 0], 48);
     send(
         REPORT,
-        swap_protocol::RPT_STEP,
-        swap_protocol::step::STARTED,
-        swap_protocol::V2,
+        hot_swap_contract::RPT_STEP,
+        hot_swap_contract::step::STARTED,
+        hot_swap_contract::V2,
     );
 
     // Release the backlog, in the reverse of the order they were warned: the graph's own resume
@@ -953,19 +972,19 @@ fn queued(fs: &nifefs::Fs, w: &Wiring, warn: Warn) -> ! {
         }
     }
 
-    expect_note(w.note, swap_protocol::NOTE_CLIENT_DONE, 50);
+    expect_note(w.note, hot_swap_contract::NOTE_CLIENT_DONE, 50);
     reap_to(w.faultep, &mut corpses, 2); // and the producer
 
     // Shut the channel down so the run leaves nothing running and nothing spent: the broker exits,
     // then the backend quiesces and exits, and both corpses are collected.
-    let _ = user_mode_runtime::call(front, swap_protocol::OPERATION_QUIESCE, 0);
-    expect_note(w.note, swap_protocol::NOTE_BROKER_DONE, 51);
+    let _ = user_mode_runtime::call(front, hot_swap_contract::OPERATION_QUIESCE, 0);
+    expect_note(w.note, hot_swap_contract::NOTE_BROKER_DONE, 51);
     reap_to(w.faultep, &mut corpses, 3); // and the broker
     retire(w, &mut corpses, 4, 52); // and the replacement backend
 
     send(
         REPORT,
-        swap_protocol::RPT_LOG,
+        hot_swap_contract::RPT_LOG,
         verdict_from_log(base, false),
         changed_at(base),
     );
@@ -984,7 +1003,7 @@ struct QueuedPlans {
 /// first, and the three plans.
 fn plan_queued(w: &Wiring, front: u64) -> QueuedPlans {
     // **Three routing tables, and the interesting thing about them is `service`.** The producer's
-    // declaration is `swap_protocol::CLIENT`, byte for byte the one the direct channel's client is
+    // declaration is `hot_swap_contract::CLIENT`, byte for byte the one the direct channel's client is
     // wired from, and it asks to use an endpoint it calls `service`. Here that name resolves to the
     // broker's front endpoint instead of to the component's. One declaration, two routings, and the
     // program cannot tell which it got: that is the indirection the manifest buys, and it is what
@@ -1002,7 +1021,7 @@ fn plan_queued(w: &Wiring, front: u64) -> QueuedPlans {
     // here read/write so this operator can write it, and routed to the broker read-only by its
     // declaration.
     let warning = page_frame(53);
-    if !map_page_frame(warning, swap_protocol::BROKER_WARN_VA, true, ROOT_UT) {
+    if !map_page_frame(warning, hot_swap_contract::BROKER_WARN_VA, true, ROOT_UT) {
         bail(54)
     }
     let signal = obj(abi::objtype::NOTIFICATION, 55);
@@ -1024,20 +1043,20 @@ fn plan_queued(w: &Wiring, front: u64) -> QueuedPlans {
     // before anything is built. This is the same refusal from the other side, which is why both
     // roles report it: a mechanism that only worked for the one component it was written against
     // would not be a mechanism.
-    match component_plan::plan(&swap_protocol::CONSOLE, &to_backend) {
+    match component_plan::plan(&hot_swap_contract::CONSOLE, &to_backend) {
         Ok(_) => bail(60),
-        Err(refusal) => send(REPORT, swap_protocol::RPT_REFUSED, refusal.code(), 0),
+        Err(refusal) => send(REPORT, hot_swap_contract::RPT_REFUSED, refusal.code(), 0),
     };
 
     // No device on this channel: the backend behind a broker is a plain service, and mixing the
     // device story into the queue story would make it unclear which mechanism carried which claim.
-    let Ok(backend) = component_plan::plan(&swap_protocol::BACKEND, &to_backend) else {
+    let Ok(backend) = component_plan::plan(&hot_swap_contract::BACKEND, &to_backend) else {
         bail(61)
     };
-    let Ok(broker) = component_plan::plan(&swap_protocol::BROKER, &to_broker) else {
+    let Ok(broker) = component_plan::plan(&hot_swap_contract::BROKER, &to_broker) else {
         bail(62)
     };
-    let Ok(producer) = component_plan::plan(&swap_protocol::CLIENT, &to_producer) else {
+    let Ok(producer) = component_plan::plan(&hot_swap_contract::CLIENT, &to_producer) else {
         bail(63)
     };
     QueuedPlans {
@@ -1085,10 +1104,10 @@ fn hung(fs: &nifefs::Fs, w: &Wiring) -> ! {
     let to_client = Provisions {
         held: &[("service", w.svc), ("report", REPORT), ("operator", w.note)],
     };
-    let Ok(component) = component_plan::plan(&swap_protocol::CONSOLE, &to_component) else {
+    let Ok(component) = component_plan::plan(&hot_swap_contract::CONSOLE, &to_component) else {
         bail(70)
     };
-    let Ok(client) = component_plan::plan(&swap_protocol::CLIENT, &to_client) else {
+    let Ok(client) = component_plan::plan(&hot_swap_contract::CLIENT, &to_client) else {
         bail(71)
     };
 
@@ -1097,7 +1116,7 @@ fn hung(fs: &nifefs::Fs, w: &Wiring) -> ! {
         &v1,
         &component,
         w.faultep,
-        [1, 0, swap_protocol::WEDGE_SEQ],
+        [1, 0, hot_swap_contract::WEDGE_SEQ],
         72,
     );
 
@@ -1112,10 +1131,10 @@ fn hung(fs: &nifefs::Fs, w: &Wiring) -> ! {
         &client_img,
         &client,
         w.faultep,
-        [swap_protocol::ROLE_CLIENT, 0, 0],
+        [hot_swap_contract::ROLE_CLIENT, 0, 0],
         77,
     );
-    expect_note(w.note, swap_protocol::NOTE_SWAP_NOW, 80);
+    expect_note(w.note, hot_swap_contract::NOTE_SWAP_NOW, 80);
 
     // ------------------------------------------------------------------------------------------
     // The hang. Served with `RECEIVE_CAP` rather than `RECEIVE`, because the incumbent announced it with a
@@ -1130,10 +1149,15 @@ fn hung(fs: &nifefs::Fs, w: &Wiring) -> ! {
     let Some(release) = req.delivered.into_reply() else {
         bail(81)
     };
-    if kind != swap_protocol::NOTE_WEDGED {
+    if kind != hot_swap_contract::NOTE_WEDGED {
         bail(81)
     }
-    send(REPORT, swap_protocol::RPT_WEDGED, swap_protocol::V1, served);
+    send(
+        REPORT,
+        hot_swap_contract::RPT_WEDGED,
+        hot_swap_contract::V1,
+        served,
+    );
 
     // ------------------------------------------------------------------------------------------
     // **What the supervisor can see.** Two reports, and both of them are negative results.
@@ -1149,9 +1173,9 @@ fn hung(fs: &nifefs::Fs, w: &Wiring) -> ! {
     // ------------------------------------------------------------------------------------------
 
     let (members, states) = survey_domain(w.faultep);
-    send(REPORT, swap_protocol::RPT_SURVEY, members, states);
+    send(REPORT, hot_swap_contract::RPT_SURVEY, members, states);
     let (asked, refused) = ask_the_domain_to_be_collected(w.faultep);
-    send(REPORT, swap_protocol::RPT_UNCOLLECTABLE, asked, refused);
+    send(REPORT, hot_swap_contract::RPT_UNCOLLECTABLE, asked, refused);
 
     // ------------------------------------------------------------------------------------------
     // **Recovery, with no authority this operator did not already hold.** DECISIONS §32 records that
@@ -1194,17 +1218,17 @@ fn hung(fs: &nifefs::Fs, w: &Wiring) -> ! {
     // which is what makes this line the shape of the gap rather than its cure.
     // ------------------------------------------------------------------------------------------
 
-    user_mode_runtime::reply(release, swap_protocol::NOTE_RELEASE, 0);
+    user_mode_runtime::reply(release, hot_swap_contract::NOTE_RELEASE, 0);
 
     let mut corpses = 0u64;
-    let revoke_enforced = wait_for_fault(w.faultep, &mut corpses, swap_protocol::DEV_VA);
-    expect_note(w.note, swap_protocol::NOTE_CLIENT_DONE, 86);
+    let revoke_enforced = wait_for_fault(w.faultep, &mut corpses, hot_swap_contract::DEV_VA);
+    expect_note(w.note, hot_swap_contract::NOTE_CLIENT_DONE, 86);
     reap_to(w.faultep, &mut corpses, 2); // the incumbent and the client
     retire(w, &mut corpses, 3, 87); // and the replacement
 
     send(
         REPORT,
-        swap_protocol::RPT_LOG,
+        hot_swap_contract::RPT_LOG,
         verdict_from_log(0, revoke_enforced),
         changed_at(0),
     );
@@ -1213,7 +1237,7 @@ fn hung(fs: &nifefs::Fs, w: &Wiring) -> ! {
 
 /// **Walk the supervision domain and count what state its members are in** (milestone 126's
 /// `abi::rendezvous::SURVEY`). Returns `(members, states)`, the second packed by
-/// `swap_protocol::survey_counts`.
+/// `hot_swap_contract::survey_counts`.
 ///
 /// A refusal is reported as `(u64::MAX, error)` rather than as an empty domain, for the reason
 /// milestone 126 built the method with: a monitor that reports nothing because it could not look is
@@ -1245,7 +1269,7 @@ fn survey_domain(faultep: u64) -> (u64, u64) {
     }
     (
         members,
-        swap_protocol::survey_counts(
+        hot_swap_contract::survey_counts(
             counts[abi::survey::READY as usize],
             counts[abi::survey::RUNNING as usize],
             counts[abi::survey::BLOCKED as usize],
@@ -1369,7 +1393,7 @@ fn start_bound(elf: &elf::Elf, plan: &component_plan::Plan, faultep: u64, signal
 /// below; the rest are here so the test can assert that a swap system reclaims itself.
 fn collect_corpse(faultep: u64, collected: &mut u64) -> (u64, u64) {
     let (event, tid, _pc, addr, ..) = receive_fault(faultep);
-    send(REPORT, swap_protocol::RPT_DEATH, tid, event);
+    send(REPORT, hot_swap_contract::RPT_DEATH, tid, event);
     // We hold no capability to that region: we deleted it the moment the child was started, and the
     // authority for this is the supervision relationship, not the memory.
     if user_mode_runtime::reap(faultep, tid) != 0 {
@@ -1405,14 +1429,14 @@ fn wait_for_fault(faultep: u64, collected: &mut u64, expect_addr: u64) -> bool {
     loop {
         let (event, addr) = collect_corpse(faultep, collected);
         if event == abi::fault::EVENT_FAULT {
-            send(REPORT, swap_protocol::RPT_SITE, addr, expect_addr);
+            send(REPORT, hot_swap_contract::RPT_SITE, addr, expect_addr);
             send(
                 REPORT,
-                swap_protocol::RPT_STEP,
-                swap_protocol::step::REAPED,
+                hot_swap_contract::RPT_STEP,
+                hot_swap_contract::step::REAPED,
                 0,
             );
-            return addr & !(swap_protocol::PAGE - 1) == expect_addr;
+            return addr & !(hot_swap_contract::PAGE - 1) == expect_addr;
         }
     }
 }
@@ -1420,11 +1444,11 @@ fn wait_for_fault(faultep: u64, collected: &mut u64, expect_addr: u64) -> bool {
 /// Retire the last live instance on a channel: quiesce it, tell it to go, collect its corpse. The
 /// swap's own machinery, run once more with nothing to replace.
 fn retire(w: &Wiring, collected: &mut u64, target: u64, stage: u64) {
-    let (verdict, _) = user_mode_runtime::call(w.svc, swap_protocol::OPERATION_QUIESCE, 0);
-    if verdict != swap_protocol::QUIESCED {
+    let (verdict, _) = user_mode_runtime::call(w.svc, hot_swap_contract::OPERATION_QUIESCE, 0);
+    if verdict != hot_swap_contract::QUIESCED {
         bail(stage)
     }
-    send(w.poke, swap_protocol::POKE_QUIT, 0, 0);
+    send(w.poke, hot_swap_contract::POKE_QUIT, 0, 0);
     reap_to(w.faultep, collected, target);
 }
 
@@ -1463,18 +1487,18 @@ fn verdict_from_log(base: u64, revoke_enforced: bool) -> u64 {
     let mut seen_v1 = false;
     let mut seen_v2 = false;
     let mut last = 0u64;
-    for seq in 0..swap_protocol::REQUESTS {
-        let v = swap_protocol::log_get(base + seq);
+    for seq in 0..hot_swap_contract::REQUESTS {
+        let v = hot_swap_contract::log_get(base + seq);
         if v == 0 {
             bits &= !lc::NO_GAP; // a request nobody served: lost in the down window
         }
         if v < last {
             bits &= !lc::MONOTONE; // the old instance answered after the new one: two owners
         }
-        if v == swap_protocol::V1 {
+        if v == hot_swap_contract::V1 {
             seen_v1 = true;
         }
-        if v == swap_protocol::V2 {
+        if v == hot_swap_contract::V2 {
             seen_v2 = true;
         }
         last = v;
@@ -1492,8 +1516,8 @@ fn verdict_from_log(base: u64, revoke_enforced: bool) -> u64 {
 /// conversation rather than at one of its ends.
 fn changed_at(base: u64) -> u64 {
     let mut last = 0u64;
-    for seq in 0..swap_protocol::REQUESTS {
-        let v = swap_protocol::log_get(base + seq);
+    for seq in 0..hot_swap_contract::REQUESTS {
+        let v = hot_swap_contract::log_get(base + seq);
         if last != 0 && v != last {
             return seq;
         }
@@ -1505,8 +1529,8 @@ fn changed_at(base: u64) -> u64 {
 /// Report which stage failed, then trap. A half-built system is not worth limping along, and the
 /// stage code turns "nothing happened" into a legible failure.
 fn bail(stage: u64) -> ! {
-    send(REPORT, swap_protocol::RPT_FAILED, stage, 0);
-    swap_protocol::fail()
+    send(REPORT, hot_swap_contract::RPT_FAILED, stage, 0);
+    hot_swap_contract::fail()
 }
 
 user_mode_runtime::panic_handler!();

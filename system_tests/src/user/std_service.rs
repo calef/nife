@@ -29,22 +29,22 @@ pub const NO_STD_EXERCISER: &str = "no std_exerciser in this archive: it is buil
                                     xtask std-exerciser`, which `script/test` runs)";
 
 /// Where the loader maps the clock page for a std program, and the slot it grants the page in.
-/// From `std_runtime_protocol`, which the std PAL's `rt` re-exports, so they cannot drift.
-const CLOCK_PAGE_STD: u64 = std_runtime_protocol::CLOCK_PAGE;
-const CLOCK_SLOT: u64 = std_runtime_protocol::CLOCK_SLOT;
+/// From `std_runtime_contract`, which the std PAL's `rt` re-exports, so they cannot drift.
+const CLOCK_PAGE_STD: u64 = std_runtime_contract::CLOCK_PAGE;
+const CLOCK_SLOT: u64 = std_runtime_contract::CLOCK_SLOT;
 
 /// Where the loader maps the inert-configuration page for a std program (milestone 47's
 /// environment-variable fork, DECISIONS §111 (inert configuration is a read-only page)), and its
-/// slot, from `std_runtime_protocol`. Clear of the clock page above and of the FS contract's shared
+/// slot, from `std_runtime_contract`. Clear of the clock page above and of the FS contract's shared
 /// page (`fs_service::FS_CLIENT_PAGE_VA`, `0x0060_0000`, which this spawn does not use).
-const CONFIG_PAGE_STD: u64 = std_runtime_protocol::CONFIG_PAGE;
-const CONFIG_SLOT: u64 = std_runtime_protocol::CONFIG_SLOT;
+const CONFIG_PAGE_STD: u64 = std_runtime_contract::CONFIG_PAGE;
+const CONFIG_SLOT: u64 = std_runtime_contract::CONFIG_SLOT;
 
 /// The entropy service's request endpoint (milestone 56 (secrets, credentials, and the entropy to
-/// make them safe)), at `std_runtime_protocol`'s slot. **An endpoint, and no mapping**: unlike the
+/// make them safe)), at `std_runtime_contract`'s slot. **An endpoint, and no mapping**: unlike the
 /// clock, whose read authority IS a page, randomness is obtained by asking, so the whole grant is
 /// one endpoint that names no device.
-const ENTROPY_SLOT: u64 = std_runtime_protocol::ENTROPY_SLOT;
+const ENTROPY_SLOT: u64 = std_runtime_contract::ENTROPY_SLOT;
 
 /// **Which entropy backend a std program's `SystemRng` is served from.** The program cannot tell:
 /// its slot 6 names an endpoint either way (DECISIONS §44), which is why this is a spawner's choice
@@ -66,11 +66,11 @@ const STD_ENTROPY_BUS: entropy_service::Bus = entropy_service::Bus::Mmio;
 pub const BUDGET_PAGES: u64 = 256;
 
 /// std's startup, formatting machinery, and collection code use far more stack than a
-/// hand-written `no_std` worker. `load` maps one stack page; map `std_runtime_protocol::STACK_PAGES`
+/// hand-written `no_std` worker. `load` maps one stack page; map `std_runtime_contract::STACK_PAGES`
 /// (32) more below it, generous so a stack-depth surprise is not what a first std bring-up debugs.
 /// The progenitor maps exactly that many and not the one extra, because its loader has no `load`
 /// page of its own to add.
-const EXTRA_STACK_PAGES: u64 = std_runtime_protocol::STACK_PAGES;
+const EXTRA_STACK_PAGES: u64 = std_runtime_contract::STACK_PAGES;
 
 /// What [`start_reclaimable`] hands back. [`StdSpawn`] is `fs_service`'s name for the same idea and
 /// this is deliberately its twin: the stdout endpoint, the thread, and **the untyped region the
@@ -167,20 +167,20 @@ pub fn start_on_full(
 }
 
 /// A network a std program is given: the `Stack` endpoint its `std::net` calls go to, and the
-/// untyped budget it mints each socket's shared frame from. `std_runtime_protocol`'s slots 2 and 3.
+/// untyped budget it mints each socket's shared frame from. `std_runtime_contract`'s slots 2 and 3.
 #[derive(Clone, Copy)]
 pub struct Network {
     pub stack: RendezvousId,
     pub frames: u64,
     /// A name resolver's endpoint and the badge the spawner granted a zone, placed at
-    /// `std_runtime_protocol::RESOLVER_SLOT` (milestone 801 (packages over the internet)). `None`
+    /// `std_runtime_contract::RESOLVER_SLOT` (milestone 801 (packages over the internet)). `None`
     /// leaves the slot empty, and `ToSocketAddrs` then resolves numeric addresses only.
     pub resolver: Option<(RendezvousId, u32)>,
 }
 
 /// The `std` slot for the `Stack` endpoint and the one for the socket frames' budget.
-const STACK_SLOT: u64 = std_runtime_protocol::STACK_SLOT;
-const NET_MEMORY_REGION_SLOT: u64 = std_runtime_protocol::NET_MEMORY_REGION_SLOT;
+const STACK_SLOT: u64 = std_runtime_contract::STACK_SLOT;
+const NET_MEMORY_REGION_SLOT: u64 = std_runtime_contract::NET_MEMORY_REGION_SLOT;
 
 /// One page per socket's shared frame, plus that frame's page table and mapping, for the six
 /// sockets the std PAL holds at once (its `SOCKETS`), with room to spare. The same 16 the kernel's own
@@ -212,7 +212,7 @@ pub fn start_networked(
 }
 
 /// [`start_networked`], and also `resolver` (an endpoint and the badge its zone was granted to) at
-/// `std_runtime_protocol::RESOLVER_SLOT`, so the program's `ToSocketAddrs` asks it. Milestone 801
+/// `std_runtime_contract::RESOLVER_SLOT`, so the program's `ToSocketAddrs` asks it. Milestone 801
 /// (packages over the internet) is the first program to resolve a name through `std::net`.
 pub fn start_networked_resolving(
     image: &'static [u8],
@@ -276,7 +276,7 @@ fn spawn_std(
         let report = crate::sched::ipc_receive(ready);
         assert_eq!(
             report[0],
-            entropy_protocol::READY,
+            entropy_contract::READY,
             "the entropy service did not come up for the std program (it reported {:#x})",
             report[0],
         );
@@ -293,20 +293,20 @@ fn spawn_std(
     // **The inert-configuration page** (milestone 47's environment-variable fork, DECISIONS
     // §111). Unlike the clock, nothing here runs a service: the page is assembled once, into a
     // frame nothing else can see, and only mapped read-only afterward, so there is no seqlock
-    // and no readiness handshake to wait on (see `environment_protocol`'s own docs for why). The values are
+    // and no readiness handshake to wait on (see `environment_contract`'s own docs for why). The values are
     // the conservative universal defaults ("no clock service configured this program's locale
     // or terminal, so tell it the least assuming thing"), the same posture `date` takes when no
     // clock service is running: an honest baseline rather than a guess. There is no shell here
     // yet to hold a *different* default and pass it explicitly (the "inheritance with
     // visibility" shape the roadmap names); that arrives with whatever program first declares it
     // wants this page through `grant_plan::Manifest`, which none does today.
-    let config_bytes = environment_protocol::PageBuilder::new()
+    let config_bytes = environment_contract::PageBuilder::new()
         .tz("UTC")
-        .expect("UTC is not a recognized environment_protocol::domain::KNOWN_TZ member")
+        .expect("UTC is not a recognized environment_contract::domain::KNOWN_TZ member")
         .lang("C")
-        .expect("C is not a recognized environment_protocol::domain::KNOWN_LANG member")
+        .expect("C is not a recognized environment_contract::domain::KNOWN_LANG member")
         .term("dumb")
-        .expect("dumb is not a recognized environment_protocol::domain::KNOWN_TERM member")
+        .expect("dumb is not a recognized environment_contract::domain::KNOWN_TERM member")
         .build();
     // Zeroed, so nothing left behind by a previous occupant of this physical page is visible
     // through the reserved tail past `PAGE_BYTES` (`ConfigPage` only ever reads the first
@@ -374,7 +374,7 @@ fn spawn_std(
             .expect("the std socket-frame slot was already occupied");
             if let Some((resolver, badge)) = net.resolver {
                 crate::sched::grant_at(
-                    std_runtime_protocol::RESOLVER_SLOT,
+                    std_runtime_contract::RESOLVER_SLOT,
                     rendezvous_cap_badged(resolver, Rights::WRITE, badge as u64),
                 )
                 .expect("the std resolver slot was already occupied");

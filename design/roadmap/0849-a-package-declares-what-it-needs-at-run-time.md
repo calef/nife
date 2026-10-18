@@ -28,7 +28,7 @@ A package has one relationship to another today: linking.
   allows a link if the target crate is an `interface` or its package is in `depends`, and nothing
   else reads `depends` except the kind rules below it. `script/lint:3298-3313` runs it.
 - So a client of a service never declares the service. `system_log`'s clients link
-  `system_log_protocol`, which `contracts` exports as an interface, so calef's ruling on #1796 (fork
+  `system_log_contract`, which `contracts` exports as an interface, so calef's ruling on #1796 (fork
   1, 2026-10-07 UTC) added no `depends` edge to `system-log` anywhere. That is right for linking. It
   also means no record anywhere says "this program needs a log service running".
 
@@ -88,7 +88,7 @@ shape, and a word such as `.` then designates the directory, as §170 (how a for
 ## What a runtime need is here
 
 A need is a capability, not a process: a program needs a `WRITE` endpoint that answers
-`entropy_protocol`, not "the entropy package". And absence is supported (every provider in
+`entropy_contract`, not "the entropy package". And absence is supported (every provider in
 `system_initializer` is optional), so most needs are wants in systemd's sense, not requirements.
 
 ## Options and prior art
@@ -251,7 +251,7 @@ B. How a program names what runs it. Options:
    runners = { python = "python3" }
    ```
 
-   A contract is named by an identifier, and the Rust crate (`entropy_protocol`) is one binding of
+   A contract is named by an identifier, and the Rust crate (`entropy_contract`) is one binding of
    it, so a Python or WASI client names the same contract.
 3. How hard an unmet need fails. Ruled by calef, 2026-10-07 (UTC), reworded: the gate requires at
    least one `base` provider for every contract a `base` program needs, rather than naming a

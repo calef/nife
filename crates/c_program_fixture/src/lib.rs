@@ -8,7 +8,7 @@
 //! grants it, so its name is a crate rather than two string literals (rule 7). The command lines
 //! and the expected hash live beside it because they describe the same runs.
 //!
-//! It is its own crate because `filesystem_protocol`, where the image's other fixtures live, is at
+//! It is its own crate because `filesystem_contract`, where the image's other fixtures live, is at
 //! its §266 (a Rust source file stays under 2,000 lines) ceiling and is copied whole into
 //! `std` by the farm, so it can neither grow nor split.
 //!

@@ -27,7 +27,7 @@
 //! **The buffer is this process's own memory, and it is bounded.** The kernel does not grow: it
 //! keeps synchronous rendezvous with no allocation, and the queue is userspace policy in a
 //! userspace `.bss`, inside the region this instance was built in. A runaway producer fills it and
-//! gets [`QUEUE_FULL`](swap_protocol::QUEUE_FULL) back, which is backpressure as a value the producer can
+//! gets [`QUEUE_FULL`](hot_swap_contract::QUEUE_FULL) back, which is backpressure as a value the producer can
 //! read rather than a policy hidden inside a server.
 //!
 //! **What it does not do**, stated so the ladder's top rung is not implied: it does not write to
@@ -48,21 +48,21 @@
 use user_mode_runtime::{call, reply, send};
 
 // This is its own binary. What it shares with the other hot-swap programs comes from the
-// `swap_protocol` crate.
+// `hot_swap_contract` crate.
 // Shared code was a `#[path]` module compiled into each binary until rule 7 (2026-08-01) made it
 // a crate, so this file needs no dead-code allow under §38 (a suppression is scoped to an item
 // and carries a reason).
 
 /// What `swapper` endowed us with, in order. No budget, no device, no way to build anything: a
 /// compromised broker can reorder or drop the one channel it was placed on, and nothing else.
-// Derived from this program's own declaration (`swap_protocol::BROKER`, milestone 23's manifest), so
+// Derived from this program's own declaration (`hot_swap_contract::BROKER`, milestone 23's manifest), so
 // the slot a name lands in and the slot this code reads are one number rather than two that agree.
 // `requests` is the only `Serve` here: a broker answers producers and asks its backend, and those
 // two directions on one hop are the whole of what a queue rung is.
-const FRONT: u64 = component_plan::slot_of(&swap_protocol::BROKER, "requests");
-const BACK: u64 = component_plan::slot_of(&swap_protocol::BROKER, "backend");
-const RPT: u64 = component_plan::slot_of(&swap_protocol::BROKER, "report");
-const NOTE: u64 = component_plan::slot_of(&swap_protocol::BROKER, "operator");
+const FRONT: u64 = component_plan::slot_of(&hot_swap_contract::BROKER, "requests");
+const BACK: u64 = component_plan::slot_of(&hot_swap_contract::BROKER, "backend");
+const RPT: u64 = component_plan::slot_of(&hot_swap_contract::BROKER, "report");
+const NOTE: u64 = component_plan::slot_of(&hot_swap_contract::BROKER, "operator");
 
 /// How deep the backlog goes. Fixed storage in our own `.bss`, which lives in the region this
 /// instance was built in, so the bound is a bound on *this process's* memory and the kernel's
@@ -110,7 +110,7 @@ pub extern "C" fn _start(_a0: u64, _a1: u64, _a2: u64) -> ! {
     // one that takes the backend away, is the one that says so.
     let mut up = true;
     let mut buffered = 0u64;
-    send(RPT, swap_protocol::RPT_UP, 0, 0);
+    send(RPT, hot_swap_contract::RPT_UP, 0, 0);
 
     loop {
         // **The warning is read on every wakeup** (DECISIONS §231 (a swap's warning to a dependent
@@ -118,7 +118,7 @@ pub extern "C" fn _start(_a0: u64, _a1: u64, _a2: u64) -> ! {
         // request that arrives first finds the page already written, and a signal we never see
         // costs latency and nothing else.
         let got = user_mode_runtime::receive_request_bound(FRONT);
-        let wants_down = swap_protocol::broker_wants_down();
+        let wants_down = hot_swap_contract::broker_wants_down();
         if wants_down && up {
             up = false;
         } else if !wants_down && !up {
@@ -126,11 +126,11 @@ pub extern "C" fn _start(_a0: u64, _a1: u64, _a2: u64) -> ! {
             // backend ahead of whatever the producer sends next.
             let mut drained = 0u64;
             while let Some(item) = q.pop() {
-                let _ = call(BACK, swap_protocol::OPERATION_PUT, item);
+                let _ = call(BACK, hot_swap_contract::OPERATION_PUT, item);
                 drained += 1;
             }
             up = true;
-            send(RPT, swap_protocol::RPT_DRAINED, drained, buffered);
+            send(RPT, hot_swap_contract::RPT_DRAINED, drained, buffered);
         }
         let Ok(req) = got else {
             continue; // the signal itself carries nothing; the page is the message
@@ -143,31 +143,31 @@ pub extern "C" fn _start(_a0: u64, _a1: u64, _a2: u64) -> ! {
             continue;
         };
         match operation {
-            swap_protocol::OPERATION_PUT if up => {
+            hot_swap_contract::OPERATION_PUT if up => {
                 // **Pass-through.** No copy, no queue, no scheduling policy: forward the two words
                 // and hand the backend's own answer straight back. This is the steady state, and it
                 // is the whole of the tax `broker_rtt` measures.
-                let (r0, r1) = call(BACK, swap_protocol::OPERATION_PUT, arg);
+                let (r0, r1) = call(BACK, hot_swap_contract::OPERATION_PUT, arg);
                 reply(slot, r0, r1);
             }
-            swap_protocol::OPERATION_PUT => {
+            hot_swap_contract::OPERATION_PUT => {
                 // The backend is away. Take custody and answer immediately, so the producer keeps
                 // running rather than parking on an endpoint nobody is receiving on.
                 if q.push(arg) {
                     buffered += 1;
-                    reply(slot, swap_protocol::ACCEPTED, q.count as u64);
+                    reply(slot, hot_swap_contract::ACCEPTED, q.count as u64);
                 } else {
-                    reply(slot, swap_protocol::QUEUE_FULL, q.count as u64);
+                    reply(slot, hot_swap_contract::QUEUE_FULL, q.count as u64);
                 }
             }
-            swap_protocol::OPERATION_QUIESCE => {
-                send(RPT, swap_protocol::RPT_QUIESCED, 0, buffered);
-                reply(slot, swap_protocol::QUIESCED, buffered);
-                send(NOTE, swap_protocol::NOTE_BROKER_DONE, buffered, 0);
+            hot_swap_contract::OPERATION_QUIESCE => {
+                send(RPT, hot_swap_contract::RPT_QUIESCED, 0, buffered);
+                reply(slot, hot_swap_contract::QUIESCED, buffered);
+                send(NOTE, hot_swap_contract::NOTE_BROKER_DONE, buffered, 0);
                 user_mode_runtime::exit()
             }
             _ => {
-                reply(slot, swap_protocol::BAD_REQUEST, 0);
+                reply(slot, hot_swap_contract::BAD_REQUEST, 0);
             }
         }
     }

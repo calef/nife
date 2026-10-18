@@ -8,7 +8,7 @@
 //! that are pure logic: the request line, and a reader for the response that never holds the body.
 //!
 //! **The reader is incremental and holds only the head.** A response arrives a socket read at a
-//! time, at most `socket_protocol::DATA_MAX` bytes each, and the body is a package that may be a
+//! time, at most `socket_contract::DATA_MAX` bytes each, and the body is a package that may be a
 //! megabyte. [`Response::feed`] takes each read, keeps the status line and headers in a fixed
 //! buffer, and hands back the part of the read that is body, so a caller can hash it and write it
 //! somewhere without this crate owning a byte of it. That is the same borrowing shape

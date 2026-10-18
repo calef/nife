@@ -227,9 +227,9 @@ Stated plainly, because a demonstrator's caveats are part of the deliverable.
   cells of 8 use all 344 rows. So unlike the 1280x720 scanout's six leftover columns, there is no
   strip left for the terminal to paint background into, and no cell to own it. `MAX_COLS`/`MAX_ROWS`
   shrank with the retargeted scanout, and are still constants, still exactly sized to the current
-  font and screen. (The surface itself, [`graphics_protocol::SURFACE_BYTES`], does carry about 2 KiB
+  font and screen. (The surface itself, [`graphics_contract::SURFACE_BYTES`], does carry about 2 KiB
   of unrelated padding past the last pixel, for frame-alignment reasons that have nothing to do with
-  the character grid; see `graphics_protocol::WIDTH`'s doc comment.)
+  the character grid; see `graphics_contract::WIDTH`'s doc comment.)
 - The font's own weak glyphs, named where a reader meets them. `M` and `W` are near vertical
   mirrors, because five ink columns leaves one way to draw each. `&` is the busiest glyph in the set
   and reads as a knot at a glance. `%` fills its corners heavily enough to look bolder than its

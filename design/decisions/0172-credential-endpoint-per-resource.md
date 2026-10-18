@@ -3,7 +3,7 @@ status: PROPOSED
 raised: 2026-09-19
 ---
 
-# 172. Whether a `credential_protocol` verify endpoint names the identity it asks about
+# 172. Whether a `credential_contract` verify endpoint names the identity it asks about
 
 Raised 2026-09-19 by milestone 435 (forty-five milestones are gated on a decision nobody wrote down)'s slice B, which read milestone 327 (a credential endpoint that is the credential for one resource)'s
 `DECISION` gate and found it naming no section. The question itself is older: milestone 54's block
@@ -23,7 +23,7 @@ an endpoint minted against one identity, where a caller can present a secret and
 
 ## The tree as it stands, read rather than recalled
 
-`crates/credential_protocol/src/lib.rs` fixes the layout: `ID_OFF = 0`, `SECRET_OFF = 64`,
+`crates/credential_contract/src/lib.rs` fixes the layout: `ID_OFF = 0`, `SECRET_OFF = 64`,
 `MAX_IDENTITY = 64`, `MAX_SECRET = 256`, `LAYOUT_LEN = 320`. The identity is *"an opaque byte string
 and nothing more"*, and `place` refuses an empty one.
 
@@ -37,8 +37,8 @@ The senders, counted rather than estimated (2026-09-19). `verify::VERIFY` leaves
 programs: `components/src/login.rs` at one site, and `fixtures/src/credentialer_test_client.rs`,
 the test client, at six. `components/src/credentialer.rs` is the server that answers it, and
 `kernel/src/user/credential_tests.rs` asserts the opcode-space property below. Five crates and
-program trees depend on `credential_protocol` at all (`components`, `fixtures`, `kernel`,
-`crates/system_initializer`, `crates/login_protocol`).
+program trees depend on `credential_contract` at all (`components`, `fixtures`, `kernel`,
+`crates/system_initializer`, `crates/login_contract`).
 
 ## What this tree already does in the analogous case, which is the strongest argument here
 

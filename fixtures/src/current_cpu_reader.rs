@@ -4,7 +4,7 @@
 //! crossing, because the consumer is a memory allocator asking on every allocation. (That ruling's
 //! `design/decisions/` section is on another branch and is named here rather than cited.) This
 //! program is the shortest thing that proves the whole chain works from the side that matters:
-//! `crates/current_cpu_protocol` lays the page out, the kernel maps it read-only and writes it at
+//! `crates/current_cpu_contract` lays the page out, the kernel maps it read-only and writes it at
 //! every switch-in, and `user_mode_runtime::current_cpu` reads it with an ordinary load.
 //!
 //! Reads twice across a `yield_now`, `cycle_counter_reader`'s shape and for the same reason: the
@@ -13,7 +13,7 @@
 //! guarantee that a switch happened, so the second read is evidence and the kernel-side test's
 //! direct read of a space's page is the proof.
 //!
-//! Reports both, plus [`current_cpu_protocol::CPU_ID_BOUND`], which is the one number in this
+//! Reports both, plus [`current_cpu_contract::CPU_ID_BOUND`], which is the one number in this
 //! contract that two binaries have to agree on: the kernel's `cpu::MAX_CPUS` **is** that constant,
 //! and a message carrying it back across the boundary is what would catch them drifting.
 //!
@@ -44,7 +44,7 @@ use user_mode_runtime::{current_cpu, exit, send, yield_now};
 const REPORT: u64 = 0;
 
 /// `None` on the wire. The protocol's own sentinel rather than a second one.
-const UNKNOWN: u64 = current_cpu_protocol::UNSCHEDULED;
+const UNKNOWN: u64 = current_cpu_contract::UNSCHEDULED;
 
 #[unsafe(no_mangle)]
 pub extern "C" fn _start(_arg0: u64, _arg1: u64, _arg2: u64) -> ! {
@@ -55,7 +55,7 @@ pub extern "C" fn _start(_arg0: u64, _arg1: u64, _arg2: u64) -> ! {
         REPORT,
         first,
         second,
-        current_cpu_protocol::CPU_ID_BOUND as u64,
+        current_cpu_contract::CPU_ID_BOUND as u64,
     );
     exit()
 }

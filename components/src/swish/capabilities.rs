@@ -47,7 +47,7 @@ pub(super) fn caps(nav: &mut Nav, tail: &[u8]) {
     // places its capability, and never unmaps it; [`HOLDS_CONFIG`] is that capability's presence.
     let config = HOLDS_CONFIG
         .load(core::sync::atomic::Ordering::Relaxed)
-        .then(|| unsafe { environment_protocol::ConfigPage::new(grant_plan::SHELL_CONFIG_VA) });
+        .then(|| unsafe { environment_contract::ConfigPage::new(grant_plan::SHELL_CONFIG_VA) });
     swish::write_capabilities(
         tail,
         SH_BUDGET_PAGES,
@@ -181,12 +181,12 @@ fn caps_image(nav: &mut Nav, spec: RunSpec) {
 /// One page of a generation table, read by [`live_generation_listing`]. A static rather than a
 /// local because a page on the stack would take `caps`'s frame over the 4 KiB guard page
 /// `script/stack-frame-check` holds every frame to; [`RANKED`] is here for the same reason.
-pub(super) static mut GENERATION_TABLE: [u8; filesystem_protocol::PAGE] =
-    [0; filesystem_protocol::PAGE];
+pub(super) static mut GENERATION_TABLE: [u8; filesystem_contract::PAGE] =
+    [0; filesystem_contract::PAGE];
 
 /// One page for the nearest version set, a static for [`GENERATION_TABLE`]'s reason. Provisional;
 /// the file it holds (`.jig-versions`) was ratified 2026-10-07, and this static's name was not.
-static mut VERSION_SET: [u8; filesystem_protocol::PAGE] = [0; filesystem_protocol::PAGE];
+static mut VERSION_SET: [u8; filesystem_contract::PAGE] = [0; filesystem_contract::PAGE];
 
 /// **The nearest version set at or above where this shell stands** (milestone 614 (two installed
 /// versions of one program, each runnable, and a caller granted the one it needs), ruling 4):
@@ -244,7 +244,7 @@ pub(super) fn with_live_table<R>(nav: &Nav, f: impl FnOnce(&str, u32) -> Option<
         fs::OPENDIR,
         fs::ROOT,
         activation_set::DIRECTORY.as_bytes(),
-        filesystem_protocol::dir::READ,
+        filesystem_contract::dir::READ,
     );
     if act < 0 {
         return None;

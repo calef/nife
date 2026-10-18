@@ -38,12 +38,12 @@ pub mod registry;
 pub mod ring;
 
 use assembler::{Assembler, Line};
-use byte_sink_protocol::{INLINE_MAX, Msg, unpack};
+use byte_sink_contract::{INLINE_MAX, Msg, unpack};
 use registry::{Name, Registry};
 use ring::Ring;
-pub use system_log_protocol::record;
-use system_log_protocol::record::Header;
-use system_log_protocol::{control, read, severity};
+pub use system_log_contract::record;
+use system_log_contract::record::Header;
+use system_log_contract::{control, read, severity};
 
 #[cfg(test)]
 mod tests;

@@ -20,7 +20,7 @@ mkdir -p "$OUT/conf"
 export CARGO_TARGET_DIR="${CARGO_TARGET_DIR:-$OUT/target}" CLIPPY_CONF_DIR="$OUT/conf"
 cp clippy.toml "$OUT/conf/clippy.toml"
 HOST="--workspace --exclude kernel --exclude system_tests --exclude components --exclude fixtures
-      --exclude user_mode_runtime --exclude swap_protocol --exclude virtio
+      --exclude user_mode_runtime --exclude hot_swap_contract --exclude virtio
       --exclude supervision_protocol --exclude system_initializer"
 
 if [ -n "${NESTING:-}" ]; then

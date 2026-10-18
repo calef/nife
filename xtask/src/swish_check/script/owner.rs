@@ -11,7 +11,7 @@ use super::*;
 /// The owner's-console rows of [`SWISH_CHECK_SCRIPT`], in table order.
 pub(super) const LINES: &[Line] = &[
     // **The owner suspends and resumes an identity** (milestone 152 (durable delegation), calef's
-    // §108 (disabling credentials kills the durable session) ruling of 2026-09-26). `user` edits `login_protocol::SUSPENDED_LIST` at this prompt's
+    // §108 (disabling credentials kills the durable session) ruling of 2026-09-26). `user` edits `login_contract::SUSPENDED_LIST` at this prompt's
     // root, the file service's, in the format `login` reads at a login and at start-up; the kernel
     // suite's `login_tests` prove what it does with it. Here: the
     // two verbs answer, the file is where `login` looks, and a malformed line changes nothing.

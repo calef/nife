@@ -24,7 +24,7 @@ its own words:
 > second wins" is a rule with a bug in it (which of two concurrent provisioners won?) that a store
 > with no update path simply does not have. A duplicate identity is refused.
 
-And `credential_protocol::provision::SEAL`'s documentation is blunter: after it, the store cannot be
+And `credential_contract::provision::SEAL`'s documentation is blunter: after it, the store cannot be
 changed by anything short of restarting the service. Both are what let the service promise a client
 that a stored secret is exactly what an operator vouched for at boot.
 
@@ -42,7 +42,7 @@ the trust model is not a preference here; it is what makes the verb safe to add 
 ## What this tree already does in the analogous case
 
 The two-endpoint split is the existing shape (`notes/credentials.md`): provision and verify,
-deliberately minimal. `login_protocol::CONNECT` mints an endpoint per connection, which is the
+deliberately minimal. `login_contract::CONNECT` mints an endpoint per connection, which is the
 tree's standard answer to "a client needs its own thing"; and
 [§41](0041-endpoint-as-broker.md) (the endpoint is the broker) is the reason a secret is reached
 through an endpoint rather than handed over as a value.
@@ -71,7 +71,7 @@ grantable, B. Nothing else in the comparison moves much.
 
 ## How reversible it is
 
-A wire change to `credential_protocol` is the irreversible category: two programs agree on it,
+A wire change to `credential_contract` is the irreversible category: two programs agree on it,
 and an opcode cannot be un-shipped. The boot wiring around it is reversible and cheap.
 
 ## What is blocked until this is answered

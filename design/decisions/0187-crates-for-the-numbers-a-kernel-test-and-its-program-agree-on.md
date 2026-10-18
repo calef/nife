@@ -20,14 +20,14 @@ The sweep is mechanical and a lane could start it today. **What it cannot settle
 and there is no useful half of this work that does not create one.** Two shapes:
 
 1. One crate per pair (`login_test_contract`, `compositor_test_contract`, ...), which follows
-   `swap_protocol`'s precedent, keeps each contract readable in one file, and costs nineteen names.
+   `hot_swap_contract`'s precedent, keeps each contract readable in one file, and costs nineteen names.
 2. One crate for all of them, which costs one name and makes the crate a grab bag of unrelated
    numbers.
 
 ## Is the premise true
 
 Checked 2026-09-19 in this worktree. Yes, and the tree's own counter-example is still in it:
-`crates/swap_protocol/src/lib.rs:381` publishes `pub const ROLE_DIRECT: u64 = 0` with real doc
+`crates/hot_swap_contract/src/lib.rs:381` publishes `pub const ROLE_DIRECT: u64 = 0` with real doc
 comments, and `kernel/src/user/live_swap_tests.rs:52` re-declares it locally anyway under a
 four-word comment, alongside `ROLE_QUEUED` and `ROLE_HUNG`.
 
@@ -51,7 +51,7 @@ in the code under test rather than as a mismatch, which is the same misdiagnosis
 
 The shape is built and works three times, all of them in this worktree:
 
-- `crates/swap_protocol` publishes the role numbers its two binaries agree on.
+- `crates/hot_swap_contract` publishes the role numbers its two binaries agree on.
 - `crates/job_mix` does the same.
 - `crates/schedule_store` publishes the file names `session_reviver` and `fs_test_client` both
   depend on, for exactly this reason and with the reason written down.
@@ -66,8 +66,8 @@ is the vocabulary the two ends share, which is rule 7's category rather than §6
 ## Why the existing protocol crates are the wrong home, which is a lookup rather than a preference
 
 These numbers are **not part of any shipped wire contract**. Putting `login_test_client`'s six
-behavior numbers into `login_protocol` would widen the protocol a real login client is written
-against with something no real client needs. `crates/swap_protocol` is not a counter-example: the
+behavior numbers into `login_contract` would widen the protocol a real login client is written
+against with something no real client needs. `crates/hot_swap_contract` is not a counter-example: the
 swap roles genuinely belong to the swap protocol.
 
 ## What each option costs
@@ -78,7 +78,7 @@ swap roles genuinely belong to the swap protocol.
 | **2, one crate** | one name | a grab bag of unrelated numbers, which §46 and naming.md's generic-name rule both push against; and every kernel test depends on every other test's constants |
 
 Three crate names in milestone 407's table have moved and the work has to read the current ones:
-`swap_proto` is `crates/swap_protocol`, `login_proto` is `crates/login_protocol`, and
+`swap_proto` is `crates/hot_swap_contract`, `login_proto` is `crates/login_contract`, and
 `components/src/ntp.rs` was split into three programs by milestone 290, so that row's program side
 is now `network_time_client` and its siblings.
 

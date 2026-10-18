@@ -40,7 +40,7 @@ pub struct AddressSpace {
     /// calef ruled on 2026-09-21 that a thread observing *itself* is a per-thread page rather than
     /// a crossing, because the consumer is a memory allocator asking on every allocation. (That
     /// ruling's `design/decisions/` section is on another branch and not on `main` yet, so it is
-    /// named here rather than cited.) `crates/current_cpu_protocol` holds the layout and the
+    /// named here rather than cited.) `crates/current_cpu_contract` holds the layout and the
     /// argument; this field is the kernel's end of it.
     ///
     /// **This is slot 0 of the space's thread pages** (milestone 812 (`std::thread::spawn` runs real
@@ -62,12 +62,12 @@ pub struct AddressSpace {
 
     /// **The other threads' current-CPU pages** (milestone 812 (`std::thread::spawn` runs real
     /// threads in one address space), §269 (how threads share a process) fork 6): slot `k`, for `k`
-    /// from 1, is mapped read-only at `current_cpu_protocol::thread_page_va(k)`. Slot 0 is
+    /// from 1, is mapped read-only at `current_cpu_contract::thread_page_va(k)`. Slot 0 is
     /// [`Self::current_cpu_page`]. A slot's frame is kept once made and reused by the next thread to
     /// take the slot, and freed with the space. Physical addresses, valid where
     /// [`Self::thread_pages_made`] has the bit: an `Option<(PageFrame, u64)>` per slot was 384 bytes
     /// in every `AddressSpace`, which pushed `load`'s frame past the 4 KiB guard page on riscv64.
-    pub(crate) thread_pages: [u64; current_cpu_protocol::THREAD_PAGE_SLOTS],
+    pub(crate) thread_pages: [u64; current_cpu_contract::THREAD_PAGE_SLOTS],
 
     /// Which slots (bit `k`) have a frame in [`Self::thread_pages`].
     pub(crate) thread_pages_made: u16,
@@ -175,7 +175,7 @@ impl AddressSpace {
             asid,
             backing: Backing::Owned(region),
             current_cpu_page: None,
-            thread_pages: [0; current_cpu_protocol::THREAD_PAGE_SLOTS],
+            thread_pages: [0; current_cpu_contract::THREAD_PAGE_SLOTS],
             thread_pages_made: 0,
             thread_pages_in_use: 0,
         };
@@ -200,7 +200,7 @@ impl AddressSpace {
     /// the honest shape rather than the convenient one: a thread with no page reads an unmapped
     /// address, and a thread with a page reads the truth, but a `load` that failed outright because
     /// one frame was unavailable would turn a diagnostic convenience into a reason a program will
-    /// not start. The states are told apart at the reader (`current_cpu_protocol::CurrentCpuPage`
+    /// not start. The states are told apart at the reader (`current_cpu_contract::CurrentCpuPage`
     /// answers `None`), which is where somebody can act on it.
     pub fn attach_current_cpu_page(&mut self) {
         if self.current_cpu_page.is_some() {
@@ -216,7 +216,7 @@ impl AddressSpace {
         // into the process too, and whatever the last owner left in it would go with it.
         // The allowance (milestone 812, §269 fork 7): the cores this process may use, which is the
         // online count until something grants fewer.
-        let bytes = current_cpu_protocol::build_page_allowing(u64::from(
+        let bytes = current_cpu_contract::build_page_allowing(u64::from(
             crate::smp::online_harts_mask().count_ones(),
         ));
         let kernel_va = mmu::phys_to_virt(frame.addr());
@@ -232,7 +232,7 @@ impl AddressSpace {
         // process a view, rather than writing into memory the process supplied.
         if self
             .map_physical(
-                current_cpu_protocol::PAGE_VA,
+                current_cpu_contract::PAGE_VA,
                 frame.addr(),
                 Flags::user_rodata(),
                 crate::revoke::PageMapSource::NoCapability,
@@ -249,7 +249,7 @@ impl AddressSpace {
     /// switch, on the core doing the switching, which is the core the thread will execute on.
     ///
     /// One branch and one relaxed store when the space has a page, one branch when it has not. The
-    /// ordering argument is `current_cpu_protocol`'s and is not repeated here; its short form is
+    /// ordering argument is `current_cpu_contract`'s and is not repeated here; its short form is
     /// that writer and reader are the same hardware thread, and that two successive writers are
     /// ordered by the scheduler's own release/acquire handoff rather than by anything this adds.
     ///
@@ -265,7 +265,7 @@ impl AddressSpace {
             // freed only by `Drop`, so the direct-map view is live and 16 bytes wide here. The
             // caller is the one core switching this thread in, and a thread is on one core, so
             // this is the only writer for as long as the store takes.
-            unsafe { current_cpu_protocol::publish(kernel_va, cpu) };
+            unsafe { current_cpu_contract::publish(kernel_va, cpu) };
         }
     }
 

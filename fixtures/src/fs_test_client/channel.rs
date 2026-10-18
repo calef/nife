@@ -9,7 +9,7 @@
 //! Name: provisional (lane maintainer/files-over-1500, 2026-10-12 UTC), for the module and the
 //! file.
 
-use filesystem_protocol::fs;
+use filesystem_contract::fs;
 use user_mode_runtime::mapped_window::MappedWindow;
 use user_mode_runtime::{call, exit, require, send};
 
@@ -20,7 +20,7 @@ pub(crate) const FILE: u64 = 0;
 pub(crate) const REPORT: u64 = 1;
 /// The base of the client's mapping of the channel it shares with the FS server.
 ///
-/// **It is `filesystem_protocol::fs::TRANSFER_MAX` bytes wide, not one page** (milestone 138 step 3), and the
+/// **It is `filesystem_contract::fs::TRANSFER_MAX` bytes wide, not one page** (milestone 138 step 3), and the
 /// kernel's wiring maps every page of it here (`kernel/src/user/fs_service/channel.rs`, `map_channel`). A
 /// client may not ask for more than it mapped, and this one maps all of it, which is what lets the
 /// throughput role measure the contract's own ceiling rather than a page.
@@ -77,7 +77,7 @@ pub(crate) const STAGE_WRITE: u64 = 3;
 /// compared against `SUCCESS`.
 ///
 /// `w0` is the raw reply word, `w1` is `0xBADD_0000 | stage << 12 | errno`. The errno is recovered
-/// with `filesystem_protocol::reply_errno`'s rule (a negative reply is a negated errno). Note the known
+/// with `filesystem_contract::reply_errno`'s rule (a negative reply is a negated errno). Note the known
 /// reply-space overlap (notes/std/fs.md): the kernel's own `invoke` errors are -1..-8, so a small value
 /// here is ambiguous between "the server returned this errno" and "the IPC itself failed". The raw
 /// word travels in `w0` precisely so that ambiguity is visible rather than hidden.

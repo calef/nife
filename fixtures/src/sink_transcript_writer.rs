@@ -1,7 +1,7 @@
 //! **A program that does not know what it is writing to** (milestone 50, split out of the `sink`
 //! binary by milestone 292; notes/sink-protocol.md).
 //!
-//! It writes [`byte_sink_protocol::fixture::TRANSCRIPT`] to whatever is in slot 0 and reports how the
+//! It writes [`byte_sink_contract::fixture::TRANSCRIPT`] to whatever is in slot 0 and reports how the
 //! last `SEND` classified. Its whole job is to make the classification assertable **by value**,
 //! because "gone" and "never had one" are two numbers and a test that could not tell them apart
 //! would not be testing milestone 50's one behaviour change.
@@ -24,7 +24,7 @@
 //! which is exactly the position a real producer in `yes | head` is in.
 //!
 //! **An empty slot 0 is a case, not a mistake**: "you were never given one". The program keeps
-//! running and classifies [`byte_sink_protocol::Sent::NoSink`], as a process whose stdout is closed
+//! running and classifies [`byte_sink_contract::Sent::NoSink`], as a process whose stdout is closed
 //! runs to completion anywhere.
 //!
 
@@ -46,7 +46,7 @@
 //!
 //! Name: recorded (design/roadmap/0292-the-sink-contract-ends-are-three-programs.md and
 //! notes/sink-protocol.md). **Provisional: calef has not ratified it.** Named for the contract it
-//! speaks (`byte_sink_protocol`, which design/naming/vocabulary-rulings.md keeps) and the pinned
+//! speaks (`byte_sink_contract`, which design/naming/vocabulary-rulings.md keeps) and the pinned
 //! transcript it writes. Refused `writer` (generic). Refused `indifferent_writer` (names the
 //! property being proved, not the program). Refused `sink_writer` (reads as the thing that writes
 //! a sink, and says nothing about what it writes).
@@ -58,7 +58,7 @@
 #![allow(missing_docs)]
 #![no_main]
 
-use byte_sink_protocol::fixture;
+use byte_sink_contract::fixture;
 use user_mode_runtime::{exit, send};
 
 /// The byte sink, `WRITE`, and the whole of what this program holds towards its output: no page,
@@ -76,14 +76,14 @@ const REPORT: u64 = 1;
 pub extern "C" fn _start(repeat: u64, _a1: u64, _a2: u64) -> ! {
     let mut total = 0u64;
     let mut rounds = 0u64;
-    let mut last = byte_sink_protocol::Sent::Ok;
+    let mut last = byte_sink_contract::Sent::Ok;
 
     'outer: loop {
         let mut off = 0usize;
         while off < fixture::TRANSCRIPT.len() {
-            let (w0, w1, w2, n) = byte_sink_protocol::pack(&fixture::TRANSCRIPT[off..]);
-            last = byte_sink_protocol::classify(send(SINK, w0, w1, w2));
-            if !matches!(last, byte_sink_protocol::Sent::Ok) {
+            let (w0, w1, w2, n) = byte_sink_contract::pack(&fixture::TRANSCRIPT[off..]);
+            last = byte_sink_contract::classify(send(SINK, w0, w1, w2));
+            if !matches!(last, byte_sink_contract::Sent::Ok) {
                 break 'outer;
             }
             off += n;
@@ -95,8 +95,8 @@ pub extern "C" fn _start(repeat: u64, _a1: u64, _a2: u64) -> ! {
         }
     }
 
-    if matches!(last, byte_sink_protocol::Sent::Ok) {
-        let _ = send(SINK, byte_sink_protocol::eof(), 0, 0);
+    if matches!(last, byte_sink_contract::Sent::Ok) {
+        let _ = send(SINK, byte_sink_contract::eof(), 0, 0);
     }
     send(REPORT, fixture::code(last), total, rounds);
     exit();

@@ -27,7 +27,7 @@ rights ladder of DECISIONS §47 (a directory capability carries six rights), as 
 
 RedoxFS tracks the mtime, and `fs_proto` exposes it as three verbs: `fs::GETMTIME`, `fs::SETMTIME`
 and `fs::SETMTIME_AT` (all three provisional names). They are three verbs rather than one with a
-flag, because `filesystem_protocol::verb::TABLE` encodes one fixed rights requirement per opcode.
+flag, because `filesystem_contract::verb::TABLE` encodes one fixed rights requirement per opcode.
 `GETMTIME` and `SETMTIME` need `dir::READ` and `dir::WRITE` respectively, resolved directly under a
 directory handle like `UNLINK` (neither opens what it acts on). `SETMTIME_AT` needs
 `dir::WRITE | dir::SETTIME`, with the caller's asserted seconds riding in the second word, for

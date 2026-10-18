@@ -18,7 +18,7 @@ use super::*;
 /// would hand the client every other client's channel, the bug the pool exists to fix. What a
 /// client maps is a slice, made here, mapped with `MAP_INTO`, and deleted by the caller as soon as
 /// the build is done. One page, not the window's sixteen, because a client of this contract maps
-/// one page (`filesystem_protocol::fs::TRANSFER_PAGES` says a client maps what it uses).
+/// one page (`filesystem_contract::fs::TRANSFER_PAGES` says a client maps what it uses).
 pub(super) fn window_page(pool: u64, w: u64) -> Option<u64> {
     let first = w * fs_operation::TRANSFER_PAGES as u64;
     // SAFETY: the syscall; the kernel validates the capability, the range and the right.
@@ -55,7 +55,7 @@ pub(super) fn window_zero(fs: Fs) -> Option<Fs> {
 }
 
 /// **The pool of windows directory-granted jobs get** (milestone 599, the rule since milestone 685
-/// (a job is finished when its memory is back)): windows `1..login_protocol::DURABLE_WINDOW`, each
+/// (a job is finished when its memory is back)): windows `1..login_contract::DURABLE_WINDOW`, each
 /// held by the job it was handed to until `job_undertaker` says that job is reaped. Window 0 is the
 /// boot's long-lived clients' (see [`window_zero`]), and the last is `login`'s durable sessions'
 /// (milestone 152).
@@ -80,7 +80,7 @@ pub(super) fn window_zero(fs: Fs) -> Option<Fs> {
 ///   `grant_plan::job_windows`'s `BUGS` (a screen-narrowed job behind a directory grant, which no
 ///   manifest asks for today).
 pub(super) const fn job_windows() -> Windows {
-    Windows::new(1, login_protocol::DURABLE_WINDOW)
+    Windows::new(1, login_contract::DURABLE_WINDOW)
 }
 
 /// **Whether a file server's image says it enforces subtree grants itself** (milestone 606, ruling
@@ -112,11 +112,11 @@ pub(super) fn bound_channel(
     (lo, hi, spec): (u64, u64, u64),
 ) -> Option<Fs> {
     let files = FsCalls::map(Some(fs), own_ut, mapped)?;
-    let mut buf = [0u8; filesystem_protocol::grant::MAX_NAME];
-    let n = filesystem_protocol::grant::unpack_name(
+    let mut buf = [0u8; filesystem_contract::grant::MAX_NAME];
+    let n = filesystem_contract::grant::unpack_name(
         lo,
         hi,
-        filesystem_protocol::grant::spec_len(spec),
+        filesystem_contract::grant::spec_len(spec),
         &mut buf,
     );
     let name = core::str::from_utf8(&buf[..n]).ok()?;
@@ -125,7 +125,7 @@ pub(super) fn bound_channel(
         fs_operation::OPENDIR,
         fs_operation::ROOT,
         name,
-        filesystem_protocol::grant::spec_rights(spec),
+        filesystem_contract::grant::spec_rights(spec),
     );
     bind_window(fs, &files, (windows, w), handle)
 }

@@ -155,7 +155,7 @@ Six are compile-time `const _: () = { .. }` blocks: `IMPLEMENTERS`' duplicate-co
 `aarch64.rs` and `IMPLEMENTATIONS`' sequential-id check in `riscv64.rs`. Their loop bounds survive
 under `==`, `>` and `<=`. Each makes the loop body never run, so the block compiles and checks
 nothing. No `cargo test` can see this, because the checker is `rustc` and the evidence of success
-is that the build happened. It is the same object as `filesystem_protocol`'s `verb::TABLE` walk in
+is that the build happened. It is the same object as `filesystem_contract`'s `verb::TABLE` walk in
 [regressions-clock-protocol-swish-filesystem-protocol](regressions-clock-protocol-swish-filesystem-protocol.md).
 It is recorded for that entry's reason: an exclusion would have to be by line, and would hide
 anything else that lands there.

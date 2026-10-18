@@ -89,7 +89,7 @@ are the non-vacuity flags described in this crate's verification section. They s
 `mod interleavings`, which is `#[cfg(all(test, loom))]`. `cargo test` never compiles it, so a
 mutant there always survives. That is exactly why `verification::` and `proofs::` are already
 excluded, and the entry added to `.cargo/mutants.toml` says so. It covers all five loom models in
-the tree (`clock_protocol`, `memory_corruption_canary_gate`, `memory_regions`,
+the tree (`clock_contract`, `memory_corruption_canary_gate`, `memory_regions`,
 `thread_wake_handshake`, `work_steal_slot`), every one behind the same `cfg`. Their checker is
 `script/interleaving-check`; excluding them here does not make them proved.
 

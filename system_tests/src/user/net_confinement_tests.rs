@@ -82,7 +82,7 @@ fn net_stack_image() -> &'static [u8] {
 fn start_stack() -> Option<(Holding, RendezvousId)> {
     match crate::user::e1000e_service::start_net_server(
         net_stack_image(),
-        socket_protocol::NO_LISTEN_GRANT,
+        socket_contract::NO_LISTEN_GRANT,
     ) {
         Ok(w) => {
             // Drain the lease so the server reaches its serve loop before any client asks.
@@ -245,7 +245,7 @@ fn a_squatter_at_a_shared_stack_endpoint_cannot_capture_the_clients_traffic() {
 /// ground on the §255 (each socket is its own capability) surface).
 ///
 /// The stack mints each socket's capability from a `WRITE | GRANT` copy of its own serve endpoint
-/// (`socket_protocol::stack_slots::MINT`), carrying the socket's badge and no `READ`. A copy that
+/// (`socket_contract::stack_slots::MINT`), carrying the socket's badge and no `READ`. A copy that
 /// carried `READ` would let its holder run a kernel plain `RECEIVE` or `RECEIVE_CAP` on it and
 /// dequeue the stack's own incoming queue, every other client's request to the stack: the capture
 /// class milestone 649 (every client of a network stack shares its socket numbers) closed, reached

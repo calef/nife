@@ -62,14 +62,14 @@ const ROLE_UNWARNED: u64 = 4;
 const ROLE_LATE_WARNING: u64 = 5;
 /// The confused-deputy channel (milestone 633, third pass).
 const ROLE_DEPUTY: u64 = 6;
-/// The one blob layout any build in this tree writes (`swap_protocol::LAYOUT_1`). The refusing
+/// The one blob layout any build in this tree writes (`hot_swap_contract::LAYOUT_1`). The refusing
 /// replacement names it as the layout it could not read, so both sides name one constant.
 const LAYOUT_1: u64 = 1;
 const V1: u64 = 1;
 const V2: u64 = 2;
 const REQUESTS: u64 = 64;
 
-/// The request a wedging instance swallows (`swap_protocol::WEDGE_SEQ`). The test asserts the swap
+/// The request a wedging instance swallows (`hot_swap_contract::WEDGE_SEQ`). The test asserts the swap
 /// landed here, so both sides name one constant.
 const WEDGE_SEQ: u64 = 24;
 
@@ -94,7 +94,7 @@ use crate::user::UART_PHYS;
 /// outgoing instance then **faults inside [`DEV_VA`]**. On x86 there is no UART page to lend, and
 /// the trap worth naming is that lending physical page zero instead would still produce a green
 /// test: the read would return a real-mode interrupt-vector byte and the revoke would still fault.
-/// That is a passing test about nothing. See `swap_protocol::probe_device`'s x86 arm, which refuses
+/// That is a passing test about nothing. See `hot_swap_contract::probe_device`'s x86 arm, which refuses
 /// for the same reason, and `user::machine_has_no_device_page_for_the_console`, which is the one
 /// definition of the question.
 use crate::user::{NO_UART_PAGE, machine_has_no_device_page_for_the_console};
@@ -555,7 +555,7 @@ fn a_client_of_the_stable_rendezvous_cannot_become_its_server() {
 /// the third outsider pass found it, nothing bounded `arg`, so a `WRITE`-only client asked for an
 /// offset landing in the device register page the server holds and the client does not, and the
 /// server wrote there and echoed the offset. That was a confused-deputy escape of the demonstrator's
-/// boundary, not a kernel gate failure, booted red on aarch64 and riscv64. `swap_protocol::log_put`
+/// boundary, not a kernel gate failure, booted red on aarch64 and riscv64. `hot_swap_contract::log_put`
 /// now refuses an offset outside the one log page and the server answers `PUT_REFUSED`.
 ///
 /// Falsification: replayable `system_tests/falsifications/user.live_swap_tests.a_confined_client_drives_the_server_to_write_past_its_log.patch`
@@ -566,7 +566,7 @@ fn a_confined_client_drives_the_server_to_write_past_its_log() {
     }
     // `log_put` writes at `LOG_VA + log_base + arg`; with `log_base = 0` this offset lands at
     // `DEV_VA`, the first register of the device page. Mirrored arithmetic rather than a
-    // `swap_protocol` dependency, the convention every constant in this file follows.
+    // `hot_swap_contract` dependency, the convention every constant in this file follows.
     const DEPUTY_PROBE: u64 = DEV_VA - address_space_map::pair_page(0x0300_0000);
 
     let (msgs, n) = run_swap(ROLE_DEPUTY);
@@ -594,7 +594,7 @@ fn a_confined_client_drives_the_server_to_write_past_its_log() {
         deputy[2],
     );
     // And the server said so, rather than answering something else that happens not to echo the
-    // offset. `swap_protocol::PUT_REFUSED`, mirrored.
+    // offset. `hot_swap_contract::PUT_REFUSED`, mirrored.
     assert_eq!(
         (deputy[1], deputy[2]),
         (u64::MAX, u64::MAX),
@@ -682,7 +682,7 @@ fn a_producer_never_blocks_on_an_absent_consumer_and_loses_nothing() {
 // Milestone 23's third residual: a component that stops answering **without dying**.
 // ===============================================================================================
 
-/// `abi::survey`'s state codes, unpacked from `RPT_SURVEY` by `swap_protocol::survey_counts`'s layout.
+/// `abi::survey`'s state codes, unpacked from `RPT_SURVEY` by `hot_swap_contract::survey_counts`'s layout.
 /// Mirrored here for the reason every other constant in this file is: userspace owns the definition.
 fn survey_blocked(w: u64) -> u64 {
     (w >> 16) & 0xff

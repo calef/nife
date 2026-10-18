@@ -65,7 +65,7 @@ it (forks 2 and 7). Each says so.
    (cgroup quotas) and Java (JDK 10's container support) both had to retrofit that meaning.
    Milestone 527 (the `SURVEY` selector, and a thread's placement) was refused for this: it is a supervisor's view of other
    threads behind `ENUMERATE`, and a thread observing itself uses a page, per calef's 2026-09-21
-   ruling quoted in `crates/current_cpu_protocol`. 527 itself is unchanged; its callers (`ps`,
+   ruling quoted in `crates/current_cpu_contract`. 527 itself is unchanged; its callers (`ps`,
    `top`) observe other threads, which is what `ENUMERATE` is for.
 
 ## An open consequence, not ruled

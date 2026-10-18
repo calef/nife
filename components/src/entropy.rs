@@ -18,7 +18,7 @@
 //! [`POOL_LEN`] bytes, handed out in order to exactly one client each and zeroed behind the cursor:
 //! a cache for round trips, not a transformation. virtio-rng may return fewer bytes than asked, and
 //! QEMU's does, so [`Pool::take`] gathers across refills and never pads or repeats; a device that
-//! yields nothing for [`REFILL_TRIES`] tries answers [`entropy_protocol::NO_ENTROPY`].
+//! yields nothing for [`REFILL_TRIES`] tries answers [`entropy_contract::NO_ENTROPY`].
 //!
 //! The second backend, [`instr`], runs RDSEED (`x86_64`) or RNDRRS (aarch64) inside this process,
 //! behind the same endpoint, because an unprivileged instruction a client ran itself would make the
@@ -31,7 +31,7 @@
 //! # BUGS
 //!
 //! - An all-zero first draw condemns the backend: `NO_ENTROPY` for the rest of the boot, wrong
-//!   with probability 2^-2048 (virtio) or 2^-64 (instruction), as `entropy_protocol`'s `BUGS` says.
+//!   with probability 2^-2048 (virtio) or 2^-64 (instruction), as `entropy_contract`'s `BUGS` says.
 //! - A condemned backend does not recover short of restarting the service.
 //! - Nothing checks a byte after bring-up; continuous health testing is
 //!   `design/decisions/0137-trng-health-tests.md`, proposed.
@@ -46,7 +46,7 @@
 #![allow(missing_docs)]
 #![no_main]
 
-use entropy_protocol as proto;
+use entropy_contract as proto;
 use user_mode_runtime::mapped_window::{MappedWindow, PAGE};
 use user_mode_runtime::virtio::virtio_ring_barrier;
 use user_mode_runtime::{
@@ -138,7 +138,7 @@ const E_DEVICE_ID: u64 = 0x02;
 const E_FEATURES: u64 = 0x03;
 const E_QUEUE: u64 = 0x04;
 
-/// The virtio steps above are this backend's own, and `entropy_protocol` reserves `0x01..=0x0f` for
+/// The virtio steps above are this backend's own, and `entropy_contract` reserves `0x01..=0x0f` for
 /// exactly that. The two steps every backend shares (`STEP_NO_FIRST_BYTES`, `STEP_FIRST_ALL_ZERO`)
 /// start at `0x10`, and this assert is what keeps a fifth virtio step from silently becoming one
 /// of them: a report word decodes to one step or it decodes to a lie.
@@ -538,7 +538,7 @@ fn serve_instruction() -> ! {
     // Eight zero bytes out of `RDSEED`/`RNDRRS` condemn the source for the boot, the same rule the
     // two device backends follow. The false-positive probability is 2^-64 here rather than the
     // 2^-256 a 32-byte draw gets, which is the width of the answer rather than a weaker check;
-    // `entropy_protocol`'s `BUGS` carries the number.
+    // `entropy_contract`'s `BUGS` carries the number.
     let refuse = report == proto::bringup_failure(proto::STEP_FIRST_ALL_ZERO);
     loop {
         let req = receive_request(I_REQ);

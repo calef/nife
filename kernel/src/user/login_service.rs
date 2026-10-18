@@ -35,7 +35,7 @@ const LOGIN_STACK_PAGES: u64 = 16;
 /// credential. Must match `fixtures/src/login_test_client.rs`, whose module docs carry the argument
 /// for why these are two things and not eleven roles.
 ///
-/// The credential halves are `credential_protocol::fixture`'s own indices, not named again here: a
+/// The credential halves are `credential_contract::fixture`'s own indices, not named again here: a
 /// third copy of `alice` is exactly what 293 removed.
 pub const LOGIN: u64 = 0;
 /// DECISIONS §117's per-identity subtree proof, writing the identity it was handed; see the same
@@ -49,7 +49,7 @@ pub const LOGOUT: u64 = 3;
 /// Milestone 49's terminal update: logs in, proves the fifth delegated capability (the terminal)
 /// works, tears the session down without freeing the terminal. See the same file's module docs.
 pub const HOLD_TERMINAL: u64 = 4;
-/// Sends `login_protocol::logout_word` on the front door directly, with no credential at all.
+/// Sends `login_contract::logout_word` on the front door directly, with no credential at all.
 pub const FREE_TERMINAL: u64 = 5;
 /// DECISIONS §219 (how the shell names an installed program to the spawner) gate D2: logs in and sends [`RUN_UNVOUCHED_MAGIC`] on the sixth delegated
 /// capability. See the same file's module docs.
@@ -67,16 +67,16 @@ pub const EMPTY_SCHEDULE: u64 = 9;
 pub const RUN_UNVOUCHED_MAGIC: u64 = 0x_7e12_0000_0000_0002;
 
 /// The report words `login_test_client` sends; must match the same file.
-pub const RPT_OK: u64 = login_protocol::OK;
-pub const RPT_DENIED: u64 = login_protocol::DENIED;
+pub const RPT_OK: u64 = login_contract::OK;
+pub const RPT_DENIED: u64 = login_contract::DENIED;
 #[allow(dead_code)] // named for completeness with the pair above; nothing exercises it today
-pub const RPT_MALFORMED: u64 = login_protocol::MALFORMED;
+pub const RPT_MALFORMED: u64 = login_contract::MALFORMED;
 /// Milestone 49's terminal update: the terminal was already on loan.
-pub const RPT_NO_TERMINAL: u64 = login_protocol::NO_TERMINAL;
+pub const RPT_NO_TERMINAL: u64 = login_contract::NO_TERMINAL;
 /// [`FREE_TERMINAL`]'s own answer.
-pub const RPT_LOGGED_OUT: u64 = login_protocol::LOGGED_OUT;
+pub const RPT_LOGGED_OUT: u64 = login_contract::LOGGED_OUT;
 /// Milestone 152: authenticated, and on the owner's suspended list.
-pub const RPT_SUSPENDED: u64 = login_protocol::SUSPENDED;
+pub const RPT_SUSPENDED: u64 = login_contract::SUSPENDED;
 
 /// [`HOLD_TERMINAL`]'s proof-of-life word for the delegated terminal; must match the same file's
 /// `TERM_MAGIC`.
@@ -121,7 +121,7 @@ pub const F_NO_REPORT: u64 = 1 << 20;
 
 /// **[`LOGOUT`]'s third report word is microseconds, not an identity hint**: how long that
 /// behaviour's `MemoryRegion::DESTROY` on the caretaker region waited for §16's armed kill to land.
-/// Every other behaviour that fills the third word puts a [`login_protocol::identity_hint`] there; this one
+/// Every other behaviour that fills the third word puts a [`login_contract::identity_hint`] there; this one
 /// has no identity to report and a number a red run needs. Must match
 /// `fixtures/src/login_test_client.rs`'s `waited_micros`.
 ///
@@ -136,7 +136,7 @@ pub struct Wiring {
     pub request: RendezvousId,
     /// The verdict and, on success, five delegated capabilities, `READ`.
     pub result: RendezvousId,
-    /// One [`login_protocol::ATTRIBUTED`] message per successful login, `READ`.
+    /// One [`login_contract::ATTRIBUTED`] message per successful login, `READ`.
     pub audit: RendezvousId,
     /// **The stand-in terminal** (milestone 49's terminal update): this test harness holds no real
     /// terminal to grant, so it wires a bare rendezvous in its place, `READ`. A test can `ipc_receive`
@@ -185,7 +185,7 @@ fn map_blob(space: &mut AddressSpace, base: u64, bytes: &[u8]) {
 /// its own `VERIFY_VA` (`credential_service::Wiring::verify_page_frame` on the instance `verify` came
 /// from). `fs_ep`/`fs_page_frame` are the file service's root directory capability and the page its
 /// clients share with it (`fs_service::root_directory`). `construction_pages` bounds how many
-/// logins this instance can serve before every further one is answered [`login_protocol::DENIED`] (see
+/// logins this instance can serve before every further one is answered [`login_contract::DENIED`] (see
 /// `components/src/login.rs`'s BUGS: nothing reclaims a caretaker's region in this slice).
 ///
 /// **`verify_page_frame` is a parameter and not a lookup**, on purpose (milestone 155): a caller that
@@ -242,7 +242,7 @@ pub fn start(
         [
             blobs.caretaker.len() as u64,
             blobs.measurements.len() as u64,
-            login_protocol::schedule_lengths(
+            login_contract::schedule_lengths(
                 blobs.keeper.len() as u64,
                 blobs.timetable.len() as u64,
             ),
@@ -260,11 +260,11 @@ pub fn start(
     // sifive-u54) and his stored schedule not found (on thead-c906), so not one CPU model's fault.
     // `REDERIVE_SKIPS` is the one front-door word with no side effect, and `login` receives
     // nothing on the front door until the pass has run.
-    sched::ipc_send(request, [login_protocol::rederive_skips_word(), 0, 0]);
+    sched::ipc_send(request, [login_contract::rederive_skips_word(), 0, 0]);
     let r = sched::ipc_receive(result);
     assert_eq!(
         r[0],
-        login_protocol::SKIP_COUNTS,
+        login_contract::SKIP_COUNTS,
         "login did not answer REDERIVE_SKIPS at the end of its start-up pass",
     );
 
@@ -358,20 +358,20 @@ fn build_login_space(elf: &Elf<'_>, blobs: &LoginBlobs, verify_page_frame: u64) 
     }
     #[cfg(any(target_arch = "x86_64", target_arch = "riscv64"))]
     map_timebase_page(&mut space).expect("could not map login's timebase page");
-    map_blob(&mut space, login_protocol::CARETAKER_ELF_VA, caretaker);
+    map_blob(&mut space, login_contract::CARETAKER_ELF_VA, caretaker);
     map_blob(
         &mut space,
-        login_protocol::PROGRAM_MEASUREMENTS_VA,
+        login_contract::PROGRAM_MEASUREMENTS_VA,
         measurements,
     );
     // What `login` builds a user's `user_timetable_keeper` and timetable from, when they ask for their
     // schedule (milestone 152). Empty means no schedule opens.
     map_blob(
         &mut space,
-        login_protocol::USER_TIMETABLE_KEEPER_ELF_VA,
+        login_contract::USER_TIMETABLE_KEEPER_ELF_VA,
         keeper,
     );
-    map_blob(&mut space, login_protocol::TIMETABLE_ELF_VA, timetable);
+    map_blob(&mut space, login_contract::TIMETABLE_ELF_VA, timetable);
     // Milestone 49's channel-per-client update removed the front door's own shared staging page:
     // `CONNECT` (the only word the front door accepts) carries no page at all, and every actual
     // login's identity and secret now travel on a page `login`'s own `connect()` mints and maps at
@@ -496,10 +496,10 @@ fn grant_named_slots(tid: crate::thread::ThreadId) -> RendezvousId {
             window,
             Rights::READ.union(Rights::WRITE).union(Rights::GRANT),
         ),
-        Some(login_protocol::DURABLE_WINDOW_SLOT),
+        Some(login_contract::DURABLE_WINDOW_SLOT),
     )
     .expect("insert the durable window");
-    assert_eq!(landed, login_protocol::DURABLE_WINDOW_SLOT);
+    assert_eq!(landed, login_contract::DURABLE_WINDOW_SLOT);
     run_unvouched
 }
 
@@ -534,7 +534,7 @@ pub struct ClientRun {
 ///
 /// **`identity` and `secret` are separate arguments on purpose** (milestone 293): they compose, so
 /// the wrong-secret case is `(fixture::ALICE, fixture::WRONG)` rather than an eleventh role whose
-/// code could drift away from the honest one's. Both are `credential_protocol::fixture` indices.
+/// code could drift away from the honest one's. Both are `credential_contract::fixture` indices.
 pub fn spawn_client(
     image: &'static [u8],
     w: &Wiring,

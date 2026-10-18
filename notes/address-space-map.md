@@ -23,7 +23,7 @@ crate is the rule.
 | `PROCESS_PAGES` | `0x7FFF_0000` | `0x8000_0000` | 64 KiB | pages the kernel maps into every process unasked; the current-CPU page is the last |
 
 The bands tile the first 2 GiB with no gap. Above that the only resident is the timebase page on
-`x86_64` and `riscv64` (`counter_frequency_protocol::PAGE_VA`), which predates the map.
+`x86_64` and `riscv64` (`counter_frequency_contract::PAGE_VA`), which predates the map.
 
 A program image may be up to 496 MiB. `ripgrep`, measured at 2.61 MiB by milestone 121 (`ripgrep`
 on nife), fits with room for a hundred and ninety of it.
@@ -113,7 +113,7 @@ as `Err(())`, so there the check only makes the failure early and clean.
 
 - Membership, not collision. The band functions check that a page is in its band. They cannot see
   two pair pages one program maps landing on each other.
-- Two protocol crates restate their numbers. `std_runtime_protocol` and `counter_frequency_protocol`
+- Two protocol crates restate their numbers. `std_runtime_contract` and `counter_frequency_contract`
   are generated into std's PAL, where no crate can be named, so each pins itself to the map with a
   host test instead of deriving from it.
 - The timebase page still sits far above the map, paying three tables of its own in every `x86_64`

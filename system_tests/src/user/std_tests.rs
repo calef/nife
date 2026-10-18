@@ -3,7 +3,7 @@ use super::*;
 /// Reassemble a std program's stdout off its endpoint until the writer says the stream is over,
 /// and compare byte for byte.
 ///
-/// The framing is the sink contract's (`crates/byte_sink_protocol`, milestone 50), which for bytes is
+/// The framing is the sink contract's (`crates/byte_sink_contract`, milestone 50), which for bytes is
 /// bit-for-bit the framing the PAL used before that contract existed: `w0` is the count, `w1`
 /// and `w2` are the bytes, little-endian. `SEND` blocks until a receiver takes it, so the
 /// program is somewhere between its last `println!` and `SYS_EXIT` when the bytes land.
@@ -72,17 +72,17 @@ pub(super) fn drain_sink(ep: crate::sched::RendezvousId, out: &mut [u8], what: &
     let mut len = 0usize;
     loop {
         let words = crate::sched::ipc_receive(ep);
-        let mut chunk = [0u8; byte_sink_protocol::INLINE_MAX];
-        match byte_sink_protocol::unpack(words[0], words[1], words[2], &mut chunk) {
-            byte_sink_protocol::Msg::Bytes(n) => {
+        let mut chunk = [0u8; byte_sink_contract::INLINE_MAX];
+        match byte_sink_contract::unpack(words[0], words[1], words[2], &mut chunk) {
+            byte_sink_contract::Msg::Bytes(n) => {
                 for &b in &chunk[..n] {
                     assert!(len < out.len(), "{what}: wrote more than the buffer holds");
                     out[len] = b;
                     len += 1;
                 }
             }
-            byte_sink_protocol::Msg::Eof => return len,
-            byte_sink_protocol::Msg::Malformed => {
+            byte_sink_contract::Msg::Eof => return len,
+            byte_sink_contract::Msg::Malformed => {
                 panic!(
                     "{what}: a sink message the contract does not define: {:#x}",
                     words[0]
@@ -161,9 +161,9 @@ pub(super) fn drain_sink_from(
             arm();
             continue;
         }
-        let mut chunk = [0u8; byte_sink_protocol::INLINE_MAX];
-        match byte_sink_protocol::unpack(words[0], words[1], words[2], &mut chunk) {
-            byte_sink_protocol::Msg::Bytes(n) => {
+        let mut chunk = [0u8; byte_sink_contract::INLINE_MAX];
+        match byte_sink_contract::unpack(words[0], words[1], words[2], &mut chunk) {
+            byte_sink_contract::Msg::Bytes(n) => {
                 for &b in &chunk[..n] {
                     assert!(len < out.len(), "{what}: wrote more than the buffer holds");
                     out[len] = b;
@@ -174,8 +174,8 @@ pub(super) fn drain_sink_from(
                     }
                 }
             }
-            byte_sink_protocol::Msg::Eof => break true,
-            byte_sink_protocol::Msg::Malformed => {
+            byte_sink_contract::Msg::Eof => break true,
+            byte_sink_contract::Msg::Malformed => {
                 panic!(
                     "{what}: a sink message the contract does not define: {:#x}",
                     words[0]
@@ -244,8 +244,8 @@ pub(super) fn assert_a_kill_mid_transaction_recovers(
     redoxfs_server_image: &'static [u8],
     client_image: &'static [u8],
 ) {
+    use filesystem_contract::READY;
     use filesystem_fixture::{SUCCESS, crash};
-    use filesystem_protocol::READY;
     // The caller has already established the disk is there (`fs_service::is_crash_disk_present`)
     // and skipped its own `#[test_case]` if it is not. This `expect` is that guard restated where
     // it can fail loudly: a `None` here means the disk went away between the two calls, which is a

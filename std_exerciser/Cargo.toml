@@ -28,23 +28,23 @@ publish = false
 [workspace]
 
 # The FS-service contract's shared fixture (the file the test image ships and its exact bytes), so
-# the demo, the host image builder, and the kernel test agree on one definition. `filesystem_protocol` is
+# the demo, the host image builder, and the kernel test agree on one definition. `filesystem_contract` is
 # `no_std` and dependency-free, and the demo touches only its `fixture` module: it does NOT speak
 # the wire protocol, because that is `std::fs`'s job now (the whole point of this milestone).
 [dependencies]
-filesystem_protocol = { path = "../crates/filesystem_protocol" }
+filesystem_contract = { path = "../crates/filesystem_contract" }
 filesystem_fixture = { path = "../crates/filesystem_fixture" }
 
 # The socket contract's shared fixture (milestone 64's inbound half): the port the runners forward
 # a host port to, the port no test grants, and the two strings the gate trades. Same reasoning as
-# `filesystem_protocol` above and rule 7's: a port number two binaries agree on is a crate. The demo touches
-# only `socket_protocol::fixture` and never the wire constants, because speaking the wire is
+# `filesystem_contract` above and rule 7's: a port number two binaries agree on is a crate. The demo touches
+# only `socket_contract::fixture` and never the wire constants, because speaking the wire is
 # `std::net`'s job now, which is this milestone's whole point.
-socket_protocol = { path = "../crates/socket_protocol" }
+socket_contract = { path = "../crates/socket_contract" }
 
 # Milestone 121 (`ripgrep` on nife: enumeration as a capability)'s walk pricing: plain `std::fs` code that runs unchanged on a host, so the walk
 # priced through a granted directory here is the same function a host comparison prices. It
-# depends on `filesystem_protocol` alone, for the priced tree's shape.
+# depends on `filesystem_contract` alone, for the priced tree's shape.
 walk_pricing = { path = "../crates/walk_pricing" }
 
 # `std_echo`'s manifest note (milestone 205 (how a foreign program is told what to do)): the note's
@@ -57,7 +57,7 @@ manifest_note = { path = "../crates/manifest_note" }
 # this program and the native client of milestone 384 (in a capability system the resolver is a
 # grant) are judged against one zone. `no_std`, and its one
 # dependency, `domain_name_system`, is too.
-name_resolution_protocol = { path = "../crates/name_resolution_protocol" }
+domain_name_resolution_contract = { path = "../crates/domain_name_resolution_contract" }
 
 # `std_rayon`'s parallel sum (milestone 812 (`std::thread::spawn` runs real threads in one address
 # space)'s exit test). Unmodified, from crates.io, and a dependency of this package only: calef

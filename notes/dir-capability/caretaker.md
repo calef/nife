@@ -29,18 +29,18 @@ a table with a handful of inhabitants, none of which it chose. A number the care
 is `EBADF` from one check.
 
 It costs no memory: the granted name and the rights mask ride in the three `START` argument words
-(`filesystem_protocol::grant`), and one frame is shared by all three processes.
+(`filesystem_contract::grant`), and one frame is shared by all three processes.
 
 ## The verb table, and how it stayed a translation (milestone 61 (the caretakers: one verb table))
 
 Each of the three caretakers had a hand-written `match` over the opcode, and nothing made a
-`match` and the contract agree. So the way it failed was that a verb added to `filesystem_protocol`
+`match` and the contract agree. So the way it failed was that a verb added to `filesystem_contract`
 was absent from a caretaker, and the capability silently was not there. That is not hypothetical.
 Milestone 57 (partitioning and formatting a real drive, and extended attributes) added the four
 extended-attribute verbs, none of the three was taught them, and nothing
 failed. Programs behind every kind of grant could not reach their files' attributes.
 
-`filesystem_protocol::verb` is a row per verb. It says what the request word's length field counts
+`filesystem_contract::verb` is a row per verb. It says what the request word's length field counts
 (`Operand::None`, `Name`, `Payload`, `Rename`), whether the second word means anything, whether the
 reply is a new handle, and which `dir` rights the server will demand. `verb::of(op)` is the whole of
 a caretaker's dispatch now. A verb with no row is a compile error, so forgetting fails the build

@@ -27,7 +27,7 @@ writes and a `no_std` program reads:
 reason stated precisely: *"small, but its wire shape depends on who owns the controller."* That
 dependency was real, because a roster entry for a kernel-resident driver and one for a confined EL0
 server differ in what a holder may then ask for. Milestone 261 answered it by putting the data
-plane in a process that serves `filesystem_protocol::blk` on a request endpoint, and that lane
+plane in a process that serves `filesystem_contract::blk` on a request endpoint, and that lane
 deliberately did not take this work, correctly: a transport kind is a wire value two programs read,
 which is the category AGENTS.md prices as expensive and routes here.
 

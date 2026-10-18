@@ -23,7 +23,7 @@
 //! inert-configuration page this process was granted (`rt::CONFIG_SLOT`, `rt::CONFIG_PAGE`), if
 //! any, and pushes its keys into [`ENV`]. A program granted no such page is seeded with nothing,
 //! so `env::var("TZ")` answers `Err` for a program nobody handed a timezone to. See
-//! `environment_protocol` for why this needs no seqlock and for the closed domains the keys are
+//! `environment_contract` for why this needs no seqlock and for the closed domains the keys are
 //! validated against.
 //!
 //! # BUGS
@@ -158,7 +158,7 @@ pub fn seed() {
     }
     // SAFETY: the loader maps the config page read-only at `rt::CONFIG_PAGE` alongside the
     // capability the probe just found in `rt::CONFIG_SLOT`, and nothing unmaps or writes it
-    // (the page has exactly one writer, and it is not this process; see `environment_protocol`'s docs).
+    // (the page has exactly one writer, and it is not this process; see `environment_contract`'s docs).
     let page = unsafe { ConfigPage::new(rt::CONFIG_PAGE) };
     let mut guard = ENV.lock().unwrap_or_else(|e| e.into_inner());
     for (key, value) in [("TZ", page.tz()), ("LANG", page.lang()), ("TERM", page.term())] {

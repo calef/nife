@@ -5,7 +5,7 @@
 //!
 //! **The third word is a floor** (milestone 812, provisional): the capability lands in the first
 //! free slot at or above it, and `0` is the first free slot as before. A `std` program's low slots
-//! are fixed by number and an empty one means "not granted" (`std_runtime_protocol`), so what it
+//! are fixed by number and an empty one means "not granted" (`std_runtime_contract`), so what it
 //! makes for itself, a thread or a timer, must land above them.
 //!
 //! Name: provisional (milestone 812's lane, 2026-10-10 UTC).

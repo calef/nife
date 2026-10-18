@@ -72,14 +72,14 @@ std by `cargo xtask std-src`. Each file binds one std concept to the ABI:
 The syscall glue (`sys/pal/nife/rt.rs`) deliberately twins `crates/user_mode_runtime`'s
 `svc`/`ecall` wrappers, because std cannot depend on the crate. The ABI constants are not restated: `abi.rs` is generated verbatim from `crates/abi` by `std-src`, so the numbers cannot
 drift. Likewise `user_mode_heap.rs` from `crates/user_mode_heap`: the host-tested heap algorithm is
-the only heap algorithm. So too `netproto.rs` from `crates/socket_protocol/src/lib.rs`, and `fsproto.rs` from
-`crates/filesystem_protocol`. Every wire format the PAL speaks has exactly one definition, and it
+the only heap algorithm. So too `netproto.rs` from `crates/socket_contract/src/lib.rs`, and `fsproto.rs` from
+`crates/filesystem_contract`. Every wire format the PAL speaks has exactly one definition, and it
 lives with the server that answers it.
-A crate root may keep a module in its own file (`pub mod fs;`), as `filesystem_protocol` has since
+A crate root may keep a module in its own file (`pub mod fs;`), as `filesystem_contract` has since
 milestone 845 (the filesystem-protocol crate root is split along its seams). It is copied with that
 file inlined as `pub mod fs { ... }`, so std still builds one file.
 The slot numbers and page addresses themselves (`rt::FS_DIR_SLOT`, `rt::CLOCK_PAGE` and the rest)
-come the same way, as `runtimeproto.rs` from `crates/std_runtime_protocol`, since milestone 595
+come the same way, as `runtimeproto.rs` from `crates/std_runtime_contract`, since milestone 595
 (provisional) made the progenitor a loader of `std` programs too.
 
 ## The toolchain: build-std against a patched rust-src

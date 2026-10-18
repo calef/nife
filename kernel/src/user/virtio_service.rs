@@ -174,7 +174,7 @@ pub fn start_net_server(image: &'static [u8]) -> Option<(RendezvousId, Holding)>
         },
         dev.intid,
         None,
-        socket_protocol::NO_LISTEN_GRANT, // a DHCP bring-up serves nobody inbound
+        socket_contract::NO_LISTEN_GRANT, // a DHCP bring-up serves nobody inbound
     );
     Some((report, holding))
 }
@@ -187,7 +187,7 @@ pub fn start_net_server_pci(image: &'static [u8]) -> Option<(RendezvousId, Holdi
         crate::virtio::Transport::pci(&d),
         d.intid,
         Some(d.rid),
-        socket_protocol::NO_LISTEN_GRANT,
+        socket_contract::NO_LISTEN_GRANT,
     );
     Some((report, holding))
 }
@@ -289,7 +289,7 @@ fn wire_net_server(
                 ],
                 maps: &maps,
             },
-            socket_protocol::stack_slots::OWN_SPACE,
+            socket_contract::stack_slots::OWN_SPACE,
         )
     })
     .expect("could not spawn the net server");
@@ -333,8 +333,8 @@ const NET_CLIENT_BLOB_PAGES: u64 = 1;
 /// DNS or TCP echo). Returns the client's report endpoint, or `None` if no NIC is attached.
 ///
 /// `listen_grant` is the **inbound authority** this stack hands its client (milestone 107,
-/// `socket_protocol::listen_grant`): the port range a `LISTEN` may bind, and
-/// [`socket_protocol::NO_LISTEN_GRANT`] for every outbound exchange, which is most of them. The grant
+/// `socket_contract::listen_grant`): the port range a `LISTEN` may bind, and
+/// [`socket_contract::NO_LISTEN_GRANT`] for every outbound exchange, which is most of them. The grant
 /// is decided *here*, by whoever spawns the pair, and not by the client asking: that is the answer
 /// to "who binds the port", and it is the same shape as handing a program a directory capability
 /// rather than letting it name a path.
@@ -370,7 +370,7 @@ pub fn start_package_fetch(
         arg1,
         Some(catalogue),
         false,
-        socket_protocol::NO_LISTEN_GRANT,
+        socket_contract::NO_LISTEN_GRANT,
     )
 }
 
@@ -542,9 +542,9 @@ const STD_NET_STACK_PAGES: u64 = 32;
 /// some full runs)), or `None` if no NIC is attached.
 ///
 /// `listen_grant` is the **inbound authority** the std program gets, and it is decided here rather
-/// than asked for (milestone 64, `socket_protocol::listen_grant`). It is the difference between a std
+/// than asked for (milestone 64, `socket_contract::listen_grant`). It is the difference between a std
 /// program that may accept connections and one that may not, and it is visible at this call site
-/// before the program exists: `socket_protocol::NO_LISTEN_GRANT` is a `std::net::TcpListener::bind`
+/// before the program exists: `socket_contract::NO_LISTEN_GRANT` is a `std::net::TcpListener::bind`
 /// that answers `PermissionDenied` for every port there is. This parameter used to be a hardcoded
 /// `NO_LISTEN_GRANT` with a comment saying the PAL could not spend a grant; the PAL can now, so the
 /// decision moved out to the caller where it belongs.

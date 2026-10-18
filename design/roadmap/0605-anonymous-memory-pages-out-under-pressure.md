@@ -27,7 +27,7 @@ own, kept because its four syscall-surface questions are where a reopening shoul
 
 ## The word was taken
 
-In this tree "swap" already means live replacement of a running component: `crates/swap_protocol`,
+In this tree "swap" already means live replacement of a running component: `crates/hot_swap_contract`,
 the `swapper` fixture and `kernel/src/user/live_swap_tests.rs`, all from milestone 23 (a
 capability-routed component OS with live replacement). `swap_protocol` is a ratified name. So this
 file said "paging out" and "a pager" and left the name to calef, who ratified "paging out" on

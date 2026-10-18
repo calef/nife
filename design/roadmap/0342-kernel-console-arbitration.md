@@ -152,7 +152,7 @@ and 243's BUGS points at a home that does not exist."*
 - **Recorded.** `kernel/src/kernel_log.rs`: a line held just before the drainer dies waits for the
   next kernel line or a panic, a fallback can print a line twice, and the boot window before the
   service attaches still splices.
-- **Recorded.** `system_log_protocol::kernel_ring` in `crates/system_log_protocol/src/lib.rs`: 63
+- **Recorded.** `system_log_protocol::kernel_ring` in `crates/system_log_contract/src/lib.rs`: 63
   records, not the 180 lines §242 (a system log) sized 16 KiB for.
 - **Recorded.** `components/src/system_log.rs`: at boot it serves only the kernel (no writer badges,
   no readers).

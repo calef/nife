@@ -18,7 +18,7 @@ commit message and git, and no narrative is transplanted into a document.
 
 The baseline holds 336 rows. The worst after worth four:
 `components/src/timetable.rs:1` (191), `components/src/login.rs:1` (177),
-`crates/current_cpu_protocol/src/lib.rs:1` (176), `components/src/system_installer.rs:1` (175)
+`crates/current_cpu_contract/src/lib.rs:1` (176), `components/src/system_installer.rs:1` (175)
 and `crates/board_console/src/lib.rs:1` (173). A worth
 takes the worst handful that is not a gated example, and every shrink is banked. The method, the
 refused alternatives and the evidence are milestone 860 (comments state the constraint as it
@@ -34,7 +34,7 @@ worth only runs the sweep and banks, and takes no new code.
 - `components/src/login.rs:1` held at 177, floor. The milestone 246 (measured boot's refusal path
   is tested by nothing) sentence is now a plain citation; no line was saved. All that remains is
   constraint with dated rulings.
-- `crates/current_cpu_protocol/src/lib.rs:1` held at 176, floor. Worth four already took its
+- `crates/current_cpu_contract/src/lib.rs:1` held at 176, floor. Worth four already took its
   history. What remains is §204 (how userspace asks where a thread runs)'s argument.
 - `components/src/system_installer.rs:1` held at 175, floor, untouched by earlier worths. The
   two-slot ruling, the GPT attribute-bit ownership and the RedoxFS origin scan are constraint.
@@ -48,7 +48,7 @@ is now) asked the sweep to remove.
 ## Follow-on
 
 - **Milestone 866.** Milestone 866 (the comment-block sweep closes, worth six). It took the next
-  three (`crates/login_protocol/src/lib.rs:2` 169, `crates/jh7110_entropy/src/lib.rs:2` 169,
+  three (`crates/login_contract/src/lib.rs:2` 169, `crates/jh7110_entropy/src/lib.rs:2` 169,
   `kernel/src/arch/x86_64/iommu.rs:1` 164), found floors, and milestone 866 closed the sweep. The ratchet and
   the baseline remain as the standing tripwire against new over-cap blocks; the rows that stay
   over cap are the recorded cost of the constraints they carry.

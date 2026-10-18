@@ -3,7 +3,7 @@
 version = 4
 
 [[package]]
-name = "argument_protocol"
+name = "program_argument_contract"
 version = "0.1.0"
 
 [[package]]
@@ -45,11 +45,11 @@ checksum = "0e9c71c2167ca323c882b99918929403426e2373ea17242ff5653e0d5e1058be"
 name = "filesystem_fixture"
 version = "0.1.0"
 dependencies = [
- "filesystem_protocol",
+ "filesystem_contract",
 ]
 
 [[package]]
-name = "filesystem_protocol"
+name = "filesystem_contract"
 version = "0.1.0"
 
 [[package]]
@@ -60,7 +60,7 @@ version = "0.1.0"
 name = "grant_plan"
 version = "0.1.0"
 dependencies = [
- "argument_protocol",
+ "program_argument_contract",
  "glob",
 ]
 
@@ -72,7 +72,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "name_resolution_protocol"
+name = "domain_name_resolution_contract"
 version = "0.1.0"
 dependencies = [
  "domain_name_system",
@@ -99,7 +99,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "socket_protocol"
+name = "socket_contract"
 version = "0.1.0"
 
 [[package]]
@@ -107,12 +107,12 @@ name = "std_exerciser"
 version = "0.1.0"
 dependencies = [
  "filesystem_fixture",
- "filesystem_protocol",
+ "filesystem_contract",
  "grant_plan",
  "manifest_note",
- "name_resolution_protocol",
+ "domain_name_resolution_contract",
  "rayon",
- "socket_protocol",
+ "socket_contract",
  "walk_pricing",
 ]
 

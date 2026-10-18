@@ -6,7 +6,7 @@ space)'s lane. The kernel side is in `notes/processes.md`, `notes/futex.md` and
 
 ## What a program needs, and where it gets it
 
-Three slots of `std_runtime_protocol`, all of them the program's own:
+Three slots of `std_runtime_contract`, all of them the program's own:
 
 | slot | capability | used for |
 |---|---|---|

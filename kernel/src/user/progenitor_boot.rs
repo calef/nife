@@ -370,7 +370,7 @@ fn grant_file_service(tid: crate::thread::ThreadId) -> u64 {
             )
             .expect("insert the shared file page");
             assert_eq!(s6, 6);
-            filesystem_protocol::dir::ALL
+            filesystem_contract::dir::ALL
         }
         None => 0,
     }
@@ -572,7 +572,7 @@ fn grant_kernel_log(tid: crate::thread::ThreadId) {
             (
                 crate::cap::page_frame_run_cap(
                     ring,
-                    core::num::NonZeroU64::new(system_log_protocol::kernel_ring::PAGES as u64)
+                    core::num::NonZeroU64::new(system_log_contract::kernel_ring::PAGES as u64)
                         .expect("the ring has pages"),
                     Rights::READ.union(Rights::GRANT),
                 ),

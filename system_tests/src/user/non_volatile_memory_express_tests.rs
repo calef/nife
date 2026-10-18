@@ -35,7 +35,7 @@ fn start() -> Option<non_volatile_memory_express_service::Wiring> {
     if let Some(report) = w.wait_for_ready() {
         assert_eq!(
             report[0],
-            filesystem_protocol::READY,
+            filesystem_contract::READY,
             "the NVMe server did not come up (it reported {:#x}, first-read status {:#x}; see \
              components/src/non_volatile_memory_express.rs for the step words)",
             report[0],
@@ -104,7 +104,7 @@ fn a_confined_el0_process_serves_the_block_interface_end_to_end() {
     // IDENTIFY and IDENTIFY is admin. What it answers must be what the kernel read from IDENTIFY,
     // whatever disk this leg attached: 8 MiB for xtask's `mknvmedisk`, 256 GB on xenon.
     assert_eq!(
-        disk.blk(filesystem_protocol::blk::SIZE, 0) as u64,
+        disk.blk(filesystem_contract::blk::SIZE, 0) as u64,
         disk.size_bytes,
         "the server answered the wrong size"
     );
@@ -129,7 +129,7 @@ fn a_confined_el0_process_serves_the_block_interface_end_to_end() {
             *b = pattern(i);
         }
         assert_eq!(
-            disk.blk(filesystem_protocol::blk::WRITE, block),
+            disk.blk(filesystem_contract::blk::WRITE, block),
             0,
             "the server refused the write to block {block}"
         );
@@ -142,7 +142,7 @@ fn a_confined_el0_process_serves_the_block_interface_end_to_end() {
         // passing on what this thread just staged. SAFETY: as above.
         unsafe { disk.transfer_block() }.fill(0xaa);
         assert_eq!(
-            disk.blk(filesystem_protocol::blk::READ, block),
+            disk.blk(filesystem_contract::blk::READ, block),
             0,
             "the server refused the read of block {block}"
         );
@@ -160,7 +160,7 @@ fn a_confined_el0_process_serves_the_block_interface_end_to_end() {
     // transfer runs off it, and `holds_block` refuses both.
     let past_end = disk.size_bytes / crate::non_volatile_memory_express::BLOCK_SIZE as u64;
     assert!(
-        disk.blk(filesystem_protocol::blk::READ, past_end) < 0,
+        disk.blk(filesystem_contract::blk::READ, past_end) < 0,
         "the server read block {past_end}, which a namespace of {} bytes does not have",
         disk.size_bytes,
     );
@@ -169,10 +169,10 @@ fn a_confined_el0_process_serves_the_block_interface_end_to_end() {
     // two syncs returning the same number would mean the second never reached the device. Unlike
     // the virtio server this one never answers EOPNOTSUPP, because NVMe 1.4 §6.8 makes Flush
     // mandatory.
-    let first = disk.blk(filesystem_protocol::blk::FLUSH, 0);
+    let first = disk.blk(filesystem_contract::blk::FLUSH, 0);
     assert!(first >= 1, "the server refused a flush: {first}");
     assert_eq!(
-        disk.blk(filesystem_protocol::blk::FLUSH, 0),
+        disk.blk(filesystem_contract::blk::FLUSH, 0),
         first + 1,
         "a second flush returned the same count, so it never reached the controller"
     );
@@ -232,7 +232,7 @@ fn a_confined_el0_server_cannot_dma_outside_its_region() {
     // IOMMU for a build that never tried.
     assert_ne!(
         rd,
-        filesystem_protocol::READY,
+        filesystem_contract::READY,
         "the NVMe server reported ready rather than attacking: this initial ramdisk was built without \
          `components/confinement_attackers`, so it has no DMA-escape role. Run the suite through \
          `cargo xtask test`, which builds it in",

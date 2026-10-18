@@ -53,8 +53,11 @@ pub fn tokenize<'a, 'b>(line: &'a [u8], out: &'b mut [&'a [u8]]) -> &'b [&'a [u8
 ///
 /// Refused, with the page left not an argv, for [`check_words`]'s reasons. The planner has already
 /// asked that question of the same line, so a refusal here means the line changed in between.
-pub fn argv(line: &[u8], page: &mut [u8; argument_protocol::PAGE_BYTES]) -> Result<u32, Refusal> {
-    let mut b = argument_protocol::PageBuilder::new(page);
+pub fn argv(
+    line: &[u8],
+    page: &mut [u8; program_argument_contract::PAGE_BYTES],
+) -> Result<u32, Refusal> {
+    let mut b = program_argument_contract::PageBuilder::new(page);
     each_word(line, &mut |w| {
         b.push(w).map_err(|_| Refusal::ArgumentsTooLong)
     })?;
@@ -71,7 +74,7 @@ pub fn check_words(line: &[u8]) -> Result<(), Refusal> {
     let mut used = 0usize;
     each_word(line, &mut |w| {
         used += 4 + w.len();
-        if used > argument_protocol::CAPACITY {
+        if used > program_argument_contract::CAPACITY {
             Err(Refusal::ArgumentsTooLong)
         } else {
             Ok(())
@@ -225,7 +228,7 @@ pub enum UserVerb<'a> {
 }
 
 /// Classify [`Command::User`]'s tail: a verb and one name of at most sixteen bytes, the most an
-/// identity can be and still have a subtree (`filesystem_protocol::grant::MAX_NAME`).
+/// identity can be and still have a subtree (`filesystem_contract::grant::MAX_NAME`).
 pub fn user_verb(tail: &[u8]) -> UserVerb<'_> {
     let (verb, rest) = split_first_word(trim(tail));
     let name = trim(rest);
@@ -254,7 +257,7 @@ pub fn vouch_verb(tail: &[u8]) -> Option<&[u8]> {
 
 /// **The name a vouched file is recorded under**: its path's last component, which is what a
 /// person sees in `caps`. `None` when it is empty, longer than the
-/// sixteen bytes a packed name carries (`filesystem_protocol::grant::MAX_NAME`), `.` or `..`, or
+/// sixteen bytes a packed name carries (`filesystem_contract::grant::MAX_NAME`), `.` or `..`, or
 /// holds a `#`, which the activation set's lines cannot carry.
 pub fn vouched_name(path: &[u8]) -> Option<&[u8]> {
     let name = path.rsplit(|&b| b == b'/').next().unwrap_or(path);

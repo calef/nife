@@ -103,7 +103,7 @@ Both are an architect's call, and neither can be built before a disable operatio
 ### 3. A durable job and the right to run unvouched code
 
 Every login session is handed the run-unvouched capability. That is gate D2 of DECISIONS §219 (how
-the shell names an installed program to the spawner), and `login_protocol`'s BUGS say why every
+the shell names an installed program to the spawner), and `login_contract`'s BUGS say why every
 session gets it today. The revocation ruling of §220 (signed builds) drops a distrusted key's programs
 to unvouched, "runnable only by a session holding the D2 capability". If a registrar passes a
 session's D2 capability into a scheduled job, that job keeps running a program whose key was
@@ -217,7 +217,7 @@ Question 3's rule applies to the `Held` a session hands its timetable.
 S1, L2 and the suspension ruling are built (the block's "What was built" entries). Three findings
 from building them, each recorded where a reader meets it:
 
-- The ruling put L2's request after `OK`. It is the request itself (`login_protocol::SCHEDULE`),
+- The ruling put L2's request after `OK`. It is the request itself (`login_contract::SCHEDULE`),
   because `login` blocks on one endpoint and cannot wait for a word after `OK` without every client
   sending one.
 - Reclaiming a session process too early kills it between its two teardown destroys and strands a
@@ -231,7 +231,7 @@ from building them, each recorded where a reader meets it:
 **DECIDED: option A.** calef, 2026-09-27 (UTC): at start-up `login` re-derives every durable session
 that is not suspended, using the code that restores a stored schedule at login, and
 `session_reviver` is retired. DECISIONS §123 carries the amendment. Built the same day:
-`components/src/login.rs`'s `rederive`, with the capacity in `login_protocol::durable` (both
+`components/src/login.rs`'s `rederive`, with the capacity in `login_contract::durable` (both
 provisional names), proven by `login_tests`'
 `a_durable_session_is_re_derived_at_start_up_unless_suspended`.
 

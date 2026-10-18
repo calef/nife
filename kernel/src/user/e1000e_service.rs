@@ -153,7 +153,7 @@ pub fn start_for_boot(image: &'static [u8]) -> Result<Wiring, NotAtBoot> {
             device: found.device,
         });
     }
-    Ok(spawn_server(image, socket_protocol::NO_LISTEN_GRANT, found))
+    Ok(spawn_server(image, socket_contract::NO_LISTEN_GRANT, found))
 }
 
 /// **Whether the booted system may bring up an I219 on its own.** The lift of the refusal above is
@@ -245,7 +245,7 @@ fn spawn_server(image: &'static [u8], listen_grant: u64, found: crate::e1000e::F
         // What each socket is minted from (§255 (each socket is its own capability)); slot 8, the
         // server's own address space, `run_with_own_space` adds once the space exists.
         at(
-            socket_protocol::stack_slots::MINT,
+            socket_contract::stack_slots::MINT,
             rendezvous_cap(stack, Rights::WRITE.union(Rights::GRANT)),
         );
         run_with_own_space(
@@ -257,7 +257,7 @@ fn spawn_server(image: &'static [u8], listen_grant: u64, found: crate::e1000e::F
                 grants: &[rendezvous_cap(report, Rights::WRITE)], // slot 0
                 maps: &maps,
             },
-            socket_protocol::stack_slots::OWN_SPACE,
+            socket_contract::stack_slots::OWN_SPACE,
         )
     })
     .expect("could not spawn net_stack over the e1000e NIC");
@@ -307,7 +307,7 @@ pub fn start_package_fetch(
         cli_arg,
         arg1,
         Some(catalogue),
-        socket_protocol::NO_LISTEN_GRANT,
+        socket_contract::NO_LISTEN_GRANT,
     )
 }
 
@@ -322,7 +322,7 @@ pub fn start_drain(image: &'static [u8], peer: u64) -> Result<(RendezvousId, Wir
         TEST_TCP_DRAIN,
         peer,
         None,
-        socket_protocol::NO_LISTEN_GRANT,
+        socket_contract::NO_LISTEN_GRANT,
     )
 }
 

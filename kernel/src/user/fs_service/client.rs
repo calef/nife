@@ -59,7 +59,7 @@ pub fn spawn_fs_client(
             flags: Flags::user_data(),
         }; FILE_PAGES + CLIENT_EXTRA_STACK];
         // The whole channel, because this is the spawn the throughput benchmark comes through and
-        // a client may not ask for more than it mapped (`filesystem_protocol::fs::TRANSFER_PAGES`). It costs
+        // a client may not ask for more than it mapped (`filesystem_contract::fs::TRANSFER_PAGES`). It costs
         // fifteen extra page-table entries against the same frames, not fifteen extra frames.
         let n = map_channel(&mut maps, FILE_VA_CLIENT, file_shared, FILE_PAGES);
         for (k, m) in maps[n..n + extra_stack].iter_mut().enumerate() {
@@ -72,7 +72,7 @@ pub fn spawn_fs_client(
                 arg0: role,
                 arg1: arg,
                 // A third word, because the `rm` program is started the way a **grant** is
-                // (`filesystem_protocol::grant`): a spec word and two words of name. Every other client
+                // (`filesystem_contract::grant`): a spec word and two words of name. Every other client
                 // here takes a role and one number and leaves this zero.
                 arg2,
                 grants: &[
@@ -124,13 +124,13 @@ pub fn wait_for_service(readiness: Readiness) {
     if let Some(blk_ready) = blk_ready {
         assert_eq!(
             crate::sched::ipc_receive(blk_ready)[0],
-            filesystem_protocol::READY,
+            filesystem_contract::READY,
             "the block server did not bring the RedoxFS device up",
         );
     }
     assert_eq!(
         crate::sched::ipc_receive(fs_ready)[0],
-        filesystem_protocol::READY,
+        filesystem_contract::READY,
         "the FS server did not open the RedoxFS image",
     );
 }
@@ -161,7 +161,7 @@ pub fn wait_for_service(readiness: Readiness) {
 pub(super) fn wait_for_caretaker(caretaker_ready: RendezvousId) {
     assert_eq!(
         crate::sched::ipc_receive(caretaker_ready)[0],
-        filesystem_protocol::READY,
+        filesystem_contract::READY,
         "the caretaker could not open what it was granted, so there is nothing to attenuate",
     );
 }

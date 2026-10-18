@@ -12,7 +12,7 @@ fn names(srv: &mut Server<DiskMemory>, handle: u32) -> Vec<(String, bool)> {
 /// up once to fill the memo, changes the namespace, and checks that neither answer is stale.
 #[test]
 fn a_memoized_listing_follows_every_namespace_change() {
-    let root = filesystem_protocol::fs::ROOT as u32;
+    let root = filesystem_contract::fs::ROOT as u32;
     let mut srv = server_with(&[("a", b"alpha")]);
     assert_eq!(names(&mut srv, root), [("a".into(), false)]);
 
@@ -182,7 +182,7 @@ fn opendir_takes_a_path_and_narrows_to_the_request() {
 fn a_badge_with_no_window_is_refused() {
     let mut srv = server_with_tree();
     let outside = srv.open_file(&named("motd")).unwrap();
-    let windows = filesystem_protocol::fs::CLIENT_WINDOWS as u64;
+    let windows = filesystem_contract::fs::CLIENT_WINDOWS as u64;
     for badge in [windows, windows + 1, u64::MAX] {
         assert_eq!(
             srv.admit(badge, outside as u64).err().map(|e| e.errno),
@@ -219,10 +219,10 @@ fn a_sync_only_badge_answers_sync_and_refuses_everything_else() {
     let file = srv.open_file(&named("motd")).unwrap() as u64;
     srv.bind_sync_only(0, 3).unwrap();
     assert!(srv.is_sync_only(3));
-    let mut window = vec![0u8; filesystem_protocol::fs::TRANSFER_MAX];
+    let mut window = vec![0u8; filesystem_contract::fs::TRANSFER_MAX];
     window[..4].copy_from_slice(b"motd");
     let mut edges = Flushes(0);
-    use filesystem_protocol::fs;
+    use filesystem_contract::fs;
     for code in 0..=fs::BIND_SYNC {
         if code == fs::SYNC {
             continue;
@@ -268,7 +268,7 @@ fn a_bound_badge_reaches_its_grant_and_what_it_minted() {
     let outside = srv.open_file(&named("motd")).unwrap();
     srv.bind(0, grant, 3).unwrap();
 
-    let root = srv.admit(3, filesystem_protocol::fs::ROOT).unwrap();
+    let root = srv.admit(3, filesystem_contract::fs::ROOT).unwrap();
     assert_eq!(root, grant, "a bound badge's ROOT is its grant");
     let f = srv
         .open_file_path(root, &named("deeper/leaf"), dir::READ)
@@ -310,7 +310,7 @@ fn a_bound_badge_reaches_its_grant_and_what_it_minted() {
 
     srv.unbind(0, 3).unwrap();
     assert_eq!(
-        errno(srv.admit(3, filesystem_protocol::fs::ROOT)),
+        errno(srv.admit(3, filesystem_contract::fs::ROOT)),
         Some(EBADF),
         "revoked"
     );
@@ -420,7 +420,7 @@ fn a_grant_root_cannot_be_closed_while_bound() {
     );
     let other = srv.open_file(&named("motd")).unwrap();
     assert_ne!(other, grant, "the grant's slot was reused");
-    let root = srv.admit(3, filesystem_protocol::fs::ROOT).unwrap();
+    let root = srv.admit(3, filesystem_contract::fs::ROOT).unwrap();
     let mut buf = [0u8; 16];
     assert_ne!(
         srv.read(root, 0, &mut buf).map(|n| buf[..n].to_vec()).ok(),
@@ -473,7 +473,7 @@ fn a_symbolic_link_is_never_followed_or_opened() {
 /// the image does at each step and never as it did.
 #[test]
 fn a_name_found_without_a_listing_follows_changes() {
-    let root = filesystem_protocol::fs::ROOT as u32;
+    let root = filesystem_contract::fs::ROOT as u32;
     let mut srv = server_with(&[("a", b"alpha")]);
     let h = srv.open_file_at(root, &named("a")).unwrap();
     srv.close(h).unwrap();
@@ -502,7 +502,7 @@ fn a_name_found_without_a_listing_follows_changes() {
 /// directory is not a file and a file is not a directory.
 #[test]
 fn a_memoized_listing_answers_lookups_as_the_engine_does() {
-    let root = filesystem_protocol::fs::ROOT as u32;
+    let root = filesystem_contract::fs::ROOT as u32;
     let mut srv = server_with(&[("a", b"alpha")]);
     let d = srv.make_dir(root, &named("d"), dir::ALL).unwrap();
     srv.close(d).unwrap();
@@ -570,7 +570,7 @@ fn a_child_directory_handle_names_only_what_is_in_it() {
     let mut srv = server_with_tree();
     let sub = srv
         .open_dir(
-            filesystem_protocol::fs::ROOT as u32,
+            filesystem_contract::fs::ROOT as u32,
             &named("sub"),
             dir::ALL,
         )
@@ -615,7 +615,7 @@ fn a_child_directory_cannot_carry_a_right_the_parent_lacked() {
     // A parent that may descend and read, and may not create, write or remove.
     let narrow = dir::DESCEND | dir::READ | dir::ENUMERATE;
     let sub = srv
-        .open_dir(filesystem_protocol::fs::ROOT as u32, &named("sub"), narrow)
+        .open_dir(filesystem_contract::fs::ROOT as u32, &named("sub"), narrow)
         .unwrap();
 
     assert_eq!(
@@ -694,14 +694,14 @@ fn each_rung_of_the_ladder_gates_exactly_its_own_verb() {
         // when it should fail.
         let without = srv
             .open_dir(
-                filesystem_protocol::fs::ROOT as u32,
+                filesystem_contract::fs::ROOT as u32,
                 &named("sub"),
                 dir::ALL & !withheld,
             )
             .unwrap();
         let with = srv
             .open_dir(
-                filesystem_protocol::fs::ROOT as u32,
+                filesystem_contract::fs::ROOT as u32,
                 &named("sub"),
                 needed | dir::READ,
             )
@@ -747,7 +747,7 @@ fn unlink_takes_the_name_and_leaves_the_object_for_whoever_holds_it() {
     let mut srv = server_with_tree();
     let sub = srv
         .open_dir(
-            filesystem_protocol::fs::ROOT as u32,
+            filesystem_contract::fs::ROOT as u32,
             &named("sub"),
             dir::ALL,
         )
@@ -814,7 +814,7 @@ fn rmdir_removes_an_empty_directory_and_refuses_one_with_a_name_in_it() {
     let mut srv = server_with_tree();
     let sub = srv
         .open_dir(
-            filesystem_protocol::fs::ROOT as u32,
+            filesystem_contract::fs::ROOT as u32,
             &named("sub"),
             dir::ALL,
         )
@@ -869,7 +869,7 @@ fn rmdir_refuses_a_file_a_missing_name_a_path_and_a_capability_without_remove() 
     let mut srv = server_with_tree();
     let sub = srv
         .open_dir(
-            filesystem_protocol::fs::ROOT as u32,
+            filesystem_contract::fs::ROOT as u32,
             &named("sub"),
             dir::ALL,
         )
@@ -896,7 +896,7 @@ fn rmdir_refuses_a_file_a_missing_name_a_path_and_a_capability_without_remove() 
 
     let ro = srv
         .open_dir(
-            filesystem_protocol::fs::ROOT as u32,
+            filesystem_contract::fs::ROOT as u32,
             &named("sub"),
             dir::ALL & !dir::REMOVE,
         )
@@ -925,7 +925,7 @@ fn rmdir_refuses_a_file_a_missing_name_a_path_and_a_capability_without_remove() 
 #[test]
 fn a_recursive_removal_is_a_loop_of_individually_safe_steps() {
     let mut srv = server_with_tree();
-    let root = filesystem_protocol::fs::ROOT as u32;
+    let root = filesystem_contract::fs::ROOT as u32;
 
     assert_eq!(
         srv.rmdir(root, &named("sub")).err().map(|e| e.errno),
@@ -971,7 +971,7 @@ fn unlink_refuses_a_directory_a_missing_name_and_a_path() {
     let mut srv = server_with_tree();
     let sub = srv
         .open_dir(
-            filesystem_protocol::fs::ROOT as u32,
+            filesystem_contract::fs::ROOT as u32,
             &named("sub"),
             dir::ALL,
         )
@@ -1000,7 +1000,7 @@ fn unlink_refuses_a_directory_a_missing_name_and_a_path() {
     // must answer the same word.
     let ro = srv
         .open_dir(
-            filesystem_protocol::fs::ROOT as u32,
+            filesystem_contract::fs::ROOT as u32,
             &named("sub"),
             dir::ALL & !dir::REMOVE,
         )
@@ -1026,7 +1026,7 @@ fn a_file_handle_carries_the_direction_of_the_directory_it_came_from() {
 
     let ro = srv
         .open_dir(
-            filesystem_protocol::fs::ROOT as u32,
+            filesystem_contract::fs::ROOT as u32,
             &named("sub"),
             dir::DESCEND | dir::READ,
         )
@@ -1047,7 +1047,7 @@ fn a_file_handle_carries_the_direction_of_the_directory_it_came_from() {
 
     let wo = srv
         .open_dir(
-            filesystem_protocol::fs::ROOT as u32,
+            filesystem_contract::fs::ROOT as u32,
             &named("sub"),
             dir::DESCEND | dir::WRITE,
         )
@@ -1070,7 +1070,7 @@ fn a_listing_holds_exactly_the_names_in_that_directory() {
     let mut srv = server_with_tree();
     let sub = srv
         .open_dir(
-            filesystem_protocol::fs::ROOT as u32,
+            filesystem_contract::fs::ROOT as u32,
             &named("sub"),
             dir::ALL,
         )
@@ -1087,7 +1087,7 @@ fn a_listing_holds_exactly_the_names_in_that_directory() {
     // The root's own listing has the sibling in it, which is what makes the assertion above a
     // statement about the capability rather than about an empty directory.
     let mut root =
-        list(&mut srv, filesystem_protocol::fs::ROOT as u32, 256).expect("enumerate the root");
+        list(&mut srv, filesystem_contract::fs::ROOT as u32, 256).expect("enumerate the root");
     root.sort();
     assert!(root.iter().any(|(n, d)| n == "other" && *d));
 }
@@ -1098,7 +1098,7 @@ fn a_listing_holds_exactly_the_names_in_that_directory() {
 #[test]
 fn a_listing_larger_than_the_buffer_is_paged_without_tearing_a_name() {
     let mut srv = server_with_tree();
-    let root = filesystem_protocol::fs::ROOT as u32;
+    let root = filesystem_contract::fs::ROOT as u32;
     for i in 0..12 {
         srv.create_file_at(root, &named(&format!("entry-{i:02}-with-a-longish-name")))
             .unwrap();
@@ -1119,7 +1119,7 @@ fn mkdir_returns_a_capability_no_wider_than_the_one_that_made_it() {
     // No REMOVE, so nothing made below may remove either.
     let held = dir::DESCEND | dir::CREATE | dir::READ | dir::WRITE | dir::ENUMERATE;
     let sub = srv
-        .open_dir(filesystem_protocol::fs::ROOT as u32, &named("sub"), held)
+        .open_dir(filesystem_contract::fs::ROOT as u32, &named("sub"), held)
         .unwrap();
 
     let made = srv.make_dir(sub, &named("logs"), held).expect("mkdir");
@@ -1156,7 +1156,7 @@ fn a_write_grant_without_create_can_write_and_cannot_make_a_name() {
     let mut srv = server_with_tree();
     let logs = srv
         .open_dir(
-            filesystem_protocol::fs::ROOT as u32,
+            filesystem_contract::fs::ROOT as u32,
             &named("sub"),
             dir::DESCEND | dir::READ | dir::WRITE,
         )
@@ -1180,7 +1180,7 @@ fn a_write_grant_without_create_can_write_and_cannot_make_a_name() {
 #[test]
 fn a_directory_handle_and_a_file_handle_refuse_each_others_verbs() {
     let mut srv = server_with_tree();
-    let root = filesystem_protocol::fs::ROOT as u32;
+    let root = filesystem_contract::fs::ROOT as u32;
     let sub = srv.open_dir(root, &named("sub"), dir::ALL).unwrap();
     let file = srv.open_file_at(sub, &named("inner")).unwrap();
     let mut buf = [0u8; 32];

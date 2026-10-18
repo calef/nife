@@ -1,0 +1,18 @@
+[package]
+name = "machine_statistics_contract"
+version = "0.1.0"
+edition = "2024"
+publish = false     # the default; the allowlist lint holds the exception (crates/publish-allowlist.txt)
+license.workspace = true
+
+# The machine statistics page (milestone 126 (the `procps` package), DECISIONS §225 (`free` sees the machine and your share) part 2): one definition of the
+# read-only page the kernel keeps its machine-wide counters in, so the kernel (the one writer) and
+# `free`, `vmstat` and `top` (the readers) cannot drift on the layout or the virtual address
+# (AGENTS.md rule 7). Name ratified 2026-09-27 (calef, #1360).
+
+[lints]
+workspace = true
+
+[dependencies]
+current_cpu_contract = { version = "0.1.0", path = "../current_cpu_contract" }
+address_space_map = { version = "0.1.0", path = "../address_space_map" }

@@ -49,12 +49,12 @@ Kani-proved and outside the kernel, keep unless a proof is no longer worth havin
 (1,089, 11), `timetable` (2,884, 10), `globally_unique_identifier_partition_table` (2,219, 9),
 `elf` (1,173, 8, also kernel), `network_time_protocol` (684, 7). Also `glob` (650, 6), `component_plan`
 (1,248, 5), `subtree_scope` (384, 5), `device_tree_blob` (1,814, 4, also kernel),
-`credential_protocol` (322, 3), `filesystem_protocol` (2,636, 3), `package_archive` (677, 2),
+`credential_contract` (322, 3), `filesystem_contract` (2,636, 3), `package_archive` (677, 2),
 `manifest_note` (607, 2), `nifefs` (354, 2).
 
 The ABI, a capability, or one of the 19 `*_protocol` crates (rule 3). The crates: every `*_protocol` crate,
 `abi`, `grant_plan` (6,405), `swish` (3,404 plus the 3,690-line program), `system_initializer`
-(2,972), `supervision_protocol`, `swap_protocol`. Also `user_mode_runtime`, `system_log` (1,214), the
+(2,972), `supervision_protocol`, `hot_swap_contract`. Also `user_mode_runtime`, `system_log` (1,214), the
 `process-tools` programs (`ps`, `pgrep`, `pmap`, `top`, `free`, `vmstat`, `slabtop`, `uptime`, about 1,700
 together, all reading nife's own statistics ABI), `login`, `credentialer` (already takes `argon2`).
 

@@ -72,9 +72,9 @@ Detail: `notes/mutation-testing/inflow-2026-10-03.md`.
    | `elf` | 100.0% | 94.2% | 0 to 6 |
    | `capability` | 97.4% | 88.2% | 1 to 8 |
    | `dtb` | 99.7% | 96.6% | 1 to 14 |
-   | `clock_protocol` | 96.8% | 91.0% | 2 to 6 |
+   | `clock_contract` | 96.8% | 91.0% | 2 to 6 |
    | `swish` | 94.6% | 89.4% | 3 to 20 |
-   | `filesystem_protocol` | 93.1% | 90.1% | 37 to 59 |
+   | `filesystem_contract` | 93.1% | 90.1% | 37 to 59 |
 
    `capability` is first inside this list, because it is the crate the capability core's proofs
    are about, and a survivor there is a place the confinement argument could be wrong with every
@@ -177,10 +177,10 @@ Parts 1 and 2 only. Each of these was checked against the tree on 2026-09-19, on
   rather than this lane's eight per-crate runs: `--save-baseline` writes what it is given, so
   feeding it eight crates would replace a 38-crate baseline with eight rows.
 - **Milestone 250.** `An unviable mutant is a hole that reads as a pass` already owns the other
-  half of what this lane kept meeting. `filesystem_protocol` reports 47 unviable and `elf` 21, and
+  half of what this lane kept meeting. `filesystem_contract` reports 47 unviable and `elf` 21, and
   no rate here counts them.
 - **Milestone 437.** The fixture
-  bit-set distinctness tests are hand-maintained lists, and `filesystem_protocol`'s navigation list
+  bit-set distinctness tests are hand-maintained lists, and `filesystem_contract`'s navigation list
   has now gone stale twice, the second time caught by a mutation run rather than a reader. It is
   rung four of AGENTS.md's ladder in a place that has a rung-one answer.
 - **Recorded.** `crates/timetable/src/lib.rs`, in a `BUGS` section on `Unbacked`:
@@ -188,8 +188,8 @@ Parts 1 and 2 only. Each of these was checked against the tree on 2026-09-19, on
   whether `admit` should stop pre-consuming the scheduler's `dir` holding is a behavior change
   rather than a test.
 - **Recorded.** `notes/mutation-testing/regressions-clock-protocol-swish-filesystem-protocol.md`,
-  under `filesystem_protocol`'s *Two recorded gaps*: `verb`'s compile-time table walk in
-  `crates/filesystem_protocol/src/lib.rs` has two mutants no `cargo test` can kill, because its
+  under `filesystem_contract`'s *Two recorded gaps*: `verb`'s compile-time table walk in
+  `crates/filesystem_contract/src/lib.rs` has two mutants no `cargo test` can kill, because its
   checker is `rustc`. The same object as the Kani harnesses, without a module path to exclude by.
 
 - **Done.** *`machine_discovery`, 2026-09-19: 77 survivors to 19, 86.2% to 95.5% of viable,* on

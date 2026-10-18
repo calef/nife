@@ -5,11 +5,11 @@
 //!
 //! - Each login builds its own `fs_subtree_caretaker`, never a narrowed copy of a shared endpoint,
 //!   so two logins are two endpoint objects, each revocable and nameable only by its principal.
-//! - The front door ([`REQUEST`]/[`RESULT`]) takes only [`login_protocol::CONNECT`] and
-//!   [`login_protocol::LOGOUT`]. [`connect`] mints a private request/result pair and staging page
-//!   per caller, so identity and secret travel only there (`login_protocol` has the exchange).
+//! - The front door ([`REQUEST`]/[`RESULT`]) takes only [`login_contract::CONNECT`] and
+//!   [`login_contract::LOGOUT`]. [`connect`] mints a private request/result pair and staging page
+//!   per caller, so identity and secret travel only there (`login_contract` has the exchange).
 //! - §117 (a principal's subtree is named by its identity string): provisioned beforehand, and an
-//!   identity with none is refused as [`login_protocol::DENIED`], like a bad password.
+//!   identity with none is refused as [`login_contract::DENIED`], like a bad password.
 //! - Run-unvouched ([`RUN_UNVOUCHED`]) is delegated `WRITE` without `GRANT`, and only to identities
 //!   on the owner's list ([`listed`]; §219 (how the shell names an installed program to the
 //!   spawner) gate D2, §221 ruling 2).
@@ -18,7 +18,7 @@
 //!   `mint` splits the region first. A `DESTROY` refused mid-`forward` is transient; retry a few
 //!   times (`fixtures/src/login_test_client.rs`'s teardown).
 //! - One session holds the terminal ([`TERM_EP`]) at a time. A login while it is held is refused
-//!   [`login_protocol::NO_TERMINAL`] before its secret is relayed; `LOGOUT` releases it,
+//!   [`login_contract::NO_TERMINAL`] before its secret is relayed; `LOGOUT` releases it,
 //!   authenticates nothing, and a holder that never sends it wedges the terminal until restart.
 //! - `_start` checks the caretaker and timetable images against
 //!   [`measured_boot::PROGRAM_MEASUREMENTS`]; with no table every login is `DENIED`. Each channel
@@ -31,7 +31,7 @@
 //! - A stopped durable session is retired only at its identity's next login; ending one waits for
 //!   a running job (§222 (who holds a user's schedule)), and `SUSPEND` waits on the terminal.
 //! - A `user_timetable_keeper` that fails half way leaves its splits in the user's budget.
-//! - Identities longer than `filesystem_protocol::grant::MAX_NAME` (16 bytes) get no subtree:
+//! - Identities longer than `filesystem_contract::grant::MAX_NAME` (16 bytes) get no subtree:
 //!   [`mint`] refuses rather than truncate into a name two identities could share.
 //! - The measured-boot decision is spelled here rather than through `measured_boot::verdict`.
 //! - The audit endpoint proves establishment, not per-request attribution.
@@ -55,9 +55,9 @@ use user_mode_runtime::{
     call, cap_delete, map_page_frame, receive, send, send_capability, yield_now,
 };
 
-/// The front door: a bare [`login_protocol::CONNECT`], `RECEIVE` (milestone 49).
+/// The front door: a bare [`login_contract::CONNECT`], `RECEIVE` (milestone 49).
 const REQUEST: u64 = 0;
-/// [`login_protocol::CONNECTED`], then three delegated capabilities, `WRITE | GRANT`. This process
+/// [`login_contract::CONNECTED`], then three delegated capabilities, `WRITE | GRANT`. This process
 /// keeps its copies, because it serves the login that channel was minted for.
 const RESULT: u64 = 1;
 /// The credential service's verify endpoint, `WRITE`. Its provision endpoint is
@@ -72,7 +72,7 @@ const FS_PAGE_FRAME: u64 = 4;
 /// Everything a connecting client's own channel, a caretaker, and a client budget are all built
 /// from, `WRITE | GRANT`. Never given away.
 const CONSTRUCTION_UT: u64 = 5;
-/// One [`login_protocol::ATTRIBUTED`] message per successful login, `WRITE`. It must be drained,
+/// One [`login_contract::ATTRIBUTED`] message per successful login, `WRITE`. It must be drained,
 /// or the first login blocks this process forever (`system_initializer::boot` wires
 /// `login_audit_receiver`; the kernel harness drains via `Wiring::audit`).
 const AUDIT: u64 = 6;
@@ -94,7 +94,7 @@ const RUN_UNVOUCHED: u64 = grant_plan::spawnproto::RUN_UNVOUCHED_SLOT;
 /// channel a durable session's timetable reads the store through. [`FS_EP`] is badged with the
 /// window's number for the two store caretakers ([`open_schedule`]). The window is shared by a
 /// session's two caretakers and its timetable and nothing else.
-const DURABLE_WINDOW: u64 = login_protocol::DURABLE_WINDOW_SLOT;
+const DURABLE_WINDOW: u64 = login_contract::DURABLE_WINDOW_SLOT;
 // `grant_plan` states the slot without depending on `abi`; the relation is held by each reader.
 const _: () = assert!(RUN_UNVOUCHED == abi::fault::FAULT_EP_SLOT - 1);
 
@@ -125,7 +125,7 @@ const CONNECT_VA_BASE: u64 = address_space_map::pair_page(0x0000_0000_00e4_0000)
 /// One channel's whole cost: two `RETYPE_OBJ`s (request, result), one `RETYPE` (the staging page),
 /// and the page tables `page_frame::MAP` needs for that page's own mapping. Three pages minimum,
 /// with margin over a tight count for the same reason [`CARETAKER_REGION_PAGES`] is (a region too
-/// small fails as `Err(())`, which [`connect`] can only answer with `login_protocol::DENIED`).
+/// small fails as `Err(())`, which [`connect`] can only answer with `login_contract::DENIED`).
 const CHANNEL_REGION_PAGES: u64 = 8;
 
 /// **A budget of its own that only [`connect`] ever spends, so a served channel's pages actually
@@ -187,7 +187,7 @@ const OWN_UT_PAGES: u64 = 128;
 /// `crates/system_initializer::DIR_JOB_REGION_PAGES` (96) covers a caretaker **and** the program
 /// behind it; this process builds only the caretaker, so a smaller region should hold it, with
 /// margin rather than a tight fit (a region too small fails as `Err(())` mid-login, which this
-/// process can only answer with the one code `login_protocol::DENIED` already carries for "could not
+/// process can only answer with the one code `login_contract::DENIED` already carries for "could not
 /// mint", see this program's BUGS).
 const CARETAKER_REGION_PAGES: u64 = 64;
 
@@ -199,7 +199,7 @@ const CARETAKER_STACK_PAGES: u64 = 4;
 /// What this process hands each authenticated principal as its own budget. Arbitrary and modest,
 /// for the demonstration this slice is; a real deployment sizes it against what a session actually
 /// needs, which is not yet a question this program has enough callers to answer.
-const CLIENT_BUDGET_PAGES: u64 = login_protocol::durable::CLIENT_BUDGET_PAGES;
+const CLIENT_BUDGET_PAGES: u64 = login_contract::durable::CLIENT_BUDGET_PAGES;
 
 /// **The budget durable sessions are split from** (milestone 152 (durable delegation)), split once at start-up and only
 /// when a schedule can be opened at all. Its own parent for the reason [`CHANNEL_UT_PAGES`] is:
@@ -208,32 +208,32 @@ const CLIENT_BUDGET_PAGES: u64 = login_protocol::durable::CLIENT_BUDGET_PAGES;
 /// binding term of [`DURABLE_SESSIONS`] even once the table allows more (BUGS). `_start` splits
 /// this, [`OWN_UT_PAGES`] and [`CHANNEL_UT_PAGES`] before serving anyone and stops at `fail(2)` if
 /// `LOGIN_CONSTRUCTION_PAGES` is short; its owners derive that from
-/// `login_protocol::durable::BUDGET_PAGES`.
+/// `login_contract::durable::BUDGET_PAGES`.
 const DURABLE_UT_PAGES: u64 = DURABLE_BUDGET_PAGES;
 /// **How many durable sessions this process keeps**: the fewer of what its capability table
-/// holds beside one ordinary login (`login_protocol::durable::sessions_held`, derived from
+/// holds beside one ordinary login (`login_contract::durable::sessions_held`, derived from
 /// `abi::CAPABILITY_TABLE_SLOTS`, so a wider table raises it with no edit here) and what
 /// [`DURABLE_UT_PAGES`] has memory for, and one, because the durable window is one channel and two
 /// timetables staging in one page would overwrite each other (Fork 8 D). Raising it past one takes
 /// a window and a budget per session from this process's spawners.
 const DURABLE_SESSIONS: usize = {
-    let slots = login_protocol::durable::sessions_held(abi::CAPABILITY_TABLE_SLOTS);
+    let slots = login_contract::durable::sessions_held(abi::CAPABILITY_TABLE_SLOTS);
     let memory = (DURABLE_UT_PAGES / DURABLE_BUDGET_PAGES) as usize;
     let fewer = if slots < memory { slots } else { memory };
     if fewer < 1 { fewer } else { 1 }
 };
 /// A durable session's budget: the client's own spending, plus `user_timetable_keeper` and its
-/// timetable, both built from regions split off it (`login_protocol::durable::BUDGET_PAGES`).
-const DURABLE_BUDGET_PAGES: u64 = login_protocol::durable::BUDGET_PAGES;
+/// timetable, both built from regions split off it (`login_contract::durable::BUDGET_PAGES`).
+const DURABLE_BUDGET_PAGES: u64 = login_contract::durable::BUDGET_PAGES;
 /// `user_timetable_keeper`'s construction: its segments, its stack, the timetable's image copied in,
 /// its tables, the registration page, and the two store caretakers
-/// (`login_protocol::durable::USER_TIMETABLE_KEEPER_REGION_PAGES`).
+/// (`login_contract::durable::USER_TIMETABLE_KEEPER_REGION_PAGES`).
 const USER_TIMETABLE_KEEPER_REGION_PAGES: u64 =
-    login_protocol::durable::USER_TIMETABLE_KEEPER_REGION_PAGES;
+    login_contract::durable::USER_TIMETABLE_KEEPER_REGION_PAGES;
 /// `user_timetable_keeper`'s own budget: its timetable's region and the budget its jobs fire from
 /// (`components/src/user_timetable_keeper.rs`), and the two endpoints.
 const USER_TIMETABLE_KEEPER_BUDGET_PAGES: u64 =
-    login_protocol::durable::USER_TIMETABLE_KEEPER_BUDGET_PAGES;
+    login_contract::durable::USER_TIMETABLE_KEEPER_BUDGET_PAGES;
 /// Stack pages for `user_timetable_keeper`, beyond `build_child`'s default.
 const USER_TIMETABLE_KEEPER_STACK_PAGES: u64 = 8;
 /// Where this process maps the first durable session's registration page, to read the timetable's
@@ -275,8 +275,8 @@ pub extern "C" fn _start(caretaker_len: u64, table_len: u64, schedule_len: u64) 
     };
     let mut durables = Durables::new();
     // Why the start-up pass below skipped what it skipped (milestone 152, 2026-09-27): one count
-    // per `login_protocol::durable::RederiveSkip` reason, read back over `REDERIVE_SKIPS`.
-    let mut rederive_skips = [0u32; login_protocol::durable::REDERIVE_SKIP_REASONS];
+    // per `login_contract::durable::RederiveSkip` reason, read back over `REDERIVE_SKIPS`.
+    let mut rederive_skips = [0u32; login_contract::durable::REDERIVE_SKIP_REASONS];
     // Split once, here, and never anywhere else: [`CHANNEL_UT_PAGES`]' own doc explains why a
     // channel's region must come from a budget nothing else spends.
     let Ok(channel_ut) = memory_region_split(CONSTRUCTION_UT, CHANNEL_UT_PAGES) else {
@@ -323,21 +323,21 @@ fn vouched_caretaker(
     table_len: u64,
 ) -> (Option<elf::Elf<'static>>, &'static str) {
     // **Two blobs rather than the archive** (milestone 233). Whoever started this process mapped
-    // `fs_subtree_caretaker`'s ELF bytes read-only at `login_protocol::CARETAKER_ELF_VA` and the
-    // measurement table at `login_protocol::PROGRAM_MEASUREMENTS_VA`, with their lengths in the first
+    // `fs_subtree_caretaker`'s ELF bytes read-only at `login_contract::CARETAKER_ELF_VA` and the
+    // measurement table at `login_contract::PROGRAM_MEASUREMENTS_VA`, with their lengths in the first
     // two argument registers. Those constants carry the whole account of why this is not a mapping
     // of the initial ramdisk any more; the short version is that the real boot could not hand over
     // the initial ramdisk at all, so this program died at `_start` on every interactive boot until
     // milestone 233 (`login` dies on every boot).
     //
     // SAFETY: the spawner maps `caretaker_len` bytes read-only at `CARETAKER_ELF_VA`, for the
-    // lifetime of this process, before `_start` runs (`login_protocol::CARETAKER_ELF_VA`'s own
+    // lifetime of this process, before `_start` runs (`login_contract::CARETAKER_ELF_VA`'s own
     // contract). Both spawners do: `crates/system_initializer` through `supervision_protocol`'s
     // `blobs`, and `kernel::user::login_service::start` through `map_new`. A zero length is a slice
     // of nothing rather than a read of nothing, which is the case below.
     let care_bytes = unsafe {
         core::slice::from_raw_parts(
-            login_protocol::CARETAKER_ELF_VA as *const u8,
+            login_contract::CARETAKER_ELF_VA as *const u8,
             caretaker_len as usize,
         )
     };
@@ -370,7 +370,7 @@ fn vouched_caretaker(
     // SAFETY: as above, for `table_len` bytes at `PROGRAM_MEASUREMENTS_VA`.
     let table = unsafe {
         core::slice::from_raw_parts(
-            login_protocol::PROGRAM_MEASUREMENTS_VA as *const u8,
+            login_contract::PROGRAM_MEASUREMENTS_VA as *const u8,
             table_len as usize,
         )
     };
@@ -392,17 +392,17 @@ fn schedule_images<'e>(
     care: &'e elf::Elf<'static>,
     table: &str,
 ) -> Option<ScheduleImages<'e>> {
-    let (keeper_len, timetable_len) = login_protocol::split_schedule_lengths(schedule_len);
+    let (keeper_len, timetable_len) = login_contract::split_schedule_lengths(schedule_len);
     // SAFETY: the spawner maps each image's bytes read-only at its address for the life of this
-    // process before `_start` runs (`login_protocol::USER_TIMETABLE_KEEPER_ELF_VA`'s contract).
+    // process before `_start` runs (`login_contract::USER_TIMETABLE_KEEPER_ELF_VA`'s contract).
     let (keeper_bytes, timetable_bytes) = unsafe {
         (
             core::slice::from_raw_parts(
-                login_protocol::USER_TIMETABLE_KEEPER_ELF_VA as *const u8,
+                login_contract::USER_TIMETABLE_KEEPER_ELF_VA as *const u8,
                 keeper_len as usize,
             ),
             core::slice::from_raw_parts(
-                login_protocol::TIMETABLE_ELF_VA as *const u8,
+                login_contract::TIMETABLE_ELF_VA as *const u8,
                 timetable_len as usize,
             ),
         )
@@ -420,7 +420,7 @@ struct FrontDoor<'e> {
     durable_ut: Option<u64>,
     durables: Durables,
     /// The start-up pass's skip counts, one per reason; see `_start`.
-    rederive_skips: [u32; login_protocol::durable::REDERIVE_SKIP_REASONS],
+    rederive_skips: [u32; login_contract::durable::REDERIVE_SKIP_REASONS],
     // How many logins this process has established, in order. The audit trail's sequence number,
     // not a capacity: `CONSTRUCTION_UT` is what actually bounds how many logins this process can
     // serve (see BUGS).
@@ -438,21 +438,21 @@ struct FrontDoor<'e> {
 impl FrontDoor<'_> {
     /// Answer one request on the front door.
     fn serve(&mut self, w0: u64) {
-        let operation = login_protocol::operation(w0);
-        if operation == login_protocol::LOGOUT {
+        let operation = login_contract::operation(w0);
+        if operation == login_contract::LOGOUT {
             // **Travels on the front door itself**, unlike an actual login: it carries no secret,
             // so there is nothing a shared endpoint would expose by handling it here directly (see
-            // `login_protocol`'s own BUGS on what this does and does not authenticate). Idempotent: a
+            // `login_contract`'s own BUGS on what this does and does not authenticate). Idempotent: a
             // logout that arrives when nobody holds the terminal simply finds `terminal_held`
             // already `false`.
             self.terminal_held = false;
-            send(RESULT, login_protocol::LOGGED_OUT, 0, 0);
+            send(RESULT, login_contract::LOGGED_OUT, 0, 0);
             return;
         }
-        if operation == login_protocol::SUSPEND {
+        if operation == login_contract::SUSPEND {
             // **The §108 (disabling credentials kills the durable session) cascade** (milestone 152, calef's ruling of 2026-09-26): reread the owner's
             // suspended list and end the durable session of anyone on it. Unauthenticated, like
-            // `LOGOUT`, for the reason `login_protocol::SUSPEND` gives.
+            // `LOGOUT`, for the reason `login_contract::SUSPEND` gives.
             //
             // Not while a session holds the terminal: reading the list takes the file page that
             // session's caretaker shares with the server (see [`listed`]). The cascade then runs at
@@ -460,22 +460,22 @@ impl FrontDoor<'_> {
             self.suspend_listed();
             return;
         }
-        if operation == login_protocol::REDERIVE_SKIPS {
-            // Unauthenticated, like `SUSPEND` and `LOGOUT`: see `login_protocol::REDERIVE_SKIPS`'s
+        if operation == login_contract::REDERIVE_SKIPS {
+            // Unauthenticated, like `SUSPEND` and `LOGOUT`: see `login_contract::REDERIVE_SKIPS`'s
             // own doc for why this names no identity and costs nothing to keep in production.
             send(
                 RESULT,
-                login_protocol::SKIP_COUNTS,
-                login_protocol::durable::pack_skip_counts(&self.rederive_skips),
+                login_contract::SKIP_COUNTS,
+                login_contract::durable::pack_skip_counts(&self.rederive_skips),
                 0,
             );
             return;
         }
-        if operation != login_protocol::CONNECT {
-            // The front door's only other legal word; see `login_protocol`'s own module docs. Not an
+        if operation != login_contract::CONNECT {
+            // The front door's only other legal word; see `login_contract`'s own module docs. Not an
             // authentication outcome (no identity has been presented yet), so `MALFORMED` rather
             // than `DENIED`.
-            send(RESULT, login_protocol::MALFORMED, 0, 0);
+            send(RESULT, login_contract::MALFORMED, 0, 0);
             return;
         }
         self.serve_connect();
@@ -489,7 +489,7 @@ impl FrontDoor<'_> {
             if !self.terminal_held
                 && kept
                     .as_ref()
-                    .is_some_and(|d| on_list(login_protocol::SUSPENDED_LIST, d.name()))
+                    .is_some_and(|d| on_list(login_contract::SUSPENDED_LIST, d.name()))
                 && let Some(d) = kept.take()
             {
                 match d.end() {
@@ -498,20 +498,20 @@ impl FrontDoor<'_> {
                 }
             }
         }
-        send(RESULT, login_protocol::APPLIED, ended, 0);
+        send(RESULT, login_contract::APPLIED, ended, 0);
     }
 
     /// `CONNECT`: mint a private channel, serve one login on it, and reclaim it.
     fn serve_connect(&mut self) {
         let Some(channel) = connect(self.channel_ut, self.connect_seq) else {
             // The construction budget is spent (see BUGS); folded into `DENIED` for
-            // `login_protocol::DENIED`'s own stated reason, even though no identity is in play yet:
+            // `login_contract::DENIED`'s own stated reason, even though no identity is in play yet:
             // this program has exactly one code for "authenticated or not, I could not serve you".
-            send(RESULT, login_protocol::DENIED, 0, 0);
+            send(RESULT, login_contract::DENIED, 0, 0);
             return;
         };
         self.connect_seq += 1;
-        send(RESULT, login_protocol::CONNECTED, 0, 0);
+        send(RESULT, login_contract::CONNECTED, 0, 0);
         // Delegate narrowed copies and **keep our own for the width of this one exchange**: unlike
         // `FS_PAGE_FRAME` (shared with every future client, forever), this channel is this process's
         // for exactly as long as `serve_login` is running and no longer, so its objects are reclaimed
@@ -563,7 +563,7 @@ impl FrontDoor<'_> {
         // those sixteen slots permanently, which is exactly two logins' worth of headroom: the
         // second login after this process started would reach `mint`, get through `build_child`'s
         // address space, and fail on the next `RETYPE` with the table full, and the caller reads
-        // that as `login_protocol::DENIED` on a correct password. See this program's BUGS.
+        // that as `login_contract::DENIED` on a correct password. See this program's BUGS.
         cap_delete(channel.result);
         discard(channel.region);
     }
@@ -612,7 +612,7 @@ fn serve_login(
         {
             schedules.durables.held[k] = Some(d);
         }
-        send(channel.result, login_protocol::SUSPENDED, 0, 0);
+        send(channel.result, login_contract::SUSPENDED, 0, 0);
         return;
     }
 
@@ -627,17 +627,17 @@ fn serve_login(
     // **The client's own caretaker, minted after any durable session is opened**, and the order is
     // for the capability table: a durable session's two store caretakers (Fork 8 D) are built while
     // this process holds as little as it can, and one ordinary login's peak comes after, as it
-    // does beside a kept session. Counted in `login_protocol::durable`.
+    // does beside a kept session. Counted in `login_contract::durable`.
     let Some((dir_ep, region)) = mint(own_ut, care, identity) else {
         // Authenticated, and the service still could not serve it (the construction budget is
         // spent, or the caretaker's descent was refused). Answered identically to a wrong
-        // secret; see login_protocol::DENIED's own doc on why that fold is deliberate rather than
+        // secret; see login_contract::DENIED's own doc on why that fold is deliberate rather than
         // a missed distinction. A durable session opened above stays kept, as one re-derived at
         // start-up does, for its user's next login.
         if !keep_budget {
             discard(budget);
         }
-        send(channel.result, login_protocol::DENIED, 0, 0);
+        send(channel.result, login_contract::DENIED, 0, 0);
         return;
     };
 
@@ -649,7 +649,7 @@ fn serve_login(
     if !keep_budget {
         cap_delete(budget);
     }
-    send(AUDIT, login_protocol::ATTRIBUTED, *seq, hint);
+    send(AUDIT, login_contract::ATTRIBUTED, *seq, hint);
     *seq += 1;
 }
 
@@ -658,9 +658,9 @@ struct Authenticated {
     /// `SCHEDULE` rather than `LOGIN`.
     wants_schedule: bool,
     /// An owned copy of the identity: its first `identity_len` bytes.
-    identity_buf: [u8; login_protocol::MAX_IDENTITY],
+    identity_buf: [u8; login_contract::MAX_IDENTITY],
     identity_len: usize,
-    /// [`login_protocol::identity_hint`] of the identity, for the audit record.
+    /// [`login_contract::identity_hint`] of the identity, for the audit record.
     hint: u64,
 }
 
@@ -671,15 +671,15 @@ fn authenticate(channel: &Channel, terminal_held: bool) -> Option<Authenticated>
     let (w0, _w1, _w2) = receive(channel.request);
     cap_delete(channel.request);
     // `LOGIN`, or `SCHEDULE`: log in and open this identity's schedule (milestone 152).
-    let wants_schedule = login_protocol::operation(w0) == login_protocol::SCHEDULE;
+    let wants_schedule = login_contract::operation(w0) == login_contract::SCHEDULE;
     // SAFETY: `connect` mapped one page read/write at `channel.va` before delegating `channel.page`
     // to the same client this request now arrives from.
     let page =
-        unsafe { core::slice::from_raw_parts(channel.va as *const u8, login_protocol::PAGE) };
-    let Some((identity, secret)) = login_protocol::read(page, w0) else {
+        unsafe { core::slice::from_raw_parts(channel.va as *const u8, login_contract::PAGE) };
+    let Some((identity, secret)) = login_contract::read(page, w0) else {
         wipe_page(channel.va);
         cap_delete(channel.page);
-        send(channel.result, login_protocol::MALFORMED, 0, 0);
+        send(channel.result, login_contract::MALFORMED, 0, 0);
         return None;
     };
     // **The terminal check runs before anything about `identity` or `secret` is acted on**
@@ -691,44 +691,44 @@ fn authenticate(channel: &Channel, terminal_held: bool) -> Option<Authenticated>
     if terminal_held {
         wipe_page(channel.va);
         cap_delete(channel.page);
-        send(channel.result, login_protocol::NO_TERMINAL, 0, 0);
+        send(channel.result, login_contract::NO_TERMINAL, 0, 0);
         return None;
     }
     // Computed before the page is wiped: `identity` borrows `channel.va` and must not be read after.
-    let hint = login_protocol::identity_hint(identity);
+    let hint = login_contract::identity_hint(identity);
     // **Copy the identity out before it is gone.** `identity` borrows `channel.va`, and the page is
     // wiped a few lines below (`wipe_page`, right after the credential relay); `mint` needs the
     // identity's own bytes to name the subtree to attenuate to (DECISIONS §117), which happens after
-    // that wipe, on success. An owned, fixed-size copy (bounded by `login_protocol::MAX_IDENTITY`,
-    // which `login_protocol::read` has already checked `identity` fits within) is the only way to carry
+    // that wipe, on success. An owned, fixed-size copy (bounded by `login_contract::MAX_IDENTITY`,
+    // which `login_contract::read` has already checked `identity` fits within) is the only way to carry
     // it that far without reading freed/zeroed memory.
-    let mut identity_buf = [0u8; login_protocol::MAX_IDENTITY];
+    let mut identity_buf = [0u8; login_contract::MAX_IDENTITY];
     let identity_len = identity.len();
     identity_buf[..identity_len].copy_from_slice(identity);
 
     // SAFETY: the wiring mapped one page read/write at CRED_VA before this process ran, shared
     // with the credential service and with nothing else.
     let cred_page =
-        unsafe { core::slice::from_raw_parts_mut(CRED_VA as *mut u8, credential_protocol::PAGE) };
-    let placed = credential_protocol::place(
+        unsafe { core::slice::from_raw_parts_mut(CRED_VA as *mut u8, credential_contract::PAGE) };
+    let placed = credential_contract::place(
         cred_page,
         identity,
         secret,
-        credential_protocol::verify::VERIFY,
+        credential_contract::verify::VERIFY,
     );
     // The presented secret has now been copied to CRED_VA (or the placement failed and never will
     // be); either way `channel.va`'s copy is done being read.
     wipe_page(channel.va);
     cap_delete(channel.page);
     let Some(cw0) = placed else {
-        send(channel.result, login_protocol::MALFORMED, 0, 0);
+        send(channel.result, login_contract::MALFORMED, 0, 0);
         return None;
     };
     let (cr0, _) = call(VERIFY, cw0, 0);
-    credential_protocol::wipe(cred_page);
+    credential_contract::wipe(cred_page);
 
-    if !credential_protocol::is_authenticated(cr0) {
-        send(channel.result, login_protocol::DENIED, 0, 0);
+    if !credential_contract::is_authenticated(cr0) {
+        send(channel.result, login_contract::DENIED, 0, 0);
         return None;
     }
     Some(Authenticated {
@@ -777,7 +777,7 @@ fn session_budget(
     // and no durable session gets one opened, as though it had asked, with that document in force.
     let room = schedules.durables.free();
     let can_open = reattach.is_none() && room.is_some() && schedules.archive.is_some();
-    let mut stored = [0u8; login_protocol::PAGE];
+    let mut stored = [0u8; login_contract::PAGE];
     let stored_len = if can_open {
         read_stored_schedule(identity, &mut stored).unwrap_or(0)
     } else {
@@ -792,7 +792,7 @@ fn session_budget(
                 _ => memory_region_split(CONSTRUCTION_UT, CLIENT_BUDGET_PAGES),
             };
             let Ok(budget) = split else {
-                send(channel.result, login_protocol::DENIED, 0, 0);
+                send(channel.result, login_contract::DENIED, 0, 0);
                 return None;
             };
             let opened = match (opening, schedules.archive, room) {
@@ -835,12 +835,12 @@ fn hand_over(
         HOLDS_RUN_UNVOUCHED.load(core::sync::atomic::Ordering::Relaxed) && listed(identity);
     let mut flags = 0;
     if run_unvouched {
-        flags |= login_protocol::RUN_UNVOUCHED_FOLLOWS;
+        flags |= login_contract::RUN_UNVOUCHED_FOLLOWS;
     }
     if page.is_some() {
-        flags |= login_protocol::SCHEDULE_FOLLOWS;
+        flags |= login_contract::SCHEDULE_FOLLOWS;
     }
-    send(channel.result, login_protocol::OK, flags, 0);
+    send(channel.result, login_contract::OK, flags, 0);
     delegate(channel.result, dir_ep, abi::rights::WRITE);
     // **`WRITE` alone, not `READ | WRITE`** (resolved, milestone 49 (users, login, and attribution)'s boot-wiring update): the
     // kernel's own `page_frame_map` checks only `Rights::WRITE` for a writable mapping and grants a
@@ -860,7 +860,7 @@ fn hand_over(
     // terminal, never to hand the capability to read keystrokes on to anything it spawns.
     delegate(channel.result, TERM_EP, abi::rights::WRITE);
     // **The run-unvouched capability, sixth, and only as announced** (DECISIONS §219 gate D2;
-    // `login_protocol::OK`'s doc). `WRITE` alone: the session may present it to the progenitor
+    // `login_contract::OK`'s doc). `WRITE` alone: the session may present it to the progenitor
     // and may hand it to nothing.
     if run_unvouched {
         delegate(channel.result, RUN_UNVOUCHED, abi::rights::WRITE);
@@ -927,7 +927,7 @@ impl Durables {
 /// once, and the manifest line stays, so the refusal is shown to its user at their next login,
 /// where the same document is restored with a client there to read the verdict.
 ///
-/// `skips` counts each reason (`login_protocol::durable::RederiveSkip`), so the skip above stays
+/// `skips` counts each reason (`login_contract::durable::RederiveSkip`), so the skip above stays
 /// silent to a caller but not to `REDERIVE_SKIPS`: the missing count this program's own module
 /// docs used to leave was the defect, not the skip.
 fn rederive(
@@ -935,15 +935,15 @@ fn rederive(
     images: ScheduleImages<'_>,
     durable_ut: u64,
     durables: &mut Durables,
-    skips: &mut [u32; login_protocol::durable::REDERIVE_SKIP_REASONS],
+    skips: &mut [u32; login_contract::durable::REDERIVE_SKIP_REASONS],
 ) {
-    use login_protocol::durable::RederiveSkip;
+    use login_contract::durable::RederiveSkip;
     let mut record = |reason: RederiveSkip| {
         let c = &mut skips[reason as usize];
         *c = c.saturating_add(1);
     };
-    use filesystem_protocol::fs;
-    let mut manifest = [0u8; login_protocol::PAGE];
+    use filesystem_contract::fs;
+    let mut manifest = [0u8; login_contract::PAGE];
     let Some(n) = read_file(
         fs::ROOT,
         schedule_store::MANIFEST_FILE_NAME.as_bytes(),
@@ -957,27 +957,27 @@ fn rederive(
     let Ok(manifest) = schedule_store::parse_manifest(text) else {
         return;
     };
-    // No list, or one that cannot be read, suspends nobody: `login_protocol::SUSPENDED_LIST`'s
+    // No list, or one that cannot be read, suspends nobody: `login_contract::SUSPENDED_LIST`'s
     // direction, the same one [`is_suspended`] takes at a login.
-    let mut suspended = [0u8; login_protocol::PAGE];
+    let mut suspended = [0u8; login_contract::PAGE];
     let s = read_file(
         fs::ROOT,
-        login_protocol::SUSPENDED_LIST.as_bytes(),
+        login_contract::SUSPENDED_LIST.as_bytes(),
         &mut suspended,
     )
     .unwrap_or(0);
-    for identity in login_protocol::durable::to_rederive(manifest.entries(), &suspended[..s]) {
+    for identity in login_contract::durable::to_rederive(manifest.entries(), &suspended[..s]) {
         let Some(k) = durables.free() else {
             record(RederiveSkip::TableFull);
             break;
         };
         // `Durable` keeps a name of at most `grant::MAX_NAME` bytes, the bound `mint` holds a login
         // to; the manifest's own bound is wider.
-        if !filesystem_protocol::grant::fits(identity) || durables.find(identity).is_some() {
+        if !filesystem_contract::grant::fits(identity) || durables.find(identity).is_some() {
             record(RederiveSkip::Identity);
             continue;
         }
-        let mut doc = [0u8; login_protocol::PAGE];
+        let mut doc = [0u8; login_contract::PAGE];
         let len = read_stored_schedule(identity, &mut doc).unwrap_or(0);
         if len == 0 {
             record(RederiveSkip::NoStoredSchedule);
@@ -1005,7 +1005,7 @@ fn rederive(
 /// belongs to, and the four capabilities that let this process hand it back and, later, take it
 /// down. Four slots each, which is what bounds [`DURABLE_SESSIONS`].
 struct Durable {
-    identity: [u8; filesystem_protocol::grant::MAX_NAME],
+    identity: [u8; filesystem_contract::grant::MAX_NAME],
     len: usize,
     /// The user's budget. `user_timetable_keeper` and its timetable are built from regions split off
     /// it, so it refuses `DESTROY` for as long as either lives (DECISIONS §16 (object revocation)).
@@ -1036,7 +1036,7 @@ impl Durable {
     ) -> Option<Self> {
         let va = DURABLE_PAGE_VA + k as u64 * DURABLE_PAGE_STRIDE;
         let (keeper, page, ready) = open_schedule(own_ut, budget, images, va)?;
-        let mut id = [0u8; filesystem_protocol::grant::MAX_NAME];
+        let mut id = [0u8; filesystem_contract::grant::MAX_NAME];
         id[..identity.len()].copy_from_slice(identity);
         Some(Durable {
             identity: id,
@@ -1209,7 +1209,7 @@ fn open_schedule(
     // **The store, read-only, for the timetable** (Fork 8 D): a caretaker each for `activation/`
     // and `packages/`, built in `user_timetable_keeper`'s own region so reclaiming it takes them too,
     // on the durable window's channel. First, before anything else is held, because building them
-    // is where this function's use of the capability table peaks (`login_protocol::durable`).
+    // is where this function's use of the capability table peaks (`login_contract::durable`).
     let Some((activation, packages)) = store_caretakers(own_ut, keeper, images.care) else {
         discard(keeper);
         return None;
@@ -1251,7 +1251,7 @@ fn open_schedule(
                 (DURABLE_WINDOW, abi::rights::WRITE),
             ],
             blobs: &[(
-                login_protocol::user_timetable_keeper::TIMETABLE_VA,
+                login_contract::user_timetable_keeper::TIMETABLE_VA,
                 timetable,
             )],
             stack_pages: USER_TIMETABLE_KEEPER_STACK_PAGES,
@@ -1266,7 +1266,7 @@ fn open_schedule(
     };
     let answer = if started { receive(ready).0 } else { 0 };
     cap_delete(its_budget);
-    if answer != login_protocol::user_timetable_keeper::READY
+    if answer != login_contract::user_timetable_keeper::READY
         || !map_page_frame(page, va, true, own_ut)
     {
         cap_delete(ready);
@@ -1283,14 +1283,14 @@ fn open_schedule(
 /// **The two read-only store caretakers a durable session's timetable reads through** (milestone
 /// 152, Fork 8 ruled D by calef on 2026-09-27, on #1377): `activation/` and `packages/`, each an
 /// `fs_subtree_caretaker` holding the file service's endpoint badged with
-/// [`login_protocol::DURABLE_WINDOW`] and staging through [`DURABLE_WINDOW`]'s page, never window
+/// [`login_contract::DURABLE_WINDOW`] and staging through [`DURABLE_WINDOW`]'s page, never window
 /// 0, which this process and every signed-in user's caretaker share. Built in `region` from
 /// `own_ut`'s scratch, the way [`mint`] builds one. The two narrowed endpoints, or `None` with
 /// nothing of this process's own left behind (whatever started in `region` goes with it).
 fn store_caretakers(own_ut: u64, region: u64, care: &elf::Elf) -> Option<(u64, u64)> {
     let badged = u64::try_from(user_mode_runtime::badge(
         FS_EP,
-        login_protocol::DURABLE_WINDOW,
+        login_contract::DURABLE_WINDOW,
     ))
     .ok()?;
     let activation = store_caretaker(own_ut, region, care, badged, activation_set::DIRECTORY);
@@ -1321,10 +1321,10 @@ fn store_caretaker(
         cap_delete(narrow_ep);
         return None;
     };
-    let (lo, hi) = filesystem_protocol::grant::pack_name(name);
-    let spec = filesystem_protocol::grant::spec(
+    let (lo, hi) = filesystem_contract::grant::pack_name(name);
+    let spec = filesystem_contract::grant::spec(
         name.len(),
-        filesystem_protocol::dir::READ | filesystem_protocol::dir::DESCEND,
+        filesystem_contract::dir::READ | filesystem_contract::dir::DESCEND,
     );
     let started = build_child(
         own_ut,
@@ -1344,7 +1344,7 @@ fn store_caretaker(
     .is_ok_and(|child| start_child(child, lo, hi, spec));
     let verdict = if started { receive(ready).0 } else { 0 };
     cap_delete(ready);
-    if verdict != filesystem_protocol::READY {
+    if verdict != filesystem_contract::READY {
         cap_delete(narrow_ep);
         return None;
     }
@@ -1377,7 +1377,7 @@ struct Channel {
 /// request/result rendezvous pair and a staging page retyped from it. `connect_seq` picks a scratch
 /// VA this process has never mapped before (`page_frame::MAP` refuses a second mapping at an
 /// already-mapped `va`, so `_start`'s own counter bumps by one page per successful call rather than
-/// reusing one). `None` on any failure, which the caller answers with [`login_protocol::DENIED`].
+/// reusing one). `None` on any failure, which the caller answers with [`login_contract::DENIED`].
 ///
 /// **Retyped from their own region, not from a shared budget directly, and that choice is the
 /// whole reason this channel is reclaimable at all.** An earlier version of this function retyped
@@ -1418,7 +1418,7 @@ fn connect(channel_ut: u64, connect_seq: u64) -> Option<Channel> {
         discard(region);
         return None;
     };
-    let va = CONNECT_VA_BASE + connect_seq * login_protocol::PAGE as u64;
+    let va = CONNECT_VA_BASE + connect_seq * login_contract::PAGE as u64;
     // Page tables for this new mapping come from `region` itself: the channel's whole cost, objects
     // and page tables alike, lives in one place and comes home in one `DESTROY`.
     if !map_page_frame(page, va, true, region) {
@@ -1435,7 +1435,7 @@ fn connect(channel_ut: u64, connect_seq: u64) -> Option<Channel> {
     // SAFETY: `va` was just mapped, read/write, by this process and by no one else yet (the frame
     // has not been delegated to a client at the point this runs).
     unsafe {
-        core::ptr::write_bytes(va as *mut u8, 0, login_protocol::PAGE);
+        core::ptr::write_bytes(va as *mut u8, 0, login_contract::PAGE);
     }
     Some(Channel {
         request,
@@ -1451,7 +1451,7 @@ fn connect(channel_ut: u64, connect_seq: u64) -> Option<Channel> {
 /// separate lookup table), a fresh budget, and the construction region itself (the caretaker's own
 /// logout ticket; see this program's module docs, "Reclaiming a session"), all three held with full
 /// rights so [`delegate`] can narrow them on the way out. `None` on any failure, which this
-/// process's caller answers with [`login_protocol::DENIED`] (see this program's BUGS on why that is the
+/// process's caller answers with [`login_contract::DENIED`] (see this program's BUGS on why that is the
 /// honest fold rather than a missing distinction, and on the two failures this now folds in
 /// alongside "the construction budget is spent": an identity too long for the grant mechanism, and
 /// an authenticated identity with no provisioned subtree).
@@ -1466,15 +1466,15 @@ fn connect(channel_ut: u64, connect_seq: u64) -> Option<Channel> {
 fn mint(own_ut: u64, care: Option<&elf::Elf>, identity: &[u8]) -> Option<(u64, u64)> {
     let care = care?;
 
-    // **The grant name travels in two `START` argument words, not a frame** (`filesystem_protocol::grant`'s own
-    // doc), so it is capped at `grant::MAX_NAME` (16 bytes): smaller than `login_protocol::MAX_IDENTITY`
-    // (64), the bound `identity` already satisfies by construction (`login_protocol::read` checked it).
+    // **The grant name travels in two `START` argument words, not a frame** (`filesystem_contract::grant`'s own
+    // doc), so it is capped at `grant::MAX_NAME` (16 bytes): smaller than `login_contract::MAX_IDENTITY`
+    // (64), the bound `identity` already satisfies by construction (`login_contract::read` checked it).
     // `pack_name` does not itself refuse an oversized name; it silently stops copying at the 16th
     // byte, which would otherwise mint a caretaker attenuated to a *different, truncated* name than
     // the one `identity_provisioner` created. Refusing here, before anything is built, is what keeps
     // that silent truncation from ever happening. See this program's BUGS: identities over 16 bytes
     // cannot get a per-identity subtree in this slice at all.
-    if !filesystem_protocol::grant::fits(identity) {
+    if !filesystem_contract::grant::fits(identity) {
         return None;
     }
 
@@ -1491,8 +1491,8 @@ fn mint(own_ut: u64, care: Option<&elf::Elf>, identity: &[u8]) -> Option<(u64, u
         return None;
     };
 
-    let (lo, hi) = filesystem_protocol::grant::pack_name(identity);
-    let spec = filesystem_protocol::grant::spec(identity.len(), filesystem_protocol::dir::ALL);
+    let (lo, hi) = filesystem_contract::grant::pack_name(identity);
+    let spec = filesystem_contract::grant::spec(identity.len(), filesystem_contract::dir::ALL);
 
     // Its whole authority: the file service to attenuate, the endpoint it will serve, one place to
     // say it is ready, and the frame it shares with the file service. No untyped of its own, no
@@ -1540,14 +1540,14 @@ fn mint(own_ut: u64, care: Option<&elf::Elf>, identity: &[u8]) -> Option<(u64, u
     // **This is also where "the credential is real but nobody ever provisioned this identity's
     // subtree" is answered**, and deliberately with no special case: `identity_provisioner` didn't
     // run, or its `MKDIR` never reached this file service's disk, so the caretaker's `OPENDIR`
-    // against `identity` comes back `ENOENT` and it reports [`filesystem_protocol::DESCENT_REFUSED`]
+    // against `identity` comes back `ENOENT` and it reports [`filesystem_contract::DESCENT_REFUSED`]
     // here instead of `READY`, which this function already turns into `None` and this program's
-    // caller already folds into `login_protocol::DENIED`, indistinguishable from a wrong password. See
+    // caller already folds into `login_contract::DENIED`, indistinguishable from a wrong password. See
     // this program's BUGS for why that fold is the considered answer for this case too, not merely
     // an accident of reusing the same code path.
     let (verdict, _, _) = receive(ready);
     cap_delete(ready);
-    if verdict != filesystem_protocol::READY {
+    if verdict != filesystem_contract::READY {
         cap_delete(narrow_ep);
         // **`region` used to be abandoned here.** The caretaker's `OPENDIR` was refused, so it has
         // already called `exit()` (`fs_subtree_caretaker.rs`'s own descent handshake): nothing is
@@ -1619,8 +1619,8 @@ fn discard(region: u64) {
 }
 
 /// **Is `identity` on the owner's run-unvouched list?** (DECISIONS §221 (the boot prompt is the
-/// owner's console), ruling 2.) Opens [`login_protocol::RUN_UNVOUCHED_LIST`] at the root of the
-/// file service and asks [`login_protocol::lists`]. Every way of not reading it (no mapped page,
+/// owner's console), ruling 2.) Opens [`login_contract::RUN_UNVOUCHED_LIST`] at the root of the
+/// file service and asks [`login_contract::lists`]. Every way of not reading it (no mapped page,
 /// no file, a file larger than a page, a refused read) lists nobody.
 ///
 /// Read on every login rather than once at start, so the owner's edit at the boot prompt holds
@@ -1629,24 +1629,24 @@ fn discard(region: u64) {
 /// is live at a time (the terminal rule, checked before this runs), and that session is still
 /// being built.
 fn listed(identity: &[u8]) -> bool {
-    on_list(login_protocol::RUN_UNVOUCHED_LIST, identity)
+    on_list(login_contract::RUN_UNVOUCHED_LIST, identity)
 }
 
 /// **Whether `identity` is suspended** (milestone 152, calef's §108 ruling of 2026-09-26): on the
-/// owner's [`login_protocol::SUSPENDED_LIST`]. The one place this program reads it. An absent or
-/// unreadable list suspends nobody; `login_protocol::SUSPENDED_LIST` says why that direction.
+/// owner's [`login_contract::SUSPENDED_LIST`]. The one place this program reads it. An absent or
+/// unreadable list suspends nobody; `login_contract::SUSPENDED_LIST` says why that direction.
 fn is_suspended(identity: &[u8]) -> bool {
-    on_list(login_protocol::SUSPENDED_LIST, identity)
+    on_list(login_contract::SUSPENDED_LIST, identity)
 }
 
 /// **Whether the owner's list `file`, at the file service's root, names `identity`**, read fresh
 /// on every call so an edit at the console holds without a restart. Every way of failing to read it
 /// answers `false`.
 fn on_list(file: &str, identity: &[u8]) -> bool {
-    let mut list = [0u8; login_protocol::PAGE];
+    let mut list = [0u8; login_contract::PAGE];
     // A short read lists by what arrived, which can only be fewer names.
-    read_file(filesystem_protocol::fs::ROOT, file.as_bytes(), &mut list)
-        .is_some_and(|n| login_protocol::lists(&list[..n], identity))
+    read_file(filesystem_contract::fs::ROOT, file.as_bytes(), &mut list)
+        .is_some_and(|n| login_contract::lists(&list[..n], identity))
 }
 
 /// **Read `name` under directory handle `at` into `out`**, through the file page at [`LIST_VA`]:
@@ -1654,7 +1654,7 @@ fn on_list(file: &str, identity: &[u8]) -> bool {
 /// way this program reads a file, for the owner's lists, the durable-session manifest and an
 /// identity's stored schedule alike.
 fn read_file(at: u64, name: &[u8], out: &mut [u8]) -> Option<usize> {
-    use filesystem_protocol::fs;
+    use filesystem_contract::fs;
     let page = file_page()?;
     page[..name.len()].copy_from_slice(name);
     let opened = call(FS_EP, fs::req(fs::OPEN, at, name.len() as u64), 0).0 as i64;
@@ -1663,7 +1663,7 @@ fn read_file(at: u64, name: &[u8], out: &mut [u8]) -> Option<usize> {
     }
     let handle = opened as u64;
     let size = call(FS_EP, fs::req(fs::FSTAT, handle, 0), 0).0 as i64;
-    let read = if (0..=out.len().min(login_protocol::PAGE) as i64).contains(&size) {
+    let read = if (0..=out.len().min(login_contract::PAGE) as i64).contains(&size) {
         call(FS_EP, fs::req(fs::READ, handle, size as u64), 0).0 as i64
     } else {
         -1
@@ -1677,7 +1677,7 @@ fn read_file(at: u64, name: &[u8], out: &mut [u8]) -> Option<usize> {
 /// **Replace `name` at the file service's root with `bytes`**, creating it if absent. `true` when
 /// every byte landed.
 fn write_root_file(name: &[u8], bytes: &[u8]) -> bool {
-    use filesystem_protocol::fs;
+    use filesystem_contract::fs;
     let Some(page) = file_page() else {
         return false;
     };
@@ -1701,7 +1701,7 @@ fn write_root_file(name: &[u8], bytes: &[u8]) -> bool {
 /// schedule store)) into `out`: the byte count, or `None` when there is none. Descends by name, as
 /// [`rederive`] and the file service's other clients do, and never enumerates.
 fn read_stored_schedule(identity: &[u8], out: &mut [u8]) -> Option<usize> {
-    use filesystem_protocol::{dir, fs};
+    use filesystem_contract::{dir, fs};
     let page = file_page()?;
     page[..identity.len()].copy_from_slice(identity);
     let d = call(
@@ -1723,13 +1723,13 @@ fn read_stored_schedule(identity: &[u8], out: &mut [u8]) -> Option<usize> {
 /// bring back. A failure is not fatal to a login, and costs only that start-up pass.
 fn record_in_manifest(identity: &[u8], present: bool) {
     let name = schedule_store::MANIFEST_FILE_NAME.as_bytes();
-    let mut now = [0u8; login_protocol::PAGE];
-    let had = read_file(filesystem_protocol::fs::ROOT, name, &mut now).unwrap_or(0);
-    let mut next = [0u8; login_protocol::PAGE];
+    let mut now = [0u8; login_contract::PAGE];
+    let had = read_file(filesystem_contract::fs::ROOT, name, &mut now).unwrap_or(0);
+    let mut next = [0u8; login_contract::PAGE];
     let n = if present {
-        login_protocol::with_listed(&now[..had], identity, &mut next)
+        login_contract::with_listed(&now[..had], identity, &mut next)
     } else {
-        login_protocol::without_listed(&now[..had], identity, &mut next)
+        login_contract::without_listed(&now[..had], identity, &mut next)
     };
     if let Some(n) = n
         && next[..n] != now[..had]
@@ -1746,14 +1746,14 @@ fn file_page() -> Option<&'static mut [u8]> {
     // SAFETY: `_start` mapped the file page read/write at `LIST_VA`, one page, for this process's
     // life. One thread per address space, and every caller is done with the slice before the next
     // takes it.
-    Some(unsafe { core::slice::from_raw_parts_mut(LIST_VA as *mut u8, login_protocol::PAGE) })
+    Some(unsafe { core::slice::from_raw_parts_mut(LIST_VA as *mut u8, login_contract::PAGE) })
 }
 
 /// Delegate our own copy of `slot`, narrowed to `rights`, over `ep`. `GRANT` must already be on our
 /// own copy for the kernel to allow this at all (`abi::rendezvous::SEND_CAP`'s contract); every
 /// capability this process delegates was retyped or split by this process, so it always is. `ep` is
-/// [`RESULT`] for a [`login_protocol::CONNECTED`] answer and a channel's own private `result` for a
-/// [`login_protocol::OK`] one; both are this process's own copy, always held with `GRANT`.
+/// [`RESULT`] for a [`login_contract::CONNECTED`] answer and a channel's own private `result` for a
+/// [`login_contract::OK`] one; both are this process's own copy, always held with `GRANT`.
 fn delegate(ep: u64, slot: u64, rights: u64) {
     send_capability(ep, slot, rights, 0);
 }
@@ -1763,8 +1763,8 @@ fn delegate(ep: u64, slot: u64, rights: u64) {
 fn wipe_page(va: u64) {
     // SAFETY: `connect` mapped one page read/write here, and this process is the only writer
     // between a request arriving on the channel it belongs to and that channel's reply going out.
-    let page = unsafe { core::slice::from_raw_parts_mut(va as *mut u8, login_protocol::PAGE) };
-    login_protocol::wipe(page);
+    let page = unsafe { core::slice::from_raw_parts_mut(va as *mut u8, login_contract::PAGE) };
+    login_contract::wipe(page);
 }
 
 fn fail(step: u64) -> ! {

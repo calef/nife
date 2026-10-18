@@ -845,7 +845,7 @@ source	target	kind	discovery	blame_date	file_created	evidence
 127	74	context	later	2026-09-19	2026-08-14	6. **Then M-74's half, which is now a line the boot prints rather than a step to perform.**
 127	228	context	later	2026-09-19	2026-08-14	worth knowing: the kernel's **first** PMU access is M-228's `PMUSERENR_EL0` write in
 127	25	context	later	2026-09-14	2026-08-14	work stays M-25's, behind the customer path
-129	31	context	later	2026-09-14	2026-08-15	`clock_protocol`, the spawn machinery and program manifests (M-31's grant expressions), and
+129	31	context	later	2026-09-14	2026-08-15	`clock_contract`, the spawn machinery and program manifests (M-31's grant expressions), and
 129	126	context	later	2026-08-18	2026-08-15	**The demonstration is the refusals**, which is M-126's shape rather than a coincidence.
 129	126	context	later	2026-08-18	2026-08-15	M-126's process view. Neither ever runs, and the cross-ISA test asserts both the refusal and
 129	106	context	later	2026-08-18	2026-08-15	## The finding: this is M-106's fifth consumer, and the first whose purpose is a deadline
@@ -998,7 +998,7 @@ source	target	kind	discovery	blame_date	file_created	evidence
 180	142	context	at-creation	2026-08-26	2026-08-26	(M-142) and a pointer (M-179, for drag-to-select) are the two obvious sources; a
 180	179	context	at-creation	2026-08-26	2026-08-26	(M-142) and a pointer (M-179, for drag-to-select) are the two obvious sources; a
 180	169	context	at-creation	2026-08-26	2026-08-26	paste target is anything a shell or an editor (M-169's `kilo`) accepts text into.
-180	49	context	UNKNOWN	30	2026-08-26	endpoint is minted per connection (M-49's login front door, `login_protocol::CONNECT`); even
+180	49	context	UNKNOWN	30	2026-08-26	endpoint is minted per connection (M-49's login front door, `login_contract::CONNECT`); even
 138	38	context	later	2026-09-14	2026-08-18	Minted by calef on 2026-08-18 from M-38's measurement. Every 4 KiB file request moved 128
 138	38	context	later	2026-09-14	2026-08-18	phases). Combined against M-38's original baseline, measured head to head: 70.9x on
 180	49	context	at-creation	2026-08-26	2026-08-26	- **Scoped to a login session** (M-49's identity model), so a clipboard exists per
@@ -2400,7 +2400,7 @@ source	target	kind	discovery	blame_date	file_created	evidence
 345	247	context	at-creation	2026-09-19	2026-09-19	**Status: NOT-STARTED.** Filed 2026-09-03 as an unnumbered proposal by the M-247 sweep,
 345	68	context	at-creation	2026-09-19	2026-09-19	from M-68's block; numbered 2026-09-19 by M-433. **Premise re-checked 2026-09-19 and
 345	433	context	at-creation	2026-09-19	2026-09-19	from M-68's block; numbered 2026-09-19 by M-433. **Premise re-checked 2026-09-19 and
-345	51	context	later	2026-09-14	2026-09-19	crates went missing from the host selection by M-51, `filesystem_protocol`, `compositor`,
+345	51	context	later	2026-09-14	2026-09-19	crates went missing from the host selection by M-51, `filesystem_contract`, `compositor`,
 345	117	context	later	2026-09-03	2026-09-19	clean x86_64 checkout found it eleven days later, on M-117's first run, which is principle 3
 345	68	context	later	2026-09-03	2026-09-19	five crates whose examples can rot unnoticed inside the gate M-68 exists to be."*
 345	285	context	later	2026-09-13	2026-09-19	`user_rt` is `user_mode_runtime` since 2026-09-13 (M-285). The quotation keeps the name
@@ -2588,7 +2588,7 @@ source	target	kind	discovery	blame_date	file_created	evidence
 377	243	context	later	2026-09-04	2026-09-19	- `crates/board_console/src/screen.rs`, written by M-243 for the framebuffer console's gate.
 377	177	context	later	2026-09-04	2026-09-19	asserts itself against the kernel's own painter; M-177's asserts itself against a font
 377	177	context	later	2026-09-04	2026-09-19	It touches M-177's graphical `shell-check` leg, which is a real gate on a real path, and the
-377	177	context	at-creation	2026-09-19	2026-09-19	`bitmap_font`: M-177's three functions inside `xtask`, hardcoded to `graphics_protocol`'s
+377	177	context	at-creation	2026-09-19	2026-09-19	`bitmap_font`: M-177's three functions inside `xtask`, hardcoded to `graphics_contract`'s
 377	243	context	at-creation	2026-09-19	2026-09-19	geometry and `video_terminal::Attr::DEFAULT`'s colours, and M-243's
 377	177	context	at-creation	2026-09-19	2026-09-19	them asserts itself against the kernel's own painter. The hazard is that it touches M-177's
 378	433	context	at-creation	2026-09-19	2026-09-19	into notes/xenon-firmware.md; promoted by M-433 on 2026-09-19, when the tree was read
@@ -2793,7 +2793,7 @@ source	target	kind	discovery	blame_date	file_created	evidence
 405	399	context	at-creation	2026-09-19	2026-09-19	**This block also absorbs** M-399 (the six `init` roles in `hello`), which proposed
 405	268	context	at-creation	2026-09-19	2026-09-19	**Gate: NONE.** *(Cleared 2026-09-19 by M-268's own lane, because `script/roadmap` refuses
 405	166	context	at-creation	2026-09-19	2026-09-19	1. **`spawn_hello` always re-enters `HELLO_ENTRY`**, since M-166 moved the boot role's own
-405	291	context	at-creation	2026-09-19	2026-09-19	and the interrupt child's reported word) join `capability_witness_protocol`, which M-291
+405	291	context	at-creation	2026-09-19	2026-09-19	and the interrupt child's reported word) join `capability_witness_contract`, which M-291
 405	399	context	at-creation	2026-09-19	2026-09-19	## What it inherits from M-399
 406	289	prerequisite	at-creation	2026-09-19	2026-09-19	thing a reader needs. Filed 2026-09-14 as an unnumbered proposal by M-289's lane; numbered
 406	433	context	at-creation	2026-09-19	2026-09-19	2026-09-19 by M-433's drain of the proposal pile, with the premise re-read the same day.

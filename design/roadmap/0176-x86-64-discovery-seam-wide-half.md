@@ -87,7 +87,7 @@ Piece 1 is complete and independent of this.
   2's shape, whether userspace may ever drive x86 legacy port I/O. Its recommendation keeps port I/O
   kernel-resident and is still PROPOSED; `design/decisions/0130-cmos-rtc-delegation.md` took the RTC
   question against it and is ratified, which is why `rtc_region()` stays `None` on x86_64 forever.
-- **Recorded.** `crates/clock_protocol/src/lib.rs` (spelled clock_proto when this was written;
+- **Recorded.** `crates/clock_contract/src/lib.rs` (spelled clock_proto when this was written;
   milestone 265 renamed it) carries the new `rtc` kind, shipped as a provisional
   name like every name a lane mints. `CMOS` is unlike its siblings in kind. `PL031` and `GOLDFISH`
   name a register layout the clock service polls itself, while `CMOS` names a reading the kernel has

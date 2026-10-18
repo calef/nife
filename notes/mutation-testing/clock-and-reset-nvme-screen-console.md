@@ -10,7 +10,7 @@ Three more crates, off the seventeen that milestone 326's Follow-on section left
 the 2026-09-20 lanes. The lane re-derived the list against this note and each crate's history
 before picking, per the rule the block gained on 2026-09-21:
 
-- `counter_frequency_protocol`, `cpu_set`, `environment_protocol`, `login_protocol`,
+- `counter_frequency_contract`, `cpu_set`, `environment_contract`, `login_contract`,
   `thread_wake_handshake` and `uefi_loader` were already at 100% of viable mutants. Other work had
   closed their census-era survivors in the intervening week.
 - `documentation` was set aside as a lane of its own: 98 survivors, 1056 mutants, and a
@@ -209,7 +209,7 @@ the 38 baseline crates and carries every rename applied since. Some of the 29 ar
 And `component_plan`, `credentialer`, `loaded_image_check`, `pgrep`, `pmap`, `ps` and `uptime`
 were apparently missed by the count the block's "seventeen" came from. The already-closed crates
 checked at the top of this section do not explain the gap either. They are
-`counter_frequency_protocol`, `cpu_set`, `environment_protocol`, `login_protocol`,
+`counter_frequency_contract`, `cpu_set`, `environment_contract`, `login_contract`,
 `thread_wake_handshake` and `uefi_loader`, plus `timetable` and `work_steal_slot` from earlier
 parts: exactly the ones "seventeen" should already have excluded.
 

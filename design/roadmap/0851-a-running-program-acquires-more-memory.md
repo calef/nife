@@ -72,7 +72,7 @@ returns once nothing above it is held, and not before.
 `MAX_REGIONS` is 256, machine-wide; the suite peaks at 242 on aarch64 (fork 7). A process's
 capability table has 64 slots.
 
-A reply carries two words and no capability (`abi::reply`). `login_protocol` sends its capabilities
+A reply carries two words and no capability (`abi::reply`). `login_contract` sends its capabilities
 over a private result endpoint for that reason, and a broker grant must do the same.
 
 There is no pool for a broker yet. The kernel hands the progenitor 12,288 pages (48 MiB of QEMU's
@@ -247,7 +247,7 @@ other adds to it.
    delegable by `SEND_CAP`. A donated child is closed by its holder.
 3. The grow policy moves into `user_mode_heap`. Both allocators ask the broker when `MAP` refuses,
    give large allocations their own regions, and trim the band from the top.
-4. `std_runtime_protocol` gains slot 9 for the broker account. Empty means "not given", and the
+4. `std_runtime_contract` gains slot 9 for the broker account. Empty means "not given", and the
    allocator behaves as it does today.
 5. The progenitor opens an account per `std` job and closes it at reap, on `job_undertaker`'s path.
 6. The region table as fork 7 rules: 16,384 slots, child links, a free-slot list. Programs hold a

@@ -62,7 +62,7 @@ impl FileAttr {
             }
             // `ENOTDIR` is the one refusal that is about the grant's *shape*: a per-file caretaker
             // answers it for all three mtime verbs because it has no directory to resolve a name
-            // under (`filesystem_protocol::grant::POLICY`). Reported as what it is rather than as
+            // under (`filesystem_contract::grant::POLICY`). Reported as what it is rather than as
             // `NotADirectory`, which would read as a statement about the file.
             Mtime::Refused(r0) if fsproto::reply_errno(r0 as i64) == Some(20) => {
                 Err(io::const_error!(
