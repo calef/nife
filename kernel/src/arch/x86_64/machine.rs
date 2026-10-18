@@ -583,11 +583,11 @@ fn read_mcfg(body: &[u8], into: &mut Acpi) {
 }
 
 fn read_dmar(body: &[u8], into: &mut Acpi) {
-    // The fixed part (host address width, interrupt-remapping flags) is decoded and not kept:
-    // nothing here reads either yet, and `arch::x86_64::iommu::init` reads `CAP_REG` itself for
-    // the one fact it needs (48-bit/4-level second-level translation support) rather than trusting
-    // a value carried this far. Parsing it anyway is what proves the table is well-formed before
-    // the structure list is trusted.
+    // The fixed part's host address width is decoded and not kept: `arch::x86_64::iommu::init`
+    // reads `CAP_REG` itself for the one fact it needs (48-bit/4-level second-level translation
+    // support) rather than trusting a value carried this far. Its `INTR_REMAP` flag is kept, in
+    // `DmarUnits::platform_interrupt_remapping`, for the `iommu` line. Parsing it here is what
+    // proves the table is well-formed before the structure list is trusted.
     if parse_dmar(body).is_err() {
         return;
     }

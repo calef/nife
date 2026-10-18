@@ -131,8 +131,8 @@ pub(super) fn q35_madt_body() -> [u8; 8 + 8 + 12 + 10 + 10] {
     b
 }
 
-/// The DMAR `-device intel-iommu` produces on `q35`: 39-bit host address width, interrupt
-/// remapping off, one DRHD (not the catch-all, QEMU names devices explicitly) at the address
+/// The DMAR `-device intel-iommu,intremap=off` produces on `q35`: 39-bit host address width,
+/// `INTR_REMAP` clear (QEMU's default, `intremap=auto`, sets it under TCG), one DRHD (not the catch-all, QEMU names devices explicitly) at the address
 /// `Q35_HOST_BRIDGE_IOMMU_ADDR` names, `0xfed90000`.
 pub(super) fn q35_dmar_body() -> [u8; DMAR_FIXED_LEN + DRHD_FIXED_LEN] {
     let mut b = [0u8; DMAR_FIXED_LEN + DRHD_FIXED_LEN];
