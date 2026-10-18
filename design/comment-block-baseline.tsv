@@ -11,4 +11,3 @@
 # moved unchanged (or only cut) into a file with no rows keeps its row under its new path, which
 # `--bank` writes for you. A block that must exceed its row needs §267 amended by an architect.
 block	lines
-crates/bitmap_font/src/glyphs.rs:44	128
