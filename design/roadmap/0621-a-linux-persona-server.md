@@ -37,6 +37,23 @@ without promising the compatibility half.
   running the software, not wearing the engine's interface. The shim imports; the persona
   executes; nothing imitates a container engine.
 
+## What serving containers must match
+
+Import is the chosen shape because capabilities and coexisting package versions give isolation
+comparable to a container's or stronger. calef, 2026-10-18 (UTC), asked whether that holds. For a
+private filesystem view (subtree grants, with no ambient filesystem), for not seeing or signaling
+other processes, for dependency versions, for kernel surface and for a memory limit, it does. Two
+things a container gives and nife does not yet have, and container serving needs both before it
+claims parity:
+
+- **A network grant scoped to addresses and ports.** The manifest's `network` is one bit today:
+  all of the network, or none. A container gets its own address, its own ports and firewall rules.
+- **A CPU budget the scheduler enforces.** Milestone 282 (a thread's CPU time, and the `top` it
+  makes possible) measures a thread's CPU time; nothing limits it. A container gets `cpu.max`.
+
+An I/O bandwidth limit (`io.max`) is not required yet. An imported Linux binary runs under the
+persona, so its isolation is also the persona's confinement, which this milestone builds.
+
 ## Where it ranks
 
 Strategic, not next. The customer path is vacant, and fatal risk 8 (nobody needs it) is answered
