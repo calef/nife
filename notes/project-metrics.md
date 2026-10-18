@@ -137,8 +137,13 @@ a status existing at all, counted as having none rather than as `DECIDED`.
 
 ![Names by what the tree records about them](project-metrics/names.svg)
 
-What each named thing's own provenance block says. The pale band is named things carrying no block,
-which before 2026-08-04 is every one of them. A rising `Provisional` band is not debt; the band worth an alarm is `Unrecorded`.
+What each name's own provenance block says, for every name `script/names` tracks: crates,
+programs, packages, scripts, and the items, modules, documentation directories and documents that
+carry a `Name:` block. A name a rule covers counts as ratified. `Ruled, rename owed` is a provisional
+name calef has ruled whose rename has not landed. The pale band is named things with no readable
+block, which before 2026-08-04 is every one of them. The current week's total is checked against
+`script/names`. A week is a bar, so a day's rulings show as the current week's bar moving. A rising
+`Provisional` band is not debt; the band worth an alarm is `Unrecorded`.
 
 ## Milestones by status
 
