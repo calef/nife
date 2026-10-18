@@ -49,8 +49,8 @@ STRAY_WHY = {
         "it is a second block below the one that was read, and nothing reads past the first",
 }
 
-# An exception to §75's README-per-directory rule (directories under `design/` and `notes/` carry
-# provenance in their own README) (2026-10-06, UTC). Each entry under notes/skills/
+# An exception to §75 (directories under `design/` and `notes/` carry provenance in their own
+# README) (2026-10-06, UTC). Each entry under notes/skills/
 # is an Agent Skills directory whose SKILL.md name the specification fixes, so the entry has no
 # README of its own. calef ratified all six entry names in one ruling, which notes/skills/README.md
 # records beside the directory's own block, and judged a README per entry the gate's fault ("SKILL.md
@@ -118,8 +118,8 @@ def _includer(kind, path, paths, read):
 
 
 def _stray_problems(kind, name, path, prefix, text):
-    """One problem per header-shaped line that is not the block (milestone 283, one provenance
-    block per file, in the spelling the parse reads), and per refusal
+    """One problem per header-shaped line that is not the block (milestone 283 (one provenance
+    block per file, in the spelling the parse reads)), and per refusal
     the parse cannot reach (2026-09-18), because either would leave a ruling invisible."""
     out = []
     for number, line, why in name_provenance.strays(text, prefix):
