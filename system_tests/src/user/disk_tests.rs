@@ -66,8 +66,8 @@ const NIFE_FIRST_LBA: u64 = 30720;
 /// the last block, which begins partway into a filesystem block at an offset that depends on the
 /// disk's size (`globally_unique_identifier_partition_table::span`).
 ///
-/// The roster half also holds milestone 421: when the runner attached an NVMe controller, the
-/// surveyor must list it.
+/// The roster half also holds milestone 421 (the block roster names an NVMe disk): when the runner
+/// attached an NVMe controller, the surveyor must list it.
 ///
 /// Falsification: replayable `system_tests/falsifications/user.disk_tests.the_disk_surveyor_reads_a_table_gptfdisk_wrote.patch`
 #[test_case]

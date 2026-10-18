@@ -46,7 +46,7 @@ pub(crate) const X86_FIXTURES_REQUIRED: bool =
     cfg!(target_arch = "x86_64") && !env!("NIFE_X86_FIXTURES_REQUIRED").is_empty();
 
 /// **Whether the runner was told to attach an NVMe controller**, on any architecture (milestone
-/// 421). The runners attach one exactly when `NIFE_NVME` names an image, so the block roster owes
+/// 421 (the block roster names an NVMe disk)). The runners attach one exactly when `NIFE_NVME` names an image, so the block roster owes
 /// one NVMe entry when this is true and none when it is false.
 ///
 /// Name: provisional. Named for what the test learns, the way `X86_NIC_ATTACHED` is.

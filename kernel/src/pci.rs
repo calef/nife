@@ -961,7 +961,8 @@ fn each_non_volatile_memory_express_controller(found: &mut dyn FnMut(Bdf)) {
     );
 }
 
-/// How many NVMe controllers are on the bus (milestone 421, the roster's NVMe entries).
+/// How many NVMe controllers are on the bus, for milestone 421 (the block roster names an NVMe
+/// disk).
 ///
 /// Config space only, for [`count_block_devices`]'s reason: [`find_nvme_device`] places BARs and
 /// enables bus mastering, and the kernel's bring-up then resets the controller, none of which a

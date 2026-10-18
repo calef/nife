@@ -1,5 +1,5 @@
 Falsifies `system_tests::user::disk_tests::the_disk_surveyor_reads_a_table_gptfdisk_wrote`, its
-NVMe half (milestone 421).
+NVMe half (milestone 421 (the block roster names an NVMe disk)).
 
 Architecture: aarch64, riscv64, x86_64
 
