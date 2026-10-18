@@ -12,7 +12,7 @@
 
 use std::sync::LazyLock;
 
-pub(super) use after_reboot::{FROM_BASALT, SWISH_CHECK_AFTER_REBOOT};
+pub(super) use after_reboot::{FROM_BASALT, RESOLVING_LINE, SWISH_CHECK_AFTER_REBOOT};
 pub(super) use line::{JOB_DID_NOT_RUN, Line, interrupted_at_prompt, keys, line};
 
 use super::*;

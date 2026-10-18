@@ -444,7 +444,7 @@ fn addresses(c: &Configured<'_>) -> Result<Vec<SocketAddr>, String> {
     }
     Ok((c.repository.host, port)
         .to_socket_addrs()
-        .map_err(|e| format!("{:?}", e.kind()))?
+        .map_err(|e| format!("not resolved: {}", listed::reason(&e)))?
         .collect())
 }
 
@@ -460,7 +460,7 @@ fn get(
     body: impl FnMut(&[u8]),
 ) -> Result<(), String> {
     let peer = PinnedPeer::new(server_name, root).map_err(|e| format!("{e:?}"))?;
-    let tcp = TcpStream::connect(to).map_err(|e| format!("{:?}", e.kind()))?;
+    let tcp = TcpStream::connect(to).map_err(|e| listed::reason(&e))?;
     let session = Session::handshake(&peer, tcp).map_err(|e| format!("{e:?}"))?;
     match session.get(path, body) {
         Ok(200) => Ok(()),
