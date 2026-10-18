@@ -39,7 +39,9 @@ Absorbed is a nife OS mechanism or proof only. A contribution to the toolchain, 
 ([`notes/kani-upstream.md`](../../notes/kani-upstream.md)), is recorded under lines nife owns once
 nife deletes its patched Kani, and not as absorbed.
 
-Taught is tracked and never counted toward a color. Readers of a course are a leading indicator,
+Taught counts once a course chapter is live, and is a leading indicator until then. Which of
+green's counts it joins (with absorbed and handed off, or with adopted and composed) is open, and
+calef's. Readers of a course are a leading indicator,
 and an instructor using it in a class is the stronger one, because a class's students build kernels
 from the crates and that feeds composed. The rust-osdev crates (`x86_64`, `bootloader`) spread
 largely through a tutorial built on them, and so did Limine and smoltcp: someone showed them working

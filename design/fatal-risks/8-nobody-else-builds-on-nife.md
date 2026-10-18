@@ -17,7 +17,7 @@ note in the appendix, and it returns as a fatal risk only if nife turns back tow
 
 Not run, and no verdict.
 
-Four observations count, each only when it is real:
+Four observations count from the start, each only when it is real:
 
 1. Adopted. A nifeos crate has a dependent outside nifeos that is itself maintained and used, not a
    demo, a fork or another nife lane's test project.
@@ -30,9 +30,10 @@ Four observations count, each only when it is real:
    revocation, untyped allocation, DMA confinement) rather than plumbing such as boot, paging or a
    FAT driver.
 
-Taught is a fifth, tracked as a leading indicator and never toward a color: people working through
-a course built on nife's crates. It is measured once a course chapter is live, and the entry does not
-wait on one. Publishing a crate or a chapter counts as none of the five.
+Taught is a fifth: people working through a course built on nife's crates. Until a course chapter
+is live it is a leading indicator only, so the entry does not wait on one; once a chapter is live it
+counts. Which of green's two counts it then joins is open, and calef's. Publishing a crate or a
+chapter counts as none of the five.
 
 **The experiment, which has not been run:** honest attempts at releasing or contributing nife's
 mechanisms, each with its own 6-month clock, run in parallel. An attempt is a release or a pull
