@@ -11,7 +11,7 @@
 //! The order and its effect are two steps. `SUSPEND` records
 //! [`suspend_requested`](crate::thread::Thread::suspend_requested); the thread parks where it next
 //! meets the scheduler, which is [`park_suspended_current`] for a thread leaving a core and
-//! [`park_suspended_popped`] for one about to be switched onto one. Both are reached from
+//! [`park_popped_and_pop_again`] for one about to be switched onto one. Both are reached from
 //! `schedule`, the one path onto a CPU, so no thread carrying the order runs another instruction.
 //!
 //! Name: provisional (lane/48-tcb-suspend-resume, 2026-10-18 UTC). The module and its four
@@ -99,18 +99,29 @@ pub(super) fn park_suspended_current(sched: &mut IpcTables, current: ThreadId) {
     }
 }
 
-/// **Park a thread the pick just popped instead of running it.** Called by `choose_next` for a
-/// popped thread carrying the order; its token is already home (`hold_token`), so it is on no
-/// queue, and it is `Ready` and off every core. `park` is for a thread parking itself, so the
-/// state is written here directly, the same out-of-protocol write `START` makes.
+/// **Park a thread the pick just popped instead of running it, and pop again** until the queue
+/// gives a thread without the order or runs dry. Called by `choose_next`, whose answer this is.
+/// Each popped token is already home (`hold_token`), so a parked thread is on no queue, and it is
+/// `Ready` and off every core. `park` is for a thread parking itself, so the state is written here
+/// directly, the same out-of-protocol write `START` makes. Out of line so the pick pays one branch.
 #[cold]
 #[inline(never)]
-pub(super) fn park_suspended_popped(sched: &mut IpcTables, tid: ThreadId) {
-    if let Some(t) = sched.threads.get_mut(tid) {
-        debug_assert!(t.handshake.state == State::Ready && !t.handshake.on_cpu);
-        t.handshake.state = State::Blocked;
-        t.handshake.wait_on = Some(Wait::Resume);
-        t.handshake.ipc_served = false;
+pub(super) fn park_popped_and_pop_again(
+    sched: &mut IpcTables,
+    mut tid: ThreadId,
+) -> Option<ThreadId> {
+    loop {
+        if let Some(t) = sched.threads.get_mut(tid) {
+            debug_assert!(t.handshake.state == State::Ready && !t.handshake.on_cpu);
+            t.handshake.state = State::Blocked;
+            t.handshake.wait_on = Some(Wait::Resume);
+            t.handshake.ipc_served = false;
+        }
+        let token = cpu::current().with_runq(|q| q.pop_front())?;
+        match hold_token_reading_order(token) {
+            (next, false) => return Some(next),
+            (next, true) => tid = next,
+        }
     }
 }
 

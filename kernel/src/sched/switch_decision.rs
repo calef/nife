@@ -42,18 +42,15 @@ pub(super) fn choose_next(sched: &mut IpcTables, current: ThreadId) -> Option<Th
 
     // The popped token goes home to its thread, which holds it while it runs, and the id is what
     // everything below uses. **A popped thread carrying a suspension order is parked rather than
-    // run** (DECISIONS §300 (the paused state, a TCB verb, silent)) and the pick goes on: this is the one place a queued thread reaches a
-    // CPU, whichever wake or placement queued it, so an order given while it waited is kept here.
-    let popped = loop {
-        let Some(token) = cpu::current().with_runq(|q| q.pop_front()) else {
-            break None;
-        };
-        let id = hold_token(token);
-        if sched.threads.get(id).is_some_and(|t| t.suspend_requested) {
-            suspension::park_suspended_popped(sched, id);
-            continue;
-        }
-        break Some(id);
+    // run** (DECISIONS §300 (the paused state, a TCB verb, silent)) and the pick goes on: this is
+    // the one place a queued thread reaches a CPU, whichever wake or placement queued it, so an
+    // order given while it waited is kept here.
+    let popped = match cpu::current().with_runq(|q| q.pop_front()) {
+        None => None,
+        Some(token) => match hold_token_reading_order(token) {
+            (id, false) => Some(id),
+            (id, true) => suspension::park_popped_and_pop_again(sched, id),
+        },
     };
     let next = match popped {
         Some(id) => id,
