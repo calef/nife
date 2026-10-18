@@ -222,6 +222,11 @@ checks each, built by `helpers/build-c-library-contract.sh` and run by `c_thread
   memory and 16 threads.
 - **`select` leaves `timeout` as it was given**, which POSIX allows; Linux writes back the time
   left, so a program that reuses it without resetting it waits longer here.
+- **`O_DIRECT` asks for nothing the server is told.** The library keeps the flag on the
+  descriptor and `fcntl(F_SETFL)` may set or clear it, as on Linux, but the file contract has no way
+  to ask a server not to cache, so whether a read skips a cache is the server's. `redoxfs_server`
+  caches, and there the flag changes nothing; the disk tree (`/disk`, milestone 834) has no cache,
+  so there every read reaches the device with or without it.
 - **`O_DSYNC` costs what `O_SYNC` does.** The file contract has one sync, `fsync`'s, so a data-only
   sync also waits for the metadata.
 - **No log service.** `syslog` drops a message unless `openlog` asked for `LOG_PERROR` or

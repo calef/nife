@@ -439,9 +439,7 @@ impl Wiring {
             "no NVMe client was given window {window}",
         );
         self.transfer_phys
-            + window
-                * crate::non_volatile_memory_express::TRANSFER_PAGES
-                * page_frames::FRAME_SIZE
+            + window * crate::non_volatile_memory_express::TRANSFER_PAGES * page_frames::FRAME_SIZE
     }
 
     /// The request endpoint as client window `window` is granted it: `WRITE`, badged with the

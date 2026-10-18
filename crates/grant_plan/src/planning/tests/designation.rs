@@ -782,3 +782,26 @@ fn a_designation_becomes_one_grant_at_the_current_directory() {
         Err(Refusal::NoSuchCapability(CapabilityKind::File))
     );
 }
+
+/// **Under a mount point, the words' grant is in the mounted tree** (milestone 834): the second
+/// tree, at the position inside it, as every other grant there records it. It was the first tree
+/// at the mount-inclusive path, so the progenitor would have descended into a first-tree
+/// directory named after the mount point.
+#[test]
+fn a_designation_under_a_mount_point_is_in_the_mounted_tree() {
+    use expand::Designation;
+    let mut d = Designation::none();
+    d.name(b"n1", false).unwrap();
+    let mut holds = mounted();
+    holds.cwd = at(&[b"media", b"usb", b"nvme0"]);
+    let e = super::plan_against(
+        &parse_run(b"std_exerciser needle n1"),
+        Program::StdExerciser,
+        Program::StdExerciser.manifest(),
+        holds,
+        Expansion::designated(d),
+    )
+    .unwrap();
+    let g = e.directory.expect("n1 was designated");
+    assert_eq!((g.which, g.directory), (nav::Which::B, at(&[b"nvme0"])));
+}

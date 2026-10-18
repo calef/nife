@@ -262,8 +262,10 @@ const _: () = assert!(core::mem::size_of::<CapabilityTable>() == 2064);
 pub(crate) type CapabilityTable = capability::CapabilityTable<Object, CAPABILITY_TABLE_SLOTS>;
 
 /// **What a real interactive boot actually reaches**: the progenitor's peak capability count,
-/// measured on `script/swish-check`'s aarch64 leg. The highest is the gpu-and-keyboard boot, at 34
-/// of [`CAPABILITY_TABLE_SLOTS`]; a boot with no gpu peaks lower. `notes/capability-peak-trace.md`
+/// measured on `script/swish-check`'s aarch64 leg. The highest is the gpu-and-keyboard boot with an
+/// NVMe disk, at 36 of [`CAPABILITY_TABLE_SLOTS`] (2026-10-18 UTC); a boot with no gpu peaks lower,
+/// and one with no NVMe disk two lower, because the disk tree's endpoint and client-window pool
+/// (milestone 834) are held for the life of the boot. `notes/capability-peak-trace.md`
 /// itemises what sits on the peak: the capabilities the progenitor never gives back (among them the
 /// entropy and network client endpoints it endows children from, the display grants, its own
 /// address space, the reboot object and the name resolver's endpoint), the login block's own, and
@@ -279,7 +281,7 @@ pub(crate) type CapabilityTable = capability::CapabilityTable<Object, CAPABILITY
 /// The check is against this record rather than the ceiling, which would only fire on a boot that
 /// had already died, or a fraction of it, which would be a margin picked out of the air. A
 /// recorded measurement going stale is a fact about the tree that stopped being true.
-pub(crate) const CAPABILITY_TABLE_PEAK_MEASURED: usize = 34;
+pub(crate) const CAPABILITY_TABLE_PEAK_MEASURED: usize = 36;
 
 // The headroom milestone 230 left is what this pair means, so the two cannot silently invert.
 const _: () = assert!(CAPABILITY_TABLE_PEAK_MEASURED < CAPABILITY_TABLE_SLOTS);

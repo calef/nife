@@ -83,6 +83,61 @@ pub(super) const fn job_windows() -> Windows {
     Windows::new(1, login_contract::DURABLE_WINDOW)
 }
 
+/// **The second mounted tree's job windows** (milestone 834): every window but 0, which is the
+/// shell's (the first file service's window 0 frame, [`MountedTreeGrant::pool`]). No `login` window
+/// is reserved, because `login` holds one tree.
+pub(super) const fn mounted_job_windows() -> Windows {
+    Windows::new(1, fs_operation::CLIENT_WINDOWS as u64)
+}
+
+/// **A directory grant in the second mounted tree, as the disk tree will see it**: the caretaker's
+/// words with `disk/` taken off the name (`grant_plan::spawnproto::in_mounted_tree`), or `None` for
+/// a grant in the first tree.
+pub(super) fn mounted_grant((lo, hi, spec): (u64, u64, u64)) -> Option<(u64, u64, u64)> {
+    use filesystem_contract::grant;
+    let mut buf = [0u8; grant::MAX_NAME];
+    let n = grant::unpack_name(lo, hi, grant::spec_len(spec), &mut buf);
+    let rest = spawnproto::in_mounted_tree(&buf[..n])?;
+    let (lo, hi) = grant::pack_name(rest);
+    Some((lo, hi, grant::spec(rest.len(), grant::spec_rights(spec))))
+}
+
+/// **A channel of its own for one job behind a grant in the second mounted tree**: [`job_channel`]
+/// over the disk tree's pool, which this process maps once at [`MOUNTED_TREE_POOL_VA`] to zero a
+/// window's first page between jobs, so nothing one job staged there reaches the next.
+pub(super) fn mounted_job_channel(tree: Fs, w: u64, own_ut: u64, mapped: &mut bool) -> Option<Fs> {
+    if !*mapped {
+        // SAFETY: the syscall; read/write, to zero.
+        *mapped = unsafe {
+            invoke(
+                tree.page,
+                abi::page_frame::MAP,
+                MOUNTED_TREE_POOL_VA,
+                1,
+                own_ut,
+            )
+        } == 0;
+    }
+    if !*mapped {
+        return None;
+    }
+    // SAFETY: the pool is mapped read/write at MOUNTED_TREE_POOL_VA, whole run, and window `w`'s
+    // first page lies inside it; no client is using window `w` between two jobs.
+    unsafe {
+        core::ptr::write_bytes(
+            (MOUNTED_TREE_POOL_VA + w * fs_operation::TRANSFER_MAX as u64) as *mut u8,
+            0,
+            PAGE_BYTES,
+        );
+    }
+    let page = window_page(tree.page, w)?;
+    let Some(ep) = window_endpoint(tree.ep, w) else {
+        cap_delete(page);
+        return None;
+    };
+    Some(Fs { ep, page })
+}
+
 /// **Whether a file server's image says it enforces subtree grants itself** (milestone 606, ruling
 /// T1): it carries a `capability_manifest_note::SUBTREE_GRANTS` note naming the one scope crate there is. No
 /// image, no note, or a note that does not decode all answer `false`.

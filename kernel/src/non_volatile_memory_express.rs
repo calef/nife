@@ -41,6 +41,11 @@ use crate::arch::mmu;
 /// block server serves the FS server without a translation layer.
 pub const BLOCK_SIZE: usize = filesystem_contract::blk::BLOCK_SIZE;
 
+/// The EL0 server's client windows (milestone 834), named here for the wiring and its tests.
+pub use ::non_volatile_memory_express::{
+    CLIENT_WINDOWS, DISK_TREE_WINDOW, FILESYSTEM_WINDOW, INSTALLER_WINDOW,
+};
+
 /// The DMA region's layout, in page offsets. One contiguous run, allocated by [`bring_up`] and
 /// confined as one region, in two halves that are **not** the same authority:
 ///

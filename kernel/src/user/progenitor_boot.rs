@@ -77,7 +77,8 @@ pub(crate) const PROGENITOR_ROLE: u64 = 27;
 /// page at 3, the inert-configuration page at 4, the file service and its page at 5 and 6, the
 /// virtio-rng trio at 7-9, the graphical terminal stack at 10-12, the virtio-net trio at 13-15, the
 /// GPU and keyboard grants at 17-22, the machine statistics page at 23, the progenitor's own
-/// address space at 28 and the reboot object at 31, each when present.
+/// address space at 28, the reboot object at 31 and the disk tree's pair at 32 and 33, each when
+/// present.
 /// `components/src/progenitor.rs`'s single `GRANTS` table reads exactly this.
 ///
 /// **Only two differences are the hardware's, and only those are `#[cfg]`-gated**:
@@ -144,7 +145,7 @@ pub fn boot_progenitor(archive: &'static [u8]) -> Result<crate::thread::ThreadId
     let tid =
         crate::sched::create_thread_control_block(thread_control_block_region).expect("no tcb");
     grant_boot_slots(tid, build_region, uart_irq);
-    let fs_rights = grant_file_service(tid);
+    let (fs_rights, fs_pool) = grant_file_service(tid);
     let virtio_rng = grant_entropy_source(tid);
     let (gpu, keyboard) = wire_graphics();
     grant_machine_slots(tid, aspace_name);
@@ -157,13 +158,13 @@ pub fn boot_progenitor(archive: &'static [u8]) -> Result<crate::thread::ThreadId
     // **Say that this boot worked**, if a chooser started it (rung 2b of milestone 198's other
     // half). Here and not a line earlier or later, and the position is the mechanism: the
     // filesystem server above has mounted the installed disk and reported ready, which is as late
-    // a criterion as this system can evaluate without a person, and the progenitor has not started,
-    // so the disk's one transfer region still has a single user. `install_service::confirm` argues
-    // both halves and names the foot gun in the second.
+    // a criterion as this system can evaluate without a person. The installer stages in a transfer
+    // window of its own (`install_service::confirm`), so nothing else on the disk constrains when.
     #[cfg(target_arch = "x86_64")]
     if fs_rights != 0 {
         install_service::confirm();
     }
+    grant_disk_tree(tid, fs_pool);
     crate::sched::configure_thread_control_block(tid, elf.entry(), USER_STACK_TOP, aspace_name)
         .expect("configure");
     // x0 = the boot role (the progenitor has one role and ignores it, but it is passed for the
@@ -339,8 +340,9 @@ fn grant_boot_slots(tid: crate::thread::ThreadId, build_region: u64, uart_irq: u
 }
 
 /// Slots 5 and 6, the file service and its shared page, when this boot has a filesystem; returns
-/// the rights the progenitor is told the endpoint holds (0 for none).
-fn grant_file_service(tid: crate::thread::ThreadId) -> u64 {
+/// the rights the progenitor is told the endpoint holds (0 for none) and the client-window pool's
+/// physical base.
+fn grant_file_service(tid: crate::thread::ThreadId) -> (u64, Option<u64>) {
     // The file service (slot 5) and the page its clients share with it (slot 6), when this boot has
     // a filesystem (milestone 50). GRANT on both, because the progenitor's job with them is to delegate: it
     // narrows the endpoint into the shell and maps the frame into its address space. `a2` carries
@@ -373,9 +375,9 @@ fn grant_file_service(tid: crate::thread::ThreadId) -> u64 {
             )
             .expect("insert the shared file page");
             assert_eq!(s6, 6);
-            filesystem_contract::dir::ALL
+            (filesystem_contract::dir::ALL, Some(file_shared))
         }
-        None => 0,
+        None => (0, None),
     }
 }
 
@@ -558,6 +560,36 @@ fn grant_machine_slots(tid: crate::thread::ThreadId, aspace_name: u64) {
     )
     .expect("insert the reboot object");
     assert_eq!(s31, 31);
+}
+
+/// Slots 32 and 33, the disk tree and its client-window pool, when this machine has an NVMe disk
+/// (milestone 834): the installed system's second mounted tree (calef, 2026-10-18 21:36 UTC, "Yes,
+/// read-only at prompt"). `WRITE | GRANT` on both for the file service's reason at slots 5 and 6:
+/// the progenitor narrows the endpoint into the shell and slices the pool, one window per client.
+/// Past the reboot object's slot 31, so no earlier slot moves. Only beside a file service, whose
+/// window 0 the shell's one page is and the disk tree's window 0 becomes.
+fn grant_disk_tree(tid: crate::thread::ThreadId, fs_pool: Option<u64>) {
+    let Some(tree) = fs_pool.and_then(super::disk_tree_service::start) else {
+        return;
+    };
+    let s32 = crate::sched::thread_control_block_insert_cap(
+        tid,
+        crate::cap::rendezvous_cap(tree.request, Rights::WRITE.union(Rights::GRANT)),
+        Some(32),
+    )
+    .expect("insert the disk tree");
+    assert_eq!(s32, 32);
+    let s33 = crate::sched::thread_control_block_insert_cap(
+        tid,
+        crate::cap::page_frame_run_cap(
+            tree.pool,
+            crate::cap::page_frame_run_len(super::disk_tree_service::POOL_PAGES as u64),
+            Rights::WRITE.union(Rights::GRANT),
+        ),
+        Some(33),
+    )
+    .expect("insert the disk tree's client windows");
+    assert_eq!(s33, 33);
 }
 
 /// Slots 24 to 26: the kernel's log ring, its cursor page and its notification.

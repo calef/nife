@@ -265,6 +265,26 @@ pub(in crate::swish_check) const SWISH_CHECK_AFTER_REBOOT: &[Line] = &[
         ],
     ),
     line(0, "cd /", &[]),
+    // **The same program, timing the disk rather than a file server's memory** (milestone 834).
+    // `/disk` is the second mounted tree, the disk tree: the whole NVMe namespace as one
+    // read-only file, `n1`, served with no cache, so every request reaches the controller.
+    // `-o 1m -S 4m` is the range Linux's side of the bench names by flag, scaled to this 8 MiB
+    // disk. The library's `O_DIRECT` is not asked for here: basalt's ioping is built without
+    // `HAVE_DIRECT_IO`, so `-D` would be refused until it is rebuilt.
+    line(0, "ls /disk/nvme0", &["n1"]),
+    line(0, "cd /disk/nvme0", &[]),
+    line(
+        1,
+        DISK_TREE_IOPING_LINE,
+        &[
+            "4 KiB <<< n1 ",
+            "request=5 ",
+            "ioping statistics ---",
+            "4 requests completed in ",
+            ", 16 KiB read, ",
+        ],
+    ),
+    line(0, "cd /", &[]),
     // **`hackbench`, basalt's second C package** (milestone 907 (hackbench is packaged in basalt,
     // and its test installs it with `jig`)), installed the same way. Its thread mode is the run
     // `c_thread_tests` makes, smaller: one group of two senders and two receivers, four threads
@@ -349,6 +369,15 @@ const HACKBENCH_LINE: &str = "hackbench -T -p -g 1 -f 2 -l 10";
 /// flags, pointed at the installed program's own file rather than a directory.
 const IOPING_LINE: &str = "ioping -c 5 -i 0 -s 4k ioping/1.3/ioping";
 
+/// `ioping` against the disk tree (milestone 834): five 4 KiB reads at random offsets in the 4 MiB
+/// from 1 MiB of swish-check's NVMe disk.
+const DISK_TREE_IOPING_LINE: &str = "ioping -c 5 -i 0 -s 4k -S 4m -o 1m n1";
+
+/// The lines that read the disk tree, left out where a leg attaches no NVMe disk
+/// (`verdict::swish_check_omits`).
+pub(in crate::swish_check) const ON_THE_DISK_TREE: &[&str] =
+    &["ls /disk/nvme0", "cd /disk/nvme0", DISK_TREE_IOPING_LINE];
+
 /// The lines that need a repository from basalt (milestones 810, 906, 907, 897, 921 and 922),
 /// skipped without one outside CI.
 pub(in crate::swish_check) const FROM_BASALT: &[&str] = &[
@@ -357,6 +386,7 @@ pub(in crate::swish_check) const FROM_BASALT: &[&str] = &[
     "jig install ioping",
     "ioping -v",
     IOPING_LINE,
+    DISK_TREE_IOPING_LINE,
     "jig install hackbench",
     HACKBENCH_LINE,
     "jig install sqlite",

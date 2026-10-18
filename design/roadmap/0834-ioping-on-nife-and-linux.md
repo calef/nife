@@ -45,6 +45,37 @@ Risk 1 (only software written for nife runs on nife): a third-party C program ru
   the file path goes through a cache, the run uses the block window instead, and the row says so.
 - A clock with microsecond resolution or better, reachable from C.
 
+## The target and direct I/O on nife
+
+calef ruled both on nifeos/nife#2371 (2026-10-18 UTC): *"Yes, read-only at prompt"* (21:36) and
+*"Per-client window"* (23:06).
+
+- **The target is the block window, through the disk tree.** `components/src/disk_tree.rs` serves
+  the whole NVMe namespace as one read-only file, `/disk/nvme0/n1`, with no cache: every read is
+  one device read (`crates/disk_tree`'s tests hold it). It is the installed system's second mounted
+  tree. ioping names the window by flag on both systems, `-o 1m -S 64m`, against `n1` on nife and
+  `/dev/nvme0n1` on Linux.
+- **The disk tree is the NVMe server's second client.** The NVMe server stages each request in the
+  transfer window its endpoint's badge names (`non_volatile_memory_express::CLIENT_WINDOWS`), so
+  the disk tree reads beside a live filesystem server, and the disk tree's window cannot write.
+- **Direct I/O is `O_DIRECT` in the C library** (`c_library/README.md`'s BUGS says what it does
+  not promise). basalt's recipe builds ioping with `-DHAVE_DIRECT_IO`, ioping's own Linux
+  definition, so `-D` is accepted and the "non-cached I/O not supported" warning is not printed.
+- **The file path stays cached.** A file on `redoxfs_server` is served from its memory after the
+  first read, so a run against one measures that memory, and the row says so.
+
+The run at the prompt:
+
+```text
+cd /disk/nvme0
+ioping -D -c 1000 -i 0 -s 4k -S 64m -o 1m n1
+```
+
+Reuse: the disk tree is written. Nothing in the tree or in a dependency serves a raw block range
+over the file contract, and the server is a namespace of two names over `filesystem_contract::blk`.
+
+The names `/disk`, `nvme0`, `n1` and `disk_tree` are provisional.
+
 ## The Linux comparison
 
 The same ioping release, pinned by tag. The same flags on both sides: direct I/O, 4 KiB, a fixed

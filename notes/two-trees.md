@@ -80,18 +80,20 @@ cd                        pwd is /
 
 ## What is left, and when
 
-How an interactive shell learns it holds a second tree is decided, as the transport and not yet the
-policy. Init puts the endpoint at a named slot, the shell probes it at `_start`, and a shared
-constant holds the mount path and rights. It lands with the first real second filesystem, and so do
-two behaviors calef set: a dead mount answers Gone and disappears, and a shell inside it goes home
-with a message. The automatic mount name and who receives a new device are deferred decisions.
-All of it is design/roadmap/0660-a-second-filesystem-mounts-in-the-boot-shell.md.
+The boot shell holds one second tree: the disk tree, the NVMe disk as one read-only file, at
+`/disk` (milestone 834). The progenitor places its endpoint at `spawnproto::MOUNTED_TREE_SLOT`, the
+shell probes that slot at `_start`, and `spawnproto` holds the mount name and rights. A directory
+grant under `/disk` is named through the mount (`disk/<dir>`), and the progenitor builds it against
+the disk tree. What is left for a filesystem that can come and go: a dead mount answers Gone and
+disappears, and a shell inside it goes home with a message (calef, 2026-09-26). The automatic mount
+name and who receives a new device are deferred decisions. All of it is
+design/roadmap/0660-a-second-filesystem-mounts-in-the-boot-shell.md.
 
 ## BUGS
 
-- `rm` under a mount point is refused at delivery. The progenitor builds a directory grant's
-  caretaker from the one filesystem it holds, and the spawn words do not say which tree, so sending
-  them would hand the program a same-named directory in the first tree. It waits on the proposal.
+- `rm` under a mount point is refused at delivery. A program that hears words is granted its
+  directory under `/disk` by name, but `rm`'s grant is not routed that way yet, and the disk tree
+  would refuse every removal anyway (`EROFS`).
 - `spawnproto::SECOND_DIRECTORY_GRANT_BIT` has no emitter and no decoder in init. A second directory grant for one
   spawned program needs a manifest declaring two directory operands, and none does. §170 (how a
   foreign program is told what to do), ruled 2026-09-26 to grant a named file or directory per the

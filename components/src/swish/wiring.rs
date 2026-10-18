@@ -60,6 +60,15 @@ const _: () = assert!(spawnproto::RUN_UNVOUCHED_SLOT == abi::fault::FAULT_EP_SLO
 pub(super) static HOLDS_CONFIG: core::sync::atomic::AtomicBool =
     core::sync::atomic::AtomicBool::new(false);
 
+/// **Whether this shell holds a second mounted tree** ([`spawnproto::MOUNTED_TREE_SLOT`],
+/// milestone 834): the disk tree, which the progenitor places in the boot shell on a machine with
+/// an NVMe disk. Probed once at `_start` for [`HOLDS_RUN_UNVOUCHED`]'s reason; [`interactive`]
+/// mounts it at [`spawnproto::MOUNTED_TREE_NAME`].
+pub(super) static HOLDS_MOUNTED_TREE: core::sync::atomic::AtomicBool =
+    core::sync::atomic::AtomicBool::new(false);
+
+const _: () = assert!(spawnproto::MOUNTED_TREE_SLOT < abi::fault::FAULT_EP_SLOT);
+
 // The named slot sits under the run-unvouched one and so under the kernel's fault slot.
 const _: () = assert!(grant_plan::SHELL_CONFIGURATION_SLOT < spawnproto::RUN_UNVOUCHED_SLOT);
 

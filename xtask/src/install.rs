@@ -113,11 +113,14 @@ pub(crate) fn install_boot() -> bool {
             ("the progenitor is running at ring 3", "ls\r"),
             // And then read the file back, which is what makes this an install rather than a boot.
             ("made-on-target", "wc made-on-target\r"),
+            // **The disk tree, beside the filesystem on the same disk** (milestone 834): the
+            // NVMe server's two clients, each in its own transfer window, the arrangement xenon
+            // runs `ioping` in. `caps` says where it is mounted and `ls` reads its directory.
+            ("1 10 57", "caps\r"),
+            ("mounted at /disk", "ls /disk/nvme0\r"),
         ],
-        // `wc`'s answer for `filesystem_fixture::blank::MADE_BODY`: one line, ten words,
-        // fifty-seven bytes. Written out rather than derived, because a gate that computed the
-        // number from the same constant the program wrote would be checking its own arithmetic.
-        "1 10 57",
+        // `ls`'s row for the disk tree's one file.
+        "  n1",
         300,
     ) else {
         return false;
@@ -140,7 +143,12 @@ pub(crate) fn install_boot() -> bool {
         "nife capability shell.",
         // The file `mkfs` wrote before the reboot, listed and then read.
         "made-on-target",
+        // `wc`'s answer for `filesystem_fixture::blank::MADE_BODY`: one line, ten words,
+        // fifty-seven bytes. Written out rather than derived, because a gate that computed the
+        // number from the same constant the program wrote would be checking its own arithmetic.
         "1 10 57",
+        "a second tree, mounted at /disk",
+        "  n1",
     ] {
         if !second.contains(wanted) {
             eprintln!("install-boot: boot 2's transcript is missing {wanted:?}");

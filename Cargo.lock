@@ -215,6 +215,7 @@ dependencies = [
  "credentialer",
  "designware_ethernet",
  "designware_mobile_storage",
+ "disk_tree",
  "documentation",
  "domain_name_resolution_contract",
  "domain_name_system",
@@ -408,6 +409,13 @@ dependencies = [
 [[package]]
 name = "direct_memory_access_validator"
 version = "0.1.0"
+
+[[package]]
+name = "disk_tree"
+version = "0.1.0"
+dependencies = [
+ "filesystem_contract",
+]
 
 [[package]]
 name = "documentation"

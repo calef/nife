@@ -1052,6 +1052,19 @@ pub(crate) fn nvme_disk_path() -> String {
         .to_string()
 }
 
+/// Where swish-check's NVMe disk is written (milestone 834): its own file rather than
+/// [`nvme_disk_path`], so a suite leg and a swish-check leg in one checkout do not share a disk.
+pub(crate) fn swish_check_nvme_path() -> String {
+    workspace_root()
+        .join("target/swish-check-nvme.img")
+        .display()
+        .to_string()
+}
+
+/// How big swish-check's NVMe disk is: 8 MiB, the suite's size, which holds the after-reboot
+/// script's `ioping` range (4 MiB from 1 MiB).
+pub(crate) const SWISH_CHECK_NVME_BYTES: usize = 8 * 1024 * 1024;
+
 /// The NVMe test image (milestone 53's storage half): 8 MiB of zeros behind QEMU's `-device nvme`.
 /// **Neither number is load-bearing any more** (milestone 318): the boot test compares the
 /// server's size answer against the geometry the kernel read from IDENTIFY rather than against a

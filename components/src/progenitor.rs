@@ -140,13 +140,18 @@ pub extern "C" fn _start(_a0: u64, initial_ramdisk_len: u64, fs_rights: u64) -> 
     // symmetry the old `spawn_progenitor` established, when the same function also entered `hello` at
     // milestone 19d's test roles.
     //
-    // `None`: milestone 154's second directory grant is a real mechanism
-    // (`system_initializer::boot`'s `mounted_tree` parameter), but what the second subtree should
-    // *be* is a boot-time policy decision DECISIONS §126 (a real, single, moving `cwd`) reserves
-    // for an architect, so this real
-    // boot
-    // does not enable it.
-    system_initializer::boot(&GRANTS, initial_ramdisk_len, fs_rights, None)
+    // **The second mounted tree is the disk tree** (milestone 154's mechanism, milestone 834's
+    // use): the whole NVMe namespace as one read-only file with no cache, at `/disk`. DECISIONS
+    // §126 (a real, single, moving `cwd`) reserved what the second subtree should be for an
+    // architect, and calef ruled it on nifeos/nife#2371, 2026-10-18 21:36 UTC: "Yes, read-only at
+    // prompt". The kernel grants slots 32 and 33 only on a machine with an NVMe disk, and `boot`
+    // probes them.
+    system_initializer::boot(
+        &GRANTS,
+        initial_ramdisk_len,
+        fs_rights,
+        Some(system_initializer::MountedTreeGrant { ep: 32, pool: 33 }),
+    )
 }
 
 user_mode_runtime::panic_handler!();

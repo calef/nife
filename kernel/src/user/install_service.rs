@@ -341,8 +341,7 @@ fn spawn_system_installer(
         let maps = system_installer_maps(boot_file_len);
         crate::sched::grant_at(SLOT_REPORT, rendezvous_cap(report, Rights::WRITE))
             .expect("system_installer slot 0 was occupied");
-        crate::sched::grant_at(SLOT_BLK, blk_cap)
-            .expect("system_installer slot 1 was occupied");
+        crate::sched::grant_at(SLOT_BLK, blk_cap).expect("system_installer slot 1 was occupied");
         // **Slot 2 is the difference between the two roles and nothing else is.** A survey holds
         // the same disk, writable; without entropy it cannot draw the unique ids a *new* table
         // carries, which narrows what the program would write and not what it can (module docs,
