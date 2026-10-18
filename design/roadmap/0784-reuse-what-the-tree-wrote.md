@@ -19,8 +19,7 @@ commit only), so the `Reuse:` lines below use the ruling's terms and should be c
 landed wording. Title and slug are drafts.
 
 This is a proposal, not a decision: every replacement below adds a dependency, an architect's call
-under §46. Item (a) is built: calef approved `httparse` in the shipping graph on 2026-10-18 (UTC),
-and `http_response` reads its head through it. Items (b) to (h) wait on their own rulings.
+under §46. Item (a) is built, on calef's 2026-10-18 (UTC) approval of `httparse`.
 
 ## Method, and what the numbers mean
 
@@ -81,14 +80,12 @@ Not kernel, not proved, not protocol: the candidates. Surprise: the kernel lists
 
 ## Ranked: trust gained per cost
 
-1. BUILT: `http_response` reads its head through `httparse` 1.10.1 (default features off, so `no_std`
-and no allocator), which is zero-dependency and has no advisory. The package fetch path is rung 3a
-of milestone 198 (a package manager, and the trivial install that makes a second customer
-possible), and the head is a network peer's. `httparse::Response::parse` and its `Partial` status
-replace the hand-written scan and line parser. The request writer, the 2 KiB head cap, the
-`Content-Length` policy (no close-delimited body) and strict CRLF stay in the crate. The host tests
-and the fuzz target pass unchanged. What now vouches for the head grammar is `httparse`'s own
-fuzzing (OSS-Fuzz); the unfinished Kani harness is gone. Builds for aarch64, riscv64 and x86_64.
+1. BUILT: `http_response` reads its head through `httparse` 1.10.1 (default features off: `no_std`,
+no allocator, no dependencies, no advisory). It serves rung 3a of milestone 198 (a package manager, and the trivial install that makes a second
+customer possible). `Response::parse` and its `Partial` status replace the hand-written scan and
+line parser. The request writer, the 2 KiB head cap, the `Content-Length` policy (no close-delimited
+body) and strict CRLF stay in the crate. The host tests and fuzz target pass unchanged. `httparse`'s
+fuzzing now vouches for the grammar; the unfinished Kani harness is gone.
 
 2. Adapt `video_terminal` to `vte` for parsing, keeping our grid. Every program that writes to a
 terminal feeds this parser, so it is the widest untrusted-input surface in userspace that nothing
@@ -249,13 +246,8 @@ It records that two rules of §46 disagree here and only an architect can say wh
 
 ## Follow-on
 
-- **Done.** Item (a), 2026-10-18 (UTC): `http_response` reads its head through `httparse`, in
-  pull request nifeos/nife#2289.
-- **Outstanding.** Items (b) to (f2) and surveys (g) and (h), 2026-10-18: no replacement has
-  started, and each still waits on its own dependency ruling under §46. Checked against
-  `crates/` and `components/`: `video_terminal`, `virtio`, `user_mode_heap` and `uefi_loader` are
-  still hand-written, and no `vte`, `virtio-drivers`, `talc`, `r-efi` or `pulldown-cmark`
-  dependency exists in `Cargo.lock`.
+- **Done.** Item (a), 2026-10-18 (UTC), nifeos/nife#2289.
+- **Outstanding.** Items (b) to (h), 2026-10-18: none started, each waits on its own §46 ruling. Checked: none of their crates is in `Cargo.lock`.
 
 ## Index row
 
