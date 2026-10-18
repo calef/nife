@@ -2946,12 +2946,7 @@ fi
 python3 helpers/name_rules.py --selftest
 python3 helpers/name_crossings.py --selftest
 python3 helpers/name_ruled.py --selftest
-# A gate that keys on a state, as name_ruled.py does: a `local` name (§310 (a name read only
-# inside its package is ratified by rule)) holds that state only while no other package reads it
-# by its crate's path and it passes every mechanical check. One that stops fails here and goes
-# back to calef as `provisional`. helpers/name_local.py's header is the manual.
-python3 helpers/name_local.py --selftest
-python3 helpers/name_local.py --check
+python3 helpers/name_checks.py --selftest
 
 echo "naming: no -d names, no daemons, contract crates spelled one way,"
 echo "        no #[path] module shared by two binaries, docs lowercase and hyphenated,"

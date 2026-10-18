@@ -190,7 +190,7 @@ because lint runs constantly. Take the count from the script.
    rather than style.
 7. Every crate, program and `script/` entry point carries a `Name:` block (milestone 115 (the names
    that were ratified), and the provenance appendix). Presence only: it cannot check that the reason
-   is still true. It checks that the block names one of the states (`ratified`, `local`, `recorded`, `provisional`,
+   is still true. It checks that the block names one of the four states (`ratified`, `recorded`, `provisional`,
    `unrecorded`, as `helpers/name_provenance.py`'s `STATUSES` lists them), that `ratified` carries a
    date and that `recorded` carries a citation. It never checks that the state is `ratified`, so a
    name waiting on an architect does not fail anybody's build. `script/names --unratified` is how

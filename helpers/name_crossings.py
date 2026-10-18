@@ -188,7 +188,7 @@ def _without_attributes(header):
 
 
 def encloser(header):
-    """`("impl", type)`, `("mod", name)`, or `("body", None)` for the header of an open block."""
+    """`("impl", type)`, `("mod", name)`, `("extern", None)` or `("body", None)` for a block's header."""
     h = re.sub(r"^(?:pub(?:\s*\([^)]*\))?\s+)?(?:unsafe\s+)?", "", _without_attributes(header))
     if h.startswith("impl"):
         m = _IMPL.match(h)
@@ -196,8 +196,10 @@ def encloser(header):
     m = re.fullmatch(r"mod\s+(\w+)", h)
     if m:
         return "mod", m.group(1)
-    if h.startswith(("extern", "trait")):
-        return "mod", None    # its items are reached as free items would be
+    if h.startswith("extern"):
+        return "extern", None    # foreign declarations, reached as free items would be
+    if h.startswith("trait"):
+        return "mod", None
     return "body", None
 
 

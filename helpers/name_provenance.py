@@ -36,22 +36,10 @@ import re
 # claim about INTENT (whoever chose this expects it to change) where the other three are claims about
 # the RECORD; §89 added it on 2026-08-16 and the states are orthogonal in principle. The tree spends
 # one word on the common case rather than modelling the cross product.
-#
-# `local` is the fifth (§310 (a name read only inside its package is ratified by rule)): a `pub`
-# item no other package reads, which passed every mechanical check on the date it carries. calef
-# ratified the class, not the name, so it is counted apart from `ratified`, and a lane writes it.
-# `helpers/name_local.py` fails one that another package starts reading.
-# The state's word and its block form, in one place: calef has not yet ruled on either, and a rename
-# should touch these lines and nothing else in the tooling.
-LOCAL = "local"
-LOCAL_HEAD = LOCAL + " by rule,"
-LOCAL_BLOCK = "Name: " + LOCAL_HEAD + " {date} (§{section})."
-STATUSES = ['ratified', LOCAL, 'recorded', 'provisional', 'unrecorded']
+STATUSES = ['ratified', 'recorded', 'provisional', 'unrecorded']
 
-_HEAD = re.compile(rf"(ratified|{LOCAL}|recorded|unrecorded|provisional)\b")
-_DATE = re.compile(rf"(?:ratified|{re.escape(LOCAL_HEAD)}) (\d{{4}}-\d{{2}}-\d{{2}})\b")
-# The whole `local` form, because a lane writes it and nothing but the form says which rule it cites.
-LOCAL_FORM = re.compile(rf"^{re.escape(LOCAL_HEAD)} \d{{4}}-\d{{2}}-\d{{2}} \(§\d+\)")
+_HEAD = re.compile(r"(ratified|recorded|unrecorded|provisional)\b")
+_DATE = re.compile(r"ratified (\d{4}-\d{2}-\d{2})\b")
 
 # `recorded` claims the reasoning is somewhere else, so it has to point: `recorded (milestone 46)`,
 # `recorded (design/naming.md)`. Same shape of check as the date on `ratified`, and the same limit,
@@ -315,7 +303,7 @@ def parse(text):
     m = _HEAD.match(text)
     status = m.group(1) if m else None
     date = None
-    if status in ("ratified", LOCAL):
+    if status == "ratified":
         d = _DATE.match(text)
         date = d.group(1) if d else None
     return status, date, refused_in(text)
@@ -342,8 +330,6 @@ def classify(text):
     if status is None:
         return None, None, refused, NO_STATUS
     if status == "ratified" and date is None:
-        return None, None, refused, NO_DATE
-    if status == LOCAL and not LOCAL_FORM.match(text):
         return None, None, refused, NO_DATE
     if status == "recorded" and not CITED.match(text):
         return None, None, refused, NO_CITATION

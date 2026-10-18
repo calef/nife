@@ -8,7 +8,7 @@ architect's call, ship a provisional one and say so, never rename on your own in
 two disagree, this file is the rule and `AGENTS.md` is the bug. The headline rule is
 [§39 (a component is named for what it is)](decisions/0039-component-names.md).
 
-The argument, examples and refusals live in the [appendices](#appendices).
+The argument, worked examples and refusals live in the [appendices](#appendices).
 
 ## Who names things
 
@@ -167,14 +167,13 @@ not tracked and never fails.
 The refusals are the valuable half. A refused name is visible nowhere else, and the person who most
 needs it is the one about to propose it again.
 
-### The five states
+### The four states
 
 | State | Means | What clears it |
 |---|---|---|
 | `provisional` | whoever chose it expects it to change, per §89 (`provisional` becomes the fourth provenance state) | a ruling |
 | `unrecorded` | nothing in the tree or its history says why | research, then a ruling |
 | `recorded` | something outside the block argues the name; calef never ruled | a ruling |
-| `local` | read only by its package; passed every mechanical check | a reader elsewhere, or a failed check |
 | `ratified` | calef ruled, with the date and what was refused | done |
 
 ### The forms
@@ -184,7 +183,6 @@ Name: ratified <YYYY-MM-DD> (<who>, <where>). Refused `x` (why), `y` (why).
 Name: recorded (<where>). <what the tree already argues, and what it does not settle>
 Name: unrecorded. <what the history does and does not say>
 Name: provisional. <what was considered>
-Name: local by rule, <YYYY-MM-DD> (§310).
 ```
 
 - The date on `ratified` sits outside the parentheses, and `recorded` names its citation. Both are
@@ -200,11 +198,6 @@ Name: local by rule, <YYYY-MM-DD> (§310).
 - A directory under `design/` or `notes/` records its name in its own `README.md`, per §75
   (directories carry provenance in their own README).
 
-### Local names are ratified by rule
-
-§310 (ratify local names by rule): a `pub` item only its package reads, passing each
-mechanical check, is `local`: [local-names-are-ratified-by-rule.md](naming/local-names-are-ratified-by-rule.md).
-
 ### The commands
 
 ```
@@ -215,12 +208,17 @@ script/names --unratified  the worklist, ordered by exposure; provisional first;
 script/names --check       the gate; script/lint runs it
 ```
 
-The gate checks presence and form, never `ratified`, so an unratified name never fails a build.
+The gate checks presence and form, and never keys on `ratified`, so an unratified name never fails
+a build.
 
-[convention-rulings.md](naming/convention-rulings.md) rules the order of `--unratified`, and holds
-each rule calef ratified for a class of names, in his words. `script/names` counts a name a rule
-covers as ratified and cites the rule; one it pulls aside keeps its own block's status. A name
-calef ruled and nobody renamed fails `--check` after 45 days.
+The order of `--unratified` is ruled in [convention-rulings.md](naming/convention-rulings.md). That
+page also holds the one gate that keys on a ruling: a name calef ruled and nobody renamed fails
+`--check` after 45 days.
+
+A rule calef ratified for a class of names is recorded with his words in
+[convention-rulings.md](naming/convention-rulings.md) (2026-10-17). `script/names` counts every name
+a rule covers as ratified and `script/names <name>` cites the rule. A name the rule pulls aside keeps
+the status its own block claims.
 
 ## Where a document goes
 
@@ -309,6 +307,9 @@ This is rung three of the ladder: no gate can tell an account from an intention 
 
 A separate check refuses a count above two before "halves". `linedisc` would pass every check. What
 caught it was a person not knowing the word, and that remains the test.
+
+`python3 helpers/name_checks.py` lists the unratified names that break a rule a script can see,
+with each one's reach. [rules-a-script-can-check.md](naming/rules-a-script-can-check.md) says which.
 
 ## Appendices
 
