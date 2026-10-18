@@ -219,7 +219,7 @@ and wire-format value changes. [definitions](interface-stability.md),
 [per crate](project-metrics/interface-stability.md).
 
 <!-- interface-stability: script/metrics writes this -->
-interface, 2026W39 to 2026W42: 10 breaking changes (49 additions); 5 syscall numbers changed, 0 format bumps; 74% co-change.
+interface, 2026W39 to 2026W42: 10 breaking changes (56 additions); 5 syscall numbers changed, 0 format bumps; 74% co-change.
 <!-- /interface-stability -->
 
 ## The crates 857 releases
