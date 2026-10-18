@@ -644,7 +644,10 @@ pub(crate) fn print_summary() {
         return;
     }
     // Copied out before `IOMMU` is taken: both locks share a rank.
-    let platform = DMAR.lock().as_ref().is_some_and(|d| d.platform_interrupt_remapping);
+    let platform = DMAR
+        .lock()
+        .as_ref()
+        .is_some_and(|d| d.platform_interrupt_remapping);
     let g = IOMMU.lock();
     let mut any = false;
     for s in g.iter() {
