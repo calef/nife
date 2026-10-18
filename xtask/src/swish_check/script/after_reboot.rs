@@ -119,8 +119,9 @@ pub(in crate::swish_check) const SWISH_CHECK_AFTER_REBOOT: &[Line] = &[
         ],
     ),
     // **`list -u`: what is installed against what the copy offers** (milestone 809 (the package
-    // client becomes a program)). The live generation holds `greeting` 0.1.0, from the first
-    // boot's catalog install, and the copy offers 0.3.0, newer in Debian's order. The line holds
+    // client becomes a program)). The live generation holds `greeting` 0.1.0 and 0.2.0, from the
+    // first boot's catalog and file installs, and the copy offers 0.3.0, newer in Debian's order
+    // than the newest of them. The line holds
     // `activation/` read only and nothing else, which `caps` shows; `--upgradable` is refused
     // naming `-u` (calef, 2026-10-17 UTC).
     line(
@@ -133,7 +134,7 @@ pub(in crate::swish_check) const SWISH_CHECK_AFTER_REBOOT: &[Line] = &[
         "jig list -u",
         &[
             "installed packages the index offers newer (the copy jig update wrote):",
-            "  greeting 0.1.0 -> 0.3.0",
+            "  greeting 0.2.0 -> 0.3.0",
         ],
     ),
     line(
@@ -172,7 +173,7 @@ pub(in crate::swish_check) const SWISH_CHECK_AFTER_REBOOT: &[Line] = &[
         "packages/greeting/0.3.0/greeting",
         &["hello from a package this image never carried"],
     ),
-    // With 0.3.0 installed beside 0.1.0, the newest installed is the newest offered.
+    // With 0.3.0 installed beside the others, the newest installed is the newest offered.
     line(
         1,
         "jig list -u",
