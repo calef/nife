@@ -34,4 +34,58 @@ pub(super) const LINES: &[Line] = &[
         "interrupt_ignorer",
         &["^C again: tearing the job down.", "its memory reclaimed"],
     ),
+    // **Job control's phase one** (milestone 48 (job control)): two supervised jobs in the background, listed,
+    // one torn down with `kill -9`, a `wait` the gate interrupts (the job keeps running), the
+    // survivor brought to the foreground and interrupted there, then the cooperative `kill` and
+    // a `wait` on the one job it named. `wait` and `fg %1` are in [`SWISH_CHECK_INTERRUPTED`];
+    // `wait %1` is spelled differently so the gate presses nothing under it. Every job here is
+    // built from the shell's own untyped, so none counts against the pool.
+    line(
+        0,
+        "interrupt_heeder &",
+        &["[1] interrupt_heeder running in the background"],
+    ),
+    line(
+        0,
+        "interrupt_ignorer &",
+        &["[2] interrupt_ignorer running in the background"],
+    ),
+    line(
+        0,
+        "jobs",
+        &[
+            "[1] interrupt_heeder running",
+            "[2] interrupt_ignorer running",
+        ],
+    ),
+    line(
+        0,
+        "kill -9 %2",
+        &["[2] interrupt_ignorer: its process was torn down and its memory reclaimed"],
+    ),
+    line(0, "wait", &["stopped waiting; the job keeps running"]),
+    line(
+        0,
+        "fg %1",
+        &[
+            "running interrupt_heeder in the foreground",
+            "the job caught the interrupt and stopped cleanly after",
+        ],
+    ),
+    line(
+        0,
+        "interrupt_heeder &",
+        &["[1] interrupt_heeder running in the background"],
+    ),
+    line(0, "kill %1", &["asked job 1 to stop"]),
+    line(
+        0,
+        "wait %1",
+        &[
+            "[1] interrupt_heeder:",
+            "the job caught the interrupt and stopped cleanly after",
+        ],
+    ),
+    line(0, "jobs", &["no jobs"]),
+    line(0, "date &", &["& runs only a supervised job"]),
 ];
