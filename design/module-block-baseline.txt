@@ -2810,7 +2810,6 @@ crates/grant_plan/src/command.rs::Endowment
 crates/grant_plan/src/command.rs::FORCE
 crates/grant_plan/src/command.rs::FileGrant
 crates/grant_plan/src/command.rs::Holdings
-crates/grant_plan/src/command.rs::MAX_FLAGS
 crates/grant_plan/src/command.rs::RECURSIVE
 crates/grant_plan/src/command.rs::VERBOSE
 crates/grant_plan/src/command.rs::anchor
@@ -2923,11 +2922,9 @@ crates/grant_plan/src/manifest.rs::DirSpec
 crates/grant_plan/src/manifest.rs::ENTROPY_SLOT
 crates/grant_plan/src/manifest.rs::FileSpec
 crates/grant_plan/src/manifest.rs::InputSpec
-crates/grant_plan/src/manifest.rs::MAX_DECLARED_FLAGS
 crates/grant_plan/src/manifest.rs::Manifest
 crates/grant_plan/src/manifest.rs::MemSpec
 crates/grant_plan/src/manifest.rs::NETWORK_SLOT
-crates/grant_plan/src/manifest.rs::NO_FLAGS
 crates/grant_plan/src/manifest.rs::OutputSpec
 crates/grant_plan/src/manifest.rs::UNVOUCHED_STD_MANIFEST
 crates/grant_plan/src/manifest.rs::diagnostics_slot

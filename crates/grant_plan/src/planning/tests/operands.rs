@@ -74,8 +74,8 @@ fn the_recursion_option_is_what_widens_the_grant() {
     );
     assert!(!narrow.directory.unwrap().subtree);
     assert!(wide.directory.unwrap().subtree, "-r must widen the grant");
-    assert_eq!(narrow.flags, 0);
-    assert_eq!(wide.flags, rmopt::RECURSIVE);
+    assert_eq!(narrow.short_options, 0);
+    assert_eq!(wide.short_options, rmopt::RECURSIVE);
 }
 
 /// A manifest whose recursion letter is not its first option, which no shipped program has:
@@ -84,14 +84,14 @@ fn the_recursion_option_is_what_widens_the_grant() {
 const SWEEPS_A_TREE: Manifest = Manifest {
     file: FileSpec::Forbidden,
     dir: DirSpec::Required {
-        subtree_flag: Some(b'r'),
+        subtree_option: Some(b'r'),
     },
     // `r` deliberately second, so the widening reads bit 1.
-    flags: Flags::new(b"vr"),
+    short_options: ShortOptions::new(b"vr"),
     ..READS_A_FILE
 };
 
-/// The subtree check reads the recursion letter's **own** bit out of the flags word, wherever
+/// The subtree check reads the recursion letter's **own** bit out of the short-options word, wherever
 /// the manifest declares it, and widening must follow that bit rather than position zero.
 #[test]
 fn the_recursion_letter_widens_by_its_own_bit_wherever_it_is_declared() {
@@ -99,7 +99,7 @@ fn the_recursion_letter_widens_by_its_own_bit_wherever_it_is_declared() {
         panic!()
     };
     let e = plan_against(&r, Prog::Rm, SWEEPS_A_TREE, WITH_DIRECTORY).unwrap();
-    assert_eq!(e.flags, 1 << 1);
+    assert_eq!(e.short_options, 1 << 1);
     assert!(
         e.directory.unwrap().subtree,
         "-r declared at bit 1 must still widen the grant",
@@ -116,12 +116,18 @@ fn rm_options_are_numbered_by_their_position_in_its_manifest() {
     };
     assert_eq!(r.options(), b"rfv");
     let e = plan(&r, WITH_DIRECTORY).unwrap();
-    assert_eq!(e.flags, rmopt::RECURSIVE | rmopt::FORCE | rmopt::VERBOSE);
+    assert_eq!(
+        e.short_options,
+        rmopt::RECURSIVE | rmopt::FORCE | rmopt::VERBOSE
+    );
     // Separately typed, in any order, is the same grant: options are a set.
     let Command::Run(r) = parse(b"rm -v -f -r doomed") else {
         panic!()
     };
-    assert_eq!(plan(&r, WITH_DIRECTORY).unwrap().flags, e.flags);
+    assert_eq!(
+        plan(&r, WITH_DIRECTORY).unwrap().short_options,
+        e.short_options
+    );
     // And each letter alone lands on exactly its own bit.
     for (line, want) in [
         (&b"rm -r x"[..], rmopt::RECURSIVE),
@@ -132,7 +138,7 @@ fn rm_options_are_numbered_by_their_position_in_its_manifest() {
             panic!()
         };
         assert_eq!(
-            plan(&r, WITH_DIRECTORY).unwrap().flags,
+            plan(&r, WITH_DIRECTORY).unwrap().short_options,
             want,
             "{}",
             core::str::from_utf8(line).unwrap(),
@@ -502,7 +508,7 @@ fn a_program_that_hears_words_places_no_positional_grant() {
         assert_eq!(m.dir, DirSpec::Forbidden, "{name}");
         assert_eq!(m.input, InputSpec::Forbidden, "{name}");
         assert!(
-            m.flags.letters().is_empty(),
+            m.short_options.letters().is_empty(),
             "{name}: its options are its own"
         );
     }
@@ -511,7 +517,7 @@ fn a_program_that_hears_words_places_no_positional_grant() {
 
 /// **The planner lets a program that hears words have its whole line** (§170): a flag-shaped
 /// token is not `Unexpected`, a letter is not `NoSuchOption`, and five words are not past
-/// `MAX_POSITIONALS`. Nothing is placed, so the endowment carries no argument and no flags.
+/// `MAX_POSITIONALS`. Nothing is placed, so the endowment carries no argument and no short options.
 #[test]
 fn a_program_that_hears_words_is_planned_whatever_its_words_are() {
     let e = plan(
@@ -521,7 +527,7 @@ fn a_program_that_hears_words_is_planned_whatever_its_words_are() {
     .unwrap();
     assert_eq!(e.prog, Prog::StdExerciser);
     assert_eq!(
-        (e.program_argument, e.flags, e.file, e.directory),
+        (e.program_argument, e.short_options, e.file, e.directory),
         (0, 0, None, None)
     );
     // And a line `argv` would refuse is refused here, at the prompt, before anything is sent.

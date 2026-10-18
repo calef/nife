@@ -1019,7 +1019,7 @@ fn spawn_dir_grant(
                 return None;
             }
         },
-        (Some(g), _) => match dir_grant(&g, e.flags) {
+        (Some(g), _) => match dir_grant(&g, e.short_options) {
             Ok(words) => Some(words),
             Err(sentence) => {
                 refused();
