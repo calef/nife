@@ -16,6 +16,18 @@ git, which is what lets a historical tree be counted without a checkout.
 and does not is still a named thing, so `script/metrics` counts it toward `names_total` and toward
 no status (the "No provenance block" band). On a tree that passes `script/names --check` it is zero.
 
+**`unblocked` is every module with no block, and a module is a file, not a block.** Every `.rs`
+file under a `src/` directory is a module (`is_module_file`), so the count of modules is a fact of
+the tree and writing a block moves a module from `unblocked` to a status without changing the
+total. Counting only the modules that carried a block would make the total a count of annotation,
+rising whenever a block is written on code that already existed. `helpers/module_block_ratchet.py`
+holds the unblocked list to a baseline that only shrinks, so new code arrives with its block.
+
+**Items are the exception, and it is a foot gun.** An item is counted when it carries a `/// Name:`
+block, because "item" has no definition yet that a tree can be enumerated by (every `pub` item, or
+only the ones another package reaches, is calef's to choose). Until then an item block written on
+old code raises `names_total` as a module block once did.
+
 Name: provisional, minted 2026-10-18 (UTC) by lane maintainer/metrics-names-series. A shared helper
 under `helpers/`, which `script/names` puts out of its own scope, so this paragraph is the record.
 It takes `name_` for the family beside `name_provenance.py`; `census` because it counts a whole
@@ -34,6 +46,9 @@ import name_rules
 # two on 2026-09-13, and `script/metrics` counts each week from the tree it had.
 PROGRAM_DIRS = ("components/src", "fixtures/src", "user/src")
 _RECORD_STEM = re.compile(r"^\d")
+# Trees whose `.rs` files are not this project's modules: vendored and patched upstream code, and
+# code quoted inside documents.
+_NOT_MODULES = ("vendor/", "patches/", "notes/", "design/", "briefs/")
 _PACKAGE_NAME = re.compile(r'^\s*name\s*=\s*"([^"]+)"', re.M)
 
 # Why a header-shaped line is not the block, phrased for whoever has to fix it. The tokens are
@@ -134,14 +149,30 @@ def _stray_problems(kind, name, path, prefix, text):
     return out
 
 
+def is_module_file(path):
+    """True for a `.rs` file under a `src/` directory outside `_NOT_MODULES`: a module, blocked or not.
+
+    `tests/`, `benches/`, `examples/` and `build.rs` are out: each is its own Cargo target that a
+    reader reaches by running it, not by `use`. One of those that carries a block is still counted.
+    """
+    return (path.endswith(".rs") and not path.startswith(_NOT_MODULES)
+            and (path.startswith("src/") or "/src/" in path))
+
+
 def _rust_records(paths, read, surface_files, problems):
-    out = []
+    """`(records, unblocked)`: every item and module block, and every module file with none."""
+    out, unblocked = [], []
     for rel in paths:
         if not rel.endswith(".rs") or rel.startswith(("vendor/", "patches/")):
             continue
         text = read(rel)
-        if text is None or ("Name:" not in text and "Provisional name" not in text
-                            and "Name provisional" not in text):
+        if text is None:
+            continue
+        module = is_module_file(rel) and rel not in surface_files
+        if ("Name:" not in text and "Provisional name" not in text
+                and "Name provisional" not in text):
+            if module:
+                unblocked.append(rel)
             continue
         for it in name_provenance.rust_items(text):
             for number, line, why in it["strays"]:
@@ -174,7 +205,9 @@ def _rust_records(paths, read, surface_files, problems):
             if stem in ("mod", "lib", "main"):
                 stem = os.path.basename(os.path.dirname(rel))
             out.append(("module", stem, rel, found, "module"))
-    return out
+        elif module:
+            unblocked.append(rel)
+    return out, unblocked
 
 
 def _document_records(markdown, pathset, read, problems):
@@ -216,7 +249,7 @@ def _document_records(markdown, pathset, read, problems):
 
 
 def census(paths, read, british=None):
-    """`(records, problems, missing)` for one tree. See this module's docstring for the inputs.
+    """`(records, problems, missing, unblocked)` for one tree. See this module's docstring.
 
     A record is a dict with `kind`, `name`, `path`, `status`, `date`, `refused`, `text`, and `what`
     or `owner`. Names a rule on `name_rules.RULES_DOC` covers come back ratified, citing the rule.
@@ -236,7 +269,8 @@ def census(paths, read, british=None):
     markdown = [p for p in paths if p.endswith(".md") and p.startswith(("design/", "notes/",
                                                                          "briefs/"))]
     docs, missing = _document_records(markdown, pathset, read, problems)
-    for kind, name, path, text, what in _rust_records(paths, read, surface_files, problems) + docs:
+    rust, unblocked = _rust_records(paths, read, surface_files, problems)
+    for kind, name, path, text, what in rust + docs:
         status, date, refused, problem = name_provenance.classify(text)
         if problem is not None:
             problems.append(f"{what} {name} ({path}): the block must start `ratified <date>`, "
@@ -292,4 +326,4 @@ def census(paths, read, british=None):
         _pulled, bad = name_rules.apply(records, name_rules.parse_rules(rules_text), markdown,
                                         lambda rel: read(rel) or "", british)
         problems.extend(bad)
-    return records, problems, missing
+    return records, problems, missing, unblocked

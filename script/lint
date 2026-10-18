@@ -3336,6 +3336,13 @@ echo "==> the file-length ratchet (§266's 2,000-line ceiling on Rust files)"
 # outright.
 python3 helpers/file_length_ratchet.py --selftest
 python3 helpers/file_length_ratchet.py --check
+echo "==> the module-block ratchet (every module carries a Name: block; the unblocked list only shrinks)"
+# A module is a file, every .rs under a src/ directory, so script/names and script/metrics count a
+# module whether or not its block exists, and one without a block sits in no status. This holds the
+# ones without to design/module-block-baseline.txt, which may only shrink, so new code arrives with
+# its block. The rules live in helpers/module_block_ratchet.py, whose header is the manual.
+python3 helpers/module_block_ratchet.py --selftest
+python3 helpers/module_block_ratchet.py --check
 echo "==> the lint ratchet's selftest (clippy lints counted against a baseline that only falls)"
 # Milestone 888 (a ratchet on function length). The rules, the baseline format and the failure
 # messages live in helpers/lint_ratchet.py, whose header is the manual. The selftest is fixtures
