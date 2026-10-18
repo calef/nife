@@ -9,21 +9,21 @@
 //! registers are data, so every decoder is total and every capacity is computed without overflow.
 
 /// The OCR's power-up-complete bit: clear while the card is still busy initializing.
-pub const OCR_BUSY_DONE: u32 = 1 << 31;
+pub(crate) const OCR_BUSY_DONE: u32 = 1 << 31;
 /// The OCR's card capacity status (SD) or access mode (eMMC, as bits 30:29 = `0b10`): set on a
 /// high-capacity card, which is addressed in 512-byte blocks rather than bytes.
-pub const OCR_HIGH_CAPACITY: u32 = 1 << 30;
+pub(crate) const OCR_HIGH_CAPACITY: u32 = 1 << 30;
 /// The voltage window this host offers, 3.2 to 3.4 V: OpenBSD's `dwmmc_host_ocr`. The JH7110's
 /// card slot is wired for 3.3 V and nothing here switches it.
-pub const OCR_VOLTAGE_WINDOW: u32 = (1 << 20) | (1 << 21);
+pub(crate) const OCR_VOLTAGE_WINDOW: u32 = (1 << 20) | (1 << 21);
 /// `ACMD41`'s argument: high capacity supported, and the window.
-pub const SD_OP_COND_ARG: u32 = OCR_HIGH_CAPACITY | OCR_VOLTAGE_WINDOW;
+pub(crate) const SD_OP_COND_ARG: u32 = OCR_HIGH_CAPACITY | OCR_VOLTAGE_WINDOW;
 /// eMMC `CMD1`'s argument: sector access mode (bits 30:29 = `0b10`) and 2.7 to 3.6 V plus the
 /// 1.70 to 1.95 V bit, the value Linux and U-Boot both send.
-pub const MMC_OP_COND_ARG: u32 = 0x40ff_8080;
+pub(crate) const MMC_OP_COND_ARG: u32 = 0x40ff_8080;
 /// `CMD8`'s argument: 2.7 to 3.6 V (`0x1`) and the check pattern `0xaa`. A card that understands
 /// it echoes both.
-pub const IF_COND_ARG: u32 = 0x1aa;
+pub(crate) const IF_COND_ARG: u32 = 0x1aa;
 
 /// The R1 bits that report a failure, Linux's error mask: out of range, address, block length,
 /// erase sequence and parameter, write-protect violation, lock failure, CRC, illegal command, ECC,
@@ -117,7 +117,7 @@ impl Csd {
     /// `0xfff` and the true count is `EXT_CSD`'s [`ext_csd_sectors`]. The layout of the size fields
     /// is the same as SD's version 1.
     #[must_use]
-    pub const fn mmc(r: &[u32; 4]) -> Csd {
+    pub(crate) const fn mmc(r: &[u32; 4]) -> Csd {
         let mut csd = Csd::sd(r);
         let c_size = bits(r, 62, 12) as u64;
         let mult = bits(r, 47, 3);
@@ -162,7 +162,7 @@ impl Cid {
 
     /// Decode an eMMC's CID.
     #[must_use]
-    pub const fn mmc(r: &[u32; 4]) -> Cid {
+    pub(crate) const fn mmc(r: &[u32; 4]) -> Cid {
         let mut name = [0u8; 6];
         let mut i = 0;
         while i < 6 {
@@ -180,7 +180,7 @@ impl Cid {
 /// `EXT_CSD`'s `SEC_COUNT`, bytes 212 to 215, little-endian: an eMMC's capacity in 512-byte
 /// sectors. Zero for a buffer too short to hold it.
 #[must_use]
-pub fn ext_csd_sectors(ext_csd: &[u8]) -> u64 {
+pub(crate) fn ext_csd_sectors(ext_csd: &[u8]) -> u64 {
     match ext_csd.get(212..216) {
         Some(b) => u32::from_le_bytes([b[0], b[1], b[2], b[3]]) as u64,
         None => 0,

@@ -12,40 +12,40 @@ use crate::regs;
 /// `GO_IDLE_STATE`: every card back to idle.
 pub const GO_IDLE_STATE: u8 = 0;
 /// `SEND_OP_COND` (eMMC): negotiate voltage and wait for power-up.
-pub const MMC_SEND_OP_COND: u8 = 1;
+pub(crate) const MMC_SEND_OP_COND: u8 = 1;
 /// `ALL_SEND_CID`: the card's identity, 128 bits.
-pub const ALL_SEND_CID: u8 = 2;
+pub(crate) const ALL_SEND_CID: u8 = 2;
 /// `SEND_RELATIVE_ADDR` (SD: the card picks one) or `SET_RELATIVE_ADDR` (eMMC: the host does).
-pub const SEND_RELATIVE_ADDR: u8 = 3;
+pub(crate) const SEND_RELATIVE_ADDR: u8 = 3;
 /// `SWITCH` (eMMC, R1b): write one byte of `EXT_CSD`. Also SD's `SWITCH_FUNC`, unused here.
 pub const SWITCH: u8 = 6;
 /// `SELECT_CARD`: into the transfer state.
-pub const SELECT_CARD: u8 = 7;
+pub(crate) const SELECT_CARD: u8 = 7;
 /// `SEND_IF_COND` (SD 2.0 and later, R7) or `SEND_EXT_CSD` (eMMC, R1 and 512 bytes): the same
 /// index, two meanings, which is how an eMMC is told from an SD card.
-pub const SEND_IF_COND: u8 = 8;
+pub(crate) const SEND_IF_COND: u8 = 8;
 /// `SEND_CSD`: the card's capacity and timing, 128 bits.
-pub const SEND_CSD: u8 = 9;
+pub(crate) const SEND_CSD: u8 = 9;
 /// `STOP_TRANSMISSION` (R1b).
-pub const STOP_TRANSMISSION: u8 = 12;
+pub(crate) const STOP_TRANSMISSION: u8 = 12;
 /// `SEND_STATUS`: the card status word.
 pub const SEND_STATUS: u8 = 13;
 /// `SET_BLOCKLEN`: 512, for a standard-capacity card. High-capacity cards ignore it.
-pub const SET_BLOCKLEN: u8 = 16;
+pub(crate) const SET_BLOCKLEN: u8 = 16;
 /// `READ_SINGLE_BLOCK`.
-pub const READ_SINGLE_BLOCK: u8 = 17;
+pub(crate) const READ_SINGLE_BLOCK: u8 = 17;
 /// `READ_MULTIPLE_BLOCK`.
-pub const READ_MULTIPLE_BLOCK: u8 = 18;
+pub(crate) const READ_MULTIPLE_BLOCK: u8 = 18;
 /// `WRITE_BLOCK`.
-pub const WRITE_BLOCK: u8 = 24;
+pub(crate) const WRITE_BLOCK: u8 = 24;
 /// `WRITE_MULTIPLE_BLOCK`.
-pub const WRITE_MULTIPLE_BLOCK: u8 = 25;
+pub(crate) const WRITE_MULTIPLE_BLOCK: u8 = 25;
 /// `APP_CMD`: the next command is application-specific (`ACMD`).
-pub const APP_CMD: u8 = 55;
+pub(crate) const APP_CMD: u8 = 55;
 /// `ACMD6`, `SET_BUS_WIDTH`.
-pub const SD_SET_BUS_WIDTH: u8 = 6;
+pub(crate) const SD_SET_BUS_WIDTH: u8 = 6;
 /// `ACMD41`, `SD_SEND_OP_COND`.
-pub const SD_SEND_OP_COND: u8 = 41;
+pub(crate) const SD_SEND_OP_COND: u8 = 41;
 
 /// What comes back from the card, and so how the controller must be told to listen.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -69,13 +69,13 @@ pub enum Response {
 impl Response {
     /// Does the card send a CRC the controller can check? All but R3 and no response.
     #[must_use]
-    pub const fn checks_crc(self) -> bool {
+    pub(crate) const fn checks_crc(self) -> bool {
         !matches!(self, Response::None | Response::R3)
     }
 
     /// Is it the 136-bit kind?
     #[must_use]
-    pub const fn is_long(self) -> bool {
+    pub(crate) const fn is_long(self) -> bool {
         matches!(self, Response::R2)
     }
 }
@@ -128,7 +128,7 @@ impl Command {
 
     /// A command with a data phase.
     #[must_use]
-    pub const fn with_data(index: u8, arg: u32, response: Response, data: Data) -> Self {
+    pub(crate) const fn with_data(index: u8, arg: u32, response: Response, data: Data) -> Self {
         Command {
             index,
             arg,
@@ -183,7 +183,7 @@ impl Command {
 }
 
 /// The word that loads new clock settings into the card clock domain and sends nothing.
-pub const UPDATE_CLOCK: u32 =
+pub(crate) const UPDATE_CLOCK: u32 =
     regs::CMD_START | regs::CMD_WAIT_PREVIOUS_DATA | regs::CMD_UPDATE_CLOCK_ONLY;
 
 #[cfg(test)]

@@ -71,14 +71,6 @@ crates/designware_ethernet/src/regs.rs::MTL_TXQ_OP_MODE_TTC_512 spelled-out
 crates/designware_ethernet/src/regs.rs::MTL_TXQ_OP_MODE_TTC_MASK spelled-out
 crates/designware_ethernet/src/regs.rs::MTL_TXQ_OP_MODE_TXQEN spelled-out
 crates/designware_ethernet/src/regs.rs::MTL_TXQ_OP_MODE_TXQEN_MASK spelled-out
-crates/designware_mobile_storage/src/card.rs::IF_COND_ARG spelled-out
-crates/designware_mobile_storage/src/card.rs::MMC_OP_COND_ARG spelled-out
-crates/designware_mobile_storage/src/card.rs::SD_OP_COND_ARG spelled-out
-crates/designware_mobile_storage/src/command.rs::MMC_SEND_OP_COND spelled-out
-crates/designware_mobile_storage/src/command.rs::SD_SEND_OP_COND spelled-out
-crates/designware_mobile_storage/src/partition.rs::TYPE_PROTECTIVE_GPT spelled-out
-crates/designware_mobile_storage/src/regs.rs::CTRL_DMA_ENABLE spelled-out
-crates/designware_mobile_storage/src/regs.rs::CTRL_DMA_RESET spelled-out
 crates/designware_mobile_storage/src/regs.rs::dma_64bit question-shape
 crates/designware_mobile_storage/src/regs.rs::dma_64bit spelled-out
 crates/designware_mobile_storage/src/sd.rs::in_range question-shape
