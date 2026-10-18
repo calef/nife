@@ -13,7 +13,7 @@ RUSTUP_TOOLCHAIN="$(sed -n 's/^channel = "\(.*\)"/\1/p' "$here/../../../rust-too
 export RUSTUP_TOOLCHAIN
 size="$(rustc --print sysroot)/lib/rustlib/$(rustc -vV | sed -n 's/^host: //p')/bin/llvm-size"
 for opt in 3 s; do
-    for f in none manifest_only n1 n2 tar_own tar_own_ustar tar_no_std ruzstd ruzstd_on; do
+    for f in none manifest_only n1 n2 tar_own tar_own_ustar tar_no_std ruzstd ruzstd_on json_core json_serde; do
         CARGO_PROFILE_RELEASE_OPT_LEVEL=$opt cargo build -q --release \
             --manifest-path "$out/src/size/Cargo.toml" --target aarch64-unknown-none-softfloat \
             --no-default-features --features "$f" --target-dir "$out/$opt-$f"

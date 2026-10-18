@@ -223,6 +223,14 @@ and in two Ubuntu 24.04 containers (Docker's `ubuntu:24.04` and nife's own runne
   window, so the declared window did not show. Those figures include the harness's input, output
   and comparison copies.
 
+## Serving packages as OCI artifacts
+
+Where a package is stored and how it is served, with the payload still one of the four files, is in
+[oci-artifacts-measurements.md](oci-artifacts-measurements.md). In short, the package file becomes
+one blob whose digest is §195's recipe digest unchanged. A client fetching by that digest needs a
+token request, one redirect and no manifest, and ghcr.io's certificate chains to a root the image
+does not carry.
+
 ## What this did not measure
 
 - The real NIFEPKG2 crate, which §307's step 1 has not built. Both NIFEPKG2 and tar readers here

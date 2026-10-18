@@ -56,10 +56,10 @@ fn exercise(buf: &[u8], want: &str) {
 }
 
 // A bump allocator from a crate, so this harness writes no `unsafe impl GlobalAlloc` of its own.
-#[cfg(feature = "ruzstd")]
+#[cfg(any(feature = "ruzstd", feature = "json_serde"))]
 #[global_allocator]
 static A: static_alloc::Bump<[u8; 1 << 26]> = static_alloc::Bump::uninit();
-#[cfg(feature = "ruzstd")] extern crate alloc;
+#[cfg(any(feature = "ruzstd", feature = "json_serde"))] extern crate alloc;
 #[cfg(feature = "ruzstd")]
 fn exercise(buf: &[u8], _want: &str) {
     let mut out = alloc::vec::Vec::new();
@@ -88,4 +88,30 @@ fn exercise(buf: &[u8], want: &str) {
     let Some(m) = manifest::Manifest::parse(buf) else { bb(0); return };
     s(m.name.as_bytes()); s(m.version.as_bytes()); s(m.architecture.as_bytes()); bb(m.members);
     bb(m.digest(want));
+}
+
+// An OCI image manifest as a client reads it: the one layer's media type, digest and size. Unknown
+// fields (config, annotations) are skipped by the parser.
+#[cfg(any(feature = "json_core", feature = "json_serde"))]
+mod oci {
+    #[derive(serde::Deserialize)]
+    pub struct Token<'a> { #[serde(borrow)] pub token: &'a str }
+    #[derive(serde::Deserialize)]
+    pub struct Layer<'a> { #[serde(rename = "mediaType", borrow)] pub media_type: &'a str, #[serde(borrow)] pub digest: &'a str, pub size: u64 }
+    #[derive(serde::Deserialize)]
+    pub struct Manifest<'a> { #[serde(rename = "schemaVersion")] pub schema_version: u32, #[serde(borrow)] pub layers: [Layer<'a>; 1] }
+}
+
+#[cfg(feature = "json_core")]
+fn exercise(buf: &[u8], _want: &str) {
+    if let Ok((t, _)) = serde_json_core::from_slice::<oci::Token>(buf) { s(t.token.as_bytes()); }
+    let Ok((m, _)) = serde_json_core::from_slice::<oci::Manifest>(buf) else { bb(0); return };
+    let l = &m.layers[0]; bb(m.schema_version); s(l.media_type.as_bytes()); s(l.digest.as_bytes()); bb(l.size);
+}
+
+#[cfg(feature = "json_serde")]
+fn exercise(buf: &[u8], _want: &str) {
+    if let Ok(t) = serde_json::from_slice::<oci::Token>(buf) { s(t.token.as_bytes()); }
+    let Ok(m) = serde_json::from_slice::<oci::Manifest>(buf) else { bb(0); return };
+    let l = &m.layers[0]; bb(m.schema_version); s(l.media_type.as_bytes()); s(l.digest.as_bytes()); bb(l.size);
 }
