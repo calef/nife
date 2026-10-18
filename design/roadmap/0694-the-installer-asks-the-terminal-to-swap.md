@@ -3,7 +3,7 @@ status: NOT-STARTED
 raised: 2026-09-27
 promoted_from: the-installer-asks-the-terminal-to-swap
 milestone_dependencies: none
-decision_dependencies: unwritten
+decision_dependencies: 308
 machine_requirements: none
 specific_machine: none
 needs_person: no
@@ -13,11 +13,7 @@ needs_person: no
 *Title and slug are drafts.*
 Raised by the lane for milestone 23 (a capability-routed component
 OS with live replacement) after building `terminal_supervisor`, which can replace `line_editor` live
-but which nothing on a real boot asks to. calef asked for the trigger to be written up as the next
-ask rather than built (2026-09-27).
-
-Two programs would agree on a message, and one image would travel between them,
-so both the wire shape and the route are an architect's.
+but which nothing on a real boot asks to.
 
 ## What exists
 
@@ -26,24 +22,17 @@ so both the wire shape and the route are an architect's.
 endpoint. On a boot, `system_initializer` passes none, so the supervisor builds the terminal and
 waits. And a replacement today is the same image the supervisor was handed at birth.
 
-## What the trigger needs to decide
+## The decision
 
-1. **Who holds the swap endpoint.** The activation path of milestone 198 (a package manager, and
-   the trivial install) runs in `system_initializer`'s spawn service, which is where a new
-   `line_editor` build becomes the active one. Recommended: `system_initializer` retypes the swap
-   endpoint when it builds the supervisor, hands it `READ`, and keeps `WRITE` for the activation
-   path. That is one permanent capability in a table measured at 23 of 24
-   (`kernel::cap::CAPABILITY_TABLE_PEAK_MEASURED`), so it has to buy a slot back, and the note on
-   that constant names the two candidates.
-2. How the new image reaches the supervisor. The supervisor cannot read the archive or the
-   package store. Recommended: the activation path copies the vouched bytes into a frame run it
-   retypes with `MemoryRegion::RETYPE`'s page count. It sends that capability with the request
-   (`SEND_CAP`), so `SWAP` carries its image and the supervisor maps it where it maps its own.
-   Refused: a second copy at build time, which would make the supervisor carry every future build.
-3. What an activation does when the swap rolls back. The new build refused the old state, so
-   the old instance serves on. The installed-programs table would then say the new build is active while the
-   old one runs; the recommendation is that activation waits for `SWAPPED` and records a refusal as
-   a failed activation, which the installer already has a verdict for.
+[§308 (the installer asks the terminal to swap)](../decisions/0308-the-installer-asks-the-terminal-to-swap.md)
+rules the shape. `system_initializer` holds one swap endpoint per `terminal_supervisor`, and the
+activation path sends. The new `line_editor` image travels as a frame run sent with `SWAP` and comes
+back on the answer. Every running terminal swaps, the boot terminal first. The activation waits for
+every answer, and the first `ROLLED_BACK` fails it and swaps the others back.
+
+The capability table is 64 slots with a measured peak of 34, so the endpoint each terminal costs
+`system_initializer` fits without freeing another. Members of the `terminal` package other than
+`line_editor` take effect at the next build, not live.
 
 ## What it unblocks
 

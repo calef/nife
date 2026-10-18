@@ -76,7 +76,8 @@ mod test_support;
 mod tests;
 
 pub use command::{
-    Command, DirGrant, Endowment, FileGrant, Holdings, MAX_FLAGS, SecondDir, TouchArgs, rmopt,
+    Command, DirectoryGrant, Endowment, FileGrant, Holdings, MAX_FLAGS, MountedTree, TouchOperands,
+    rmopt,
 };
 pub use escalation::{Action, COOP_GRACE_TICKS, Escalation};
 pub use image::{
@@ -92,8 +93,8 @@ pub use manifest::{
     named_std_region_pages,
 };
 pub use parsing::{
-    BUILTINS, MAX_POSITIONALS, RunSpec, UserVerb, argv, check_words, each_word, parse, parse_run,
-    tokenize, user_verb, vouch_verb, vouched_name,
+    BUILTINS, MAX_POSITIONALS, ParsedInvocation, UserVerb, argv, check_words, each_word, parse,
+    parse_run, tokenize, user_verb, vouch_verb, vouched_name,
 };
 pub(crate) use planning::nav_refusal;
 pub use planning::{
@@ -101,7 +102,7 @@ pub use planning::{
 };
 pub use program::{PROG_COUNT, Prog};
 pub use refusal::{CapabilityKind, Refusal};
-pub use verbs::{Grants, MAX_VERB, VerbGrant, narrow_by_verb, verb_of, verb_of_page};
+pub use verbs::{MAX_VERB, ManifestAuthorities, VerbGrant, narrow_by_verb, verb_of, verb_of_page};
 
 mod lexing;
 

@@ -83,9 +83,8 @@ def load_decisions(d):
     return out
 
 # The milestone blocks, read the way script/roadmap reads them: the number is the filename's and
-# the status is its frontmatter or its prose status line (helpers/roadmap_block.py reads both). A
-# lettered addendum (20a) carries neither and is skipped, exactly as it is one directory over. Only the number and the status are wanted
-# here, so this deliberately does not re-implement the rest of that script's validation: a block
+# the status is its frontmatter or its prose status line (helpers/roadmap_block.py reads both). Only
+# the number and the status are wanted here, so this deliberately does not re-implement the rest of that script's validation: a block
 # this cannot parse is script/roadmap --check's failure to report, not this one's.
 BLOCK = re.compile(r"(\d+)-[a-z0-9][a-z0-9-]*\.md")
 

@@ -144,7 +144,7 @@ B4 fails, with eight entries, the longest list any run has produced. In the stra
 2. Its recovery, `rm -rf std_exerciser/target`.
 3. `spawn_service` computes slot numbers per program.
 4. An integer argument reaches a non-interruptible child in `x1` via `tcb_start(tcb, 0, arg, 0)`.
-5. A `caps` preview of an input operand needs `Holdings::dir`.
+5. A `caps` preview of an input operand needs `Holdings::directory`.
 6. An argument-plus-input manifest breaks a `swish` host test.
 7. `script/swish-check` is silent on success.
 8. The machine was pre-provisioned.

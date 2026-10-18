@@ -12,7 +12,7 @@ DECISIONS §31's foreign-language seam as actually built is a one-shot call. It 
 `kilo`'s own blocking event loop without new seam infrastructure (that infrastructure is
 [milestone 181](0181-persistent-foreign-component.md), raised separately). **Named `rmle`, not
 `kilo`**, calef, 2026-08-27, specifically to avoid two things being called `kilo` once a real
-`kilo.c` port through milestone 181's extended seam exists; see `rmle.rs`'s own module doc for the
+`kilo.c` port exists, built against the C library as milestone 170's first stage; see `rmle.rs`'s own module doc for the
 full naming note. This milestone's own primary deliverable, the raw-keystroke primitive, is
 unaffected by the naming question either way.
 
@@ -90,9 +90,10 @@ for whoever picks this up, informed by how the raw-input primitive actually gets
 - **Milestone 170.** `nano`, sequenced to start once this milestone's raw-input primitive exists. It
   needs the identical terminal capability at roughly 25x the code size, plus the skippable
   subprocess dependency for spell-check and external filtering that `kilo` never has to answer.
-- **Milestone 181.** A real `kilo.c` port. DECISIONS §31's foreign-language seam as built is a
-  one-shot call and cannot carry `kilo`'s own blocking event loop, which is why this milestone
-  shipped a Rust reimplementation named `rmle` instead, deliberately leaving the name `kilo` free.
+- **Milestone 170.** A real `kilo.c` port, compiled unmodified against §265 (a C library started
+  from relibc) as the first stage of milestone 170 (`nano`, a real, full-featured screen editor). DECISIONS §31's foreign-language seam as built is a one-shot call
+  and cannot carry `kilo`'s own blocking event loop, which is why this milestone shipped a Rust
+  reimplementation named `rmle` instead, deliberately leaving the name `kilo` free.
 - **Recorded.** `components/src/rmle.rs`, in the module doc a reader meets first: no `SIGWINCH`-equivalent
   resize notification, no syntax highlighting and no incremental search, so a resized terminal is
   not noticed until something else forces a redraw.

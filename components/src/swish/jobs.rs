@@ -104,8 +104,8 @@ pub(super) fn spawn_interruptible(e: Endowment) {
     // signal it and read it.
     let (w0, w1, w2) = spawnproto::request(
         e.prog.id(),
-        e.arg,
-        e.mem_pages,
+        e.program_argument,
+        e.memory_grant_pages,
         spawnproto::Wiring {
             interruptible: true,
             sink: false,

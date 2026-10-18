@@ -35,7 +35,7 @@ pub(super) const DIR_TERMINAL: u64 = 4;
 /// [`swish::expansion`], against the directory this shell holds.
 pub(super) fn expansion(
     nav: &mut Nav,
-    spec: &RunSpec,
+    spec: &ParsedInvocation,
 ) -> Result<grant_plan::expand::Expansion, Say> {
     swish::expansion(spec, &mut |token| nav.expand(token))
 }

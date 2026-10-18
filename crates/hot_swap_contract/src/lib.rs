@@ -469,7 +469,7 @@ pub const START_FRESH: u64 = 2;
 pub const START_ABSORB: u64 = 3;
 
 /// **Where the stateful component's handoff page sits** in both instances (DECISIONS §209), declared
-/// by [`TALLY`]'s `handoff` field.
+/// by [`STATEFUL_BACKEND`]'s `handoff` field.
 pub const STATE_VA: u64 = 0x0320_0000;
 
 /// **The blob layouts.** The bytes on the handoff page are this component's business and nobody
@@ -594,7 +594,7 @@ pub const CONSOLE: Requirements = Requirements {
     // through the stable endpoint, and DECISIONS §41's own sender-queue argument is what makes
     // that need no explicit orchestration (see `Requirements::depends_on`'s doc comment).
     depends_on: &[],
-    handoff: None,
+    state_handoff: None,
 };
 
 /// **The same programs behind a queue broker, with no device.** A different contract rather than a
@@ -611,7 +611,7 @@ pub const BACKEND: Requirements = Requirements {
     }],
     pages: INSTANCE_PAGES,
     depends_on: &[],
-    handoff: None,
+    state_handoff: None,
 };
 
 /// **The client** (`chatty`, in all three of its roles). It *uses* the service and never serves it,
@@ -641,7 +641,7 @@ pub const CLIENT: Requirements = Requirements {
     // channel it is wired to. See `Requirements::depends_on`'s doc comment for why this is empty
     // rather than naming whichever contract `service` happens to resolve to on a given wiring.
     depends_on: &[],
-    handoff: None,
+    state_handoff: None,
 };
 
 /// **The queue broker**, the latency ladder's opt-in rung. It serves the endpoint producers hold and
@@ -682,7 +682,7 @@ pub const BROKER: Requirements = Requirements {
     // signal and page, which it never waits on), and it is the edge milestone 23's dependency graph exists to
     // name so that sequencing can be derived rather than hand-coded per system.
     depends_on: &["backend"],
-    handoff: None,
+    state_handoff: None,
 };
 
 /// **The stateful component** (DECISIONS §209). The backend contract, plus a handoff page: it keeps
@@ -694,15 +694,15 @@ pub const BROKER: Requirements = Requirements {
 /// contract: whether a component has state to move is decided by what it is, and two builds of one
 /// contract that disagreed about it would not be substitutable.
 ///
-/// Name: provisional (milestone 23's lane, 2026-09-26), for both the constant and the contract
-/// string `tally`.
-pub const TALLY: Requirements = Requirements {
-    contract: "tally",
+/// Name: ratified 2026-10-18 (calef: "Yes"), for both the constant and the contract string
+/// `stateful_backend`.
+pub const STATEFUL_BACKEND: Requirements = Requirements {
+    contract: "stateful_backend",
     caps: CONSOLE.caps,
     maps: BACKEND.maps,
     pages: INSTANCE_PAGES,
     depends_on: &[],
-    handoff: Some(component_plan::Handoff {
+    state_handoff: Some(component_plan::StateHandoff {
         va: STATE_VA,
         // Two, and the tally is written on the second: a blob that only used the first page would
         // pass whether or not the operator's run reached past it.
@@ -717,7 +717,7 @@ const _: () = assert!(CONSOLE.problem().is_none());
 const _: () = assert!(BACKEND.problem().is_none());
 const _: () = assert!(CLIENT.problem().is_none());
 const _: () = assert!(BROKER.problem().is_none());
-const _: () = assert!(TALLY.problem().is_none());
+const _: () = assert!(STATEFUL_BACKEND.problem().is_none());
 
 // ===========================================================================================
 // The component's work, defined once so two implementations can be checked against each other.
@@ -896,10 +896,10 @@ const _: () = assert!(component_plan::slot_of(&BACKEND, "service") == SVC);
 const _: () = assert!(component_plan::slot_of(&BACKEND, "report") == RPT);
 const _: () = assert!(component_plan::slot_of(&BACKEND, "operator") == NOTE);
 const _: () = assert!(component_plan::slot_of(&BACKEND, "control") == POKE);
-const _: () = assert!(component_plan::slot_of(&TALLY, "service") == SVC);
-const _: () = assert!(component_plan::slot_of(&TALLY, "report") == RPT);
-const _: () = assert!(component_plan::slot_of(&TALLY, "operator") == NOTE);
-const _: () = assert!(component_plan::slot_of(&TALLY, "control") == POKE);
+const _: () = assert!(component_plan::slot_of(&STATEFUL_BACKEND, "service") == SVC);
+const _: () = assert!(component_plan::slot_of(&STATEFUL_BACKEND, "report") == RPT);
+const _: () = assert!(component_plan::slot_of(&STATEFUL_BACKEND, "operator") == NOTE);
+const _: () = assert!(component_plan::slot_of(&STATEFUL_BACKEND, "control") == POKE);
 
 /// **Touch the device one last time.** The operator sends this to an instance it has already
 /// revoked, and the fault that follows is the receipt.
@@ -930,12 +930,12 @@ pub fn start(version: u64, xform: fn(u64) -> u64, a0: u64, log_base: u64, a2: u6
     }
 }
 
-/// **Serve the stateful contract** ([`TALLY`], DECISIONS §209).
+/// **Serve the stateful contract** ([`STATEFUL_BACKEND`], DECISIONS §209).
 ///
 /// [`serve`]'s loop with one word of state and three differences:
 ///
 /// - **An absorbing instance reads the handoff page before it serves anything**, and either
-///   announces the tally it took over ([`NOTE_ABSORBED`]) or refuses ([`NOTE_REFUSED`]) and exits
+///   announces the tally it took over ([`NOTE_ABSORBED`]) or refuses ([`NOTE_NOT_ABSORBED`]) and exits
 ///   without ever receiving on the service endpoint. The refusal is what lets the operator not
 ///   commit. An instance that served first and checked later would already have answered a request
 ///   with the wrong tally, which is the loss the check is for.
@@ -962,7 +962,7 @@ pub fn serve_with_state(
             Err(found) => {
                 // Refuse and leave. Nothing was received, nothing was answered, and the page is
                 // untouched, so the incumbent's blob is still there if anyone wants it.
-                user_mode_runtime::send(NOTE, NOTE_REFUSED, version, found);
+                user_mode_runtime::send(NOTE, NOTE_NOT_ABSORBED, version, found);
                 user_mode_runtime::exit()
             }
         }
@@ -1015,7 +1015,7 @@ pub fn serve_with_state(
 /// The handoff page's two words, read volatile for [`log_get`]'s reason: another address space wrote
 /// them, and the read is ordered after the write by the IPC that started this instance.
 fn read_state() -> [u64; 2] {
-    // SAFETY: the handoff page is mapped read/write at STATE_VA in every instance of TALLY, by the
+    // SAFETY: the handoff page is mapped read/write at STATE_VA in every instance of STATEFUL_BACKEND, by the
     // operator's plan, before the instance is started.
     unsafe {
         [
@@ -1160,8 +1160,8 @@ pub const NOTE_ABSORBED: u64 = 7;
 /// **An incoming stateful instance could not absorb the handoff page and is leaving.** `w1` =
 /// version, `w2` = the layout it found (`0` for no blob at all). The swap does not commit.
 ///
-/// Name: provisional (milestone 23's lane, 2026-09-26).
-pub const NOTE_REFUSED: u64 = 8;
+/// Name: ratified 2026-10-18 (calef: "Approve both"), the negation of [`NOTE_ABSORBED`].
+pub const NOTE_NOT_ABSORBED: u64 = 8;
 /// **The incumbent answered the quiesce the operator delegated** ([`ROLE_QUIESCER`]). `w1` = the
 /// answer's first word ([`QUIESCED`] from a healthy incumbent), `w2` = its second (requests served).
 /// Wire numbers 5 and 6 are unused, and stay so.
@@ -1231,9 +1231,9 @@ mod tests {
             ],
         };
         assert_eq!(
-            component_plan::plan(&TALLY, &without),
+            component_plan::plan(&STATEFUL_BACKEND, &without),
             Err(component_plan::Refusal::Unprovided {
-                role: component_plan::HANDOFF_ROLE
+                role: component_plan::STATE_HANDOFF_ROLE
             })
         );
         let with = component_plan::Provisions {
@@ -1243,11 +1243,11 @@ mod tests {
                 ("operator", 3),
                 ("control", 4),
                 ("witness", 5),
-                (component_plan::HANDOFF_ROLE, 6),
+                (component_plan::STATE_HANDOFF_ROLE, 6),
             ],
         };
-        let p = component_plan::plan(&TALLY, &with).unwrap();
-        assert_eq!(p.handoff().map(|h| h.va), Some(STATE_VA));
+        let p = component_plan::plan(&STATEFUL_BACKEND, &with).unwrap();
+        assert_eq!(p.state_handoff().map(|h| h.va), Some(STATE_VA));
         assert!(p.devices().is_empty());
     }
 }

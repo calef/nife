@@ -12,12 +12,12 @@ use crate::*;
 /// Plan a line with **nothing expanded**, which is every line that has no pattern on it. The two
 /// shims shadow the real functions so the tests below read as they did before the globbing lane,
 /// and the tests that *do* expand pass an [`Expansion`] explicitly and are grouped at the end.
-pub(crate) fn plan(run: &RunSpec<'_>, holds: Holdings) -> Result<Endowment, Refusal> {
+pub(crate) fn plan(run: &ParsedInvocation<'_>, holds: Holdings) -> Result<Endowment, Refusal> {
     super::plan(run, holds, Expansion::none())
 }
 
 pub(crate) fn plan_against(
-    run: &RunSpec<'_>,
+    run: &ParsedInvocation<'_>,
     prog: Prog,
     m: Manifest,
     holds: Holdings,
@@ -54,9 +54,9 @@ pub(crate) const READS_A_FILE: Manifest = Manifest {
 };
 
 /// A shell that WAS granted a directory to narrow, standing at its root.
-pub(crate) const WITH_DIR: Holdings = Holdings {
-    dir: true,
-    second: None,
+pub(crate) const WITH_DIRECTORY: Holdings = Holdings {
+    directory: true,
+    mounted: None,
     cwd: nav::Cwd::root(),
     binds: nav::Bindings::none(),
 };
@@ -74,8 +74,8 @@ pub(crate) fn at(components: &[&[u8]]) -> nav::Cwd {
 /// A shell with a second tree mounted at `/media/usb`, standing at the root.
 pub(crate) fn mounted() -> Holdings {
     Holdings {
-        second: SecondDir::mounted_at(at(&[b"media", b"usb"])),
-        ..WITH_DIR
+        mounted: MountedTree::mounted_at(at(&[b"media", b"usb"])),
+        ..WITH_DIRECTORY
     }
 }
 
@@ -85,7 +85,7 @@ pub(crate) fn mounted() -> Holdings {
 /// use, for the reason the other two shims exist: the lines below should read like command
 /// lines and not like plumbing.
 pub(crate) fn plan_streams(
-    run: &RunSpec<'_>,
+    run: &ParsedInvocation<'_>,
     holds: Holdings,
     streams: Streams,
 ) -> Result<Endowment, Refusal> {

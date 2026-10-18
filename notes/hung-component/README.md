@@ -14,7 +14,7 @@ and evidence behind those answers, which its prose budget has no room for.
   cannot answer for the component, and how destroying the component answers the caller `Gone`.
 - [`the-wedge-test.md`](the-wedge-test.md): the six results of the `ROLE_HUNG` case, why its
   wedge is silent, and why the quiesce has a stand-in.
-- [`milestone-23-residuals.md`](milestone-23-residuals.md): what the lane found about the two other
+- [`what-is-left-of-milestone-23.md`](what-is-left-of-milestone-23.md): what the lane found about the two other
   residuals of milestone 23 (a capability-routed component OS with live replacement).
 - [`examples.md`](examples.md): the Rust examples, a watcher's `SURVEY` loop, its one-right
   endowment, and restoring a service under a hung component.
@@ -29,5 +29,5 @@ Each stem below is named for its content, and calef names files.
 - `what-counts-as-hung` Name: provisional. Named after the parent's question 2.
 - `stranded-caller` Name: provisional.
 - `the-wedge-test` Name: provisional.
-- `milestone-23-residuals` Name: provisional. Named after the parent's own heading.
+- `what-is-left-of-milestone-23` Name: ratified 2026-10-18 (calef: "Approve both").
 - `examples` Name: provisional. For the parent's Rust EXAMPLES. calef names files.

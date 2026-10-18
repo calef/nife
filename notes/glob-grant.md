@@ -30,7 +30,7 @@ serves *a namespace of exactly one name*, so globbing generalizes the namespace 
 Same caretaker shape, same `filesystem_contract` protocol above and below, nothing new in the
 kernel.
 
-That generalization is in the type system rather than only in the prose. `grant_plan::DirGrant` used
+That generalization is in the type system rather than only in the prose. `grant_plan::DirectoryGrant` used
 to carry `name: &[u8]`; it now carries `names: NameSet`, and a literal operand is the set of one.
 
 ## The property worth the lane
@@ -81,7 +81,7 @@ name nobody has, useless today and live the moment anything creates a file calle
 should not be able to acquire a referent after it is written.
 
 `Endowment` also stopped borrowing from the command line, because a name a pattern produced comes
-out of a directory listing. A planned grant carries values, as `FileGrant::dir` already did by hand,
+out of a directory listing. A planned grant carries values, as `FileGrant::directory` already did by hand,
 so nothing afterwards can change what it means.
 
 ## Expansion costs `ENUMERATE`, and that is the whole bill

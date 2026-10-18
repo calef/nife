@@ -1,5 +1,5 @@
 //! The progenitor's endowment: `BootEndowment`, the capabilities the kernel granted it by slot, and
-//! `SecondDirGrant`, the optional second directory grant. `lib.rs` re-exports both by name. Moved
+//! `MountedTreeGrant`, the optional second directory grant. `lib.rs` re-exports both by name. Moved
 //! out of `lib.rs` unchanged but for visibility by milestone 843 (the system-initializer crate root
 //! is split along its seams), under §279 (the system-initializer crate root splits into private
 //! modules).
@@ -261,8 +261,8 @@ pub struct BootEndowment {
 /// shell built with one of these today would hold a capability its own `Nav` has no way to learn
 /// about. Provisional shape.
 #[derive(Clone, Copy)]
-pub struct SecondDirGrant {
-    /// One component under the image root, the same shape a `DirGrant`'s `name` already takes.
+pub struct MountedTreeGrant {
+    /// One component under the image root, the same shape a `DirectoryGrant`'s `name` already takes.
     pub name: &'static str,
     /// The `filesystem_contract::dir` rights the caretaker asks for on its descent.
     pub rights: u64,

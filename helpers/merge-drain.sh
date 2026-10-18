@@ -808,10 +808,25 @@ needs_maintainer() {
 	# `architectSurface` (the `surface-no-hold` cause). A head this checkout lacks (a fork's), or a
 	# diff the rules cannot read, is skipped here: architect-label.yml labels the unexamined case on
 	# push, and this pass is its backstop, not its replacement.
+	#
+	# **`origin/main` is fetched here, after the query, never trusted from the checkout.** In the
+	# workflow it is GITHUB_SHA, main as of the trigger: actions/checkout fetches every branch, then
+	# force-rewinds `origin/main` to that sha, and a run queued behind the `merge-drain` group starts
+	# minutes later. A head cut from a newer main then has the stale tip as its merge base, so main's
+	# own commits read as the pull request's: #2334's empty claim commit was held for
+	# `crates/capability_manifest_note`, which #2316 had changed on main (run 39110360811). Fetched
+	# after the query, so every head it lists was cut from a main no newer than this one. A failed
+	# fetch skips the scan, since diffing against a tip that may be stale is the bug itself.
 	surface='{}'
-	for row in $(printf '%s' "$resp" | jq -r '.data.repository.pullRequests.nodes[]
+	rows=''
+	if git fetch --quiet --no-tags origin +refs/heads/main:refs/remotes/origin/main 2>/dev/null; then
+		rows=$(printf '%s' "$resp" | jq -r '.data.repository.pullRequests.nodes[]
 			| select([.labels.nodes[].name] | (index("needs-architect") or index("architect-ruled") or index("held-by-lane")) | not)
-			| "\(.number):\(.headRefOid)"'); do
+			| "\(.number):\(.headRefOid)"')
+	else
+		echo "$ME: could not refresh origin/main, so the architect-surface scan is skipped this pass"
+	fi
+	for row in $rows; do
 		num=${row%%:*}
 		head=${row#*:}
 		git cat-file -e "$head^{commit}" 2>/dev/null || continue
@@ -853,6 +868,7 @@ needs_maintainer() {
 			# `gh pr` or `gh issue`: the two architect causes also apply to issues.
 			NM_KIND=$(printf '%s' "$rec" | jq -r '.kind // "pr"')
 			action=$(printf '%s' "$rec" | jq -r '.action')
+			causes=$(printf '%s' "$rec" | jq -r '.causes | map(.cause) | join(", ")')
 			# calef, #1792, 2026-10-06 (UTC): the drain adds `needs-architect` itself for an open
 			# question or a moved surface, and only flags the reverse (hold-no-ask), because a wrong
 			# removal could merge a pull request without his ruling. Never remove it here.
@@ -863,7 +879,6 @@ needs_maintainer() {
 					echo "$ME: #$num needs $HELD_LABEL ($causes) and could not be labeled"
 				fi
 			fi
-			causes=$(printf '%s' "$rec" | jq -r '.causes | map(.cause) | join(", ")')
 			case "$action" in
 			hold) ;;
 			requeue)

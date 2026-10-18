@@ -471,7 +471,7 @@ pub fn magic_component(token: &[u8]) -> Result<bool, Refusal> {
 /// 205 (how a foreign program is told what to do), DECISIONS §170 (how a foreign program is told
 /// what to do) clauses 2 to 5). The shell builds it before it plans, as it builds an
 /// [`Expansion`], because only the shell can ask the directory; the planner turns it into one
-/// [`crate::DirGrant`] at the shell's current directory.
+/// [`crate::DirectoryGrant`] at the shell's current directory.
 ///
 /// Two shapes. **Names**: each word whose first component names an entry here, and for a program
 /// that may create ([`crate::WordGrant::Create`]) each word that names nothing yet. **Here**: a word
@@ -608,7 +608,7 @@ mod tests {
         e.finish()
     }
 
-    const DIR: [(&[u8], bool); 4] = [
+    const DIRECTORY_LISTING: [(&[u8], bool); 4] = [
         (b"one.txt", false),
         (b"two.txt", false),
         (b"three.log", false),
@@ -619,7 +619,7 @@ mod tests {
     /// listing order, and the entry type rides along because the caretaker serves the listing.
     #[test]
     fn the_set_is_what_matched_and_nothing_else() {
-        let set = expand(b"*.txt", &DIR).unwrap();
+        let set = expand(b"*.txt", &DIRECTORY_LISTING).unwrap();
         assert_eq!(set.len(), 2);
         assert!(set.contains(b"one.txt") && set.contains(b"two.txt"));
         assert!(
@@ -628,7 +628,7 @@ mod tests {
         );
         assert_eq!(set.only(), None, "two names is not one name");
 
-        let dirs = expand(b"log*", &DIR).unwrap();
+        let dirs = expand(b"log*", &DIRECTORY_LISTING).unwrap();
         assert_eq!(dirs.len(), 1);
         assert_eq!(dirs.only(), Some(&b"logs"[..]));
         assert_eq!(dirs.iter().next(), Some((&b"logs"[..], true)));
@@ -638,7 +638,7 @@ mod tests {
     /// in [`Expander::finish`]: the expansion is the grant, so an empty expansion is an empty grant.
     #[test]
     fn a_pattern_that_matched_nothing_refuses_rather_than_passing_itself_through() {
-        assert_eq!(expand(b"*.rs", &DIR), Err(Refusal::NoMatch));
+        assert_eq!(expand(b"*.rs", &DIRECTORY_LISTING), Err(Refusal::NoMatch));
         assert!(!Refusal::NoMatch.message().contains("denied"));
         // **And this is why bash's answer is not merely untidy here.** A pattern is a perfectly
         // well-formed component: nothing in this system refuses `*` in a name. So passing it

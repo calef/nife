@@ -247,8 +247,9 @@ what the decision bought rather than what remains.
   is a UART whose interrupt rate a soak cannot drive. It would also measure the block path rather
   than the wake path, at a fraction of the rate.
 - Raising a software interrupt per architecture instead of using the timer. aarch64 can already
-  do it (`drivers::gic::send_sgi`, which `user/src/tests.rs` uses to raise `INIT_TEST_SGI` at a
-  chosen core) and x86_64 has a self-IPI vector, but riscv64 has neither: its software-interrupt
+  do it (`drivers::gic::send_sgi`, which `system_tests/src/user/elf_child_builder_tests.rs` uses
+  to raise `DELEGATED_TEST_INTERRUPT` at a chosen core) and x86_64 has a self-IPI vector, but
+  riscv64 has neither: its software-interrupt
   arm is the reschedule IPI and never reaches `irq_route`, which `kernel/src/user/tests.rs` states
   as the reason that test is aarch64-only. Since radon is the riscv64 board and the one machine that
   has already produced a defect of this class, a mechanism that cannot run there is the wrong

@@ -174,7 +174,7 @@ pub(super) fn admit(command: &[u8], held: Held) -> Admission {
     // one at, and a working directory that could move between registration and a fire would make
     // an already planned grant mean something different later.
     let holdings = Holdings {
-        dir: true,
+        directory: true,
         ..Holdings::default()
     };
     match grant_plan::plan(&spec, holdings, Expansion::none()) {
@@ -204,7 +204,7 @@ pub(super) fn admit_installed_row(entry: &Entry<'_>, m: Manifest, held: Held) ->
 fn admit_installed(command: &[u8], m: Manifest, held: Held) -> Admission {
     let spec = grant_plan::parse_run(command);
     let holdings = Holdings {
-        dir: true,
+        directory: true,
         ..Holdings::default()
     };
     match grant_plan::plan_against(&spec, grant_plan::IMAGE_ROW, m, holdings, Expansion::none()) {
@@ -249,10 +249,10 @@ fn unbacked(e: &Endowment, m: &Manifest, held: Held) -> Option<Unbacked> {
     if (e.file.is_some() || streams_a_file) && !held.dir {
         return Some(Unbacked::File);
     }
-    if e.dir.is_some() && !held.dir {
+    if e.directory.is_some() && !held.dir {
         return Some(Unbacked::Directory);
     }
-    if e.mem_pages > held.mem_pages {
+    if e.memory_grant_pages > held.mem_pages {
         return Some(Unbacked::Memory);
     }
     if m.clock && !held.clock {
@@ -324,8 +324,8 @@ mod tests {
         // Fires, with the argument the line named and no memory it did not.
         let e = rows[0].endowment().unwrap();
         assert_eq!(e.prog, Prog::LeastAuthorityDemo);
-        assert_eq!(e.arg, 7);
-        assert_eq!(e.mem_pages, 0);
+        assert_eq!(e.program_argument, 7);
+        assert_eq!(e.memory_grant_pages, 0);
 
         // The manifest refuses the line, and it is the same refusal the prompt gives.
         assert_eq!(rows[1].admission, Admission::Refused(Refusal::MemRequired));
@@ -385,7 +385,7 @@ mod tests {
         assert!(matches!(endowed.rows()[0].admission, Admission::Fires(_)));
         let e = endowed.rows()[1].endowment().unwrap();
         assert_eq!(e.prog, Prog::MemoryGrantDepleter);
-        assert_eq!(e.mem_pages, 4);
+        assert_eq!(e.memory_grant_pages, 4);
 
         // And the ceiling is the scheduler's, not the manifest's: `memory_grant_depleter` declares 1..=64 pages,
         // so 8 is a legal line and still more than a scheduler holding 4 can back.
@@ -428,7 +428,10 @@ mod tests {
         let mut e = reg.rows()[0]
             .endowment()
             .expect("a scheduler holding a directory can back `rm -r logs`");
-        assert!(e.dir.is_some(), "the plan narrowed the directory it holds");
+        assert!(
+            e.directory.is_some(),
+            "the plan narrowed the directory it holds"
+        );
         assert_eq!(unbacked(&e, &e.prog.manifest(), with_dir), None);
         assert_eq!(
             unbacked(&e, &e.prog.manifest(), Held::default()),
@@ -442,7 +445,7 @@ mod tests {
                 wc.source
             );
         };
-        e.dir = None;
+        e.directory = None;
         e.file = Some(f);
         assert_eq!(unbacked(&e, &e.prog.manifest(), with_dir), None);
         assert_eq!(
@@ -550,7 +553,7 @@ mod tests {
         let e = reg.rows()[0]
             .endowment()
             .expect("a note that takes an argument binds `tick 7`");
-        assert_eq!(e.arg, 7);
+        assert_eq!(e.program_argument, 7);
         assert!(
             matches!(reg.rows()[1].admission, Admission::Refused(_)),
             "no note is `uptime`'s manifest, which takes no argument, so `quiet 7` is refused",
@@ -581,7 +584,7 @@ mod tests {
         let mut manifests = [grant_plan::NO_NOTE_MANIFEST; MAX_ENTRIES];
         manifests[0] = old;
         let reg = Registry::register_installed(&doc, SHIPPED_HELD, &manifests);
-        assert_eq!(reg.rows()[0].endowment().unwrap().mem_pages, 2);
+        assert_eq!(reg.rows()[0].endowment().unwrap().memory_grant_pages, 2);
 
         // Version two flips whether it reports, and still takes `--mem`.
         let new = Manifest {
@@ -590,7 +593,7 @@ mod tests {
         };
         match reg.plan_at_fire(0, new) {
             Admission::Fires(e) => {
-                assert_eq!(e.mem_pages, 2);
+                assert_eq!(e.memory_grant_pages, 2);
                 assert_eq!(
                     e.reports, new.reports,
                     "planned from the new version's manifest"

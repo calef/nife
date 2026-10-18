@@ -572,7 +572,7 @@ pub enum BindRefused {
     AlreadyBound,
     /// [`MAX_BINDS`] entries are already in use.
     TooMany,
-    /// This name is the first component of the path to a mounted tree ([`crate::SecondDir`]).
+    /// This name is the first component of the path to a mounted tree ([`crate::MountedTree`]).
     /// A bound name wins over the literal first component of an absolute path, so binding it
     /// would hide the mount point. Provisional name, kept from when a second tree had a label.
     ReservedLabel,
