@@ -144,6 +144,10 @@ Settled in the tier 1 review of 2026-10-18 (UTC), each a precedent and not a new
   `process-view/`; `survey-method` reads as a methodology.
 - The "stem is provisional" note comes out of a document when its stem is ratified.
 - An appendix of a `## BUGS` section is `bugs.md`. American spelling applies to stems (`-colors`).
+- When one section has several appendices, each file is named for its own title and not the shared
+  heading (calef, 2026-10-18 UTC: "Yes").
+- An appendix that continues no single section (reference tables, logs, datasets, indexes) is named
+  for its own title, cut down to the noun that says what it is (calef, 2026-10-18 UTC: "Yes").
 
 ## What is checked, and what cannot be
 
