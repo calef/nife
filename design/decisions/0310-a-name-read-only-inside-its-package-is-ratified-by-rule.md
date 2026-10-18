@@ -61,8 +61,7 @@ boundary or fail a check.
 Most of design/naming.md is judgment, and the rule does not check it. An abbreviation nobody has
 ruled on (`buf`, `ctx`, `idx`) passes, as do a verb naming a thing and a word used against its
 kernel meaning (`map`, `frame`, `tick`). For a local name that cost is bounded. Its readers are
-the package's own, and renaming it later touches one package. calef ratified that trade by ruling
-on local names as a class.
+the package's own, and renaming it later touches one package.
 
 ## Why a block, and not a status computed from the tree
 
@@ -85,8 +84,8 @@ block makes that a failure someone reads.
 ## Measured
 
 On 2026-10-18 (UTC), before visibility is narrowed, by `helpers/name_local.py --list`:
-7,079 `pub` items carry no block. 3,548 are read by no other package; 3,303 of those pass every
-check and 245 fail one. Narrowing turns many of the 3,548 into `pub(crate)`, which leaves the
+7,083 `pub` items carry no block. 3,549 are read by no other package; 3,306 of those pass every
+check and 243 fail one, 169 of them on a spelled-out abbreviation. Narrowing turns many of the 3,548 into `pub(crate)`, which leaves the
 census, so the rule is applied only after that lands.
 
 ## BUGS

@@ -155,6 +155,7 @@ root, mode = sys.argv[1], sys.argv[2]
 sys.dont_write_bytecode = True
 sys.path.insert(0, os.path.join(root, "helpers"))
 import name_census                                                          # noqa: E402
+import name_provenance                                                      # noqa: E402
 import name_rules                                                           # noqa: E402
 import name_crossings                                                       # noqa: E402
 import name_ruled                                                           # noqa: E402
@@ -216,7 +217,8 @@ unrecorded = [r for r in records if r["status"] == "unrecorded"]
 # `local` is a pub item §310 (a name read only inside its package is ratified by rule) covers:
 # ratified by calef's rule for the class, never by him for the name, so it is counted apart and is
 # off the worklist. helpers/name_local.py, in script/lint, sends one back the day it stops being local.
-local = [r for r in records if r["status"] == "local"]
+LOCAL = name_provenance.LOCAL
+local = [r for r in records if r["status"] == LOCAL]
 # `provisional` is a claim about INTENT (whoever chose this expects it to change), where the other
 # three are claims about the RECORD. §89 added it on 2026-08-16, after milestone 117's second
 # stranger run wrote the word AGENTS.md tells a lane to write and got a red gate for it: the file
@@ -360,7 +362,7 @@ def rank_crossings():
     """
     cands, by_key = [], {}
     for r in records:
-        if r["kind"] not in ("item", "module") or r["status"] in ("ratified", "local"):
+        if r["kind"] not in ("item", "module") or r["status"] in ("ratified", LOCAL):
             continue
         file, _, line = r["path"].partition(":")
         key = (r["kind"], r["name"], r["path"])
@@ -499,14 +501,14 @@ if mode:
 for kind in KINDS:
     group = sorted(by_kind.get(kind, []), key=lambda r: r["name"])
     tally = {s: sum(1 for r in group if r["status"] == s)
-             for s in ("ratified", "local", "provisional", "recorded", "unrecorded")}
+             for s in name_provenance.STATUSES}
     print(f"\n{kind.upper()}S ({len(group)}: {tally['ratified']} ratified, "
-          f"{tally['local']} local by rule, "
+          f"{tally[LOCAL]} local by rule, "
           f"{tally['provisional']} provisional, {tally['recorded']} recorded, "
           f"{tally['unrecorded']} unrecorded)")
     for r in group:
         when = (r["date"] if r["status"] == "ratified"
-                else f"local {r['date']}" if r["status"] == "local" else r["status"])
+                else f"{LOCAL} {r['date']}" if r["status"] == LOCAL else r["status"])
         tail = f"  refused {len(r['refused'])}" if r["refused"] else ""
         print(f"  {r['name']:<28} {when:<12}{tail}")
 

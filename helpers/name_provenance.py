@@ -41,12 +41,17 @@ import re
 # item no other package reads, which passed every mechanical check on the date it carries. calef
 # ratified the class, not the name, so it is counted apart from `ratified`, and a lane writes it.
 # `helpers/name_local.py` fails one that another package starts reading.
-STATUSES = ['ratified', 'local', 'recorded', 'provisional', 'unrecorded']
+# The state's word and its block form, in one place: calef has not yet ruled on either, and a rename
+# should touch these lines and nothing else in the tooling.
+LOCAL = "local"
+LOCAL_HEAD = LOCAL + " by rule,"
+LOCAL_BLOCK = "Name: " + LOCAL_HEAD + " {date} (§{section})."
+STATUSES = ['ratified', LOCAL, 'recorded', 'provisional', 'unrecorded']
 
-_HEAD = re.compile(r"(ratified|local|recorded|unrecorded|provisional)\b")
-_DATE = re.compile(r"(?:ratified|local by rule,) (\d{4}-\d{2}-\d{2})\b")
+_HEAD = re.compile(rf"(ratified|{LOCAL}|recorded|unrecorded|provisional)\b")
+_DATE = re.compile(rf"(?:ratified|{re.escape(LOCAL_HEAD)}) (\d{{4}}-\d{{2}}-\d{{2}})\b")
 # The whole `local` form, because a lane writes it and nothing but the form says which rule it cites.
-LOCAL_FORM = re.compile(r"^local by rule, \d{4}-\d{2}-\d{2} \(§\d+\)")
+LOCAL_FORM = re.compile(rf"^{re.escape(LOCAL_HEAD)} \d{{4}}-\d{{2}}-\d{{2}} \(§\d+\)")
 
 # `recorded` claims the reasoning is somewhere else, so it has to point: `recorded (milestone 46)`,
 # `recorded (design/naming.md)`. Same shape of check as the date on `ratified`, and the same limit,
@@ -310,7 +315,7 @@ def parse(text):
     m = _HEAD.match(text)
     status = m.group(1) if m else None
     date = None
-    if status in ("ratified", "local"):
+    if status in ("ratified", LOCAL):
         d = _DATE.match(text)
         date = d.group(1) if d else None
     return status, date, refused_in(text)
@@ -338,7 +343,7 @@ def classify(text):
         return None, None, refused, NO_STATUS
     if status == "ratified" and date is None:
         return None, None, refused, NO_DATE
-    if status == "local" and not LOCAL_FORM.match(text):
+    if status == LOCAL and not LOCAL_FORM.match(text):
         return None, None, refused, NO_DATE
     if status == "recorded" and not CITED.match(text):
         return None, None, refused, NO_CITATION

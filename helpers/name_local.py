@@ -41,7 +41,8 @@ import name_crossings  # noqa: E402
 import name_provenance  # noqa: E402
 
 SECTION = 310
-BLOCK = "Name: local by rule, {date} (§{section})."
+BLOCK = name_provenance.LOCAL_BLOCK
+LOCAL = name_provenance.LOCAL
 KINDS = ("function", "constant", "type")
 
 # Components a ruling spells out, so a name holding one is not local-by-rule material whatever
@@ -182,14 +183,14 @@ def survey(sources, manifests, refused, british=None, reach=None):
     qualify, fail, cross, problems = [], [], [], []
     for it in found:
         status = name_provenance.classify(it["block"])[0] if it["block"] is not None else None
-        if it["block"] is not None and status != "local":
+        if it["block"] is not None and status != LOCAL:
             continue
         it["readers"] = reach.readers(it["path"], it["line"], it["name"])
         it["failures"] = failures(it["name"], it["keyword"],
                                   _returns_bool(stripped[it["path"]], it["line"]), refused,
                                   british)
         where = f"{it['path']}:{it['line']}"
-        if status == "local":
+        if status == LOCAL:
             if it["readers"]:
                 problems.append(
                     f"`{it['name']}` ({where}) is local by rule, and "
@@ -208,13 +209,13 @@ def misplaced(records):
     """A `local` block on something §310 does not cover: a module, field, variant or macro."""
     return [f"{r['kind']} {r['name']} ({r['path']}) carries `local by rule`, and §310 covers "
             f"only `pub` functions, constants and types; write `provisional` instead"
-            for r in records if r["status"] == "local"
+            for r in records if r["status"] == LOCAL
             and (r["kind"] != "item" or r.get("what") not in KINDS)]
 
 
 def _local_blocks(text):
     return collections.Counter(r["name"] for r in name_provenance.rust_items(text)
-                               if r["block"] and r["block"].startswith("local by rule"))
+                               if r["block"] and r["block"].startswith(name_provenance.LOCAL_HEAD))
 
 
 def apply(sources, targets, date):
@@ -349,7 +350,7 @@ def main(argv):
     if mode == "--check":
         for p in problems:
             print(f"names: {p}", file=sys.stderr)
-        local = sum(r["status"] == "local" for r in records)
+        local = sum(r["status"] == LOCAL for r in records)
         if problems:
             print("\nA `local` name is ratified by rule only while no other package reads it and it "
                   "passes every check (design/naming.md, §310).\nMoving it to `provisional` "
