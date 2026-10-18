@@ -46,8 +46,9 @@ it built for someone else. At equal effort A still wins, and the efforts are abo
 
 ## What it leaves alone
 
-- [§300 (the paused state)](0300-tcb-suspend-resume-the-paused-state.md)'s verbs are unchanged. The holder of the TCB is still the one who may pause the thread;
-  this section decides who that holder is for a supervised job.
+- [§300 (the paused state)](0300-tcb-suspend-resume-the-paused-state.md)'s verbs are unchanged. The
+  holder of the TCB is still the one who may pause the thread; this section decides who that holder
+  is for a supervised job.
 - §142's rule still holds. Retention is declared at the call site, and a spawn path cannot forget
   to decide. This adds one more answer the field may give.
 - A stale capability is harmless. Reclaiming a region makes every capability delegated out of it
