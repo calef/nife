@@ -3,7 +3,7 @@
 //! `x86_64`.
 //!
 //! One syscall wrapper ([`invoke`]) and what every program builds on it: [`send`], [`receive`],
-//! [`call`] and [`exit`], plus the thin wrappers in `objects.rs` and `ipc.rs`, each discharging
+//! [`call`] and [`exit`], plus the thin wrappers in `objects.rs` and `inter_process_communication.rs`, each discharging
 //! [`invoke`]'s own safety obligation once instead of at every call site. [`require`] is the one
 //! way a program says no: a failed check dies where the mistake was. Opt-in modules carry what
 //! only some programs need: [`heap`] (a program that never allocates links no allocator),
@@ -46,7 +46,7 @@ pub mod virtio;
 
 mod clock;
 mod devices;
-mod ipc;
+mod inter_process_communication;
 mod objects;
 mod process;
 mod syscall;
@@ -54,7 +54,7 @@ mod syscall;
 pub use abi::cycle_counter::CycleMeaning;
 pub use clock::*;
 pub use devices::*;
-pub use ipc::*;
+pub use inter_process_communication::*;
 pub use objects::*;
 pub use process::*;
 pub use syscall::*;

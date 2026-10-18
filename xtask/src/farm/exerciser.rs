@@ -31,8 +31,10 @@ pub(super) const STD_TARGETS: [&str; 3] = [
 /// times. Pinning makes the wrong state unrepresentable; printing the override keeps the
 /// correction from being one more thing that happened silently.
 ///
-/// Name: provisional, minted 2026-09-30 by the sysroot-theft lane.
-pub(super) fn exerciser_target_dir(inherited: Option<&str>) -> (PathBuf, Vec<String>) {
+/// Name: provisional, minted 2026-10-18 (UTC) by maintainer/names-comply-free-crates. Refused
+/// `exerciser_target_dir` (`dir` is spelled out, per §154 (the acronym test is whether the phrase
+/// is spoken)).
+pub(super) fn exerciser_target_directory(inherited: Option<&str>) -> (PathBuf, Vec<String>) {
     let pinned = workspace_root().join("std_exerciser/target");
     let canon = |p: PathBuf| std::fs::canonicalize(&p).unwrap_or(p);
     if let Some(exported) = inherited.map(PathBuf::from).map(canon)
@@ -74,7 +76,7 @@ pub(super) fn exerciser_target_dir(inherited: Option<&str>) -> (PathBuf, Vec<Str
 /// in the workspace's shared `target/`, dep-info and ELFs with it, while [`std_aborts`] and the
 /// archive's ELF paths read `std_exerciser/target`. The sweep then judged the previous
 /// unredirected run's evidence, and a build that had resolved a foreign or unpatched sysroot
-/// passed as green; the 1377 lane had exactly that, twice. [`exerciser_target_dir`] pins, and
+/// passed as green; the 1377 lane had exactly that, twice. [`exerciser_target_directory`] pins, and
 /// names the override out loud rather than absorbing it silently.
 pub(crate) fn std_exerciser() -> bool {
     if !std_src() {
@@ -85,7 +87,7 @@ pub(crate) fn std_exerciser() -> bool {
     // archive packs, the dep-info the sweep reads, and this build cannot be separated by an
     // exported variable they never agreed to.
     let inherited_target_dir = std::env::var("CARGO_TARGET_DIR").ok();
-    let (target_dir, notes) = exerciser_target_dir(inherited_target_dir.as_deref());
+    let (target_dir, notes) = exerciser_target_directory(inherited_target_dir.as_deref());
     for note in &notes {
         eprintln!("std-exerciser: {note}");
     }
