@@ -248,7 +248,7 @@ fn start_supervised(e: Endowment, foreground: bool) -> Option<Held> {
 /// drive the escalation policy, and act. The busy-poll with `yield` is how one thread watches
 /// three things with only blocking primitives and no non-blocking receive (DECISIONS §24, wait A).
 /// `true` means a `^Z` suspended the job, which is still held; `false` means it is over.
-fn watch(h: &Held) -> bool {
+pub(super) fn watch(h: &Held) -> bool {
     let (jf, job_ut) = (h.jf, h.job_ut);
     // The baseline is the session watermark, not a fresh read: a ^C counted during the spawn is
     // already reflected in intr_count but not yet in CONSUMED, so diffing against CONSUMED sees it.
