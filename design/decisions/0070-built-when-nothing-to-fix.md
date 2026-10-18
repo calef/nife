@@ -13,8 +13,8 @@ tree have this property?", not "how much work did it take?": a benchmark milesto
 numbers exist however easy the run was, and an audit that finds nothing wrong still happened. The
 guard that keeps this from laundering wrong premises into history is mandatory: **the false premise
 is rewritten into the block as a finding, not a footnote**. That is because "we looked and it
-already holds" is knowledge the tree did not have before the looking. It is usually a §76 (what
-catches a wrong milestone status)-shaped discovery that the records and the tree disagreed.
+already holds" is knowledge the tree did not have before the looking. It is usually a discovery of
+the §76 (what catches a wrong milestone status) kind, that the records and the tree disagreed.
 Milestone 82 (`unsafe_op_in_unsafe_fn`)'s block received exactly this treatment on 2026-08-04,
 provisionally; this ruling makes it the rule. The shape recurs with every audit or sweep that finds
 nothing to fix, and the answer is now the same each time.
