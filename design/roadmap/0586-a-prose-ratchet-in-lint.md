@@ -9,7 +9,7 @@ needs_person: no
 ---
 # 586. A prose ratchet in lint
 
-Built on 2026-09-24 except the churn measurement, which needs a week. Minted by the maintainer on 2026-09-24, at the merge of the two decisions it
+Built except the names of its two exception markers, which are calef's. Minted by the maintainer on 2026-09-24, at the merge of the two decisions it
 enforces: [§212 (a prose budget)](../decisions/0212-a-prose-budget-for-every-document.md) and
 [§213 (writing standards)](../decisions/0213-writing-standards.md). calef ratified both on 2026-09-23.
 
@@ -149,7 +149,55 @@ ratified. When it was armed, 9 of 20 open pull requests would have failed it.
 ## What would make it not worth doing
 
 If the baseline file churns on every pull request, the ratchet costs more attention than it saves.
-Measuring that churn over the first week is part of the milestone.
+
+## What the baseline churn costs, measured
+
+`helpers/prose_baseline_churn.py` measures it from git alone, so any commit of `main` reproduces it.
+The unit is a first-parent merge on `main`, one merged pull request. Read at 5635cb7da (2026-10-19):
+
+| window | merged | changed a measured document | touched the baseline | forced |
+|---|---|---|---|---|
+| first 7 days, from the gate's merge at 2026-09-25T02:15Z | 176 | 149 | 6 (3.4%) | 1 |
+| to 2026-10-19 | 1,050 | 877 | 45 (4.3%) | 4 |
+
+What each number means:
+
+- Touched counts a pull request whose diff changed `design/prose-baseline.tsv` at all. One of the
+  first week's six is the merge that wrote the file.
+- Forced is a touch the gate required. A renamed document carries its row, and a change of
+  measurement re-measures the rows it moved. All four were tree-wide changes: two `measure:` bumps
+  (#1328's roadmap frontmatter, #2070's whole-file word count) and two filename padding sweeps
+  (#1822, #1823). No feature pull request was forced to edit the file.
+- The other 40 touches removed or lowered rows by choice. 33 of them carry the `debt-paydown`
+  label, lanes whose purpose was the backlog the file holds.
+- No touch added a row, or raised one outside a change of measurement. The gate refuses both.
+
+So the file did not churn. About one pull request in 25 touched it, and most of those were paying
+down its debt. By this block's own test, the ratchet is worth keeping.
+
+Where the comparison is not apples-to-apples:
+
+- The file is not the gate's whole cost. A pull request rewritten to meet a limit before it merged
+  leaves no trace in the baseline. That cost shows in failed lint runs, which git does not keep, and
+  in exception markers. Six `writing-standards` markers stand in the tree and no `prose-budget` one
+  (`helpers/exception_markers.py --list`).
+- `--bank` lowers every row to the tree, not only the author's. #1483, a correction to one note,
+  banked 677 rows that other pull requests had shrunk. On a busy file that risks merge conflicts,
+  though none was recorded.
+- The measured-document count reads today's scope at every merge. The scope widened at the gate's
+  own merge, so early counts can include a document the gate of that day did not read.
+- 149 of 176 merges changed a measured document because nearly every lane edits its own roadmap
+  block. Touched over that count is no sharper a rate than touched over merged.
+
+The baseline holds no rows as of 2026-10-19. With nothing to rename, lower or remove, only a change
+of measurement can touch it, and the ratchet is a plain limit check on every document.
+
+## The exception markers' names
+
+`<!-- prose-budget: exception. -->` waives §212 and `<!-- writing-standards: exception. -->`
+waives §213. Each is `Name: provisional.` and each is named for the decision it waives.
+`script/names` has no kind for a marker in an HTML comment, so these two are tracked here and in
+`helpers/prose_ratchet.py`'s header, outside its register.
 
 ## Design note, 2026-09-29: a correction pays the same toll as a rewrite
 
@@ -174,9 +222,8 @@ prose words. An exception marker's grant is read as `wc -w` without frontmatter 
 
 ## Follow-on
 
-- **Outstanding.** Measure baseline churn over the first week, from 2026-09-24: how many merged pull
-  requests touched `design/prose-baseline.tsv`, and why. The block names churn as the thing that would
-  make this not worth doing, so that number decides whether it stays.
+- **Done.** Measured baseline churn over the first week and to date, in the section above. It
+  finds the ratchet worth keeping.
 - **Outstanding.** Promote the two exception markers from provisional. The syntax is honored as
   found; calef names it. Where the splitter departs from §213's, and why, is in the module's header.
 - **Done.** Built 2026-09-25: the marker-count check from the design note above. `granted_words()`
