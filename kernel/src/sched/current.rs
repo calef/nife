@@ -58,12 +58,13 @@ pub(super) static CURRENT_CAPABILITIES: [CurrentCapabilities; cpu::MAX_CPUS] =
 ///
 /// `tcb` is `tid`'s page pointer as the thread table stores it (`Threads::pointer`), live.
 ///
-/// `#[inline(always)]` on riscv64: it is on every IPC and must land in `.text.hot` with its
-/// caller. Which codegen unit this module falls in decides whether LLVM inlines it on its own,
-/// and riscv64's CI build left it out of line once the arch roots were split
-/// (`script/fastpath-footprint`, 2026-10-14 UTC). The other two still inline it unforced, and
-/// forcing it there grows aarch64's `syscall_entry` past its band.
-#[cfg_attr(target_arch = "riscv64", inline(always))]
+/// `#[inline(always)]` on riscv64 and x86_64: it is on every IPC and must land in `.text.hot`
+/// with its caller. Which codegen unit this module falls in decides whether LLVM inlines it on
+/// its own, and that moves with unrelated code and with the build host: riscv64's CI build left it
+/// out of line once the arch roots were split, and x86_64 then did the same at one commit that CI
+/// had inlined (`script/fastpath-footprint`, 2026-10-14 and 2026-10-18 UTC). aarch64 still inlines
+/// it unforced, and forcing it there grows its `syscall_entry` past its band.
+#[cfg_attr(any(target_arch = "riscv64", target_arch = "x86_64"), inline(always))]
 pub(super) unsafe fn set_current(tid: ThreadId, tcb: *mut Thread) {
     cpu::current().current.store(tid, Ordering::Relaxed);
     // SAFETY: the caller's contract; an address computation, nothing is read.

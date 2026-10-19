@@ -15,4 +15,5 @@ Part of [the notes index](../README.md), which says how to add a line.
 - [Packages that build the OS, and divisions that release together: the measurements](../packages-and-divisions.md).
 - [The first repository split: which preconditions hold, which cut goes first, and what basalt must be](../the-first-split.md).
 - [Installing nife onto a disk from a boot stick](../installing.md).
+- [Turning Secure Boot off, before booting the nife stick on a PC](../turning-secure-boot-off.md): the install page's first instruction.
 - [xenon bench card, October 2026](../xenon-bench-2026-10.md): risk 6's throughput boots, then the install, in that order.

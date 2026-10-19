@@ -3,9 +3,13 @@
 *Name: provisional, for the directory and every appendix stem in it. Each appendix's own preamble says the same of its stem.
 Naming is calef's; `script/names --unratified` lists each stem.*
 
-The nine risk files are ratified (2026-10-05, UTC; calef, PR #1675: "Use the claim forms."): each
-stem states its risk's claim. Refused `5-multicore-reliability` and `6-userspace-driver-speed`,
-which name a topic rather than the claim.
+Eight of the nine risk files are ratified (2026-10-05, UTC; calef, PR #1675: "Use the claim
+forms."): each stem states its risk's claim. Refused `5-multicore-reliability` and
+`6-userspace-driver-speed`, which name a topic rather than the claim.
+
+`what-leaves-nife` Name: provisional, minted 2026-10-18 (UTC) by lane maintainer/risk-8-restatement
+for risk 8's appendix, with the risk file's stem `8-nobody-else-builds-on-nife`, which is provisional
+too. The risk stem states the claim in the claim form; the appendix stem names what risk 8 counts.
 
 calef, 2026-08-30: *"something that would kill nife for me as a project is a fatal characteristic
 that would demonstrate the approach isn't viable... We should then try to prove or disprove those
@@ -83,7 +87,7 @@ A risk's file holds the claim of record: its status, its experiment, its cost an
 5. [It cannot be made reliable on multicore, and the bugs appear only on silicon](5-not-reliable-on-multicore.md)
 6. [A capability-confined userspace driver cannot drive real hardware at real speed](6-a-confined-driver-is-too-slow.md)
 7. [The confinement claim is false](7-the-confinement-claim.md)
-8. [Nobody needs it](8-nobody-needs-it.md)
+8. [Nobody else builds on nife's mechanisms](8-nobody-else-builds-on-nife.md)
 9. [The HAL is a fiction, and an architecture costs a restructure rather than a port, and so does the next machine](9-the-hal-is-a-fiction.md)
 
 ## The standard benchmarks each risk is measured by
@@ -100,7 +104,7 @@ Each risk file lists its own under *Benchmarks that inform this risk*. None has 
 | 5, multicore | 827, 830 (wakeup latency) |
 | 6, a confined driver | 828, 829, 833, 834 |
 
-Risks 2, 3, 7, 8 and 9 have none. They are claims about proofs, tests, confinement, demand and
+Risks 2, 3, 7, 8 and 9 have none. They are claims about proofs, tests, confinement, uptake and
 portability, which a speed benchmark does not measure.
 
 ## The running order
@@ -116,11 +120,11 @@ Ranked by chance-of-fatal times cheapness-of-test, not by number. Each cell's ve
 | ~~4~~ | 1, the ecosystem | **RUN, 2026-08-31: GREEN** (calef, 2026-10-12: *"Track packaging separately. We already do."*; amber 2026-10-06 to 2026-10-12, green from 2026-09-16). All three gaps closed: CI re-checks `rg` (#1853), a second foreign program (835's `speedtest1` and ioping, #1896), and a foreign program running a second thread (`rg`'s parallel walk, #2016) | milestone 121 (`ripgrep` on nife); threads are milestone 812 (`std::thread::spawn` runs real threads in one address space) and 836 (a C library, stage 2: threads) for C | done. Packaging is tracked separately: milestones 810 (`ripgrep` is packaged in basalt) and 897 (SQLite is packaged in basalt), and a decision in flight (#2023) |
 | ~~5~~ | 3, the tests | **RUN, 2026-09-19: amber.** 96.1% like-for-like against 92.4% on 2026-09-21, and 771 missed survivors (414 projected after #1277) hold the amber | milestone 326 | done; the triage remains |
 | ~~6~~ | 4, performance | **RUN, 2026-10-04: GREEN** (calef, 2026-10-05; amber 2026-10-04). Throughput held, and the null syscall's rise under load was a fixable lock and false sharing, now 10 ticks of growth | milestone 168 (a multi-tasking workload benchmark); milestone 761 (capability lookup off the global lock) and milestone 766 (each core's PerCpu on its own cache line) done | done; about 5 ticks of growth remain undecomposed |
+| 5 | 8, nobody else builds on nife's mechanisms | **NOT-RUN.** Honest attempts at releasing or contributing nife's mechanisms, each on its own 6-month clock, counted as adopted, absorbed, handed off or composed; red is readable once five attempts have expired with no uptake, and at 2027-10-18 if nothing has left nife. Placed after the HAL run (calef, 2026-10-18) | none yet; the first three mechanisms are an architect's pick | low: a release or pull request and its explanation per attempt, and months of waiting |
 | 7 | 9 and 6 together | journey 3, end to end on three boards | journey 3 | months, and it is the capstone |
 | -- | 5, multicore | **RUN on radon, 2026-10-10:** SS259 met for radon, 10.29 million crossings over 3 plain boots, every exposure row clean, the defect-discovery curve flat zero. Ruled facts-not-verdict by calef, 2026-10-10: the verdict waits until a second architecture runs SS259, and xenon is next | milestone 201 (is multicore reliability converging) | weeks, hardware |
 | -- | 6, a confined driver at real speed | **RUN, 2026-10-04: AMBER** (calef, 2026-10-08; GREEN 2026-10-07, amber 2026-10-04). Write 1.08x and read 2.16x Linux's best on the same disk at queue depth 1; the read gap is unexplained, so the verdict is back to amber until a same-job-file benchmark (ioping proposed, then fio at queue depths 1, 4 and 32) explains it | milestone 261 (the NVMe driver leaves the kernel) done | the benchmark is the cost; fio waits on threads |
 | -- | 7, confinement | **RUN, 2026-08-31, extended 2026-09-16, AUDITED 2026-09-17: amber** (calef, 2026-10-03). A confinement test could not fail, and DECISIONS §12 (call/reply IPC: a one-shot reply capability) was false on x86_64. Fixed. The outsider half remains. Fact, 2026-10-10: criterion (c)'s count restarted at zero on the sixth pass's DNS rebinding in the package fetch, which calef ruled "an escape on a shipped path"; fixed in #1901 | milestone 633 (an outside agent attacks the confinement claim); 202, 305 and 313 done | one agent run, token cost uncosted |
-| -- | 8, nobody needs it | **CANNOT-RUN, 2026-09-23.** No experiment, and none available: milestone 576 (how many systems are out there, and what do they run) is behind milestone 801 (packages over the internet), rung 3c of milestone 198 (a package manager) until 198 was split on 2026-10-06 | milestone 576 | blocked, not costed |
 
 ## BUGS
 
