@@ -59,20 +59,31 @@ What is built:
 - `kernel::user::terminal_swap_tests` swaps it twice under a typist and a parked reader on all
   three architectures: a line half typed before the swap finishes after it, and history typed
   before it is recalled after it. `script/swish-check`, plain and graphical, boots through it.
+- The quiesce is bounded. A stand-in built from the supervisor's own image makes the `CALL` and
+  signals the answer on a notification the supervisor's timer also signals. A `line_editor` that does not answer within
+  `QUIESCE_BOUND_MS` is replaced without its state and its region destroyed, which answers its
+  callers `Gone`. The second test in `terminal_swap_tests` hangs one behind a console that stops
+  acknowledging. A spawner that passes a swap endpoint copies the supervisor's image and grants a
+  stand-in's budget; one that passes none, which is every boot today, grants nothing extra.
 
 What is left is the trigger. [§308 (the installer asks the terminal to swap)](../design/decisions/0308-the-installer-asks-the-terminal-to-swap.md)
 rules it, and `design/roadmap/0694-the-installer-asks-the-terminal-to-swap.md` builds it.
 
-## display_terminal: a declaration and a handoff
+## display_terminal: a budget, a handoff and a holder
 
 `system_initializer` builds `display_terminal` (milestone 600 (the graphical terminal stack is built
-in userspace)), so a supervisor could hold it. What is left for a swap is a declaration and a
-handoff for the grid.
+in userspace)), so a supervisor could hold it, and it already serves `line_editor::proto`, so its
+quiesce needs no new opcode. Three things are left, and each is an architect's:
 
-Its state is also far past a page. A replacement that starts with an empty grid over a surface that
-still shows the old text would look right until the first scroll, then lose the scrollback. That is
-probably acceptable (declare no handoff, record the loss), and it is an architect's taste call rather
-than an engineering one.
+- One instance is 177 pages of `.bss`, a swap holds two, and a `graphical_terminal` session has 144
+  pages of its job pool to spare.
+- Its state is far past a page. A replacement that starts with an empty grid over a surface that
+  still shows the old text would look right until the first scroll. Carrying the visible grid is
+  72 pages; the scrollback too, 176. Which to carry is a taste call.
+- Something has to hold it: `terminal_supervisor` beside `line_editor`, or a second supervisor.
+
+`design/roadmap/proposals/swap-the-display-terminal-live.md` has the options, their costs and a
+recommendation for each.
 
 ## compositor: not before it has a boot path
 
@@ -90,6 +101,28 @@ the harness.
 - The compositor gets no milestone until it has a boot path; that is recorded in the block.
 
 ## BUGS
+
+`terminal_supervisor`'s, which its module doc lists:
+
+- **Nothing on a real boot asks it to swap.** `system_initializer` passes no swap endpoint, so the
+  supervisor builds the terminal and waits; only the kernel's test swaps. Milestone 694 (the
+  installer asks the terminal to swap) builds the trigger, and §308's frame run, sent with `SWAP`,
+  is how a new image arrives. Until then a replacement is the same image.
+- **A hung `line_editor`'s state is lost, and its callers are told `Gone`.** Only the incumbent can
+  write the blob, so the half-typed line, the history and any queued lines are gone. `swish` and
+  `rmle` handle `FLAG_RETRY` but not `Gone`, and the terminal contract does not say which of its
+  requests may be repeated, so on a real boot the shell would read a hang as a failed read. That is
+  a contract question for an architect; only the kernel's test typist asks again today.
+- **A hang caused by the sink can answer the replacement late.** In console mode a `line_editor`
+  blocked in its sink's reply is hung by the console. If the console recovers, its ack for the dead
+  incumbent's flush reaches the replacement's first `RECEIVE`, one flush early.
+- **A slow `line_editor` is convicted as a hung one.** Nothing distinguishes an answer that arrives
+  after the bound from none. The bound is about thirty times the slowest healthy answer measured.
+- **A `line_editor` that faults is not restarted.** Its death is collected at the next swap, and
+  until then the terminal is gone. Restarting it fresh is the hung path without the quiesce, and is
+  not built because nothing has asked for it.
+
+The note's own:
 
 `line_editor`'s blob is smaller than `LineDisc`'s buffers, because it does not carry the
 completed-line snapshot or the browse stash. Measured by `line_editor`'s host test on 2026-09-27: a

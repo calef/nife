@@ -10,10 +10,10 @@ needs_person: no
 # 23. A capability-routed component OS with live replacement
 
 Every residual this block named is built, and so are the advisory warning (§231) and the live
-swap of `line_editor` (§232 (the line editor swap contract), with a terminal supervisor). What keeps
-it PARTIAL: the installer does not yet ask the terminal to swap (milestone 694, an architect's).
-`display_terminal` and `compositor` are not swapped, and `terminal_supervisor` does not bound its
-quiesce, so only `swapper` notices a hang.
+swap of `line_editor` (§232 (the line editor swap contract), with a terminal supervisor that
+notices a hang on its own). What keeps it PARTIAL: the installer does not yet ask the terminal to
+swap (milestone 694, an architect's), and `display_terminal` and `compositor` are not swapped,
+which waits on three answers in `design/roadmap/proposals/swap-the-display-terminal-live.md`.
 
 ## The idea
 
@@ -129,8 +129,8 @@ warning is a `CALL`. notes/non-cooperative-fallback.md.
   manifest rather than a component's declaration; notes/component-manifest.md's `BUGS` carries the history.
 - **Done.** The timed wait a supervisor needs to notice a hang exists: milestone 106 (a wait that
   ends on either the interrupt or the deadline) is BUILT 2026-09-26. Milestone 263 (can a userspace process hold a timer, on all
-  three architectures) was RECORDED rather than a blocker. `swapper` uses it for its bounded
-  quiesce (below); `terminal_supervisor` does not.
+  three architectures) was RECORDED rather than a blocker. `swapper` and `terminal_supervisor`
+  use it for their bounded quiesces (below).
 - **Done.** What may be done to a component that never cooperates? Its region holder `DESTROY`s it.
   Milestone 133 (ending a permanently blocked thread, and deciding who may), ruled by calef on
   2026-09-03 (proposal A), finishes a `Blocked` resident in place without waking it
@@ -156,10 +156,18 @@ warning is a `CALL`. notes/non-cooperative-fallback.md.
   `script/test` runs TCG without `-icount`; the measurements are beside the constant in
   `components/src/swapper.rs`. The same test asserts the verdict, its order before the survey and
   the reclaim, and the absent drain.
-- **Outstanding.** `terminal_supervisor` does not bound its quiesce of `line_editor`. It would need a
-  notification and timer its spawner grants, a stand-in for the `CALL`, the incumbent's region kept,
-  and a typist that handles `Gone` from `line_editor`. The last is not in §232 (the line editor swap
-  contract), so it is a contract change and an architect's. Recorded 2026-10-18.
+- **Done.** `terminal_supervisor` notices a hung `line_editor` on its own, 2026-10-19. Its quiesce
+  is made by a stand-in built from the supervisor's own image, which signals the answer on a
+  notification the supervisor's timer signals at `QUIESCE_BOUND_MS` (250 ms). On no answer it starts
+  the replacement without the state and destroys the incumbent's region, which answers every caller
+  it held with `Gone`. Only a spawner that passes a swap endpoint copies the image and grants the
+  extra budget (`line_editor::component::supervisor::OWN_IMAGE_ADDRESS`), so a boot pays nothing.
+  `terminal_swap_tests::a_hung_terminal_is_noticed_within_the_bound_and_replaced_without_its_state`
+  hangs a real `line_editor` behind a console that stops acknowledging. It asserts the verdict, a
+  wait of at least the bound, `Gone` to the parked reader and the typist, a replacement that serves
+  empty, and a budget that reclaims whole. A healthy quiesce took 2 to 8 ms across the three
+  ISAs, so the bound is about thirty times the slowest; the measurements are beside it. That `swish` and `rmle` treat `Gone` as a failed read is the supervisor's `BUGS`: which
+  terminal requests may be repeated is a contract question, and an architect's.
 - **Done.** The advisory warning, 2026-09-27, as ruled in DECISIONS §231 (a swap's warning to a
   dependent is advisory, and the supervisor never waits for it). `broker` reads a warning page on
   every wakeup, and `swapper` signals a notification bound to it and never waits. So a dependent that
@@ -175,11 +183,12 @@ warning is a `CALL`. notes/non-cooperative-fallback.md.
   architectures, carrying the half-typed line and the history. notes/interactive-stack-swap.md.
 - **Milestone 694.** Milestone 694 (the installer asks the terminal to swap). `design/roadmap/0694-the-installer-asks-the-terminal-to-swap.md`, NOT-STARTED,
   raised 2026-09-27: the trigger. Nothing on a real boot asks the supervisor to swap yet.
-- **Outstanding.** `display_terminal` and `compositor` are not swapped. Milestone 600 (the
-  graphical terminal stack is built in userspace) moved `display_terminal`'s construction into
-  `system_initializer`, so a supervisor could now hold it; what it lacks is a declaration and a
-  handoff for a grid of several hundred KiB. The compositor runs only in the tests of milestone 33
-  (a compositor: one screen, mutually distrusting clients). Checked 2026-09-27.
+- **Proposed.** `display_terminal` and `compositor` are not swapped.
+  `design/roadmap/proposals/swap-the-display-terminal-live.md` has the three answers it waits on:
+  where a second 177-page instance comes from in a session whose region has 144 pages to spare, what
+  a replacement inherits, and who holds it. The compositor runs only in the tests of milestone 33 (a
+  compositor: one screen, mutually distrusting clients), and its swap waits for a boot that runs it.
+  Checked 2026-10-19.
 
 ## Index row
 
