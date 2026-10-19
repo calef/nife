@@ -1,6 +1,7 @@
 ---
-status: PARTIAL
+status: BUILT
 raised: 2026-10-07
+built: 2026-10-19
 milestone_dependencies: 597, 809
 decision_dependencies: 151, 195, 219, 250
 machine_requirements: none
@@ -9,12 +10,15 @@ needs_person: no
 ---
 # 810. `ripgrep` is packaged in basalt and installed with `jig`
 
-**PARTIAL, 2026-10-13 (UTC).** basalt builds `ripgrep` from a recipe that pins its sources by
+**BUILT, 2026-10-19 (UTC).** basalt builds `ripgrep` from a recipe that pins its sources by
 SHA-256 and publishes one package per architecture on a GitHub Release, indexed at
-`basalt.nifeos.org`. nife builds no `rg`. Its gates fetch that package by a pinned digest, and a
-booted nife runs `jig install ripgrep` and `rg --version` against it on all three architectures
-under QEMU, on every pull request. Each recipe records its package's digest (milestone 917). The two
-"Built" sections below have the rest.
+`basalt.nifeos.org`. The recipe's `[package_digest]` records each package's SHA-256, every build
+refuses a package that hashes to anything else, and basalt's `packages` workflow fails its
+`the two builds are byte-identical` job unless two builds at different paths match (milestone 917).
+The Release `rolling-2026-10-19-b673abe` serves the three digests the recipe at
+nifeos/basalt@b673abe records. nife builds no `rg`. Its gates fetch that package by the recipe's
+digest, and a booted nife runs `jig install ripgrep` and `rg --version` against it on all three
+architectures under QEMU, on every pull request. The two "Built" sections below have the rest.
 
 *(From fork 4 of
 [milestone 849 (a package declares what it needs at run time)](0849-a-package-declares-what-it-needs-at-run-time.md),
@@ -34,7 +38,7 @@ jig, ripgrep should be installed via jig and not part of the base image. It isn'
 This is the packaging half. Milestone 121 (`ripgrep` on nife) is the functional half, and it
 depends on this one only for running `rg` at the swish prompt.
 
-## What exists, checked 2026-10-13 (UTC)
+## What exists, checked 2026-10-19 (UTC)
 
 In nife:
 
@@ -45,12 +49,12 @@ In nife:
 - `system_tests/src/user/ripgrep_tests.rs` and `ripgrep_threads_tests.rs` run it by hand-placed
   capabilities. `script/swish-check` installs it with `jig` and runs it by name and by path.
 
-In `nifeos/basalt`: `pins.toml` pins `nife` by full commit id, and three workflows. `gate.yml` runs
-the pinned commit's own `script/ci-build test`. `pin-bump.yml` proposes a new pin daily.
-`packages.yml` builds `recipes/ripgrep.toml` at the pin, proves `jig` installs it, and on `main`
-publishes the packages to a Release and the index to Pages. The README says *"basalt has no
-toolchain of its own. It builds each component at the toolchain pin that component's commit
-carries."*
+In `nifeos/basalt`: `pins.toml` pins `nife` by full commit id. `gate.yml` runs the pinned commit's
+own `script/ci-build test`. `pin-bump.yml` proposes a new pin daily, with the packages' new
+digests. `packages.yml` builds `recipes/ripgrep.toml` at the pin twice and compares the two, proves
+`jig` installs it, and on `main` publishes the packages to a Release and the index to Pages. The
+README says *"basalt has no toolchain of its own. It builds each component at the toolchain pin
+that component's commit carries."*
 
 ## The work
 
@@ -185,9 +189,9 @@ would replace only the download (unverified for `cargo-binstall`'s custom-target
 
 - **Done.** Publishing at `basalt.nifeos.org`, checked 2026-10-13: the index serves, and the
   Release `rolling-2026-10-13-ad0b146` holds the three packages.
-- **Outstanding.** A route for a nife change the pinned `rg` cannot run on: basalt building at an
-  unmerged nife commit, published where nife's CI can fetch it by digest. Not needed by any change
-  so far.
+- **Recorded.** A route for a nife change the pinned `rg` cannot run on, in `BUGS`: basalt building
+  at an unmerged nife commit, published where nife's CI can fetch it by digest. Not needed by any
+  change so far.
 - **Done.** Milestone 917 (basalt's packages build reproducibly, and the recipe records each
   package's digest).
 - **Milestone 919.** Several programs in one package, as calef ruled: milestone 919 (a package
