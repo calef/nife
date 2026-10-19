@@ -16,7 +16,9 @@ for line in text:
     elif cur is None: pre.append(line)
     else: cur[1].append(line)
 # The preamble ends in the mode dispatch (`--baselines`, `--no-cargo`); argv is empty here so both fall through.
-env = dict(os.environ, LINT_NO_CARGO='1') if nocargo else dict(os.environ)
+# LINT_SECTION skips the preamble's run-once block (the heavy-job slot, the mode dispatch), as
+# helpers/lint-sections.sh does.
+env = dict(os.environ, LINT_SECTION='1', **({'LINT_NO_CARGO': '1'} if nocargo else {}))
 with open(out, 'w') as f:
     for i, (name, body) in enumerate(secs):
         k = kind.get(name, '?')
