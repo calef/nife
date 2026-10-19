@@ -112,6 +112,24 @@ exactly that reason (riscv64_boot.rs, before this milestone), and the mask is go
   `board_console` and the hang watcher read what they read before.
 - riscv64's banner is `riscv64_banner` in `boot.rs`, beside aarch64's.
 
+## The radon boot that remains
+
+The PLIC's bring-up in `arch::irq::init` and riscv64's shared tail hold under QEMU. On the
+JH7110 the PLIC's context layout differs from QEMU's, and the boot context now opens before the
+other harts start, so one board boot from `main` closes the riscv64 half:
+
+1. Run `script/board-image --tftp`, or `script/board-image --card <volume>` to use the card.
+2. Serve it with `script/board-netboot`, then power-cycle radon.
+3. Run `script/board-console --until prompt` and let it reach `Stage::Prompt`.
+4. At the prompt, type `echo hello` and press Enter. The echo proves a keystroke went from the
+   UART through PLIC source 32 and a hart's S context to the userspace input driver.
+5. Record `board_console`'s verdict line, or its log if it stopped short.
+
+What to look for: the machine description's `interrupts` line naming an S-mode context (on the
+JH7110 it is not QEMU's `2*hart + 1`), every tour line through `nife: the capability core runs on
+RISC-V.`, the prompt, and the echo. A boot that stops short names its slice in the log: the PLIC
+commit reverts alone, independent of the tail.
+
 ## Done when
 
 1. `kernel/src/x86_64_boot.rs` and `kernel/src/riscv64_boot.rs` are gone, or hold only what
@@ -125,7 +143,7 @@ exactly that reason (riscv64_boot.rs, before this milestone), and the mask is go
 |---|---|
 | 1 | riscv64: `riscv64_boot.rs` holds only its milestone tour and the tour's timing helpers, which are demonstrations rather than `arch/` code. Whether the tour merges with aarch64's is open (below). `x86_64_boot.rs` is unchanged. |
 | 2 | riscv64: done, its only `cfg(target_arch)` lines in `kernel_main` are its banner and its console's register shape. `x86_64`: not yet. |
-| 3 | riscv64 under QEMU: see the pull request's gate table. The board half needs a radon boot of this branch, which is calef's. `x86_64`: not yet. |
+| 3 | riscv64 under QEMU: see the pull request's gate table. The board half is the radon boot below, which is calef's. `x86_64`: not yet. |
 
 ## BUGS
 
@@ -137,8 +155,7 @@ exactly that reason (riscv64_boot.rs, before this milestone), and the mask is go
 
 ## Follow-on
 
-- **Outstanding.** A radon boot of the PLIC and tail slices, reading `board_console` to the
-  prompt and a keystroke through the tour's userspace UART driver.
+- **Outstanding.** The radon boot below, of the PLIC and tail slices.
 - **Outstanding.** Whether riscv64's tour merges with aarch64's `milestone_tour`. Both run two
   never-yielding threads and a userspace program. riscv64's also carries the UART driver, block
   discovery and entropy steps, its own `boot_ladder::TOUR` line and the hang watcher's stages. It
