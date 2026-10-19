@@ -564,6 +564,15 @@ pub mod rtc {
 mod tests {
     use super::*;
 
+    /// `buffer` read as a mapped [`ClockPage`] for the length of `f`, and the one place these tests
+    /// argue `ClockPage::new`'s contract. The page is lent to `f` by reference; a test that copied it
+    /// out would break the argument, and none does.
+    fn with_page<R>(buffer: &[AtomicU64; WORDS], f: impl FnOnce(&ClockPage) -> R) -> R {
+        // SAFETY: `buffer` is live, sized and aligned for the page by its type, and borrowed for
+        // the whole call, so it outlives every use of the page inside `f`.
+        f(&unsafe { ClockPage::new(buffer.as_ptr() as u64) })
+    }
+
     /// A time inside the sanity window, used as "now" by the policy tests.
     const NOW: u64 = 1_800_000_000 * NANOS_PER_SEC; // 2027-01-15-ish
 
@@ -659,47 +668,47 @@ mod tests {
     #[test]
     fn a_zeroed_page_reads_as_unknown() {
         let frame = [const { AtomicU64::new(0) }; WORDS];
-        // SAFETY: `frame` is WORDS aligned u64s, alive for the body of this test.
-        let page = unsafe { ClockPage::new(frame.as_ptr() as u64) };
-        assert_eq!(
-            page.read(),
-            Reading {
-                state: state::UNKNOWN,
-                offset_nanos: 0,
-                generation: 0,
-            }
-        );
-        assert!(!state::is_known(page.read().state));
+        with_page(&frame, |page| {
+            assert_eq!(
+                page.read(),
+                Reading {
+                    state: state::UNKNOWN,
+                    offset_nanos: 0,
+                    generation: 0,
+                }
+            );
+            assert!(!state::is_known(page.read().state));
+        });
     }
 
     #[test]
     fn a_published_page_reads_back_and_counts_generations() {
         let frame = [const { AtomicU64::new(0) }; WORDS];
-        // SAFETY: as above.
-        let page = unsafe { ClockPage::new(frame.as_ptr() as u64) };
-        page.init();
-        assert_eq!(
-            page.read().state,
-            state::UNKNOWN,
-            "init is honest, not 1970"
-        );
+        with_page(&frame, |page| {
+            page.init();
+            assert_eq!(
+                page.read().state,
+                state::UNKNOWN,
+                "init is honest, not 1970"
+            );
 
-        assert_eq!(page.publish(state::RTC, 7), 1);
-        assert_eq!(
-            page.read(),
-            Reading {
-                state: state::RTC,
-                offset_nanos: 7,
-                generation: 1,
-            }
-        );
+            assert_eq!(page.publish(state::RTC, 7), 1);
+            assert_eq!(
+                page.read(),
+                Reading {
+                    state: state::RTC,
+                    offset_nanos: 7,
+                    generation: 1,
+                }
+            );
 
-        assert_eq!(page.publish(state::SYNCED, 9), 2);
-        assert_eq!(
-            page.read().generation,
-            2,
-            "a reader can see the clock moved"
-        );
+            assert_eq!(page.publish(state::SYNCED, 9), 2);
+            assert_eq!(
+                page.read().generation,
+                2,
+                "a reader can see the clock moved"
+            );
+        });
     }
 
     /// The seqlock's invariant, stated where a refactor will trip over it: a reader must never
@@ -707,31 +716,31 @@ mod tests {
     #[test]
     fn a_reader_never_returns_data_from_a_half_written_page() {
         let frame = [const { AtomicU64::new(0) }; WORDS];
-        // SAFETY: as above.
-        let page = unsafe { ClockPage::new(frame.as_ptr() as u64) };
-        page.init();
-        page.publish(state::RTC, 7);
-        // Stand where a writer stands mid-publish: sequence odd, data torn (a new state with the
-        // old offset). A single-threaded test cannot let `read` spin, so this checks the guard
-        // directly rather than calling it.
-        frame[W_SEQ].store(3, Ordering::Relaxed);
-        frame[W_STATE].store(state::SYNCED, Ordering::Relaxed);
-        assert_eq!(
-            frame[W_SEQ].load(Ordering::Relaxed) & 1,
-            1,
-            "odd means a writer holds it, and `read` spins rather than taking this"
-        );
-        // Finish the publish the way `publish` would, and the reading is whole again.
-        frame[W_OFFSET].store(11, Ordering::Relaxed);
-        frame[W_SEQ].store(4, Ordering::Release);
-        assert_eq!(
-            page.read(),
-            Reading {
-                state: state::SYNCED,
-                offset_nanos: 11,
-                generation: 2,
-            }
-        );
+        with_page(&frame, |page| {
+            page.init();
+            page.publish(state::RTC, 7);
+            // Stand where a writer stands mid-publish: sequence odd, data torn (a new state with the
+            // old offset). A single-threaded test cannot let `read` spin, so this checks the guard
+            // directly rather than calling it.
+            frame[W_SEQ].store(3, Ordering::Relaxed);
+            frame[W_STATE].store(state::SYNCED, Ordering::Relaxed);
+            assert_eq!(
+                frame[W_SEQ].load(Ordering::Relaxed) & 1,
+                1,
+                "odd means a writer holds it, and `read` spins rather than taking this"
+            );
+            // Finish the publish the way `publish` would, and the reading is whole again.
+            frame[W_OFFSET].store(11, Ordering::Relaxed);
+            frame[W_SEQ].store(4, Ordering::Release);
+            assert_eq!(
+                page.read(),
+                Reading {
+                    state: state::SYNCED,
+                    offset_nanos: 11,
+                    generation: 2,
+                }
+            );
+        });
     }
 
     /// The request word is a wire format shared with the clock service at runtime; `req` and `operation`
