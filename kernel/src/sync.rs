@@ -223,6 +223,13 @@ pub mod rank {
     /// but the ordering is stated rather than relied on to stay accidental.
     pub(crate) const ISA: u32 = 12;
 
+    /// The `x86_64` ACPI walk (milestone 890 (riscv64 and `x86_64` join the shared boot path)):
+    /// what the tables said, written once by `memory::init` and copied out by the bring-up steps
+    /// after it. A leaf for the ISA record's reason, and above the console because a reader may
+    /// print while it holds it.
+    #[cfg_attr(not(target_arch = "x86_64"), allow(dead_code))] // ACPI is x86_64's description
+    pub(crate) const ACPI: u32 = 13;
+
     pub const CONSOLE: u32 = 10;
 
     /// Holding nothing.

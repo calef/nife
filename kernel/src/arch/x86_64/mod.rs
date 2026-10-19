@@ -45,6 +45,8 @@ use core::arch::{asm, global_asm};
 pub mod amd_vi;
 pub mod ap_boot;
 pub mod context;
+// What the loader and ACPI describe, read once inside `memory::init` (milestone 890).
+pub mod discovery;
 pub mod exceptions;
 pub mod fp;
 mod instructions;
