@@ -162,7 +162,8 @@ impl Terminal {
         })
         .expect("could not spawn the fake console");
 
-        let lengths = s::image_lengths(editor_image.len() as u64, supervisor_image.len() as u64);
+        let lengths = s::image_lengths(editor_image.len() as u64, supervisor_image.len() as u64, 0)
+            .expect("an image is too long for its start argument");
         let supervisor_tid = sched::spawn(move || {
             run(
                 supervisor_image,

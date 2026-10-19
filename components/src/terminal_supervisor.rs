@@ -1,15 +1,17 @@
-//! **`terminal_supervisor`: holds the line editor, and replaces it live** (milestone 23 (a
-//! capability-routed component OS with live replacement); calef's ruling of 2026-09-27, option A of
-//! `design/roadmap/0661-a-terminal-supervisor-holds-the-line-editor.md`).
+//! **`terminal_supervisor`: holds the terminal's components, and replaces them live** (milestone
+//! 23 (a capability-routed component OS with live replacement); calef's ruling of 2026-09-27,
+//! option A of `design/roadmap/0661-a-terminal-supervisor-holds-the-line-editor.md`, and his
+//! rulings of 2026-10-19 (UTC) on `display_terminal`).
 //!
-//! `system_initializer` builds this rather than `line_editor`, and hands it the objects a
-//! `line_editor` is made of plus a budget for two instances. It builds `line_editor` from the
-//! declaration in `line_editor::component`, keeps its endowment, control endpoint, handoff page and
-//! region, and runs the swap of DECISIONS §209 (state handoff is an opaque blob over a granted
-//! frame, and it is optional) when asked:
+//! A component's spawner supervises its swaps (calef, 2026-10-19). `system_initializer` builds this
+//! rather than `line_editor`, and hands it the objects a `line_editor` is made of plus a budget for
+//! two instances. In display mode a spawner may also hand it `display_terminal`'s image and the
+//! display endpoint and scanout, and then it builds and holds `display_terminal` too. `SWAP`'s
+//! second word names the child. It runs the swap of DECISIONS §209 (state handoff is an opaque blob
+//! over a granted frame, and it is optional):
 //!
 //! ```text
-//!   1 BUILT      lay the replacement out, wired from the same declaration, not started.
+//!   1 BUILT      lay the replacement out, wired like the incumbent, not started.
 //!   2 QUIESCED   OPERATION_QUIESCE, answered within QUIESCE_BOUND_MS. The endpoint's FIFO drains
 //!                everything ahead; a parked reader is answered FLAG_RETRY; the blob is written.
 //!   3 ABSORBING  start the replacement with START_ABSORB. It reads the blob before it serves.
@@ -19,19 +21,32 @@
 //!                callers are answered Gone), and reply REPLACED_HUNG.
 //! ```
 //!
-//! A hung `line_editor` looks like an idle one from here, `BLOCKED` and refused by `REAP`; only an
+//! `line_editor` is small, so its budget holds two bays and a swap moves it from one to the other.
+//! `display_terminal` is a whole `Vt` (calef's "D", 2026-10-19 UTC): its budget holds one bay, and
+//! a swap is lent the machine's swap reserve (`supervisor::SWAP_RESERVE_PAGES`) with
+//! `LEND` beforehand. The replacement is built in the reserve and the handoff run is retyped from
+//! it, so the swap is two of the moves above: into the reserve, then home to the bay with the
+//! same image. Both capabilities are deleted before the answer, and the lender's `DESTROY` of the
+//! reserve then revokes anything left mapped from it. A display swap without a lent reserve is
+//! answered `NEEDS_RESERVE`, which is retryable and quiesces nothing.
+//!
+//! A hung child looks like an idle one from here, `BLOCKED` and refused by `REAP`; only an
 //! unanswered quiesce tells them apart (notes/hung-component.md). A `CALL` takes no deadline, so a
 //! stand-in built from this program's own image makes it and signals the answer on a notification
-//! the supervisor's timer also signals. It is `swapper`'s shape and its bounded quiesce, on a
-//! component a person uses. The two control endpoints alternate, so a word meant for the incumbent
-//! never reaches its replacement.
+//! the supervisor's timer also signals. Each child's two control endpoints alternate, so a word
+//! meant for the incumbent never reaches its replacement.
 //!
 //! # BUGS
 //!
 //! Nothing on a real boot asks it to swap: that is milestone 694 (the installer asks the terminal
-//! to swap), which also brings a new image with `SWAP`. A hung `line_editor`'s state is lost, and
-//! `swish` and `rmle` read the `Gone` its callers get as a failed read. A slow one is convicted as
-//! hung. One that faults is not restarted. notes/interactive-stack-swap.md has each in full.
+//! to swap), which also brings a new image with `SWAP` and holds the swap reserve. Until then a
+//! replacement is the same image and the kernel's test holds the reserve. A `graphical_terminal`
+//! session builds `display_terminal` itself and hands this supervisor its endpoint, so a session's
+//! `display_terminal` is not supervised. A hung child's state is lost, and `swish` and `rmle`
+//! read the `Gone` its callers get as a failed read. A slow one is convicted as hung. One that
+//! faults is not restarted. A `display_terminal` replacement that refuses its own blob on the move
+//! home leaves the terminal serving from the reserve, answered `IN_RESERVE`, until a later `SWAP`
+//! finishes the move. notes/interactive-stack-swap.md has each in full.
 //!
 //! Name: ratified 2026-10-06 (calef, "Ratify" it, in conversation). Minted
 //! provisionally 2026-09-27 by the lane for milestone 23.
@@ -43,11 +58,12 @@
 use component_plan::Provisions;
 use line_editor::component::{self, supervisor as s};
 use line_editor::proto;
-use supervision_protocol::{ChildEndowment, Retention};
+use supervision_protocol::{Child as Built, ChildEndowment, Retention};
 use user_mode_runtime::{
-    cap_delete, cntfrq, notification_poll, notification_signal, notification_wait, now, receive,
-    receive_fault, receive_request, reply, send, timer_arm,
+    Delivered, cap_delete, cntfrq, notification_poll, notification_signal, notification_wait, now,
+    receive, receive_fault, receive_request, reply, send, send_capability, timer_arm,
 };
+use video_terminal::component as display;
 
 const MODE_DISPLAY: u64 = 1;
 /// The first start argument that makes this image a stand-in rather than a supervisor. Clear of
@@ -64,6 +80,9 @@ const DEADLINE: u64 = 1 << 0;
 const ANSWERED_QUIESCED: u64 = 1 << 1;
 const ANSWERED_OTHERWISE: u64 = 1 << 2;
 
+/// The reserve is exactly what a `display_terminal` swap takes, the largest swap there is.
+const _: () = assert!(display::SWAP_PAGES == s::SWAP_RESERVE_PAGES);
+
 #[unsafe(no_mangle)]
 pub extern "C" fn _start(mode: u64, lengths: u64, swap: u64) -> ! {
     if mode == MODE_STAND_IN {
@@ -73,8 +92,8 @@ pub extern "C" fn _start(mode: u64, lengths: u64, swap: u64) -> ! {
 }
 
 /// **The stand-in: one `CALL` the supervisor cannot make itself**, because it has to be able to
-/// stop waiting for the answer. Its whole authority is `WRITE` on the terminal endpoint and on the
-/// supervisor's notification. A hung incumbent leaves it blocked here until the supervisor
+/// stop waiting for the answer. Its whole authority is `WRITE` on the endpoint it quiesces and on
+/// the supervisor's notification. A hung incumbent leaves it blocked here until the supervisor
 /// destroys its region, which finishes it in place and unlinks its request from the endpoint's
 /// queue (milestone 133 (ending a permanently blocked thread, and deciding who may)).
 fn stand_in() -> ! {
@@ -92,139 +111,294 @@ fn stand_in() -> ! {
     user_mode_runtime::exit()
 }
 
+/// An image the spawner copied into this address space at `va`, `len` bytes long.
+fn image_at(va: u64, len: u64) -> Option<elf::Elf<'static>> {
+    // SAFETY: the builder copied the image to `va`, at the length it packed, before starting us,
+    // and nothing writes it afterwards. Each image has its own window below the scratch window
+    // (`supervisor::ELF_VA` and its neighbours).
+    let bytes = unsafe { core::slice::from_raw_parts(va as *const u8, len as usize) };
+    elf::Elf::parse(bytes).ok()
+}
+
 #[inline(never)]
 fn supervise(mode: u64, lengths: u64, swap: u64) -> ! {
-    let (editor_len, own_len) = s::unpack_image_lengths(lengths);
-    // SAFETY: the builder copied the `line_editor` image to ELF_VA, at the length it packed, before
-    // starting us, and nothing writes it afterwards.
-    let bytes = unsafe { core::slice::from_raw_parts(s::ELF_VA as *const u8, editor_len as usize) };
-    let Ok(image) = elf::Elf::parse(bytes) else {
+    let (editor_len, own_len, display_len) = s::unpack_image_lengths(lengths);
+    let Some(editor_image) = image_at(s::ELF_VA, editor_len) else {
         fail()
     };
     // Only a supervisor that can be asked to swap ever quiesces, so only its spawner copies our own
     // image (`supervisor::OWN_IMAGE_ADDRESS`). One that passed a swap endpoint without it is
     // refused here, at start, rather than at the first swap.
-    let own = if own_len == 0 {
-        None
-    } else {
-        // SAFETY: as above, for our own image at OWN_IMAGE_ADDRESS.
-        let own = unsafe {
-            core::slice::from_raw_parts(s::OWN_IMAGE_ADDRESS as *const u8, own_len as usize)
-        };
-        elf::Elf::parse(own).ok()
-    };
+    let own = (own_len != 0)
+        .then(|| image_at(s::OWN_IMAGE_ADDRESS, own_len))
+        .flatten();
     let deadline = match (swap, own) {
         (0, _) => None,
         (_, Some(own)) => Some(Deadline {
             own,
             wake: obj(abi::objtype::NOTIFICATION),
             timer: obj(abi::objtype::TIMER),
+            bay: bay(s::STAND_IN_PAGES),
         }),
         (_, None) => fail(),
     };
-
-    let faultep = obj(abi::objtype::RENDEZVOUS);
-    let controls = [obj(abi::objtype::RENDEZVOUS), obj(abi::objtype::RENDEZVOUS)];
-    let notify = obj(abi::objtype::RENDEZVOUS);
-    let handoff =
-        match user_mode_runtime::retype_page_frame_run(s::BUDGET, component::HANDOFF_PAGES) {
-            f if f >= 0 => f as u64,
-            _ => fail(),
-        };
+    let sup = Supervisor { deadline };
 
     let decl = if mode == MODE_DISPLAY {
         &component::DISPLAY
     } else {
         &component::CONSOLE
     };
-    let control_in_child = component_plan::slot_of(decl, "control");
+    let handoff =
+        match user_mode_runtime::retype_page_frame_run(s::BUDGET, component::HANDOFF_PAGES) {
+            f if f >= 0 => f as u64,
+            _ => fail(),
+        };
 
-    // **Two bays, one per instance, split once and reused.** A child's region comes home to the
-    // region it was split from, and only un-bumps that region's watermark when it is on top. Built
-    // straight from the budget, the incumbent's region is always under its replacement's when it
-    // dies, so every swap would leave a hole the size of an instance: the second swap failed for
-    // want of budget, which is how this was found. Each instance is split from its own bay, where
-    // it is the only child and so always on top.
-    let bays = [bay(decl), bay(decl)];
-
-    let mut sup = Supervisor {
-        image,
-        deadline,
-        decl,
-        mode,
-        control_in_child,
-        faultep,
-        controls,
-        notify,
-        handoff,
-        bays,
-        instances: [0, 0],
-        current: 0,
-        started: 0,
+    // `display_terminal` first, so the sink `line_editor` prints through is being served before
+    // `line_editor` exists.
+    let mut display = match display_len {
+        0 => None,
+        _ if mode != MODE_DISPLAY => fail(),
+        len => {
+            let Some(image) = image_at(s::DISPLAY_IMAGE_ADDRESS, len) else {
+                fail()
+            };
+            let mut d = Child::new(image, Kind::DisplayTerminal, s::SINK, display::BAY_PAGES);
+            d.launch_first();
+            Some(d)
+        }
     };
-    let plan = sup.plan_for(sup.controls[sup.current]);
-    sup.instances[sup.current] = launch(
-        &sup.image,
-        &plan,
-        sup.bays[sup.current],
-        faultep,
-        [mode, control_in_child, proto::START_HANDOFF],
+    let mut editor = Child::new(
+        editor_image,
+        Kind::LineEditor {
+            decl,
+            mode,
+            control_in_child: component_plan::slot_of(decl, "control"),
+            handoff,
+        },
+        s::TERMINAL,
+        decl.pages,
     );
-    sup.started += 1;
+    editor.launch_first();
 
     if swap == 0 {
         // No trigger on this boot (see BUGS). Hold everything and wait, so the objects stay ours.
         loop {
-            let _ = receive(faultep);
+            let _ = receive(editor.faultep);
         }
     }
 
+    // The swap reserve, while a lender has lent it and the swap it was lent for has not ended.
+    let mut lent: Option<u64> = None;
     loop {
         let req = receive_request(swap);
-        let verb = req.w0;
-        // Only a CALL is answered; a delegation is deleted (milestone 706 (a `CALL` server can tell
-        // a Reply from a delegation)).
-        let Some(caller) = req.delivered.into_reply() else {
-            continue;
+        let caller = match req.delivered {
+            Delivered::Reply(caller) => caller,
+            Delivered::Delegation(reserve) if req.w0 == s::LEND => {
+                if let Some(stale) = lent.replace(reserve) {
+                    cap_delete(stale);
+                }
+                continue;
+            }
+            // Anything else is not ours to keep (milestone 706 (a `CALL` server can tell a Reply
+            // from a delegation)).
+            other => {
+                let _ = other.into_reply();
+                continue;
+            }
         };
-        if verb == s::STOP {
-            sup.stop(caller)
+        if req.w0 == s::STOP {
+            sup.stop(caller, &mut editor, display.as_mut(), lent)
         }
-        if verb != s::SWAP {
-            reply(caller, proto::BAD_REQUEST, 0);
-            continue;
-        }
-        sup.swap(caller);
+        let (r0, r1) = match (req.w0, req.w1, display.as_mut()) {
+            (s::SWAP, s::CHILD_LINE_EDITOR, _) => editor.swap_in_bays(&sup),
+            (s::SWAP, s::CHILD_DISPLAY_TERMINAL, Some(d)) => {
+                d.swap_through_reserve(&sup, &mut lent)
+            }
+            _ => (proto::BAD_REQUEST, 0),
+        };
+        reply(caller, r0, r1);
     }
 }
 
-/// Everything the swap loop works with: the image and declaration every instance is built from,
-/// the objects this supervisor made, and which bay holds the live instance.
+/// What every quiesce is made with: `Some` whenever there is a swap endpoint, which is the only way
+/// a quiesce is reached.
 struct Supervisor<'a> {
-    image: elf::Elf<'a>,
-    /// What a bounded quiesce is made with. `Some` whenever there is a swap endpoint, which is the
-    /// only way a quiesce is reached.
     deadline: Option<Deadline<'a>>,
-    decl: &'static component_plan::Requirements,
-    mode: u64,
-    control_in_child: u64,
+}
+
+/// Which of the two programs a [`Child`] is, and what only that one needs.
+enum Kind {
+    /// Built from its `component_plan` declaration, with its one-page handoff mapped at build in
+    /// every instance.
+    LineEditor {
+        decl: &'static component_plan::Requirements,
+        mode: u64,
+        control_in_child: u64,
+        handoff: u64,
+    },
+    /// Built at `video_terminal::component`'s slots, with a map budget per instance and a handoff
+    /// run that exists only during a swap.
+    DisplayTerminal,
+}
+
+/// **One supervised component**: its image, the objects this supervisor made for it, and which
+/// place holds the live instance.
+struct Child<'a> {
+    image: elf::Elf<'a>,
+    kind: Kind,
+    /// The endpoint it serves, which a quiesce is sent on.
+    served: u64,
+    /// Its own supervision endpoint, so a death collected is always this child's.
     faultep: u64,
     controls: [u64; 2],
+    /// Where its instances answer the supervisor: `NOTE_*`, and `display_terminal`'s `TERM_UP`.
     notify: u64,
-    handoff: u64,
-    bays: [u64; 2],
-    /// The region of the instance in each bay, `0` for none. Kept, unlike any other child's,
+    /// The regions instances are split from. `line_editor`: two bays in the budget.
+    /// `display_terminal`: its bay, and the lent reserve while a swap holds it.
+    places: [u64; 2],
+    /// The region of the instance in each place, `0` for none. Kept, unlike any other child's,
     /// because destroying it is the one way to end an instance that will never cooperate.
     instances: [u64; 2],
-    /// Which bay, and which control endpoint, belong to the live instance.
+    /// `display_terminal`: each instance's map budget, split from its place beside it.
+    budgets: [u64; 2],
+    /// `display_terminal`: the handoff run retyped from the reserve, `0` outside a swap.
+    run: u64,
+    /// `display_terminal`: the instance in each place maps [`Self::run`], so it is told
+    /// `CTL_HANDOFF` without a capability.
+    maps_run: [bool; 2],
+    /// Which place, and which control endpoint, belong to the live instance.
     current: usize,
-    /// How many instances have been started, reported back on `SWAPPED` and `STOPPED`.
+    /// How many instances have been started, reported back on `SWAPPED`.
     started: u64,
 }
 
-impl Supervisor<'_> {
-    /// The plan for an instance whose control endpoint is `control`.
+/// What one move from a place to the other found.
+enum Hop {
+    /// The replacement absorbed the state and serves; the incumbent is gone.
+    Swapped,
+    /// The replacement refused or the blob could not be written, and the incumbent serves on.
+    RolledBack(u64),
+    /// The incumbent did not answer the quiesce in time, waited this many milliseconds; the
+    /// replacement serves empty.
+    Hung(u64),
+}
+
+/// An instance laid out and not yet started.
+struct Laid {
+    child: Built,
+    aspace: u64,
+    region: u64,
+    budget: u64,
+}
+
+impl<'a> Child<'a> {
+    fn new(image: elf::Elf<'a>, kind: Kind, served: u64, bay_pages: u64) -> Self {
+        let second_bay = match kind {
+            Kind::LineEditor { .. } => bay(bay_pages),
+            Kind::DisplayTerminal => 0,
+        };
+        Child {
+            image,
+            kind,
+            served,
+            faultep: obj(abi::objtype::RENDEZVOUS),
+            controls: [obj(abi::objtype::RENDEZVOUS), obj(abi::objtype::RENDEZVOUS)],
+            notify: obj(abi::objtype::RENDEZVOUS),
+            // **Bays, one per instance, split once and reused.** A child's region comes home to
+            // the region it was split from, and only un-bumps that region's watermark when it is
+            // on top. Built straight from the budget, the incumbent's region is always under its
+            // replacement's when it dies, so every swap would leave a hole the size of an
+            // instance: the second swap failed for want of budget, which is how this was found.
+            places: [bay(bay_pages), second_bay],
+            instances: [0, 0],
+            budgets: [0, 0],
+            run: 0,
+            maps_run: [false, false],
+            current: 0,
+            started: 0,
+        }
+    }
+
+    /// Lay an instance out in place `p`, wired to that place's control endpoint, not started.
+    /// `None` when the place cannot hold it, which for the reserve is a lender's mistake.
+    fn lay_out(&self, p: usize) -> Option<Laid> {
+        let place = self.places[p];
+        let budget = match self.kind {
+            Kind::LineEditor { .. } => 0,
+            Kind::DisplayTerminal => {
+                supervision_protocol::memory_region_split(place, display::MAP_BUDGET_PAGES).ok()?
+            }
+        };
+        let laid = match &self.kind {
+            Kind::LineEditor { .. } => {
+                let plan = self.plan_for(self.controls[p]);
+                let region = supervision_protocol::memory_region_split(place, plan.pages()).ok()?;
+                let endow = ChildEndowment {
+                    caps: plan.caps(),
+                    maps: plan.maps(),
+                    blobs: &[],
+                    fault: Some(self.faultep),
+                    stack_pages: component::STACK_PAGES,
+                    ..ChildEndowment::new(Retention::Nothing)
+                };
+                supervision_protocol::build_child_space(s::BUDGET, region, &self.image, &endow)
+                    .ok()
+                    .map(|(child, aspace)| (child, aspace, region))
+            }
+            Kind::DisplayTerminal => {
+                let rw = abi::rights::READ | abi::rights::WRITE;
+                // `video_terminal::component`'s slots, in order.
+                let caps = [
+                    (self.notify, abi::rights::WRITE),
+                    (s::PRESENT, abi::rights::WRITE),
+                    (self.served, abi::rights::READ),
+                    (budget, abi::rights::SPEND_ONLY),
+                    (s::SURFACE, rw),
+                    (s::SINK_PAGE, rw),
+                    (self.controls[p], abi::rights::READ),
+                    (self.notify, abi::rights::WRITE),
+                ];
+                let endow = ChildEndowment {
+                    caps: &caps,
+                    fault: Some(self.faultep),
+                    ..ChildEndowment::new(Retention::Nothing)
+                };
+                supervision_protocol::memory_region_split(place, display::INSTANCE_PAGES)
+                    .ok()
+                    .and_then(|region| {
+                        supervision_protocol::build_child_space(
+                            s::BUDGET,
+                            region,
+                            &self.image,
+                            &endow,
+                        )
+                        .ok()
+                        .map(|(child, aspace)| (child, aspace, region))
+                    })
+            }
+        };
+        match laid {
+            Some((child, aspace, region)) => Some(Laid {
+                child,
+                aspace,
+                region,
+                budget,
+            }),
+            None => {
+                // Whatever was split is given back; a region that never held a thread destroys.
+                give_back(budget);
+                None
+            }
+        }
+    }
+
+    /// The plan for a `line_editor` whose control endpoint is `control`.
     fn plan_for(&self, control: u64) -> component_plan::Plan {
+        let Kind::LineEditor { decl, handoff, .. } = self.kind else {
+            fail()
+        };
         // The sink's reply endpoint is routed whether or not the declaration names it: a provision
         // nothing asks for is not an error, and one table serves both modes.
         let held: [(&'static str, u64); 9] = [
@@ -236,102 +410,255 @@ impl Supervisor<'_> {
             ("sink_page", s::SINK_PAGE),
             ("client_out", s::CLIENT_OUT),
             ("client_in", s::CLIENT_IN),
-            (component_plan::STATE_HANDOFF_ROLE, self.handoff),
+            (component_plan::STATE_HANDOFF_ROLE, handoff),
         ];
-        let Ok(plan) = component_plan::plan(self.decl, &Provisions { held: &held }) else {
+        let Ok(plan) = component_plan::plan(decl, &Provisions { held: &held }) else {
             fail()
         };
         plan
     }
 
-    /// `STOP`: quiesce and retire the live instance, give both bays back, and exit.
-    fn stop(&self, caller: user_mode_runtime::Reply) -> ! {
-        let live = self.instances[self.current];
-        match self.quiesce() {
-            Quiesce::Answered => {
-                send(self.controls[self.current], proto::CTL_QUIT, 0, 0);
-                collect(self.faultep, live);
-            }
-            Quiesce::Unanswered { .. } => end_region(live),
-        }
-        // Both bays are empty now, and a budget with children cannot be reclaimed by whoever
-        // owns it, so give them back before going.
-        for b in self.bays {
-            if !supervision_protocol::memory_region_destroy(b) {
-                fail()
-            }
-        }
-        reply(caller, s::STOPPED, self.started);
-        user_mode_runtime::exit()
-    }
-
-    /// `SWAP`: build a replacement in the other bay, quiesce the incumbent, start the replacement
-    /// absorbing its state, and commit or roll back on what the replacement says.
-    fn swap(&mut self, caller: user_mode_runtime::Reply) {
-        let next = 1 - self.current;
-        let plan = self.plan_for(self.controls[next]);
-        let Ok(region) = supervision_protocol::memory_region_split(self.bays[next], plan.pages())
-        else {
-            fail()
+    /// Start what [`Child::lay_out`] laid out in place `p`, absorbing the incumbent's state or not.
+    fn start(&mut self, p: usize, laid: &Laid, absorb: bool) {
+        let absorb = if absorb { proto::START_ABSORB } else { 0 };
+        let (a0, a1, a2) = match self.kind {
+            Kind::LineEditor {
+                mode,
+                control_in_child,
+                ..
+            } => (mode, control_in_child, proto::START_HANDOFF | absorb),
+            Kind::DisplayTerminal => (
+                video_terminal::status::MODE_DISPLAY,
+                display::CONTROL,
+                absorb,
+            ),
         };
-        let Ok((child, aspace)) = supervision_protocol::build_child_space(
-            s::BUDGET,
-            region,
-            &self.image,
-            &endowment(&plan, self.faultep),
-        ) else {
-            fail()
-        };
-
-        let waited_ms = match self.quiesce() {
-            Quiesce::Answered => None,
-            Quiesce::Unanswered { waited_ms } => Some(waited_ms),
-        };
-        // A hung incumbent wrote no blob, so the replacement starts empty rather than absorbing.
-        let start = match waited_ms {
-            None => proto::START_HANDOFF | proto::START_ABSORB,
-            Some(_) => proto::START_HANDOFF,
-        };
-        if supervision_protocol::configure_child(child.tcb, aspace, self.image.entry()).is_err()
-            || !supervision_protocol::start_child(child, self.mode, self.control_in_child, start)
+        if supervision_protocol::configure_child(laid.child.tcb, laid.aspace, self.image.entry())
+            .is_err()
+            || !supervision_protocol::start_child(laid.child, a0, a1, a2)
         {
             fail()
         }
-        self.instances[next] = region;
+        self.instances[p] = laid.region;
+        self.budgets[p] = laid.budget;
         self.started += 1;
+    }
 
-        if let Some(waited_ms) = waited_ms {
-            // After the start, so a caller freed below finds a server when it asks again rather
-            // than parking in the down window. `DESTROY` finishes the blocked incumbent where it
-            // sits (milestone 133) and answers every caller it held a reply capability for with
-            // `Gone` (milestone 254 (a caller stranded by a server that died)). A finished thread
-            // sends no death message, so there is nothing to collect.
-            end_region(self.instances[self.current]);
-            self.instances[self.current] = 0;
-            self.current = next;
-            reply(caller, s::REPLACED_HUNG, waited_ms);
-            return;
-        }
+    /// Build and start the first instance, in place 0.
+    fn launch_first(&mut self) {
+        let Some(laid) = self.lay_out(0) else { fail() };
+        self.start(0, &laid, false);
+        self.wait_up();
+    }
 
-        let (note, why, _) = receive(self.notify);
-        if note == proto::NOTE_ABSORBED {
-            send(self.controls[self.current], proto::CTL_QUIT, 0, 0);
-            collect(self.faultep, self.instances[self.current]);
-            self.instances[self.current] = 0;
-            self.current = next;
-            reply(caller, s::SWAPPED, self.started);
-        } else {
-            collect(self.faultep, region);
-            self.instances[next] = 0;
-            send(self.controls[self.current], proto::CTL_RESUME, 0, 0);
-            reply(caller, s::ROLLED_BACK, why);
+    /// `display_terminal` says `TERM_UP` once it has painted, a blocking `SEND`; take it.
+    fn wait_up(&self) {
+        if matches!(self.kind, Kind::DisplayTerminal)
+            && receive(self.notify).0 != video_terminal::status::TERM_UP
+        {
+            fail()
         }
     }
 
-    /// **`OPERATION_QUIESCE`, with a deadline a `CALL` cannot have.** Builds a stand-in, starts it to
-    /// make the call, arms the timer, and waits on the notification both of them signal. The
-    /// stand-in is built before the clock starts, so the bound measures the incumbent and not a
-    /// build.
+    /// Collect the instance in place `p`, which has been told to quit or has refused, and give
+    /// its place back.
+    fn collect(&mut self, p: usize) {
+        collect(self.faultep, self.instances[p]);
+        self.instances[p] = 0;
+        give_back(self.budgets[p]);
+        self.budgets[p] = 0;
+        self.maps_run[p] = false;
+    }
+
+    /// End the instance in place `p` whatever it is doing.
+    fn destroy(&mut self, p: usize) {
+        give_back(self.instances[p]);
+        self.instances[p] = 0;
+        give_back(self.budgets[p]);
+        self.budgets[p] = 0;
+        self.maps_run[p] = false;
+    }
+
+    /// `display_terminal`: tell the instance in place `p` `CTL_HANDOFF`, with the run unless it
+    /// already maps it. `true` once it is mapped there.
+    fn hand_run(&mut self, p: usize) -> bool {
+        let sent = if self.maps_run[p] {
+            send(self.controls[p], proto::CTL_HANDOFF, 0, 0)
+        } else {
+            send_capability(
+                self.controls[p],
+                self.run,
+                abi::rights::READ | abi::rights::WRITE,
+                proto::CTL_HANDOFF,
+            )
+        };
+        self.maps_run[p] = sent >= 0;
+        self.maps_run[p]
+    }
+
+    /// **Move the live instance to the other place**: steps 1 to 4 of the module's table, or 2'.
+    fn hop(&mut self, sup: &Supervisor) -> Option<Hop> {
+        let (cur, next) = (self.current, 1 - self.current);
+        let laid = self.lay_out(next)?;
+        let display = matches!(self.kind, Kind::DisplayTerminal);
+
+        let waited_ms = match sup.quiesce(self.served, self.faultep) {
+            Quiesce::Answered => None,
+            Quiesce::Unanswered { waited_ms } => Some(waited_ms),
+        };
+        if let Some(waited_ms) = waited_ms {
+            // A hung incumbent wrote no blob, so the replacement starts empty. Started before the
+            // incumbent is destroyed, so a caller freed below finds a server when it asks again
+            // rather than parking in the down window. `DESTROY` finishes the blocked incumbent
+            // where it sits (milestone 133) and answers every caller it held a reply capability
+            // for with `Gone` (milestone 254 (a caller stranded by a server that died)). A
+            // finished thread sends no death message, so there is nothing to collect.
+            self.start(next, &laid, false);
+            self.destroy(cur);
+            self.current = next;
+            self.wait_up();
+            return Some(Hop::Hung(waited_ms));
+        }
+
+        if display {
+            // The incumbent writes its blob into the run now, since the run did not exist when it
+            // was built.
+            let written = self.hand_run(cur) && receive(self.notify).0 == proto::NOTE_WRITTEN;
+            if !written {
+                // The replacement was laid out and never started: its region destroys whole.
+                cap_delete(laid.child.tcb);
+                cap_delete(laid.aspace);
+                give_back(laid.region);
+                give_back(laid.budget);
+                send(self.controls[cur], proto::CTL_RESUME, 0, 0);
+                return Some(Hop::RolledBack(0));
+            }
+        }
+        self.start(next, &laid, true);
+        if display && !self.hand_run(next) {
+            fail()
+        }
+        let (note, why, _) = receive(self.notify);
+        if note != proto::NOTE_ABSORBED {
+            self.collect(next);
+            send(self.controls[cur], proto::CTL_RESUME, 0, 0);
+            return Some(Hop::RolledBack(why));
+        }
+        send(self.controls[cur], proto::CTL_QUIT, 0, 0);
+        self.collect(cur);
+        self.current = next;
+        self.wait_up();
+        Some(Hop::Swapped)
+    }
+
+    /// `SWAP` of `line_editor`: one move, from one bay to the other.
+    fn swap_in_bays(&mut self, sup: &Supervisor) -> (u64, u64) {
+        match self.hop(sup) {
+            Some(Hop::Swapped) => (s::SWAPPED, self.started),
+            Some(Hop::RolledBack(why)) => (s::ROLLED_BACK, why),
+            Some(Hop::Hung(waited)) => (s::REPLACED_HUNG, waited),
+            None => fail(),
+        }
+    }
+
+    /// **`SWAP` of `display_terminal`: into the lent reserve, then home to the bay**, so the
+    /// reserve is free again when the answer goes back. `NEEDS_RESERVE`, retryable, when nothing
+    /// was lent or what was lent cannot hold an instance and its handoff.
+    fn swap_through_reserve(&mut self, sup: &Supervisor, lent: &mut Option<u64>) -> (u64, u64) {
+        let Some(reserve) = *lent else {
+            return (s::NEEDS_RESERVE, 0);
+        };
+        if self.run == 0 {
+            // The run first, so it sits at the reserve's base.
+            let run = user_mode_runtime::retype_page_frame_run(
+                reserve,
+                video_terminal::handoff::HANDOFF_PAGES,
+            );
+            if run < 0 {
+                return (s::NEEDS_RESERVE, 1);
+            }
+            self.places[1] = reserve;
+            self.run = run as u64;
+        }
+        let out = if self.current == 0 {
+            match self.hop(sup) {
+                None => (s::NEEDS_RESERVE, 2),
+                Some(Hop::RolledBack(why)) => (s::ROLLED_BACK, why),
+                Some(Hop::Swapped) => (s::SWAPPED, 0),
+                Some(Hop::Hung(waited)) => (s::REPLACED_HUNG, waited),
+            }
+        } else {
+            (s::SWAPPED, 0)
+        };
+        if self.current == 1 {
+            // Home, with the image now running, which reads its own blob.
+            match self.hop(sup) {
+                Some(Hop::Swapped | Hop::Hung(_)) => {}
+                Some(Hop::RolledBack(why)) => return (s::IN_RESERVE, why),
+                None => fail(),
+            }
+        }
+        cap_delete(self.run);
+        self.run = 0;
+        self.places[1] = 0;
+        self.maps_run = [false, false];
+        cap_delete(reserve);
+        *lent = None;
+        match out {
+            (s::SWAPPED, _) => (s::SWAPPED, self.started),
+            other => other,
+        }
+    }
+
+    /// Retire the live instance (quiesce it, tell it to quit, collect it) and give its places
+    /// back.
+    fn retire(&mut self, sup: &Supervisor) {
+        let cur = self.current;
+        match sup.quiesce(self.served, self.faultep) {
+            Quiesce::Answered => {
+                send(self.controls[cur], proto::CTL_QUIT, 0, 0);
+                self.collect(cur);
+            }
+            Quiesce::Unanswered { .. } => self.destroy(cur),
+        }
+        // Both places are empty now, and a budget with children cannot be reclaimed by whoever
+        // owns it, so give the bays back before going. The reserve is its lender's.
+        for (p, place) in self.places.into_iter().enumerate() {
+            if p == 0 || matches!(self.kind, Kind::LineEditor { .. }) {
+                end_region(place);
+            }
+        }
+    }
+}
+
+impl Supervisor<'_> {
+    /// `STOP`: retire every child, give the bays back, and exit.
+    fn stop(
+        &self,
+        caller: user_mode_runtime::Reply,
+        editor: &mut Child,
+        display: Option<&mut Child>,
+        lent: Option<u64>,
+    ) -> ! {
+        // `line_editor` first: it prints through `display_terminal`.
+        editor.retire(self);
+        if let Some(d) = display {
+            d.retire(self);
+        }
+        if let Some(reserve) = lent {
+            cap_delete(reserve);
+        }
+        if let Some(d) = &self.deadline {
+            end_region(d.bay);
+        }
+        reply(caller, s::STOPPED, editor.started);
+        user_mode_runtime::exit()
+    }
+
+    /// **`OPERATION_QUIESCE` on `served`, with a deadline a `CALL` cannot have.** Builds a
+    /// stand-in, starts it to make the call, arms the timer, and waits on the notification both of
+    /// them signal. The stand-in is built before the clock starts, so the bound measures the
+    /// incumbent and not a build.
     ///
     /// **The bound, `QUIESCE_BOUND_MS` (250 ms), is about thirty times the slowest healthy answer
     /// measured.** Timed from the stand-in's start to its answer, on 2026-10-19 (UTC), eleven swaps
@@ -342,23 +669,19 @@ impl Supervisor<'_> {
     /// is this component's bound and not a copy of `swapper`'s. It is wall time, since
     /// `script/test` runs TCG without `-icount`, and the margin is for a loaded host. The deadline
     /// fires at the first 10 ms tick at or after it; the hung test prints the real wait.
-    fn quiesce(&self) -> Quiesce {
+    fn quiesce(&self, served: u64, faultep: u64) -> Quiesce {
         let Some(d) = &self.deadline else { fail() };
-        let Ok(region) = supervision_protocol::memory_region_split(s::BUDGET, s::STAND_IN_PAGES)
-        else {
+        let Ok(region) = supervision_protocol::memory_region_split(d.bay, s::STAND_IN_PAGES) else {
             fail()
         };
-        let granted = [
-            (s::TERMINAL, abi::rights::WRITE),
-            (d.wake, abi::rights::WRITE),
-        ];
+        let granted = [(served, abi::rights::WRITE), (d.wake, abi::rights::WRITE)];
         let Ok(child) = supervision_protocol::build_child(
             s::BUDGET,
             region,
             &d.own,
             &ChildEndowment {
                 caps: &granted,
-                fault: Some(self.faultep),
+                fault: Some(faultep),
                 stack_pages: STAND_IN_STACK_PAGES,
                 ..ChildEndowment::new(Retention::Nothing)
             },
@@ -385,17 +708,17 @@ impl Supervisor<'_> {
             if user_mode_runtime::timer_cancel(d.timer) == 0 {
                 let _ = notification_poll(d.wake);
             }
-            collect(self.faultep, region); // the stand-in, which exits after its answer
+            collect(faultep, region); // the stand-in, which exits after its answer
             if word & ANSWERED_QUIESCED == 0 {
                 fail()
             }
             return Quiesce::Answered;
         }
         let waited = now() - started;
-        // First, because the stand-in's request is still queued on the terminal endpoint, and the
+        // First, because the stand-in's request is still queued on the served endpoint, and the
         // replacement about to serve it would otherwise be quiesced by it. Then clear an answer the
         // stand-in managed to signal before it was finished, which the next quiesce would read.
-        end_region(region);
+        give_back(region);
         let _ = notification_poll(d.wake);
         Quiesce::Unanswered {
             waited_ms: waited * 1000 / cntfrq(),
@@ -410,6 +733,12 @@ struct Deadline<'a> {
     own: elf::Elf<'a>,
     wake: u64,
     timer: u64,
+    /// **Every stand-in is built in this one bay**, for the reason the children's bays exist. A
+    /// stand-in split straight from the budget is under whatever the build retyped from the budget
+    /// while it lived (a scratch page table, the first time the loader's cursor reaches a new 2 MiB),
+    /// so when it dies it leaves a hole the size of a stand-in. On riscv64 the second display swap
+    /// did that, and `STOP` then found no budget for its own stand-in, which is how this was found.
+    bay: u64,
 }
 
 /// What a bounded quiesce found.
@@ -420,11 +749,14 @@ enum Quiesce {
     Unanswered { waited_ms: u64 },
 }
 
-/// **Destroy a child's region, whatever its resident is doing** (`swapper`'s helper of the same
-/// name). A `Blocked` resident is finished in place on the first try. A `Ready` or `Running` one is
-/// marked killed and the `DESTROY` refused; it dies at its next preemption, and a retry then finds
-/// a corpse and reclaims.
+/// **Destroy a region, whatever its resident is doing** (`swapper`'s helper of the same name). A
+/// `Blocked` resident is finished in place on the first try. A `Ready` or `Running` one is marked
+/// killed and the `DESTROY` refused; it dies at its next preemption, and a retry then finds a
+/// corpse and reclaims. `0`, a region never split, is nothing to do.
 fn end_region(region: u64) {
+    if region == 0 {
+        return;
+    }
     for _ in 0..1000 {
         if supervision_protocol::memory_region_destroy(region) {
             return;
@@ -434,37 +766,13 @@ fn end_region(region: u64) {
     fail()
 }
 
-fn endowment<'a>(plan: &'a component_plan::Plan, faultep: u64) -> ChildEndowment<'a> {
-    ChildEndowment {
-        caps: plan.caps(),
-        maps: plan.maps(),
-        blobs: &[],
-        fault: Some(faultep),
-        stack_pages: component::STACK_PAGES,
-        ..ChildEndowment::new(Retention::Nothing)
+/// [`end_region`], then drop the capability: a supervisor that swaps for the life of a session
+/// cannot leak a slot per swap from a 64-slot table.
+fn give_back(region: u64) {
+    if region != 0 {
+        end_region(region);
+        cap_delete(region);
     }
-}
-
-/// Build and start an instance in `bay`, and return its region, which the caller keeps.
-fn launch(
-    image: &elf::Elf,
-    plan: &component_plan::Plan,
-    bay: u64,
-    faultep: u64,
-    args: [u64; 3],
-) -> u64 {
-    let Ok(region) = supervision_protocol::memory_region_split(bay, plan.pages()) else {
-        fail()
-    };
-    let Ok(child) =
-        supervision_protocol::build_child(s::BUDGET, region, image, &endowment(plan, faultep))
-    else {
-        fail()
-    };
-    if !supervision_protocol::start_child(child, args[0], args[1], args[2]) {
-        fail()
-    }
-    region
 }
 
 /// Wait for one death and collect it, so the child's region comes home to the budget, then drop
@@ -477,8 +785,8 @@ fn collect(faultep: u64, region: u64) {
     cap_delete(region);
 }
 
-fn bay(decl: &component_plan::Requirements) -> u64 {
-    match supervision_protocol::memory_region_split(s::BUDGET, decl.pages) {
+fn bay(pages: u64) -> u64 {
+    match supervision_protocol::memory_region_split(s::BUDGET, pages) {
         Ok(slot) => slot,
         Err(_) => fail(),
     }
