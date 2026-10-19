@@ -186,14 +186,17 @@ A recipe that stops building keeps its level alive until a person fixes it or dr
 
 ## What it builds
 
-Milestone 849, its item 5: a level constant in each contract crate; a level per need and a floor
-per provided contract in the note, which takes the descriptor to version 2 beside §235's ABI
-revision; the shared check crate; the runner range in fork A's block; basalt's floor gate (rule 9)
-and the release-overlap gate (rule 7); and the level badge field with `line_editor`'s bit test
-(rule 8).
+Milestone 849's item 5:
 
-Milestone 809, its item 9: the progenitor runs the check at every generation commit and at spawn
-(rules 5 and 6), the boot-slot update runs it too, and `jig install` takes several names and
+- a level constant in each contract crate;
+- a level per need and a floor per provided contract in the note, which takes the descriptor to
+  version 2 beside §235's ABI revision;
+- the shared check crate, and the runner range in fork A's block;
+- basalt's floor gate (rule 9) and the release-overlap gate (rule 7);
+- the level badge field, with `line_editor`'s bit test (rule 8).
+
+Milestone 809 (the package client becomes a program)'s item 9: the progenitor runs the check at
+every generation commit and at spawn (rules 5 and 6), and `jig install` takes several names and
 orders them by level (rule 7).
 
 ## BUGS
