@@ -17,8 +17,7 @@ with it. Parts 1 to 3 were checked in the tree or upstream on 2026-10-02 (UTC). 
 measured on 2026-10-18 (UTC). A claim from memory is marked as such.
 
 The engine choice is a dependency decision (§46 (thin primitives or whole subsystems; we write
-everything in between)). Part 4 gives options A to G and a recommendation, and the choice is calef's
-([What is needed from calef](#what-is-needed-from-calef)).
+everything in between)). Part 4 gives options A to G, and calef chose G ([Ruling](#ruling)).
 
 ## Part 1: The gap, and the goal
 
@@ -147,31 +146,26 @@ for pixel on the scripted screen. `video_terminal` survives as the oracle §37 v
 that the kernel predicts only what `video_terminal` implements, so the full-screen features are
 graded by Part 1's host harness instead.
 
-## Recommendation
+## Ruling
 
-G, libvterm, with `video_terminal` kept as the kernel's oracle. Conformance is a tie with
-`alacritty_terminal` (23 and 22 of 24 vttest screens). On the rest G is ahead: a fifteenth of the
-heap or less, a quarter of the engine code, no crate added, and no patch to carry.
+calef, 2026-10-19 UTC: "G seems right." The display path's engine is libvterm (option G), linked
+through nife's C library, with `video_terminal` kept as the kernel's oracle. The §46 take of
+`alacritty_terminal` 0.26.0 is held for the dependency census (calef, 2026-10-19 UTC: "Hold it"),
+with `r-efi`, `plist` and `pulldown-cmark`. He reopened 705 on 2026-10-18 UTC: "Full screen program
+support seems like a priority."
 
-This is not about effort; at equal cost I would choose it. Its real cost is that every program's
-output is parsed in C. A memory bug there is bounded by what `display_terminal` holds, the scanout and
-its own terminal endpoint, and the lane adds a fuzz target. F is the choice if Rust on that surface
-is worth about 2 MB per terminal. A keeps fewer moving parts and starts from 7 screens of 24.
+## Why G
+
+Conformance is a tie with `alacritty_terminal` (23 and 22 of 24 vttest screens). On the rest G is
+ahead: a fifteenth of the heap or less, a quarter of the engine code, no crate added, and no patch
+to carry. Its real cost is that every program's output is parsed in C. A memory bug there is
+bounded by what `display_terminal` holds, the scanout and its own terminal endpoint, and the build
+adds a fuzz target. The choice was not about effort.
 
 ## What is needed from calef
 
-1. Which engine runs on the display path: G on libvterm (recommended), F on `alacritty_terminal`, or
-   A? Blocking: nothing on the display path can start until this is answered. If G, its own §46 take,
-   libvterm 0.3.3 as a vendored C tree, is the question that follows.
-2. Held for the dependency census: the §46 take of `alacritty_terminal` 0.26.0 and its ten crates
-   (calef, 2026-10-19 UTC: "Hold it"), with `r-efi`, `plist` and `pulldown-cmark`.
-
-## Ruling
-
-calef, 2026-10-18 UTC: "Full screen program support seems like a priority", and "Reopen 705, survey
-F". On 2026-10-19 UTC: "Yes, close the two gaps" (conformance, and libvterm), and on question 2,
-"Hold it". The engine choice is his. Milestone 784's item (b), `vte` alone, is held until it is made,
-because a full engine brings its own parser.
+1. Under §46, do we take libvterm 0.3.3 (MIT) as a vendored C tree? Blocking: nothing on the display
+   path can be built until this is answered. If no, the engine question reopens between F and A.
 
 ## Part 5: Priority, and whether the serial console has the same gap
 
@@ -210,9 +204,9 @@ through the firmware-screen console, until a session can run one.
 - Milestone 29 (the display terminal) and milestone 142 (a text display good enough that people use
   it instead of a GUI) are the blocks this touches. 142's remaining increments are about glyph
   quality and do not collide with the engine's state work.
-- Milestone 784 (reuse what the tree wrote)'s item (b) waits on this choice.
-- Blocked until the choice is made: every option. A needs no dependency ruling, but starting it
-  quietly would answer question 1.
+- Milestone 784 (reuse what the tree wrote)'s item (b), `vte` alone, was held on this choice. Under
+  G, `video_terminal` stays as the oracle, so whether it parses with `vte` is 784's to settle.
+- Blocked until libvterm's §46 take is answered: building G.
 - A program to measure against (a port of `less`, `vim` or procps `top`) is milestone 198's road and
   not this one's. The host-harness measure does not need one.
 
@@ -233,4 +227,4 @@ What A would build is in [the engine options appendix](0705-the-graphical-termin
 
 ## Index row
 
-`crates/video_terminal` implements printable text and a handful of CSI sequences, which is not enough for `vim`, `less` or `top`. Options A to G are measured, vttest included; the recommendation is G, `display_terminal` as a `std` program on libvterm through the C library, with `video_terminal` kept as the kernel's oracle. The engine is calef's.
+`crates/video_terminal` implements printable text and a handful of CSI sequences, which is not enough for `vim`, `less` or `top`. Options A to G are measured, vttest included. calef chose G: `display_terminal` as a `std` program on libvterm through the C library, with `video_terminal` kept as the kernel's oracle. libvterm's §46 take is open.
