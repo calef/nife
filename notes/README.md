@@ -47,6 +47,8 @@ area directories), ruled B). Appendices under
 
 `suspend-and-resume.md`: Name: provisional, minted 2026-10-18 (UTC) by lane/48-tcb-suspend-resume.
 
+`xenon-bench-2026-10-18.md`: Name: provisional, minted 2026-10-18 (UTC) by lane/xenon-bench-2026-10-18.
+
 `dependency-standards-census.md`: Name: provisional, minted 2026-10-19 (UTC) by maintainer/dependency-standards-census.
 
 `ci-toolchain-download.md`: Name: provisional, minted 2026-10-19 (UTC) by maintainer/rustup-retry.
