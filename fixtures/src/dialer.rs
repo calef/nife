@@ -1,5 +1,5 @@
-//! **A program that asks for the network and two resolver zones, and is refused them** (milestone
-//! 892 (a std program at the prompt holds the network and a resolver)).
+//! **A program that asks for the network and two resolver zones, and is refused them**
+//! (milestone 892 (a std program at the prompt holds the network and a resolver)).
 //!
 //! The package is `dialer` (`packages/dialer.recipe.toml`). Its manifest note is version 2
 //! (`capability_manifest_note`'s zoned layout): the network, the zone `nife.test`, and the root
@@ -42,6 +42,9 @@ const MANIFEST: grant_plan::Manifest = grant_plan::Manifest {
 
 capability_manifest_note::carry!(MANIFEST, zones = &["", "nife.test"]);
 
+/// The entry point, reached only if the refusal at the prompt breaks; it then says so.
+///
+/// Name: provisional, minted 2026-10-19 (UTC) by milestone/892-installed-programs-hold-the-network-and-zones.
 #[unsafe(no_mangle)]
 pub extern "C" fn _start(_a0: u64, _a1: u64, _a2: u64) -> ! {
     say(b"dialer: RAN, though no grant of the network is recorded\n");

@@ -62,7 +62,7 @@
 //! | 55 | 1 | zero | |
 //!
 //! Byte 55 is the last zero.
-//!
+
 //! # The descriptor, version 2: a manifest and the resolver zones it asks for
 //!
 //! calef, 2026-10-19 (UTC), on #2405 (milestone 892 (a std program at the prompt holds the network
@@ -116,15 +116,21 @@ pub const DESCRIPTOR_LEN: usize = 56;
 
 /// **The descriptor version that carries resolver zones** after version 1's fields (the module's
 /// version 2 table). Provisional name; the number and layout are calef's 2026-10-19 (UTC) ruling.
+///
+/// Name: provisional, minted 2026-10-19 (UTC) by milestone/892-installed-programs-hold-the-network-and-zones.
 pub const ZONED_VERSION: u32 = 2;
 
 /// **The most zones a manifest may ask for**: 8, the resolver's
 /// `domain_name_resolution_contract::GRANTS_MAX`, since each granted zone is its own badge and a
 /// program asking for more could never be granted them all at once.
+///
+/// Name: provisional, minted 2026-10-19 (UTC) by milestone/892-installed-programs-hold-the-network-and-zones.
 pub const MAX_ZONES: usize = domain_name_resolution_contract::GRANTS_MAX;
 
 /// **The longest zone**, in bytes of dotted text: 253, a host name's limit and the resolver's
 /// `domain_name_resolution_contract::NAME_TEXT_MAX`.
+///
+/// Name: provisional, minted 2026-10-19 (UTC) by milestone/892-installed-programs-hold-the-network-and-zones.
 pub const ZONE_MAX: usize = domain_name_resolution_contract::NAME_TEXT_MAX;
 
 /// `OWNER` with its NUL, padded to the note's 4-byte alignment.
@@ -555,6 +561,8 @@ impl Note {
 
 /// **A version 2 descriptor's length** for these zones: version 1's 56 bytes, the count, and each
 /// zone's length byte and text.
+///
+/// Name: provisional, minted 2026-10-19 (UTC) by milestone/892-installed-programs-hold-the-network-and-zones.
 pub const fn zoned_len(zones: &[&str]) -> usize {
     let mut len = DESCRIPTOR_LEN + 1;
     let mut i = 0;
@@ -579,6 +587,8 @@ pub const fn zoned_len(zones: &[&str]) -> usize {
 ///
 /// It panics, a compile error in a constant, on everything [`zones`] refuses, and on no zones at
 /// all: a manifest that asks for none is [`encode`]'s version 1.
+///
+/// Name: provisional, minted 2026-10-19 (UTC) by milestone/892-installed-programs-hold-the-network-and-zones.
 pub const fn encode_zoned<const LEN: usize>(m: &Manifest, zones: &[&str]) -> [u8; LEN] {
     assert!(
         !zones.is_empty() && zones.len() <= MAX_ZONES,
@@ -652,6 +662,8 @@ fn check_zones(d: &[u8]) -> Result<&[u8], Error> {
 ///
 /// A zone is dotted text, the resolver's own spelling (`domain_name_resolution_contract`): `b""` is
 /// the root zone, any name at all, which the install confirmation flags apart from the others.
+///
+/// Name: provisional, minted 2026-10-19 (UTC) by milestone/892-installed-programs-hold-the-network-and-zones.
 pub fn zones(d: &[u8]) -> Result<Zones<'_>, Error> {
     decode(d)?;
     match u32::from_le_bytes([d[0], d[1], d[2], d[3]]) {
@@ -662,7 +674,9 @@ pub fn zones(d: &[u8]) -> Result<Zones<'_>, Error> {
     }
 }
 
-/// **The zones a manifest asks for**: [`zones`]'s view, which allocates nothing. Provisional name.
+/// **The zones a manifest asks for**: [`zones`]'s view, which allocates nothing.
+///
+/// Name: provisional, minted 2026-10-19 (UTC) by milestone/892-installed-programs-hold-the-network-and-zones.
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub struct Zones<'a> {
     records: &'a [u8],
@@ -670,6 +684,8 @@ pub struct Zones<'a> {
 
 impl<'a> Zones<'a> {
     /// The zones in their sorted order, each as dotted text; the root zone is empty.
+    ///
+    /// Name: provisional, minted 2026-10-19 (UTC) by milestone/892-installed-programs-hold-the-network-and-zones.
     pub fn iter(&self) -> impl Iterator<Item = &'a [u8]> + '_ {
         let mut rest = self.records;
         core::iter::from_fn(move || {
@@ -681,11 +697,15 @@ impl<'a> Zones<'a> {
     }
 
     /// Whether the manifest asks for no zone.
+    ///
+    /// Name: provisional, minted 2026-10-19 (UTC) by milestone/892-installed-programs-hold-the-network-and-zones.
     pub fn is_empty(&self) -> bool {
         self.records.is_empty()
     }
 
     /// Whether one of the zones is the root zone: any name at all.
+    ///
+    /// Name: provisional, minted 2026-10-19 (UTC) by milestone/892-installed-programs-hold-the-network-and-zones.
     pub fn has_root(&self) -> bool {
         self.records.first() == Some(&0)
     }
@@ -693,18 +713,23 @@ impl<'a> Zones<'a> {
 
 /// **A whole version 2 manifest note**, padded after its descriptor to the note's 4-byte
 /// alignment. `N` is [`zoned_note_len`] of the zones. What [`carry!`]'s `zones =` form places.
-/// Provisional name.
+///
+/// Name: provisional, minted 2026-10-19 (UTC) by milestone/892-installed-programs-hold-the-network-and-zones.
 #[repr(C, align(4))]
 pub struct ZonedNote<const N: usize>(pub [u8; N]);
 
 /// How long a whole version 2 note is for these zones: header, owner, the descriptor, and the
 /// zero bytes that round it up to four.
+///
+/// Name: provisional, minted 2026-10-19 (UTC) by milestone/892-installed-programs-hold-the-network-and-zones.
 pub const fn zoned_note_len(zones: &[&str]) -> usize {
     (HEADER_LEN + NAME_FIELD + zoned_len(zones)).next_multiple_of(4)
 }
 
 impl<const N: usize> ZonedNote<N> {
     /// The note carrying `m` and the zones it asks for.
+    ///
+    /// Name: provisional, minted 2026-10-19 (UTC) by milestone/892-installed-programs-hold-the-network-and-zones.
     pub const fn of<const LEN: usize>(m: &Manifest, zones: &[&str]) -> Self {
         assert!(
             N == zoned_note_len(zones),

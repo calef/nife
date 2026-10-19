@@ -16,7 +16,7 @@
 //! grant <digest> network                             the owner granted those bytes the network
 //! grant <digest> zone <zone>                         ... and names in one resolver zone
 //! ```
-//!
+
 //! **A `grant` line is the owner's grant** (calef, 2026-10-19 (UTC), on #2405: "a"), what milestone
 //! 911 calls the grant record: keyed on the executable's digest, one line per grant, sorted
 //! bytewise and each once, after the pointers. A zone is spelled as the resolver spells it
@@ -189,7 +189,9 @@ enum Line<'a> {
 }
 
 /// **One `grant` line**: what the owner granted the bytes with this digest. Read with
-/// [`grants`] and [`network_granted`]. Name: provisional, milestone 892, 2026-10-19 (UTC).
+/// [`grants`] and [`network_granted`].
+///
+/// Name: provisional, minted 2026-10-19 (UTC) by milestone/892-installed-programs-hold-the-network-and-zones.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Grant<'a> {
     /// The executable's digest, as its row has it.
@@ -198,7 +200,9 @@ pub struct Grant<'a> {
     pub what: Granted<'a>,
 }
 
-/// **What a `grant` line grants.** Provisional names.
+/// **What a `grant` line grants.**
+///
+/// Name: provisional, minted 2026-10-19 (UTC) by milestone/892-installed-programs-hold-the-network-and-zones.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Granted<'a> {
     /// The network: a client view of the stack, connecting out.
@@ -208,6 +212,8 @@ pub enum Granted<'a> {
 }
 
 /// The spelling of the root zone in a `grant` line, where an empty word cannot be written.
+///
+/// Name: provisional, minted 2026-10-19 (UTC) by milestone/892-installed-programs-hold-the-network-and-zones.
 pub const ROOT_ZONE: &str = ".";
 
 /// Classify one line. A row is `<digest> <program> <version> <package> <manager>`, or the four
@@ -282,6 +288,8 @@ fn classify_grant<'a>(mut words: impl Iterator<Item = &'a str>) -> Line<'a> {
 /// **Every `grant` line in a generation**, in file order, or [`Error::Malformed`]: at the first
 /// line that is malformed, at a grant whose digest names no row, and at a grant that does not sort
 /// strictly after the one before (one grant record has one spelling).
+///
+/// Name: provisional, minted 2026-10-19 (UTC) by milestone/892-installed-programs-hold-the-network-and-zones.
 pub fn grants(table: &str) -> impl Iterator<Item = Result<Grant<'_>, Error>> {
     let mut previous: Option<Grant<'_>> = None;
     table
@@ -318,6 +326,8 @@ fn grant_before(a: &Grant<'_>, b: &Grant<'_>) -> bool {
 
 /// **Whether the owner granted the bytes with this digest the network**: a `grant <digest>
 /// network` line, read through [`grants`], so a malformed table grants nothing and says so.
+///
+/// Name: provisional, minted 2026-10-19 (UTC) by milestone/892-installed-programs-hold-the-network-and-zones.
 pub fn network_granted(table: &str, digest: &Digest) -> Result<bool, Error> {
     let mut granted = false;
     for g in grants(table) {
@@ -569,7 +579,8 @@ where
 
 /// The grant lines of `table` whose digest `keep` answers yes for, in their order, which is
 /// already sorted ([`grants`] refuses a table that is not). Nothing writes a new grant yet: the
-/// owner's yes at install has no input to arrive on (milestone 892's BUGS).
+/// owner's yes at install has no input to arrive on (the BUGS of milestone 892 (a std program at
+/// the prompt holds the network and a resolver)).
 #[inline(never)]
 fn write_grants(
     table: &str,

@@ -262,7 +262,8 @@ fn a_std_image_is_refused_for_each_thing_its_layout_cannot_hold() {
     assert!(!image_can_carry(&Manifest { domain: true, ..ok }));
 }
 
-/// **Installing does not grant the network** (milestone 892, "The network at install, ruled"):
+/// **Installing does not grant the network** (milestone 892 (a std program at the prompt holds the
+/// network and a resolver), "The network at install, ruled"):
 /// the owner grants it apart, in a `grant` line, so vouched bytes that ask and have no grant are
 /// refused, native or `std`, and with one are given it. Unvouched bytes that ask still run, granted nothing, since §219 already says
 /// their note is not asked.

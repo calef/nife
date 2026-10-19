@@ -28,7 +28,9 @@ pub const GRANTS_MAX: usize = 8;
 /// either end, at most [`NAME_TEXT_MAX`] bytes in all. Lowercase only, so `Example.net` and
 /// `example.net` cannot be two spellings of one ask. A manifest note's zones
 /// (`capability_manifest_note::zones`) and the installed-programs table's `grant` lines both hold
-/// to it. Name: provisional, 2026-10-19 (UTC).
+/// to it.
+///
+/// Name: provisional, minted 2026-10-19 (UTC) by milestone/892-installed-programs-hold-the-network-and-zones.
 pub const fn is_canonical_zone(zone: &[u8]) -> bool {
     if zone.len() > NAME_TEXT_MAX {
         return false;

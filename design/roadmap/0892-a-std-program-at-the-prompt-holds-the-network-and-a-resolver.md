@@ -115,10 +115,7 @@ What that leaves to build:
    PAL holds one resolver slot today, so a program with several zones needs a slot per badge, or
    a PAL that picks the badge whose zone holds the name.
 4. The line at install: each zone listed, and a root-zone ask flagged apart. One confirmation
-   covers it with the other grants. No milestone yet builds `jig install`'s listing of what it
-   grants. The services milestone proposed on #2022 (a package declares a service) adds its
-   "runs as a service" line to the same listing, and milestone 809 (the package client becomes a program)
-   owns `jig install`. The listing belongs in one of them, and this item waits on it.
+   covers it with the other grants; who builds it is below.
 
 ## The network at install, ruled 2026-10-12 (UTC)
 
@@ -152,8 +149,7 @@ What that leaves to build, beside item 3's four pieces and in the same places:
 2. The granted network in the installed-programs table's entry, in the same grant record as the zones, so an
    owner's narrowing and 911's approval file reach it the same way.
 3. The line at install, "reaches the network (connects out)", in the one confirmation with the
-   zones. Milestone 910 (a package declares a service) builds that confirmation for every grant a
-   manifest asks for, so this is a line in it rather than a listing of its own.
+   zones.
 
 The grant stays one flag, ruled 2026-10-12 (UTC). Once the network grant was found to bound no
 addresses, calef was asked whether it should be limited per destination now (b), or kept as one flag
@@ -167,8 +163,8 @@ its own. (a) can be undone; (b) would have committed to building that filter now
 
 An installed program whose note asks for the network is refused it, native or `std`, until the
 owner's grant is read. `grant_plan::image_manifest` answers `ImageRefusal::NetworkNotGranted` for
-vouched bytes that ask. Unvouched bytes that ask still run granted nothing, as §219 rules for every
-unvouched ask. The progenitor and `caps` call the same function. At run the shell hashes such a file
+vouched bytes that ask. Unvouched bytes that ask still run granted nothing, as §219 (how the shell
+names an installed program to the spawner) rules for every unvouched ask. The progenitor and `caps` call the same function. At run the shell hashes such a file
 first, as `caps` does, so the prompt names the missing grant and does not fall back to the generic
 manifest refusal:
 
@@ -250,36 +246,15 @@ Each was put with alternatives and a recommendation; calef took the recommendati
 
 ## The stdin contract, proposed
 
-calef chose a byte source; its opcodes, framing and slot are open. Names are provisional.
-
-- **(a) Recommended: a cooked read on a badged terminal copy.** A new `line_editor::proto` opcode,
-  `OPERATION_READ_LINE_BYTES`, asks for up to eight bytes of the current line. The terminal runs its
-  own line discipline (echo, editing, `^C`), and once a line is complete it answers r0 = count and
-  r1 = the bytes, packed as `OPERATION_READRAW` packs them. Later calls drain the rest of the line,
-  `\n` included. A count of 0 is end of input (`^D`). No page is involved. The copy carries a
-  second badge value, `STDIN_BADGE`, on which the terminal serves this opcode and nothing else, as
-  §709's raw-reader badge serves raw reads. std reads it at `std_runtime_contract::STDIN_SLOT`, slot
-  29, after the resolver slots 22 to 28. The spawn service places it only for a table program whose
-  manifest sets `Manifest::console_input`, which no note can spell (as with `installer`). That is
-  `jig` today. The shell is parked on the job's result while the job runs, so the two never read
-  at once.
-- **(b) Push.** The shell feeds `byte_sink_contract` frames into an endpoint at that slot, as a
-  pipe's upstream stage does. No new opcode. But the shell cannot read the console and wait on the
-  job's result at once (one wait point), and a job that never reads strands the typed line.
-- **(c) Raw.** std gets §709's raw-reader badge, turns raw mode on, and echoes and assembles lines
-  itself. No new opcode, but every std program carries a line editor in its PAL, and leaving raw
-  mode discards whatever was typed under it.
-
-Recommended: (a). It is the only option where `read_line` behaves as a person expects (echoed and
-editable) with no shell in the path.
+calef chose a byte source for the owner's yes; its opcodes, framing and slot are open. Three
+options and a recommendation, a cooked read on a badged terminal copy at std slot 29, are in
+[the appendix](./0892-a-std-program-at-the-prompt-holds-the-network-and-a-resolver/stdin-contract.md).
 
 ## Who builds the confirmation at install, decided 2026-10-19 (UTC)
 
-The maintainer decided this sequencing on #2405: 892 builds `jig install`'s confirmation with its
-two lines (each zone, a root-zone ask flagged apart, and "reaches the network (connects out)") and
-one yes. Milestone 910 (a package declares a service) adds its service line to the same
-confirmation. "The network at install, ruled" placed both lines in 910's confirmation, and 910 is
-NOT-STARTED behind 849, so 892 could not finish behind it.
+The maintainer's sequencing call on #2405: 892 builds `jig install`'s confirmation, with its zone
+and network lines and one yes, and milestone 910 (a package declares a service) adds its service
+line to it.
 
 ## BUGS
 
