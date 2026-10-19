@@ -9,6 +9,14 @@
 //! whole §209 (state handoff is an opaque blob over a granted frame, and it is optional) swap on a
 //! component a person uses: a line half typed before the swap is finished after it, history typed
 //! before it is recalled after it, and the reader parked across it is handed back and asks again.
+//!
+//! A second test hangs the terminal and asks for the swap anyway. The fake console stops
+//! acknowledging, so `line_editor` blocks in its sink's reply and never receives the quiesce,
+//! which is a real hang rather than a fixture's: a forwarding component wedged behind its
+//! dependency. What it proves is that the supervisor's bound fires, and what the supervisor does
+//! then.
+
+use core::sync::atomic::{AtomicBool, Ordering};
 
 use line_editor::component::supervisor as s;
 use line_editor::proto;
@@ -27,16 +35,31 @@ const MAX_ELF_PAGES: usize = 64;
 /// spawn helper with `PROGENITOR_STACK_PAGES`. These are ordinary `Spawn` windows placed below the stack.
 const EXTRA_STACK_PAGES: usize = 7;
 
-/// The supervisor's view of the `line_editor` image, one mapping per page. A static for `spawn`'s
-/// 1 KiB capture limit; see its one use.
-static mut ELF_MAPS: [Mapping; MAX_ELF_PAGES + EXTRA_STACK_PAGES] = [const {
+/// Every window the supervisor is spawned with: the `line_editor` image, its own image (which it
+/// builds its stand-ins from) and the extra stack.
+const MAX_WINDOWS: usize = 2 * MAX_ELF_PAGES + EXTRA_STACK_PAGES;
+
+/// The supervisor's view of both images, one mapping per page. A static for `spawn`'s 1 KiB
+/// capture limit; see its one use.
+static mut ELF_MAPS: [Mapping; MAX_WINDOWS] = [const {
     Mapping {
         va: 0,
         phys: 0,
         flags: Flags::user_rodata(),
     }
-};
-    MAX_ELF_PAGES + EXTRA_STACK_PAGES];
+}; MAX_WINDOWS];
+
+/// The fake console stops acknowledging while this is set, which hangs a `line_editor` in its
+/// flush. The request it is holding is dropped, never acknowledged, once it clears.
+static CONSOLE_WEDGED: AtomicBool = AtomicBool::new(false);
+/// Set by the fake console once it is holding a request it will not acknowledge.
+static CONSOLE_HOLDING: AtomicBool = AtomicBool::new(false);
+
+/// The swap endpoint's slot in the supervisor, after the seven terminal objects.
+const SWAP_SLOT: u64 = 7;
+
+/// What a reader's report carries in its first word when it is the typist's instead.
+const TYPIST: u64 = 0x7479_7069;
 
 fn bytes_call(term: sched::RendezvousId, bytes: &[u8]) {
     let mut w1 = 0u64;
@@ -66,7 +89,9 @@ fn line_at(phys: u64, len: usize) -> [u8; 8] {
     out
 }
 
-/// A reader that reads lines until told to stop, reporting every reply, retries included.
+/// A reader that reads lines until told to stop, reporting every reply, retries included, with
+/// whether the call was answered `Gone` in the third word. A `Gone` is asked again, as a
+/// `FLAG_RETRY` is.
 fn spawn_reader(term: sched::RendezvousId, report: sched::RendezvousId, lines: usize) {
     sched::spawn(move || {
         let mut done = 0;
@@ -75,8 +100,9 @@ fn spawn_reader(term: sched::RendezvousId, report: sched::RendezvousId, lines: u
                 term,
                 [proto::req(proto::OPERATION_READLINE, APP_OUT_LEN), 0],
             );
-            sched::ipc_send(report, [r[0], r[1], 0]);
-            if !proto::is_retry(r[0], r[1]) {
+            let gone = sched::take_ipc_aborted();
+            sched::ipc_send(report, [r[0], r[1], gone as u64]);
+            if !gone && !proto::is_retry(r[0], r[1]) {
                 done += 1;
             }
         }
@@ -84,67 +110,117 @@ fn spawn_reader(term: sched::RendezvousId, report: sched::RendezvousId, lines: u
     .expect("could not spawn the reader");
 }
 
+/// A running `terminal_supervisor` over a fake console, as a swap requester sees it.
+struct Terminal {
+    term: sched::RendezvousId,
+    swap: sched::RendezvousId,
+    report: sched::RendezvousId,
+    app_in: u64,
+    budget: u64,
+    held: Holding,
+}
+
+impl Terminal {
+    /// Build the supervisor the way a spawner that passes a swap endpoint must
+    /// (`supervisor::OWN_IMAGE_ADDRESS`): both images and the swapping budget.
+    fn start() -> Self {
+        CONSOLE_WEDGED.store(false, Ordering::Release);
+        CONSOLE_HOLDING.store(false, Ordering::Release);
+        let supervisor_image =
+            program("terminal_supervisor").expect("no terminal_supervisor in the initial ramdisk");
+        let editor_image = program("line_editor").expect("no line_editor in the initial ramdisk");
+
+        let ep_region = crate::memory_region::create(8).expect("no endpoint region");
+        let term = sched::create_rendezvous_from(ep_region).expect("term");
+        let conreq = sched::create_rendezvous_from(ep_region).expect("conreq");
+        let conrep = sched::create_rendezvous_from(ep_region).expect("conrep");
+        let swap = sched::create_rendezvous_from(ep_region).expect("swap");
+        let report = sched::create_rendezvous_from(ep_region).expect("report");
+        let budget =
+            crate::memory_region::create(s::SWAPPING_BUDGET_PAGES).expect("no supervisor budget");
+
+        // Every frame the test hands out comes from one region, so reclaiming it at the end gives
+        // them all back: `raw_mode_service`'s BUGS records what allocating them loose costs the
+        // suite.
+        let frames = crate::memory_region::create(MAX_WINDOWS as u64 + 3).expect("no frame region");
+        let alloc = || crate::memory_region::retype_page(frames).expect("frame region exhausted");
+        let (console_page, app_out, app_in) = (alloc(), alloc(), alloc());
+
+        let (maps_ro, windows) = copy_the_images_into_frames(editor_image, supervisor_image, alloc);
+        let console_tid = sched::spawn(move || {
+            loop {
+                sched::ipc_receive(conreq);
+                if CONSOLE_WEDGED.load(Ordering::Acquire) {
+                    CONSOLE_HOLDING.store(true, Ordering::Release);
+                    while CONSOLE_WEDGED.load(Ordering::Acquire) {
+                        sched::yield_now();
+                    }
+                    continue;
+                }
+                sched::ipc_send(conrep, [0, 0, 0]);
+            }
+        })
+        .expect("could not spawn the fake console");
+
+        let lengths = s::image_lengths(editor_image.len() as u64, supervisor_image.len() as u64);
+        let supervisor_tid = sched::spawn(move || {
+            run(
+                supervisor_image,
+                Spawn {
+                    arg0: 0, // the console's sink shape
+                    arg1: lengths,
+                    arg2: SWAP_SLOT,
+                    grants: &[
+                        crate::cap::memory_region_root_cap(budget), // BUDGET
+                        rendezvous_cap(term, Rights::ALL),          // TERMINAL
+                        rendezvous_cap(conreq, Rights::WRITE.union(Rights::GRANT)), // SINK
+                        page_frame_cap(console_page, Rights::ALL),  // SINK_PAGE
+                        page_frame_cap(app_out, Rights::ALL),       // CLIENT_OUT
+                        page_frame_cap(app_in, Rights::ALL),        // CLIENT_IN
+                        rendezvous_cap(conrep, Rights::READ.union(Rights::GRANT)), // SINK_REPLY
+                        rendezvous_cap(swap, Rights::READ),         // the swap endpoint
+                    ],
+                    maps: &maps_ro[..windows],
+                },
+            )
+        })
+        .expect("could not spawn terminal_supervisor");
+
+        let mut held = Holding::new();
+        held.add_thread(console_tid);
+        held.add_thread(supervisor_tid);
+        held.add_region(ep_region);
+        held.add_region(frames);
+        Terminal {
+            term,
+            swap,
+            report,
+            app_in,
+            budget,
+            held,
+        }
+    }
+
+    /// Retire the terminal so every instance's region, and every stand-in's, comes home to the
+    /// budget.
+    fn stop(mut self) {
+        let stopped = sched::ipc_call(self.swap, [s::STOP, 0]);
+        assert_eq!(stopped[0], s::STOPPED);
+        settle();
+        self.held.release_or_fail("terminal_supervisor");
+        sched::reclaim_region(self.budget).expect(
+            "the supervisor's budget would not reclaim: an instance's or a stand-in's region never \
+             came home",
+        );
+    }
+}
+
 #[test_case]
 fn the_terminal_is_replaced_under_a_person_typing_and_nothing_they_typed_is_lost() {
-    let supervisor_image =
-        program("terminal_supervisor").expect("no terminal_supervisor in the initial ramdisk");
-    let editor_image = program("line_editor").expect("no line_editor in the initial ramdisk");
-
-    let ep_region = crate::memory_region::create(8).expect("no endpoint region");
-    let term = sched::create_rendezvous_from(ep_region).expect("term");
-    let conreq = sched::create_rendezvous_from(ep_region).expect("conreq");
-    let conrep = sched::create_rendezvous_from(ep_region).expect("conrep");
-    let swap = sched::create_rendezvous_from(ep_region).expect("swap");
-    let budget = crate::memory_region::create(s::BUDGET_PAGES).expect("no supervisor budget");
-
-    // Every frame the test hands out comes from one region, so reclaiming it at the end gives
-    // them all back: `raw_mode_service`'s BUGS records what allocating them loose costs the suite.
-    let frames = crate::memory_region::create((MAX_ELF_PAGES + EXTRA_STACK_PAGES) as u64 + 3)
-        .expect("no frame region");
-    let alloc = || crate::memory_region::retype_page(frames).expect("frame region exhausted");
-    let (console_page, app_out, app_in) = (alloc(), alloc(), alloc());
-
-    let (maps_ro, windows) = copy_the_editor_into_frames(editor_image, alloc);
-    let console_tid = sched::spawn(move || {
-        loop {
-            sched::ipc_receive(conreq);
-            sched::ipc_send(conrep, [0, 0, 0]);
-        }
-    })
-    .expect("could not spawn the fake console");
-
-    let elf_len = editor_image.len() as u64;
-    let supervisor_tid = sched::spawn(move || {
-        run(
-            supervisor_image,
-            Spawn {
-                arg0: 0, // the console's sink shape
-                arg1: elf_len,
-                arg2: 7,
-                grants: &[
-                    crate::cap::memory_region_root_cap(budget), // BUDGET
-                    rendezvous_cap(term, Rights::ALL),          // TERMINAL
-                    rendezvous_cap(conreq, Rights::WRITE.union(Rights::GRANT)), // SINK
-                    page_frame_cap(console_page, Rights::ALL),  // SINK_PAGE
-                    page_frame_cap(app_out, Rights::ALL),       // CLIENT_OUT
-                    page_frame_cap(app_in, Rights::ALL),        // CLIENT_IN
-                    rendezvous_cap(conrep, Rights::READ.union(Rights::GRANT)), // SINK_REPLY
-                    rendezvous_cap(swap, Rights::READ),         // the swap endpoint, slot 7
-                ],
-                maps: &maps_ro[..windows],
-            },
-        )
-    })
-    .expect("could not spawn terminal_supervisor");
-
-    let mut held = Holding::new();
-    held.add_thread(console_tid);
-    held.add_thread(supervisor_tid);
-    held.add_region(ep_region);
-    held.add_region(frames);
+    let t = Terminal::start();
+    let (term, report) = (t.term, t.report);
 
     // A line typed and read before any swap, so there is history to carry.
-    let report = sched::create_rendezvous_from(ep_region).expect("report");
     spawn_reader(term, report, 1);
     settle();
     bytes_call(term, b"first\r");
@@ -158,11 +234,12 @@ fn the_terminal_is_replaced_under_a_person_typing_and_nothing_they_typed_is_lost
     spawn_reader(term, report, 2);
     settle();
     bytes_call(term, b"ec");
-    let swapped = sched::ipc_call(swap, [s::SWAP, 0]);
+    let swapped = sched::ipc_call(t.swap, [s::SWAP, 0]);
     assert_eq!(
         swapped[0],
         s::SWAPPED,
-        "the swap did not commit (reply {:#x}, detail {}): the replacement refused the blob",
+        "the swap did not commit (reply {:#x}, detail {}): the replacement refused the blob, or a \
+         healthy line_editor was convicted as hung",
         swapped[0],
         swapped[1],
     );
@@ -176,69 +253,150 @@ fn the_terminal_is_replaced_under_a_person_typing_and_nothing_they_typed_is_lost
         "the reader parked across the swap was not handed back with FLAG_RETRY",
     );
 
-    the_replacement_finishes_the_line_and_recalls_history(term, report, app_in);
+    the_replacement_finishes_the_line_and_recalls_history(term, report, t.app_in);
 
-    // A second swap works too, which is the control endpoints alternating.
-    let again = sched::ipc_call(swap, [s::SWAP, 0]);
+    // A second swap works too, which is the control endpoints alternating, and a second bounded
+    // quiesce that a deadline left over from the first does not end early.
+    let again = sched::ipc_call(t.swap, [s::SWAP, 0]);
     assert_eq!(
         (again[0], again[1]),
         (s::SWAPPED, 3),
         "a second swap did not commit"
     );
 
-    // Retire the terminal so every instance's region comes home to the budget.
-    let stopped = sched::ipc_call(swap, [s::STOP, 0]);
-    assert_eq!(stopped[0], s::STOPPED);
-    settle();
-    held.release_or_fail("terminal_supervisor");
-    sched::reclaim_region(budget)
-        .expect("the supervisor's budget would not reclaim: an instance's region never came home");
+    t.stop();
 }
 
-/// Copy the `line_editor` image into fresh frames from `alloc`, and add its extra stack pages.
-/// Returns the mappings the supervisor is spawned with and how many of them are in use.
-fn copy_the_editor_into_frames(
-    editor_image: &[u8],
-    alloc: impl Fn() -> u64,
-) -> (&'static [Mapping; MAX_ELF_PAGES + EXTRA_STACK_PAGES], usize) {
-    // The `line_editor` image, copied into fresh frames the supervisor maps at ELF_VA: the kernel's
-    // stand-in for `system_initializer`'s `blobs` copy.
-    let pages = editor_image.len().div_ceil(FRAME_SIZE as usize);
-    assert!(
-        pages <= MAX_ELF_PAGES,
-        "line_editor's stripped image outgrew the test's mapping"
+#[test_case]
+fn a_hung_terminal_is_noticed_within_the_bound_and_replaced_without_its_state() {
+    let t = Terminal::start();
+    let (term, report) = (t.term, t.report);
+
+    // A reader parked on the incumbent, and a typist whose keystroke hangs it: `line_editor`
+    // echoes before it replies, so the typist's own call is held too.
+    spawn_reader(term, report, 1);
+    settle();
+    CONSOLE_WEDGED.store(true, Ordering::Release);
+    sched::spawn(move || {
+        bytes_call(term, b"x");
+        let gone = sched::take_ipc_aborted();
+        sched::ipc_send(report, [TYPIST, 0, gone as u64]);
+    })
+    .expect("could not spawn the typist");
+    let deadline = crate::arch::timer::now() + crate::arch::timer::frequency();
+    while !CONSOLE_HOLDING.load(Ordering::Acquire) {
+        assert!(
+            crate::arch::timer::now() < deadline,
+            "the typist's echo never reached the console, so line_editor did not hang"
+        );
+        sched::yield_now();
+    }
+
+    let swapped = sched::ipc_call(t.swap, [s::SWAP, 0]);
+    assert_eq!(
+        swapped[0],
+        s::REPLACED_HUNG,
+        "a line_editor blocked in its sink was not noticed (reply {:#x}, detail {})",
+        swapped[0],
+        swapped[1],
     );
+    // At least the bound, so it was the bound that ended the wait. The deadline fires at the first
+    // scheduler tick at or after it, and a loaded host stretches that, so the ceiling is loose: it
+    // only says the wait ended on the deadline and not on something long after it.
+    let waited = swapped[1];
+    crate::println!("terminal_swap: a hung line_editor was convicted after {waited} ms");
+    assert!(
+        (s::QUIESCE_BOUND_MS..4 * s::QUIESCE_BOUND_MS).contains(&waited),
+        "the supervisor waited {waited} ms, against a bound of {} ms",
+        s::QUIESCE_BOUND_MS,
+    );
+
+    // Both callers the hung instance held were answered `Gone` when its region was destroyed.
+    let (mut reader_gone, mut typist_gone) = (false, false);
+    for _ in 0..2 {
+        let r = sched::ipc_receive(report);
+        match r[0] {
+            TYPIST => typist_gone = r[2] == 1,
+            _ => reader_gone = r[2] == 1,
+        }
+    }
+    assert!(
+        reader_gone,
+        "the reader parked on the hung line_editor was not answered Gone"
+    );
+    assert!(
+        typist_gone,
+        "the typist held by the hung line_editor was not answered Gone"
+    );
+
+    // The replacement serves, and serves empty: the keystroke typed into the hung instance is lost,
+    // which is what replacing without the state costs.
+    CONSOLE_WEDGED.store(false, Ordering::Release);
+    bytes_call(term, b"ok\r");
+    let r = sched::ipc_receive(report);
+    assert_eq!(
+        r[0], 2,
+        "the reader's second attempt was not served by the replacement (reply {:#x}, {:#x})",
+        r[0], r[1],
+    );
+    assert_eq!(&line_at(t.app_in, 2)[..2], b"ok");
+
+    t.stop();
+}
+
+/// Copy the `line_editor` image and the supervisor's own into fresh frames from `alloc`, and add
+/// the extra stack pages. Returns the mappings the supervisor is spawned with and how many of them
+/// are in use.
+fn copy_the_images_into_frames(
+    editor_image: &[u8],
+    own_image: &[u8],
+    alloc: impl Fn() -> u64,
+) -> (&'static [Mapping; MAX_WINDOWS], usize) {
     // The supervisor's spawn closure borrows this static because a closure that captured the array
     // itself would be over the 1 KiB `spawn` allows.
     let maps_p = &raw mut ELF_MAPS;
-    // SAFETY: this test is the only user of `ELF_MAPS`, and it runs once.
-    let maps: &'static mut [Mapping; MAX_ELF_PAGES + EXTRA_STACK_PAGES] = unsafe { &mut *maps_p };
-    for (i, chunk) in editor_image.chunks(FRAME_SIZE as usize).enumerate() {
-        let phys = alloc();
-        // SAFETY: a frame just allocated for this copy and not yet mapped anywhere else.
-        unsafe {
-            core::ptr::copy_nonoverlapping(
-                chunk.as_ptr(),
-                mmu::phys_to_virt(phys) as *mut u8,
-                chunk.len(),
-            );
+    // SAFETY: the two tests here are its only users, the suite runs them one after the other, and
+    // each one's supervisor has exited before the next writes it.
+    let maps: &'static mut [Mapping; MAX_WINDOWS] = unsafe { &mut *maps_p };
+    let mut windows = 0;
+    // Each image copied into fresh frames the supervisor maps at its VA: the kernel's stand-in for
+    // a spawner's `blobs` copy.
+    for (image, va, what) in [
+        (editor_image, s::ELF_VA, "line_editor"),
+        (own_image, s::OWN_IMAGE_ADDRESS, "terminal_supervisor"),
+    ] {
+        assert!(
+            image.len().div_ceil(FRAME_SIZE as usize) <= MAX_ELF_PAGES,
+            "{what}'s stripped image outgrew the test's mapping"
+        );
+        for (i, chunk) in image.chunks(FRAME_SIZE as usize).enumerate() {
+            let phys = alloc();
+            // SAFETY: a frame just allocated for this copy and not yet mapped anywhere else.
+            unsafe {
+                core::ptr::copy_nonoverlapping(
+                    chunk.as_ptr(),
+                    mmu::phys_to_virt(phys) as *mut u8,
+                    chunk.len(),
+                );
+            }
+            maps[windows] = Mapping {
+                va: va + i as u64 * FRAME_SIZE,
+                phys,
+                flags: Flags::user_rodata(),
+            };
+            windows += 1;
         }
-        maps[i] = Mapping {
-            va: s::ELF_VA + i as u64 * FRAME_SIZE,
-            phys,
-            flags: Flags::user_rodata(),
-        };
     }
 
     for k in 0..EXTRA_STACK_PAGES {
-        maps[pages + k] = Mapping {
+        maps[windows] = Mapping {
             va: USER_STACK_VA - (k as u64 + 1) * FRAME_SIZE,
             phys: alloc(),
             flags: Flags::user_data(),
         };
+        windows += 1;
     }
-    let windows = pages + EXTRA_STACK_PAGES;
-    let maps_ro: &'static [Mapping; MAX_ELF_PAGES + EXTRA_STACK_PAGES] = maps;
+    let maps_ro: &'static [Mapping; MAX_WINDOWS] = maps;
     (maps_ro, windows)
 }
 

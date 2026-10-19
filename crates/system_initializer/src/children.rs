@@ -989,7 +989,9 @@ pub(super) fn render_ipv4(addr: u32, out: &mut [u8]) -> usize {
 /// No swap endpoint is passed: the trigger (milestone 198 (a package manager, and the trivial
 /// install)'s installer activating a new build) is ruled by §308 (the installer asks the terminal
 /// to swap) and not built, so nothing on this boot asks the supervisor to swap. Milestone 694 (the
-/// installer asks the terminal to swap) builds it; `terminal_supervisor`'s `BUGS`.
+/// installer asks the terminal to swap) builds it; `terminal_supervisor`'s `BUGS`. So neither is
+/// what a swap endpoint brings with it (`line_editor::component::supervisor::OWN_IMAGE_ADDRESS`):
+/// no copy of the supervisor's own image, and `BUDGET_PAGES` rather than the swapping budget.
 /// `ut` is where the loader's own scratch tables come from; `budget` is the region the
 /// supervisor's map budget is split from. The same region at boot (the root, before the giveaway),
 /// two different ones inside a `graphical_terminal` session (milestone 632 (provisional): `own_ut` for the
@@ -1019,7 +1021,12 @@ pub(super) fn build_terminal(
             ..ChildEndowment::new(Retention::Nothing)
         },
     ));
-    must_ok(start_child(sup, mode, td_bytes.len() as u64, 0));
+    must_ok(start_child(
+        sup,
+        mode,
+        s::image_lengths(td_bytes.len() as u64, 0),
+        0,
+    ));
     cap_delete(budget_pages);
 }
 
