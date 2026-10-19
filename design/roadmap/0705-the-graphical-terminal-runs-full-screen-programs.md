@@ -134,7 +134,7 @@ F and G have their own ([F](0705-the-graphical-terminal-runs-full-screen-program
 | Heap per 80x24 terminal | 717 KB static | 2.2 to 4.1 MB | 0.26 MB probe peak | 0.15 MB |
 | Replies, damage | neither | both | neither | both |
 | New to the base graph | nothing | 10 crates | 5 crates | one C library |
-| Ran under QEMU on nife | in the suite | yes, 15 of 15 | yes, 13 of 15 | no |
+| Ran under QEMU on nife | in the suite | yes, 15 of 15 | yes, 13 of 15 | yes, 15 of 15 |
 
 `termwiz` 0.23.3 does not build for nife and is not an engine. `alacritty_terminal`'s heap floor is
 2.2 MB because `vte` reserves 2 MiB for synchronized updates; lowering its own storage step only
