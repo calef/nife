@@ -26,7 +26,8 @@ a body of markdown only, the reserved option `None`, the word `password` in a la
 whitespace-only name (eight of the 21 errors), and it rejects the documented `min_length`. JSON
 Schema cannot express the uniqueness rules at all, so a check written here was needed whatever
 validator ran beside it, and the validator would have been the tree's first Python package
-dependency (§46, thin primitives or whole subsystems). The pull request that added this file has the measurement.
+dependency, a ruling under §46 (thin primitives or whole subsystems). The pull request that added
+this file has the measurement.
 
 # THE PARSER
 
