@@ -72,6 +72,8 @@ const STACK_PAGES: u64 = 3;
 /// The endpoints one exchange retypes from the region its caller passes: the server's two and the
 /// client's report. Size a region with this and pass the same one to [`start_server`] and
 /// [`start_client`] (or [`start_witness`]).
+///
+/// Name: provisional, minted 2026-10-19 (UTC) by lane milestone/608-service-rendezvous-regions.
 pub const EXCHANGE_PAGES: u64 = 3;
 
 /// A running test server: the endpoint a client speaks the socket contract on, and the endpoint

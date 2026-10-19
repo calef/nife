@@ -24,6 +24,8 @@ use super::*;
 /// sink has reported `DONE` and exited ([`FILE_SINK_PAGES`] of it).
 /// The pages [`start_file_sink`] or [`start_file_source`] retypes from its caller's region: two
 /// endpoints each.
+///
+/// Name: provisional, minted 2026-10-19 (UTC) by lane milestone/608-service-rendezvous-regions.
 #[cfg_attr(not(any(test, feature = "system_tests")), allow(dead_code))]
 pub const FILE_SINK_PAGES: u64 = 2;
 
