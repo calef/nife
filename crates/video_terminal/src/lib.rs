@@ -34,6 +34,8 @@
 
 #![no_std]
 
+pub mod component;
+pub mod handoff;
 pub mod keymap;
 pub mod script;
 

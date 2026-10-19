@@ -1,19 +1,15 @@
 ---
-status: PARTIAL
+status: BUILT
 raised: 2026-07-25
-milestone_dependencies: none
-decision_dependencies: none
-machine_requirements: none
-specific_machine: none
-needs_person: no
+built: 2026-10-19
 ---
 # 23. A capability-routed component OS with live replacement
 
-Every residual this block named is built, and so are the advisory warning (§231) and the live
-swap of `line_editor` (§232 (the line editor swap contract), with a terminal supervisor that
-notices a hang on its own). What keeps it PARTIAL: the installer does not yet ask the terminal to
-swap (milestone 694, an architect's), and `display_terminal` and `compositor` are not swapped,
-which waits on three answers in `design/roadmap/proposals/swap-the-display-terminal-live.md`.
+Every residual this block named is built, and so are the advisory warning (§231), the live swap of
+`line_editor` (§232 (the line editor swap contract)) and of `display_terminal`, both under a
+terminal supervisor that notices a hang on its own. Two pieces have milestones of their own: the
+installer asking the terminal to swap (milestone 694), and the compositor's swap (milestone 932 (swap the compositor live)),
+which waits for a boot that runs a compositor.
 
 ## The idea
 
@@ -119,6 +115,44 @@ nothing and only waits for the down window. So a dependent that will not answer 
 nothing done to it; the supervisor only has to not block on it, which today it does, because the
 warning is a `CALL`. notes/non-cooperative-fallback.md.
 
+### The terminal, swapped live (2026-10-19)
+
+calef ruled four questions on 2026-10-19 (UTC), and `display_terminal` is swapped to them.
+
+- **A component's spawner supervises its swaps** ("spawner supervises"), with no new supervisor
+  program and no central swap service. `terminal_supervisor`, in display mode, holds
+  `display_terminal` beside `line_editor`, builds both through `supervision_protocol`, and
+  `SWAP`'s second word names the child.
+- **The replacement comes from a dedicated swap reserve** ("D"): one per machine, apart from the
+  job pool (`JOBS_BUDGET_PAGES`), sized to the largest swappable instance plus its handoff
+  (`supervisor::SWAP_RESERVE_PAGES`, 396 pages). Whoever drives a swap splits it whole and lends
+  it with `LEND`, a `SEND_CAP` before the `SWAP`. The supervisor builds the replacement and the
+  handoff run in it, moves the terminal into it and then home to its own bay with the same image,
+  and deletes its capabilities before answering. The lender's `DESTROY` then revokes whatever was
+  made from it. A second swap while the reserve is lent finds nothing to split and is refused
+  until the first is answered; a display swap with nothing lent is answered `NEEDS_RESERVE`. The
+  holder is milestone 694's trigger. That is not built, so the reserve is held where today's
+  trigger lives, the kernel's test.
+- **A swap carries everything** ("everything"): the whole `Vt`, grid and scrollback, with the
+  cursor, the rendition and the parser's state, as a §209 blob (`video_terminal::handoff`). It is
+  twelve bytes a cell, so the largest is 132 pages, not the 176 the sixteen-byte cell gave.
+  **A replacement reads its predecessor's layout** (calef, 2026-10-19, "b"): a build that changes
+  the layout bumps `LAYOUT` and keeps the old reader, and `video_terminal`'s host tests absorb a
+  checked-in blob of every earlier layout. A blob for another grid shape is refused, and the swap
+  rolls back; that limit is in `video_terminal::handoff`'s `BUGS`.
+- **The compositor is its own milestone** ("Split"): 932.
+
+Measured on 2026-10-19 (UTC) with `MemoryRegion::USAGE`, debug images: an instance commits 207 to
+212 pages and its map budget 4. `system_tests::user::terminal_display_swap_tests` swaps a
+supervised `display_terminal` twice on the kernel's display stand-in, on all three architectures. It
+compares every scanout pixel with an engine the kernel runs, and the blob carried home with the
+one that engine writes, byte for byte. A 24-bit color cut in half by the swap finishes on the
+other side. A second lend while the first is out is refused, and the retried swap commits.
+
+The test found a fault in the scroll fast path: a write that scrolled several rows left the tail
+of a wider row on the screen. `video_terminal::Vt::take_damage` now renders the rows such a move
+exposes, and a host test plays the painter.
+
 ## Follow-on
 
 - **Done.** A handoff is a run of pages, 2026-09-26: `Handoff::pages`, minted with
@@ -181,14 +215,20 @@ warning is a `CALL`. notes/non-cooperative-fallback.md.
   `FLAG_RETRY` `swish` and `rmle` handle, and option A of `design/roadmap/0661-a-terminal-supervisor-holds-the-line-editor.md`
   on 2026-09-27. `kernel::user::terminal_swap_tests` swaps it twice under a typist on all three
   architectures, carrying the half-typed line and the history. notes/interactive-stack-swap.md.
-- **Milestone 694.** Milestone 694 (the installer asks the terminal to swap). `design/roadmap/0694-the-installer-asks-the-terminal-to-swap.md`, NOT-STARTED,
-  raised 2026-09-27: the trigger. Nothing on a real boot asks the supervisor to swap yet.
-- **Proposed.** `display_terminal` and `compositor` are not swapped.
-  `design/roadmap/proposals/swap-the-display-terminal-live.md` has the three answers it waits on:
-  where a second 177-page instance comes from in a session whose region has 144 pages to spare, what
-  a replacement inherits, and who holds it. The compositor runs only in the tests of milestone 33 (a
-  compositor: one screen, mutually distrusting clients), and its swap waits for a boot that runs it.
-  Checked 2026-10-19.
+- **Milestone 694.** Milestone 694 (the installer asks the terminal to swap).
+  `design/roadmap/0694-the-installer-asks-the-terminal-to-swap.md`, NOT-STARTED, raised
+  2026-09-27: the trigger. Nothing on a real boot asks the supervisor to swap yet, and nothing
+  on a boot holds the swap reserve.
+- **Done.** `display_terminal` is swapped live, 2026-10-19, through the swap reserve, carrying
+  everything; "The terminal, swapped live" above has the rulings and the test.
+- **Milestone 932.** The compositor's swap, `design/roadmap/0932-swap-the-compositor-live.md`,
+  split out by calef on 2026-10-19. It runs only in the tests of milestone 33 (a compositor: one
+  screen, mutually distrusting clients), and its swap waits for a boot that runs it.
+- **Recorded.** A `graphical_terminal` session still builds its `display_terminal` itself and
+  hands `terminal_supervisor` only its endpoint, so a session's `display_terminal` is not
+  supervised. Until something on a boot can ask for a swap, holding it would cost the session
+  the image's 220 pages for nothing. `components/src/terminal_supervisor.rs`'s `BUGS` carries
+  it.
 
 ## Index row
 

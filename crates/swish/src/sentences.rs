@@ -171,6 +171,9 @@ pub fn image_refusal_sentence(r: grant_plan::ImageRefusal) -> &'static [u8] {
         grant_plan::ImageRefusal::ExceedsVouch => {
             b"  refused: nobody vouched for those bytes, and their manifest asks the line for more than unvouched bytes may hold\n"
         }
+        grant_plan::ImageRefusal::NetworkNotGranted => {
+            b"  refused: its manifest asks for the network, and no owner's grant of the network is recorded for it among the installed programs\n"
+        }
     }
 }
 

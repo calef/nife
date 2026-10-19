@@ -13,9 +13,9 @@
 use std::sync::LazyLock;
 
 pub(super) use after_reboot::{
-    FROM_BASALT, ON_THE_DISK_TREE, RESOLVING_LINE, SWISH_CHECK_AFTER_REBOOT,
+    FROM_BASALT, ON_THE_DISK_TREE, REACH_LINES, RESOLVING_LINE, SWISH_CHECK_AFTER_REBOOT,
 };
-pub(super) use line::{JOB_DID_NOT_RUN, Line, interrupted_at_prompt, keys, line};
+pub(super) use line::{JOB_DID_NOT_RUN, Line, asked, interrupted_at_prompt, keys, line};
 
 use super::*;
 

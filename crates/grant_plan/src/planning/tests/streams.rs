@@ -443,6 +443,7 @@ const RENDERS_AS_IT_READS: Manifest = Manifest {
     catalog: false,
     indexes: IndexStoreDeclaration::Forbidden,
     activation_directory: false,
+    console_input: false,
     startup: StartupContract::Native,
 };
 

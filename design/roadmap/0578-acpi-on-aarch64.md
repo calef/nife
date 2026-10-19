@@ -14,12 +14,10 @@ The number is provisional: the integrator mints it at merge. Promoted
 *an ACPI discovery path for aarch64, so a machine that describes itself with ACPI rather than a
 device tree can boot nife.* The file name and every name this block invents are provisional too.
 
-**Status, corrected 2026-10-11 (UTC) by the maintainer: PARTIAL, not NOT-STARTED.** PR #1153
-(merged 2026-09-24 UTC) built items 1 to 4 below, except the MSI frame and ITS arms. It answered
-item 5 with option 1: `uefi_loader::device_tree_from_acpi` writes the tree, so item 6 is not
-needed. `NIFE_ACPI=on helpers/qemu-stick.sh aarch64 target/stick` reaches the shell
+Status: PARTIAL. Items 1 to 4 below are built, except the ITS arm. Item 5 is answered with
+option 1: `uefi_loader::device_tree_from_acpi` writes the tree, so item 6 is not needed. `NIFE_ACPI=on helpers/qemu-stick.sh aarch64 target/stick` reaches the shell
 ([the measurement](../../notes/boot-stick/device-tree-handover.md#edk2-on-aarch64-hid-the-device-tree-when-it-presented-acpi)).
-The rest of this block is the plan as written on 2026-09-23. What is left is under Follow-on.
+The plan below is as written on 2026-09-23; what is left is under Follow-on.
 
 ## What this is, and why it is not a purchasing problem
 
@@ -34,13 +32,13 @@ in the `BUGS` section of `uefi_loader/src/arch/aarch64/mod.rs`: the device tree 
 the firmware. PR #1153 replaced that entry with "An ACPI machine is described second-hand", in the
 same section.
 
-**Every aarch64 server cloud is such a machine by specification.** Arm's Server Base Boot
+Every aarch64 server cloud is such a machine by specification. Arm's Server Base Boot
 Requirements make UEFI and ACPI the boot contract for Arm servers, and the clouds comply. AWS
 resolves an arm64 instance with no boot mode specified to UEFI, Azure's Cobalt 100 Arm series is
 Generation 2 only, and Google's image-import requirements say the boot disk must support ACPI. The
 sources and the dates they were read are in notes/rented-metal.md, which PR #1152 holds.
 
-**This unblocks the whole aarch64 column, not one machine.** Milestone 88 (nife
+This unblocks the whole aarch64 column, not one machine. Milestone 88 (nife
 on rented silicon: Oracle's free tier first, Graviton metal for the PMU) budgeted "a UEFI boot path
 and an ACPI front door" in 2026-08-03 and got the UEFI half. Milestone 100 (read the machine's PSCI
 and its CPU list, not QEMU `virt`'s) said in its own scope note that it "gets the DTB path right and
@@ -75,7 +73,7 @@ BdsDxe: failed to start Boot0001 ... : Load Error
 
 Two things there make this milestone cheap:
 
-- **The kernel is never entered.** The loader's own `discover` returns before boot services are
+- The kernel is never entered. The loader's own `discover` returns before boot services are
   exited, so the failure is a named refusal rather than a machine that goes quiet, and every wrong
   turn gives a readable error.
 - QEMU accepts the override: `-machine acpi=on` after the script's own `-machine virt,acpi=off`
@@ -106,15 +104,12 @@ is done; add to it, do not start beside it.
 
 ## What aarch64 additionally needs, item by item
 
-Nothing in this tree reads any of these today. Checked by grep on 2026-09-23: `GTDT`, `FADT` and `SPCR` appear nowhere in any `.rs` file in this repository.
-
 1. MADT entry types 0x0B through 0x0F, which are where aarch64's CPUs and interrupt controller
    live. On x86 the CPU list is type 0 and the interrupt controller is type 1. On aarch64 there are
    five. GICC (0x0B) is one per CPU, carrying the MPIDR and the ACPI processor UID and
    an enabled flag. GICD (0x0C) carries the distributor's base address and the GIC version. GICR
    (0x0E) is the redistributor array a GICv3 needs. The other two are GIC MSI frame (0x0D) and GIC
-   ITS (0x0F). Today all five fall through `madt_entries`' final arm to
-   `MadtEntry::Other(kind)`: correct, and telling you nothing. This is the direct counterpart of what
+   ITS (0x0F). This is the direct counterpart of what
    `machine_discovery::gic::discover` reads out of the device tree, including the GICv2-versus-GICv3
    distinction whose cost `kernel/src/memory.rs` records beside that call: a kernel that booted,
    printed `interrupts ON`, and took none.
@@ -184,7 +179,7 @@ The third is where the fork is, and this is the one item in this block that is a
 >    room, most surface, and it is a thing two programs agree on, which this tree treats as the
 >    expensive category.
 >
-> **This lane should not pick.** Option 1 is cheapest to build, which by this tree's own tenet is
+> This lane should not pick. Option 1 is cheapest to build, which by this tree's own tenet is
 > the argument that has to be stated as an effort argument rather than dressed as design. Option 2
 > is what the device-tree-versus-ACPI split actually is. The decision is a boot contract, it is what
 > every future aarch64 machine is entered through, and it belongs in `design/decisions/`.
@@ -243,11 +238,8 @@ Each ships independently and none needs hardware. The QEMU A/B above tests all o
   fields and the FADT's flag bits should be checked against a table dumped from QEMU with `acpi=on`
   before a decoder is written against them, which is what the x86 decoders did against
   `hw/i386/acpi-build.c`. This tree has carried a fabricated quotation through every gate before.
-- The A/B was run with a debug-profile stick built by hand from this branch, not by
-  `cargo xtask stick`, whose three-architecture build was more than this lane needed. The failing
-  half is a loader message printed before boot services are exited, so the profile cannot be
-  load-bearing, but the transcript above is not a `stick-boot` transcript and should not be quoted as
-  one.
+- The A/B above was run with a debug stick built by hand, so it is not a `stick-boot`
+  transcript. The release boot is `cargo xtask acpi-boot`.
 - **`-machine acpi=on` proves that EDK2 withholds the device tree when it presents ACPI. It does not
   prove that a cloud machine's firmware behaves the same way**, and the only thing that would is
   booting one. That is item 7 and it is the reason item 7 survives the list.
@@ -257,12 +249,16 @@ Each ships independently and none needs hardware. The QEMU A/B above tests all o
 - **Recorded.** Item 5's handover fork, which PR #1153 answered with option 1, is now
   [§278 (an ACPI machine reaches the aarch64 kernel as a device tree the loader writes)](../decisions/0278-an-acpi-machine-reaches-the-aarch64-kernel-as-a-device-tree.md#278-an-acpi-machine-reaches-the-aarch64-kernel-as-a-device-tree-the-loader-writes),
   ratified by calef on 2026-10-11 (UTC).
-- **Outstanding.** MADT types 0x0D (GIC MSI frame) and 0x0F (GIC ITS) still fall to
-  `MadtEntry::Other`. Checked 2026-10-11 (UTC) in `machine_discovery::acpi`, where `MadtEntries`
-  decodes each entry. The ITS node also waits on milestone 317 (the interrupt-remapping flags, and
-  where MSI confinement actually lives), as `device_tree_from_acpi`'s BUGS says.
-- **Outstanding.** No gate boots `acpi=on`; the proof is a transcript run by hand. Checked
-  2026-10-11 (UTC): `NIFE_ACPI` appears only in `helpers/qemu-stick.sh`.
+- **Done.** MADT type 0x0D (GIC MSI frame) decodes to `MadtEntry::GicMsiFrame`, tested against
+  QEMU's own `APIC.msi_gicv2m` bytes. Nothing reads it: an aarch64 PCI function interrupts through
+  INTx (`irq::alloc_msi_vector` answers `None`), so no `v2m` node is written.
+- **Milestone 317.** MADT type 0x0F (GIC ITS) still falls to `MadtEntry::Other` and waits on
+  milestone 317 (the interrupt-remapping flags), as `device_tree_from_acpi`'s BUGS says.
+- **Done.** `script/ci-build acpi-boot` (`cargo xtask acpi-boot`, in CI's `boot-check` job) boots
+  the release `BOOTAA64.EFI` under EDK2 with `acpi=on` and requires the loader's "describing this
+  machine from ACPI" line. Scope (§19 (architectural parity is a tenet)): x86_64's UEFI boot is ACPI only and `release-uefi-boot`
+  gates it; riscv64 has no ACPI path, which is milestone 526 (a riscv64 host that hands
+  this kernel ACPI).
 - **Outstanding.** Item 7, the Oracle Always Free boot, which needs calef's account.
 - **Milestone 127.** The `0x4008_0000` link address, as the section on it says.
 
@@ -272,5 +268,6 @@ Every aarch64 cloud offer qualifies on price, console, power and cores, and is a
 describes itself with ACPI, while nife's aarch64 kernel reads a device tree. PR #1153 (2026-09-24
 UTC) made the loader write that tree from the MADT's GIC entries, the GTDT, the FADT's Arm boot
 flags and the SPCR. So `NIFE_ACPI=on helpers/qemu-stick.sh aarch64 target/stick` reaches the shell
-on a laptop. Left: the MSI frame and ITS entries, a gate that boots `acpi=on`, and the Oracle
-Always Free boot. The `0x4008_0000` link address belongs to milestone 127 (the seL4 machine).
+on a laptop, and `cargo xtask acpi-boot` gates that boot in CI. Left: the ITS entry (milestone
+317) and the Oracle Always Free boot (calef's account). The `0x4008_0000` link address belongs to
+milestone 127 (the seL4 machine).
