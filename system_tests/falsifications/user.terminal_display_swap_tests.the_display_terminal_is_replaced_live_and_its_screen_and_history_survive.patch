@@ -11,11 +11,11 @@ Expected to fail: "the first swap: the blob carried home differs from the engine
 the blob comparison, after the screen comparison has passed. Replayed red at exactly that assertion
 on aarch64 on 2026-10-19 (UTC).
 
-diff --git a/crates/video_terminal/src/vt/handoff.rs b/crates/video_terminal/src/vt/handoff.rs
-index 8177a0a7a..7d98f27f3 100644
---- a/crates/video_terminal/src/vt/handoff.rs
-+++ b/crates/video_terminal/src/vt/handoff.rs
-@@ -259,7 +259,7 @@ impl Vt {
+diff --git a/crates/video_terminal/src/vt.rs b/crates/video_terminal/src/vt.rs
+index 7def59223..6882f29a7 100644
+--- a/crates/video_terminal/src/vt.rs
++++ b/crates/video_terminal/src/vt.rs
+@@ -1222,7 +1222,7 @@ impl Vt {
          for (k, c) in self.scrollback[..history].iter_mut().enumerate() {
              *c = cell(live + k)?;
          }
