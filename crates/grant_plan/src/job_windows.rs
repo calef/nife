@@ -23,9 +23,8 @@
 //!
 //! **A bound window is unbound at its holder's reap, never at its reuse** (milestone 606 (a
 //! directory walk costs what it does on Linux), ruling D's "UNBIND at reap"). [`Windows::take`]
-//! skips a window whose bound bit is set, so the progenitor's `UNBIND` has to have run, at
-//! [`Windows::reaped`] or [`Windows::release`], before the window can go to anyone else. A reaped
-//! job's binding then lasts no longer than the job.
+//! skips a window whose bound bit is set, so the progenitor's `UNBIND`, at [`Windows::reaped`] or
+//! [`Windows::release`], has to have run before the window can go to anyone else.
 //!
 //! # BUGS
 //!

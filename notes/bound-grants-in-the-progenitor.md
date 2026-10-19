@@ -118,7 +118,7 @@ These are code in the progenitor, and would be built as soon as both answers are
   bound-badge sentence, so a boot that lost the note fails the gate. It passes on all three
   architectures, and the `rm` lines run through the bound grant.
 - `UNBIND` runs at the job's reap, when `job_undertaker`'s "reaped" message reaches the progenitor
-  (milestone 685), and when a taken window's job never started. `Windows::take` skips a window
+  (milestone 685 (a job is finished when its memory is back)), and when a taken window's job never started. `Windows::take` skips a window
   still bound, so the unbind cannot drift back to reuse: the host test
   `take_never_hands_out_a_bound_window` fails if it does.
 

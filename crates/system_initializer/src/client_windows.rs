@@ -318,9 +318,9 @@ pub(super) fn job_channel(fs: Fs, w: u64, own_ut: u64, mapped: &mut bool) -> Opt
     Some(Fs { ep, page })
 }
 
-/// **Take window `w`'s grant back, if it has one** (milestone 606, ruling D's "UNBIND at reap"):
-/// `UNBIND` on the file service's unbadged endpoint `files` closes every handle the badge minted
-/// and leaves it revoked until it is bound again. Called at the reap of the window's job, or when
+/// **Take window `w`'s grant back, if it has one** (milestone 606 (a directory walk costs what it
+/// does on Linux), ruling D's "UNBIND at reap"): `UNBIND` on the file service's unbadged endpoint
+/// `files` closes every handle the badge minted and leaves it revoked until it is bound again. Called at the reap of the window's job, or when
 /// no job came to hold it, so the window goes back to the pool only once this has answered. The
 /// request carries no bytes, so it does not touch window 0's page, which the shell may be using.
 pub(super) fn unbind(files: Option<u64>, windows: &mut Windows, w: u64) {

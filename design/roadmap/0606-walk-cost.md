@@ -66,11 +66,11 @@ calef ruled on #1387. Each option was prototyped and measured first; the note ha
 
 ## Follow-on
 
-- **Built.** `UNBIND` at reap. A bound window's grant is taken back when `job_undertaker`'s
-  "reaped" message reaches the progenitor (milestone 685), or at once when its job never started,
-  and only then does the window go back to the pool. `grant_plan::job_windows`'s `Windows::take`
-  skips a window still bound, and `take_never_hands_out_a_bound_window` fails if the unbind moves
-  back to reuse.
+- **Done.** `UNBIND` at reap. The progenitor takes a bound window's grant back when
+  `job_undertaker`'s "reaped" message arrives (milestone 685 (a job is finished when its memory
+  is back)). A window whose job never started is unbound at once. Only then does the window go
+  back to the pool: `Windows::take` in `grant_plan::job_windows` skips a window still bound, and
+  `take_never_hands_out_a_bound_window` fails if the unbind moves back to reuse.
 - **Recorded.** A cold walk on both sides, with Linux on ext4 over virtio rather than tmpfs, is a
   limitation in `notes/walk-cost.md`.
 
