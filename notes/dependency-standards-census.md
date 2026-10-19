@@ -39,10 +39,10 @@ The TLS graph is the bulk of it. `jig` links 68 of the 99, nearly all of them Ru
 rustls. The kernel links three: `aarch64-cpu`, `spin` 0.12.3 and `tock-registers`. The Rust
 standard library itself ships too, through `-Zbuild-std`, and is outside this census.
 
-The candidates under milestone 784 (reuse what the tree wrote) were measured the same way, with their dependency closures:
-`r-efi` 7.1.0 (item (e)), `vte` 0.15.0 with `arrayvec` (item (b), held for 705), `plist` 1.10.1 with
-13 crates (item (f)), and `pulldown-cmark` 0.13.4 with `bitflags` and `unicase` (item (f2)). The
-terminal lane has named no others.
+The candidates under milestone 784 (reuse what the tree wrote) were measured the same way, each with
+its dependency closure. Item (e) is `r-efi` 7.1.0. Item (b), held for 705, is `vte` 0.15.0 with
+`arrayvec`. Item (f) is `plist` 1.10.1 with 13 crates, and item (f2) is `pulldown-cmark` 0.13.4 with
+`bitflags` and `unicase`. The terminal lane has named no others.
 
 ### How each standard was measured
 

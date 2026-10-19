@@ -197,9 +197,10 @@ date check. A recorded judgment can tell them apart; a threshold cannot.
 
 ## Q8. Do nife's size and documentation rules apply to dependencies?
 
-These are the file limit of §266 (a Rust source file stays under 2,000 lines), the function limit
-of §283 (a function is held to 100 code lines by a lint ratchet), and the 40-line comment-block ceiling
-of §267 (a comment states the constraint as it is now). With them go the BUGS-section practice and clippy at `-D warnings`.
+The first two are the file limit of §266 (a Rust source file stays under 2,000 lines) and the
+function limit of §283 (a function is held to 100 code lines by a lint ratchet). The third is the
+40-line comment-block ceiling of §267 (a comment states the constraint as it is now). With them go
+the BUGS-section practice and clippy at `-D warnings`.
 
 - Passing today: files 84 of 99, functions 77, comment blocks 33, BUGS heading 0. Clippy was not
   measured, because its lints are capped for dependencies. 79 run clippy upstream.
