@@ -155,6 +155,15 @@ path = "src/tenor.rs"
 test = false
 bench = false
 
+# dialer (milestone 892 (a std program at the prompt holds the network and a resolver); name
+# provisional): a program whose version 2 note asks for the network and two resolver zones, which
+# `script/swish-check` installs to show the asks listed and the network refused. `packaged_only`.
+[[bin]]
+name = "dialer"
+path = "src/dialer.rs"
+test = false
+bench = false
+
 # The interrupt_heeder (DECISIONS §24): a long-running job that heeds the cooperative ^C,
 # polling a shared flag between work units and exiting cleanly when the shell sets it. The
 # cooperative interrupt tier.
@@ -554,7 +563,7 @@ bench = false
 # be a `[[bin]]` above, and must not be a program the shell or the boot needs, and `xtask` refuses
 # the archive otherwise. Key name provisional.
 [package.metadata.nife]
-packaged_only = ["greeting", "noteless", "greeting_v2", "alto", "tenor"]
+packaged_only = ["greeting", "noteless", "greeting_v2", "alto", "tenor", "dialer"]
 
 [dependencies]
 # The user address-space map (milestone 206 (a program image has under 896 KiB)): every fixed window here is checked against its band.

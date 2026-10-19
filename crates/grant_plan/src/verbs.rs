@@ -177,6 +177,10 @@ pub fn narrow_by_verb(m: &Manifest, verbs: &[VerbGrant], verb: Option<&[u8]>) ->
         installer: m.installer && g.contains(ManifestAuthorities::INSTALLER),
         catalog: m.catalog && g.contains(ManifestAuthorities::CATALOG),
         activation_directory: m.activation_directory && g.contains(ManifestAuthorities::ACTIVATION),
+        // **Standard input rides with the installer** (milestone 892 (a std program at the
+        // prompt holds the network and a resolver)): the owner's yes at install is the one thing
+        // read through it, so a verb that holds no installer reads nothing typed.
+        console_input: m.console_input && g.contains(ManifestAuthorities::INSTALLER),
         indexes: match m.indexes {
             IndexStoreDeclaration::ReadWrite
                 if g.contains(
@@ -400,6 +404,7 @@ mod tests {
             catalog: true,
             indexes: IndexStoreDeclaration::ReadWrite,
             activation_directory: true,
+            console_input: true,
             ..Program::Jig.manifest()
         };
         let one = |verb: &'static str, authorities| VerbGrant { verb, authorities };
@@ -442,6 +447,10 @@ mod tests {
                 .filter(|(_, h)| **h)
                 .fold(0u16, |b, (i, _)| b | 1 << i);
             assert_eq!(bits, v.authorities.bits(), "verb {}", v.verb);
+            assert_eq!(
+                n.console_input, n.installer,
+                "stdin rides with the installer"
+            );
         }
     }
 
@@ -510,6 +519,7 @@ mod tests {
             catalog: false,
             indexes: IndexStoreDeclaration::Forbidden,
             activation_directory: false,
+            console_input: false,
             network: false,
             ..jig
         }));

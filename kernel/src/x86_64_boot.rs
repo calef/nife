@@ -310,7 +310,7 @@ pub(super) fn x86_64_boot(boot_info_pointer: usize) -> ! {
 /// **Hand `x86_64` to the progenitor, and say how far it got** (milestone 182, inside milestone
 /// 268's lane).
 ///
-/// The same call `riscv_hand_over` makes, so the three architectures load, measure, endow and start
+/// The same call `kernel_main`'s hand-over makes on aarch64 and riscv64, so the three architectures load, measure, endow and start
 /// the first process through one body, and now reach the same place: the progenitor builds a
 /// userspace console and a `swish` prompt announces the boot finished. Until milestone 299 this
 /// architecture could not, because the console is port I/O (DECISIONS §121) with no page a driver
@@ -324,10 +324,10 @@ pub(super) fn x86_64_boot(boot_info_pointer: usize) -> ! {
 /// a thread that left through a ring-3 fault left a record (`arch::exceptions::last_user_fault`) the
 /// kernel's own fault report above it corroborates.
 ///
-/// Name: provisional (milestone 182 (`x86_64`'s own interactive-boot entry point)), matching
-/// `riscv_hand_over`.
+/// Name: provisional (milestone 182 (`x86_64`'s own interactive-boot entry point)).
 #[cfg(target_arch = "x86_64")]
-// Uncalled in the four configurations `riscv_hand_over` is, for the same reasons.
+// Uncalled in the configurations that have nothing to hand over: a test or bench build parks before
+// it, and a measurement build replaces it with its own workload.
 #[cfg_attr(
     any(
         test,

@@ -152,6 +152,7 @@ version = "0.1.0"
 name = "capability_manifest_note"
 version = "0.1.0"
 dependencies = [
+ "domain_name_resolution_contract",
  "grant_plan",
 ]
 
@@ -659,6 +660,7 @@ dependencies = [
 name = "installed_programs"
 version = "0.1.0"
 dependencies = [
+ "domain_name_resolution_contract",
  "measured_boot",
 ]
 
@@ -1137,6 +1139,7 @@ name = "std_runtime_contract"
 version = "0.1.0"
 dependencies = [
  "address_space_map",
+ "line_editor",
 ]
 
 [[package]]

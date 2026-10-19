@@ -252,6 +252,27 @@ pub(in crate::swish_check) const SWISH_CHECK_AFTER_REBOOT: &[Line] = &[
         &["alto: one of two programs in the package duet"],
     ),
     line(1, "jig remove solo", &["removed; generation 10 is live"]),
+    // **Installing asks the owner, and a no installs nothing** (milestone 892 (a std program at
+    // the prompt holds the network and a resolver); calef's rulings on #2405). `dialer`'s note
+    // asks for the network, `nife.test` and the root zone; `jig install` lists them, the root zone
+    // apart, and asks once. The gate answers `n`, so no generation is written and the bare word
+    // reaches nothing.
+    line(0, "cd downloads", &[]),
+    asked(
+        1,
+        "jig install ./dialer.nifepkg",
+        (OWNERS_QUESTION, "n"),
+        &[
+            "dialer asks for:",
+            "reaches the network (connects out)",
+            "looks up names in nife.test",
+            "LOOKS UP ANY NAME AT ALL (the root zone)",
+            "grant these and install? [y/N] n\n",
+            "not installed; nothing was granted",
+        ],
+    ),
+    line(0, "cd /", &[]),
+    line(0, "dialer", &["no such program"]),
     // **`ripgrep`, built and published by basalt** (milestone 810 (`ripgrep` is packaged in
     // basalt and installed with `jig`)): the package basalt published, fetched by its pinned
     // digest (`cargo xtask basalt-fetch`), or the repository basalt's own gate just built
@@ -398,8 +419,46 @@ pub(in crate::swish_check) const SWISH_CHECK_AFTER_REBOOT: &[Line] = &[
             "refused: the image carries the program least_authority_demo; a new base updates it, not \
              install; generation 15 is live",
         ],
+    ), // **A yes grants exactly what was asked, and the program holds it** (milestone 892). `reach`
+    // is a `std` program whose note asks for the network and `nife.test`. The gate answers `y`, so
+    // the generation records a `grant` line for each, and run at the prompt it connects to the
+    // runner's echo peer and holds a resolver badge for its zone: a name outside it is the
+    // resolver's own refusal, which needs no name server the runner cannot provide. Last in the
+    // script, and with no generation numbers, because it is skipped where `std_exerciser` was not
+    // built ([`REACH_LINES`]).
+    line(0, "cd downloads", &[]),
+    asked(
+        1,
+        "jig install ./reach.nifepkg",
+        (OWNERS_QUESTION, "y"),
+        &[
+            "reach asks for:",
+            "reaches the network (connects out)",
+            "looks up names in nife.test",
+            "grant these and install? [y/N] y\n",
+            "installed; generation",
+        ],
     ),
+    line(0, "cd /", &[]),
+    line(
+        1,
+        "reach",
+        &[
+            "reach: echo ok",
+            "reach: lookup example.com: PermissionDenied",
+        ],
+    ),
+    line(1, "jig remove reach", &["removed; generation"]),
+    line(0, "reach", &["no such program"]),
 ];
+
+/// What `jig install` asks before it installs a package that asks for grants (milestone 892).
+const OWNERS_QUESTION: &str = "grant these and install? [y/N]";
+
+/// The lines that install and run `reach`, skipped where `std_exerciser` was not built, since its
+/// package is built from that workspace (`package::Source::StdProgram`).
+pub(in crate::swish_check) const REACH_LINES: &[&str] =
+    &["jig install ./reach.nifepkg", "reach", "jig remove reach"];
 
 /// The run `jig install hackbench` is followed by (milestone 907): `c_thread_tests`' pipe run,
 /// with one group of two and ten messages a sender.
