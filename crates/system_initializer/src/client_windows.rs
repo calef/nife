@@ -60,22 +60,21 @@ pub(super) fn window_zero(fs: Fs) -> Option<Fs> {
 /// The bookkeeping and its host test live in `grant_plan::job_windows`; this process owns the
 /// capabilities and the binding.
 ///
+/// A bound window's grant is taken back at its job's reap ([`unbind`], from
+/// `SpawnEndpoint::reaped`), and `grant_plan::job_windows` refuses to hand out a window that is
+/// still bound. So no binding outlives its job, and no live job holds an old badge when the window
+/// is bound to a new root: confinement claim 24 in `notes/confinement-claims.md`.
+///
 /// # BUGS
 ///
-/// - **A bound window is taken back when it is reused, not when its job is reaped** (milestone 606
-///   (a directory walk costs what it does on Linux), ruling D's default "UNBIND at reap"): `UNBIND`
-///   runs in [`FsCalls::unbind`], just before the window is handed out again. Since milestone 685
-///   that is always after the reap, so no live job holds the old badge when the window is bound to
-///   a new root. Until then a window came round again after `DURABLE_WINDOW - 1` more granted jobs
-///   whether or not its holder lived, and milestone 633 (an outside agent attacks the confinement
-///   claim)'s second pass read the consequence on 2026-10-05 (UTC): the old job's badge resolved
-///   `ROOT` to the new job's directory, and its still-mapped window showed the new job's requests
-///   and file bytes. Confinement claim 24's row in `notes/confinement-claims.md` records the fix.
-///   What remains is that a reaped job's binding outlives it until the window's next take, which
-///   costs the file server a binding and grants nothing to anybody.
 /// - **A window whose job is never reaped by `job_undertaker` is never free again**: see
 ///   `grant_plan::job_windows`'s `BUGS` (a screen-narrowed job behind a directory grant, which no
 ///   manifest asks for today).
+/// - **A caretaker on a window that was once bound reaches nothing.** `UNBIND` leaves a badge
+///   revoked, not open, and only `BIND` changes a revoked badge again. So a caretaker
+///   [`job_channel`] builds on such a window (the fallback when a `BIND` failed) gets `EBADF` on
+///   every request, and its job's grant is a refusal rather than a widening. Nothing in the file
+///   protocol reopens a badge today.
 pub(super) const fn job_windows() -> Windows {
     Windows::new(1, login_contract::DURABLE_WINDOW)
 }
@@ -163,7 +162,6 @@ pub(super) fn bound_channel(
         &mut buf,
     );
     let name = core::str::from_utf8(&buf[..n]).ok()?;
-    files.unbind(windows, w);
     let handle = files.named(
         fs_operation::OPENDIR,
         fs_operation::ROOT,
@@ -243,7 +241,6 @@ pub(super) fn bound_index_store(
     grant: ActivationGrant,
 ) -> Option<Fs> {
     let files = FsCalls::map(Some(fs), own_ut, mapped)?;
-    files.unbind(windows, w);
     let rights = match grant {
         ActivationGrant::IndexStore(rights) => rights,
         ActivationGrant::ReadOnly => {
@@ -276,9 +273,9 @@ pub(super) fn bound_index_store(
 }
 
 /// **A sync-only endpoint for one job** (milestone 805 (`reboot` at the prompt),
-/// `fs::BIND_SYNC`): window `w`'s badge, unbound from whatever it last held, bound sync-only, and
-/// the endpoint badged with it in a fresh slot the caller deletes once the job holds its copy. The
-/// window is marked bound, so the next job to take it unbinds it first, as for a directory grant.
+/// `fs::BIND_SYNC`): window `w`'s badge bound sync-only, and the endpoint badged with it in a
+/// fresh slot the caller deletes once the job holds its copy. The window is marked bound, so its
+/// job's reap unbinds it, as for a directory grant.
 ///
 /// Name: ratified 2026-10-06 (calef, #1783: "Approve sync for the file-server
 /// request and its capability, and flush for the device cache only.").
@@ -289,8 +286,7 @@ pub(super) fn bind_sync_only(
     own_ut: u64,
     mapped: &mut bool,
 ) -> Option<u64> {
-    let files = FsCalls::map(Some(fs), own_ut, mapped)?;
-    files.unbind(windows, w);
+    FsCalls::map(Some(fs), own_ut, mapped)?;
     if call(fs.ep, fs_operation::req(fs_operation::BIND_SYNC, 0, 0), w).0 != 0 {
         return None;
     }
@@ -303,15 +299,8 @@ pub(super) fn bind_sync_only(
 /// built. The window's first page is zeroed first, through this process's own mapping of the pool
 /// (made once, [`FsCalls::map`]), so nothing the window's last job left there is visible to the
 /// next: the same "no stale RAM across a share" rule the kernel's own pool follows.
-pub(super) fn job_channel(
-    fs: Fs,
-    (windows, w): (&mut Windows, u64),
-    own_ut: u64,
-    mapped: &mut bool,
-) -> Option<Fs> {
-    let files = FsCalls::map(Some(fs), own_ut, mapped)?;
-    // A window last used by a bound grant goes back to being open before a caretaker uses it.
-    files.unbind(windows, w);
+pub(super) fn job_channel(fs: Fs, w: u64, own_ut: u64, mapped: &mut bool) -> Option<Fs> {
+    FsCalls::map(Some(fs), own_ut, mapped)?;
     // SAFETY: the pool is mapped read/write at ACTIVATION_FS_VA (`FsCalls::map`, whole run), and
     // window `w`'s first page lies inside it; no client is using window `w` between two jobs.
     unsafe {
@@ -327,6 +316,20 @@ pub(super) fn job_channel(
         return None;
     };
     Some(Fs { ep, page })
+}
+
+/// **Take window `w`'s grant back, if it has one** (milestone 606, ruling D's "UNBIND at reap"):
+/// `UNBIND` on the file service's unbadged endpoint `files` closes every handle the badge minted
+/// and leaves it revoked until it is bound again. Called at the reap of the window's job, or when
+/// no job came to hold it, so the window goes back to the pool only once this has answered. The
+/// request carries no bytes, so it does not touch window 0's page, which the shell may be using.
+pub(super) fn unbind(files: Option<u64>, windows: &mut Windows, w: u64) {
+    if let Some(ep) = files
+        && windows.is_bound(w)
+        && call(ep, fs_operation::req(fs_operation::UNBIND, 0, 0), w).0 == 0
+    {
+        windows.set_bound(w, false);
+    }
 }
 
 /// **The progenitor's calls on the file service**, through the page it maps at
@@ -362,16 +365,6 @@ impl FsCalls {
         // SAFETY: the page is mapped read/write (`map`) and `len` is at most a page.
         unsafe { core::ptr::copy_nonoverlapping(name.as_ptr(), Self::page(), len) };
         call(self.ep, fs_operation::req(verb, handle, len as u64), w1).0 as i64
-    }
-
-    /// **Take window `w`'s grant back, if it has one** (milestone 606, ruling D): `UNBIND` closes
-    /// every handle the badge minted and leaves it revoked until it is bound again. A no-op for a
-    /// window that was never bound.
-    fn unbind(&self, windows: &mut Windows, w: u64) {
-        if windows.is_bound(w) {
-            call(self.ep, fs_operation::req(fs_operation::UNBIND, 0, 0), w);
-            windows.set_bound(w, false);
-        }
     }
 
     pub(super) fn close(&self, handle: i64) {

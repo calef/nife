@@ -117,6 +117,8 @@ These are code in the progenitor, and would be built as soon as both answers are
   window. It falls back to a caretaker on any failure. `script/swish-check` requires the
   bound-badge sentence, so a boot that lost the note fails the gate. It passes on all three
   architectures, and the `rm` lines run through the bound grant.
-- `UNBIND` runs when a bound window is reused, not at reap, because nothing tells the progenitor
-  when a job dies. Lane 205's "job reaped" signal moves it to reap; `Windows` records the gap.
+- `UNBIND` runs at the job's reap, when `job_undertaker`'s "reaped" message reaches the progenitor
+  (milestone 685), and when a taken window's job never started. `Windows::take` skips a window
+  still bound, so the unbind cannot drift back to reuse: the host test
+  `take_never_hands_out_a_bound_window` fails if it does.
 
