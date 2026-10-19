@@ -328,7 +328,7 @@ fn a_bitmap_font_and_a_vt_engine_put_readable_text_on_the_scanout() {
     // space's witness, taken after the device reported the transfer complete.
     //
     // **A function-local `static`, not a stack local** (milestone 142): at the grown scanout's
-    // grid (`script::COLS` x `script::ROWS`, 132x43), one `Vt` is well over a hundred KiB, which a
+    // grid (`script::COLS` x `script::ROWS`, 80x24), one `Vt` is well over a hundred KiB, which a
     // 24 KiB kernel thread stack cannot hold (`script/stack-frame-check`'s whole reason for being;
     // see notes/stack-high-water.md). `Vt::new` is `const fn` and `COLS`/`ROWS` are compile-time
     // constants, so this initializer is evaluated by the compiler and lands in `.bss`, never on the
@@ -537,10 +537,9 @@ fn a_keystroke_from_a_virtio_keyboard_becomes_a_terminal_byte() {
 /// reads back through its own direct map. Every property is one a real machine could present and
 /// OVMF does not:
 ///
-/// - **an odd shape**, 21 pixels wide and 352 tall, which the terminal now covers whole (since
-///   2026-10-04 the surface is the screen's size at its scale rather than the virtio contract's
-///   924x344): the driver answers `INFO` with exactly that and the terminal lays out 3 columns
-///   by 44 rows. The clipping that used to be proved here by a screen taller than the surface is
+/// - **an odd shape**, 42 pixels wide and 650 tall, which the terminal covers whole (the surface
+///   is the screen's size at its scale, not the virtio contract's 1120x624): the driver answers
+///   `INFO` with exactly that and the terminal lays out 3 columns by 25 rows. The clipping that used to be proved here by a screen taller than the surface is
 ///   `screen_console::Aperture`'s own host tests now, along with the scale-two coverage this
 ///   suite cannot afford the frames for;
 /// - **a padded stride**, whose padding must survive;
@@ -561,13 +560,15 @@ fn a_firmware_screen_shows_the_terminal_through_the_framebuffer_driver() {
     let driver = program("framebuffer_driver").expect("no framebuffer_driver in the archive");
     let terminal = program("display_terminal").expect("no display_terminal in the archive");
 
-    // Three cells wide and 44 cell rows tall: every property below, in the fewest frames
-    // (thirteen for the screen, seven for its surface). This suite runs one boot's frame pool through every test and
+    // Three cells wide and 25 cell rows tall: every property below, in the fewest frames
+    // (37 for the screen, 27 for its surface). This suite runs one boot's frame pool through every test and
     // hands little of it back (`user::holding`'s module note), so a pretend screen the size of a
     // real one would be spending a few hundred frames on pixels nothing reads.
-    const WIDTH: u32 = 3 * bitmap_font::GLYPH_W;
-    const HEIGHT: u32 = gfx::HEIGHT + bitmap_font::GLYPH_H;
-    const PAD: u32 = 64;
+    const WIDTH: u32 = 3 * video_terminal::CELL_W;
+    const HEIGHT: u32 = gfx::HEIGHT + video_terminal::CELL_H;
+    // 60, not a round 64: with it the stride is 228, an odd number of words, which is what puts
+    // every other row off qword alignment below.
+    const PAD: u32 = 60;
     const STRIDE: u32 = WIDTH * 4 + PAD;
     const OFFSET: u64 = 0x140;
     const POISON: u8 = 0xa5;
@@ -590,7 +591,7 @@ fn a_firmware_screen_shows_the_terminal_through_the_framebuffer_driver() {
     };
 
     let w = display_service::start_screen_terminal(driver, terminal, screen)
-        .expect("a 21x352 screen should be wired");
+        .expect("a 42x650 screen should be wired");
     let [tag, geometry, ..] = sched::ipc_receive(w.driver_report);
     assert_eq!(
         tag,
@@ -602,8 +603,8 @@ fn a_firmware_screen_shows_the_terminal_through_the_framebuffer_driver() {
         WIDTH as u64 | ((HEIGHT as u64) << 32),
         "the covered part is the whole screen",
     );
-    let cols = WIDTH / bitmap_font::GLYPH_W;
-    let rows = HEIGHT / bitmap_font::GLYPH_H;
+    let cols = WIDTH / video_terminal::CELL_W;
+    let rows = HEIGHT / video_terminal::CELL_H;
     let [tag, dims, ..] = sched::ipc_receive(w.term_report);
     assert_eq!(
         tag,
@@ -621,7 +622,7 @@ fn a_firmware_screen_shows_the_terminal_through_the_framebuffer_driver() {
     w.print(TEXT);
     w.print(video_terminal::script::GREETING);
     // **And past the grid's own height** (the paint path, 2026-09-30): a scroll makes the
-    // terminal present the whole covered part through this driver, whose 148-byte stride puts
+    // terminal present the whole covered part through this driver, whose 228-byte stride puts
     // every other row off qword alignment, which is the geometry the wide-copy path in the flush
     // has to survive. One write per line (each present scrolls once), then the tail (several
     // scrolls in one present), the same writes the full-scanout witness sends.

@@ -823,8 +823,8 @@ fn focus_routes_a_keystroke_to_one_terminals_grid_and_not_its_neighbours() {
         assert_eq!(
             (cols, rows),
             (
-                SCENE[i].w / bitmap_font::GLYPH_W,
-                SCENE[i].h / bitmap_font::GLYPH_H
+                SCENE[i].w / video_terminal::CELL_W,
+                SCENE[i].h / video_terminal::CELL_H
             ),
             "terminal {i} sized itself to a grid its window cannot hold",
         );

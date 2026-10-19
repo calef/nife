@@ -5,12 +5,9 @@ use crate::cap::{Rights, memory_region_cap, page_frame_run_cap, rendezvous_cap};
 use crate::sched::RendezvousId;
 
 /// **The budget the compositor, and a capture client, draw their own screen mapping's page tables
-/// from** (DECISIONS §102, milestone 142). Same reasoning as `display_service::MAP_BUDGET_PAGES`,
-/// including that lane's caveat: at the 1280x720 scanout this was widened for, the screen alone
-/// spanned more than one 2 MiB window; at the 924x344 scanout the milestone was retargeted to on
-/// 2026-08-27 ([`SCREEN_PAGE_FRAMES`], 311 pages) it is back under one window, the same shape a
-/// smaller screen always had, and this constant is kept at the wider value rather than re-tuned
-/// down.
+/// from** (DECISIONS §102, milestone 142). Same reasoning as `display_service::MAP_BUDGET_PAGES`:
+/// at 1120x624 ([`SCREEN_PAGE_FRAMES`], 683 pages) the screen alone spans two 2 MiB windows, and
+/// this budget also carried the 900-page 1280x720 screen the path once booted with.
 const MAP_BUDGET_PAGES: u64 = 24;
 
 // The compositor's address space. Must match components/src/compositor.rs. `SCREEN_VA` is not here: the
@@ -476,11 +473,11 @@ impl Wiring {
             "a display terminal must be focusable: its input endpoint is the endpoint it serves",
         );
         // The window must hold at least one character cell. It need not be a whole number of
-        // them, for the reason the scanout is not: the font is 7 wide and no window here is a
-        // multiple of 7, so each leaves a strip on the right that its terminal paints as
-        // background on the first frame rather than leaving as whatever the frame held.
+        // them: no window here is a whole number of cells wide, so each leaves a strip on the
+        // right that its terminal paints as background on the first frame rather than leaving as
+        // whatever the frame held.
         assert!(
-            SCENE[i].w >= bitmap_font::GLYPH_W && SCENE[i].h >= bitmap_font::GLYPH_H,
+            SCENE[i].w >= video_terminal::CELL_W && SCENE[i].h >= video_terminal::CELL_H,
             "window {i} is too small for one character cell",
         );
 

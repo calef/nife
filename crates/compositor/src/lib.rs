@@ -270,14 +270,17 @@ impl Window {
 ///
 /// - three different sizes, so a compositor that assumed one geometry for all surfaces fails;
 /// - **overlap**: windows 1 and 2 each cover part of window 0, so stacking order is observable;
-/// - **clipping**: window 2 hangs off the left edge (negative origin) and off the bottom, so a
-///   compositor that clipped only against the surface, or only against the screen, produces a
-///   different picture. (The right and top edges are covered by the host tests with synthetic
-///   windows, so the live scene does not have to carry every case.)
+/// - **clipping**: window 2 hangs off the left edge (negative origin), so a compositor that
+///   clipped only against the surface, or only against the screen, produces a different picture.
+///   (The other edges are covered by the host tests with synthetic windows, so the live scene does
+///   not have to carry every case.)
+///
+/// Each window holds a terminal grid of a few `video_terminal` cells (14x26): 9x4, 6x3 and 5x5,
+/// none a whole number of cells wide, so each terminal also paints a strip no cell covers.
 pub const SCENE: &[Window] = &[
-    Window::new(8, 8, 64, 32),
-    Window::new(40, 24, 48, 24),
-    Window::new(-8, 30, 40, 40),
+    Window::new(16, 26, 128, 104),
+    Window::new(80, 78, 96, 78),
+    Window::new(-16, 98, 80, 130),
 ];
 
 // ================================================================================================
@@ -380,9 +383,9 @@ pub const fn background_pixel(x: u32, y: u32) -> u32 {
 /// }
 ///
 /// // Window 1 covers part of window 0, so the topmost one wins.
-/// assert_eq!(expected_screen_pixel(2, 45, 30), window_pixel(1, 5, 6));
-/// assert_eq!(expected_screen_pixel(1, 45, 30), window_pixel(0, 37, 22));
-/// assert_eq!(expected_screen_pixel(0, 45, 30), background_pixel(45, 30));
+/// assert_eq!(expected_screen_pixel(2, 85, 84), window_pixel(1, 5, 6));
+/// assert_eq!(expected_screen_pixel(1, 85, 84), window_pixel(0, 69, 58));
+/// assert_eq!(expected_screen_pixel(0, 85, 84), background_pixel(85, 84));
 /// ```
 pub fn expected_screen_pixel(n: usize, x: u32, y: u32) -> u32 {
     expected_screen_pixel_with(n, x, y, |i, sx, sy| window_pixel(i as u32, sx, sy))

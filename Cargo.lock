@@ -201,7 +201,6 @@ version = "0.1.0"
 dependencies = [
  "abi",
  "address_space_map",
- "bitmap_font",
  "block_roster",
  "boot_ladder",
  "boot_slot",
@@ -703,7 +702,6 @@ dependencies = [
  "abi",
  "address_space_identifier",
  "address_space_map",
- "bitmap_font",
  "block_roster",
  "boot_ladder",
  "boot_slot",
@@ -1257,7 +1255,6 @@ version = "0.1.0"
 dependencies = [
  "abi",
  "address_space_map",
- "bitmap_font",
  "block_roster",
  "byte_sink_contract",
  "c_program_fixture",
@@ -1522,7 +1519,7 @@ name = "video_terminal"
 version = "0.1.0"
 dependencies = [
  "address_space_map",
- "bitmap_font",
+ "glyph_atlas",
  "line_editor",
 ]
 

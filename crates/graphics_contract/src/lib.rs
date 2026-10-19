@@ -34,37 +34,24 @@
 ///
 /// **Not square, on purpose.** A square surface makes a stride bug, a transposition, and an x/y swap
 /// all invisible: the byte count comes out the same and the checksum of a transposed square can
-/// still be built out of the right pixels. 924x344 makes every one of those a size or content
-/// mismatch, exactly as 128x64 did. The lower bound is the device's: QEMU refuses a scanout smaller
-/// than 16 in either dimension.
+/// still be built out of the right pixels. 1120x624 makes every one of those a size or content
+/// mismatch. The lower bound is the device's: QEMU refuses a scanout smaller than 16 in either
+/// dimension.
 ///
-/// **Retargeted from 1280x720 to 924x344, 2026-08-27**, on review with calef: 1280x720 (milestone
-/// 142 increment 1, DECISIONS §102) reasoned about the grid at a *future* 14-pixel-wide cell (the
-/// anti-aliased atlas increments 3-6 would add, not yet built), not the 7x8 bitmap cell actually
-/// shipping. At the real cell that arithmetic delivered a 182x90 grid, roughly double any terminal
-/// anyone runs (most are 80x24 up to maybe 160x50 on a large monitor). **924x344 is sized directly
-/// against the cell that is real today**: 132 columns x 43 rows, the classic VT100/VT220 "wide
-/// mode" size, at exactly `bitmap_font::GLYPH_W` (7) and `bitmap_font::GLYPH_H` (8) per cell (924 =
-/// 132 * 7, 344 = 43 * 8, both exact, unlike 1280 / 7's six leftover pixels). It is 2.69:1
-/// (decidedly non-square, just not 16:9 the way 1280x720 was) and clears the device's 16-pixel
-/// floor with enormous room.
+/// **Sized against the terminal's cell**: 80 columns by 24 rows, the floor milestone 142 sets for a
+/// terminal somebody would live in, at `glyph_atlas`'s 14x26 cell (1120 = 80 * 14, 624 = 24 * 26,
+/// both exact, so no strip of the surface is outside the grid). It is 1.79:1.
 ///
-/// **One property 1280x720 had that 924x344 does not**: [`SURFACE_BYTES`] is no longer a whole
-/// number of 4 KiB frames (924 * 344 * 4 = 1,271,424 bytes, 310.4 frames). No resolution that still
-/// delivers exactly 132x43 at this cell size divides evenly (checked every width in 924..=930 and
-/// height in 344..=351, the range that still floors to 132 columns and 43 rows: none land on a
-/// multiple of 1024 pixels, the threshold that makes the byte count a frame multiple).
-/// [`SURFACE_PAGE_FRAMES`] rounds up (`div_ceil`) the way it always did, so this costs about 2 KiB
-/// of mapped-but-unused padding in the last frame; nothing reads or writes there:
-/// `user_mode_runtime::mapped_window::MappedWindow` bounds every access against [`SURFACE_BYTES`], not the
-/// frame count, so the padding is unreachable rather than merely unused. The 900-frame-exact
-/// property was a nice-to-have this size doesn't get to keep, not a load-bearing invariant; the
-/// frame count itself drops well under the 900 the old size needed either way (see
-/// [`SURFACE_PAGE_FRAMES`]).
-pub const WIDTH: u32 = 924;
+/// [`SURFACE_BYTES`] is not a whole number of 4 KiB frames (2,795,520 bytes, 682.5 frames).
+/// [`SURFACE_PAGE_FRAMES`] rounds up, so the last frame carries 2 KiB of mapped-but-unused
+/// padding; nothing reads or writes there, because
+/// `user_mode_runtime::mapped_window::MappedWindow` bounds every access against [`SURFACE_BYTES`],
+/// not the frame count. The nearest frame-exact height that still holds 24 rows is 640, which would
+/// leave a 16-pixel strip outside the grid; an exact grid is worth more than an exact frame.
+pub const WIDTH: u32 = 1120;
 /// The surface's height in pixels. See [`WIDTH`] for why this is not equal to it, and for why this
 /// particular value.
-pub const HEIGHT: u32 = 344;
+pub const HEIGHT: u32 = 624;
 
 /// Bytes per pixel. One 32-bit word, in the format [`FORMAT`] names.
 pub const BYTES_PER_PIXEL: u32 = 4;
@@ -77,8 +64,8 @@ pub const STRIDE: u32 = WIDTH * BYTES_PER_PIXEL;
 /// The surface's size in bytes.
 pub const SURFACE_BYTES: u32 = STRIDE * HEIGHT;
 
-/// The surface's size in 4 KiB frames, rounded up (`div_ceil`): at 924x344 that is 311, with about
-/// 2 KiB of the last frame past [`SURFACE_BYTES`] mapped but never addressed (see [`WIDTH`]). The
+/// The surface's size in 4 KiB frames, rounded up (`div_ceil`): at 1120x624 that is 683, with 2 KiB
+/// of the last frame past [`SURFACE_BYTES`] mapped but never addressed (see [`WIDTH`]). The
 /// kernel maps exactly this many contiguous frames into both the driver and the client, and it is
 /// what makes the framebuffer's memory story a *grant* rather than a special case: those frames sit
 /// inside the driver's registered DMA region, so the same validator and the same IOMMU domain that
@@ -103,23 +90,17 @@ const _: () = assert!(
     WIDTH >= 16 && HEIGHT >= 16,
     "QEMU refuses a scanout smaller than 16 in either dimension",
 );
-// There used to be a second assertion here requiring SURFACE_BYTES to be an exact multiple of
-// 4096 ("the surface must fill whole frames"). 1280x720 satisfied it by construction; 924x344
-// (retargeted 2026-08-27 for a 132x43 grid, see WIDTH) does not, and no nearby resolution that
-// still delivers exactly 132x43 columns and rows does either (WIDTH's doc comment records the
-// search). The assertion was documentation of a coincidence, not a real invariant: SURFACE_BYTES
-// not filling its last frame exactly is harmless, because SURFACE_PAGE_FRAMES already rounds up
-// (div_ceil) and every consumer (`user_mode_runtime::mapped_window::MappedWindow`) bounds-checks against
-// SURFACE_BYTES, not the frame count, so the unused tail of the last frame is unreachable rather
-// than a "partial page" anything can read or write.
+// No assertion that SURFACE_BYTES fills whole frames: it does not (see WIDTH), and that is harmless,
+// because SURFACE_PAGE_FRAMES rounds up and every consumer (`user_mode_runtime::mapped_window::
+// MappedWindow`) bounds-checks against SURFACE_BYTES, not the frame count, so the unused tail of
+// the last frame is unreachable rather than a "partial page" anything can read or write.
 //
-// What that costs, said plainly rather than left as an implication (milestone 142's review): the
-// `PageFrame` run capability the kernel mints over this surface names 311 whole frames, so it names
-// 2,432 bytes (311 * 4096 - 1,271,424) that are not part of the surface. Those bytes are inside the
-// same contiguous DMA allocation, not another object's memory, so this is padding rather than a
-// disclosure. It is written down because a capability that names more than the object it stands for
-// is the kind of fact this project's BUGS convention exists to record, and because the deleted
-// assertion above is what used to make the question unaskable. See notes/frames.md's BUGS.
+// What that costs, said plainly: the `PageFrame` run capability the kernel mints over this surface
+// names 683 whole frames, so it names 2,048 bytes (683 * 4096 - 2,795,520) that are not part of
+// the surface. Those bytes are inside the same contiguous DMA allocation, not another object's
+// memory, so this is padding rather than a disclosure. It is written down because a capability
+// that names more than the object it stands for is the kind of fact this project's BUGS
+// convention exists to record. See notes/frames.md's BUGS.
 
 /// The byte offset of pixel `(x, y)` from the start of the surface.
 pub const fn offset_of(x: u32, y: u32) -> usize {
@@ -181,8 +162,8 @@ pub const fn pixel_at(i: usize) -> u32 {
 /// use graphics_contract::{checksum, expected_checksum, first_mismatch, pixel_at};
 ///
 /// // A client that painted the surface correctly. `checksum`/`first_mismatch` read through a
-/// // closure rather than a materialized buffer, which is not just convenient here: at 924x344
-/// // a `[u32; PIXELS]` array is 1.2 MiB, too large for a doctest's default stack to hold
+/// // closure rather than a materialized buffer, which is not just convenient here: at 1120x624
+/// // a `[u32; PIXELS]` array is 2.7 MiB, too large for a doctest's default stack to hold
 /// // comfortably even once, let alone the two this example used to keep side by side.
 /// assert_eq!(checksum(pixel_at), expected_checksum());
 /// assert_eq!(first_mismatch(pixel_at), None);
@@ -369,18 +350,17 @@ mod tests {
     /// whole surface. A mismatch here would be a contract two processes read differently.
     #[test]
     fn the_geometry_agrees_with_itself() {
-        // 924x344 (retargeted 2026-08-27 for a 132x43 grid at the shipped 7x8 cell, see WIDTH's
-        // doc comment): unlike 1280x720, this is not an exact multiple of 4096 bytes (1,271,424 /
-        // 4096 is 310.4), so SURFACE_PAGE_FRAMES rounds up rather than landing on it exactly.
-        assert_eq!(STRIDE, 3696);
-        assert_eq!(SURFACE_BYTES, 3696 * 344);
-        assert_eq!(SURFACE_PAGE_FRAMES, 311);
+        // 1120x624 is not an exact multiple of 4096 bytes (2,795,520 / 4096 is 682.5), so
+        // SURFACE_PAGE_FRAMES rounds up rather than landing on it exactly.
+        assert_eq!(STRIDE, 4480);
+        assert_eq!(SURFACE_BYTES, 4480 * 624);
+        assert_eq!(SURFACE_PAGE_FRAMES, 683);
         assert_eq!(
             SURFACE_PAGE_FRAMES as u64 * 4096,
-            SURFACE_BYTES as u64 + 2432,
+            SURFACE_BYTES as u64 + 2048,
             "the last frame should have exactly the padding WIDTH's doc comment names"
         );
-        assert_eq!(PIXELS, 317_856);
+        assert_eq!(PIXELS, 698_880);
         assert_eq!(
             offset_of(0, 1),
             STRIDE as usize,

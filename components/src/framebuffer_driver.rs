@@ -103,8 +103,7 @@ pub extern "C" fn _start(size: u64, layout: u64, offset: u64) -> ! {
     }
     // **The surface is the covered part's size, exactly** (2026-10-04): the kernel allocated
     // `width * height` pixels at a stride of `width`, and a flush reads only inside that, because
-    // `copy_wide` refuses a rectangle that leaves the covered part. Before, the surface was the
-    // virtio contract's fixed 924x344 and the aperture was clipped to it.
+    // `copy_wide` refuses a rectangle that leaves the covered part.
     let surface_bytes = width as u64 * height as u64 * 4;
 
     if !user_mode_runtime::map_page_frame(SURFACE_FRAME, SURFACE_VA, true, BUDGET) {

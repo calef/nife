@@ -476,7 +476,8 @@ pub(super) fn boot_screen_terminal() -> Option<display_service::TerminalWiring> 
     );
     // The driver reports its surface in surface pixels; at the screen's scale that is the whole
     // screen (`display_service::start_screen_terminal`), which is what this line says.
-    let scale = screen_console::ScreenConsole::scale_for(screen.width) as u64;
+    let scale =
+        screen_console::ScreenConsole::scale_for_cell(screen.width, video_terminal::CELL_W) as u64;
     crate::println!(
         "  screen    : {}x{} pixels of it at scale {scale} served by framebuffer_driver, a {}x{} \
          terminal on it",

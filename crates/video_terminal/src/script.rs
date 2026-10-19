@@ -10,28 +10,22 @@
 //! This is the same move `graphics_contract::pixel` makes for rung one's test pattern and `compositor::SCENE`
 //! for rung two's scene: the test's content lives in the contract crate, not in the test.
 
-/// The columns of a terminal that owns the whole scanout: `graphics_contract::WIDTH / bitmap_font::GLYPH_W`.
+/// The columns of a terminal that owns the whole scanout: `graphics_contract::WIDTH / `[`CELL_W`].
 ///
 /// Spelled as a literal here rather than computed, because this crate deliberately does not depend
 /// on the framebuffer contract (a VT engine that knew about a scanout would be the wrong shape).
-/// `components/src/display_terminal.rs` and the kernel wiring both assert the two agree at **compile time**, so a
-/// screen that changed size is a build error rather than a terminal quietly missing its last column.
+/// `components/src/display_terminal.rs` and the kernel wiring both assert the two agree at **compile
+/// time**, so a screen that changed size is a build error rather than a terminal quietly missing its
+/// last column.
 ///
-/// **132, no remainder**: 924 / 7 is exactly 132, unlike 1280 / 7's six leftover pixels (and 128 /
-/// 7's two).
+/// **80 by 24**, the floor milestone 142 sets for a terminal anyone would live in, at the atlas's
+/// 14x26 cell: the scanout is 1120x624, exactly 80 * 14 by 24 * 26, so no strip of it is outside
+/// the grid.
 ///
-/// **Grown from 18 to 182 at milestone 142's increment 1, then retargeted to 132 on 2026-08-27**
-/// (`graphics_contract::WIDTH`'s doc comment has the full story: 182 was arithmetic against a *future*
-/// 14-pixel cell that never shipped in this increment, applied by mistake to the 7x8 cell that did,
-/// producing a grid nearly double any terminal anyone runs). 132 columns is the classic VT100/VT220
-/// "wide mode" size at today's 7x8 bitmap font (`bitmap_font::GLYPH_W`/`GLYPH_H`, unchanged by this
-/// retarget), and still clears the 80-column floor with real room. When the atlas lands and the
-/// cell widens, this constant shrinks with it.
-pub const COLS: u32 = 132;
-/// The rows of a terminal that owns the whole scanout. See [`COLS`]: 344 / 8 is 43 exactly, no
-/// remainder, unlike 64 / 8 which was also exact. Grown from 8 to 90, then retargeted to 43 (the
-/// VT100/VT220 "wide mode" row count).
-pub const ROWS: u32 = 43;
+/// [`CELL_W`]: crate::CELL_W
+pub const COLS: u32 = 80;
+/// The rows of a terminal that owns the whole scanout. See [`COLS`].
+pub const ROWS: u32 = 24;
 
 /// **What the application prints.** Delivered as `OPERATION_WRITE`, the terminal contract's application
 /// half (notes/terminal-contract.md), exactly as a program printing to a serial console would.
@@ -102,7 +96,7 @@ pub const HOST_KEY_BYTE: u8 = b'a';
 /// past its own height: every pixel-exact witness compared a screen that never scrolled, so the
 /// scroll path, the exact path the `x86_64` swish leg spends most of its time in, had no
 /// end-to-end witness at all. This is the content that fixes that. Five rows are in use when the
-/// scroller starts, so 48 lines plus the 5-line tail below scroll a 43-row grid fifteen times.
+/// scroller starts, so 48 lines plus the 5-line tail below scroll a 24-row grid 34 times.
 ///
 /// The driver side feeds them **one `OPERATION_WRITE` per line**, so every present moves the surface one
 /// row: the per-scroll path. The oracle does not care about write boundaries (the engine is a

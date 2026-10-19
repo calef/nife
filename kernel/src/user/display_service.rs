@@ -19,9 +19,8 @@
 //! with one slot spare and no room for anything larger. §102 gave `PageFrame` a page count, so a
 //! whole run is now **one capability and one `MAP` call**, however many pages it holds. That is
 //! what makes the grown scanout ([`graphics_contract::WIDTH`] x [`graphics_contract::HEIGHT`],
-//! [`graphics_contract::SURFACE_PAGE_FRAMES`] page frames) fit at all: that many one-page capabilities
-//! never would have, whether the surface is the 900-frame 1280x720 this milestone first grew to or
-//! the 311-frame 924x344 it was retargeted to on 2026-08-27. See notes/frames.md.
+//! [`graphics_contract::SURFACE_PAGE_FRAMES`] page frames, 683 at 1120x624) fit at all: that many
+//! one-page capabilities never would have. See notes/frames.md.
 //!
 //! What stays wired at spawn is nothing at all here: these programs have no extra stack pages, so
 //! the only page the kernel still places is the one `load` gives every process.
@@ -51,17 +50,13 @@ const ONE_PAGE_RUN: NonZeroU64 = NonZeroU64::MIN;
 /// The driver binary's escape-attempt role; must match `components/src/gpu_driver.rs` `ROLE_BACKING_ESCAPE`.
 const ROLE_BACKING_ESCAPE: u64 = 1;
 
-/// **The budget every program on this path draws its page tables from** (milestone 108, widened for
-/// milestone 142's larger scanout, then not shrunk back when the scanout was retargeted). At 128x64
-/// the driver's whole DMA region and the terminal's surface each fit one 2 MiB window (one L3
-/// table); at 1280x720 the 900-page surface alone spanned two windows, and the terminal's separate
-/// output page a third, so more than one L3 was briefly the ordinary case rather than the edge case
-/// notes/frames.md recorded at 800x608. **At 924x344 (retargeted 2026-08-27) the surface is back
-/// under 512 pages** (311, [`graphics_contract::SURFACE_PAGE_FRAMES`]), one 2 MiB window again, the
-/// same shape 128x64 had. Twenty-four pages is more headroom than that now strictly needs, kept
-/// rather than re-tuned down: still under one percent of the free pool, and a budget this path has
-/// already exercised at the larger size is the safer one to keep than a smaller number nobody has
-/// booted against.
+/// **The budget every program on this path draws its page tables from** (milestone 108). At
+/// 1120x624 the 683-page surface ([`graphics_contract::SURFACE_PAGE_FRAMES`]) spans two 2 MiB
+/// windows (two L3 tables), and the terminal's separate output page a third, so more than one L3 is
+/// the ordinary case here rather than the edge case notes/frames.md recorded at 800x608. Twenty-four
+/// pages also carried the 900-page 1280x720 surface this path booted with before, so it is headroom
+/// already exercised rather than a number nobody has booted against, and still under one percent of
+/// the free pool.
 const MAP_BUDGET_PAGES: u64 = 24;
 
 // The driver's capability table. Must match components/src/gpu_driver.rs.
@@ -407,20 +402,19 @@ pub fn start_terminal(
     term_image: &'static [u8],
 ) -> Option<TerminalWiring> {
     // A scanout with no room for a character has nothing to show. It does **not** have to be a
-    // whole number of them: 128 is not a multiple of the font's 7-pixel cell, so the ordinary case
-    // leaves a two-pixel strip on the right that the terminal paints as background on its first
-    // frame (see `components/src/display_terminal.rs`) and that `Vt::pixel` answers for, which is what
-    // keeps the picture a total function of the state.
+    // whole number of them: a strip no cell covers is painted as background on the terminal's
+    // first frame (see `components/src/display_terminal.rs`) and `Vt::pixel` answers for it,
+    // which is what keeps the picture a total function of the state.
     const _: () = assert!(
-        graphics_contract::WIDTH >= bitmap_font::GLYPH_W
-            && graphics_contract::HEIGHT >= bitmap_font::GLYPH_H,
+        graphics_contract::WIDTH >= video_terminal::CELL_W
+            && graphics_contract::HEIGHT >= video_terminal::CELL_H,
         "the scanout is too small for one character cell",
     );
     // And the script's geometry is the scanout's, checked here rather than trusted, because the
     // script is what three independent parties predict the picture from.
     const _: () = assert!(
-        graphics_contract::WIDTH / bitmap_font::GLYPH_W == video_terminal::script::COLS
-            && graphics_contract::HEIGHT / bitmap_font::GLYPH_H == video_terminal::script::ROWS,
+        graphics_contract::WIDTH / video_terminal::CELL_W == video_terminal::script::COLS
+            && graphics_contract::HEIGHT / video_terminal::CELL_H == video_terminal::script::ROWS,
         "video_terminal::script's geometry and the scanout's have drifted apart",
     );
 
@@ -561,23 +555,28 @@ pub fn start_screen_terminal(
     term_image: &'static [u8],
     screen: machine_discovery::framebuffer::Framebuffer,
 ) -> Option<TerminalWiring> {
-    // **The whole screen, at the boot console's scale** (2026-10-04). Until then the surface was
-    // the virtio contract's fixed 924x344 at scale one, so on xenon's 1920x1080 the shell sat in
-    // the top-left corner in letters half the size of the boot tour's. Now the surface is the
-    // screen divided by `screen_console::ScreenConsole::scale_for`'s scale (one rule, one
+    // **The whole screen, at the boot console's rule for the terminal's cell.** The surface is
+    // the screen divided by `screen_console::ScreenConsole::scale_for_cell`'s scale (one rule, one
     // function, both consoles), capped at what one terminal grid can lay out over, and
-    // `framebuffer_driver` draws each surface pixel as a scale-by-scale block.
+    // `framebuffer_driver` draws each surface pixel as a scale-by-scale block. The terminal's
+    // cell is twice the boot console's width, so a screen draws it at half the boot console's
+    // scale and the two show the same columns: 137 on xenon's 1920x1080, at scale one.
     let mut aperture = screen_console::Aperture::new(
         &screen,
-        video_terminal::MAX_COLS as u32 * bitmap_font::GLYPH_W,
+        video_terminal::CELL_W,
+        video_terminal::MAX_COLS as u32 * video_terminal::CELL_W,
         u32::MAX,
     )?;
     // The rows one `Vt` can hold at that width (`video_terminal::MAX_CELLS` is a cell budget, not
     // a rectangle): the whole screen on xenon and OVMF, the top rows on a taller one.
-    let cols = (aperture.size().0 / bitmap_font::GLYPH_W).max(1) as usize;
+    let cols = (aperture.size().0 / video_terminal::CELL_W).max(1) as usize;
     let rows = (video_terminal::MAX_CELLS / cols).min(video_terminal::MAX_ROWS) as u32;
-    aperture =
-        screen_console::Aperture::new(&screen, aperture.size().0, rows * bitmap_font::GLYPH_H)?;
+    aperture = screen_console::Aperture::new(
+        &screen,
+        video_terminal::CELL_W,
+        aperture.size().0,
+        rows * video_terminal::CELL_H,
+    )?;
     // The aperture need not start on a page: the run is mapped from the page that holds pixel
     // (0, 0), and the driver is told how far into it that pixel is.
     let offset = screen.base % FRAME_SIZE;
@@ -588,7 +587,12 @@ pub fn start_screen_terminal(
         // screen rows of `stride` bytes.
         let row_bytes = screen.stride as u64 * aperture.scale() as u64;
         let fit = (MAX_APERTURE_PAGES * FRAME_SIZE - offset) / row_bytes;
-        aperture = screen_console::Aperture::new(&screen, aperture.size().0, fit as u32)?;
+        aperture = screen_console::Aperture::new(
+            &screen,
+            video_terminal::CELL_W,
+            aperture.size().0,
+            fit as u32,
+        )?;
         pages = (offset + aperture.span() as u64).div_ceil(FRAME_SIZE);
         crate::println!(
             "  screen    : too large to map whole; the terminal covers its top {} rows",
@@ -736,8 +740,8 @@ impl TerminalWiring {
                     want,
                     "{what}: the framebuffer is wrong at ({x},{y}) [cell ({},{})]: {got:#010x}, \
                      expected {want:#010x}",
-                    x / bitmap_font::GLYPH_W,
-                    y / bitmap_font::GLYPH_H,
+                    x / video_terminal::CELL_W,
+                    y / video_terminal::CELL_H,
                 );
             }
         }

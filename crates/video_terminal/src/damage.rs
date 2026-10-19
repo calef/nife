@@ -73,10 +73,10 @@ impl CellRect {
     /// rectangle wants.
     pub const fn to_pixels(self) -> (u32, u32, u32, u32) {
         (
-            self.col * bitmap_font::GLYPH_W,
-            self.row * bitmap_font::GLYPH_H,
-            self.cols * bitmap_font::GLYPH_W,
-            self.rows * bitmap_font::GLYPH_H,
+            self.col * crate::CELL_W,
+            self.row * crate::CELL_H,
+            self.cols * crate::CELL_W,
+            self.rows * crate::CELL_H,
         )
     }
 }
