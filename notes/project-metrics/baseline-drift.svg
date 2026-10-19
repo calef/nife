@@ -24,50 +24,51 @@
 <text class="mut" x="56" y="114.2" font-size="10" text-anchor="end">20</text>
 <line class="grid" x1="64" y1="58.0" x2="650.0" y2="58.0" stroke-width="1"/>
 <text class="mut" x="56" y="61.0" font-size="10" text-anchor="end">25</text>
-<rect class="seg s0" x="74.0" y="313.4" width="38.7" height="10.6"><title>2026W33, aarch64: 1</title></rect>
-<path class="seg s1" d="M74.0,313.4 V285.4 Q74.0,281.4 78.0,281.4 H108.6 Q112.6,281.4 112.6,285.4 V313.4 Z"><title>2026W33, riscv64: 3</title></path>
-<text class="mut" x="93.3" y="342" font-size="10" text-anchor="middle">2026W33</text>
+<rect class="seg s0" x="74.0" y="313.4" width="38.7" height="10.6"><title>2026W34, aarch64: 1</title></rect>
+<path class="seg s1" d="M74.0,313.4 V285.4 Q74.0,281.4 78.0,281.4 H108.6 Q112.6,281.4 112.6,285.4 V313.4 Z"><title>2026W34, riscv64: 3</title></path>
+<text class="mut" x="93.3" y="342" font-size="10" text-anchor="middle">2026W34</text>
 <text class="fg val" x="93.3" y="276.4" font-size="10" text-anchor="middle">4</text>
-<rect class="seg s0" x="132.6" y="313.4" width="38.7" height="10.6"><title>2026W34, aarch64: 1</title></rect>
-<path class="seg s1" d="M132.6,313.4 V285.4 Q132.6,281.4 136.6,281.4 H167.2 Q171.2,281.4 171.2,285.4 V313.4 Z"><title>2026W34, riscv64: 3</title></path>
-<text class="mut" x="151.9" y="342" font-size="10" text-anchor="middle">2026W34</text>
-<text class="fg val" x="151.9" y="276.4" font-size="10" text-anchor="middle">4</text>
-<rect class="seg s0" x="191.2" y="302.7" width="38.7" height="21.3"><title>2026W35, aarch64: 2</title></rect>
-<path class="seg s1" d="M191.2,302.7 V274.8 Q191.2,270.8 195.2,270.8 H225.8 Q229.8,270.8 229.8,274.8 V302.7 Z"><title>2026W35, riscv64: 3</title></path>
-<text class="mut" x="210.5" y="342" font-size="10" text-anchor="middle">2026W35</text>
+<rect class="seg s0" x="132.6" y="302.7" width="38.7" height="21.3"><title>2026W35, aarch64: 2</title></rect>
+<path class="seg s1" d="M132.6,302.7 V274.8 Q132.6,270.8 136.6,270.8 H167.2 Q171.2,270.8 171.2,274.8 V302.7 Z"><title>2026W35, riscv64: 3</title></path>
+<text class="mut" x="151.9" y="342" font-size="10" text-anchor="middle">2026W35</text>
+<text class="fg val" x="151.9" y="265.8" font-size="10" text-anchor="middle">5</text>
+<rect class="seg s0" x="191.2" y="302.7" width="38.7" height="21.3"><title>2026W36, aarch64: 2</title></rect>
+<path class="seg s1" d="M191.2,302.7 V274.8 Q191.2,270.8 195.2,270.8 H225.8 Q229.8,270.8 229.8,274.8 V302.7 Z"><title>2026W36, riscv64: 3</title></path>
+<text class="mut" x="210.5" y="342" font-size="10" text-anchor="middle">2026W36</text>
 <text class="fg val" x="210.5" y="265.8" font-size="10" text-anchor="middle">5</text>
-<rect class="seg s0" x="249.8" y="302.7" width="38.7" height="21.3"><title>2026W36, aarch64: 2</title></rect>
-<path class="seg s1" d="M249.8,302.7 V274.8 Q249.8,270.8 253.8,270.8 H284.4 Q288.4,270.8 288.4,274.8 V302.7 Z"><title>2026W36, riscv64: 3</title></path>
-<text class="mut" x="269.1" y="342" font-size="10" text-anchor="middle">2026W36</text>
+<rect class="seg s0" x="249.8" y="302.7" width="38.7" height="21.3"><title>2026W37, aarch64: 2</title></rect>
+<path class="seg s1" d="M249.8,302.7 V274.8 Q249.8,270.8 253.8,270.8 H284.4 Q288.4,270.8 288.4,274.8 V302.7 Z"><title>2026W37, riscv64: 3</title></path>
+<text class="mut" x="269.1" y="342" font-size="10" text-anchor="middle">2026W37</text>
 <text class="fg val" x="269.1" y="265.8" font-size="10" text-anchor="middle">5</text>
-<rect class="seg s0" x="308.4" y="302.7" width="38.7" height="21.3"><title>2026W37, aarch64: 2</title></rect>
-<path class="seg s1" d="M308.4,302.7 V274.8 Q308.4,270.8 312.4,270.8 H343.0 Q347.0,270.8 347.0,274.8 V302.7 Z"><title>2026W37, riscv64: 3</title></path>
-<text class="mut" x="327.7" y="342" font-size="10" text-anchor="middle">2026W37</text>
-<text class="fg val" x="327.7" y="265.8" font-size="10" text-anchor="middle">5</text>
-<rect class="seg s0" x="367.0" y="302.7" width="38.7" height="21.3"><title>2026W38, aarch64: 2</title></rect>
-<rect class="seg s1" x="367.0" y="270.8" width="38.7" height="31.9"><title>2026W38, riscv64: 3</title></rect>
-<path class="seg s2" d="M367.0,270.8 V264.2 Q367.0,260.2 371.0,260.2 H401.6 Q405.6,260.2 405.6,264.2 V270.8 Z"><title>2026W38, x86_64: 1</title></path>
-<text class="mut" x="386.3" y="342" font-size="10" text-anchor="middle">2026W38</text>
-<text class="fg val" x="386.3" y="255.2" font-size="10" text-anchor="middle">6</text>
-<rect class="seg s0" x="425.6" y="249.5" width="38.7" height="74.5"><title>2026W39, aarch64: 7</title></rect>
-<rect class="seg s1" x="425.6" y="185.7" width="38.7" height="63.8"><title>2026W39, riscv64: 6</title></rect>
-<path class="seg s2" d="M425.6,185.7 V168.4 Q425.6,164.4 429.6,164.4 H460.2 Q464.2,164.4 464.2,168.4 V185.7 Z"><title>2026W39, x86_64: 2</title></path>
-<text class="mut" x="444.9" y="342" font-size="10" text-anchor="middle">2026W39</text>
-<text class="fg val" x="444.9" y="159.4" font-size="10" text-anchor="middle">15</text>
-<rect class="seg s0" x="484.2" y="217.6" width="38.7" height="106.4"><title>2026W40, aarch64: 10</title></rect>
-<rect class="seg s1" x="484.2" y="89.9" width="38.7" height="127.7"><title>2026W40, riscv64: 12</title></rect>
-<path class="seg s2" d="M484.2,89.9 V62.0 Q484.2,58.0 488.2,58.0 H518.8 Q522.8,58.0 522.8,62.0 V89.9 Z"><title>2026W40, x86_64: 3</title></path>
-<text class="mut" x="503.5" y="342" font-size="10" text-anchor="middle">2026W40</text>
-<text class="fg val" x="503.5" y="53.0" font-size="10" text-anchor="middle">25</text>
-<rect class="seg s0" x="542.8" y="260.2" width="38.7" height="63.8"><title>2026W41, aarch64: 6</title></rect>
-<rect class="seg s1" x="542.8" y="164.4" width="38.7" height="95.8"><title>2026W41, riscv64: 9</title></rect>
-<path class="seg s2" d="M542.8,164.4 V125.8 Q542.8,121.8 546.8,121.8 H577.4 Q581.4,121.8 581.4,125.8 V164.4 Z"><title>2026W41, x86_64: 4</title></path>
-<text class="mut" x="562.1" y="342" font-size="10" text-anchor="middle">2026W41</text>
+<rect class="seg s0" x="308.4" y="302.7" width="38.7" height="21.3"><title>2026W38, aarch64: 2</title></rect>
+<rect class="seg s1" x="308.4" y="270.8" width="38.7" height="31.9"><title>2026W38, riscv64: 3</title></rect>
+<path class="seg s2" d="M308.4,270.8 V264.2 Q308.4,260.2 312.4,260.2 H343.0 Q347.0,260.2 347.0,264.2 V270.8 Z"><title>2026W38, x86_64: 1</title></path>
+<text class="mut" x="327.7" y="342" font-size="10" text-anchor="middle">2026W38</text>
+<text class="fg val" x="327.7" y="255.2" font-size="10" text-anchor="middle">6</text>
+<rect class="seg s0" x="367.0" y="249.5" width="38.7" height="74.5"><title>2026W39, aarch64: 7</title></rect>
+<rect class="seg s1" x="367.0" y="185.7" width="38.7" height="63.8"><title>2026W39, riscv64: 6</title></rect>
+<path class="seg s2" d="M367.0,185.7 V168.4 Q367.0,164.4 371.0,164.4 H401.6 Q405.6,164.4 405.6,168.4 V185.7 Z"><title>2026W39, x86_64: 2</title></path>
+<text class="mut" x="386.3" y="342" font-size="10" text-anchor="middle">2026W39</text>
+<text class="fg val" x="386.3" y="159.4" font-size="10" text-anchor="middle">15</text>
+<rect class="seg s0" x="425.6" y="217.6" width="38.7" height="106.4"><title>2026W40, aarch64: 10</title></rect>
+<rect class="seg s1" x="425.6" y="89.9" width="38.7" height="127.7"><title>2026W40, riscv64: 12</title></rect>
+<path class="seg s2" d="M425.6,89.9 V62.0 Q425.6,58.0 429.6,58.0 H460.2 Q464.2,58.0 464.2,62.0 V89.9 Z"><title>2026W40, x86_64: 3</title></path>
+<text class="mut" x="444.9" y="342" font-size="10" text-anchor="middle">2026W40</text>
+<text class="fg val" x="444.9" y="53.0" font-size="10" text-anchor="middle">25</text>
+<rect class="seg s0" x="484.2" y="260.2" width="38.7" height="63.8"><title>2026W41, aarch64: 6</title></rect>
+<rect class="seg s1" x="484.2" y="164.4" width="38.7" height="95.8"><title>2026W41, riscv64: 9</title></rect>
+<path class="seg s2" d="M484.2,164.4 V125.8 Q484.2,121.8 488.2,121.8 H518.8 Q522.8,121.8 522.8,125.8 V164.4 Z"><title>2026W41, x86_64: 4</title></path>
+<text class="mut" x="503.5" y="342" font-size="10" text-anchor="middle">2026W41</text>
+<text class="fg val" x="503.5" y="116.8" font-size="10" text-anchor="middle">19</text>
+<rect class="seg s0" x="542.8" y="260.2" width="38.7" height="63.8"><title>2026W42, aarch64: 6</title></rect>
+<rect class="seg s1" x="542.8" y="164.4" width="38.7" height="95.8"><title>2026W42, riscv64: 9</title></rect>
+<path class="seg s2" d="M542.8,164.4 V125.8 Q542.8,121.8 546.8,121.8 H577.4 Q581.4,121.8 581.4,125.8 V164.4 Z"><title>2026W42, x86_64: 4</title></path>
+<text class="mut" x="562.1" y="342" font-size="10" text-anchor="middle">2026W42</text>
 <text class="fg val" x="562.1" y="116.8" font-size="10" text-anchor="middle">19</text>
-<rect class="seg s0" x="601.4" y="260.2" width="38.7" height="63.8"><title>2026W42, aarch64: 6</title></rect>
-<rect class="seg s1" x="601.4" y="164.4" width="38.7" height="95.8"><title>2026W42, riscv64: 9</title></rect>
-<path class="seg s2" d="M601.4,164.4 V125.8 Q601.4,121.8 605.4,121.8 H636.0 Q640.0,121.8 640.0,125.8 V164.4 Z"><title>2026W42, x86_64: 4</title></path>
-<text class="mut" x="620.7" y="342" font-size="10" text-anchor="middle">2026W42</text>
+<rect class="seg s0" x="601.4" y="260.2" width="38.7" height="63.8"><title>2026W43, aarch64: 6</title></rect>
+<rect class="seg s1" x="601.4" y="164.4" width="38.7" height="95.8"><title>2026W43, riscv64: 9</title></rect>
+<path class="seg s2" d="M601.4,164.4 V125.8 Q601.4,121.8 605.4,121.8 H636.0 Q640.0,121.8 640.0,125.8 V164.4 Z"><title>2026W43, x86_64: 4</title></path>
+<text class="mut" x="620.7" y="342" font-size="10" text-anchor="middle">2026W43</text>
 <text class="fg val" x="620.7" y="116.8" font-size="10" text-anchor="middle">19</text>
 <rect class="s0" x="672" y="64" width="11" height="11" rx="2"/>
 <text class="fg" y="74" font-size="11"><tspan x="689" dy="0">aarch64</tspan></text>
