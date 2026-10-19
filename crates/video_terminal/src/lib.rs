@@ -34,6 +34,7 @@
 
 #![no_std]
 
+pub mod component;
 pub mod keymap;
 pub mod script;
 

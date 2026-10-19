@@ -2,16 +2,6 @@ use super::*;
 extern crate std;
 use std::vec;
 
-/// Two `Vt`s and their blobs are megabytes; a test thread's default stack is two.
-fn on_a_big_stack(f: impl FnOnce() + Send + 'static) {
-    std::thread::Builder::new()
-        .stack_size(32 << 20)
-        .spawn(f)
-        .expect("spawn")
-        .join()
-        .expect("the test thread panicked");
-}
-
 /// A terminal with everything a swap must carry set to something other than its default: a
 /// scrollback ring `lines` deep (past 200 at 132 columns it has wrapped), a rendition in force, a wrap pending, a scrolled-back view,
 /// and a 24-bit colour sequence cut off after its `2;`, so the parser is mid-CSI with three
@@ -41,8 +31,8 @@ fn blob_of(t: &Vt) -> std::vec::Vec<u8> {
 #[test]
 fn an_absorbed_terminal_carries_on_exactly_where_the_incumbent_stopped() {
     // A ring that has wrapped, and one that has not, whose tail is not at slot zero.
-    on_a_big_stack(|| carries_on(400));
-    on_a_big_stack(|| carries_on(90));
+    carries_on(400);
+    carries_on(90);
 }
 
 fn carries_on(lines: u32) {
@@ -85,50 +75,46 @@ fn carries_on(lines: u32) {
 /// reports is a lie about the state it held.
 #[test]
 fn every_refusal_leaves_the_terminal_untouched() {
-    on_a_big_stack(|| {
-        let blob = blob_of(&busy(132, 43, 400));
-        let mut t = Vt::new(132, 43);
-        t.feed(b"mine\r\n");
-        let before = blob_of(&t);
+    let blob = blob_of(&busy(132, 43, 400));
+    let mut t = Vt::new(132, 43);
+    t.feed(b"mine\r\n");
+    let before = blob_of(&t);
 
-        let mut bad = blob.clone();
-        bad[0] ^= 1;
-        assert_eq!(t.absorb_handoff(&bad), Err(Refusal::NoBlob));
-        let mut bad = blob.clone();
-        bad[4] = 9;
-        assert_eq!(t.absorb_handoff(&bad), Err(Refusal::Layout(9)));
-        // The last cell's character, a surrogate: no `char` is that.
-        let mut bad = blob.clone();
-        let last = bad.len() - 12;
-        bad[last..last + 4].copy_from_slice(&0xd800u32.to_le_bytes());
-        assert_eq!(t.absorb_handoff(&bad), Err(Refusal::Malformed));
-        assert_eq!(
-            t.absorb_handoff(&blob[..blob.len() - 1]),
-            Err(Refusal::Malformed)
-        );
-        let mut wide = Vt::new(133, 43);
-        assert_eq!(wide.absorb_handoff(&blob), Err(Refusal::Geometry));
+    let mut bad = blob.clone();
+    bad[0] ^= 1;
+    assert_eq!(t.absorb_handoff(&bad), Err(Refusal::NoBlob));
+    let mut bad = blob.clone();
+    bad[4] = 9;
+    assert_eq!(t.absorb_handoff(&bad), Err(Refusal::Layout(9)));
+    // The last cell's character, a surrogate: no `char` is that.
+    let mut bad = blob.clone();
+    let last = bad.len() - 12;
+    bad[last..last + 4].copy_from_slice(&0xd800u32.to_le_bytes());
+    assert_eq!(t.absorb_handoff(&bad), Err(Refusal::Malformed));
+    assert_eq!(
+        t.absorb_handoff(&blob[..blob.len() - 1]),
+        Err(Refusal::Malformed)
+    );
+    let mut wide = Vt::new(133, 43);
+    assert_eq!(wide.absorb_handoff(&blob), Err(Refusal::Geometry));
 
-        assert_eq!(blob_of(&t), before, "a refusal changed the terminal");
-    });
+    assert_eq!(blob_of(&t), before, "a refusal changed the terminal");
 }
 
 /// **The largest blob fits what a supervisor retypes for it.** A full live grid and a full ring at
 /// the shape that fills both budgets exactly, which is the worst case [`HANDOFF_BYTES`] claims.
 #[test]
 fn the_largest_blob_fits_the_handoff_pages() {
-    on_a_big_stack(|| {
-        // 96 columns divides both MAX_CELLS (192 rows, clamped to MAX_ROWS) and SCROLLBACK_CELLS
-        // (275 rows); 88 is the widest ring that is a full SCROLLBACK_ROWS deep.
-        for cols in [88, 96, 132] {
-            let mut t = Vt::new(cols, u32::MAX);
-            for _ in 0..SCROLLBACK_ROWS + MAX_ROWS {
-                t.feed(b"\r\n");
-            }
-            assert_eq!(t.scrollback_len(), t.scrollback_depth());
-            assert!(t.handoff_len() <= HANDOFF_BYTES);
-            assert!(t.write_handoff(&mut vec![0u8; HANDOFF_BYTES]).is_some());
+    // 96 columns divides both MAX_CELLS (192 rows, clamped to MAX_ROWS) and SCROLLBACK_CELLS
+    // (275 rows); 88 is the widest ring that is a full SCROLLBACK_ROWS deep.
+    for cols in [88, 96, 132] {
+        let mut t = Vt::new(cols, u32::MAX);
+        for _ in 0..SCROLLBACK_ROWS + MAX_ROWS {
+            t.feed(b"\r\n");
         }
-        assert!(HANDOFF_BYTES as u64 <= HANDOFF_PAGES * page_frames::FRAME_SIZE);
-    });
+        assert_eq!(t.scrollback_len(), t.scrollback_depth());
+        assert!(t.handoff_len() <= HANDOFF_BYTES);
+        assert!(t.write_handoff(&mut vec![0u8; HANDOFF_BYTES]).is_some());
+    }
+    assert!(HANDOFF_BYTES as u64 <= HANDOFF_PAGES * page_frames::FRAME_SIZE);
 }
