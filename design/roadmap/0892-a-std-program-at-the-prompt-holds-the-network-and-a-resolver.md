@@ -16,7 +16,8 @@ kernel harness, which calef accepted as the proof (ruling B on #2011, 2026-10-12
 the forget verb as written (Q2, "Approve", the same day), and ruled item 3's fork, also the same
 day ("yes, record c"). Then he ruled that a manifest declares the network beside its zones and
 the owner grants both at install ("a", the same day). What is left is building both for installed
-programs, under "Item 3, ruled" and "The network at install, ruled" below.
+programs, under "Item 3, ruled" and "The network at install, ruled" below. That waits on the
+four calls under "Four calls the rulings leave open".
 
 *(The title and slug are provisional.)*
 
@@ -158,6 +159,61 @@ today), and a per-destination limit comes from a filter layer such as Little Sni
 already bound which names a program can look up, and a filter in the network stack is a milestone of
 its own. (a) can be undone; (b) would have committed to building that filter now.
 
+## Four calls the rulings leave open
+
+Checked on `main` at `42836328b` (2026-10-19 UTC). Both ruled halves for installed programs wait on
+these. Nothing for them is built, because each fixes a format two programs share or moves work
+between milestones. Each is put with a recommendation; none is ruled.
+
+**Q1. How a manifest note carries its zones (a wire format).** Version 1 is 56 fixed bytes and its
+last zero byte is 55, so zones need a new version word (`capability_manifest_note`'s own rule).
+
+- (a) Version 2: version 1's fields at the same offsets, then a zone count (at most
+  `GRANTS_MAX`, 8) and each zone as a length byte and dotted ASCII (at most 253 bytes, the
+  resolver's `NAME_TEXT_MAX`). `decode` keeps one encoding per manifest by refusing zones that are
+  unsorted, repeated, uppercase or end in a dot. The root zone is length 0, as the resolver
+  spells it.
+- (b) A second note, type 2 "zones", beside an unchanged version 1. Readers then find two notes,
+  and "the same note twice" needs a rule for each type.
+
+Recommended: (a). One note is one request, and the digest covers it either way.
+
+**Q2. Where the installed-programs table records a grant (a format).** Milestone 911's item 1
+calls this "the grant record", and 911 waits on 892, so the first cut is this block's. It holds
+what the owner granted: the network flag and the zones.
+
+- (a) A new line kind keyed on the executable's digest, as `default` lines are:
+  `grant <digest> network` and `grant <digest> zone <name>`, sorted, one per grant. Rows keep
+  their five columns. A narrowing writes the next generation without the line.
+- (b) More columns on the row. Old rows would need a "nothing granted" spelling, and zones vary in
+  number.
+
+Recommended: (a). The progenitor has the digest at spawn, so a digest key is what it looks up.
+911 adds its service and directory grants as more `grant` words.
+
+**Q3. Where a std program holds several resolver badges (a slot layout).** The std PAL reads one
+badge at `RESOLVER_SLOT` (9), and `std_runtime_contract::SLOTS` is 13.
+
+- (a) The first zone at slot 9, the rest at fixed slots above 12, probed in order. On a lookup the
+  PAL asks each badge until one does not answer "outside zone". A miss is a local refusal, so it
+  costs one IPC round trip and no packet.
+- (b) The same slots, plus a read-only page listing each slot's zone, so the PAL picks the badge
+  itself. That adds a second layout for the two sides to agree on.
+
+Recommended: (a).
+
+**Q4. Who builds the confirmation at install (a sequencing call).** "The network at install,
+ruled" puts the zone and network lines in milestone 910's confirmation. 910 is NOT-STARTED and
+waits on 849, also NOT-STARTED, so 892 cannot finish behind it. `jig install` lists no grants and
+asks nothing today.
+
+- (a) 892 builds the confirmation with its two lines (zones, root zone flagged apart, and
+  "reaches the network (connects out)") and one yes. 910 adds its service line to it.
+- (b) 892 waits on 910.
+
+Recommended: (a). 892 is on the customer path, and 910's line has nowhere to go until a
+confirmation exists.
+
 ## BUGS
 
 - Item 3 is built for `jig` only; "Item 3, ruled" says what is left.
@@ -177,6 +233,7 @@ its own. (a) can be undone; (b) would have committed to building that filter now
 
 - **Outstanding.** Item 3 for installed programs: the four pieces under "Item 3, ruled".
 - **Outstanding.** The network at install: the three pieces under "The network at install, ruled".
+  Both outstanding items wait on Q1 to Q4.
 - **Milestone 911.** Its approval file's "the network's socket budget" is this grant, and now cites
   this block.
 - **Milestone 809.** `jig` resolves the index's host through this badge at item 6.
