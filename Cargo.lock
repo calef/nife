@@ -660,6 +660,7 @@ dependencies = [
 name = "installed_programs"
 version = "0.1.0"
 dependencies = [
+ "domain_name_resolution_contract",
  "measured_boot",
 ]
 

@@ -3,6 +3,10 @@
 use super::*;
 use crate::*;
 
+/// Vouched, and granted no network: what every installed program is until an owner's grant is
+/// recorded.
+const VOUCHED: Vouch = Vouch::Vouched { network: false };
+
 /// **The unvouched manifest is §219's ruling and nothing wider** (gate D2, calef 2026-09-26).
 /// The two read-only pages are allowed; the process domain, entropy and the network are not;
 /// nothing a line could designate is accepted either, which is the no-note manifest's shape.
@@ -64,7 +68,7 @@ fn only_reboot_declares_reboot_and_no_image_can() {
         };
         assert!(!image_can_carry(&asks));
         assert_eq!(
-            image_manifest(Some(asks), true),
+            image_manifest(Some(asks), VOUCHED),
             Err(ImageRefusal::NotCarried)
         );
     }
@@ -87,28 +91,31 @@ fn an_image_is_endowed_from_its_note_only_when_vouched() {
         ..asks_everything
     };
     assert_eq!(
-        image_manifest(Some(asks_all_but_the_network), true),
+        image_manifest(Some(asks_all_but_the_network), VOUCHED),
         Ok(asks_all_but_the_network)
     );
     assert_eq!(
-        image_manifest(Some(asks_everything), false),
+        image_manifest(Some(asks_everything), Vouch::Unvouched),
         Ok(UNVOUCHED_MANIFEST),
         "an unvouched note grants nothing"
     );
     assert_eq!(
-        image_manifest(None, true),
+        image_manifest(None, VOUCHED),
         Ok(NO_NOTE_MANIFEST),
         "no note, the default"
     );
-    assert_eq!(image_manifest(None, false), Ok(UNVOUCHED_MANIFEST));
+    assert_eq!(
+        image_manifest(None, Vouch::Unvouched),
+        Ok(UNVOUCHED_MANIFEST)
+    );
 
     let asks_an_argument = Program::LeastAuthorityDemo.manifest();
     assert_eq!(
-        image_manifest(Some(asks_an_argument), true),
+        image_manifest(Some(asks_an_argument), VOUCHED),
         Ok(asks_an_argument)
     );
     assert_eq!(
-        image_manifest(Some(asks_an_argument), false),
+        image_manifest(Some(asks_an_argument), Vouch::Unvouched),
         Err(ImageRefusal::ExceedsVouch),
         "a note that asks more than its vouch allows is refused"
     );
@@ -117,7 +124,7 @@ fn an_image_is_endowed_from_its_note_only_when_vouched() {
         ..NO_NOTE_MANIFEST
     };
     assert_eq!(
-        image_manifest(Some(asks_memory), false),
+        image_manifest(Some(asks_memory), Vouch::Unvouched),
         Err(ImageRefusal::ExceedsVouch)
     );
 }
@@ -131,13 +138,13 @@ fn an_image_manifest_the_request_cannot_carry_is_refused_vouched_or_not() {
             continue;
         }
         assert_eq!(
-            image_manifest(Some(m), true),
+            image_manifest(Some(m), VOUCHED),
             Err(ImageRefusal::NotCarried),
             "{}",
             p.name()
         );
         assert_eq!(
-            image_manifest(Some(m), false),
+            image_manifest(Some(m), Vouch::Unvouched),
             Err(ImageRefusal::NotCarried)
         );
     }
@@ -206,11 +213,14 @@ fn a_std_image_is_carried_when_it_hears_words_and_unvouched_gets_two_pages() {
     let ex = Program::StdExerciser.manifest();
     assert!(image_can_carry(&ex));
     assert!(image_hears_words(&ex));
-    assert_eq!(image_manifest(Some(ex), true), Ok(ex));
+    assert_eq!(image_manifest(Some(ex), VOUCHED), Ok(ex));
     // Unvouched, its note's entropy grants nothing (§219 (how the shell names an installed
     // program to the spawner)): the unvouched `std` manifest differs from the native one only
     // in the runtime and the words.
-    assert_eq!(image_manifest(Some(ex), false), Ok(UNVOUCHED_STD_MANIFEST));
+    assert_eq!(
+        image_manifest(Some(ex), Vouch::Unvouched),
+        Ok(UNVOUCHED_STD_MANIFEST)
+    );
     assert_eq!(
         Manifest {
             program_argument: ProgramArgumentDeclaration::Forbidden,
@@ -253,8 +263,8 @@ fn a_std_image_is_refused_for_each_thing_its_layout_cannot_hold() {
 }
 
 /// **Installing does not grant the network** (milestone 892, "The network at install, ruled"):
-/// the owner grants it apart, and no grant is read yet, so vouched bytes that ask are refused,
-/// native or `std`. Unvouched bytes that ask still run, granted nothing, since §219 already says
+/// the owner grants it apart, in a `grant` line, so vouched bytes that ask and have no grant are
+/// refused, native or `std`, and with one are given it. Unvouched bytes that ask still run, granted nothing, since §219 already says
 /// their note is not asked.
 #[test]
 fn vouched_bytes_asking_for_the_network_are_refused_and_unvouched_ones_get_nothing() {
@@ -269,9 +279,28 @@ fn vouched_bytes_asking_for_the_network_are_refused_and_unvouched_ones_get_nothi
     };
     for asks in [std, native] {
         assert_eq!(
-            image_manifest(Some(asks), true),
+            image_manifest(Some(asks), VOUCHED),
             Err(ImageRefusal::NetworkNotGranted)
         );
-        assert!(!image_manifest(Some(asks), false).unwrap().network);
+        assert!(
+            !image_manifest(Some(asks), Vouch::Unvouched)
+                .unwrap()
+                .network
+        );
+        let granted = Vouch::Vouched { network: true };
+        assert_eq!(
+            image_manifest(Some(asks), granted),
+            Ok(asks),
+            "a grant gives it"
+        );
+        let quiet = Manifest {
+            network: false,
+            ..asks
+        };
+        assert_eq!(
+            image_manifest(Some(quiet), granted),
+            Ok(quiet),
+            "a grant gives nothing the note did not ask for"
+        );
     }
 }

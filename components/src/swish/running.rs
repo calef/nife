@@ -400,13 +400,18 @@ fn plan_image(nav: &mut Nav, spec: ParsedInvocation) -> Option<PlannedImage> {
         return None;
     }
     // **A note that asks for the network is judged on the vouch before anything is sent** (milestone
-    // 892): vouched bytes are refused it, which the progenitor would answer only as
-    // `SPAWN_REFUSED_BY_MANIFEST`, so the shell hashes the file as `caps` does and says which grant
-    // is missing. Only such notes pay for the hash; the progenitor still judges its own copy.
+    // 892): vouched bytes with no `grant` line for it are refused it, which the progenitor would
+    // answer only as `SPAWN_REFUSED_BY_MANIFEST`, so the shell hashes the file as `caps` does and
+    // says which grant is missing. Only such notes pay for the hash; the progenitor still judges its own copy.
     if m.network {
-        let vouched = super::capabilities::file_digest(t, handle, size)
-            .is_some_and(|d| super::capabilities::live_generation_listing(nav, &d).is_some());
-        if let Err(r) = grant_plan::image_manifest(declared, vouched) {
+        let vouch = super::capabilities::file_digest(t, handle, size)
+            .and_then(|d| super::capabilities::live_generation_listing(nav, &d))
+            .map_or(grant_plan::Vouch::Unvouched, |v| {
+                grant_plan::Vouch::Vouched {
+                    network: v.network_granted,
+                }
+            });
+        if let Err(r) = grant_plan::image_manifest(declared, vouch) {
             nav.close(handle);
             refused();
             print(swish::image_refusal_sentence(r));

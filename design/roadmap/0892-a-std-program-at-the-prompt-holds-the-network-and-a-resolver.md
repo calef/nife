@@ -18,8 +18,10 @@ day ("yes, record c"). Then he ruled that a manifest declares the network beside
 the owner grants both at install ("a", the same day). What is left is building both for installed
 programs, under "Item 3, ruled" and "The network at install, ruled" below. The refusal half is
 built: an installed program is refused the network, by name, until its grant is recorded. A
-manifest note carries its zones (Q1, ruled), and `jig install` lists the asks. The rest
-waits on the two calls under "Calls the rulings leave open", Q2 and Q3.
+manifest note carries its zones (Q1, ruled), `jig install` lists the asks, and the table's grant
+lines are read (Q2, ruled), so a granted program would hold the network. The rest waits on Q3 and
+Q5 under "Calls the rulings leave open": nothing writes a grant yet, and nothing places a zone's
+badge for an installed program.
 
 *(The title and slug are provisional.)*
 
@@ -203,11 +205,37 @@ root zone apart, in capitals. It asks nothing yet, since a yes has nowhere to be
   none of these is granted: no owner's grant is recorded at install yet
 ```
 
+## The grant record, ruled and built 2026-10-19 (UTC)
+
+calef, on #2405, answered Q2 below "a". The installed-programs table holds the owner's grants as
+lines of their own, keyed on the executable's digest, after the pointers:
+
+```text
+grant sha256:… network
+grant sha256:… zone .
+grant sha256:… zone nife.test
+```
+
+One line per grant, sorted, each once. The root zone is `.` (provisional spelling). A zone holds
+to the resolver's spelling (`domain_name_resolution_contract::is_canonical_zone`, which the
+manifest note uses too). A grant for no row, out of order, repeated or misspelled makes the table
+unreadable. An install carries forward the grants of the rows it keeps, and a removal drops its
+rows' grants. Approval is all or nothing at install: the grants are exactly the asks (milestone 911).
+
+Reading it is built. `installed_programs::network_granted` answers for a digest, and
+`grant_plan::image_manifest` takes a required `Vouch` (`Unvouched`, or `Vouched { network }`).
+The progenitor and the shell's run and `caps` build it from the table, so a granted program is
+endowed the network: slot 10 native, or slots 2 and 3 for `std`. A grant gives nothing the note did
+not ask for. Host tests: `grant_lines_are_read_strictly_and_follow_their_rows` and
+`vouched_bytes_asking_for_the_network_are_refused_and_unvouched_ones_get_nothing`.
+
+Writing a grant is not built, and nothing writes one: it needs the owner's yes, which is Q5.
+
 ## Calls the rulings leave open
 
 Checked on `main` at `42836328b` (2026-10-19 UTC). Both ruled halves for installed programs wait on
 these. Nothing that depends on them is built, because each fixes a format two programs share.
-Each is put with a recommendation. Q1 is ruled; Q2 and Q3 are open.
+Each is put with a recommendation. Q1 and Q2 are ruled; Q3 and Q5 are open.
 
 **Q1, ruled (a): how a manifest note carries its zones (a wire format).** Version 1 is 56 fixed
 bytes and its last zero byte is 55, so zones need a new version word (`capability_manifest_note`'s
@@ -223,7 +251,7 @@ own rule).
 
 Recommended: (a). One note is one request, and the digest covers it either way.
 
-**Q2. Where the installed-programs table records a grant (a format).** Milestone 911's item 1
+**Q2, ruled (a): where the installed-programs table records a grant (a format).** Milestone 911's item 1
 calls this "the grant record", and 911 waits on 892, so the first cut is this block's. It holds
 what the owner granted: the network flag and the zones.
 
@@ -247,6 +275,20 @@ badge at `RESOLVER_SLOT` (9), and `std_runtime_contract::SLOTS` is 13.
 
 Recommended: (a).
 
+**Q5. How the owner's yes reaches `jig` (a contract).** One confirmation covers the grants, but
+`jig` cannot read a yes. Its std stdin is EOF: the std overlay's `sys/stdio/nife.rs` says nothing
+grants a std program input, and that a source contract is its own design. Milestone 911 refuses a
+`--yes` flag, because it approves without reading. Until a yes exists, no install may write a
+`grant` line, or a package's note would grant the network unseen.
+
+- (a) A byte-source contract that gives a std program stdin (a PAL slot and its wire), granted to
+  `jig` at the owner's console.
+- (b) Two steps: `install` lists the asks and refuses, and a second verb names the package and
+  digest it grants.
+
+Recommended: (a). It is the confirmation as ruled, and std programs need stdin anyway. (b) is a
+`--yes` in two lines.
+
 ## Who builds the confirmation at install, decided 2026-10-19 (UTC)
 
 The maintainer decided this sequencing on #2405: 892 builds `jig install`'s confirmation with its
@@ -257,7 +299,10 @@ NOT-STARTED behind 849, so 892 could not finish behind it.
 
 ## BUGS
 
-- An installed program cannot hold the network or a zone yet: no grant of either is recorded or read.
+- An installed program cannot hold the network or a zone yet: nothing writes a `grant` line (Q5),
+  and zone grants are read by nothing (Q3).
+- A granted program's network is proved by host tests only. No prompt proof exists until an
+  install can write a grant.
 - A program whose note asks for zones but not the network runs without a resolver; nothing refuses
   it by name.
 - `jig install` lists the asks but cannot take a yes: `jig` holds no input.
@@ -281,7 +326,7 @@ NOT-STARTED behind 849, so 892 could not finish behind it.
 
 - **Outstanding.** Item 3 for installed programs: the four pieces under "Item 3, ruled".
 - **Outstanding.** The network at install: the three pieces under "The network at install, ruled".
-  Both outstanding items wait on Q2 and Q3.
+  Both outstanding items wait on Q3 and Q5.
 - **Milestone 911.** Its approval file's "the network's socket budget" is this grant, and now cites
   this block.
 - **Milestone 809.** `jig` resolves the index's host through this badge at item 6.

@@ -121,11 +121,11 @@ pub const ZONED_VERSION: u32 = 2;
 /// **The most zones a manifest may ask for**: 8, the resolver's
 /// `domain_name_resolution_contract::GRANTS_MAX`, since each granted zone is its own badge and a
 /// program asking for more could never be granted them all at once.
-pub const MAX_ZONES: usize = 8;
+pub const MAX_ZONES: usize = domain_name_resolution_contract::GRANTS_MAX;
 
 /// **The longest zone**, in bytes of dotted text: 253, a host name's limit and the resolver's
 /// `domain_name_resolution_contract::NAME_TEXT_MAX`.
-pub const ZONE_MAX: usize = 253;
+pub const ZONE_MAX: usize = domain_name_resolution_contract::NAME_TEXT_MAX;
 
 /// `OWNER` with its NUL, padded to the note's 4-byte alignment.
 const NAME_FIELD: usize = 8;
@@ -599,7 +599,7 @@ pub const fn encode_zoned<const LEN: usize>(m: &Manifest, zones: &[&str]) -> [u8
     while z < zones.len() {
         let zone = zones[z].as_bytes();
         assert!(
-            canonical_zone(zone),
+            domain_name_resolution_contract::is_canonical_zone(zone),
             "a zone is lowercase dotted ASCII, at most 253 bytes, with no empty label"
         );
         if z > 0 {
@@ -620,39 +620,8 @@ pub const fn encode_zoned<const LEN: usize>(m: &Manifest, zones: &[&str]) -> [u8
     out
 }
 
-/// **Whether `zone` is spelled the one way a zone may be**: empty (the root zone), or labels of one
-/// to 63 bytes of `a`-`z`, `0`-`9` and `-`, joined by single dots, with no dot at either end, at
-/// most [`ZONE_MAX`] bytes in all. Lowercase only, so `Example.net` and `example.net` cannot be
-/// two encodings of one ask.
-const fn canonical_zone(zone: &[u8]) -> bool {
-    if zone.len() > ZONE_MAX {
-        return false;
-    }
-    let mut label = 0;
-    let mut i = 0;
-    while i < zone.len() {
-        match zone[i] {
-            b'.' => {
-                if label == 0 {
-                    return false;
-                }
-                label = 0;
-            }
-            b'a'..=b'z' | b'0'..=b'9' | b'-' => {
-                label += 1;
-                if label > 63 {
-                    return false;
-                }
-            }
-            _ => return false,
-        }
-        i += 1;
-    }
-    zone.is_empty() || label > 0
-}
-
 /// Every zone of a version 2 descriptor, checked: a count of one to [`MAX_ZONES`], each zone
-/// canonical ([`canonical_zone`]) and sorted strictly after the one before, and nothing after the
+/// canonical (`domain_name_resolution_contract::is_canonical_zone`) and sorted strictly after the one before, and nothing after the
 /// last. The offset in a refusal is the first byte at fault.
 fn check_zones(d: &[u8]) -> Result<&[u8], Error> {
     let count = *d.get(DESCRIPTOR_LEN).ok_or(Error::WrongLength)? as usize;
@@ -664,7 +633,9 @@ fn check_zones(d: &[u8]) -> Result<&[u8], Error> {
     for _ in 0..count {
         let len = *d.get(at).ok_or(Error::WrongLength)? as usize;
         let zone = d.get(at + 1..at + 1 + len).ok_or(Error::WrongLength)?;
-        if !canonical_zone(zone) || previous.is_some_and(|p| !before(p, zone)) {
+        if !domain_name_resolution_contract::is_canonical_zone(zone)
+            || previous.is_some_and(|p| !before(p, zone))
+        {
             return Err(Error::BadField(at));
         }
         previous = Some(zone);
@@ -1711,12 +1682,5 @@ mod tests {
                 .iter()
                 .all(|&b| b == 0)
         );
-    }
-
-    /// The two limits are the resolver's, so a manifest cannot ask for what no badge could carry.
-    #[test]
-    fn the_zone_limits_are_the_resolvers() {
-        assert_eq!(MAX_ZONES, domain_name_resolution_contract::GRANTS_MAX);
-        assert_eq!(ZONE_MAX, domain_name_resolution_contract::NAME_TEXT_MAX);
     }
 }

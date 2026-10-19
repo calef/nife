@@ -742,8 +742,8 @@ impl Service<'_> {
         let image_elf = staging.and_then(|_| {
             let bytes = staged_image(spawnproto::image_len(w0));
             let vouch = vouched(bytes, fs, own_ut, &mut self.fs_mapped);
-            unvouched = !vouch;
-            let elf = if vouch || presented {
+            unvouched = vouch == grant_plan::Vouch::Unvouched;
+            let elf = if !unvouched || presented {
                 elf::Elf::parse(bytes).ok()
             } else {
                 None

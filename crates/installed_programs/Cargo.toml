@@ -12,3 +12,5 @@ workspace = true
 # The digest and the line shape. A table entry is `measured_boot`'s manifest line with one column
 # added, so the parser for a digest is the one the progenitor already trusts.
 measured_boot = { version = "0.1.0", path = "../measured_boot" }
+# The zone spelling a `grant` line holds to, which is the resolver's (milestone 892).
+domain_name_resolution_contract = { path = "../domain_name_resolution_contract" }

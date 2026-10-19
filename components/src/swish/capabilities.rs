@@ -235,6 +235,8 @@ pub(super) fn live_generation_listing(
             Ok(Some(entry)) => Some(swish::Vouched {
                 generation: number,
                 by_owner: entry.package == installed_programs::OWNER,
+                // A table whose grants cannot be read grants nothing, as the progenitor reads it.
+                network_granted: installed_programs::network_granted(text, digest).unwrap_or(false),
             }),
             _ => None,
         },

@@ -62,6 +62,24 @@ pub enum ImageRefusal {
     NetworkNotGranted,
 }
 
+/// **What the installed-programs table says about a file's bytes**: that it does not list their
+/// digest, or that it does, and whether a `grant` line there gives them the network
+/// (`installed_programs::network_granted`). A required argument of [`image_manifest`], so a caller
+/// cannot vouch for bytes without saying what the owner granted them.
+///
+/// Name: provisional, milestone 892 (a std program at the prompt holds the network and a
+/// resolver), 2026-10-19 (UTC).
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+pub enum Vouch {
+    /// No row of the live generation has the bytes' digest.
+    Unvouched,
+    /// A row has it.
+    Vouched {
+        /// The owner granted these bytes the network.
+        network: bool,
+    },
+}
+
 /// **Whether an image request can deliver what `m` declares**, today.
 ///
 /// An image travels as a plain line (DECISIONS §219 option D's first cut): the request words carry
@@ -119,24 +137,26 @@ pub const fn image_hears_words(m: &Manifest) -> bool {
 }
 
 /// **The manifest a file's bytes are bound and endowed with** (milestone 597, provisional), given
-/// what their note declared (`None` for no note) and whether the installed-programs table vouches for them.
+/// what their note declared (`None` for no note) and what the installed-programs table says of
+/// them ([`Vouch`]).
 ///
 /// Vouched bytes get what they declare, because the digest that vouched covers the note: a person
 /// who installed the package installed its manifest. The network is the exception: the owner
 /// grants it apart, so vouched bytes asking for it are refused
-/// ([`ImageRefusal::NetworkNotGranted`]). Unvouched bytes get [`UNVOUCHED_MANIFEST`]
+/// ([`ImageRefusal::NetworkNotGranted`]) unless a `grant` line gives it them. A grant gives
+/// nothing the note did not ask for. Unvouched bytes get [`UNVOUCHED_MANIFEST`]
 /// whatever they declare (§219: a note from bytes nobody vouched for grants nothing), and are
 /// refused if the declaration asks for anything a command line would have designated, since the
 /// shell has already bound the line against it.
 ///
 /// The shell calls this to preview (`caps`) and the progenitor to decide, so the two cannot differ.
-pub fn image_manifest(declared: Option<Manifest>, vouched: bool) -> Result<Manifest, ImageRefusal> {
+pub fn image_manifest(declared: Option<Manifest>, vouch: Vouch) -> Result<Manifest, ImageRefusal> {
     let declared = declared.unwrap_or(NO_NOTE_MANIFEST);
     if !image_can_carry(&declared) {
         return Err(ImageRefusal::NotCarried);
     }
-    if vouched {
-        if declared.network {
+    if let Vouch::Vouched { network } = vouch {
+        if declared.network && !network {
             return Err(ImageRefusal::NetworkNotGranted);
         }
         return Ok(declared);

@@ -22,6 +22,40 @@ pub const OFF_ADDRESSES: usize = 0x100;
 /// How many clients one resolver can hold grants for (see the crate's BUGS).
 pub const GRANTS_MAX: usize = 8;
 
+/// **Whether `zone` is spelled the one way a zone may be asked for or granted** (milestone 892 (a
+/// std program at the prompt holds the network and a resolver)): empty (the root zone, any name),
+/// or labels of one to 63 bytes of `a`-`z`, `0`-`9` and `-`, joined by single dots, with no dot at
+/// either end, at most [`NAME_TEXT_MAX`] bytes in all. Lowercase only, so `Example.net` and
+/// `example.net` cannot be two spellings of one ask. A manifest note's zones
+/// (`capability_manifest_note::zones`) and the installed-programs table's `grant` lines both hold
+/// to it. Name: provisional, 2026-10-19 (UTC).
+pub const fn is_canonical_zone(zone: &[u8]) -> bool {
+    if zone.len() > NAME_TEXT_MAX {
+        return false;
+    }
+    let mut label = 0;
+    let mut i = 0;
+    while i < zone.len() {
+        match zone[i] {
+            b'.' => {
+                if label == 0 {
+                    return false;
+                }
+                label = 0;
+            }
+            b'a'..=b'z' | b'0'..=b'9' | b'-' => {
+                label += 1;
+                if label > 63 {
+                    return false;
+                }
+            }
+            _ => return false,
+        }
+        i += 1;
+    }
+    zone.is_empty() || label > 0
+}
+
 // =================================================================================================
 // The words.
 // =================================================================================================

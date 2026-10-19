@@ -13,7 +13,17 @@
 //! ```text
 //! <digest> <program> <version> <package> <manager>   a row: what is installed, and who installed it
 //! default <program> <digest>                         the pointer: what the bare word runs
+//! grant <digest> network                             the owner granted those bytes the network
+//! grant <digest> zone <zone>                         ... and names in one resolver zone
 //! ```
+//!
+//! **A `grant` line is the owner's grant** (calef, 2026-10-19 (UTC), on #2405: "a"), what milestone
+//! 911 calls the grant record: keyed on the executable's digest, one line per grant, sorted
+//! bytewise and each once, after the pointers. A zone is spelled as the resolver spells it
+//! (`domain_name_resolution_contract::is_canonical_zone`), and the root zone, any name, is `.`
+//! (provisional spelling). A grant whose digest names no row makes the table unreadable, as a
+//! pointer to nothing does. A narrowing writes the next generation without the line; a removal
+//! takes a removed row's grants with it.
 //!
 //! A `<digest>` is `sha256:<64 hex>`, as `measured_boot::digest_text` writes it. **Rows key on the
 //! digest**, the packager's attestation; `program`, `version` and `package` are labels. A rebuild
@@ -138,8 +148,9 @@ pub fn entries(table: &str) -> impl Iterator<Item = Result<Entry<'_>, Error>> {
                 digest,
                 manager,
             })),
-            // A well-formed pointer line is not a row; that it is well-formed was the check.
-            Line::Pointer { .. } => None,
+            // A well-formed pointer or grant line is not a row; that it is well-formed was the
+            // check.
+            Line::Pointer { .. } | Line::Grant(_) => None,
             Line::Malformed => Some(Err(Error::Malformed)),
         })
 }
@@ -154,8 +165,8 @@ pub fn defaults(table: &str) -> impl Iterator<Item = Result<Pointer<'_>, Error>>
         .filter(|line| !line.is_empty() && !line.starts_with('#'))
         .filter_map(|line| match classify(line) {
             Line::Pointer { program, digest } => Some(Ok(Pointer { program, digest })),
-            // A well-formed row is not a pointer; that it is well-formed was the check.
-            Line::Row { .. } => None,
+            // A well-formed row or grant is not a pointer; that it is well-formed was the check.
+            Line::Row { .. } | Line::Grant(_) => None,
             Line::Malformed => Some(Err(Error::Malformed)),
         })
 }
@@ -173,8 +184,31 @@ enum Line<'a> {
         program: &'a str,
         digest: Digest,
     },
+    Grant(Grant<'a>),
     Malformed,
 }
+
+/// **One `grant` line**: what the owner granted the bytes with this digest. Read with
+/// [`grants`] and [`network_granted`]. Name: provisional, milestone 892, 2026-10-19 (UTC).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct Grant<'a> {
+    /// The executable's digest, as its row has it.
+    pub digest: Digest,
+    /// What was granted.
+    pub what: Granted<'a>,
+}
+
+/// **What a `grant` line grants.** Provisional names.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Granted<'a> {
+    /// The network: a client view of the stack, connecting out.
+    Network,
+    /// Names in one resolver zone, as dotted text; `""` is the root zone, written `.` in the line.
+    Zone(&'a str),
+}
+
+/// The spelling of the root zone in a `grant` line, where an empty word cannot be written.
+pub const ROOT_ZONE: &str = ".";
 
 /// Classify one line. A row is `<digest> <program> <version> <package> <manager>`, or the four
 /// words before the manager column existed (read as [`NO_MANAGER`]); a pointer line is
@@ -187,6 +221,9 @@ fn classify(line: &str) -> Line<'_> {
     let Some(first) = words.next() else {
         return Line::Malformed;
     };
+    if first == "grant" {
+        return classify_grant(words);
+    }
     if first == "default" {
         let (Some(program), Some(hex), None) = (words.next(), words.next(), words.next()) else {
             return Line::Malformed;
@@ -221,6 +258,73 @@ fn classify(line: &str) -> Line<'_> {
         package,
         manager,
     }
+}
+
+/// The rest of a `grant` line after its first word: a digest, then `network`, or `zone` and one
+/// canonical zone (`.` for the root).
+fn classify_grant<'a>(mut words: impl Iterator<Item = &'a str>) -> Line<'a> {
+    let Some(Ok(digest)) = words.next().map(measured_boot::parse_digest) else {
+        return Line::Malformed;
+    };
+    let what = match (words.next(), words.next(), words.next()) {
+        (Some("network"), None, _) => Granted::Network,
+        (Some("zone"), Some(ROOT_ZONE), None) => Granted::Zone(""),
+        (Some("zone"), Some(zone), None)
+            if domain_name_resolution_contract::is_canonical_zone(zone.as_bytes()) =>
+        {
+            Granted::Zone(zone)
+        }
+        _ => return Line::Malformed,
+    };
+    Line::Grant(Grant { digest, what })
+}
+
+/// **Every `grant` line in a generation**, in file order, or [`Error::Malformed`]: at the first
+/// line that is malformed, at a grant whose digest names no row, and at a grant that does not sort
+/// strictly after the one before (one grant record has one spelling).
+pub fn grants(table: &str) -> impl Iterator<Item = Result<Grant<'_>, Error>> {
+    let mut previous: Option<Grant<'_>> = None;
+    table
+        .lines()
+        .map(str::trim)
+        .filter(|line| !line.is_empty() && !line.starts_with('#'))
+        .filter_map(move |line| match classify(line) {
+            Line::Grant(g) => {
+                let sorted = previous.is_none_or(|p| grant_before(&p, &g));
+                let named = entries(table).flatten().any(|e| e.digest == g.digest);
+                previous = Some(g);
+                Some(if sorted && named {
+                    Ok(g)
+                } else {
+                    Err(Error::Malformed)
+                })
+            }
+            Line::Row { .. } | Line::Pointer { .. } => None,
+            Line::Malformed => Some(Err(Error::Malformed)),
+        })
+}
+
+/// Whether `a` sorts strictly before `b` as their lines' text does.
+fn grant_before(a: &Grant<'_>, b: &Grant<'_>) -> bool {
+    fn key<'g>(g: &Grant<'g>) -> ([u8; measured_boot::DIGEST_TEXT_LEN], &'static str, &'g str) {
+        match g.what {
+            Granted::Network => (measured_boot::digest_text(&g.digest), "network", ""),
+            Granted::Zone("") => (measured_boot::digest_text(&g.digest), "zone", ROOT_ZONE),
+            Granted::Zone(z) => (measured_boot::digest_text(&g.digest), "zone", z),
+        }
+    }
+    key(a) < key(b)
+}
+
+/// **Whether the owner granted the bytes with this digest the network**: a `grant <digest>
+/// network` line, read through [`grants`], so a malformed table grants nothing and says so.
+pub fn network_granted(table: &str, digest: &Digest) -> Result<bool, Error> {
+    let mut granted = false;
+    for g in grants(table) {
+        let g = g?;
+        granted |= g.digest == *digest && g.what == Granted::Network;
+    }
+    Ok(granted)
 }
 
 /// **The entry a bare name at the prompt runs** (DECISIONS §229 (how a bare name at the prompt
@@ -402,6 +506,7 @@ where
     let mut writer = Writer { out, at: 0 };
     write_rows(table, &entries, &mut writer)?;
     write_pointers(table, &entries, &mut writer)?;
+    write_grants(table, |_| true, &mut writer)?;
     Ok(writer.at)
 }
 
@@ -457,6 +562,24 @@ where
             .any(|p| p.program == entry.program)
         {
             writer.pointer(entry.program, &entry.digest)?;
+        }
+    }
+    Ok(())
+}
+
+/// The grant lines of `table` whose digest `keep` answers yes for, in their order, which is
+/// already sorted ([`grants`] refuses a table that is not). Nothing writes a new grant yet: the
+/// owner's yes at install has no input to arrive on (milestone 892's BUGS).
+#[inline(never)]
+fn write_grants(
+    table: &str,
+    keep: impl Fn(&Digest) -> bool,
+    writer: &mut Writer<'_>,
+) -> Result<(), Error> {
+    for g in grants(table) {
+        let g = g?;
+        if keep(&g.digest) {
+            writer.grant(&g)?;
         }
     }
     Ok(())
@@ -555,6 +678,17 @@ pub fn without_package(
             writer.pointer(pointer.program, &digest)?;
         }
     }
+    // A grant goes with the last row of its digest: the same bytes installed under a second name
+    // keep the owner's grant.
+    write_grants(
+        table,
+        |digest| {
+            entries(table)
+                .flatten()
+                .any(|e| e.digest == *digest && !gone(&e))
+        },
+        &mut writer,
+    )?;
     Ok(writer.at)
 }
 
@@ -770,6 +904,19 @@ impl Writer<'_> {
         self.bytes(e.package.as_bytes())?;
         self.bytes(b" ")?;
         self.bytes(e.manager.as_bytes())?;
+        self.bytes(b"\n")
+    }
+
+    fn grant(&mut self, g: &Grant<'_>) -> Result<(), Error> {
+        self.bytes(b"grant ")?;
+        self.bytes(&measured_boot::digest_text(&g.digest))?;
+        match g.what {
+            Granted::Network => self.bytes(b" network")?,
+            Granted::Zone(zone) => {
+                self.bytes(b" zone ")?;
+                self.bytes(if zone.is_empty() { ROOT_ZONE } else { zone }.as_bytes())?;
+            }
+        }
         self.bytes(b"\n")
     }
 
@@ -1623,5 +1770,73 @@ mod tests {
         assert_eq!(store.bare_version_of("tenor"), None);
         assert_eq!(store.bare_version_of("date").unwrap(), "1.0.0");
         assert_eq!(defaults(store.table()).count(), 1);
+    }
+
+    /// **A grant line is the owner's grant, read strictly** (calef's 2026-10-19 (UTC) ruling on
+    /// #2405): the network and zones read back for their digest and no other, the root zone as
+    /// `.`; a grant for no row, an unsorted or repeated grant, a zone that is not canonical, or a
+    /// word after one makes the whole table unreadable. An install carries the grants of the rows
+    /// it keeps, and a removal drops its rows' grants.
+    #[test]
+    fn grant_lines_are_read_strictly_and_follow_their_rows() {
+        let a = [1u8; 32];
+        let b = [2u8; 32];
+        let text = |d: &Digest| String::from_utf8(measured_boot::digest_text(d).to_vec()).unwrap();
+        let (ta, tb) = (text(&a), text(&b));
+        let table = format!(
+            "{ta} dialer 0.1.0 dialer jig\n{tb} alto 0.1.0 duet jig\ndefault dialer {ta}\ndefault alto {tb}\n\
+             grant {ta} network\ngrant {ta} zone .\ngrant {ta} zone nife.test\n"
+        );
+        assert_eq!(network_granted(&table, &a), Ok(true));
+        assert_eq!(network_granted(&table, &b), Ok(false));
+        let zones: vec::Vec<_> = grants(&table)
+            .map(|g| g.unwrap())
+            .filter_map(|g| match g.what {
+                Granted::Zone(z) => Some(z),
+                Granted::Network => None,
+            })
+            .collect();
+        assert_eq!(zones, ["", "nife.test"]);
+        assert!(
+            lookup_digest(&table, &a).unwrap().is_some(),
+            "rows still read"
+        );
+
+        let c = text(&[3u8; 32]);
+        for bad in [
+            format!("grant {c} network\n"),
+            format!("grant {ta} zone nife.test\ngrant {ta} network\n"),
+            format!("grant {ta} network\ngrant {ta} network\n"),
+            format!("grant {ta} zone Nife.test\n"),
+            format!("grant {ta} network now\n"),
+            format!("grant {ta} clock\n"),
+        ] {
+            let t = format!("{ta} dialer 0.1.0 dialer jig\n{bad}");
+            assert_eq!(network_granted(&t, &a), Err(Error::Malformed), "{bad}");
+        }
+
+        let mut out = vec![0u8; 4096];
+        let duet2 = Entry {
+            program: "tenor",
+            version: "0.1.0",
+            package: "duet",
+            digest: [4u8; 32],
+            manager: "jig",
+        };
+        let n = with_entry(&table, &duet2, false, &mut out).unwrap();
+        let next = core::str::from_utf8(&out[..n]).unwrap();
+        assert_eq!(
+            network_granted(next, &a),
+            Ok(true),
+            "an install keeps others' grants"
+        );
+        let next = next.to_string();
+        let n = without_package(&next, "dialer", None, &mut out).unwrap();
+        let after = core::str::from_utf8(&out[..n]).unwrap();
+        assert!(
+            !after.contains("grant "),
+            "a removal takes its rows' grants: {after}"
+        );
+        assert_eq!(network_granted(after, &a), Ok(false));
     }
 }

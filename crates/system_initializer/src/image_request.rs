@@ -578,8 +578,10 @@ pub(super) fn staged_image(len: u64) -> &'static [u8] {
     unsafe { core::slice::from_raw_parts(IMAGE_STAGING_VA as *const u8, len as usize) }
 }
 
-/// **Is this image vouched for?** Its SHA-256, looked up in the live generation of the activation
-/// set on the file service (`installed_programs`). `false` on a miss, and on every way of failing to
+/// **Is this image vouched for, and was it granted the network?** Its SHA-256, looked up in the
+/// live generation of the activation set on the file service (`installed_programs`), with the
+/// generation's `grant` lines for that digest (`installed_programs::network_granted`, milestone 892).
+/// [`grant_plan::Vouch::Unvouched`] on a miss, and on every way of failing to
 /// read the table: no disk, no `activation` directory, a `current` that does not parse, a
 /// generation that is malformed or larger than a page. A table that cannot be read vouches for
 /// nothing, which is `measured_boot`'s rule one table over.
@@ -587,9 +589,15 @@ pub(super) fn staged_image(len: u64) -> &'static [u8] {
 /// The file page is the one the shell and every caretaker share with the server. That is sound for
 /// the reason `build_caretaker` gives: the shell is parked in its `RECEIVE` on the result endpoint for
 /// the whole of a spawn, so nothing else is mid-request on it.
-pub(super) fn vouched(bytes: &[u8], fs: Option<Fs>, own_ut: u64, fs_mapped: &mut bool) -> bool {
+pub(super) fn vouched(
+    bytes: &[u8],
+    fs: Option<Fs>,
+    own_ut: u64,
+    fs_mapped: &mut bool,
+) -> grant_plan::Vouch {
+    use grant_plan::Vouch;
     let Some(files) = FsCalls::map(fs, own_ut, fs_mapped) else {
-        return false;
+        return Vouch::Unvouched;
     };
     let digest = measured_boot::sha256(bytes);
     let d = files.named(
@@ -599,17 +607,21 @@ pub(super) fn vouched(bytes: &[u8], fs: Option<Fs>, own_ut: u64, fs_mapped: &mut
         dir::READ,
     );
     if d < 0 {
-        return false;
+        return Vouch::Unvouched;
     }
     let mut table = [0u8; PAGE_BYTES];
     let hit = match files.live_generation(d as u64, &mut table) {
-        Ok((_, n)) => core::str::from_utf8(&table[..n]).is_ok_and(|table| {
-            matches!(
-                installed_programs::lookup_digest(table, &digest),
-                Ok(Some(_))
-            )
-        }),
-        Err(()) => false,
+        Ok((_, n)) => match core::str::from_utf8(&table[..n]) {
+            Ok(table) => match installed_programs::lookup_digest(table, &digest) {
+                // A grant that cannot be read grants nothing; the row still vouches.
+                Ok(Some(_)) => Vouch::Vouched {
+                    network: installed_programs::network_granted(table, &digest).unwrap_or(false),
+                },
+                _ => Vouch::Unvouched,
+            },
+            Err(_) => Vouch::Unvouched,
+        },
+        Err(()) => Vouch::Unvouched,
     };
     files.close(d);
     hit
@@ -623,7 +635,7 @@ pub(super) fn vouched(bytes: &[u8], fs: Option<Fs>, own_ut: u64, fs_mapped: &mut
 /// words must fit what results.
 pub(super) fn endowed_image(
     elf: &elf::Elf<'_>,
-    vouched: bool,
+    vouch: grant_plan::Vouch,
     arg: u64,
     mem_pages: u64,
     words: bool,
@@ -649,6 +661,6 @@ pub(super) fn endowed_image(
     ) {
         return None;
     }
-    let m = grant_plan::image_manifest(declared, vouched).ok()?;
+    let m = grant_plan::image_manifest(declared, vouch).ok()?;
     grant_plan::image_request_fits(&m, arg, mem_pages, words).then_some(m)
 }
