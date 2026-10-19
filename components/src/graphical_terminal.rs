@@ -33,6 +33,10 @@
 
 //! # BUGS
 //!
+//! **A session runs no program.** Its lines are echoed and nothing else, so a full-screen program
+//! cannot reach `display_terminal` through a session, which milestone 705 (the graphical terminal
+//! runs full-screen programs) needs.
+//!
 //! **Arm 1 has no line editing.** Backspace and the arrows are stored and painted as the control
 //! bytes they are; the only edits are `^C` and retyping.
 //!
