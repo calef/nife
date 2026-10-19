@@ -1029,5 +1029,7 @@ impl Vt {
     }
 }
 
+pub mod handoff;
+
 #[cfg(test)]
 mod tests;

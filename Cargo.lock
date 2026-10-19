@@ -1519,6 +1519,7 @@ version = "0.1.0"
 dependencies = [
  "bitmap_font",
  "line_editor",
+ "page_frames",
 ]
 
 [[package]]

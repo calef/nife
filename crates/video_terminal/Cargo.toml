@@ -20,6 +20,7 @@ workspace = true
 
 [dependencies]
 bitmap_font = { version = "0.1.0", path = "../bitmap_font" }
+page_frames = { version = "0.1.0", path = "../page_frames" }
 
 [dev-dependencies]
 # The interoperability test, and the reason it is a dev-dependency rather than a design coupling:
