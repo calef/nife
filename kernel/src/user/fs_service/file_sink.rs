@@ -19,6 +19,14 @@ use super::*;
 /// `sink` is the capability a program's output slot gets, and **that endpoint is the whole of
 /// what the writer holds**, which is the property the milestone rests on: it is created here
 /// and handed out with `WRITE` to whoever is redirected and `READ` to the sink.
+///
+/// Both endpoints are retyped from `endpoints`, a region the caller owns and reclaims once the
+/// sink has reported `DONE` and exited ([`FILE_SINK_PAGES`] of it).
+/// The pages [`start_file_sink`] or [`start_file_source`] retypes from its caller's region: two
+/// endpoints each.
+#[cfg_attr(not(any(test, feature = "system_tests")), allow(dead_code))]
+pub const FILE_SINK_PAGES: u64 = 2;
+
 #[cfg_attr(not(any(test, feature = "system_tests")), allow(dead_code))]
 pub struct FileSink {
     /// The FS service's two readiness endpoints, if this call is the one that wired it.
@@ -34,10 +42,11 @@ pub fn start_file_sink(
     blk_image: &'static [u8],
     fs_server_image: &'static [u8],
     file_sink_image: &'static [u8],
+    endpoints: u64,
 ) -> Option<FileSink> {
     let (file_ep, file_shared, readiness) = ensure(blk_image, fs_server_image)?;
-    let sink = crate::sched::create_rendezvous();
-    let report = crate::sched::create_rendezvous();
+    let sink = crate::sched::create_rendezvous_from(endpoints).expect("no file sink endpoint");
+    let report = crate::sched::create_rendezvous_from(endpoints).expect("no file sink report");
     crate::sched::spawn(move || {
         run(
             file_sink_image,
@@ -74,16 +83,18 @@ pub fn start_file_sink(
 /// that true).
 ///
 /// It streams the file's contents out **over the sink contract**, so the bytes that reach the
-/// test arrive in the same sixteen-byte framing a `println!` does. Returns `(out, report)`.
+/// test arrive in the same sixteen-byte framing a `println!` does. Returns `(out, report)`, both
+/// retyped from `endpoints` as [`start_file_sink`]'s are.
 #[cfg_attr(not(any(test, feature = "system_tests")), allow(dead_code))]
 pub fn start_file_source(
     blk_image: &'static [u8],
     fs_server_image: &'static [u8],
     file_source_image: &'static [u8],
+    endpoints: u64,
 ) -> Option<(RendezvousId, RendezvousId)> {
     let (file_ep, file_shared, _) = ensure(blk_image, fs_server_image)?;
-    let out = crate::sched::create_rendezvous();
-    let report = crate::sched::create_rendezvous();
+    let out = crate::sched::create_rendezvous_from(endpoints).expect("no file source endpoint");
+    let report = crate::sched::create_rendezvous_from(endpoints).expect("no file source report");
     crate::sched::spawn(move || {
         run(
             file_source_image,
