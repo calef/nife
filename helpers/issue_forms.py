@@ -4,7 +4,7 @@
     helpers/issue_forms.py              # script/lint: fail naming the file, the field and the rule
     helpers/issue_forms.py --selftest   # fixtures, no tree; script/lint runs it first
 
-Milestone 207 (community documentation). The file name is provisional; naming is an architect's.
+Milestone 207 (the four things GitHub asks for). The file name is provisional; naming is an architect's.
 
 # WHY
 
@@ -26,7 +26,7 @@ a body of markdown only, the reserved option `None`, the word `password` in a la
 whitespace-only name (eight of the 21 errors), and it rejects the documented `min_length`. JSON
 Schema cannot express the uniqueness rules at all, so a check written here was needed whatever
 validator ran beside it, and the validator would have been the tree's first Python package
-dependency (§46). The pull request that added this file has the measurement.
+dependency (§46, thin primitives or whole subsystems). The pull request that added this file has the measurement.
 
 # THE PARSER
 
@@ -460,8 +460,9 @@ CASES = [
      "reserved word, none"),
     ("password in an input's label", {"a.yml": GOOD.replace("Commit sha", "Commit password")},
      "forbidden word, password"),
-    ("a misspelled attribute", {"a.yml": GOOD.replace("      label: Logs", "      lable: Logs")},
-     "`lable` is not a permitted attribute"),
+    ("an attribute the type does not take",
+     {"a.yml": GOOD.replace("      label: Logs", "      label: Logs\n      placeholder: x")},
+     "`placeholder` is not a permitted attribute"),
     ("a body after a --- separator", {"a.yml": GOOD.replace("body:", "---\nbody:")},
      "2 YAML documents"),
     ("one key given twice", {"a.yml": GOOD.replace("    id: sha\n", "    id: sha\n    id: sha2\n")},

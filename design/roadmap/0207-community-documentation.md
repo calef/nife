@@ -124,8 +124,8 @@ project has no third-party contributors.
   enforcement promise.
 
 Reuse: written, not taken. SchemaStore's `github-issue-forms` schema under `check-jsonschema`
-misses eight of GitHub's 21 documented form errors (the uniqueness rules JSON Schema cannot
-express among them) and rejects the documented `min_length`, so a written check was needed in any
+misses eight of GitHub's 21 documented form errors, the uniqueness rules JSON Schema cannot
+express among them, and rejects the documented `min_length`. A written check was needed in any
 case, and the validator would be the tree's first Python package dependency.
 
 ## Follow-on
