@@ -122,16 +122,22 @@ pub struct Wiring {
 
 /// Every block device the kernel can see, in the order the roster lists them.
 ///
-/// mmio first, in slot order, then PCIe. That ordering is a promise to the roster's reader: an
-/// mmio device's `ordinal` is the same number `virtio::find_block_device_n` counts by, so a listing
-/// and a wiring cannot disagree about which disk is which.
+/// mmio first, in slot order, then virtio-blk functions on PCIe, then NVMe controllers. That
+/// ordering is a promise to the roster's reader: an mmio device's `ordinal` is the same number
+/// `virtio::find_block_device_n` counts by, and an NVMe controller's is its place in the same walk
+/// `pci::find_nvme_device` takes the first of, so a listing and a wiring cannot disagree about
+/// which disk is which. NVMe comes last so that adding it moved no virtio entry.
+///
+/// An NVMe entry is listed whether or not `non_volatile_memory_express_service` has wired a
+/// server for it, the same terms the virtio entries are on: the roster says a disk exists, and
+/// which program holds its endpoint is decided at wiring time and nowhere in this page.
 fn devices() -> (
     [block_roster::Device; block_roster::capacity_of(FRAME_SIZE as usize)],
     usize,
 ) {
     let mut out = [block_roster::Device {
         ordinal: 0,
-        transport: block_roster::TRANSPORT_MMIO,
+        transport: block_roster::TRANSPORT_VIRTIO_MEMORY_MAPPED_IO,
     }; block_roster::capacity_of(FRAME_SIZE as usize)];
     let mut n = 0;
 
@@ -141,7 +147,7 @@ fn devices() -> (
         }
         out[n] = block_roster::Device {
             ordinal: i as u32,
-            transport: block_roster::TRANSPORT_MMIO,
+            transport: block_roster::TRANSPORT_VIRTIO_MEMORY_MAPPED_IO,
         };
         n += 1;
     }
@@ -151,7 +157,17 @@ fn devices() -> (
         }
         out[n] = block_roster::Device {
             ordinal: i as u32,
-            transport: block_roster::TRANSPORT_PCI,
+            transport: block_roster::TRANSPORT_VIRTIO_PCI,
+        };
+        n += 1;
+    }
+    for i in 0..crate::pci::count_non_volatile_memory_express_controllers() {
+        if n == out.len() {
+            break;
+        }
+        out[n] = block_roster::Device {
+            ordinal: i as u32,
+            transport: block_roster::TRANSPORT_NON_VOLATILE_MEMORY_EXPRESS,
         };
         n += 1;
     }

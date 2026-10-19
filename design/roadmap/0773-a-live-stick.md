@@ -270,4 +270,4 @@ None is ratified.
 
 ## Index row
 
-A USB stick that boots a PC such as xenon into a usable nife from memory, leaving the PC's own disk exactly as found. It matters because it is the cheapest way for a stranger to try nife on a machine they own, which fatal risk 8 (nobody needs it) cannot be tested without.
+A USB stick that boots a PC such as xenon into a usable nife from memory, leaving the PC's own disk exactly as found. It matters because it is the cheapest way for a stranger to try nife on a machine they own, which the claim that nobody needs nife (a non-fatal note in fatal risk 8's appendix) cannot be tested without.

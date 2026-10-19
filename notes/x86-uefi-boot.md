@@ -165,7 +165,9 @@ on xenon, and [`x86-uefi-boot/usb-stick-firmware-steps-xenon.md`](x86-uefi-boot/
 has what the machine's own menus said about each step.
 
 1. Secure Boot: off (*Secure Boot → Secure Boot Enable → Disabled*). This image is unsigned, and a
-   Secure Boot machine refuses the stick with a security-violation message.
+   Secure Boot machine refuses the stick with a security-violation message. Other vendors' menus,
+   and the BitLocker recovery key to write down first, are in
+   [`turning-secure-boot-off.md`](turning-secure-boot-off.md).
 2. Boot List Option: UEFI, not Legacy, in the lower half of *General → Boot Sequence*.
 3. Serial port: COM1, a single radio under *System Configuration → Serial Port*. COM1 is I/O port
    `0x3f8` with IRQ 4, which is where the kernel's console driver looks.

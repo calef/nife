@@ -252,7 +252,7 @@ Everything else recommended above is reversible code.
 
 ## What this blocks and unblocks
 
-Nothing is blocked; S2 composes with D2 as ruled. Fatal risk 8 (nobody needs it) does not move: a
+Nothing is blocked; S2 composes with D2 as ruled. The path to a first customer does not move: a
 first customer installs by digest vouching.
 
 ## Prior art, read 2026-09-26

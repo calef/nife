@@ -96,7 +96,7 @@ jobs:
         run: |
           mkdir -p payload/EFI/BOOT
           printf 'a stand-in for BOOTX64.EFI\n' > payload/EFI/BOOT/BOOTX64.EFI
-          rustup target add aarch64-pc-windows-msvc
+          helpers/rustup-retry.sh target add aarch64-pc-windows-msvc
           NIFE_STICK_PAYLOADS="$PWD/payload" NIFE_STICK_BUILD=ci cargo build -p stick_maker --release
           NIFE_STICK_PAYLOADS="$PWD/payload" NIFE_STICK_BUILD=ci cargo build -p stick_maker --release --target aarch64-pc-windows-msvc
 

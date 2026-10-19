@@ -1145,8 +1145,14 @@ jobs:
       - name: Start the job wall-time clock
         run: echo "JOB_STARTED_AT=$(date +%s)" >> "$GITHUB_ENV"
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
-      - name: Install rustfmt (pinned nightly)
-        run: rustup toolchain install nightly --profile minimal --component rustfmt
+      # Every job that installs a toolchain itself does it with this one line. `toolchain install`
+      # with no name installs rust-toolchain.toml's pin with every component and target it lists,
+      # which is what cargo would fetch on first use anyway, but here inside the retry. Naming
+      # `nightly` instead would install the floating channel beside the pin: a second download and a
+      # second chance at the CDN, for a toolchain no step uses. helpers/rustup-retry.sh says why the
+      # retry exists.
+      - name: Install the pinned toolchain
+        run: helpers/rustup-retry.sh toolchain install
       - run: script/ci-build fmt
       - name: Check the job's wall time against its budget
         if: always()
@@ -1176,10 +1182,8 @@ jobs:
           # and no pull request went red. The check now refuses an empty history too, so this and
           # that refusal are belt and braces.
           fetch-depth: 0
-      - name: Install clippy and the bare-metal target
-        run: |
-          rustup toolchain install nightly --profile minimal --component clippy
-          rustup target add --toolchain nightly aarch64-unknown-none-softfloat
+      - name: Install the pinned toolchain
+        run: helpers/rustup-retry.sh toolchain install
       # `script/lint` clippies the `user` package, whose build.rs compiles the C component with a
       # bare-metal clang (milestone 36, DECISIONS §30). The test job gets this from script/bootstrap;
       # this job does not run bootstrap (it would install QEMU it never uses), so install clang here.
@@ -1292,17 +1296,12 @@ jobs:
       - name: Start the job wall-time clock
         run: echo "JOB_STARTED_AT=$(date +%s)" >> "$GITHUB_ENV"
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
-      # Every bare-metal target, because this gates every one of them.
-      # §19 (architectural parity is a tenet): a fastpath that fits on one ISA and not another is
-      # exactly the asymmetry that rule exists to catch. The list said two until 2026-09-23, a month after
-      # `script/fastpath-footprint` widened its own `arches` to three, which is the shape
-      # milestone 186 (derive the architecture list) exists to stop: the pin's `targets` array
-      # covered for it here, so nothing fired. llvm-tools carries the objdump the call-graph walk
-      # reads.
-      - name: Install the bare-metal targets and llvm-tools
-        run: |
-          rustup target add aarch64-unknown-none-softfloat riscv64imac-unknown-none-elf x86_64-unknown-none
-          rustup component add llvm-tools
+      # The pin's `targets` array is every bare-metal target, and this gates every one of them
+      # (§19 (architectural parity is a tenet): a fastpath that fits on one ISA and not another is
+      # exactly the asymmetry that rule exists to catch). llvm-tools carries the objdump the
+      # call-graph walk reads.
+      - name: Install the pinned toolchain
+        run: helpers/rustup-retry.sh toolchain install
       # Its own job rather than a step in an existing one, for stack-frame-check's reason: it needs a
       # RELEASE kernel, and no other job builds one, so there is nothing to share. Jobs run in
       # parallel, so it costs no wall clock against the 30-minute Kani job.
@@ -1326,10 +1325,8 @@ jobs:
       # machine; the 20-minute cap is for a cold runner. Its own job because no other job builds a
       # release image, so there is nothing to share, and jobs run in parallel. llvm-tools carries
       # the objcopy that strips the kernel and the objdump that proves it stripped.
-      - name: Install the targets and llvm-tools
-        run: |
-          rustup target add x86_64-unknown-none x86_64-unknown-uefi
-          rustup component add llvm-tools
+      - name: Install the pinned toolchain
+        run: helpers/rustup-retry.sh toolchain install
       - run: script/ci-build boot-file-size-check
       - name: Check the job's wall time against its budget
         if: always()
@@ -1375,8 +1372,8 @@ jobs:
       - name: Start the job wall-time clock
         run: echo "JOB_STARTED_AT=$(date +%s)" >> "$GITHUB_ENV"
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
-      - name: Install the bare-metal target
-        run: rustup target add aarch64-unknown-none-softfloat
+      - name: Install the pinned toolchain
+        run: helpers/rustup-retry.sh toolchain install
       # Its own job for fastpath-footprint's reason one step further: this needs TWO release builds
       # that share nothing, so there is not only nothing to reuse from another job, there is nothing
       # to reuse between its own halves. Jobs run in parallel, so it costs no wall clock against the
@@ -1402,15 +1399,12 @@ jobs:
       - name: Start the job wall-time clock
         run: echo "JOB_STARTED_AT=$(date +%s)" >> "$GITHUB_ENV"
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
-      # All three bare-metal targets, because this gates all three (§19, architectural parity is a
-      # tenet: an image that obeys W^X on one ISA and not another is exactly the asymmetry that rule
-      # exists to catch, and on 2026-08-31 x86_64 was the one that did not).
-      - name: Install the bare-metal targets
-        run: |
-          rustup toolchain install nightly --profile minimal
-          rustup target add --toolchain nightly aarch64-unknown-none-softfloat
-          rustup target add --toolchain nightly riscv64imac-unknown-none-elf
-          rustup target add --toolchain nightly x86_64-unknown-none
+      # The pin's `targets` array is every bare-metal target, and this gates all of them (§19
+      # (architectural parity is a tenet): an image that obeys W^X on one ISA and not another is
+      # exactly the asymmetry that rule exists to catch, and on 2026-08-31 x86_64 was the one that
+      # did not).
+      - name: Install the pinned toolchain
+        run: helpers/rustup-retry.sh toolchain install
       # No rust-cache in this job (calef, #1814, 2026-10-07 UTC): a hit gained under half a minute,
       # and without it the time the step spent moves into the first cargo build rather than
       # growing. See notes/actions-cache-budget-2026-10-07.md.
@@ -1439,22 +1433,15 @@ jobs:
       - name: Start the job wall-time clock
         run: echo "JOB_STARTED_AT=$(date +%s)" >> "$GITHUB_ENV"
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
-      # Two of the three bare-metal targets, and this one is a decision rather than a stale list:
-      # `script/stack-frame-check` holds x86_64 out of its DEFAULT set, reachable through `--arch`,
-      # because widening it found `kernel::arch::x86_64::iommu::init` at 12,504 bytes against a
-      # 4,096-byte guard page. That finding and its disposition are in that script's own BUGS; when
-      # it is dispositioned, x86_64 joins the default set and this list with it. §19 parity still
-      # applies to the two gated here: a frame that fits on one ISA and not the other is exactly the
-      # asymmetry that rule exists to catch. llvm-tools carries the objcopy and nm that read the
-      # `.stack_sizes` section the measurement lives in.
-      - name: Install the bare-metal targets and llvm-tools
-        run: |
-          rustup toolchain install nightly --profile minimal --component llvm-tools
-          rustup target add --toolchain nightly aarch64-unknown-none-softfloat
-          rustup target add --toolchain nightly riscv64imac-unknown-none-elf
-          # `script/stack-depth-check` gates every bare-metal target in rust-toolchain.toml, so
-          # this job needs all three even though `stack-frame-check` below defaults to two.
-          rustup target add --toolchain nightly x86_64-unknown-none
+      # Every bare-metal target is installed, because `script/stack-depth-check` gates all of them.
+      # `script/stack-frame-check` defaults to two: it holds x86_64 out of its DEFAULT set, reachable
+      # through `--arch`, because widening it found `kernel::arch::x86_64::iommu::init` at 12,504
+      # bytes against a 4,096-byte guard page. That finding and its disposition are in that
+      # script's own BUGS. §19 parity still applies to the two gated here: a frame that fits on one
+      # ISA and not the other is exactly the asymmetry that rule exists to catch. llvm-tools
+      # carries the objcopy and nm that read the `.stack_sizes` section the measurement lives in.
+      - name: Install the pinned toolchain
+        run: helpers/rustup-retry.sh toolchain install
       # No rust-cache here (calef, #1814, 2026-10-07 UTC). This job was measured without it first:
       # 115.7 s against a median 112.8 s with it (range 79.9 to 120.0, 20 runs), because the first
       # build absorbed the time the step had spent. See notes/actions-cache-budget-2026-10-07.md.
@@ -1691,8 +1678,8 @@ jobs:
           # (lane/docs-only-ci, 2026-10-05). Kept rather than dropped untested.
           fetch-depth: 0
 
-      - name: Install llvm-tools (pinned nightly)
-        run: rustup toolchain install nightly --profile minimal --component llvm-tools
+      - name: Install the pinned toolchain
+        run: helpers/rustup-retry.sh toolchain install
       - uses: taiki-e/install-action@ab6895351a88b908e96a4697860d4ffea5e57dbe # v2.87.27
         with:
           tool: cargo-llvm-cov

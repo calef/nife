@@ -56,11 +56,11 @@ persona, so its isolation is also the persona's confinement, which this mileston
 
 ## Where it ranks
 
-Strategic, not next. The customer path is vacant, and fatal risk 8 (nobody needs it) is answered
-by a workload rather than by code. The predecessors are queued: the std port as the native
-software story, §220 (signed builds) as the trust an imported binary needs, and the packaging
-milestones as the distribution shape. This file records the decision and starts nothing ahead of
-them.
+Strategic, not next. The customer path is vacant, and the claim that nobody needs nife (a non-fatal
+note in fatal risk 8's appendix) is answered by a workload rather than by code. The predecessors are
+queued: the std port as the native software story, §220 (signed builds) as the trust an imported
+binary needs, and the packaging milestones as the distribution shape. This file records the decision
+and starts nothing ahead of them.
 
 Name provisional.
 

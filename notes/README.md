@@ -48,3 +48,7 @@ area directories), ruled B). Appendices under
 `suspend-and-resume.md`: Name: provisional, minted 2026-10-18 (UTC) by lane/48-tcb-suspend-resume.
 
 `dependency-standards-census.md`: Name: provisional, minted 2026-10-19 (UTC) by maintainer/dependency-standards-census.
+
+`ci-toolchain-download.md`: Name: provisional, minted 2026-10-19 (UTC) by maintainer/rustup-retry.
+
+`turning-secure-boot-off.md`: Name: provisional, minted 2026-10-18 (UTC) by maintainer/500-secure-boot-ruled.
