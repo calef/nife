@@ -532,8 +532,10 @@ fn load_current(p: &Installed) -> Option<(elf::Elf<'static>, grant_plan::Manifes
         Some(d) => Some(capability_manifest_note::decode(d).ok()?),
     };
     // Vouched: the live generation named these bytes, so they get what they declare, exactly as
-    // the progenitor endows an installed program run at the prompt.
-    let m = grant_plan::image_manifest(declared, true).ok()?;
+    // the progenitor endows an installed program run at the prompt. No network: a timetable endows
+    // none (`timetable::schedulable`), whatever the owner granted at the prompt.
+    let m =
+        grant_plan::image_manifest(declared, grant_plan::Vouch::Vouched { network: false }).ok()?;
     timetable::schedulable(&m).then_some((elf, m))
 }
 
