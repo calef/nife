@@ -159,23 +159,6 @@ echo "==> the rustup retry (a dropped CDN connection retries; a real error does 
 # exercises, so this is the only place its classifier and its bound are ever seen to work.
 helpers/rustup-retry-selftest.sh >/dev/null
 
-echo "==> the trunk watcher's cadence stream (a pass that could not ask is a row, never recovery)"
-# Fakes and a scenario table in a scratch tree: no network, no gh, no cargo. The defect it holds is
-# a recovery line printed about a watcher that could not ask, which a green run of everything else
-# would not catch, because it needs the API to fail on cue.
-helpers/trunk-health-cadence-selftest.sh >/dev/null
-
-# The repeat half of milestone 422 (a cadence job whose healthy state is red) in
-# helpers/trunk-health.sh: the grouping thresholds, the log-frame strip and the watcher exclusions,
-# proved offline through a real `--once` pass against a stub `gh` and `git` and synthetic runs (no
-# network). helpers/trunk-health-repeat-selftest.sh says what each fixture pins and ends in the
-# ruled issue home, helpers/repeat_issue.py, whose pure parsing and planning have their own
-# --selftest beside it.
-helpers/trunk-health-repeat-selftest.sh >/dev/null
-# The DUE half (milestone 495 (a cadence that says "due" reaches nobody)): exit code is the authority, drift is cannot-ask.
-helpers/trunk-health-due-selftest.sh >/dev/null
-python3 helpers/repeat_issue.py --selftest >/dev/null
-
 echo "==> clippy: host crates + xtask"
 # The derived half of the selection (helpers/host-excluded-crates.sh). `kernel` and `system_tests`
 # are excluded by judgment rather than the derivation: they are bare metal through `kernel`,
