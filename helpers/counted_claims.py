@@ -52,8 +52,9 @@ import re
 MARKER = re.compile(r'<!--count(-at-least|-at-most)?:([a-z0-9-]+)-->')
 
 # Prose explaining this convention has to be able to spell it, the same exemption `script/lint`'s
-# vocabulary check carries for the documents that argue about a word. A marker inside a backtick span is being QUOTED, not asserted, so blank the spans before looking. Blanked rather
-# than deleted so that column positions still line up with the number-before-marker search.
+# vocabulary check carries for the documents that argue about a word. A marker inside a backtick
+# span is being QUOTED, not asserted, so blank the spans before looking. Blanked rather than
+# deleted so that column positions still line up with the number-before-marker search.
 CODE_SPAN = re.compile(r'`[^`]*`')
 
 # The number a marker vouches for is the LAST number on the line before the marker, commas allowed
