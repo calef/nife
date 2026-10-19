@@ -18,8 +18,12 @@
 # mentions LINT_NO_CARGO. Cargo in the preamble fails too, since the preamble cannot be dropped.
 #
 # Usage: awk -v mode=emit|list -f helpers/lint-no-cargo.awk script/lint
+#        awk -v mode=split -v dir=<empty dir> -f helpers/lint-no-cargo.awk script/lint
 #   emit  prints the script to run (preamble plus the kept sections).
 #   list  prints one `run`/`skip` line per section, for a person asking what the mode covers.
+#   split writes the preamble to <dir>/preamble, each section to <dir>/<NNN>, and one
+#         `NNN<tab>keep<tab>name` line per section to <dir>/index, keep being 1 where `emit` would
+#         keep it. helpers/lint-sections.sh runs them one at a time.
 
 function is_cargo(line) {
     if (line ~ /^[ \t]*#/) return 0
@@ -29,16 +33,22 @@ function is_cargo(line) {
     return 0
 }
 
-function close_block(   keep) {
+function close_block(   keep, file) {
     if (name == "") {
         if (cargo) { print "lint --no-cargo: the preamble of script/lint invokes cargo, so no section split can drop it" > "/dev/stderr"; bad = 1 }
         out = out body
+        if (mode == "split") { printf "%s", body > (dir "/preamble"); close(dir "/preamble") }
         return
     }
     if (okmark && !cargo) { print "lint --no-cargo: \"" name "\" carries a no-cargo-ok marker but runs no cargo; delete the marker" > "/dev/stderr"; bad = 1 }
     if (okmark && !guarded) { print "lint --no-cargo: \"" name "\" carries a no-cargo-ok marker but never reads LINT_NO_CARGO, so it would run cargo in the mode that forbids it" > "/dev/stderr"; bad = 1 }
     keep = (!cargo || okmark)
     if (mode == "list") print (keep ? "run   " : "skip  ") name
+    else if (mode == "split") {
+        file = sprintf("%03d", ++sections)
+        printf "%s", body > (dir "/" file); close(dir "/" file)
+        printf "%s\t%d\t%s\n", file, keep, substr(name, 5) > (dir "/index")
+    }
     else if (keep) out = out body
 }
 
@@ -57,5 +67,6 @@ function close_block(   keep) {
 END {
     close_block()
     if (bad) exit 1
-    if (mode != "list") printf "%s", out
+    if (mode == "split") close(dir "/index")
+    else if (mode != "list") printf "%s", out
 }

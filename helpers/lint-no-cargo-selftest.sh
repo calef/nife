@@ -11,7 +11,7 @@
 #   3. a section that opts in with the marker and the guard is kept;
 #   4. a marker on a section with no cargo, and a marker with no guard, fail;
 #   5. cargo before the first header fails, because the preamble cannot be dropped;
-#   6. the real script/lint partitions, and `--list` and `emit` agree on the sections kept.
+#   6. the real script/lint partitions, and `--list`, `emit` and `split` agree on the sections kept.
 
 set -e
 cd "$(dirname "$0")/.."
@@ -59,4 +59,8 @@ kept="$(printf '%s\n' "$real" | grep -c '^run')"
 emitted="$(run emit script/lint | grep -c '^echo "==> ')"
 [ "$kept" = "$emitted" ] || fail "--list keeps $kept sections and emit keeps $emitted"
 [ "$kept" -gt 0 ] || fail "script/lint has no section that runs without cargo"
+mkdir "$dir/split"
+awk -v mode=split -v dir="$dir/split" -f "$awk_file" script/lint || fail "script/lint does not split"
+split_kept="$(awk -F '\t' '$2 == 1' "$dir/split/index" | wc -l | tr -d ' ')"
+[ "$split_kept" = "$kept" ] || fail "split keeps $split_kept sections and --list keeps $kept"
 echo "lint-no-cargo-selftest: ok"
