@@ -69,19 +69,46 @@ pub fn percpu() -> usize {
 /// whatever thread that core runs now. riscv64 and `x86_64` close the window with one load relative
 /// to the per-CPU register; aarch64 has no addressing mode relative to a system register, so it
 /// masks instead. Linux's answer is `current` in `SP_EL0`, which would mean swapping that register
-/// on every trap and switch. On the syscall path IRQs are already masked and this costs the `DAIF`
-/// read and a branch.
+/// on every trap and switch.
+///
+/// **One `asm!` block, not `interrupts::disable` and `cpu::current().current.load()`.** The icount
+/// gate measures an opt-level 0 kernel, where those are five calls that never inline, and this read
+/// is on every IPC: built that way it cost `ipc_rtt` 13,875 ticks per 1,000 round trips with no
+/// preemption tick in the window (notes/benchmarks/drift-since-the-2026-10-10-floor.md). Five
+/// instructions here in every build. Restoring the saved `DAIF` whole puts IRQs back exactly as
+/// found, which is what `disable` and `restore` did.
 ///
 /// Name: provisional.
-#[inline]
+#[inline(always)]
 pub fn read_current_thread() -> u64 {
-    let was_enabled = super::interrupts::disable();
-    let v = crate::cpu::current()
-        .current
-        .load(core::sync::atomic::Ordering::Relaxed);
-    super::interrupts::restore(was_enabled);
+    let v: u64;
+    // SAFETY: `TPIDR_EL1` holds this core's `PerCpu` (`set_percpu`, written once per core at boot),
+    // and `CURRENT_OFF` is the offset of an aligned `AtomicU64` in it, so the `ldr` is a relaxed
+    // atomic load. IRQs are masked from before the `mrs` to after the `ldr`, so both happen on one
+    // core, and the saved `DAIF` is restored unchanged. Nothing in memory is written.
+    unsafe {
+        core::arch::asm!(
+            "mrs {daif}, daif",
+            "msr daifset, #2",
+            "mrs {base}, tpidr_el1",
+            "ldr {v}, [{base}, #{off}]",
+            "msr daif, {daif}",
+            daif = out(reg) _,
+            base = out(reg) _,
+            v = out(reg) v,
+            off = const CURRENT_OFF,
+            options(nostack, readonly, preserves_flags),
+        );
+    }
     v
 }
+
+/// The offset of `PerCpu::current`, which [`read_current_thread`] loads from `TPIDR_EL1`.
+const CURRENT_OFF: usize = core::mem::offset_of!(crate::cpu::PerCpu, current);
+const _: () = assert!(
+    CURRENT_OFF.is_multiple_of(8) && CURRENT_OFF < 32768,
+    "PerCpu::current must sit within `ldr`'s scaled unsigned 12-bit offset from TPIDR_EL1"
+);
 
 /// **Test-only: does the per-CPU pointer name the hart we run on?** Always `true` on aarch64: the
 /// pointer lives in `TPIDR_EL1`, a system register the trap frame never saves or restores, so a
