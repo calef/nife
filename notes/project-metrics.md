@@ -208,7 +208,7 @@ past 5% since fixed anchors (calef, 2026-09-26). Every row and reason: [the drif
 report](project-metrics/baseline-drift.md).
 
 <!-- baseline-drift: script/metrics writes this -->
-2026W42: aarch64 `spawn_reap` +33.14%, riscv64 `spawn_reap` +28.32%, x86_64 `spawn_reap` +10.59%; 19 rows past 5%.
+2026W43: aarch64 `spawn_reap` +33.14%, riscv64 `spawn_reap` +28.32%, x86_64 `spawn_reap` +10.59%; 19 rows past 5%.
 <!-- /baseline-drift -->
 
 - 2026W39: milestone 447 (a thread's vector registers are its own), #1015, 2026-09-21, added 1 to 3% to switch and IPC rows, taking rows past 5% from 2 to 7 (aarch64), 3 to 6 (riscv64), 1 to 2 (x86_64). Nightly bump #1112 added less.
@@ -222,7 +222,7 @@ and wire-format value changes. [definitions](interface-stability.md),
 [per crate](project-metrics/interface-stability.md).
 
 <!-- interface-stability: script/metrics writes this -->
-interface, 2026W39 to 2026W42: 10 breaking changes (56 additions); 5 syscall numbers changed, 0 format bumps; 74% co-change.
+interface, 2026W40 to 2026W43: 10 breaking changes (40 additions); 5 syscall numbers changed, 0 format bumps; 72% co-change.
 <!-- /interface-stability -->
 
 ## The crates 857 releases
