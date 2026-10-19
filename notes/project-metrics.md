@@ -46,6 +46,10 @@ a status existing at all, counted as having none rather than as `DECIDED`.
 
 ![Names by what the tree records about them](project-metrics/names.svg)
 
+<!-- week-notes: script/metrics writes this -->
+- 2026W42: the total fell from 9,111 in 2026W41 to 8,544. Pull requests #2353 (merged 2026-10-18 20:26 UTC) and #2375 (21:58 UTC) narrowed `pub` items no package reads to `pub(crate)`, taking 884 and 411 names out of the no-provenance-block band. The rest of the week added 728. No name was lost; the narrowed items are no longer counted.
+<!-- /week-notes -->
+
 What each name's own provenance block says, for every name `script/names` tracks: crates,
 programs, packages, scripts, every module (each `.rs` file under a `src/` directory), every
 documentation directory and document, and every `pub` item. An item is a function, method,

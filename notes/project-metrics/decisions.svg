@@ -64,18 +64,18 @@
 <path class="seg s3" d="M425.6,181.0 V163.1 Q425.6,159.1 429.6,159.1 H460.2 Q464.2,159.1 464.2,163.1 V181.0 Z"><title>2026W40, Proposed: 33</title></path>
 <text class="mut" x="444.9" y="342" font-size="10" text-anchor="middle">2026W40</text>
 <text class="fg val" x="444.9" y="154.1" font-size="10" text-anchor="middle">248</text>
-<rect class="seg s0" x="484.2" y="195.0" width="38.7" height="129.0"><title>2026W41, Decided: 194</title></rect>
-<rect class="seg s1" x="484.2" y="166.4" width="38.7" height="28.6"><title>2026W41, Amended: 43</title></rect>
-<rect class="seg s2" x="484.2" y="161.7" width="38.7" height="4.7"><title>2026W41, Superseded: 7</title></rect>
-<path class="seg s3" d="M484.2,161.7 V147.8 Q484.2,143.8 488.2,143.8 H518.8 Q522.8,143.8 522.8,147.8 V161.7 Z"><title>2026W41, Proposed: 27</title></path>
+<rect class="seg s0" x="484.2" y="191.7" width="38.7" height="132.3"><title>2026W41, Decided: 199</title></rect>
+<rect class="seg s1" x="484.2" y="161.7" width="38.7" height="29.9"><title>2026W41, Amended: 45</title></rect>
+<rect class="seg s2" x="484.2" y="157.1" width="38.7" height="4.7"><title>2026W41, Superseded: 7</title></rect>
+<path class="seg s3" d="M484.2,157.1 V143.1 Q484.2,139.1 488.2,139.1 H518.8 Q522.8,139.1 522.8,143.1 V157.1 Z"><title>2026W41, Proposed: 27</title></path>
 <text class="mut" x="503.5" y="342" font-size="10" text-anchor="middle">2026W41</text>
-<text class="fg val" x="503.5" y="138.8" font-size="10" text-anchor="middle">271</text>
-<rect class="seg s0" x="542.8" y="179.0" width="38.7" height="145.0"><title>2026W42, Decided: 218</title></rect>
-<rect class="seg s1" x="542.8" y="145.8" width="38.7" height="33.2"><title>2026W42, Amended: 50</title></rect>
-<rect class="seg s2" x="542.8" y="141.1" width="38.7" height="4.7"><title>2026W42, Superseded: 7</title></rect>
-<path class="seg s3" d="M542.8,141.1 V126.5 Q542.8,122.5 546.8,122.5 H577.4 Q581.4,122.5 581.4,126.5 V141.1 Z"><title>2026W42, Proposed: 28</title></path>
+<text class="fg val" x="503.5" y="134.1" font-size="10" text-anchor="middle">278</text>
+<rect class="seg s0" x="542.8" y="177.7" width="38.7" height="146.3"><title>2026W42, Decided: 220</title></rect>
+<rect class="seg s1" x="542.8" y="144.4" width="38.7" height="33.2"><title>2026W42, Amended: 50</title></rect>
+<rect class="seg s2" x="542.8" y="139.8" width="38.7" height="4.7"><title>2026W42, Superseded: 7</title></rect>
+<path class="seg s3" d="M542.8,139.8 V125.8 Q542.8,121.8 546.8,121.8 H577.4 Q581.4,121.8 581.4,125.8 V139.8 Z"><title>2026W42, Proposed: 27</title></path>
 <text class="mut" x="562.1" y="342" font-size="10" text-anchor="middle">2026W42</text>
-<text class="fg val" x="562.1" y="117.5" font-size="10" text-anchor="middle">303</text>
+<text class="fg val" x="562.1" y="116.8" font-size="10" text-anchor="middle">304</text>
 <rect class="seg s0" x="601.4" y="177.7" width="38.7" height="146.3"><title>2026W43, Decided: 220</title></rect>
 <rect class="seg s1" x="601.4" y="144.4" width="38.7" height="33.2"><title>2026W43, Amended: 50</title></rect>
 <rect class="seg s2" x="601.4" y="139.8" width="38.7" height="4.7"><title>2026W43, Superseded: 7</title></rect>
