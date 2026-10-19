@@ -129,6 +129,10 @@ package `jig` installs from basalt's index, the kernel included). Their packagin
 milestone 906 (ioping is packaged in basalt, and its test installs it with `jig`) and milestone 907
 (hackbench is packaged in basalt, and its test installs it with `jig`). The verdict is unchanged.
 
+Fact, 2026-10-19 (UTC), from milestone 810's block and nifeos/basalt#29: `rg` reaches nife as a
+package. basalt builds it reproducibly, its recipe records the package's digest, and every pull
+request's `swish-check` installs it with `jig` on all three architectures. The verdict is unchanged.
+
 ## Benchmarks that inform this risk
 
 As of 2026-10-08 (UTC), under §262 (nife is measured with the field's standard benchmarks).
