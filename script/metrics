@@ -48,7 +48,8 @@
 #   script/metrics                 print the current commit's row as a table
 #   script/metrics --csv           print the current commit's row as one CSV line
 #   script/metrics --backfill      rewrite every week's row from git history, then the charts
-#   script/metrics --update        recompute THIS week's row in place, then the charts
+#   script/metrics --update        recompute THIS week's row in place, and every past week whose
+#                                  row is missing or not at that week's last commit, then the charts
 #   script/metrics --backfill-measure NAME
 #                                  recompute one measure's columns for every week, each from that
 #                                  week's own commit, and rewrite only that measure's file and the
@@ -56,8 +57,8 @@
 #                                  fills only the current week, and `--backfill` restates every
 #                                  other measure too. First used for `coe-actions` (calef's
 #                                  condition on #1513, 2026-10-03).
-#   script/metrics --check         non-zero if --update would change anything, a missing week
-#                                  included. NOTHING RUNS IT: it cannot gate a pull request,
+#   script/metrics --check         non-zero if --update would change anything, a missing week or
+#                                  a closed week left at a mid-week commit included. NOTHING RUNS IT: it cannot gate a pull request,
 #                                  because every merge moves the current week's numbers.
 #   script/metrics --charts        regenerate the SVGs from the CSV without touching the CSV, and
 #                                  rewrite the table of contents on notes/project-metrics.md
@@ -2018,6 +2019,23 @@ def week_commits():
     return dict(sorted(out.items()))
 
 
+def update_targets(weeks, rows, current, head):
+    """`[(week, rev)]` that `--update` recomputes: the current week at HEAD, and every other week
+    whose row is not already at the commit `week_commits` names for it.
+
+    A closed week's row is written while that week is the current one, so it records the commit
+    the last run before the week ended saw. The daily workflow runs at 06:00 UTC and lanes merge
+    until midnight, so that commit is hours short of the week's last one, and whatever merged after
+    it would otherwise draw as a change in the following week. Keying on the recorded commit closes
+    the week on the first run after it ends, whatever hour that run fires. A week with no row has
+    no commit, so it lands here too: a missed or raced run heals on the next one, and `--check`
+    fails on either state rather than passing it.
+    """
+    stale = [w for w in weeks
+             if w != current and rows.get(w, {}).get('commit', '') != weeks[w][:12]]
+    return [(w, weeks[w]) for w in stale] + [(current, weeks.get(current, head))]
+
+
 def read_csv():
     """Every measure file merged into one row per week: `{week: {column: cell}}`.
 
@@ -3307,6 +3325,22 @@ def _decision_cases():
     ]
 
 
+def _update_target_cases():
+    """A closed week whose row stopped before the week's last commit is restated by `--update`."""
+    weeks = {'2026W41': 'a' * 40, '2026W42': 'b' * 40, '2026W43': 'c' * 40}
+    rows = {'2026W41': {'commit': 'a' * 12},
+            '2026W42': {'commit': 'e' * 12},   # written mid-week; 'b' merged after it
+            '2026W43': {'commit': 'f' * 12}}
+    return [
+        ('a closed week written mid-week is restated at its last commit',
+         update_targets(weeks, rows, '2026W43', 'c' * 40),
+         [('2026W42', 'b' * 40), ('2026W43', 'c' * 40)]),
+        ('a closed week with no row is written',
+         update_targets(weeks, {'2026W43': {}}, '2026W43', 'c' * 40),
+         [('2026W41', 'a' * 40), ('2026W42', 'b' * 40), ('2026W43', 'c' * 40)]),
+    ]
+
+
 def _chart_total_cases():
     """check_chart_totals passes a week whose bands add up and refuses one that drops a status."""
     def refused(row):
@@ -3605,6 +3639,7 @@ def selftest():
         ('rendering twice writes the same bytes', twice, once),
         ('a chart with no notes left is back to its original bytes', gone, original_page),
     ]
+    cases += _update_target_cases()
     cases += _chart_total_cases()
     cases += _fatal_risk_cases()
     cases += _decision_cases()
@@ -3746,14 +3781,7 @@ def main(argv):
         rows = {}
         targets = weeks.items()
     else:
-        # The current week, AND every week history has that the CSV does not. This is what closed
-        # the 2026W37 gap: the weekly workflow fires at 06:00 UTC on Monday and used to write only
-        # the week HEAD falls in, so when a lane merged after midnight (nine did on 2026-09-14, the
-        # last eleven minutes before the cron) HEAD was already in the new week and the week that
-        # had just finished was never written by anything. A missed or raced run now heals on the
-        # next one, and `--check` below fails on a gap rather than passing it every time.
-        missing = [w for w in weeks if w not in rows and w != current]
-        targets = [(w, weeks[w]) for w in missing] + [(current, weeks.get(current, head))]
+        targets = update_targets(weeks, rows, current, head)
 
     # A fresh lcov describes the tree HEAD is in and nothing else, so it lands on that week only.
     # It used to be `coverage or kept` for every target, which meant `--backfill --coverage-from`
