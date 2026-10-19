@@ -18,10 +18,10 @@ day ("yes, record c"). Then he ruled that a manifest declares the network beside
 the owner grants both at install ("a", the same day). What is left is building both for installed
 programs, under "Item 3, ruled" and "The network at install, ruled" below. The refusal half is
 built: an installed program is refused the network, by name, until its grant is recorded. A
-manifest note carries its zones (Q1, ruled), `jig install` lists the asks, and the table's grant
-lines are read (Q2, ruled), so a granted program would hold the network. The rest waits on Q3 and
-Q5 under "Calls the rulings leave open": nothing writes a grant yet, and nothing places a zone's
-badge for an installed program.
+manifest note carries its zones, `jig install` lists the asks, and the table's grant lines are
+read, so a granted program would hold the network. "Rulings of 2026-10-19" has calef's four
+rulings. What is left: placing a zone's badges for an installed program, and writing a grant, which
+waits on the stdin contract proposed below.
 
 *(The title and slug are provisional.)*
 
@@ -181,9 +181,9 @@ nife> dialer
 both provisional), runs it and `caps` it, and requires the sentence on aarch64, riscv64 and x86_64.
 Host test: `vouched_bytes_asking_for_the_network_are_refused_and_unvouched_ones_get_nothing`.
 
-## Zones in the manifest note, ruled and built 2026-10-19 (UTC)
+## Zones in the manifest note, built 2026-10-19 (UTC)
 
-calef, on #2405, asked "approve version 2?" (Q1 below): "Yes". `capability_manifest_note` reads
+`capability_manifest_note` reads
 and writes a version 2 descriptor: version 1's 56 bytes, then a count of one to eight zones, each a
 length byte and dotted ASCII. A manifest that asks for no zone stays version 1, so no existing
 note's bytes or digest change, and a version 2 count of zero is refused. Zones are lowercase,
@@ -195,7 +195,7 @@ Host tests: `a_zoned_descriptor_has_one_encoding`,
 `a_zoned_note_names_its_exact_length_and_pads_to_four` and `the_zone_limits_are_the_resolvers`.
 
 `jig install` lists each program's network and zone asks before it sends the package, with the
-root zone apart, in capitals. It asks nothing yet, since a yes has nowhere to be recorded until Q2:
+root zone apart, in capitals. It asks nothing yet: the yes needs the stdin contract below.
 
 ```text
   dialer asks for:
@@ -205,10 +205,10 @@ root zone apart, in capitals. It asks nothing yet, since a yes has nowhere to be
   none of these is granted: no owner's grant is recorded at install yet
 ```
 
-## The grant record, ruled and built 2026-10-19 (UTC)
+## The grant record, built 2026-10-19 (UTC)
 
-calef, on #2405, answered Q2 below "a". The installed-programs table holds the owner's grants as
-lines of their own, keyed on the executable's digest, after the pointers:
+The installed-programs table holds the owner's grants as lines of their own, keyed on the
+executable's digest, after the pointers:
 
 ```text
 grant sha256:… network
@@ -229,65 +229,49 @@ endowed the network: slot 10 native, or slots 2 and 3 for `std`. A grant gives n
 not ask for. Host tests: `grant_lines_are_read_strictly_and_follow_their_rows` and
 `vouched_bytes_asking_for_the_network_are_refused_and_unvouched_ones_get_nothing`.
 
-Writing a grant is not built, and nothing writes one: it needs the owner's yes, which is Q5.
+Writing a grant is not built, and nothing writes one: it needs the owner's yes, which needs the
+stdin contract below.
 
-## Calls the rulings leave open
+## Rulings of 2026-10-19 (UTC), on #2405
 
-Checked on `main` at `42836328b` (2026-10-19 UTC). Both ruled halves for installed programs wait on
-these. Nothing that depends on them is built, because each fixes a format two programs share.
-Each is put with a recommendation. Q1 and Q2 are ruled; Q3 and Q5 are open.
+Each was put with alternatives and a recommendation; calef took the recommendation each time.
 
-**Q1, ruled (a): how a manifest note carries its zones (a wire format).** Version 1 is 56 fixed
-bytes and its last zero byte is 55, so zones need a new version word (`capability_manifest_note`'s
-own rule).
+- **Zones in the note** ("approve version 2?" "Yes"). Descriptor version 2; built, under "Zones in
+  the manifest note" above.
+- **The grant record** ("a"). `grant <digest> network` and `grant <digest> zone <name>` lines in
+  the installed-programs table, sorted, one per grant; read side built, under "The grant record"
+  above. Approval is all or nothing: the grants are exactly the asks.
+- **Several zones in a std program** ("(a). First zone at slot 9, the rest at fixed slots above 12,
+  probed in order."). The rest are slots 22 to 28 (`std_runtime_contract::RESOLVER_SLOTS`), the
+  first seven free in a row: `jig` holds 15 to 18 and the shell's configuration is 21. The PAL asks each badge in turn until one does not answer that the name is
+  outside its zone. A miss is the resolver's local refusal, one IPC round trip and no packet.
+- **The owner's yes** ("a"). A byte-source contract gives a std program stdin, granted to `jig` at
+  the owner's console. No `--yes`, and no second verb. Its shape is the proposal below.
 
-- (a) Version 2: version 1's fields at the same offsets, then a zone count (at most
-  `GRANTS_MAX`, 8) and each zone as a length byte and dotted ASCII (at most 253 bytes, the
-  resolver's `NAME_TEXT_MAX`). `decode` keeps one encoding per manifest by refusing zones that are
-  unsorted, repeated, uppercase or end in a dot. The root zone is length 0, as the resolver
-  spells it.
-- (b) A second note, type 2 "zones", beside an unchanged version 1. Readers then find two notes,
-  and "the same note twice" needs a rule for each type.
+## The stdin contract, proposed
 
-Recommended: (a). One note is one request, and the digest covers it either way.
+calef chose a byte source; its opcodes, framing and slot are open. Names are provisional.
 
-**Q2, ruled (a): where the installed-programs table records a grant (a format).** Milestone 911's item 1
-calls this "the grant record", and 911 waits on 892, so the first cut is this block's. It holds
-what the owner granted: the network flag and the zones.
+- **(a) Recommended: a cooked read on a badged terminal copy.** A new `line_editor::proto` opcode,
+  `OPERATION_READ_LINE_BYTES`, asks for up to eight bytes of the current line. The terminal runs its
+  own line discipline (echo, editing, `^C`), and once a line is complete it answers r0 = count and
+  r1 = the bytes, packed as `OPERATION_READRAW` packs them. Later calls drain the rest of the line,
+  `\n` included. A count of 0 is end of input (`^D`). No page is involved. The copy carries a
+  second badge value, `STDIN_BADGE`, on which the terminal serves this opcode and nothing else, as
+  §709's raw-reader badge serves raw reads. std reads it at `std_runtime_contract::STDIN_SLOT`, slot
+  29, after the resolver slots 22 to 28. The spawn service places it only for a table program whose
+  manifest sets `Manifest::console_input`, which no note can spell (as with `installer`). That is
+  `jig` today. The shell is parked on the job's result while the job runs, so the two never read
+  at once.
+- **(b) Push.** The shell feeds `byte_sink_contract` frames into an endpoint at that slot, as a
+  pipe's upstream stage does. No new opcode. But the shell cannot read the console and wait on the
+  job's result at once (one wait point), and a job that never reads strands the typed line.
+- **(c) Raw.** std gets §709's raw-reader badge, turns raw mode on, and echoes and assembles lines
+  itself. No new opcode, but every std program carries a line editor in its PAL, and leaving raw
+  mode discards whatever was typed under it.
 
-- (a) A new line kind keyed on the executable's digest, as `default` lines are:
-  `grant <digest> network` and `grant <digest> zone <name>`, sorted, one per grant. Rows keep
-  their five columns. A narrowing writes the next generation without the line.
-- (b) More columns on the row. Old rows would need a "nothing granted" spelling, and zones vary in
-  number.
-
-Recommended: (a). The progenitor has the digest at spawn, so a digest key is what it looks up.
-911 adds its service and directory grants as more `grant` words.
-
-**Q3. Where a std program holds several resolver badges (a slot layout).** The std PAL reads one
-badge at `RESOLVER_SLOT` (9), and `std_runtime_contract::SLOTS` is 13.
-
-- (a) The first zone at slot 9, the rest at fixed slots above 12, probed in order. On a lookup the
-  PAL asks each badge until one does not answer "outside zone". A miss is a local refusal, so it
-  costs one IPC round trip and no packet.
-- (b) The same slots, plus a read-only page listing each slot's zone, so the PAL picks the badge
-  itself. That adds a second layout for the two sides to agree on.
-
-Recommended: (a).
-
-**Q5. How the owner's yes reaches `jig` (a contract).** One confirmation covers the grants, but
-`jig` cannot read a yes. Its std stdin is EOF: the std overlay's `sys/stdio/nife.rs` says nothing
-grants a std program input, and that a source contract is its own design. Milestone 911 refuses a
-`--yes` flag, because it approves without reading. Until a yes exists, no install may write a
-`grant` line, or a package's note would grant the network unseen.
-
-- (a) A byte-source contract that gives a std program stdin (a PAL slot and its wire), granted to
-  `jig` at the owner's console.
-- (b) Two steps: `install` lists the asks and refuses, and a second verb names the package and
-  digest it grants.
-
-Recommended: (a). It is the confirmation as ruled, and std programs need stdin anyway. (b) is a
-`--yes` in two lines.
+Recommended: (a). It is the only option where `read_line` behaves as a person expects (echoed and
+editable) with no shell in the path.
 
 ## Who builds the confirmation at install, decided 2026-10-19 (UTC)
 
@@ -299,8 +283,8 @@ NOT-STARTED behind 849, so 892 could not finish behind it.
 
 ## BUGS
 
-- An installed program cannot hold the network or a zone yet: nothing writes a `grant` line (Q5),
-  and zone grants are read by nothing (Q3).
+- An installed program cannot hold the network or a zone yet: nothing writes a `grant` line (that
+  waits on the stdin contract), and zone grants are read by nothing.
 - A granted program's network is proved by host tests only. No prompt proof exists until an
   install can write a grant.
 - A program whose note asks for zones but not the network runs without a resolver; nothing refuses
@@ -326,7 +310,7 @@ NOT-STARTED behind 849, so 892 could not finish behind it.
 
 - **Outstanding.** Item 3 for installed programs: the four pieces under "Item 3, ruled".
 - **Outstanding.** The network at install: the three pieces under "The network at install, ruled".
-  Both outstanding items wait on Q3 and Q5.
+  Both wait on the stdin contract for the owner's yes.
 - **Milestone 911.** Its approval file's "the network's socket budget" is this grant, and now cites
   this block.
 - **Milestone 809.** `jig` resolves the index's host through this badge at item 6.
