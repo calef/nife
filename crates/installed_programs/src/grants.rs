@@ -5,7 +5,8 @@
 //!
 //! Name: provisional, minted 2026-10-19 (UTC) by milestone/892-installed-programs-hold-the-network-and-zones.
 
-use super::*;
+use super::generation::{Line, classify, entries};
+use super::{Digest, Error};
 
 /// **One `grant` line**: what the owner granted the bytes with this digest. Read with
 /// [`grants`] and [`network_granted`].
