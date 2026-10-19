@@ -6,7 +6,7 @@ measurement behind these numbers is in [census.md](census.md). Both are the work
 
 ## The density outside `arch/`
 
-At most 60 <!--count-at-most:unsafe-density-outside-arch--> unsafe blocks per 10,000 lines
+At most 56 <!--count-at-most:unsafe-density-outside-arch--> unsafe blocks per 10,000 lines
 outside `kernel/src/arch/`. The direction is down, because unsafe outside `arch/` is not paying
 for hardware access. It is a raw syscall, a shared page, or a hand-rolled data structure, and each
 of those has a safe wrapper somebody could write. The ceiling was first written at a threshold the

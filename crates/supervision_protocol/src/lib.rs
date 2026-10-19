@@ -35,7 +35,12 @@
 //! 2026-09-05) plus the stem, the tree's word for the restart discipline; `ChildEndowment` is an
 //! open naming question of its own (§69 (`Endow` is a verb)).
 
-use user_mode_runtime::{cap_delete, invoke, send_capability};
+use user_mode_runtime::{
+    address_space_map_into, cap_delete, destroy_memory_region, invoke, retype_into_kernel_object,
+    retype_into_page_frame, send_capability, split_memory_region,
+    thread_control_block_capability_insert, thread_control_block_configure,
+    thread_control_block_start,
+};
 
 // ===========================================================================================
 // The report protocol. Every process in the tree holds a WRITE view of one report endpoint and
@@ -634,19 +639,7 @@ fn lay_out_child(
     for k in 0..endow.stack_pages {
         let stack_frame = retype_page_frame_from(build_ut)?;
         let va = CHILD_STACK_VA - k * PAGE;
-        // SAFETY: `invoke` traps to the kernel, which validates the capability and the method
-        // before acting (user_mode_runtime's contract). A caller cannot break an invariant by passing a
-        // bad slot or method; it gets an error back.
-        if unsafe {
-            invoke(
-                aspace,
-                abi::address_space::MAP_INTO,
-                va,
-                stack_frame,
-                abi::address_space::MAP_RW,
-            )
-        } != 0
-        {
+        if address_space_map_into(aspace, va, stack_frame, abi::address_space::MAP_RW) != 0 {
             cap_delete(stack_frame);
             return Err(());
         }
@@ -707,8 +700,7 @@ fn lay_out_child(
     }
 
     for &(va, our_slot, mode) in endow.maps {
-        // SAFETY: as above: the kernel validates the capability and the method.
-        if unsafe { invoke(aspace, abi::address_space::MAP_INTO, va, our_slot, mode) } != 0 {
+        if address_space_map_into(aspace, va, our_slot, mode) != 0 {
             return Err(());
         }
     }
@@ -726,17 +718,7 @@ fn lay_out_child(
 /// then the fault endpoint in its reserved slot.
 fn endow_child(tcb: u64, endow: &ChildEndowment, aspace: u64) -> Result<(), ()> {
     for &(our_slot, rights) in endow.caps {
-        // SAFETY: as above: the kernel validates the capability and the method.
-        if unsafe {
-            invoke(
-                tcb,
-                abi::thread_control_block::CAP_INSERT,
-                our_slot,
-                rights,
-                0,
-            )
-        } < 0
-        {
+        if thread_control_block_capability_insert(tcb, our_slot, rights, 0) < 0 {
             return Err(());
         }
     }
@@ -760,34 +742,15 @@ fn endow_child(tcb: u64, endow: &ChildEndowment, aspace: u64) -> Result<(), ()> 
         };
         // `target = n` lands the capability in slot `n - 1`; 0 would mean "first free", which is the
         // behaviour this call exists to avoid.
-        // SAFETY: as above: the kernel validates the capability and the method.
-        if unsafe {
-            invoke(
-                tcb,
-                abi::thread_control_block::CAP_INSERT,
-                source,
-                rights,
-                child_slot + 1,
-            )
-        } < 0
-        {
+        if thread_control_block_capability_insert(tcb, source, rights, child_slot + 1) < 0 {
             return Err(());
         }
     }
     if let Some(fault) = endow.fault {
         // The spawn-slot convention: target slot `n + 1` means "slot n", so the supervision endpoint
         // lands in the reserved last slot rather than wherever first-free fell.
-        // SAFETY: as above: the kernel validates the capability and the method.
-        if unsafe {
-            invoke(
-                tcb,
-                abi::thread_control_block::CAP_INSERT,
-                fault,
-                abi::rights::READ,
-                abi::fault::FAULT_EP_SLOT + 1,
-            )
-        } < 0
-        {
+        let target = abi::fault::FAULT_EP_SLOT + 1;
+        if thread_control_block_capability_insert(tcb, fault, abi::rights::READ, target) < 0 {
             return Err(());
         }
     }
@@ -809,7 +772,9 @@ fn configure_child_as_process(
     if rights != abi::rights::BIND {
         return Err(());
     }
-    // SAFETY: as above: the kernel validates each capability and method.
+    // SAFETY: `invoke` is the syscall; the kernel validates the region, the objtype and the
+    // address space before it builds anything. Raw because a process takes the space as its second
+    // argument, which `retype_into_kernel_object` does not pass.
     let process = unsafe {
         invoke(
             build_ut,
@@ -823,23 +788,8 @@ fn configure_child_as_process(
         return Err(());
     }
     let process = process as u64;
-    // SAFETY: as above.
-    let joined = unsafe {
-        invoke(
-            tcb,
-            abi::thread_control_block::CAP_INSERT,
-            process,
-            rights,
-            slot + 1,
-        ) >= 0
-            && invoke(
-                tcb,
-                abi::thread_control_block::CONFIGURE,
-                entry,
-                CHILD_STACK_VA + PAGE,
-                process,
-            ) >= 0
-    };
+    let joined = thread_control_block_capability_insert(tcb, process, rights, slot + 1) >= 0
+        && thread_control_block_configure(tcb, entry, CHILD_STACK_VA + PAGE, process) >= 0;
     cap_delete(process);
     if joined { Ok(()) } else { Err(()) }
 }
@@ -848,17 +798,7 @@ fn configure_child_as_process(
 /// capability is **consumed** by the kernel here, so this is the moment after which the builder can
 /// no longer shape the child's memory.
 pub fn configure_child(tcb: u64, aspace: u64, entry: u64) -> Result<(), ()> {
-    // SAFETY: as above: the kernel validates the capability and the method.
-    if unsafe {
-        invoke(
-            tcb,
-            abi::thread_control_block::CONFIGURE,
-            entry,
-            CHILD_STACK_VA + PAGE,
-            aspace,
-        )
-    } < 0
-    {
+    if thread_control_block_configure(tcb, entry, CHILD_STACK_VA + PAGE, aspace) < 0 {
         // A negative answer is a refusal. Since milestone 812 (`std::thread::spawn` runs real
         // threads in one address space) a success answers the child's current-CPU page address
         // rather than zero.
@@ -889,8 +829,7 @@ fn fill_and_map(
     if let Some((at, bytes)) = src {
         dst[at..at + bytes.len()].copy_from_slice(bytes);
     }
-    // SAFETY: as above: the kernel validates the capability and the method.
-    let mapped = unsafe { invoke(aspace, abi::address_space::MAP_INTO, va, frame, mode) } == 0;
+    let mapped = address_space_map_into(aspace, va, frame, mode) == 0;
     cap_delete(frame);
     // The page is written and in the child (or the build failed): either way this builder is done
     // with its own window onto it. Given up here, one page at a time, rather than after the child
@@ -902,16 +841,14 @@ fn fill_and_map(
 /// Retype one page of `ut` into a kernel object of `objtype` (`abi::objtype`), returning the
 /// capability slot it landed in.
 pub fn retype_obj_from(ut: u64, objtype: u64) -> Result<u64, ()> {
-    // SAFETY: as above: the kernel validates the capability and the method.
-    let r = unsafe { invoke(ut, abi::memory_region::RETYPE_OBJ, objtype, 0, 0) };
+    let r = retype_into_kernel_object(ut, objtype);
     if r < 0 { Err(()) } else { Ok(r as u64) }
 }
 
 /// Retype one page of `ut` into a plain `PageFrame` capability, unmapped, returning the slot it
 /// landed in.
 pub fn retype_page_frame_from(ut: u64) -> Result<u64, ()> {
-    // SAFETY: as above: the kernel validates the capability and the method.
-    let r = unsafe { invoke(ut, abi::memory_region::RETYPE, 0, 0, 0) };
+    let r = retype_into_page_frame(ut);
     if r < 0 { Err(()) } else { Ok(r as u64) }
 }
 
@@ -919,8 +856,7 @@ pub fn retype_page_frame_from(ut: u64) -> Result<u64, ()> {
 /// reclaims. `Err` carries the negated error code, which is how the dropped-authority proof reports
 /// *why* a retype from a deleted budget failed.
 pub fn memory_region_split(ut: u64, pages: u64) -> Result<u64, i64> {
-    // SAFETY: as above: the kernel validates the capability and the method.
-    let r = unsafe { invoke(ut, abi::memory_region::SPLIT, pages, 0, 0) };
+    let r = split_memory_region(ut, pages);
     if r < 0 { Err(r) } else { Ok(r as u64) }
 }
 
@@ -929,8 +865,7 @@ pub fn memory_region_split(ut: u64, pages: u64) -> Result<u64, i64> {
 /// and the only one that can tear down a *live* thread (§16's amendment arms the kill). A supervisor
 /// collecting a dead child wants `user_mode_runtime::reap` instead (§32).
 pub fn memory_region_destroy(ut: u64) -> bool {
-    // SAFETY: as above: the kernel validates the capability and the method.
-    unsafe { invoke(ut, abi::memory_region::DESTROY, 0, 0, 0) == 0 }
+    destroy_memory_region(ut) == 0
 }
 
 /// **Make `child` runnable and then keep or drop its capability as its endowment declared**, with
@@ -970,8 +905,7 @@ pub fn memory_region_destroy(ut: u64) -> bool {
 /// nothing, which is the only reason that is tolerable; the first site that declares
 /// [`Retention::ThreadControlBlock`] is exercising it for the first time and should say so.
 pub fn start_child(child: Child, a0: u64, a1: u64, a2: u64) -> bool {
-    // SAFETY: as above: the kernel validates the capability and the method.
-    let started = unsafe { invoke(child.tcb, abi::thread_control_block::START, a0, a1, a2) == 0 };
+    let started = thread_control_block_start(child.tcb, a0, a1, a2) == 0;
     match child.retention {
         Retention::Nothing => forget_thread_control_block(child.tcb),
         // The reason is the caller's, recorded at the call site; nothing here reads it.
