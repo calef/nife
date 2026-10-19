@@ -1,0 +1,34 @@
+Falsifies `system_tests::user::disk_tests::the_disk_surveyor_reads_a_table_gptfdisk_wrote`, its
+NVMe half (milestone 421 (the block roster names an NVMe disk)).
+
+Architecture: aarch64, riscv64, x86_64
+
+The defect is `disk_service::devices` writing the virtio disks and no NVMe entry, so a machine with
+an NVMe controller attached hands `disk_surveyor` a roster that says it has none.
+
+Expected to fail: the `nvme` count's assertion, "the surveyor lists 0 NVMe disks; NIFE_NVME is set
+on this leg, so the roster owes 1", with `left: 0`, `right: 1`. Confirmed red on 2026-10-18 (UTC)
+on aarch64 with `script/test --arch aarch64 --no-host --test
+the_disk_surveyor_reads_a_table_gptfdisk_wrote`.
+
+diff --git a/kernel/src/user/disk_service.rs b/kernel/src/user/disk_service.rs
+index 6f53c155e..73dffd212 100644
+--- a/kernel/src/user/disk_service.rs
++++ b/kernel/src/user/disk_service.rs
+@@ -161,16 +161,6 @@ fn devices() -> (
+         };
+         n += 1;
+     }
+-    for i in 0..crate::pci::count_non_volatile_memory_express_controllers() {
+-        if n == out.len() {
+-            break;
+-        }
+-        out[n] = block_roster::Device {
+-            ordinal: i as u32,
+-            transport: block_roster::TRANSPORT_NON_VOLATILE_MEMORY_EXPRESS,
+-        };
+-        n += 1;
+-    }
+     (out, n)
+ }
+ 
