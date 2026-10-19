@@ -741,8 +741,8 @@ if mode == "--ratchet":
             print("", file=sys.stderr)
             print("--ratchet judges the committed tip, which is what CI judges, so it cannot say "
                   "anything\ntrue about these edits: a report now would describe the old lines. "
-                  "Commit first, then\nrerun. (Nothing else was checked; see the comment above "
-                  "this message in script/citations.)", file=sys.stderr)
+                  "Commit first, then\nrerun. (This check stopped here; lint's other sections still "
+                  "ran. See the comment above\nthis message in script/citations.)", file=sys.stderr)
             sys.exit(1)
         quiet = sorted(set(dirty + untracked) - hiding)
         if quiet:
