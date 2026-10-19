@@ -2,8 +2,8 @@
 //! (milestone 23 (a capability-routed component OS with live replacement); calef's rulings of
 //! 2026-10-19 (UTC): a dedicated swap reserve, "everything" handed off, the spawner supervises).
 //!
-//! A real `terminal_supervisor` in display mode builds a real `display_terminal` on a real
-//! `gpu_driver`, and a `line_editor` printing through it. The test plays the application on the
+//! A real `terminal_supervisor` in display mode builds a real `display_terminal` on the kernel's
+//! display stand-in, and a `line_editor` printing through it. The test plays the application on the
 //! terminal's endpoint, holds the supervisor's swap endpoint, and holds the machine's one swap
 //! reserve, which on a real boot would be the installer's (milestone 694 (the installer asks the
 //! terminal to swap), not built).
@@ -297,27 +297,12 @@ impl Rig {
 /// Falsification: replayable `system_tests/falsifications/user.terminal_display_swap_tests.the_display_terminal_is_replaced_live_and_its_screen_and_history_survive.patch`
 #[test_case]
 fn the_display_terminal_is_replaced_live_and_its_screen_and_history_survive() {
-    let gpu = program("gpu_driver").expect("no gpu_driver in the initial ramdisk");
-    let Some((driver_report, display_ep, surface)) = display_service::start_driver(gpu) else {
-        crate::testing::skip!("no virtio-gpu-pci function on the bus");
-    };
-    let [up, ..] = sched::ipc_receive(driver_report);
-    assert_eq!(
-        up,
-        graphics_contract::status::UP,
-        "the GPU driver did not come up"
-    );
-
+    // The kernel's display stand-in rather than the GPU: every `start_driver` takes a virtio slot
+    // for the rest of the boot (`kernel::virtio`'s `MAX_DEVICES`), and the pixels this test grades
+    // are the surface's, which the stand-in's frames hold as a driver's would.
+    let (display_ep, surface, display_region) = super::compositor_tests::kernel_display();
     let rig = Rig::start(display_ep, surface);
     let (swap, sink, sink_page) = (rig.swap, rig.sink, rig.sink_page);
-
-    // The supervisor's `display_terminal` painted its blank grid: the driver's one report of it.
-    let [flushed, ..] = sched::ipc_receive(driver_report);
-    assert_eq!(
-        flushed,
-        graphics_contract::status::FLUSHED,
-        "the supervised display_terminal never flushed"
-    );
 
     let expect_p = &raw mut EXPECT;
     // SAFETY: this test is the only user of `EXPECT`, and the suite runs one test at a time.
@@ -369,6 +354,7 @@ fn the_display_terminal_is_replaced_live_and_its_screen_and_history_survive() {
 
     rig.stop();
     sched::reclaim_region(reserve.0).expect("the swap reserve would not reclaim");
+    super::compositor_tests::retire_kernel_display(display_region);
 }
 
 /// Copy each image into fresh frames from `alloc` at its address in the supervisor, and add the
