@@ -24,7 +24,8 @@ pub static REGULAR: Face = Face(include_bytes!("../coverage/regular.coverage"));
 ///
 /// Name: provisional.
 pub static BOLD: Face = Face(include_bytes!("../coverage/bold.coverage"));
-/// The italic face, DejaVu's Oblique (§166). Drawn nowhere yet, for [`BOLD`]'s reason.
+/// The italic face, DejaVu's Oblique (§166 (the rasteriser dependency, and whether the glyph
+/// atlas ships one face or four)). Drawn nowhere yet, for [`BOLD`]'s reason.
 ///
 /// Name: provisional.
 pub static OBLIQUE: Face = Face(include_bytes!("../coverage/oblique.coverage"));

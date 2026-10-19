@@ -185,15 +185,16 @@ pub const LINEAR_PATH: &str = "crates/glyph_atlas/src/linear.rs";
 ///
 /// Name: provisional.
 pub fn linear_source() -> String {
-    let mut out = String::from(
+    // The provenance lines are assembled rather than written out, because `script/names` reads a
+    // line here that starts with a doc-comment marker and `Name:` as this file's own block.
+    let name = "Name: provisional.";
+    let mut out = format!(
         "//! **sRGB to linear light**, one `u16` per sRGB code, written by \
          `tools/glyph_atlas_generator`\n\
          //! (`linear_source`) and checked by its regenerate gate. Do not edit; regenerate.\n\
-         //!\n\
-         //! Name: provisional.\n\n\
+         //!\n//! {name}\n\n\
          /// Linear light for each sRGB code, `0` black and `u16::MAX` white.\n\
-         ///\n\
-         /// Name: provisional.\n\
+         ///\n/// {name}\n\
          #[rustfmt::skip] // the generator's layout, so the regenerate gate compares bytes\n\
          pub const SRGB_TO_LINEAR: [u16; 256] = [\n",
     );
