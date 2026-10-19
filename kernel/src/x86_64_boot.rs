@@ -4,8 +4,9 @@
 //!
 //! **Temporary.** calef ruled so on 2026-10-12 (UTC), in §284 (the kernel crate root splits into
 //! child modules, one per boot): this file is the port's route until it joins the shared path in
-//! `boot.rs`. What is left is the tour and the watch, and whether the tours merge is the open
-//! question in design/roadmap/0890-riscv64-and-x86-64-join-the-shared-boot-path.md.
+//! `boot.rs`. What is left is the tour and the watch. calef's ruling of 2026-10-19 (UTC) moves the
+//! tour into `self_test::run` as checks; see
+//! design/roadmap/0890-riscv64-and-x86-64-join-the-shared-boot-path.md.
 //!
 //! Name: provisional (milestone 876's lane, 2026-10-12 UTC).
 

@@ -15,6 +15,12 @@ needs_person: no
 calef, 2026-10-12 (UTC), ruling on §284 (the kernel crate root splits into child modules, one per
 boot): "We should treat them as temporary."
 
+calef, 2026-10-19 (UTC), on the three per-port tours: "3". No per-port tours. Each claim the tours
+make becomes a check in `self_test::run` on every port where it applies, as milestone 268 (every
+architecture boots the same way) did for `mapping` and `scheduler`, and the tours and their port
+files go. The `TOUR` line and boot stage 11, which `board_console` and the hang watcher read, get a
+new source in the same change.
+
 Reuse: not applicable; this moves and deletes kernel code and adds none.
 
 ## The problem
@@ -181,7 +187,7 @@ commit reverts alone, independent of the tail.
 
 | criterion | state |
 |---|---|
-| 1 | `riscv64_boot.rs` holds its milestone tour and the tour's timing helpers; `x86_64_boot.rs` holds its tour and `watch_the_progenitor`. Both are demonstrations or reports rather than `arch/` code. Whether the tours merge is open (below). |
+| 1 | Not yet. `riscv64_boot.rs` holds its milestone tour and the tour's timing helpers; `x86_64_boot.rs` holds its tour and `watch_the_progenitor`; `milestone_tour.rs` holds aarch64's. calef's 2026-10-19 ruling retires all three tours (below). |
 | 2 | Done. `kernel_main`'s `cfg(target_arch)` lines are each port's banner and riscv64's console register shape; `hand_over`'s one is `x86_64`'s install offer. |
 | 3 | Under QEMU, both ports: see each pull request's gate table. The boards are the xenon and radon boots above. |
 
@@ -199,11 +205,13 @@ commit reverts alone, independent of the tail.
 
 - **Outstanding.** The radon boot below, of the PLIC and tail slices.
 - **Outstanding.** The xenon boot above, of the `x86_64` slice.
-- **Outstanding.** Whether the three tours merge into one `milestone_tour`. Each runs a kernel thread
-  or two and a userspace program in its own shape. riscv64's also carries the UART driver, block
-  discovery and entropy steps, its own `boot_ladder::TOUR` line and the hang watcher's stages, and
-  is the only proof of the boot's middle stages on silicon. `x86_64`'s builds its two ring-3
-  processes from untyped by hand and checks they leak no frames.
+- **Outstanding.** The tours become self-test checks, per calef's 2026-10-19 ruling. List every
+  claim each of the three tours makes (`milestone_tour.rs`, `riscv64_boot.rs`, `x86_64_boot.rs`);
+  several are made by more than one, such as preemption, a userspace program and entropy. Make each
+  a check in `self_test::run` that fails loudly on every port where it applies, and say which are
+  port-only and why. Give `board_console` and the hang watcher a new source for the `TOUR` line and
+  boot stage 11, proven by their host tests and a swish-check pass. Then delete the tours,
+  `milestone_tour.rs` and `riscv64_boot.rs`.
 - **Outstanding.** `x86_64`'s boot thread watches the progenitor after the shared hand-over
   (`watch_the_progenitor`), because `script/swish-check`'s `x86_64` leg and the install, rollback
   and confirm boots wait for the watch's report before typing. Retiring it means those wait for the
@@ -215,4 +223,4 @@ Two of the three architectures boot through code that only they run, so a fix to
 lands three times or drifts. This brings riscv64 and `x86_64` onto the path aarch64 takes, one slice
 at a time, until the two per-port boot files hold only what `arch/` cannot. Both ports run the
 shared bring-up and tail under QEMU, `x86_64` through `memory::init`'s PVH and ACPI front end; the
-xenon and radon boots and whether the tours merge remain.
+xenon and radon boots and the tours' move into the self-test remain.
