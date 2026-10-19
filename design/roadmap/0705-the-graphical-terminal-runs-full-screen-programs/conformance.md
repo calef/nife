@@ -4,7 +4,7 @@ This appendix belongs to [milestone 705 (the graphical terminal runs full-screen
 It holds the conformance measurement behind options A, F and G.
 
 Measured on 2026-10-18 (UTC) on patagonia with vttest 2.7 (20251205, Homebrew). The harness was
-throwaway and lives in the lane's scratch directory.
+throwaway and is not kept.
 
 ## Method
 

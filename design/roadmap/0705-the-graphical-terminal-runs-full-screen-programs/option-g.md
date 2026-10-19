@@ -4,7 +4,7 @@ This appendix belongs to [milestone 705 (the graphical terminal runs full-screen
 It holds option G's measurements and its seven-question entry.
 
 Measured on 2026-10-18 (UTC) on patagonia, against `main` at `948806b32`, unless marked *from
-memory*. The probes are throwaway programs in the lane's scratch directory.
+memory*. The probes were throwaway and are not kept.
 
 ## What G is
 
