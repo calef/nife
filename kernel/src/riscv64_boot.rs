@@ -670,7 +670,7 @@ fn riscv64_clock_report(clock: Option<jh7110_clock_and_reset::Report>) {
 )]
 pub(super) fn milestone_tour() {
     // **The kernel mapping check and the context-switch check are `self_test::run`'s**
-    // (milestone 268, item 2), as `mapping` and `scheduler`, measured the way this tour measured
+    // (milestone 268 (every architecture boots the same way), item 2), as `mapping` and `scheduler`, measured the way this tour measured
     // them on the VisionFive 2: the address computed from the machine's own RAM rather than a
     // constant, the wait bounded by the clock rather than by a yield count.
     riscv64_user_programs();

@@ -187,15 +187,16 @@ pub extern "C" fn kernel_main(boot_info_pointer: usize) -> ! {
         // through the granular verbs. This is the line that retires the kernel as the system's
         // builder. Every interactive build on aarch64 and riscv64 reaches it: `--features shell`
         // hands off straight away and the milestone tour after running its demos. On a board the
-        // prompt that follows is the signal that the boot finished (milestone 268), and a machine
+        // prompt that follows is the signal that the boot finished (milestone 268 (every architecture boots the same way)), and a machine
         // that reaches one can be logged into and diagnosed rather than only power-cycled. The
         // legacy kernel-wired `user::shell_service` is retired as a boot path (it cannot host the
         // milestone-28 shell, which speaks the terminal contract, not the raw console protocol) and
         // is kept only as dead code for reference.
-        // **The tour ends and the soak begins** (milestone 219), and it takes the place of the
-        // progenitor handoff rather than of the halt below it. A soak boot that also brought up a
-        // console, a line discipline and a shell would be soaking those too, and the point of this
-        // workload is that what it stresses is decided rather than incidental.
+        // **The tour ends and the soak begins** (milestone 219 (the boot tour ends and the kernel
+        // halts, so there is nothing to soak)), and it takes the place of the progenitor handoff
+        // rather than of the halt below it. A soak boot that also brought up a console, a line
+        // discipline and a shell would be soaking those too, and the point of this workload is
+        // that what it stresses is decided rather than incidental.
         run_measurement_boot();
 
         #[cfg(not(any(
