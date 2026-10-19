@@ -13,7 +13,8 @@ needs_person: yes
 Written by `lane/wifi-proposal`, a research lane, on calef's request of 2026-10-04 (UTC). The title,
 the slug and every program or crate name below are provisional. No code was written.
 
-**In brief.** Fatal risk 8 (nobody needs it) cannot be tested until a stranger installs nife.
+**In brief.** Whether anybody needs nife (a non-fatal note in fatal risk 8's appendix) cannot be
+tested until a stranger installs nife.
 Milestone 494 (a driver for the network card a PC actually has) records in its `BUGS` that a
 laptop with no Ethernet port cannot reach rung 3 of milestone 198 (a package manager, and the
 trivial install). This proposal prices Wi-Fi for that case, names permissive code for every layer,
@@ -201,7 +202,7 @@ patagonia (macOS) was not tried and is not recommended as a gate.
    measurements.
 6. Reversibility. The code is reversible. F1 and F2 are not, and nobody has acted on either yet.
 7. Equal cost. Tethering would still come first for install, because it is testable in QEMU and
-   needs no blob. Wi-Fi would still be needed for retention, which is risk 8's actual claim.
+   needs no blob. Wi-Fi would still be needed for retention, which is that note's actual claim.
 
 ## Recommendation
 
@@ -243,4 +244,4 @@ and every GPL layer for base.
 
 ## Index row
 
-A laptop with no Ethernet port cannot reach rung 3 of milestone 198 (a package manager, and the trivial install), which blocks fatal risk 8's test. The block prices Wi-Fi, names permissive code for each layer, and recommends USB tethering first and Wi-Fi second.
+A laptop with no Ethernet port cannot reach rung 3 of milestone 198 (a package manager, and the trivial install), which blocks the test of whether anybody needs nife. The block prices Wi-Fi, names permissive code for each layer, and recommends USB tethering first and Wi-Fi second.

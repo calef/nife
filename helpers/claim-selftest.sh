@@ -66,6 +66,18 @@ grep -q '^git ' "$work/called" || fail "free number: never reached git ($out)"
 printf '%s' "$out" | grep -q "already held" && fail "free number: refused ($out)"
 rm -f "$work/called"
 
+# A relative --worktree means the caller's directory, wherever the script lives. git answers
+# `fetch` and records the path `worktree add` was handed, then fails, so nothing is created.
+printf '#!/bin/sh\ncase "$3 $4" in "fetch origin") exit 0 ;; "worktree add") echo "$5" > "%s/added" ;; esac\necho "git $*" >> "%s/called"\nexit 97\n' \
+    "$work" "$work" > "$work/bin/git"
+mkdir -p "$work/caller"
+set +e
+out=$(cd "$work/caller" && sh "$claim" "maintainer/claim-selftest-rel-$$" --new-work --worktree ../lanes/rel 2>&1)
+set -e
+[ "$(cat "$work/added" 2>/dev/null)" = "$work/caller/../lanes/rel" ] \
+    || fail "relative --worktree: git was handed '$(cat "$work/added" 2>/dev/null)', wanted it under $work/caller ($out)"
+rm -f "$work/called" "$work/added"
+
 "$real_git" -C "$root" rev-parse --verify --quiet "refs/heads/$branch" >/dev/null \
     && fail "a refused claim created branch $branch"
 [ ! -e "$NIFE_WORKTREES" ] || fail "a refused claim created $NIFE_WORKTREES"

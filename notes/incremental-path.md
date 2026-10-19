@@ -163,9 +163,9 @@ Optimization cannot fix 'nothing runs here', and no amount of kernel work change
 this state is a research demonstrator forever."* That is Li et al.'s *"significantly fewer features
 than Linux ... impeding adoption"*, written independently, and stated more harshly.
 
-Risk 8 is titled "Nobody needs it": *"everything works and no one has a reason to run it."* And
-it records that it has already fired once, when the project's first customer took their backups to
-Linux in August 2026 because nife was not ready. That is Li et al.'s *"the cost of switching from
+Risk 8's appendix keeps "Nobody needs it" as a non-fatal note: *"everything works and no one has a
+reason to run it."* And it records that it has already fired once, when the project's first
+customer took their backups to Linux in August 2026 because nife was not ready. That is Li et al.'s *"the cost of switching from
 Linux to these clean-slate designs is prohibitive"*, observed in a sample of one, at home, with real
 data.
 
@@ -194,8 +194,8 @@ rather than inherited"*. That argument is settled by a number: milestone 168 (a 
 workload benchmark) produces it, and both sides agree in advance what the number would mean. It is an
 argument inside the design space of new kernels, between two ways of getting isolation.
 
-Risk 8 is "Nobody needs it", and this paper's counter-thesis is about which path gets memory safety
-into production. Li et al. take no position on capabilities, on IPC cost, or on where isolation
+The note "Nobody needs it" in risk 8's appendix is about demand, and this paper's counter-thesis
+is about which path gets memory safety into production. Li et al. take no position on capabilities, on IPC cost, or on where isolation
 comes from. They would be equally content with a verified module, a Rust module, or a
 capability-confined one; their four steps are agnostic about mechanism and specific about *location*,
 which is inside the kernel people already run. No benchmark decides it. The deciding evidence is

@@ -347,8 +347,6 @@ crates/block_roster/src/lib.rs::Full
 crates/block_roster/src/lib.rs::HEADER_BYTES
 crates/block_roster/src/lib.rs::MAGIC
 crates/block_roster/src/lib.rs::Roster
-crates/block_roster/src/lib.rs::TRANSPORT_MMIO
-crates/block_roster/src/lib.rs::TRANSPORT_PCI
 crates/block_roster/src/lib.rs::capacity_of
 crates/block_roster/src/lib.rs::count_on
 crates/block_roster/src/lib.rs::get
