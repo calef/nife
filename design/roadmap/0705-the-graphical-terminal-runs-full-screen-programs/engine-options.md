@@ -12,7 +12,7 @@ files (`vt.rs` 1,033), plus `keymap.rs` (572) and `script.rs` (352), and `displa
 547. A second grid and a region-aware scroll touch `line_feed`, the damage record and the scrollback
 ring, which is where the risk is, not the sequence count.
 
-1. Considered instead: B, C and F, each under its own entry, and D for the ordering.
+1. Considered instead: B, C, F and G, each under its own entry, and D for the ordering.
 2. See the shared answer in the main document.
 3. Prior art: xterm's control-sequence document and `vttest` define the behavior (not read here; named
    from memory). Every real engine in section C or B is an existence proof.
@@ -22,9 +22,9 @@ ring, which is where the risk is, not the sequence count.
    2026-10-18; A adds to the code and, with a second grid, to the data.
 6. Fully reversible. No wire format changes, and the engine is behind `display_terminal`.
 7. Against B to E, yes at equal cost: it keeps the three-witness proof (`pixel(x, y)`) with no
-   rebuild, and it is the only option with no dependency in the shipping graph. Against F, no: at
-   equal cost a shipping terminal's model owns every program's output better than lines we test
-   alone. A's remaining argument is fewer moving parts.
+   rebuild, and it is the only option with no dependency in the shipping graph. Against F and G, no:
+   at equal cost an engine that passes 22 or 23 of vttest's 24 screens owns every program's output
+   better than ours at 7. A's remaining argument is fewer moving parts.
 
 ## B. libghostty-vt as a second engine behind the C seam
 

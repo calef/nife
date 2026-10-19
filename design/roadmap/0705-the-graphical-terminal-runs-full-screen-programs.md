@@ -13,11 +13,11 @@ needs_person: no
 *Title and slug are drafts.*
 Raised by a maintainer-assigned lane, from calef's question of whether the graphical terminal can run
 `vim`, `less` and `top`, and what the engine choice that §29 (framebuffer grant) deferred has to do
-with it. Parts 1 to 3 were checked in the tree or upstream on 2026-10-02 (UTC). Option F was measured
-on 2026-10-18 (UTC). A claim from memory is marked as such.
+with it. Parts 1 to 3 were checked in the tree or upstream on 2026-10-02 (UTC). Options F and G were
+measured on 2026-10-18 (UTC). A claim from memory is marked as such.
 
 The engine choice is a dependency decision (§46 (thin primitives or whole subsystems; we write
-everything in between)). Part 4 gives options A to F and a recommendation, and the choice is calef's
+everything in between)). Part 4 gives options A to G and a recommendation, and the choice is calef's
 ([What is needed from calef](#what-is-needed-from-calef)).
 
 ## Part 1: The gap, and the goal
@@ -86,12 +86,13 @@ and says so in `BUGS`, which fails towards a program that times out rather than 
 blocks. Replies do not change the grid, so the expected-picture check is untouched.
 
 Every engine here fits this shape. libghostty-vt (option B) has a write callback
-(`GHOSTTY_TERMINAL_OPT_WRITE_PTY`), and `alacritty_terminal` (option F) sends `Event::PtyWrite`; each is
-collected into the same buffer.
+(`GHOSTTY_TERMINAL_OPT_WRITE_PTY`), `alacritty_terminal` (option F) sends `Event::PtyWrite`, and
+libvterm (option G) keeps an output buffer that `vterm_output_read` drains; each is collected into
+the same buffer.
 
 ## Part 4: The engine question, as options
 
-Answers to questions 2 and 4 of the seven are the same for A to E, so they are here once.
+Answers to questions 2 and 4 of the seven are the same for A to E, so they are here once; F and G answer their own.
 
 - *What does this tree do in the analogous case?* It built `line_editor` against the prior-art rule's
   default (`notes/line-discipline.md`, "The build-vs-reuse call"), built `video_terminal` before any
@@ -105,12 +106,13 @@ Answers to questions 2 and 4 of the seven are the same for A to E, so they are h
   is still `no_std` is the kernel's witness, which predicts the scanout with `video_terminal`.
   Separately, libghostty-vt is freestanding but not allocation-free (its `allocator.h`).
 
-The full seven-question entries for A to E are in [the engine options appendix](0705-the-graphical-terminal-runs-full-screen-programs/engine-options.md),
-and F's measurements are in [the option F appendix](0705-the-graphical-terminal-runs-full-screen-programs/option-f.md).
+The full entries for A to E are in [the engine options appendix](0705-the-graphical-terminal-runs-full-screen-programs/engine-options.md).
+F and G have their own ([F](0705-the-graphical-terminal-runs-full-screen-programs/option-f.md),
+[G](0705-the-graphical-terminal-runs-full-screen-programs/option-g.md)), and vttest's results are in
+[the conformance appendix](0705-the-graphical-terminal-runs-full-screen-programs/conformance.md).
 
-- **A. Extend `video_terminal`.** The Part 2 list, an estimated 500 to 900 lines of engine code and as
-  many of tests. No dependency, and the kernel's witness keeps predicting every feature. The risk is a
-  second grid and a region-aware scroll through `line_feed`, the damage record and the scrollback ring.
+- A. Extend `video_terminal`. The Part 2 list, an estimated 500 to 900 lines of engine code and as
+  many of tests. No dependency, and the kernel's witness keeps predicting every feature.
 - B. libghostty-vt as a second engine behind the C seam. Complete, MIT, but it needs Zig 0.16, an
   allocator and a cells-based check, and its C API is declared unstable.
 - C. `vte` alone. A parser, not an engine: the grid, regions, second screen and replies stay ours. At
@@ -118,28 +120,28 @@ and F's measurements are in [the option F appendix](0705-the-graphical-terminal-
 - D. A then B. A delivers the goal; B arrives later for milestone 23 (a capability-routed component OS with live replacement).
 - E. libghostty-vt replaces `video_terminal`. Loses the second engine and puts an unstable API on the
   only display path.
-- **F. `display_terminal` becomes a `std` program on a full Rust engine.** Measured below.
+- F. `display_terminal` becomes a `std` program on a full Rust engine.
+- G. The same `std` program on libvterm, a C engine linked through nife's C library. B's shape
+  without Zig.
 
-### F, in short
+### F and G, measured
 
-Three candidates were probed on nife's three `std` targets with fifteen checks taken from Part 2.
+| | A: ours | F: `alacritty_terminal` 0.26.0 | F: `vt100` 0.17.0 | G: libvterm 0.3.3 |
+|---|---|---|---|---|
+| Builds for nife's three targets | yes | with its pty and event loop cut out | unmodified | compiles and links through the C library |
+| Part 2 checks (15) | 0 | 15 | 13 | 15 |
+| vttest screens (24) | 7 | 22 | 17 | 23 |
+| Engine code | in 18 KB | about 180 KB | about 55 KB | 37 to 44 KB |
+| Heap per 80x24 terminal | 717 KB static | 2.2 to 4.1 MB | 0.26 MB probe peak | 0.15 MB |
+| Replies, damage | neither | both | neither | both |
+| New to the base graph | nothing | 10 crates | 5 crates | one C library |
+| Ran under QEMU on nife | in the suite | yes, 15 of 15 | yes, 13 of 15 | no |
 
-| | `alacritty_terminal` 0.26.0 | `vt100` 0.17.0 | `termwiz` 0.23.3 |
-|---|---|---|---|
-| Builds for nife | with its pty and event loop cut out (2,087 lines) | unmodified | no |
-| Part 2 checks | 15 of 15 | 13 of 15 (no DECAWM, fixed tabs) | not an engine |
-| Engine code over the `std` floor | about 180 KB | about 55 KB | n/a |
-| Crates new to the base graph | 10 | 5 | n/a |
-| Replies, damage | both | neither | n/a |
-| Peak heap on nife, the probe | 4.3 MiB | 0.25 MiB | n/a |
+`termwiz` 0.23.3 does not build for nife and is not an engine. `alacritty_terminal`'s heap floor is
+2.2 MB because `vte` reserves 2 MiB for synchronized updates; lowering its own storage step only
+removes the jump to 4.1 MB.
 
-Both engines ran the probe on nife under QEMU on all three architectures, with the host's verdicts.
-All of it passes `deny.toml` (licenses, advisories, bans). Today's `display_terminal` is 18 KB of
-code and a 717 KB static grid. F's would be roughly 250 KB of code, and one `alacritty_terminal`
-terminal holds 4.1 MB of heap at 80x24 even with its history capped, because its storage grows
-1,000 rows at a time.
-
-The kernel cannot link a `std` engine, so under F its witness keeps `video_terminal`. The
+The kernel cannot link a `std` engine, so under F or G its witness keeps `video_terminal`. The
 three-witness check becomes differential: two engines drawing through one renderer must agree pixel
 for pixel on the scripted screen. `video_terminal` survives as the oracle §37 values. The limit is
 that the kernel predicts only what `video_terminal` implements, so the full-screen features are
@@ -147,36 +149,29 @@ graded by Part 1's host harness instead.
 
 ## Recommendation
 
-F on `alacritty_terminal`, with `video_terminal` kept as the kernel's oracle. Ask upstream for a
-cargo feature that gates the pty and event loop; until it lands, carry the cut as a vendored patch
-under §34 (RedoxFS is the primary filesystem, on three conditions)'s terms.
+G, libvterm, with `video_terminal` kept as the kernel's oracle. Conformance is a tie with
+`alacritty_terminal` (23 and 22 of 24 vttest screens). On the rest G is ahead: a fifteenth of the
+heap or less, a quarter of the engine code, no crate added, and no patch to carry.
 
-This is not about effort. F is more plumbing than A: a `std` port, five spawn sites moving their
-slots, a renderer split and a vendored tree. It also costs memory: about 4 MB of heap per terminal
-against a 717 KB grid, which the vendored cut could lower through `MAX_CACHE_SIZE` (not measured). At
-equal cost I would still choose it. Every program's
-output is the input, and a model that a shipping terminal runs is a better owner of that surface
-than 900 lines we would test alone. A keeps fewer moving parts, which is its real argument.
-
-`vt100` is the contender that lost. It builds unmodified and is a third the size. It fails DECAWM,
-which procps `top` toggles, and has no settable tabs, damage or replies.
+This is not about effort; at equal cost I would choose it. Its real cost is that every program's
+output is parsed in C. A memory bug there is bounded by what `display_terminal` holds, the scanout and
+its own terminal endpoint, and the lane adds a fuzz target. F is the choice if Rust on that surface
+is worth about 2 MB per terminal. A keeps fewer moving parts and starts from 7 screens of 24.
 
 ## What is needed from calef
 
-One question at a time; the second is asked only if the first is answered F.
-
-1. Which engine runs on the display path: F on `alacritty_terminal` (recommended), or A? Blocking:
-   nothing on the display path can start until this is answered. If no, A starts and nothing is taken.
-2. Under §46, do we take `alacritty_terminal` 0.26.0 (Apache-2.0) and the ten crates it adds to the
-   base graph, carried as a vendored cut until upstream gates its pty? The crates are listed in
-   [the option F appendix](0705-the-graphical-terminal-runs-full-screen-programs/option-f.md). If no,
-   the answer to question 1 falls back to A.
+1. Which engine runs on the display path: G on libvterm (recommended), F on `alacritty_terminal`, or
+   A? Blocking: nothing on the display path can start until this is answered. If G, its own §46 take,
+   libvterm 0.3.3 as a vendored C tree, is the question that follows.
+2. Held for the dependency census: the §46 take of `alacritty_terminal` 0.26.0 and its ten crates
+   (calef, 2026-10-19 UTC: "Hold it"), with `r-efi`, `plist` and `pulldown-cmark`.
 
 ## Ruling
 
 calef, 2026-10-18 UTC: "Full screen program support seems like a priority", and "Reopen 705, survey
-F". The proposal is open and the engine choice is his. Milestone 784's item (b), `vte` alone, is held
-until it is made, because a full engine brings its own parser.
+F". On 2026-10-19 UTC: "Yes, close the two gaps" (conformance, and libvterm), and on question 2,
+"Hold it". The engine choice is his. Milestone 784's item (b), `vte` alone, is held until it is made,
+because a full engine brings its own parser.
 
 ## Part 5: Priority, and whether the serial console has the same gap
 
@@ -221,19 +216,21 @@ through the firmware-screen console, until a session can run one.
 - A program to measure against (a port of `less`, `vim` or procps `top`) is milestone 198's road and
   not this one's. The host-harness measure does not need one.
 
-## What would be built, if the answer is F
+## What would be built, if the answer is G
 
 1. The host harness in `xtask` (name provisional): a program in a pty, its output into the engine, a
    screen dump compared with a committed golden.
 2. The renderer split: `Vt::pixel`'s cell-to-pixel half as a function both engines' cells draw through.
-3. `display_terminal` as a `std` program on the vendored engine, its slots moved past the `std`
-   runtime's, its history capped, and `Event::PtyWrite` forwarded into its keystroke path.
-4. The kernel's witness kept on `video_terminal`, now a differential check, with the script limited to
+3. `display_terminal` as a `std` program on vendored libvterm through the C library, its slots moved
+   past the `std` runtime's, `vterm_output_read` forwarded into its keystroke path, and its scrollback
+   kept from `sb_pushline`.
+4. A fuzz target over `vterm_input_write`.
+5. The kernel's witness kept on `video_terminal`, now a differential check, with the script limited to
    what both engines implement.
-5. `notes/glyphs.md` and `notes/terminal-contract.md` updated.
+6. `notes/glyphs.md` and `notes/terminal-contract.md` updated.
 
 What A would build is in [the engine options appendix](0705-the-graphical-terminal-runs-full-screen-programs/engine-options.md).
 
 ## Index row
 
-`crates/video_terminal` implements printable text and a handful of CSI sequences, which is not enough for `vim`, `less` or `top`. Options A to F are measured; the recommendation is F, `display_terminal` as a `std` program on `alacritty_terminal`, with `video_terminal` kept as the kernel's oracle. The engine and the dependency are calef's.
+`crates/video_terminal` implements printable text and a handful of CSI sequences, which is not enough for `vim`, `less` or `top`. Options A to G are measured, vttest included; the recommendation is G, `display_terminal` as a `std` program on libvterm through the C library, with `video_terminal` kept as the kernel's oracle. The engine is calef's.

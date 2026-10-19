@@ -48,6 +48,10 @@ bind for nife. `psm`'s build script fails on riscv64. And `sha2` 0.10 hits an LL
 x86_64 softfloat. It also needs `getrandom`'s custom backend. It is not an engine, so it is out
 whatever happens to its build.
 
+`wezterm-term`, the engine that applies `termwiz`'s actions, is not on crates.io. Two forks are
+(`zeughaus-wezterm-term`, `tattoy-wezterm-term`), and each depends on its own fork of `termwiz`. Neither
+was built for nife.
+
 `vt100` 0.17.0 was released on the day of this survey; 0.16.2 (2025-07-12) is the prior release.
 
 ## Dependencies the base graph would gain
@@ -82,7 +86,21 @@ Data moves rather than grows. Today's ELF carries 717,440 bytes of `.data`, the 
 grid and its 300-row scrollback). Under F the grid is on the heap. An `alacritty_terminal` cell is 24
 bytes. Its default history is 10,000 rows, about 19 MB at 80 columns, so the component must cap it.
 Even capped, its row storage grows in 1,000-row steps (`MAX_CACHE_SIZE` in `grid/storage.rs`), a
-2 MiB allocation at 80 columns (the spike below has the totals).
+2 MiB allocation at 80 columns.
+
+Where the memory goes, measured on the host with a counting allocator, one 80x24 terminal with 300
+rows of history:
+
+| `MAX_CACHE_SIZE` | at creation | after the first full erase | after 400 lines |
+|---|---|---|---|
+| 1,000 (upstream) | 2.19 MB | 4.15 MB | 4.15 MB |
+| 100 | 2.19 MB | 2.39 MB | 2.78 MB |
+| 0 | 2.19 MB | 2.20 MB | 2.78 MB |
+
+The 2.19 MB at creation is not the grid. A bare `Term` is 96 KB; the rest is `vte`'s `Processor`,
+which reserves a 2 MiB buffer for synchronized updates (`SYNC_BUFFER_SIZE` in `ansi.rs`). So the
+floor is about 2.2 MB per terminal with one patch, and about 0.7 MB only if `vte` is patched as well.
+All fifteen checks still pass with `MAX_CACHE_SIZE` at 0.
 
 ## What F needs beyond the engine
 
@@ -127,23 +145,24 @@ No full-screen program ran. None exists on nife (Part 1), so the spike shows the
 
 ## The seven questions
 
-1. Considered instead: A, which adds no dependency and keeps the kernel's witness over every feature,
+1. Considered instead: G, libvterm, which ties on conformance at a fifteenth of the heap. A, which adds no dependency and keeps the kernel's witness over every feature,
    at 500 to 900 lines we write and keep. B and E, which need Zig and an unstable C API. C, a parser
    only. Within F, `vt100` builds unmodified and is a third the size, and loses on DECAWM (procps `top`
    toggles it, per the census), tab stops, damage and replies. `termwiz` does not build and is not an
    engine.
-2. The tree's analogous cases. `jig` is a `std` program making raw syscalls. Milestone 784 (reuse what the tree wrote) holds that
-   needing `std` is not a reason to refuse a crate. RedoxFS is vendored because it needs a patch
+2. The tree's analogous cases. `jig` is a `std` program making raw syscalls. Milestone 784 (reuse
+   what the tree wrote) holds that needing `std` is not a reason to refuse a crate. RedoxFS is vendored because it needs a patch
    (§34 (RedoxFS is the primary filesystem, on three conditions)).
-3. Prior art read: both crates' source at the versions above. That Alacritty itself runs this model
-   is *from memory*; its conformance against `vttest` was not checked.
+3. Prior art read: both crates' source at the versions above. vttest, run against both: 22 of 24
+   screens for `alacritty_terminal`, 17 for `vt100` ([the conformance appendix](conformance.md)).
 4. Is the premise true? Partly. "No `std`, no allocator" was this program's inherited choice. A `std`
-   process has a heap (slot 0) and, since milestone 812 (`std::thread::spawn` runs real threads in one address space), threads. What is still true is that the
-   kernel's witness is `no_std`, which is why `video_terminal` stays.
+   process has a heap (slot 0) and, since milestone 812 (`std::thread::spawn` runs real threads in
+   one address space), threads. What is still true is that the kernel's witness is `no_std`, which
+   is why `video_terminal` stays.
 5. Cost: the sizes and graphs above, measured. Lane work is estimated, not measured: the `std` port,
    the slot moves in five spawn sites, the renderer split, the vendored cut and the host harness.
-6. Reversible as code until a program relies on the engine. The dependency is §46 (thin primitives or whole subsystems)'s expensive
-   category, and a vendored cut has to follow upstream. Nobody has acted on it.
-7. Yes. At equal cost I would still choose F on `alacritty_terminal`: conformance is the point, and
-   the kernel's oracle stays ours. F has more moving parts than A (a `std` port, slot moves, a
-   vendored cut), and that is A's real argument; it is about elegance, not effort.
+6. Reversible as code until a program relies on the engine. The dependency is §46 (thin primitives
+   or whole subsystems)'s expensive category, and a vendored cut has to follow upstream. Nobody has acted on it.
+7. Against A, yes: conformance is the point, and the kernel's oracle stays ours. Against G, no: at
+   equal cost G's heap and size win, with conformance tied. F's remaining argument is that its
+   engine is Rust.
