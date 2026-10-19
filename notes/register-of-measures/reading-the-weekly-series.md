@@ -80,7 +80,9 @@ something derived beside it, so the two cannot drift apart.
 
 ## How the series stays current
 
-`script/metrics --update` recomputes the current week's row and redraws the charts.
+`script/metrics --update` recomputes the current week's row and redraws the charts. It also
+restates any past week whose row is not at that week's last commit, so the first run after a week
+ends closes it with whatever merged after the previous run.
 `.github/workflows/metrics.yml` runs it daily (calef asked for this on 2026-09-23). It opens or
 refreshes a pull request if anything changed, following `toolchain-bump.yml`, the closest existing
 shape.
