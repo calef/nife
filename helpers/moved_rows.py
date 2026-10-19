@@ -1,10 +1,11 @@
 """A split moves a name, not its debt: the rows of a path-keyed ratchet follow an item to its new file.
 
 Two ratchets key their baselines by file: `helpers/name_checks.py` as `path::name check` and
-`helpers/module_block_ratchet.py` as `path::name`. A change that splits a file under §266's length
-limit leaves the parent in place, since §282 makes it an index, so git calls nothing renamed. Every
-item that moved would then read as a new row at its new path, and every row it left as stale at the
-old one. This pairs the two, for the gate and for `--bank` alike.
+`helpers/module_block_ratchet.py` as `path::name`. A change that splits a file to keep it under
+§266 (a Rust source file stays under 2,000 lines) leaves the parent in place, since §282 (when a
+file is split, the parent becomes an index) keeps it as the index, so git calls nothing renamed.
+Every item that moved would then read as a new row at its new path, and every row it left as stale
+at the old one. This pairs the two, for the gate and for `--bank` alike.
 
 A row that appears at one path is a move when a row with the same name and the same remainder (the
 check, for `name_checks`) disappears at another path in the same crate, and the sources agree: an
