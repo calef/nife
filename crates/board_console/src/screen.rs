@@ -175,11 +175,9 @@ pub struct Screendump {
 /// **Turn a screendump drawn in `ink` on `paper` back into its rows of text**, decoding each
 /// cell against `alphabet` at `scale`, and reading `?` where nothing in the alphabet matches.
 ///
-/// This is the one decoder in the tree (milestone 377): [`read`] is it with this crate's console
-/// scheme, the painter's own scale and every printable character, and the graphical
-/// `swish-check` leg is it with the display terminal's live screen, `video_terminal::Attr::DEFAULT`'s
-/// own colors, an explicit alphabet and a 1:1 scale. The two schemes stay the two crates' own
-/// choices, as data at the call.
+/// The bitmap-font decoder (milestone 377): [`read`] is it with this crate's console scheme, the
+/// painter's own scale and every printable character. The display terminal draws anti-aliased
+/// cells, which [`decode_exact`] reads instead.
 ///
 /// `scale` is how many screen pixels wide one font pixel was painted: `1` for a terminal that
 /// draws 1:1, and for [`read`] whatever `screen_console::ScreenConsole::scale_for` says the
