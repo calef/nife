@@ -16,10 +16,11 @@
 # Rust tidy and rust-lang/triagebot split the same way: the bot's tests live with the bot.
 #
 # Each check is the one script/lint ran, at the same path and with the same failure. The 23rd, the
-# pre-push hook's fleet half, is new with that hook's split. None needs a
+# pre-push hook's fleet half, is new with that hook's split. The last four test the trunk watcher,
+# helpers/trunk-health.sh, which is fleet tooling like the merge watchers. None needs a
 # network, `gh` or a token: every selftest here uses fixtures or a stub `gh`.
 #
-#     script/lint-fleet           # all 23, about ten seconds
+#     script/lint-fleet           # all 27, about ten seconds
 #
 # BUGS
 #
@@ -231,4 +232,21 @@ python3 helpers/merge_queue_share.py --selftest >/dev/null
 # pull requests merged into main and the label test, against fixtures, with no network.
 python3 helpers/debt_paydown_share.py --selftest >/dev/null
 
-echo "lint-fleet: all 23 checks of the fleet tooling passed"
+echo "==> the trunk watcher's cadence stream (a pass that could not ask is a row, never recovery)"
+# Fakes and a scenario table in a scratch tree: no network, no gh, no cargo. The defect it holds is
+# a recovery line printed about a watcher that could not ask, which a green run of everything else
+# would not catch, because it needs the API to fail on cue.
+helpers/trunk-health-cadence-selftest.sh >/dev/null
+
+# The repeat half of milestone 422 (a cadence job whose healthy state is red) in
+# helpers/trunk-health.sh: the grouping thresholds, the log-frame strip and the watcher exclusions,
+# proved offline through a real `--once` pass against a stub `gh` and `git` and synthetic runs (no
+# network). helpers/trunk-health-repeat-selftest.sh says what each fixture pins and ends in the
+# ruled issue home, helpers/repeat_issue.py, whose pure parsing and planning have their own
+# --selftest beside it.
+helpers/trunk-health-repeat-selftest.sh >/dev/null
+# The DUE half (milestone 495 (a cadence that says "due" reaches nobody)): exit code is the authority, drift is cannot-ask.
+helpers/trunk-health-due-selftest.sh >/dev/null
+python3 helpers/repeat_issue.py --selftest >/dev/null
+
+echo "lint-fleet: all 27 checks of the fleet tooling passed"

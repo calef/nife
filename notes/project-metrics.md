@@ -61,7 +61,8 @@ band without changing the bar's height. The current week's total is checked agai
 ![unsafe density](project-metrics/unsafe.svg)
 
 Blocks per 10,000 code lines outside `kernel/src/arch/`, `script/lint`'s gated census; the orange
-line is the ceiling, the other the trailing ten-week mean. Only the ratio is about soundness.
+line is the ceiling its marker held that week, the other the trailing ten-week mean. Only the ratio
+is about soundness.
 
 ## The same unsafe blocks, by trust boundary
 
