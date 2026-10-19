@@ -1,5 +1,5 @@
 ---
-status: PARTIAL
+status: BUILT
 raised: 2026-09-24
 milestone_dependencies: none
 decision_dependencies: none
@@ -9,7 +9,7 @@ needs_person: no
 ---
 # 586. A prose ratchet in lint
 
-Built except the names of its two exception markers, which are calef's. Minted by the maintainer on 2026-09-24, at the merge of the two decisions it
+Built. Minted by the maintainer on 2026-09-24, at the merge of the two decisions it
 enforces: [§212 (a prose budget)](../decisions/0212-a-prose-budget-for-every-document.md) and
 [§213 (writing standards)](../decisions/0213-writing-standards.md). calef ratified both on 2026-09-23.
 
@@ -97,7 +97,7 @@ the manual. The baseline is `design/prose-baseline.tsv`, one row per document ov
 - The baseline only shrinks. Rows may not be added or raised against the merge base, and a row for
   a missing file fails. A rename carries its row. `--bank` lowers rows and never adds.
 - Exceptions. `<!-- prose-budget: exception. ... -->` is honored as `AGENTS.md` and
-  `design/fatal-risks/README.md` already wrote it. `writing-standards` is its §213 twin and is provisional.
+  `design/fatal-risks/README.md` already wrote it. `writing-standards` is its §213 twin.
   Each needs a date and a `Reason:`.
 - The orphan check. A file under `X/` must be linked from `X.md` or `X/README.md`. That README is
   the directory's provenance page and is exempt. A thematic
@@ -195,9 +195,10 @@ of measurement can touch it, and the ratchet is a plain limit check on every doc
 ## The exception markers' names
 
 `<!-- prose-budget: exception. -->` waives §212 and `<!-- writing-standards: exception. -->`
-waives §213. Each is `Name: provisional.` and each is named for the decision it waives.
-`script/names` has no kind for a marker in an HTML comment, so these two are tracked here and in
-`helpers/prose_ratchet.py`'s header, outside its register.
+waives §213. Name: ratified 2026-10-19 (calef, PR #2425), each named for the decision it waives.
+Refused `prose-ratchet: exception` (names the gate, not the rule waived) and `§212-exception` (a
+number tells a reader nothing). `script/names` has no kind for a marker in an HTML comment, so
+these two are recorded here and in `helpers/prose_ratchet.py`'s header, outside its register.
 
 ## Design note, 2026-09-29: a correction pays the same toll as a rewrite
 
@@ -224,8 +225,7 @@ prose words. An exception marker's grant is read as `wc -w` without frontmatter 
 
 - **Done.** Measured baseline churn over the first week and to date, in the section above. It
   finds the ratchet worth keeping.
-- **Outstanding.** Promote the two exception markers from provisional. The syntax is honored as
-  found; calef names it. Where the splitter departs from §213's, and why, is in the module's header.
+- **Done.** The two exception markers' names, ratified by calef on 2026-10-19 (UTC). Where the splitter departs from §213's, and why, is in the module's header.
 - **Done.** Built 2026-09-25: the marker-count check from the design note above. `granted_words()`
   reads the first number before `words` in a `prose-budget` marker as a whole-file `wc -w` ceiling.
   It waited on `AGENTS.md`, which #1285 brought to its 6,097. `design/fatal-risks/README.md` had grown to
