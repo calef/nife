@@ -236,7 +236,8 @@ and nothing else (`notes/bench-runbook.md`'s BUGS):
   than hiding it.
 - ioping prints `n1 (  0 B)` because its device size is filled in only on platforms its
   `parse_device` knows, and nife is not one. The working set comes from `st_size`, which nife
-  reports as the namespace's size, so requests land at random offsets in the 64 MiB at 1 MiB.
+  reports as the namespace's size; ioping refuses `target is too small for this` otherwise. So
+  requests land at random offsets in the 64 MiB at 1 MiB.
 - Step 2 builds the evening's installer from a branch that has not merged, because the flag may
   flip only after silicon proves it. The branch's pull request follows the evening.
 - The soak image is a debug build, as radon's were.
