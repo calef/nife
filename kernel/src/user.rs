@@ -130,9 +130,9 @@ pub mod x86_programs;
 /// told apart by the argument in `x0`.
 // aarch64's milestone tour is the only consumer, so this is dead in exactly the configurations
 // that have no tour: a test build, and the two alternate boot modes. The allow sits on the module
-// because the module is one wiring, not a bag of independent items. Not compiled on riscv64,
-// whose tour is its own and whose UART is no PL011.
-#[cfg(not(target_arch = "riscv64"))]
+// because the module is one wiring, not a bag of independent items. aarch64 only: riscv64's and
+// `x86_64`'s tours are their own, and neither UART is a PL011.
+#[cfg(target_arch = "aarch64")]
 #[cfg_attr(
     any(test, feature = "system_tests", feature = "shell", feature = "bench"),
     allow(dead_code)

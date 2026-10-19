@@ -1,12 +1,11 @@
 //! **The kernel's Rust entry point, and the steps all three boots share.**
 //!
-//! `kernel_main` is the function `_start` calls on every architecture. On `x86_64` it hands off
-//! to that architecture's own boot (`x86_64_boot.rs`) before anything is brought up. aarch64 and
-//! riscv64 both go through [`bring_up_machine`] and everything after it here: the test suite, the
-//! measurement boots, the ladder, each port's milestone tour and the hand-over. The boot pointer it
-//! stashes ([`DTB`]) is here because all three boots reach it. Milestone 890 (riscv64 and `x86_64`
-//! join the shared boot path) tracks retiring the per-architecture boot files (§284 (the kernel
-//! crate root splits into child modules, one per boot)).
+//! `kernel_main` is the function `_start` calls on every architecture, and all three go through
+//! [`bring_up_machine`] and everything after it here: the test suite, the measurement boots, the
+//! ladder, each port's milestone tour and the hand-over. The boot pointer it stashes ([`DTB`]) is
+//! here because all three boots reach it. Milestone 890 (riscv64 and `x86_64` join the shared boot
+//! path) tracks retiring the per-architecture boot files (§284 (the kernel crate root splits into
+//! child modules, one per boot)).
 //!
 //! Moved out of the crate root by milestone 876 (the kernel crate root is split along its seams),
 //! with the bodies unchanged. `kernel_main` had been split by boot phase first, calef's ruling of
@@ -59,14 +58,12 @@ pub fn device_tree() -> Result<device_tree_blob::DeviceTreeBlob<'static>, device
 /// where arguments live. `boot_info_pointer` arrives in `x0`. See notes/registers.md.
 ///
 /// `-> !` means this never returns, which is true: there is nowhere to return *to*.
-// On `x86_64`, that port's own boot below diverges, so the rest of `kernel_main` is deliberately
-// unreachable there. Scoped to it so aarch64 and riscv64 keep the lint.
-// And the icount boot parks before the bench boot it implies, so `bench::run()` and everything after
+// The icount boot parks before the bench boot it implies, so `bench::run()` and everything after
 // it is deliberately unreachable in that one configuration (milestone 78).
 // And riscv64's `storage_bench` boot diverges in `run_measurement_boot`, leaving the hand-over after
 // it unreachable but compiled, which is what keeps the hand-over's callees linted in that build.
 #[cfg_attr(
-    any(target_arch = "x86_64", feature = "icount", feature = "storage_bench"),
+    any(feature = "icount", feature = "storage_bench"),
     allow(unreachable_code)
 )]
 #[unsafe(no_mangle)]
@@ -94,10 +91,9 @@ pub extern "C" fn kernel_main(boot_info_pointer: usize) -> ! {
     console::configure_from_dtb();
 
     // **The screen, before the first word** (milestone 243), on the two architectures whose boot
-    // chain never lights one. The x86_64 arm below does the same thing a hundred lines down with
-    // the same comment and a different discovery: there the loader measured a UEFI aperture, here
-    // the kernel asks `fw_cfg` for a `ramfb` and supplies the memory itself. Both end at
-    // `console::attach_screen`.
+    // chain never lights one. `x86_64_banner` does the same thing with a different discovery: there
+    // the loader measured a UEFI aperture, here the kernel asks `fw_cfg` for a `ramfb` and supplies
+    // the memory itself. Both end at `console::attach_screen`.
     //
     // It is deliberately here, before the banner: everything after this line is on a monitor and
     // everything before it is not, so the earliest possible line is the one worth buying. It needs
@@ -105,8 +101,8 @@ pub extern "C" fn kernel_main(boot_info_pointer: usize) -> ! {
     // before `arch::mmu::init`, which it does by a wide margin. See `screen::attach`.
     //
     // The line itself is printed with the rest of the tour rather than here, for the same reason
-    // the x86 arm gives: a line describing the screen has to be printed by a console that already
-    // has one in order to appear on it.
+    // `x86_64_banner` gives: a line describing the screen has to be printed by a console that
+    // already has one in order to appear on it.
     #[cfg(not(target_arch = "x86_64"))]
     let screen = screen::attach();
 
@@ -138,15 +134,8 @@ pub extern "C" fn kernel_main(boot_info_pointer: usize) -> ! {
     }
     #[cfg(target_arch = "riscv64")]
     riscv64_banner(boot_info_pointer, &screen);
-
-    // **The x86_64 boot still diverges here, before the shared bring-up below.** It brings up its
-    // own traps, memory, interrupts and scheduler and ends at its own hand-over, because
-    // `memory::init` reads a device tree and this machine hands over a PVH `hvm_start_info` and
-    // ACPI instead (milestone 161 (the `x86_64` kernel port); notes/x86-port.md). Joining
-    // `bring_up_machine` is the rest of milestone 890 (riscv64 and `x86_64` join the shared boot
-    // path).
     #[cfg(target_arch = "x86_64")]
-    x86_64_boot(boot_info_pointer);
+    x86_64_banner(boot_info_pointer);
 
     bring_up_machine(boot_info_pointer);
 
@@ -205,20 +194,7 @@ pub extern "C" fn kernel_main(boot_info_pointer: usize) -> ! {
             feature = "disk_throughput",
             feature = "network_bench"
         )))]
-        if let Some(image) = user::initial_ramdisk() {
-            println!();
-            println!("nife: handing the system to the userspace progenitor.");
-            // `boot_progenitor` discovers the UART's interrupt line itself and prints it with its
-            // source (10 on QEMU virt, 32 on the JH7110; notes/visionfive2.md, BUGS), so a bench
-            // transcript names which source won.
-            if let Err(e) = user::boot_progenitor(image) {
-                println!("  handoff FAILED: {e:?}");
-            }
-            // The boot thread's work is done; the progenitor and the services it builds run until halt.
-        } else {
-            println!();
-            println!("nife: no archive to hand the system to (no initial ramdisk was loaded).");
-        }
+        hand_over();
     }
 
     // bench::run diverged above, and so does soak::run (milestone 219); this is everyone else's
@@ -235,6 +211,48 @@ pub extern "C" fn kernel_main(boot_info_pointer: usize) -> ! {
         feature = "network_bench"
     )))]
     sched::exit()
+}
+
+/// **Hand the machine to the userspace progenitor**, on all three architectures.
+///
+/// The boot thread's work is done once this returns; the progenitor and the services it builds run
+/// until halt. A boot with no initial ramdisk says so and has nothing to hand over.
+#[cfg_attr(
+    any(
+        test,
+        feature = "system_tests",
+        feature = "bench",
+        feature = "soak_test",
+        feature = "job_mix",
+        feature = "disk_throughput",
+        feature = "network_bench"
+    ),
+    allow(dead_code)
+)]
+fn hand_over() {
+    // **The install offer** (milestone 198 (a package manager, and the trivial install that makes a
+    // second customer possible), rung 2a), before the handoff because it asks its question on the
+    // console and the progenitor gives the console's UART to a userspace input driver. `x86_64`
+    // only, for the reasons `user::install_service` gives, and a no-op on every boot that did not
+    // come from a file the loader could read back, which is every boot but a UEFI one.
+    #[cfg(target_arch = "x86_64")]
+    user::install_service::offer();
+
+    let Some(image) = user::initial_ramdisk() else {
+        println!();
+        println!("nife: no archive to hand the system to (no initial ramdisk was loaded).");
+        return;
+    };
+    println!();
+    println!("nife: handing the system to the userspace progenitor.");
+    let faults_before = arch::exceptions::USER_FAULTS.load(core::sync::atomic::Ordering::Acquire);
+    // `boot_progenitor` discovers the UART's interrupt line itself and prints it with its source
+    // (10 on QEMU virt, 32 on the JH7110; notes/visionfive2.md, BUGS), so a bench transcript names
+    // which source won.
+    match user::boot_progenitor(image) {
+        Ok(tid) => watch_the_progenitor(tid, faults_before),
+        Err(e) => println!("  handoff FAILED: {e:?}"),
+    }
 }
 
 /// riscv64's opening lines: the banner, where the kernel is running, and the screen. aarch64's
@@ -261,14 +279,68 @@ fn riscv64_banner(
     screen::print_summary(screen);
 }
 
-/// The shared bring-up, which aarch64 and riscv64 reach: arch, memory, paging, IOMMU, interrupts,
-/// cores.
+/// `x86_64`'s opening lines: the screen, the banner, where the kernel is running, and the boot
+/// handoff. A function for riscv64's reason, and the screen comes first in it because this port's
+/// boot chain lights one and the other two do not.
+#[cfg(target_arch = "x86_64")]
+fn x86_64_banner(boot_info_pointer: usize) {
+    // A live code address proves the far jump in boot.s landed in the high half and that we are
+    // executing there rather than merely reaching the UART through the identity map (the boot
+    // table maps both). If this reads 0xffffffff801xxxxx, long mode is on and the kernel is in the
+    // high half.
+    let pc = kernel_main as *const () as usize;
+
+    // **The screen, before the first word** (milestone 243). A commodity machine has no serial
+    // port, so everything printed before this is on no device a person can see. It needs nothing
+    // brought up first: the screen's address arrives in the boot handoff, the boot page tables
+    // `boot.s` installed already cover the low 4 GiB where a framebuffer aperture is, and
+    // `arch::mmu::map_everything` later carries the mapping across to the fine map
+    // (`memory::record_framebuffer`, called inside).
+    let screen = arch::machine::attach_screen(boot_info_pointer);
+
+    println!();
+    println!(
+        "{}x86_64 (long mode, ring 0, 4-level paging)",
+        boot_ladder::BANNER,
+    );
+    println!("  cpu 0 booted: high-half kernel, .bss, and the 16550 console are up.");
+    println!("  running at  : {pc:#018x}  (high half: the long-mode jump landed)");
+    println!("  boot info   : {boot_info_pointer:#018x}  (PVH hvm_start_info, not a device tree)");
+    // Said here rather than where it happens, because the line has to be printed by a console that
+    // already exists in order to be on the screen it is describing. A machine with no framebuffer
+    // says so and is not otherwise different, which is xenon: it has a serial port, which is why
+    // milestone 87 chose it.
+    match screen {
+        Some((found, cols, rows)) => println!(
+            "  screen      : {}x{} {} at {:#x}, {cols}x{rows} cells (boot cmdline)",
+            found.width,
+            found.height,
+            found.order.token(),
+            found.base,
+        ),
+        None => println!("  screen      : none in the boot cmdline; this console is the UART"),
+    }
+}
+
+/// aarch64's and riscv64's boot thread does not watch the progenitor after the hand-over: their
+/// `script/swish-check` legs type as soon as the prompt appears, and a report landing after the
+/// prompt would interleave with the echo. `x86_64`'s does, in `x86_64_boot.rs`.
+#[cfg(not(target_arch = "x86_64"))]
+#[cfg_attr(
+    any(test, feature = "system_tests", feature = "bench"),
+    allow(dead_code)
+)]
+fn watch_the_progenitor(_progenitor: crate::thread::ThreadId, _faults_before: usize) {}
+
+/// The shared bring-up, which all three architectures reach: arch, memory, paging, IOMMU,
+/// interrupts, cores.
 ///
-/// **riscv64 runs it since milestone 890** (riscv64 and `x86_64` join the shared boot path). That
-/// port's boot used to do every step here itself, in a different order: traps, then the timer and
-/// interrupts on, then memory, paging and the scheduler. What it needs that aarch64 does not is
-/// three calls into its own `arch/`, each `cfg`-gated beside the aarch64-only line that was already
-/// here, and its `arch::irq::init`, which this function reaches through [`interrupts_init`].
+/// Each step reads the machine from what it describes itself with: a device tree on aarch64 and
+/// riscv64, and on `x86_64` the PVH handoff and ACPI, which `memory::init` walks once and keeps
+/// (`arch::discovery`). What riscv64 and `x86_64` need that aarch64 does not is a few calls into
+/// their own `arch/`, each `cfg`-gated beside the aarch64-only line: the interrupt contexts and the
+/// timer's rate before the MMU, the ISA line and the cycle counter after it, and their IOMMUs. Each
+/// port's `arch::irq::init` is reached through [`interrupts_init`].
 fn bring_up_machine(boot_info_pointer: usize) {
     arch::init();
     stack::init();
@@ -305,17 +377,20 @@ fn bring_up_machine(boot_info_pointer: usize) {
     #[cfg(target_arch = "aarch64")]
     arch::timer::check_frequency_against_device_tree(boot_info_pointer);
 
-    // riscv64's two reads from the same window, for the same reason: the tree is only reachable
-    // through the boot map. The counter's rate is a `/cpus` property, because RISC-V has no
-    // `CNTFRQ_EL0` to read (milestone 100 (read the machine's PSCI and its CPU list)), and it must
-    // be known before `pmu::init` below times itself and before `interrupts_init` arms the first
-    // deadline. The PLIC's S-mode contexts are the tree's answer to a layout QEMU and the JH7110
-    // disagree on, read before anything touches a context (`arch::irq::init_contexts`,
-    // notes/visionfive2.md).
-    #[cfg(target_arch = "riscv64")]
+    // The interrupt contexts and the counter's rate, on the two ports that have no `CNTFRQ_EL0`
+    // to read, from the same window for the same reason: what describes them is reachable only
+    // through the boot map. Both must be known before `pmu::init` below times itself and before
+    // `interrupts_init` arms the first deadline.
+    //
+    // On riscv64 the PLIC's S-mode contexts are the tree's answer to a layout QEMU and the JH7110
+    // disagree on, read before anything touches a context (notes/visionfive2.md), and the rate is a
+    // `/cpus` property (milestone 100 (read the machine's PSCI and its CPU list)). On `x86_64` the
+    // context is the boot CPU's local APIC at the MADT's address, and the rate is measured: the
+    // TSC and the local APIC's own counter, both against the PIT, which is why the APIC comes first.
+    #[cfg(any(target_arch = "riscv64", target_arch = "x86_64"))]
     {
-        arch::timer::init_frequency(boot_info_pointer);
         arch::irq::init_contexts(boot_info_pointer);
+        arch::timer::init_frequency(boot_info_pointer);
     }
 
     // And now the sketchiest moment in the kernel. The instant SCTLR_EL1.M is set, the very
@@ -328,12 +403,14 @@ fn bring_up_machine(boot_info_pointer: usize) {
     // trap did before milestone 124. See kernel/src/interrupt_stack.rs.
     interrupt_stack::init();
 
-    // riscv64 says what the machine is here rather than only in the machine description, so the
-    // test, shell and bench boots report it too: it is the line whoever brings up a board reads
-    // first. After `mmu::init`, because one of its numbers is measured there. Then it asks firmware
-    // for a cycle counter (milestone 74 (cycle counters)), which reads the SBI extension set
-    // `isa::init` filled in; aarch64 starts its counter per core inside `timer::init` instead.
-    #[cfg(target_arch = "riscv64")]
+    // riscv64 and `x86_64` say what the machine is here rather than only in the machine
+    // description, so the test, shell and bench boots report it too: it is the line whoever brings
+    // up a board reads first. After `mmu::init`, because one of riscv64's numbers is measured
+    // there. Then each finds its cycle counter (milestone 74 (cycle counters)): riscv64 asks
+    // firmware, through the SBI extension set `isa::init` filled in, and `x86_64`'s did-it-count
+    // check spins against the TSC whose rate was measured above. aarch64 starts its counter per
+    // core inside `timer::init` instead.
+    #[cfg(any(target_arch = "riscv64", target_arch = "x86_64"))]
     {
         arch::isa::print_summary();
         arch::pmu::init();
@@ -344,13 +421,18 @@ fn bring_up_machine(boot_info_pointer: usize) {
     // kernel runs exactly as before. Bringing it up here installs an all-invalid stream table and
     // sets default-deny, so every PCIe stream aborts until virtio::register confines its device.
     // The CPU's own ECAM and BAR reads are not DMA, so PCI enumeration below is unaffected. See
-    // kernel/src/iommu.rs, notes/iommu.md. Not compiled on x86_64, whose VT-d `init` takes the
-    // DMAR's units rather than one base (milestone 594) and runs in the x86 arm above; the region
-    // is never recorded there anyway.
+    // kernel/src/iommu.rs, notes/iommu.md. Not compiled on `x86_64`, whose IOMMUs are the next
+    // step.
     #[cfg(not(target_arch = "x86_64"))]
     if let Some((smmu_base, _)) = memory::smmu_region() {
         arch::iommu::init(smmu_base);
     }
+    // `x86_64`'s, for the same reason and at the same point: every VT-d unit the DMAR names, each
+    // translating the devices it owns (milestone 594), or every AMD-Vi unit the IVRS names. Each
+    // takes its unit list from the tables rather than one base, so it reads them from the walk
+    // `memory::init` kept, and a machine with neither says so loudly.
+    #[cfg(target_arch = "x86_64")]
+    arch::discovery::bring_up_iommus();
     // The RISC-V IOMMU (milestone 16b (real hardware + IOMMU-backed driver isolation)), if QEMU
     // presents one (`-device riscv-iommu-pci`). It is a PCI function rather than a tree node, so
     // the kernel enumerates it and places its BAR first; absent, this is a no-op. Here for the
@@ -394,7 +476,8 @@ fn interrupts_init(_dtb: usize) {
     // tree. Portable code names `arch::irq`, never a specific controller, which is what lets a
     // second architecture be a new `arch/` directory rather than a diff here. On RISC-V this is the
     // PLIC, then the boot hart's software and external interrupt sources, which each secondary
-    // unmasks for itself as it comes online.
+    // unmasks for itself as it comes online. On `x86_64` it is the IO APIC the MADT names, and one
+    // device interrupt through it while the tick below is not yet armed.
     irq::init();
 
     timer::init();
@@ -447,7 +530,7 @@ pub(super) fn run_test_suite() {
 /// function, it can see that only if the function is `-> !` too, which is true only of a build
 /// that has a measurement boot. So this one is built with a measurement feature and the no-op below
 /// without, and that is what lets `kernel_main` end without its `sched::exit()` in a measurement
-/// build, and `x86_64_boot` says `-> !`.
+/// build.
 #[cfg(any(
     feature = "job_mix",
     feature = "soak_test",

@@ -74,6 +74,14 @@ Checked against `main` at `ee1f946ad` before anything moved.
   runs them after. Both are compiled out of every test, `bench` and `icount` build (`icount`
   implies `bench`), so no build ran both, and the shared order changes no transcript.
 
+- **`x86_64`'s BAR window never avoided the APICs.** `mmu::memory_mapped_io_window` keeps the
+  window clear of the local and IO APICs by reading their addresses from `arch::irq`, which
+  recorded them only when the APICs came up, after PCI had already run. Neither was ever avoided.
+  On QEMU both sit above the hole, so no transcript changed.
+- **`x86_64`'s test build ran the tour before the suite.** Its kernel thread, ring-3 processes and
+  initial ramdisk report ran in every build, the suite last. The shared tail runs the suite right
+  after the bring-up, as on the other two, and the suite passes without them.
+
 ## What was built: riscv64 runs the shared bring-up
 
 The first slice, chosen because riscv64 shares the device tree and every portable step with
@@ -112,6 +120,38 @@ exactly that reason (riscv64_boot.rs, before this milestone), and the mask is go
   `board_console` and the hang watcher read what they read before.
 - riscv64's banner is `riscv64_banner` in `boot.rs`, beside aarch64's.
 
+## What was built: `x86_64` runs the shared bring-up and tail
+
+- `memory::init` has a front end per description. On `x86_64` it is `arch::x86_64::discovery::init`:
+  the PVH handoff, the ACPI walk, COM1's interrupt line and the IOMMU windows, the PCIe window and
+  topology while the boot map still reaches every bus, then the frame allocator. The walk is kept,
+  because the tables are reachable only through the boot map `mmu::init` replaces.
+- The steps after it read the kept walk: `smp::read_cpu_list` seats the cores from the MADT,
+  `arch::irq::init_contexts` brings up the boot CPU's local APIC in the window riscv64 fills with
+  its PLIC contexts, and the fine map and the BAR window take both APICs' addresses from it.
+- `arch::irq::init` brings up the IO APIC and proves the PIT's line through it before the tick is
+  armed, so the `device irq` line `uefi-boot` reads is unchanged. `discovery::bring_up_iommus`
+  brings up VT-d or AMD-Vi beside the SMMUv3.
+- `kernel_main` runs `x86_64`'s tail on the same lines as the other two. `x86_64_boot` is gone;
+  `x86_64_banner` is in `boot.rs` beside riscv64's. `x86_64_boot.rs` holds the port's tour (the
+  image bounds, `RDSEED`, a kernel thread, two ring-3 processes built from untyped, the loader's
+  modules) and `watch_the_progenitor`.
+- One hand-over, `boot.rs`'s `hand_over`, serves all three. `x86_64` adds its install offer before
+  it and its boot thread's ten-second watch after it, whose report the `x86_64` gates wait for.
+- The bring-up's `traps` and `timer` lines retire, as riscv64's did: `self_test::run` makes both
+  claims on all three. The `frames` line no longer allocates a frame it never frees.
+
+The order on `x86_64` changes the way riscv64's did: interrupts come on after the scheduler, the IO
+APIC after the fine map, and the PIT's window runs with the scheduler up and the tick not yet armed.
+
+## The xenon boot that remains
+
+The shared bring-up holds under QEMU on q35 and under OVMF with two cores (`cargo xtask uefi-boot`
+and `uefi-test`). xenon is the one machine whose firmware places the APICs, the framebuffer and the
+BAR window for real, so one netboot of `main` closes the `x86_64` half: notes/x86-uefi-boot.md, "The
+bench: booting xenon over the network". What to look for: the `io apic`, `device irq` and `smp`
+lines, every tour line, the prompt, and `echo hello` echoing.
+
 ## The radon boot that remains
 
 The PLIC's bring-up in `arch::irq::init` and riscv64's shared tail hold under QEMU. On the
@@ -141,36 +181,38 @@ commit reverts alone, independent of the tail.
 
 | criterion | state |
 |---|---|
-| 1 | riscv64: `riscv64_boot.rs` holds only its milestone tour and the tour's timing helpers, which are demonstrations rather than `arch/` code. Whether the tour merges with aarch64's is open (below). `x86_64_boot.rs` is unchanged. |
-| 2 | riscv64: done, its only `cfg(target_arch)` lines in `kernel_main` are its banner and its console's register shape. `x86_64`: not yet. |
-| 3 | riscv64 under QEMU: see the pull request's gate table. The board half is the radon boot below, which is calef's. `x86_64`: not yet. |
+| 1 | `riscv64_boot.rs` holds its milestone tour and the tour's timing helpers; `x86_64_boot.rs` holds its tour and `watch_the_progenitor`. Both are demonstrations or reports rather than `arch/` code. Whether the tours merge is open (below). |
+| 2 | Done. `kernel_main`'s `cfg(target_arch)` lines are each port's banner and riscv64's console register shape; `hand_over`'s one is `x86_64`'s install offer. |
+| 3 | Under QEMU, both ports: see each pull request's gate table. The boards are the xenon and radon boots above. |
 
 ## BUGS
 
 - The PLIC's bring-up in `arch::irq::init` and riscv64's shared tail are proven under QEMU only.
   On radon the boot context opens before the other harts start, which no lane can run.
-- `bring_up_machine` carries five `cfg(target_arch)` sites, three of them riscv64's. Each calls
-  into `arch/` or `pci`, so rule 1 holds, but a port that needs a step aarch64 does not is still a
-  `cfg` here rather than a function every port implements.
+- `bring_up_machine` carries six `cfg(target_arch)` sites: aarch64's frequency check, two blocks
+  riscv64 and `x86_64` share, the SMMUv3, riscv64's IOMMU and `x86_64`'s. Each calls into `arch/`
+  or `pci`, so rule 1 holds, but a port that needs a step aarch64 does not is still a `cfg` here
+  rather than a function every port implements.
+- `x86_64`'s new order is proven under QEMU and OVMF only, not on xenon (above).
 
 ## Follow-on
 
 - **Outstanding.** The radon boot below, of the PLIC and tail slices.
-- **Outstanding.** Whether riscv64's tour merges with aarch64's `milestone_tour`. Both run two
-  never-yielding threads and a userspace program. riscv64's also carries the UART driver, block
-  discovery and entropy steps, its own `boot_ladder::TOUR` line and the hang watcher's stages. It
-  is the only proof of the boot's middle stages on silicon.
-- **Outstanding.** `x86_64` reaches `bring_up_machine`, which needs `memory::init` to take a
-  PVH and ACPI description as well as a device tree (checked: `x86_64_first_light` and
-  `x86_64_memory` in `kernel/src/x86_64_boot.rs`).
-- **Outstanding.** One hand-over for all three, retiring `x86_hand_over` (checked: still in
-  `x86_64_boot.rs`; `xtask/src/swish_check/verdict.rs` reads its lines). aarch64 and riscv64 share
-  `kernel_main`'s.
+- **Outstanding.** The xenon boot above, of the `x86_64` slice.
+- **Outstanding.** Whether the three tours merge into one `milestone_tour`. Each runs a kernel thread
+  or two and a userspace program in its own shape. riscv64's also carries the UART driver, block
+  discovery and entropy steps, its own `boot_ladder::TOUR` line and the hang watcher's stages, and
+  is the only proof of the boot's middle stages on silicon. `x86_64`'s builds its two ring-3
+  processes from untyped by hand and checks they leak no frames.
+- **Outstanding.** `x86_64`'s boot thread watches the progenitor after the shared hand-over
+  (`watch_the_progenitor`), because `script/swish-check`'s `x86_64` leg and the install, rollback
+  and confirm boots wait for the watch's report before typing. Retiring it means those wait for the
+  prompt, as the other legs do.
 
 ## Index row
 
 Two of the three architectures boot through code that only they run, so a fix to the boot's middle
 lands three times or drifts. This brings riscv64 and `x86_64` onto the path aarch64 takes, one slice
-at a time, until the two per-port boot files hold only what `arch/` cannot. riscv64 runs the
-shared bring-up and tail under QEMU, with its PLIC in `arch::irq::init`; its board boot and all of
-`x86_64` remain.
+at a time, until the two per-port boot files hold only what `arch/` cannot. Both ports run the
+shared bring-up and tail under QEMU, `x86_64` through `memory::init`'s PVH and ACPI front end; the
+xenon and radon boots and whether the tours merge remain.

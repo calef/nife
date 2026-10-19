@@ -888,9 +888,9 @@ fn screen_watch(
 /// **Run the kernel suite under real firmware** (milestone 195), rather than the tour
 /// `uefi_boot` boots.
 ///
-/// The difference between the two is one ELF. `#[cfg(test)]` in `x86_64_userspace` runs
-/// `test_main()` at the end of the same tour, so this boot prints every line `uefi-boot` asserts on
-/// *and then* runs the suite, and the verdict it adds is the one thing the tour cannot say: that
+/// The difference between the two is one ELF. A test build runs `test_main()` right after the
+/// shared bring-up, so this boot prints the bring-up lines it shares with `uefi-boot` (the ACPI
+/// walk, the PCIe window, the device interrupt) *and then* runs the suite, and the verdict it adds is the one thing the tour cannot say: that
 /// the tests pass when the memory map, the ACPI root and the PCIe window came from firmware
 /// instead of from a hypervisor. Until this existed, "it boots under real firmware" and "it passes
 /// under real firmware" were different claims and only the first was made.
