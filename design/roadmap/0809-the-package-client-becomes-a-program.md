@@ -189,6 +189,9 @@ meets a program, not a builtin.
    spawn, where a program gets only what its manifest names and the grant plan approves (§208).
    The digest check is built. The other two wait on milestone 849's item 4, since neither the
    index nor a package's metadata carries needs yet.
+9. Levels, by [849's versioning rules](0849-a-package-declares-what-it-needs-at-run-time/versioning.md)
+   5 to 7: the progenitor checks each commit and spawn, and `jig install` orders several names.
+   Waits on 849's item 5.
 
 Items 1, 2, 3 and 5 wait on nothing. Every item is proved on aarch64, riscv64 and x86_64 by the
 same gate (rule 5).
