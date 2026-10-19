@@ -5,6 +5,7 @@ use ntp_service::{ATTEMPTS, reject, rpt, srv};
 
 use super::*;
 use crate::arch::exceptions::USER_FAULTS;
+use crate::user::holding::Holding;
 
 /// Bounded by wall clock rather than by a yield count: since DECISIONS §28 the work a test
 /// spawns runs on other cores, so a yield on an idle core elapses no real time. Two seconds is
@@ -40,15 +41,24 @@ fn witness_image() -> &'static [u8] {
 /// **A fresh clock service per test.** Each one allocates its own page and reads the RTC again,
 /// so a step taken in one test cannot bias the next one's bounds, and each test's "before" is
 /// genuinely before.
-fn clock() -> clock_service::Wiring {
+///
+/// Built in a region of its own and returned with the [`Holding`] that ends it, which the test
+/// releases last: the service parks in `RECEIVE` on `propose` for good, so without the holding
+/// every test here left a thread and two endpoints behind (milestone 608).
+fn clock() -> (clock_service::Wiring, Holding) {
     let image = program("clock").expect("no clock program in the initial ramdisk");
-    let w = clock_service::start(image);
+    let region =
+        crate::memory_region::create(clock_service::REGION_PAGES).expect("no region for a clock");
+    let (w, thread) = clock_service::start_in(image, region);
+    let mut held = Holding::new();
+    held.add_thread(thread);
+    held.add_region(region);
     let report = crate::sched::ipc_receive(w.report);
     assert!(
         state::is_known(report[1]),
         "the clock service does not know the time, so there is nothing for NTP to correct",
     );
-    w
+    (w, held)
 }
 
 /// The entropy service's request endpoint: the client's whole authority over randomness, and it
@@ -103,6 +113,9 @@ const SERVER_PORT: u16 = network_time_protocol::PORT;
 
 /// Run one exchange: a fresh server at `claimed_nanos`, a fresh client, both reports drained in
 /// the order the blocking `send` requires. Returns `(the server's report, the client's report)`.
+///
+/// Both programs and their three endpoints are handed back before this returns. The server never
+/// exits on its own (it serves until killed), so the holding is what ends it.
 fn exchange(
     clock: &clock_service::Wiring,
     variant: u64,
@@ -113,7 +126,17 @@ fn exchange(
     // the first assertion below because the client had been killed by a page fault, and the
     // message alone read as a network problem.
     let faults_before = USER_FAULTS.load(Ordering::Acquire);
-    let server = ntp_service::start_server(test_server_image(), variant, claimed_nanos);
+    let region = crate::memory_region::create(ntp_service::EXCHANGE_PAGES)
+        .expect("no endpoint region for an ntp exchange");
+    let mut held = Holding::new();
+    held.add_region(region);
+    let server = ntp_service::start_server(
+        test_server_image(),
+        variant,
+        claimed_nanos,
+        region,
+        &mut held,
+    );
     let client = ntp_service::start_client(
         client_image(),
         server.stack,
@@ -121,6 +144,8 @@ fn exchange(
         entropy(),
         SERVER_IP,
         SERVER_PORT,
+        region,
+        &mut held,
     );
     // The server blocks in its one `send` until this returns, and the client's RECEIVE is queued
     // behind it, so the order here is load-bearing rather than stylistic. The bounded wait is
@@ -144,6 +169,7 @@ fn exchange(
         crate::arch::exceptions::last_user_fault(),
     );
     let reported = crate::sched::ipc_receive(client);
+    held.release_or_fail("an ntp exchange");
     (served, reported)
 }
 
@@ -162,7 +188,7 @@ fn an_ntp_exchange_reaches_the_clock_as_a_proposal() {
     if machine_has_no_entropy() {
         crate::testing::skip!("no virtio-rng device on the mmio bus (NIFE_RNG not set?)");
     }
-    let clock = clock();
+    let (clock, clock_held) = clock();
     let before = clock.page().read();
     let step = NANOS_PER_SEC / 2;
     let wall_before = clock.wall_nanos();
@@ -226,6 +252,7 @@ fn an_ntp_exchange_reaches_the_clock_as_a_proposal() {
         moved < step + 3 * NANOS_PER_SEC,
         "the wall clock moved {moved} ns, far past the {step} ns the server claimed",
     );
+    clock_held.release_or_fail("the clock service");
 }
 
 /// **A reply that fails validation moves nothing.**
@@ -247,7 +274,7 @@ fn a_reply_that_fails_validation_never_becomes_a_proposal() {
     if machine_has_no_entropy() {
         crate::testing::skip!("no virtio-rng device on the mmio bus (NIFE_RNG not set?)");
     }
-    let clock = clock();
+    let (clock, clock_held) = clock();
     let before = clock.page().read();
     let claimed = clock.wall_nanos() + NANOS_PER_SEC / 2;
 
@@ -289,6 +316,7 @@ fn a_reply_that_fails_validation_never_becomes_a_proposal() {
             "the clock page changed after {what}: a refused reply reached the offset",
         );
     }
+    clock_held.release_or_fail("the clock service");
 }
 
 /// **The bounds are the service's, and the client cannot argue with them.**
@@ -307,7 +335,7 @@ fn a_proposal_outside_the_policy_is_refused_by_the_service() {
     if machine_has_no_entropy() {
         crate::testing::skip!("no virtio-rng device on the mmio bus (NIFE_RNG not set?)");
     }
-    let clock = clock();
+    let (clock, clock_held) = clock();
     let before = clock.page().read();
 
     for (claimed, want, what) in [
@@ -340,6 +368,7 @@ fn a_proposal_outside_the_policy_is_refused_by_the_service() {
             "the clock page changed on a refused proposal ({what})",
         );
     }
+    clock_held.release_or_fail("the clock service");
 }
 
 /// **The client holds no writable clock page, and knowing where one would be buys it nothing.**
@@ -364,12 +393,15 @@ fn an_ntp_client_holds_no_writable_clock_page() {
     if clock_service::machine_has_no_rtc() {
         crate::testing::skip!(clock_service::NO_RTC);
     }
-    let clock = clock();
+    let (clock, clock_held) = clock();
     let before = clock.page().read();
     // An endpoint nobody serves: the witness never sends a request, and giving it a real server
     // would only add a process to the boot. It is granted anyway, because the point is that this
     // process holds everything a client holds.
-    let endpoints = crate::memory_region::create(1).expect("no endpoint region");
+    let endpoints =
+        crate::memory_region::create(ntp_service::EXCHANGE_PAGES).expect("no endpoint region");
+    let mut held = Holding::new();
+    held.add_region(endpoints);
     let stack = crate::sched::create_rendezvous_from(endpoints).expect("no stack rendezvous");
 
     let faults = USER_FAULTS.load(Ordering::Relaxed);
@@ -379,6 +411,8 @@ fn an_ntp_client_holds_no_writable_clock_page() {
         clock.propose,
         entropy(),
         clock_service::CLOCK_VA,
+        endpoints,
+        &mut held,
     );
 
     let [tag, va, ..] = crate::sched::ipc_receive(report);
@@ -410,7 +444,8 @@ fn an_ntp_client_holds_no_writable_clock_page() {
         before,
         "the clock page changed while an NTP client was writing at it",
     );
-    crate::sched::reclaim_region(endpoints).expect("the endpoint region did not come back");
+    held.release_or_fail("the unwritable clock witness");
+    clock_held.release_or_fail("the clock service");
 }
 
 /// **The nonce is unpredictable, because it comes from the entropy service.**
@@ -432,7 +467,7 @@ fn the_nonce_on_the_wire_is_random_and_is_not_the_clock() {
     if machine_has_no_entropy() {
         crate::testing::skip!("no virtio-rng device on the mmio bus (NIFE_RNG not set?)");
     }
-    let clock = clock();
+    let (clock, clock_held) = clock();
     let claimed = clock.wall_nanos() + NANOS_PER_SEC / 2;
 
     // A time in the NTP era the transmit field would carry if it were a clock reading.
@@ -458,6 +493,7 @@ fn the_nonce_on_the_wire_is_random_and_is_not_the_clock() {
              transmit field is a timestamp, not 64 random bits",
         );
     }
+    clock_held.release_or_fail("the clock service");
 }
 
 /// **No entropy capability, no request.**
@@ -473,9 +509,19 @@ fn without_entropy_the_client_refuses_rather_than_guessing() {
     if clock_service::machine_has_no_rtc() {
         crate::testing::skip!(clock_service::NO_RTC);
     }
-    let clock = clock();
+    let (clock, clock_held) = clock();
     let before = clock.page().read();
-    let server = ntp_service::start_server(test_server_image(), srv::GOOD, clock.wall_nanos());
+    let region = crate::memory_region::create(ntp_service::EXCHANGE_PAGES)
+        .expect("no endpoint region for an ntp exchange");
+    let mut held = Holding::new();
+    held.add_region(region);
+    let server = ntp_service::start_server(
+        test_server_image(),
+        srv::GOOD,
+        clock.wall_nanos(),
+        region,
+        &mut held,
+    );
     let report = ntp_service::start_client(
         client_image(),
         server.stack,
@@ -483,6 +529,8 @@ fn without_entropy_the_client_refuses_rather_than_guessing() {
         None, // slot 4 empty
         SERVER_IP,
         SERVER_PORT,
+        region,
+        &mut held,
     );
 
     // Bounded, because the failure this test guards against is a client that carries on: it
@@ -511,4 +559,6 @@ fn without_entropy_the_client_refuses_rather_than_guessing() {
         "the server saw a request: the client sent one without a nonce it could trust",
     );
     assert_eq!(clock.page().read(), before, "the clock moved anyway");
+    held.release_or_fail("the refusing client and its server");
+    clock_held.release_or_fail("the clock service");
 }

@@ -17,6 +17,7 @@
 use super::*;
 use crate::cap::{Rights, memory_region_cap, memory_region_lending_capability, rendezvous_cap};
 use crate::sched::RendezvousId;
+use crate::user::holding::Holding;
 
 /// The words the three network time programs report. Must match `RPT_*` in
 /// `components/src/network_time_client.rs`, `fixtures/src/network_time_test_server.rs` and
@@ -68,6 +69,11 @@ const BUDGET_PAGES: u64 = 16;
 /// and its relatives get is plenty and leaves no doubt.
 const STACK_PAGES: u64 = 3;
 
+/// The endpoints one exchange retypes from the region its caller passes: the server's two and the
+/// client's report. Size a region with this and pass the same one to [`start_server`] and
+/// [`start_client`] (or [`start_witness`]).
+pub const EXCHANGE_PAGES: u64 = 3;
+
 /// A running test server: the endpoint a client speaks the socket contract on, and the endpoint
 /// it reports the first request it saw on.
 pub struct Server {
@@ -105,13 +111,23 @@ fn stack_pages() -> [Mapping; STACK_PAGES as usize] {
 /// **Four slots, and it is a different endowment from the client's on purpose.** It holds no
 /// propose endpoint and no entropy endpoint, so a reader can see from the wiring alone that the peer
 /// answering the client cannot itself reach the clock.
-pub fn start_server(image: &'static [u8], variant: u64, claimed_nanos: u64) -> Server {
-    let stack = crate::sched::create_rendezvous();
-    let report = crate::sched::create_rendezvous();
+///
+/// Both endpoints are retyped from `region`, and the server's thread goes into `held`. The server
+/// serves until it is killed: once `region` is reclaimed its `RECEIVE` fails at once and it loops,
+/// so the caller hands `region` to the same holding, whose kill ends it (milestone 608).
+pub fn start_server(
+    image: &'static [u8],
+    variant: u64,
+    claimed_nanos: u64,
+    region: u64,
+    held: &mut Holding,
+) -> Server {
+    let stack = crate::sched::create_rendezvous_from(region).expect("no ntp server endpoint");
+    let report = crate::sched::create_rendezvous_from(region).expect("no ntp server report");
     let budget = crate::memory_region::create(BUDGET_PAGES).expect("no untyped for the ntp server");
     let maps = stack_pages();
 
-    crate::sched::spawn(move || {
+    let thread = crate::sched::spawn(move || {
         run(
             image,
             Spawn {
@@ -131,6 +147,7 @@ pub fn start_server(image: &'static [u8], variant: u64, claimed_nanos: u64) -> S
         )
     })
     .expect("could not spawn network_time_test_server");
+    held.add_thread(thread);
 
     Server { stack, report }
 }
@@ -148,7 +165,9 @@ pub fn start_server(image: &'static [u8], variant: u64, claimed_nanos: u64) -> S
 /// list of grants beside this one is the way this claim decays without breaking a build.**
 ///
 /// `a0` and `a1` are the program's own two arguments (the client's server address and port, the
-/// witness's target address); `arg2` is unused by both.
+/// witness's target address); `arg2` is unused by both. The report endpoint is retyped from
+/// `region` and the thread goes into `held`, as [`start_server`]'s do.
+#[allow(clippy::too_many_arguments)]
 fn spawn_with_client_endowment(
     image: &'static [u8],
     a0: u64,
@@ -156,8 +175,10 @@ fn spawn_with_client_endowment(
     stack: RendezvousId,
     propose: RendezvousId,
     entropy: Option<RendezvousId>,
+    region: u64,
+    held: &mut Holding,
 ) -> RendezvousId {
-    let report = crate::sched::create_rendezvous();
+    let report = crate::sched::create_rendezvous_from(region).expect("no ntp client report");
     let budget = crate::memory_region::create(BUDGET_PAGES).expect("no untyped for the ntp client");
     let maps = stack_pages();
     // Slot 4 is granted or it is not; there is no third state and no flag inside it. An
@@ -166,7 +187,7 @@ fn spawn_with_client_endowment(
     let n_grants = if entropy.is_some() { 5 } else { 4 };
     let entropy = entropy.unwrap_or(0);
 
-    crate::sched::spawn(move || {
+    let thread = crate::sched::spawn(move || {
         run(
             image,
             Spawn {
@@ -185,12 +206,14 @@ fn spawn_with_client_endowment(
         )
     })
     .expect("could not spawn a network time program");
+    held.add_thread(thread);
 
     report
 }
 
 /// Spawn `network_time_client` against `stack`, told which server to ask (`ip` packed big-endian,
 /// `port`). Returns its report endpoint.
+#[allow(clippy::too_many_arguments)]
 pub fn start_client(
     image: &'static [u8],
     stack: RendezvousId,
@@ -198,8 +221,19 @@ pub fn start_client(
     entropy: Option<RendezvousId>,
     ip: u32,
     port: u16,
+    region: u64,
+    held: &mut Holding,
 ) -> RendezvousId {
-    spawn_with_client_endowment(image, ip as u64, port as u64, stack, propose, entropy)
+    spawn_with_client_endowment(
+        image,
+        ip as u64,
+        port as u64,
+        stack,
+        propose,
+        entropy,
+        region,
+        held,
+    )
 }
 
 /// Spawn `unwritable_clock_witness`: the client's endowment, pointed at `va`. **Same function, same
@@ -211,6 +245,8 @@ pub fn start_witness(
     propose: RendezvousId,
     entropy: Option<RendezvousId>,
     va: u64,
+    region: u64,
+    held: &mut Holding,
 ) -> RendezvousId {
-    spawn_with_client_endowment(image, va, 0, stack, propose, entropy)
+    spawn_with_client_endowment(image, va, 0, stack, propose, entropy, region, held)
 }
