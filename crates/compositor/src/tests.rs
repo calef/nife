@@ -381,7 +381,7 @@ fn a_damaged_composite_leaves_the_rest_of_the_screen_alone() {
     let mut screen = vec![POISON; SCREEN_PIXELS];
 
     let damage = damage_to_screen(&SCENE[1], SMALL_DAMAGE);
-    assert_eq!(damage, Rect::new(84, 83, 9, 7));
+    assert_eq!(damage, Rect::new(44, 55, 9, 7));
     assert!(
         damage.area() * 20 < Rect::screen().area(),
         "the 'small' damage rectangle is not small: this test proves nothing about cost",
@@ -633,8 +633,8 @@ fn stride_and_max_surface_bytes_are_exact() {
         4,
         "one pixel is four bytes"
     );
-    // 128*104*4 = 53,248, 96*78*4 = 29,952, 80*130*4 = 41,600: the first window is the largest.
-    assert_eq!(MAX_SURFACE_BYTES, 53_248);
+    // 58*52*4 = 12,064, 44*60*4 = 10,560, 30*80*4 = 9,600: the first window is the largest.
+    assert_eq!(MAX_SURFACE_BYTES, 12_064);
     assert_eq!(
         MAX_SURFACE_BYTES,
         SCENE.iter().map(|w| w.w * w.h * 4).max().unwrap(),

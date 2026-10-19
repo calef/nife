@@ -172,7 +172,7 @@ pub fn scrolled_full_screen(vt: &mut crate::Vt, typo_line: Option<usize>) {
 }
 
 /// **How many lines each compositor window prints past its own height** (the paint path,
-/// 2026-09-30): seven, which scrolls the 4-row window five times and the 3-row window six. See
+/// 2026-09-30): seven, which scrolls each 2-row window at least once a line. See
 /// [`SCROLL_LINES`], the full-scanout twin, for why windows need their own scroller at all: until
 /// this, the [`MODE_WINDOW`](crate::status::MODE_WINDOW) present path (a scroll publishes
 /// whole-window damage to the compositor) had never run once.

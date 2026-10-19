@@ -275,12 +275,14 @@ impl Window {
 ///   (The other edges are covered by the host tests with synthetic windows, so the live scene does
 ///   not have to carry every case.)
 ///
-/// Each window holds a terminal grid of a few `video_terminal` cells (14x26): 9x4, 6x3 and 5x5,
-/// none a whole number of cells wide, so each terminal also paints a strip no cell covers.
+/// Each window holds a terminal grid of a few `video_terminal` cells (14x26): 4x2, 3x2 and 2x3,
+/// each with a strip no cell covers. Each surface is at most three page frames, because the kernel
+/// maps a client's control page and surface one `Spawn::maps` entry a page, four a client
+/// (`kernel/src/user/compositor_service.rs` asserts it at build time).
 pub const SCENE: &[Window] = &[
-    Window::new(16, 26, 128, 104),
-    Window::new(80, 78, 96, 78),
-    Window::new(-16, 98, 80, 130),
+    Window::new(16, 26, 58, 52),
+    Window::new(40, 50, 44, 60),
+    Window::new(-8, 60, 30, 80),
 ];
 
 // ================================================================================================
@@ -383,9 +385,9 @@ pub const fn background_pixel(x: u32, y: u32) -> u32 {
 /// }
 ///
 /// // Window 1 covers part of window 0, so the topmost one wins.
-/// assert_eq!(expected_screen_pixel(2, 85, 84), window_pixel(1, 5, 6));
-/// assert_eq!(expected_screen_pixel(1, 85, 84), window_pixel(0, 69, 58));
-/// assert_eq!(expected_screen_pixel(0, 85, 84), background_pixel(85, 84));
+/// assert_eq!(expected_screen_pixel(2, 45, 56), window_pixel(1, 5, 6));
+/// assert_eq!(expected_screen_pixel(1, 45, 56), window_pixel(0, 29, 30));
+/// assert_eq!(expected_screen_pixel(0, 45, 56), background_pixel(45, 56));
 /// ```
 pub fn expected_screen_pixel(n: usize, x: u32, y: u32) -> u32 {
     expected_screen_pixel_with(n, x, y, |i, sx, sy| window_pixel(i as u32, sx, sy))
