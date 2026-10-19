@@ -21,12 +21,12 @@ fn the_rg_walk_line_types_what_the_disk_was_staged_for() {
     assert_eq!(
         super::RG_WALK_LINE,
         format!(
-            "/{} {} {}",
-            crate::disk::INSTALLED_RIPGREP,
+            "rg {} {}",
             crate::disk::RIPGREP_WALK_PATTERN,
             crate::disk::RIPGREP_CORPUS
         )
     );
+    assert_eq!(super::RG_WALK_CAPS, format!("caps {}", super::RG_WALK_LINE));
 }
 
 #[test]

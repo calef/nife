@@ -268,6 +268,28 @@ pub(in crate::swish_check) const SWISH_CHECK_AFTER_REBOOT: &[Line] = &[
         ],
     ),
     line(1, "rg --version", &["ripgrep "]),
+    // **`rg pattern dir` at the prompt, `rg` as `jig` installed it** (milestone 121 (`ripgrep`:
+    // enumeration as a capability), exit 4, calef's 2026-10-07 ruling on #1797's fork 4).
+    // `/search/crates` is a copy of this repository's `crates/` (`crate::disk::RIPGREP_CORPUS`),
+    // hundreds of files in nested directories, which the first boot wrote and this boot inherits
+    // with the disk. `caps` shows the whole grant before anything runs: the one directory the word
+    // named, read-only, which is `ENUMERATE | READ | DESCEND` and nothing else. No flag narrows the
+    // walk: `rg` lists every directory it meets, opens every file, skips the binary ones itself, and
+    // prints every matching line. The answer is wanted whole, so the line lists nothing here and
+    // `rg_walk_verdict` compares it line for line with what the host's `rg` printed over the same
+    // copy.
+    line(0, RG_WALK_CD, &[]),
+    line(
+        0,
+        RG_WALK_CAPS,
+        &[
+            "endpoint  dir",
+            "(only crates in it, named on the line)",
+            "...read-only, and everything under what was named",
+        ],
+    ),
+    line(1, RG_WALK_LINE, &[]),
+    line(0, "cd /", &[]),
     // **`ioping`, basalt's first C package** (milestone 906 (ioping is packaged in basalt, and its
     // test installs it with `jig`)), on `ripgrep`'s terms: compiled by basalt against the C library
     // at the nife commit basalt pins. Installed, it times five 4 KiB reads of a file its word
@@ -423,6 +445,9 @@ pub(in crate::swish_check) const ON_THE_DISK_TREE: &[&str] =
 pub(in crate::swish_check) const FROM_BASALT: &[&str] = &[
     "jig install ripgrep",
     "rg --version",
+    RG_WALK_CD,
+    RG_WALK_CAPS,
+    RG_WALK_LINE,
     "jig install ioping",
     "ioping -v",
     IOPING_LINE,
