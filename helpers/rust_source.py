@@ -144,6 +144,11 @@ STATIC_MUT_TEST_CODE = ('system_tests/', 'fixtures/')
 HOST_ONLY = ('bench/host/', 'xtask/', 'tools/', 'fuzz/', 'helpers/', 'patches/')
 
 
+# The counted-claim name `density` below is held to: `script/lint` registers it, and
+# `script/metrics` reads each week's ceiling back by it, so the chart's line is the gate's.
+UNSAFE_DENSITY_MARKER = 'unsafe-density-outside-arch'
+
+
 def unsafe_census(files):
     """Every unsafe number this tree tracks, in one pass over the Rust that runs on nife.
 

@@ -53,8 +53,8 @@
 <path class="seg s0" d="M484.2,324.0 V266.1 Q484.2,263.1 487.2,263.1 H493.1 Q496.1,263.1 496.1,266.1 V324.0 Z"><title>2026W41, median sentence over 20 words: 229</title></path>
 <path class="seg s1" d="M497.1,324.0 V107.8 Q497.1,104.8 500.1,104.8 H505.9 Q508.9,104.8 508.9,107.8 V324.0 Z"><title>2026W41, longest sentence over 40 words: 824</title></path>
 <text class="mut" x="503.5" y="342" font-size="10" text-anchor="middle">2026W41</text>
-<path class="seg s0" d="M542.8,324.0 V314.2 Q542.8,311.2 545.8,311.2 H551.7 Q554.7,311.2 554.7,314.2 V324.0 Z"><title>2026W42, median sentence over 20 words: 48</title></path>
-<path class="seg s1" d="M555.7,324.0 V273.8 Q555.7,270.8 558.7,270.8 H564.5 Q567.5,270.8 567.5,273.8 V324.0 Z"><title>2026W42, longest sentence over 40 words: 200</title></path>
+<path class="seg s0" d="M542.8,324.0 V323.9 Q542.8,323.7 542.9,323.7 H554.5 Q554.7,323.7 554.7,323.9 V324.0 Z"><title>2026W42, median sentence over 20 words: 1</title></path>
+<path class="seg s1" d="M555.7,324.0 V323.5 Q555.7,322.9 556.2,322.9 H567.0 Q567.5,322.9 567.5,323.5 V324.0 Z"><title>2026W42, longest sentence over 40 words: 4</title></path>
 <text class="mut" x="562.1" y="342" font-size="10" text-anchor="middle">2026W42</text>
 <path class="seg s0" d="M601.4,324.0 V323.9 Q601.4,323.7 601.5,323.7 H613.1 Q613.3,323.7 613.3,323.9 V324.0 Z"><title>2026W43, median sentence over 20 words: 1</title></path>
 <path class="seg s1" d="M614.3,324.0 V323.5 Q614.3,322.9 614.8,322.9 H625.6 Q626.1,322.9 626.1,323.5 V324.0 Z"><title>2026W43, longest sentence over 40 words: 4</title></path>

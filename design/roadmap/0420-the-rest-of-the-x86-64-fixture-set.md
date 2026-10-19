@@ -1,6 +1,7 @@
 ---
-status: PARTIAL
+status: BUILT
 raised: 2026-09-16
+built: 2026-10-19
 promoted_from: the-rest-of-the-x86-64-fixture-set
 milestone_dependencies: none
 decision_dependencies: none
@@ -13,7 +14,7 @@ needs_person: no
 The title is a statement about the past, as milestone 303 (x86_64's FS service has a server and
 no disk it can find)'s block says of its own. The runner attaches all five disk fixtures, the NIC,
 an RNG, a GPU and a keyboard, and the system suite's x86_64 legs run the scanout referee the display
-tests need. The residue is the firmware path. Promoted from the proposal `the-rest-of-the-x86-64-fixture-set`, filed 2026-09-16 by
+tests need, the OVMF leg included. Promoted from the proposal `the-rest-of-the-x86-64-fixture-set`, filed 2026-09-16 by
 milestone 303's lane (x86_64's FS disk). That lane attached the RedoxFS image and deliberately
 stopped there, so that one milestone proved one thing. Milestone 215 (a PCI function's interrupt
 reaches nothing on x86_64, so no userspace driver) listed the same set first. It numbered none of
@@ -69,6 +70,17 @@ milestone's deliverable:
   drivers are arch-neutral virtio-pci clients. A `--test` filter now runs the system image beside
   the referee on every ISA (verdict dropped), because a filter that selected the keyboard test
   failed it for want of a keystroke.
+- GPU and keyboard under OVMF: `helpers/qemu-uefi-x86_64.sh` attaches the same two devices under
+  the same variables, with `-vga none`, and a second monitor under `NIFE_GPU_MON`. `cargo xtask
+  uefi-test` turns them on for the system image's boot only and runs the referee beside it, as
+  `x86_64-ovmf`. The display, compositor and keyboard tests run there and the three pictures grade
+  pixel for pixel. The firmware question had a measured answer. OVMF's own virtio-gpu driver
+  brings the device to DRIVER_OK and resets it to 0 at ExitBootServices (`-trace
+  virtio_set_status`). Its GOP has no linear framebuffer, so the loader hands the kernel no screen,
+  and the kernel's driver starts from a reset device, as under PVH. Seen red (2026-10-19): without
+  `-vga none` the guest suite stayed green and all three scanout checks failed on the VGA's
+  1280x800 screen. `uefi-boot`'s tour removes both variables, since its screen check reads the
+  VGA's framebuffer.
 - Crash disk (ordinal 2): attached, and its fixture built, but nothing witnesses it on this ISA.
   Both crash-consistency twins are `cfg`-gated to their own ISAs. No x86_64 test skips for want of
   this disk, and none runs with it. The end-of-run host check keeps the crash image out of the
@@ -90,11 +102,6 @@ milestone's deliverable:
 
 ## Follow-on
 
-- **Outstanding.** The firmware path has no GPU or keyboard. `helpers/qemu-uefi-x86_64.sh`
-  attaches neither, so the display, compositor and keyboard tests skip under `cargo xtask
-  uefi-test`. Attaching them there wants the OVMF leg to drive the referee and a decision about
-  what the firmware's own GOP does to the GPU the kernel's driver then takes; neither is a
-  `-device` line. Recorded 2026-10-17.
 - **Recorded.** The crash disk attached but unwitnessed on x86_64. This block's `BUGS` carries it,
   and `kernel/src/user/fs_service/crash.rs` is where an x86_64 arm starts (both twins are
   `cfg`-gated to their own ISAs).
@@ -116,6 +123,6 @@ blank-disk write half, the PCIe entropy test and the `e1000e` tests therefore ru
 leg. They no longer skip for want of a device QEMU emulates on `q35`. The mmio entropy arm still
 skips here, and that is a machine fact: `q35` has no virtio-mmio bus. The GPU and keyboard are
 attached under `NIFE_GPU` and `NIFE_KEYBOARD` with a monitor socket, and the suite's x86_64 legs run
-the scanout referee, so the display, compositor and keyboard tests run and grade the device's
-scanout. What remains is the firmware path (no GPU or keyboard under OVMF, and the crash, GPT and
-blank disks off it) and the unwitnessed crash disk.
+the scanout referee. The display, compositor and keyboard tests therefore run and grade the
+device's scanout, under PVH and under OVMF. The crash, GPT and blank disks stay off the firmware path and
+the crash disk is unwitnessed on x86_64; both are recorded limitations.

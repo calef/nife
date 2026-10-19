@@ -54,10 +54,10 @@
 <path class="seg s1" d="M484.2,102.4 V102.2 Q484.2,101.9 484.4,101.9 H522.6 Q522.8,101.9 522.8,102.2 V102.4 Z"><title>2026W41, into a Markdown document: 2</title></path>
 <text class="mut" x="503.5" y="342" font-size="10" text-anchor="middle">2026W41</text>
 <text class="fg val" x="503.5" y="96.9" font-size="10" text-anchor="middle">835</text>
-<rect class="seg s0" x="542.8" y="134.6" width="38.7" height="189.4"><title>2026W42, into code: 712</title></rect>
-<path class="seg s1" d="M542.8,134.6 V134.3 Q542.8,134.1 543.0,134.1 H581.2 Q581.4,134.1 581.4,134.3 V134.6 Z"><title>2026W42, into a Markdown document: 2</title></path>
+<rect class="seg s0" x="542.8" y="134.1" width="38.7" height="189.9"><title>2026W42, into code: 714</title></rect>
+<path class="seg s1" d="M542.8,134.1 V133.8 Q542.8,133.5 543.0,133.5 H581.2 Q581.4,133.5 581.4,133.8 V134.1 Z"><title>2026W42, into a Markdown document: 2</title></path>
 <text class="mut" x="562.1" y="342" font-size="10" text-anchor="middle">2026W42</text>
-<text class="fg val" x="562.1" y="129.1" font-size="10" text-anchor="middle">714</text>
+<text class="fg val" x="562.1" y="128.5" font-size="10" text-anchor="middle">716</text>
 <rect class="seg s0" x="601.4" y="134.3" width="38.7" height="189.7"><title>2026W43, into code: 713</title></rect>
 <path class="seg s1" d="M601.4,134.3 V134.1 Q601.4,133.8 601.6,133.8 H639.8 Q640.0,133.8 640.0,134.1 V134.3 Z"><title>2026W43, into a Markdown document: 2</title></path>
 <text class="mut" x="620.7" y="342" font-size="10" text-anchor="middle">2026W43</text>
