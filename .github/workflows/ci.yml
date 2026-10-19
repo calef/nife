@@ -179,6 +179,14 @@ concurrency:
 # budget plus five. The reason is 2026-09-30: the long job sat at its 45-minute bound 29 times and
 # only notes landed for 18 hours, because raising a bound was one line that cost nothing.
 # `script/lint` fails a job added without the two steps.
+#
+# **A hung step leaves evidence before `timeout-minutes` ends the job** (lane
+# ci/hung-shard-leaves-evidence, provisional). A job killed by its timeout kept no log at all on
+# #2413, so its hang could not be run down. Every `script/ci-build` step therefore runs under
+# `helpers/hang_evidence.py run`, which gives it until four minutes before the job's own timeout,
+# then dumps the running test, the process tree, thread stacks and the output's tail into
+# `target/hang-evidence/`, kills the step and lets the `if: always()` upload below it run. The
+# helper's docstring has the rule and its BUGS; `script/lint` fails a step added without it.
 jobs:
   # **The live draft state, read once, because the event payload's copy is a snapshot that has been
   # wrong.** Every job below used to test `github.event.pull_request.draft` straight out of the
@@ -535,7 +543,7 @@ jobs:
       # `script/ci-build --list` prints it. Until 2026-09-30 this step chained three more checks
       # behind it in one runner; the three jobs below carry them, each for its own recorded reasons.
       # Since 2026-10-12 each shard runs one of the two `ci` rows that together are the `test` row.
-      - run: script/ci-build ${{ matrix.check }}
+      - run: helpers/hang_evidence.py run -- script/ci-build ${{ matrix.check }}
       # Where the suite's time went (milestone 807 (the kernel suite reports what each test cost),
       # §254 (a gate prints what each item cost), Fork 3): every leg's phases and every test's
       # time, written by `cargo xtask test` as it ran. The step summary costs nothing unless someone
@@ -549,6 +557,13 @@ jobs:
         with:
           name: time-record-test-shard-${{ matrix.check }}
           path: target/time-record.tsv
+      # A hung step leaves this before timeout-minutes discards the job's log (helpers/hang_evidence.py).
+      - name: Upload the hang evidence
+        if: always() && hashFiles('target/hang-evidence/**') != ''
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
+        with:
+          name: hang-evidence-${{ github.job }}-${{ strategy.job-index }}
+          path: target/hang-evidence/
       - name: Check the job's wall time against its budget
         if: always()
         run: python3 helpers/job-budget.py check "${{ github.job }}" "$JOB_STARTED_AT"
@@ -689,7 +704,7 @@ jobs:
       # basalt's delivery too, and run the package's `rg` by path over the walk. About 9 MB.
       # Each item's time into the job's record (milestone 808 (every gate accounts for its time)):
       # writers other than the kernel suite append only when NIFE_TIME_RECORD names a file.
-      - run: script/ci-build swish-check-aarch64-riscv64
+      - run: helpers/hang_evidence.py run -- script/ci-build swish-check-aarch64-riscv64
         env:
           NIFE_TIME_RECORD: ${{ github.workspace }}/target/time-record.tsv
       - name: Summarize where the time went
@@ -701,6 +716,13 @@ jobs:
         with:
           name: time-record-swish-check
           path: target/time-record.tsv
+      # A hung step leaves this before timeout-minutes discards the job's log (helpers/hang_evidence.py).
+      - name: Upload the hang evidence
+        if: always() && hashFiles('target/hang-evidence/**') != ''
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
+        with:
+          name: hang-evidence-${{ github.job }}-${{ strategy.job-index }}
+          path: target/hang-evidence/
       - name: Check the job's wall time against its budget
         if: always()
         run: python3 helpers/job-budget.py check "${{ github.job }}" "$JOB_STARTED_AT"
@@ -788,7 +810,7 @@ jobs:
       # The row fetches `rg` from basalt first; the `swish-check` job above says why.
       # Each item's time into the job's record (milestone 808 (every gate accounts for its time)):
       # writers other than the kernel suite append only when NIFE_TIME_RECORD names a file.
-      - run: script/ci-build swish-check-x86_64
+      - run: helpers/hang_evidence.py run -- script/ci-build swish-check-x86_64
         env:
           NIFE_TIME_RECORD: ${{ github.workspace }}/target/time-record.tsv
       - name: Summarize where the time went
@@ -800,6 +822,13 @@ jobs:
         with:
           name: time-record-swish-check-x86_64
           path: target/time-record.tsv
+      # A hung step leaves this before timeout-minutes discards the job's log (helpers/hang_evidence.py).
+      - name: Upload the hang evidence
+        if: always() && hashFiles('target/hang-evidence/**') != ''
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
+        with:
+          name: hang-evidence-${{ github.job }}-${{ strategy.job-index }}
+          path: target/hang-evidence/
       - name: Check the job's wall time against its budget
         if: always()
         run: python3 helpers/job-budget.py check "${{ github.job }}" "$JOB_STARTED_AT"
@@ -852,7 +881,14 @@ jobs:
       - run: script/bootstrap
         env:
           NIFE_SKIP_LINT_TOOLS: "1"
-      - run: script/ci-build ${{ matrix.check }}
+      - run: helpers/hang_evidence.py run -- script/ci-build ${{ matrix.check }}
+      # A hung step leaves this before timeout-minutes discards the job's log (helpers/hang_evidence.py).
+      - name: Upload the hang evidence
+        if: always() && hashFiles('target/hang-evidence/**') != ''
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
+        with:
+          name: hang-evidence-${{ github.job }}-${{ strategy.job-index }}
+          path: target/hang-evidence/
       - name: Check the job's wall time against its budget
         if: always()
         run: python3 helpers/job-budget.py check "${{ github.job }}" "$JOB_STARTED_AT"
@@ -921,13 +957,20 @@ jobs:
       # xtask run` was once unasserted, and that was not theoretical: milestone 268's finding 3 is
       # a checkpoint that could never fire on two of three architectures, and it hid for months
       # because nothing read the channel it was supposed to appear on.
-      - run: script/ci-build boot-check
+      - run: helpers/hang_evidence.py run -- script/ci-build boot-check
       # **And the release x86_64 UEFI image, booted under OVMF to the shell.** Every image a
       # machine gets is release (`install-boot`, `network-bench`), and a debug boot cannot stand in
       # for one: an `asm!` operand sharing a register with a live input is harmless at debug and
       # fatal at release. In this job because it is a required check and already has QEMU and OVMF;
       # the row's comment in script/ci-build has its price.
-      - run: script/ci-build release-uefi-boot
+      - run: helpers/hang_evidence.py run -- script/ci-build release-uefi-boot
+      # A hung step leaves this before timeout-minutes discards the job's log (helpers/hang_evidence.py).
+      - name: Upload the hang evidence
+        if: always() && hashFiles('target/hang-evidence/**') != ''
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
+        with:
+          name: hang-evidence-${{ github.job }}-${{ strategy.job-index }}
+          path: target/hang-evidence/
       - name: Check the job's wall time against its budget
         if: always()
         run: python3 helpers/job-budget.py check "${{ github.job }}" "$JOB_STARTED_AT"
@@ -1024,7 +1067,7 @@ jobs:
       - run: script/bootstrap
         env:
           NIFE_SKIP_LINT_TOOLS: "1"
-      - run: script/ci-build cpu-matrix
+      - run: helpers/hang_evidence.py run -- script/ci-build cpu-matrix
         env:
           CRICKER_CPU_MODELS: ${{ matrix.models }}
       # The per-model logs, kept only when something failed. `script/cpu-matrix` now prints an
@@ -1050,6 +1093,13 @@ jobs:
         with:
           name: time-record-cpu-matrix-shard-${{ matrix.shard }}
           path: target/cpu-matrix/time-record.tsv
+      # A hung step leaves this before timeout-minutes discards the job's log (helpers/hang_evidence.py).
+      - name: Upload the hang evidence
+        if: always() && hashFiles('target/hang-evidence/**') != ''
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
+        with:
+          name: hang-evidence-${{ github.job }}-${{ strategy.job-index }}
+          path: target/hang-evidence/
       - name: Check the job's wall time against its budget
         if: always()
         run: python3 helpers/job-budget.py check "${{ github.job }}" "$JOB_STARTED_AT"
@@ -1146,7 +1196,7 @@ jobs:
       - run: script/bootstrap
         if: steps.scope.outputs.needed == 'true'
       # The wedge first: it is the claim, and the healthy run is its control.
-      - run: script/ci-build watchdog-check
+      - run: helpers/hang_evidence.py run -- script/ci-build watchdog-check
         if: steps.scope.outputs.needed == 'true'
       - name: Upload the soak logs
         if: failure()
@@ -1154,6 +1204,13 @@ jobs:
         with:
           name: watchdog-logs
           path: target/soak-test-*.log
+      # A hung step leaves this before timeout-minutes discards the job's log (helpers/hang_evidence.py).
+      - name: Upload the hang evidence
+        if: always() && hashFiles('target/hang-evidence/**') != ''
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
+        with:
+          name: hang-evidence-${{ github.job }}-${{ strategy.job-index }}
+          path: target/hang-evidence/
       - name: Check the job's wall time against its budget
         if: always()
         run: python3 helpers/job-budget.py check "${{ github.job }}" "$JOB_STARTED_AT"
@@ -1179,7 +1236,14 @@ jobs:
       # retry exists.
       - name: Install the pinned toolchain
         run: helpers/rustup-retry.sh toolchain install
-      - run: script/ci-build fmt
+      - run: helpers/hang_evidence.py run -- script/ci-build fmt
+      # A hung step leaves this before timeout-minutes discards the job's log (helpers/hang_evidence.py).
+      - name: Upload the hang evidence
+        if: always() && hashFiles('target/hang-evidence/**') != ''
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
+        with:
+          name: hang-evidence-${{ github.job }}-${{ strategy.job-index }}
+          path: target/hang-evidence/
       - name: Check the job's wall time against its budget
         if: always()
         run: python3 helpers/job-budget.py check "${{ github.job }}" "$JOB_STARTED_AT"
@@ -1248,7 +1312,7 @@ jobs:
         run: |
           command -v cargo-machete >/dev/null || cargo install cargo-machete --locked
           command -v typos        >/dev/null || cargo install typos-cli     --locked
-      - run: script/ci-build lint
+      - run: helpers/hang_evidence.py run -- script/ci-build lint
       # **The fleet tooling's checks, as their own step** (milestone 889 (the tree's gates stop
       # depending on the fleet tooling), provisional). The 22 checks of the lane, queue, label and
       # identity machinery left script/lint for script/lint-fleet, so that a stranger's lint reads
@@ -1285,6 +1349,13 @@ jobs:
           echo "==> cargo test$args"
           # shellcheck disable=SC2086 # one word per package, split on purpose
           cargo test $args
+      # A hung step leaves this before timeout-minutes discards the job's log (helpers/hang_evidence.py).
+      - name: Upload the hang evidence
+        if: always() && hashFiles('target/hang-evidence/**') != ''
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
+        with:
+          name: hang-evidence-${{ github.job }}-${{ strategy.job-index }}
+          path: target/hang-evidence/
       - name: Check the job's wall time against its budget
         if: always()
         run: python3 helpers/job-budget.py check "${{ github.job }}" "$JOB_STARTED_AT"
@@ -1331,7 +1402,14 @@ jobs:
       # Its own job rather than a step in an existing one, for stack-frame-check's reason: it needs a
       # RELEASE kernel, and no other job builds one, so there is nothing to share. Jobs run in
       # parallel, so it costs no wall clock against the 30-minute Kani job.
-      - run: script/ci-build fastpath-footprint
+      - run: helpers/hang_evidence.py run -- script/ci-build fastpath-footprint
+      # A hung step leaves this before timeout-minutes discards the job's log (helpers/hang_evidence.py).
+      - name: Upload the hang evidence
+        if: always() && hashFiles('target/hang-evidence/**') != ''
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
+        with:
+          name: hang-evidence-${{ github.job }}-${{ strategy.job-index }}
+          path: target/hang-evidence/
       - name: Check the job's wall time against its budget
         if: always()
         run: python3 helpers/job-budget.py check "${{ github.job }}" "$JOB_STARTED_AT"
@@ -1353,7 +1431,14 @@ jobs:
       # the objcopy that strips the kernel and the objdump that proves it stripped.
       - name: Install the pinned toolchain
         run: helpers/rustup-retry.sh toolchain install
-      - run: script/ci-build boot-file-size-check
+      - run: helpers/hang_evidence.py run -- script/ci-build boot-file-size-check
+      # A hung step leaves this before timeout-minutes discards the job's log (helpers/hang_evidence.py).
+      - name: Upload the hang evidence
+        if: always() && hashFiles('target/hang-evidence/**') != ''
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
+        with:
+          name: hang-evidence-${{ github.job }}-${{ strategy.job-index }}
+          path: target/hang-evidence/
       - name: Check the job's wall time against its budget
         if: always()
         run: python3 helpers/job-budget.py check "${{ github.job }}" "$JOB_STARTED_AT"
@@ -1407,7 +1492,14 @@ jobs:
       #
       # It builds `git archive HEAD` twice at two different paths rather than reusing the checkout,
       # which is why it does not need `fetch-depth: 0`: one commit is all it reads.
-      - run: script/ci-build build-is-reproducible
+      - run: helpers/hang_evidence.py run -- script/ci-build build-is-reproducible
+      # A hung step leaves this before timeout-minutes discards the job's log (helpers/hang_evidence.py).
+      - name: Upload the hang evidence
+        if: always() && hashFiles('target/hang-evidence/**') != ''
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
+        with:
+          name: hang-evidence-${{ github.job }}-${{ strategy.job-index }}
+          path: target/hang-evidence/
       - name: Check the job's wall time against its budget
         if: always()
         run: python3 helpers/job-budget.py check "${{ github.job }}" "$JOB_STARTED_AT"
@@ -1441,7 +1533,14 @@ jobs:
       # BUGS: this is not a REQUIRED check in the merge queue's ruleset, because that is a repository
       # setting rather than a file in this tree, so today a red run here is visible and does not block
       # a merge. Making it required is calef's, and is one checkbox.
-      - run: script/ci-build image-permissions
+      - run: helpers/hang_evidence.py run -- script/ci-build image-permissions
+      # A hung step leaves this before timeout-minutes discards the job's log (helpers/hang_evidence.py).
+      - name: Upload the hang evidence
+        if: always() && hashFiles('target/hang-evidence/**') != ''
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
+        with:
+          name: hang-evidence-${{ github.job }}-${{ strategy.job-index }}
+          path: target/hang-evidence/
       - name: Check the job's wall time against its budget
         if: always()
         run: python3 helpers/job-budget.py check "${{ github.job }}" "$JOB_STARTED_AT"
@@ -1477,7 +1576,7 @@ jobs:
       # not in the tier a developer runs before pushing is recorded beside its row** in
       # `script/ci-build`'s table, not here: this file used to carry three such explanations and one
       # of them had been false for a month.
-      - run: script/ci-build stack-frame-check
+      - run: helpers/hang_evidence.py run -- script/ci-build stack-frame-check
       # The chain, in the same job as the frame, because they need the identical build: same
       # targets, same `-Z emit-stack-sizes`, so the second reuses the first's artifacts and costs
       # near nothing. They answer different halves of one question and a tree that gated only the
@@ -1487,7 +1586,14 @@ jobs:
       # already stale before this step existed (milestone 124 moved the ceiling to the guard page)
       # and understates it further now. Left alone on purpose: the name is what branch protection
       # matches on, so renaming it is a merge-queue change rather than a wording one.
-      - run: script/ci-build stack-depth-check
+      - run: helpers/hang_evidence.py run -- script/ci-build stack-depth-check
+      # A hung step leaves this before timeout-minutes discards the job's log (helpers/hang_evidence.py).
+      - name: Upload the hang evidence
+        if: always() && hashFiles('target/hang-evidence/**') != ''
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
+        with:
+          name: hang-evidence-${{ github.job }}-${{ strategy.job-index }}
+          path: target/hang-evidence/
       - name: Check the job's wall time against its budget
         if: always()
         run: python3 helpers/job-budget.py check "${{ github.job }}" "$JOB_STARTED_AT"
@@ -1548,7 +1654,7 @@ jobs:
       - run: script/bootstrap
         env:
           NIFE_SKIP_LINT_TOOLS: "1"
-      - run: script/ci-build bench
+      - run: helpers/hang_evidence.py run -- script/ci-build bench
       # Three legs, three architectures, since 2026-09-15: `script/ci-build`'s `bench` row is
       # `script/bench --check && script/bench --riscv --check && script/bench --x86 --check`, so
       # this one step pulls all three tripwires. **This comment said the opposite for six days**,
@@ -1572,7 +1678,14 @@ jobs:
       # runs before pushing; `script/ci-build`'s table is where that membership lives. **This comment
       # asserted the opposite for a month**, having been written before milestone 62 put the
       # instrument in the local set, and nothing compared the claim against the script.
-      - run: script/ci-build icount
+      - run: helpers/hang_evidence.py run -- script/ci-build icount
+      # A hung step leaves this before timeout-minutes discards the job's log (helpers/hang_evidence.py).
+      - name: Upload the hang evidence
+        if: always() && hashFiles('target/hang-evidence/**') != ''
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
+        with:
+          name: hang-evidence-${{ github.job }}-${{ strategy.job-index }}
+          path: target/hang-evidence/
       - name: Check the job's wall time against its budget
         if: always()
         run: python3 helpers/job-budget.py check "${{ github.job }}" "$JOB_STARTED_AT"
@@ -1612,7 +1725,14 @@ jobs:
       # No rust-cache in this job (calef, #1814, 2026-10-07 UTC): a hit gained under half a minute,
       # and without it the time the step spent moves into the first cargo build rather than
       # growing. See notes/actions-cache-budget-2026-10-07.md.
-      - run: script/ci-build supply-chain
+      - run: helpers/hang_evidence.py run -- script/ci-build supply-chain
+      # A hung step leaves this before timeout-minutes discards the job's log (helpers/hang_evidence.py).
+      - name: Upload the hang evidence
+        if: always() && hashFiles('target/hang-evidence/**') != ''
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
+        with:
+          name: hang-evidence-${{ github.job }}-${{ strategy.job-index }}
+          path: target/hang-evidence/
       - name: Check the job's wall time against its budget
         if: always()
         run: python3 helpers/job-budget.py check "${{ github.job }}" "$JOB_STARTED_AT"
@@ -1683,7 +1803,7 @@ jobs:
       # directories, which is the same starting point a developer gets.
       # Each item's time into the job's record (milestone 808 (every gate accounts for its time)):
       # writers other than the kernel suite append only when NIFE_TIME_RECORD names a file.
-      - run: script/ci-build fuzz
+      - run: helpers/hang_evidence.py run -- script/ci-build fuzz
         env:
           NIFE_TIME_RECORD: ${{ github.workspace }}/target/time-record.tsv
       - name: Upload the time record
@@ -1692,6 +1812,13 @@ jobs:
         with:
           name: time-record-fuzz
           path: target/time-record.tsv
+      # A hung step leaves this before timeout-minutes discards the job's log (helpers/hang_evidence.py).
+      - name: Upload the hang evidence
+        if: always() && hashFiles('target/hang-evidence/**') != ''
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
+        with:
+          name: hang-evidence-${{ github.job }}-${{ strategy.job-index }}
+          path: target/hang-evidence/
       - name: Check the job's wall time against its budget
         if: always()
         run: python3 helpers/job-budget.py check "${{ github.job }}" "$JOB_STARTED_AT"
@@ -1725,7 +1852,7 @@ jobs:
       # Measures the pure-logic host crates only; the kernel/user crates run under QEMU, out of
       # reach of host instrumentation. Gates on the 80%-per-file line-coverage floor (the floor
       # lives in script/coverage, next to the check itself); the report is still published below.
-      - run: script/ci-build coverage
+      - run: helpers/hang_evidence.py run -- script/ci-build coverage
       - name: Publish the summary to the run
         run: |
           {
@@ -1739,6 +1866,13 @@ jobs:
         with:
           name: coverage-report
           path: target/llvm-cov/
+      # A hung step leaves this before timeout-minutes discards the job's log (helpers/hang_evidence.py).
+      - name: Upload the hang evidence
+        if: always() && hashFiles('target/hang-evidence/**') != ''
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
+        with:
+          name: hang-evidence-${{ github.job }}-${{ strategy.job-index }}
+          path: target/hang-evidence/
       - name: Check the job's wall time against its budget
         if: always()
         run: python3 helpers/job-budget.py check "${{ github.job }}" "$JOB_STARTED_AT"

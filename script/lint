@@ -3405,6 +3405,12 @@ python3 helpers/prose_only.py --selftest >/dev/null
 echo "==> CI job wall-time budgets"
 python3 helpers/job-budget.py --selftest >/dev/null
 python3 helpers/job-budget.py lint
+# Every `script/ci-build` step in ci.yml runs under helpers/hang_evidence.py and its job uploads
+# what that leaves, so a hung step reports before timeout-minutes discards the job's log
+# (lane ci/hung-shard-leaves-evidence, provisional; #2413 kept no log of its hang).
+echo "==> CI steps leave evidence when they hang"
+python3 helpers/hang_evidence.py --selftest >/dev/null
+python3 helpers/hang_evidence.py lint
 # No rust-cache entry is saved from a merge group, where no later run can restore it
 # (lane/actions-cache-budget, provisional; notes/actions-cache-budget-2026-10-07.md). Watched
 # failing 2026-10-07 against base 1f5be6843: 18 unscoped steps in ci.yml and verify.yml.
