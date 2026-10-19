@@ -43,7 +43,7 @@ Distinct registry packages across every committed lockfile but `vendor/`, diffed
 Has a new component taken device or network authority? **Yes, twice.** `jig` (milestone 809 (the package client becomes a program), built
 2026-10-10 UTC) holds the network stack, a resolver of the root zone, the clock and entropy for TLS,
 and the installer endpoint, and it parses a package source's HTTP reply and the index's text before
-any digest is checked. Milestone 892 (#2405, in flight) would grant installed programs the network
+any digest is checked. Milestone 892, in flight on #2405, would grant installed programs the network
 and resolver zones at install. Both are this lens. The second, device authority, is
 `designware_mobile_storage`, radon's SD/MMC block server (milestone 53 (the board's own peripherals: network and storage on real silicon), 2026-10-06), which holds a
 register page and a transfer region and no DMA; it is outside this lens and is the next audit's
