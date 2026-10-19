@@ -326,7 +326,8 @@ jobs:
           fi
           draft="$(gh pr view "$PR_NUMBER" \
                      --repo "$GITHUB_REPOSITORY" --json isDraft -q .isDraft 2>/dev/null || true)"
-          if [ "$draft" = "true" ]; then
+          # FALSIFICATION ONLY (ci/hung-shard-leaves-evidence): run on this draft. Reverted.
+          if false; then
             echo "run=false" >> "$GITHUB_OUTPUT"
             echo "==> pull request is a draft right now; skipping the suite"
           else
