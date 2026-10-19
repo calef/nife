@@ -3,6 +3,33 @@
 //! The format is the crate's documentation's; this module is its code, split from the crate root
 //! under §282 (when a file is split, the parent becomes an index).
 //!
+//! # Examples: install, remove, vouch
+//!
+//! ```
+//! use installed_programs::{lookup, with_entry, without_package, Entry, NO_VERSION, OWNER};
+//!
+//! let digest = [7u8; 32];
+//! let uptime = Entry { program: "uptime", version: "0.1.0", package: "uptime", digest, manager: "jig" };
+//! let mut first = [0u8; 512];
+//! let n = with_entry("", &uptime, false, &mut first).unwrap();
+//! let generation_1 = core::str::from_utf8(&first[..n]).unwrap();
+//! assert_eq!(lookup(generation_1, "uptime").unwrap().unwrap().version, "0.1.0");
+//!
+//! let mut second = [0u8; 512];
+//! let n = without_package(generation_1, "uptime", None, &mut second).unwrap();
+//! let generation_2 = core::str::from_utf8(&second[..n]).unwrap();
+//! assert!(lookup(generation_2, "uptime").unwrap().is_none());
+//! // Generation 1 is untouched, so rolling back is naming it again.
+//! assert!(lookup(generation_1, "uptime").unwrap().is_some());
+//!
+//! // A vouch is a row with no version and no pointer: found by digest, never by name.
+//! let vouch = Entry { program: "a.out", version: NO_VERSION, package: OWNER, digest, manager: OWNER };
+//! let mut third = [0u8; 512];
+//! let n = with_entry(generation_2, &vouch, false, &mut third).unwrap();
+//! let generation_3 = core::str::from_utf8(&third[..n]).unwrap();
+//! assert!(lookup(generation_3, "a.out").unwrap().is_none());
+//! ```
+//!
 //! Name: provisional, minted 2026-10-19 (UTC) by milestone/892-installed-programs-hold-the-network-and-zones.
 
 pub use measured_boot::Digest;
@@ -302,33 +329,6 @@ pub fn versions_of<'a>(
 /// install); a vouch writes none. `image_carries`, whether the running image has a program of that
 /// name, makes a package's row [`Error::ImageName`] (§229), before [`Error::Taken`]; it is a
 /// required argument so an installer cannot forget to ask. [`with_entries`] takes several rows.
-///
-/// # Examples
-///
-/// ```
-/// use installed_programs::{lookup, with_entry, without_package, Entry, NO_VERSION, OWNER};
-///
-/// let digest = [7u8; 32];
-/// let uptime = Entry { program: "uptime", version: "0.1.0", package: "uptime", digest, manager: "jig" };
-/// let mut first = [0u8; 512];
-/// let n = with_entry("", &uptime, false, &mut first).unwrap();
-/// let generation_1 = core::str::from_utf8(&first[..n]).unwrap();
-/// assert_eq!(lookup(generation_1, "uptime").unwrap().unwrap().version, "0.1.0");
-///
-/// let mut second = [0u8; 512];
-/// let n = without_package(generation_1, "uptime", None, &mut second).unwrap();
-/// let generation_2 = core::str::from_utf8(&second[..n]).unwrap();
-/// assert!(lookup(generation_2, "uptime").unwrap().is_none());
-/// // Generation 1 is untouched, so rolling back is naming it again.
-/// assert!(lookup(generation_1, "uptime").unwrap().is_some());
-///
-/// // A vouch is a row with no version and no pointer: found by digest, never by name.
-/// let vouch = Entry { program: "a.out", version: NO_VERSION, package: OWNER, digest, manager: OWNER };
-/// let mut third = [0u8; 512];
-/// let n = with_entry(generation_2, &vouch, false, &mut third).unwrap();
-/// let generation_3 = core::str::from_utf8(&third[..n]).unwrap();
-/// assert!(lookup(generation_3, "a.out").unwrap().is_none());
-/// ```
 ///
 /// Name: provisional, minted 2026-09-24 (UTC) by milestone/198-rung-3a-consumer.
 pub fn with_entry(
