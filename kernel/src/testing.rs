@@ -244,8 +244,8 @@ const PAGE_FRAME_REPORT_MIN: usize = 16;
 /// +32 covers a measured two-frame local-against-CI divergence; and raising or lowering the
 /// number is a decision, so read the `[that test kept N frames]` lines and be able to say why.
 ///
-/// Current: `24_229`, the +32 over the 24,197 the aarch64 suite keeps (measured 2026-10-19 UTC,
-/// locally, on milestone 142's 1120x624 scanout). Part of that residue is program image size rather than any
+/// Current: `24_283`, the +32 over the 24,251 the aarch64 suite keeps (riscv64 24,248; measured
+/// 2026-10-19 UTC, locally, on milestone 142's 1120x624 scanout). Part of that residue is program image size rather than any
 /// test's memory. Each of `c_seam_tests`' three confiner spawns keeps a space sized by
 /// `c_confiner`'s loadable segments, 15 pages in a debug build. Spaces that map the whole
 /// initial ramdisk keep revocation-log pages sized by it, so a larger archive moves this number
@@ -265,7 +265,7 @@ const PAGE_FRAME_REPORT_MIN: usize = 16;
 ///   `create_rendezvous` being `pub(crate)` does not reach them, because they are in this crate.
 ///   Milestone 670 (test helpers give their clients a region to retype from) and milestone 671
 ///   (tests retype their rendezvous from their own region) are that work.
-const SUITE_PAGE_FRAME_BUDGET: usize = 24_229;
+const SUITE_PAGE_FRAME_BUDGET: usize = 24_283;
 
 /// **The longest run of free frames the boot must still have at the end**, in frames.
 ///
