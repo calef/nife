@@ -270,6 +270,9 @@ struct Resolved {
     manifest: Option<grant_plan::Manifest>,
     failure: u64,
     image_elf: Option<elf::Elf<'static>>,
+    /// The digest of an image the live generation vouched for, which its zone grants are keyed on
+    /// (milestone 892).
+    image_digest: Option<measured_boot::Digest>,
     verb: [u8; grant_plan::MAX_VERB],
     verb_len: Option<usize>,
 }
@@ -349,12 +352,12 @@ impl Wants {
 type PackageParts = (Option<(u64, u64)>, Option<u64>, bool, bool);
 
 /// What a `std` child is placed beyond [`Wants`]: its argv page, installer endpoints, catalog page,
-/// resolver badge and index sources page.
+/// resolver badges and index sources page.
 type StdParts = (
     Option<u64>,
     Option<(u64, u64)>,
     Option<u64>,
-    Option<u64>,
+    Resolvers,
     Option<u64>,
 );
 
@@ -392,8 +395,9 @@ struct NativeEndowment {
 struct JobLeftovers {
     dir: DirWiring,
     installer: Option<(u64, u64)>,
-    /// The badged copy of the resolver's endpoint the child was placed (milestone 892).
-    resolver: Option<u64>,
+    /// The badged copies of the resolver's endpoint the child was placed, one per zone (milestone
+    /// 892).
+    resolvers: Resolvers,
     catalog_page: Option<u64>,
     /// The child's copy of the image's index sources (milestone 801).
     sources_page: Option<u64>,
@@ -739,10 +743,12 @@ impl Service<'_> {
         let mut unvouched = false;
         let mut refused_by_manifest = false;
         let mut image_manifest = None;
+        let mut image_digest = None;
         let image_elf = staging.and_then(|_| {
             let bytes = staged_image(spawnproto::image_len(w0));
-            let vouch = vouched(bytes, fs, own_ut, &mut self.fs_mapped);
+            let (vouch, digest) = vouched(bytes, fs, own_ut, &mut self.fs_mapped);
             unvouched = vouch == grant_plan::Vouch::Unvouched;
+            image_digest = (!unvouched).then_some(digest);
             let elf = if !unvouched || presented {
                 elf::Elf::parse(bytes).ok()
             } else {
@@ -800,6 +806,7 @@ impl Service<'_> {
             manifest,
             failure,
             image_elf,
+            image_digest,
             verb,
             verb_len,
         }
@@ -917,17 +924,20 @@ impl Service<'_> {
             (std_layout, wants_installer),
             dir.label,
         );
-        // **A resolver badge for the zone the table names** (milestone 892): only for a `std` job
-        // holding the network on this line, and under `job_undertaker`, whose reap is what forgets
-        // the grant (a screen-narrowed job is reaped by the shell; milestone 892's BUGS). Granted
-        // before the child exists, since the resolver deletes a page attached to a badge it does
-        // not know yet. A job that should hold one and could not is refused, `dir_failed`'s rule.
+        // **A resolver badge per zone** (milestone 892): only for a `std` job holding the network
+        // on this line, and under `job_undertaker`, whose reap is what forgets the grants (a
+        // screen-narrowed job is reaped by the shell; milestone 892's BUGS). A program in the
+        // table gets the one zone the table names; an installed image gets each zone its `grant`
+        // lines give and its note asks for, at `std_runtime_contract::RESOLVER_SLOTS` in the
+        // table's order. Granted before the child exists, since the resolver deletes a page
+        // attached to a badge it does not know yet. A job that should hold one and could not is
+        // refused, `dir_failed`'s rule.
         let eligible = std_layout && wants.network && req.delegated.screen.is_none();
-        let zone = req
-            .prog
-            .and_then(Program::resolver_zone)
-            .filter(|_| eligible);
-        let (resolver, resolver_failed) = self.spawn.resolver_for(dir.label, zone);
+        let (resolvers, resolver_failed) = if eligible {
+            self.resolvers_for(req, job, elf, dir.label)
+        } else {
+            (NO_RESOLVERS, false)
+        };
 
         let out = self.output(req);
         let native = self.native_endowment(req, manifest, &wants, &dir, out);
@@ -948,7 +958,7 @@ impl Service<'_> {
         let args_failed = std_layout && req.args_seen.is_some() && args_page.is_none();
         let std_parts = match (std_layout, region) {
             (true, Some(r)) => {
-                let parts = (args_page, installer, catalog_page, resolver, sources_page);
+                let parts = (args_page, installer, catalog_page, resolvers, sources_page);
                 Some(self.std_layout(r, out, &wants, &dir, parts))
             }
             _ => None,
@@ -992,7 +1002,7 @@ impl Service<'_> {
         let leftovers = JobLeftovers {
             dir,
             installer,
-            resolver,
+            resolvers,
             catalog_page,
             sources_page,
             args_page,
@@ -1537,6 +1547,49 @@ impl Service<'_> {
         (map_buf, map_n)
     }
 
+    /// **The resolver badges job `label` is placed**, and whether one it should hold could not be
+    /// granted (milestone 892): the table's one zone for a program in it, or an installed image's
+    /// granted zones, each asked for by its note (`granted_zones`), at most one per resolver slot.
+    fn resolvers_for(
+        &mut self,
+        req: &Request,
+        job: &Resolved,
+        elf: Option<&elf::Elf>,
+        label: u64,
+    ) -> (Resolvers, bool) {
+        let mut out = NO_RESOLVERS;
+        if let Some(zone) = req.prog.and_then(Program::resolver_zone) {
+            let (copy, failed) = self.spawn.resolver_for(label, Some(zone));
+            out[0] = copy;
+            return (out, failed);
+        }
+        let (Some(digest), Some(elf)) = (job.image_digest, elf) else {
+            return (out, false);
+        };
+        let Ok(Some(note)) = elf.note(
+            capability_manifest_note::OWNER,
+            capability_manifest_note::MANIFEST,
+        ) else {
+            return (out, false);
+        };
+        let Ok(asked) = capability_manifest_note::zones(note) else {
+            return (out, false);
+        };
+        let Channels { own_ut, fs, .. } = self.c;
+        let (spawn, fs_mapped) = (&mut self.spawn, &mut self.fs_mapped);
+        let (mut n, mut failed) = (0, false);
+        granted_zones((fs, own_ut, fs_mapped), &digest, asked, |zone| {
+            if failed || n == out.len() {
+                return;
+            }
+            let (copy, f) = spawn.resolver_for(label, Some(zone));
+            out[n] = copy;
+            n += 1;
+            failed |= f;
+        });
+        (out, failed)
+    }
+
     /// Lay out a `std` child's endowment in `region` from the same decisions the native one reads.
     fn std_layout(
         &self,
@@ -1544,7 +1597,7 @@ impl Service<'_> {
         out: (u64, u64),
         wants: &Wants,
         dir: &DirWiring,
-        (args_page, installer, catalog_page, resolver, index_sources): StdParts,
+        (args_page, installer, catalog_page, resolvers, index_sources): StdParts,
     ) -> StdLayout {
         let Channels {
             clock_page,
@@ -1567,7 +1620,7 @@ impl Service<'_> {
                 network: network.filter(|_| wants.network),
                 installer,
                 catalog: catalog_page,
-                resolver,
+                resolvers,
                 index_sources,
             },
         )
@@ -1581,7 +1634,7 @@ impl Service<'_> {
         let JobLeftovers {
             dir,
             installer,
-            resolver,
+            resolvers,
             catalog_page,
             sources_page,
             args_page,
@@ -1630,7 +1683,11 @@ impl Service<'_> {
         // The narrowed endpoint was only ever the means of wiring: the child holds its own copy
         // and the caretaker holds the other end. Dropped whether or not the build worked, so a
         // failed spawn does not cost this capability table a slot for the rest of the boot.
-        for endpoint in [dir.narrowed, dir.sync_ep, resolver].into_iter().flatten() {
+        for endpoint in [dir.narrowed, dir.sync_ep]
+            .into_iter()
+            .chain(resolvers)
+            .flatten()
+        {
             cap_delete(endpoint);
         }
         // The window's page and badged endpoint were only the means too: the caretaker and the

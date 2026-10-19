@@ -18,10 +18,10 @@ day ("yes, record c"). Then he ruled that a manifest declares the network beside
 the owner grants both at install ("a", the same day). What is left is building both for installed
 programs, under "Item 3, ruled" and "The network at install, ruled" below. The refusal half is
 built: an installed program is refused the network, by name, until its grant is recorded. A
-manifest note carries its zones, `jig install` lists the asks, and the table's grant lines are
-read, so a granted program would hold the network. "Rulings of 2026-10-19" has calef's four
-rulings. What is left: placing a zone's badges for an installed program, and writing a grant, which
-waits on the stdin contract proposed below.
+manifest note carries its zones, `jig install` lists the asks, the table's grant lines are read,
+and each granted zone is a badge the PAL asks in order, so a granted program would hold the network
+and its zones. "Rulings of 2026-10-19" has calef's four rulings. What is left is writing a grant at
+install, which waits on the stdin contract proposed below.
 
 *(The title and slug are provisional.)*
 
@@ -228,21 +228,27 @@ not ask for. Host tests: `grant_lines_are_read_strictly_and_follow_their_rows` a
 Writing a grant is not built, and nothing writes one: it needs the owner's yes, which needs the
 stdin contract below.
 
+**Several zones, built.** A `std` job holding the network gets one resolver badge per zone: the
+table's one zone for a program in `grant_plan`'s table, or, for an installed image, each zone its
+`grant` lines give and its note asks for. The badges sit at `std_runtime_contract::RESOLVER_SLOTS`
+(9, then 22 to 28) in the table's order, and all are forgotten at the reap. The PAL's
+`lookup_host` asks them in slot order, lending its one page to each the first time, and moves on
+only when the resolver answers `DENIED`. Kernel test:
+`a_std_program_asks_each_badge_in_order_until_one_holds_the_name`, two badges whose first zone
+holds none of the names.
+
 ## Rulings of 2026-10-19 (UTC), on #2405
 
-Each was put with alternatives and a recommendation; calef took the recommendation each time.
+calef took the recommendation each time, and each is built above unless noted.
 
-- **Zones in the note** ("approve version 2?" "Yes"). Descriptor version 2; built, under "Zones in
-  the manifest note" above.
-- **The grant record** ("a"). `grant <digest> network` and `grant <digest> zone <name>` lines in
-  the installed-programs table, sorted, one per grant; read side built, under "The grant record"
-  above. Approval is all or nothing: the grants are exactly the asks.
-- **Several zones in a std program** ("(a). First zone at slot 9, the rest at fixed slots above 12,
-  probed in order."). The rest are slots 22 to 28 (`std_runtime_contract::RESOLVER_SLOTS`), the
-  first seven free in a row: `jig` holds 15 to 18 and the shell's configuration is 21. The PAL asks each badge in turn until one does not answer that the name is
-  outside its zone. A miss is the resolver's local refusal, one IPC round trip and no packet.
-- **The owner's yes** ("a"). A byte-source contract gives a std program stdin, granted to `jig` at
-  the owner's console. No `--yes`, and no second verb. Its shape is the proposal below.
+- Zones in the note ("approve version 2?" "Yes"): descriptor version 2.
+- The grant record ("a"): `grant` lines keyed on the digest. Approval is all or nothing; the
+  grants are exactly the asks.
+- Several zones ("(a). First zone at slot 9, the rest at fixed slots above 12, probed in order."):
+  slots 22 to 28, the first seven free in a row, since `jig` holds 15 to 18 and the shell's
+  configuration is 21.
+- The owner's yes ("a"): a byte-source contract gives a std program stdin, granted to `jig` at
+  the owner's console, with no `--yes` and no second verb. Its shape is proposed below.
 
 ## The stdin contract, proposed
 
@@ -259,7 +265,9 @@ line to it.
 ## BUGS
 
 - An installed program cannot hold the network or a zone yet: nothing writes a `grant` line (that
-  waits on the stdin contract), and zone grants are read by nothing.
+  waits on the stdin contract).
+- Every badge is one of the resolver's eight windows, shared by every job on the machine, so one
+  program granted eight zones leaves none for anyone else while it runs.
 - A granted program's network is proved by host tests only. No prompt proof exists until an
   install can write a grant.
 - A program whose note asks for zones but not the network runs without a resolver; nothing refuses

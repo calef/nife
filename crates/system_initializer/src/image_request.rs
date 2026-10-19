@@ -222,23 +222,29 @@ impl SpawnEndpoint {
         (copy, copy.is_none())
     }
 
-    /// **Withdraw job `label`'s resolver grant**, if it has one: the resolver denies its badge from
+    /// **Withdraw job `label`'s resolver grants**, if it has any: the resolver denies its badge from
     /// now on and gives up the page it attached. At the job's reap, or at once for a job that never
     /// started.
     ///
     /// Name: provisional, milestone 892's lane (#2011), 2026-10-12 (UTC).
     /// The pull request records no other name considered.
     pub(super) fn forget_resolver(&mut self, label: u64) {
-        let (Some(ep), Some(entry)) = (
-            self.resolver,
-            self.resolving.iter().position(|l| *l == Some(label)),
-        ) else {
+        let Some(ep) = self.resolver else {
             return;
         };
-        if let Some((w0, w1)) = domain_name_resolution_contract::forget_message(entry as u32 + 1) {
-            send(ep, w0, w1, 0);
+        // Every badge the job holds: one per zone it was granted (milestone 892's slots 9 and 22
+        // to 28).
+        for (entry, held) in self.resolving.iter_mut().enumerate() {
+            if *held != Some(label) {
+                continue;
+            }
+            if let Some((w0, w1)) =
+                domain_name_resolution_contract::forget_message(entry as u32 + 1)
+            {
+                send(ep, w0, w1, 0);
+            }
+            *held = None;
         }
-        self.resolving[entry] = None;
     }
 
     /// Keep a first message from a sender not being served; `false` if there is no room.
@@ -586,6 +592,8 @@ pub(super) fn staged_image(len: u64) -> &'static [u8] {
 /// generation that is malformed or larger than a page. A table that cannot be read vouches for
 /// nothing, which is `measured_boot`'s rule one table over.
 ///
+/// The digest comes back too, for [`granted_zones`].
+///
 /// The file page is the one the shell and every caretaker share with the server. That is sound for
 /// the reason `build_caretaker` gives: the shell is parked in its `RECEIVE` on the result endpoint for
 /// the whole of a spawn, so nothing else is mid-request on it.
@@ -594,12 +602,58 @@ pub(super) fn vouched(
     fs: Option<Fs>,
     own_ut: u64,
     fs_mapped: &mut bool,
-) -> grant_plan::Vouch {
+) -> (grant_plan::Vouch, measured_boot::Digest) {
     use grant_plan::Vouch;
-    let Some(files) = FsCalls::map(fs, own_ut, fs_mapped) else {
-        return Vouch::Unvouched;
-    };
     let digest = measured_boot::sha256(bytes);
+    let vouch = with_live_table(fs, own_ut, fs_mapped, |table| {
+        match installed_programs::lookup_digest(table, &digest) {
+            // A grant that cannot be read grants nothing; the row still vouches.
+            Ok(Some(_)) => Vouch::Vouched {
+                network: installed_programs::network_granted(table, &digest).unwrap_or(false),
+            },
+            _ => Vouch::Unvouched,
+        }
+    });
+    (vouch.unwrap_or(Vouch::Unvouched), digest)
+}
+
+/// **Each resolver zone the live generation grants the bytes with `digest`, and their note asks
+/// for** (milestone 892 (a std program at the prompt holds the network and a resolver)), handed to
+/// `each` as dotted text, empty for the root zone, in the table's order. A grant gives nothing the
+/// note did not ask for, so a `grant` line for a zone the bytes never asked is skipped. A table that
+/// cannot be read grants none.
+pub(super) fn granted_zones(
+    (fs, own_ut, fs_mapped): (Option<Fs>, u64, &mut bool),
+    digest: &measured_boot::Digest,
+    asked: capability_manifest_note::Zones<'_>,
+    mut each: impl FnMut(&str),
+) {
+    with_live_table(fs, own_ut, fs_mapped, |table| {
+        for grant in installed_programs::grants(table) {
+            let Ok(grant) = grant else {
+                return;
+            };
+            if let installed_programs::Granted::Zone(zone) = grant.what
+                && grant.digest == *digest
+                && asked.iter().any(|z| z == zone.as_bytes())
+            {
+                each(zone);
+            }
+        }
+    });
+}
+
+/// **Read the live generation of the activation set and hand it to `f`**, or `None` on every way of
+/// failing to read it: no disk, no `activation` directory, a `current` that does not parse, a
+/// generation that is not text or is larger than a page.
+#[inline(never)]
+fn with_live_table<R>(
+    fs: Option<Fs>,
+    own_ut: u64,
+    fs_mapped: &mut bool,
+    f: impl FnOnce(&str) -> R,
+) -> Option<R> {
+    let files = FsCalls::map(fs, own_ut, fs_mapped)?;
     let d = files.named(
         fs_operation::OPENDIR,
         fs_operation::ROOT,
@@ -607,24 +661,15 @@ pub(super) fn vouched(
         dir::READ,
     );
     if d < 0 {
-        return Vouch::Unvouched;
+        return None;
     }
     let mut table = [0u8; PAGE_BYTES];
-    let hit = match files.live_generation(d as u64, &mut table) {
-        Ok((_, n)) => match core::str::from_utf8(&table[..n]) {
-            Ok(table) => match installed_programs::lookup_digest(table, &digest) {
-                // A grant that cannot be read grants nothing; the row still vouches.
-                Ok(Some(_)) => Vouch::Vouched {
-                    network: installed_programs::network_granted(table, &digest).unwrap_or(false),
-                },
-                _ => Vouch::Unvouched,
-            },
-            Err(_) => Vouch::Unvouched,
-        },
-        Err(()) => Vouch::Unvouched,
+    let answer = match files.live_generation(d as u64, &mut table) {
+        Ok((_, n)) => core::str::from_utf8(&table[..n]).ok().map(f),
+        Err(()) => None,
     };
     files.close(d);
-    hit
+    answer
 }
 
 /// **The manifest a file's bytes are endowed with, or `None` to refuse them** (milestone 597,
