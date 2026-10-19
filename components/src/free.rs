@@ -43,7 +43,7 @@ use core::sync::atomic::{AtomicBool, Ordering};
 
 use free::{MachineRefusal, Share, ShareRefusal};
 use machine_statistics_contract::{PAGE_VA, Snapshot};
-use user_mode_runtime::{exit, invoke, is_granted, send};
+use user_mode_runtime::{exit, is_granted, memory_region_usage, send};
 
 const REPORT: u64 = 0;
 const DIAG_SLOT: u64 = grant_plan::DIAGNOSTICS_SLOT;
@@ -84,9 +84,7 @@ pub extern "C" fn _start(_a0: u64, _a1: u64, _a2: u64) -> ! {
 
 /// One `MemoryRegion::USAGE` question about the job budget.
 fn usage(record: u64) -> Result<u64, ShareRefusal> {
-    // SAFETY: `invoke` traps to the kernel, which validates the capability, the right and the
-    // record before answering (user_mode_runtime's contract).
-    let r = unsafe { invoke(SHARE_SLOT, abi::memory_region::USAGE, record, 0, 0) };
+    let r = memory_region_usage(SHARE_SLOT, record);
     if r < 0 {
         Err(ShareRefusal::Refused(r))
     } else {

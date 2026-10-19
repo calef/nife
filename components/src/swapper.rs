@@ -1374,16 +1374,7 @@ fn end_region(region: u64, stage: u64) {
 /// record (milestone 126 (the `procps` package)). The budget arrives with every right, so it holds
 /// `ENUMERATE`.
 fn live_children_pages(stage: u64) -> u64 {
-    // SAFETY: `svc`/`ecall`/`syscall`; USAGE reads one record and writes nothing of ours.
-    let r = unsafe {
-        user_mode_runtime::invoke(
-            ROOT_UT,
-            abi::memory_region::USAGE,
-            abi::usage::CHILDREN,
-            0,
-            0,
-        )
-    };
+    let r = user_mode_runtime::memory_region_usage(ROOT_UT, abi::usage::CHILDREN);
     if r < 0 {
         bail(stage)
     }

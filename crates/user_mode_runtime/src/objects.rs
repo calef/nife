@@ -140,6 +140,17 @@ pub fn destroy_memory_region(memory_region_slot: u64) -> i64 {
     unsafe { invoke(memory_region_slot, abi::memory_region::DESTROY, 0, 0, 0) }
 }
 
+/// `USAGE`: how many pages of the region in `memory_region_slot` are spent on `record`, one of
+/// [`abi::usage`]'s selectors. The page count, or a negative `abi::Error` (`NotPermitted` without
+/// `ENUMERATE`, `BadMethod` for an unknown record).
+///
+/// Name: provisional. The method and its object, the shape [`split_memory_region`] has.
+pub fn memory_region_usage(memory_region_slot: u64, record: u64) -> i64 {
+    // SAFETY: `svc`/`ecall`. USAGE reads one record and writes nothing of the caller's; the kernel
+    // validates `ENUMERATE` and the record before it answers.
+    unsafe { invoke(memory_region_slot, abi::memory_region::USAGE, record, 0, 0) }
+}
+
 /// `MAP` (untyped): retype one page out of the untyped in `memory_region_slot` and map it,
 /// writable, at `va` in the caller's own address space, in one step. `0` on success; a negative
 /// `abi::Error` (`OutOfMemory` when the untyped is exhausted).
