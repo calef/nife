@@ -165,14 +165,13 @@ pub const fn blend(fg: u32, bg: u32, coverage: u8) -> u32 {
         _ => {}
     }
     let a = coverage as u32;
-    let mut out = 0;
-    let mut shift = 0;
-    while shift < 24 {
-        let (f, b) = ((fg >> shift) & 0xff, (bg >> shift) & 0xff);
-        out |= ((f * a + b * (255 - a) + 127) / 255) << shift;
-        shift += 8;
-    }
-    out
+    channel(fg, bg, a, 16) | channel(fg, bg, a, 8) | channel(fg, bg, a, 0)
+}
+
+/// One channel of [`blend`], at bit `shift`, rounded to nearest.
+const fn channel(fg: u32, bg: u32, a: u32, shift: u32) -> u32 {
+    let (f, b) = ((fg >> shift) & 0xff, (bg >> shift) & 0xff);
+    ((f * a + b * (255 - a) + 127) / 255) << shift
 }
 
 #[cfg(test)]
