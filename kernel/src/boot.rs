@@ -367,9 +367,9 @@ fn interrupts_init(_dtb: usize) {
 
     // Bring up the interrupt controller (the GIC on aarch64), reading its location from the device
     // tree. Portable code names `arch::irq`, never a specific controller, which is what lets a
-    // second architecture be a new `arch/` directory rather than a diff here. On RISC-V this
-    // unmasks the boot hart's software and external interrupt sources, as each secondary does for
-    // itself; the PLIC's own base is still stored later, by that boot's device paths.
+    // second architecture be a new `arch/` directory rather than a diff here. On RISC-V this is the
+    // PLIC, then the boot hart's software and external interrupt sources, which each secondary
+    // unmasks for itself as it comes online.
     irq::init();
 
     timer::init();

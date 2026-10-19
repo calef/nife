@@ -268,7 +268,9 @@ fn riscv64_device_interrupt() {
     // kernel is never in the data path. The `cargo run` harness is non-interactive, so pipe a
     // byte to QEMU's serial *after boot*: `( sleep 4; printf A ) | ...` (the console clears the
     // RX FIFO during init, so a byte sent at t=0 is dropped).
-    if let Some((plic_phys, _)) = memory::plic_region() {
+    // The PLIC itself came up in `arch::irq::init`, in the shared bring-up; a machine whose tree
+    // names none has no line to route a keystroke through, so the step is skipped there.
+    if memory::plic_region().is_some() {
         // The UART's PLIC source, from the machine's own tree: 10 on QEMU virt, 32 on the
         // JH7110. This step used to arm a QEMU constant, and on the board that enabled an
         // unrelated source, so a real keystroke could never reach the driver; boot 13 proved
@@ -276,15 +278,6 @@ fn riscv64_device_interrupt() {
         // is that same constant (user::UART_RX_INTID), and the line below names which source
         // won, so a bench transcript is diagnosable.
         let (uart_irq, uart_irq_source) = user::uart_irq_and_source();
-        // SAFETY: the PLIC is device-mapped in the direct map (mmu::map_everything); this is
-        // its VA. The context is the boot hart's S context (2*hart + 1), derived rather than
-        // hardcoded to 1 because OpenSBI elects the boot hart by lottery; see irq::boot_s_context.
-        unsafe {
-            drivers::plic::init(
-                arch::mmu::phys_to_virt(plic_phys) as usize,
-                arch::irq::boot_s_context(),
-            );
-        };
 
         println!("  uart irq    : source {uart_irq} ({uart_irq_source})");
 
@@ -768,22 +761,6 @@ pub(super) fn riscv64_boot(boot_info_pointer: usize) -> ! {
     // the other harts. The RISC-V equivalent of the `#[cfg(test)] test_main()` on the aarch64 boot.
     #[cfg(any(test, feature = "system_tests"))]
     {
-        // The PLIC too: the parity-C disk tests route a device interrupt, and `plic::enable`
-        // through a never-initialized PLIC is a store through a zero base (a fault this test
-        // path found the hard way; the shell and tour paths already did this). SEIE as well:
-        // enabling a source at the PLIC delivers nothing while supervisor external interrupts
-        // are masked in `sie`, and that bit is otherwise only set by the UART driver paths.
-        if let Some((plic_phys, _)) = memory::plic_region() {
-            // SAFETY: the PLIC is device-mapped in the direct map; the context is the boot
-            // hart's S context (derived, not hardcoded: OpenSBI's hart lottery).
-            unsafe {
-                drivers::plic::init(
-                    arch::mmu::phys_to_virt(plic_phys) as usize,
-                    arch::irq::boot_s_context(),
-                );
-            };
-            arch::exceptions::enable_external();
-        }
         run_test_suite();
         arch::halt(arch::HaltReason::test_build());
     }
@@ -979,16 +956,6 @@ fn mode_note(stat: u32) -> &'static str {
     allow(dead_code)
 )]
 fn riscv_hand_over() {
-    if let Some((plic_phys, _)) = memory::plic_region() {
-        // SAFETY: the PLIC is device-mapped in the direct map; the context is the boot hart's S
-        // context (derived, not hardcoded: OpenSBI's hart lottery).
-        unsafe {
-            drivers::plic::init(
-                arch::mmu::phys_to_virt(plic_phys) as usize,
-                arch::irq::boot_s_context(),
-            );
-        };
-    }
     let Some(initial_ramdisk) = user::initial_ramdisk() else {
         println!();
         println!(
