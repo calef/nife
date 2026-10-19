@@ -46,7 +46,7 @@ static FLUSH_COUNT: AtomicUsize = AtomicUsize::new(0);
 /// parked loses it rather than keeping a pointer into freed memory, and it ends the stand-in,
 /// whose receive comes back aborted. Before this, every call kept a scanout's worth of frames,
 /// about 300, for the rest of the boot.
-fn kernel_display() -> (sched::RendezvousId, u64, u64) {
+pub(super) fn kernel_display() -> (sched::RendezvousId, u64, u64) {
     let frames = graphics_contract::SURFACE_PAGE_FRAMES as u64;
     let region = crate::memory_region::create(frames + 1)
         .expect("no contiguous screen frames for the compositor");
@@ -91,7 +91,7 @@ fn kernel_display() -> (sched::RendezvousId, u64, u64) {
 
 /// Give back what [`kernel_display`] took: the screen, unmapped from everyone first, and the
 /// endpoint, which ends the stand-in. Last in a test, once nothing it asserts reads the screen.
-fn retire_kernel_display(region: u64) {
+pub(super) fn retire_kernel_display(region: u64) {
     sched::reclaim_region(region).expect("the kernel display's region did not come back");
 }
 

@@ -133,6 +133,16 @@ pub const CTL_RESUME: u64 = 1;
 /// over.
 pub const CTL_QUIT: u64 = 2;
 
+/// Supervisor → quiesced terminal, on its control endpoint: **write your state into the run this
+/// message carries** (milestone 23, for `display_terminal`, whose handoff comes from the machine's
+/// swap reserve and so cannot be mapped at build). A `SEND_CAP` of the run; a plain `SEND` means
+/// "into the run you already map", which is a replacement that absorbed from it earlier in the
+/// same swap. Answered [`NOTE_WRITTEN`] or [`NOTE_NOT_WRITTEN`]. A replacement started with
+/// [`START_ABSORB`] takes the same message, before it serves, and reads the run instead.
+///
+/// Name: provisional (the lane for milestone 23, 2026-10-19 UTC).
+pub const CTL_HANDOFF: u64 = 3;
+
 /// `line_editor`'s third start argument, a set of bits a supervisor passes (milestone 23 (a
 /// capability-routed component OS with live replacement)). `START_HANDOFF`: a handoff page is
 /// mapped at [`HANDOFF_VA`](super::component::HANDOFF_VA), so a quiesce writes the blob there.
@@ -151,6 +161,18 @@ pub const NOTE_ABSORBED: u64 = 1;
 ///
 /// Name: ratified 2026-10-18 (calef: "Approve both"), the negation of [`NOTE_ABSORBED`].
 pub const NOTE_NOT_ABSORBED: u64 = 2;
+
+/// Terminal → supervisor, after [`CTL_HANDOFF`]: the blob is written. The second word is its
+/// length in bytes.
+///
+/// Name: provisional (the lane for milestone 23, 2026-10-19 UTC).
+pub const NOTE_WRITTEN: u64 = 3;
+/// Terminal → supervisor, after [`CTL_HANDOFF`]: nothing was written, because no run came and
+/// none is mapped, or the run would not map. The instance is still quiesced, and waits for
+/// [`CTL_RESUME`] or [`CTL_QUIT`].
+///
+/// Name: provisional (the lane for milestone 23, 2026-10-19 UTC).
+pub const NOTE_NOT_WRITTEN: u64 = 4;
 
 /// Pack a request's first word from an opcode and a length/count.
 pub const fn req(operation: u64, len: u64) -> u64 {

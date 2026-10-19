@@ -998,12 +998,10 @@ pub(super) fn build_terminal(
             ..ChildEndowment::new(Retention::Nothing)
         },
     ));
-    must_ok(start_child(
-        sup,
-        mode,
-        s::image_lengths(td_bytes.len() as u64, 0),
-        0,
-    ));
+    let Some(lengths) = s::image_lengths(td_bytes.len() as u64, 0, 0) else {
+        fail()
+    };
+    must_ok(start_child(sup, mode, lengths, 0));
     cap_delete(budget_pages);
 }
 

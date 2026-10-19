@@ -127,9 +127,26 @@ pub mod supervisor {
     pub const CLIENT_IN: u64 = 5;
     /// The console's reply endpoint, in console mode only.
     pub const SINK_REPLY: u64 = 6;
+    /// In display mode, when the spawner hands over `display_terminal`'s image: the display
+    /// driver's endpoint it presents through, `WRITE | GRANT`. The slot [`SINK_REPLY`] has in
+    /// console mode, which has no display.
+    ///
+    /// Name: provisional, minted 2026-10-19 (UTC) by the lane for milestone 23.
+    pub const PRESENT: u64 = 6;
+    /// In display mode with `display_terminal`'s image: the scanout's frame run, `READ | WRITE |
+    /// GRANT`. [`SINK`] is then the endpoint `display_terminal` serves and [`SINK_PAGE`] its
+    /// output page, both with `GRANT`.
+    ///
+    /// Name: provisional, minted 2026-10-19 (UTC) by the lane for milestone 23.
+    pub const SURFACE: u64 = 7;
     /// Where the `line_editor` image is copied into the supervisor. Below `supervision_protocol`'s
     /// scratch window, which starts at `0x1000_0000` and grows upward.
     pub const ELF_VA: u64 = 0x0800_0000;
+    /// Where a `display_terminal` image is copied into the supervisor, when the spawner hands
+    /// `display_terminal` to it. Between [`ELF_VA`]'s window and [`OWN_IMAGE_ADDRESS`]'s.
+    ///
+    /// Name: provisional, minted 2026-10-19 (UTC) by the lane for milestone 23.
+    pub const DISPLAY_IMAGE_ADDRESS: u64 = 0x0a00_0000;
     /// Where the supervisor's own image is copied into it, so it can build the stand-in that
     /// carries its quiesce (`components/src/terminal_supervisor.rs`). Above the largest
     /// `line_editor` image [`ELF_VA`] could hold and below the scratch window.
@@ -164,24 +181,84 @@ pub mod supervisor {
     /// Name: provisional, minted 2026-10-19 (UTC) by the lane for milestone 23.
     pub const SWAPPING_BUDGET_PAGES: u64 = BUDGET_PAGES + STAND_IN_PAGES;
 
-    /// The second start argument: the length of the `line_editor` image at [`ELF_VA`] in the
-    /// low half, and of the supervisor's own image at [`OWN_IMAGE_ADDRESS`] in the high half.
-    /// Packed because a thread starts with three words and the other two are taken.
+    /// The second start argument: the lengths of the `line_editor` image at [`ELF_VA`], of the
+    /// supervisor's own at [`OWN_IMAGE_ADDRESS`] and of `display_terminal`'s at
+    /// [`DISPLAY_IMAGE_ADDRESS`], twenty-one bits each from the low end. `0` for an image not
+    /// copied. Packed because a thread starts with three words and the other two are taken.
+    /// `None` for an image of 2 MiB or more, which does not fit its field; the images this
+    /// supervisor is handed are under 256 KiB.
     ///
     /// Name: provisional, minted 2026-10-19 (UTC) by the lane for milestone 23.
-    pub const fn image_lengths(editor: u64, own: u64) -> u64 {
-        editor | (own << 32)
+    pub const fn image_lengths(editor: u64, own: u64, display: u64) -> Option<u64> {
+        if (editor | own | display) >> LENGTH_BITS != 0 {
+            return None;
+        }
+        Some(editor | (own << LENGTH_BITS) | (display << (2 * LENGTH_BITS)))
     }
 
-    /// [`image_lengths`] read back: `(editor, own)`.
+    /// [`image_lengths`] read back: `(editor, own, display)`.
     ///
     /// Name: provisional, minted 2026-10-19 (UTC) by the lane for milestone 23.
-    pub const fn unpack_image_lengths(packed: u64) -> (u64, u64) {
-        (packed & 0xffff_ffff, packed >> 32)
+    pub const fn unpack_image_lengths(packed: u64) -> (u64, u64, u64) {
+        let mask = (1 << LENGTH_BITS) - 1;
+        (
+            packed & mask,
+            (packed >> LENGTH_BITS) & mask,
+            (packed >> (2 * LENGTH_BITS)) & mask,
+        )
     }
 
-    /// Requester → supervisor, on the swap endpoint: replace the running `line_editor`.
+    const LENGTH_BITS: u64 = 21;
+
+    /// Requester → supervisor, on the swap endpoint: replace a running child. The second word
+    /// names which: [`CHILD_LINE_EDITOR`] or [`CHILD_DISPLAY_TERMINAL`].
     pub const SWAP: u64 = 1;
+    /// `SWAP`'s second word: `line_editor`.
+    ///
+    /// Name: provisional, minted 2026-10-19 (UTC) by the lane for milestone 23.
+    pub const CHILD_LINE_EDITOR: u64 = 0;
+    /// `SWAP`'s second word: `display_terminal`, which only a supervisor handed its image holds.
+    /// Its swap needs the swap reserve lent first ([`LEND`]).
+    ///
+    /// Name: provisional, minted 2026-10-19 (UTC) by the lane for milestone 23.
+    pub const CHILD_DISPLAY_TERMINAL: u64 = 1;
+    /// Lender → supervisor, a `SEND_CAP` on the swap endpoint carrying a `MemoryRegion` split
+    /// from the machine's swap reserve ([`SWAP_RESERVE_PAGES`]), lent for the
+    /// next `SWAP` of [`CHILD_DISPLAY_TERMINAL`] (calef's ruling "D", 2026-10-19 UTC), with
+    /// `GRANT`, because the replacement's map budget is split from it and delegated. The
+    /// supervisor deletes its capability before it answers that `SWAP`, and the lender then
+    /// `DESTROY`s the region, which revokes whatever was left mapped from it.
+    ///
+    /// Name: provisional, minted 2026-10-19 (UTC) by the lane for milestone 23.
+    pub const LEND: u64 = 3;
+    /// **The machine's swap reserve, in pages** (milestone 23 (a capability-routed component OS with
+    /// live replacement); calef's ruling "D" of 2026-10-19 (UTC)). One per machine, apart from every
+    /// job pool, and sized to the largest swappable instance plus its handoff: today
+    /// `display_terminal`'s, whose budget holds one instance and so cannot hold its replacement
+    /// (`video_terminal::component::SWAP_PAGES`, which `terminal_supervisor` holds to this at compile
+    /// time). Here beside [`LEND`], the message that lends it, because every party to a swap reads
+    /// this module. Whoever drives a swap splits it whole and lends it to the supervisor with the request; the
+    /// supervisor gives it back before it answers, and the lender's `DESTROY` revokes what was made
+    /// from it. So swaps are serialized by the reserve itself: a second swap while one holds it finds
+    /// nothing to split, and is refused until the first one is answered.
+    ///
+    /// The holder is the swap trigger, milestone 694 (the installer asks the terminal to swap). Until
+    /// that is built the kernel's test holds it (`system_tests::user::terminal_display_swap_tests`).
+    ///
+    /// Name: provisional, minted 2026-10-19 (UTC) by the lane for milestone 23.
+    pub const SWAP_RESERVE_PAGES: u64 = 396;
+
+    /// Supervisor → requester: a `SWAP` of [`CHILD_DISPLAY_TERMINAL`] with no reserve lent, or one
+    /// too small. Nothing was quiesced; lend the reserve and ask again.
+    ///
+    /// Name: provisional, minted 2026-10-19 (UTC) by the lane for milestone 23.
+    pub const NEEDS_RESERVE: u64 = 0x5245_5356;
+    /// Supervisor → requester: `display_terminal`'s replacement absorbed the state and serves,
+    /// but from the reserve: its move home was refused (second word: the refusal). The reserve
+    /// stays held, and the next `SWAP` of it finishes the move with no new [`LEND`].
+    ///
+    /// Name: provisional, minted 2026-10-19 (UTC) by the lane for milestone 23.
+    pub const IN_RESERVE: u64 = 0x494e_5253;
     /// Requester → supervisor: retire the running `line_editor` (quiesce it, tell it to quit,
     /// collect it), reply [`STOPPED`], and exit. So a test's terminal can end with every
     /// region back in its budget; nothing on a boot sends it.
@@ -232,19 +309,27 @@ const _: () = assert!(supervisor::SWAPPING_BUDGET_PAGES == 160);
 mod tests {
     use super::supervisor::{image_lengths, unpack_image_lengths};
 
-    /// Both lengths come back from the packed start argument `system_initializer` and the kernel's
-    /// test write and `terminal_supervisor` reads, at sizes past a 16-bit half so a shift or mask
-    /// of the wrong width shows. (`|` becoming `^` is the same function here: the two lengths'
-    /// bits never overlap.)
+    /// All three lengths come back from the packed start argument `system_initializer` and the
+    /// kernel's test write and `terminal_supervisor` reads, at sizes past a 16-bit field and at
+    /// the 21-bit maximum, so a shift or mask of the wrong width shows. (`|` becoming `^` is the
+    /// same function here: the lengths' bits never overlap.)
     #[test]
-    fn both_image_lengths_survive_the_packed_start_argument() {
-        assert_eq!(
-            unpack_image_lengths(image_lengths(160_872, 155_600)),
-            (160_872, 155_600)
-        );
-        assert_eq!(
-            unpack_image_lengths(image_lengths(160_872, 0)),
-            (160_872, 0)
-        );
+    fn every_image_length_survives_the_packed_start_argument() {
+        let max = (1 << 21) - 1;
+        for lengths in [
+            (160_872, 155_600, 0),
+            (160_872, 0, 0),
+            (160_872, 155_600, 98_304),
+            (max, max, max),
+            (0, max, 0),
+        ] {
+            let (e, o, d) = lengths;
+            assert_eq!(
+                image_lengths(e, o, d).map(unpack_image_lengths),
+                Some(lengths)
+            );
+        }
+        // One bit too long for its field is refused rather than spilling into the next length.
+        assert_eq!(image_lengths(0, max + 1, 0), None);
     }
 }
