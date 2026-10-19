@@ -26,7 +26,10 @@ fn the_rg_walk_line_types_what_the_disk_was_staged_for() {
             crate::disk::RIPGREP_CORPUS
         )
     );
-    assert_eq!(super::RG_WALK_PREVIEW, format!("caps {}", super::RG_WALK_LINE));
+    assert_eq!(
+        super::RG_WALK_PREVIEW,
+        format!("caps {}", super::RG_WALK_LINE)
+    );
 }
 
 #[test]
