@@ -58,7 +58,7 @@ fn each_face_is_the_one_its_name_says() {
     let ink = |face: &Face| cell(face, 'H').iter().map(|&a| a as u32).sum::<u32>();
     assert!(ink(&BOLD) > ink(&REGULAR) * 5 / 4);
     assert!(ink(&BOLD_OBLIQUE) > ink(&OBLIQUE) * 5 / 4);
-    let centre = |face: &Face, y: u32| {
+    let center = |face: &Face, y: u32| {
         let row: Vec<u32> = (0..CELL_W)
             .map(|x| face.coverage('I', x, y) as u32)
             .collect();
@@ -73,11 +73,11 @@ fn each_face_is_the_one_its_name_says() {
     for (upright, leaning) in [(&REGULAR, &OBLIQUE), (&BOLD, &BOLD_OBLIQUE)] {
         let (top, bottom) = (ASCENT - 14, ASCENT - 3);
         assert!(
-            centre(leaning, top) > centre(leaning, bottom) + 16,
+            center(leaning, top) > center(leaning, bottom) + 16,
             "the oblique leans right"
         );
         assert!(
-            centre(upright, top).abs_diff(centre(upright, bottom)) < 16,
+            center(upright, top).abs_diff(center(upright, bottom)) < 16,
             "the upright does not"
         );
     }

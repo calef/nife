@@ -11,7 +11,7 @@
 //! re-litigated here: `ttf-parser` plus `ab_glyph_rasterizer` 0.1.10; grayscale coverage, never
 //! subpixel; and coverage quantized to `u8` at the boundary ([`quantize`]), never stored as `f32`.
 //!
-//! Name: provisional. calef names things.
+//! Name: provisional, for the crate and every item in it. calef names things.
 
 use ab_glyph_rasterizer::{Point, Rasterizer, point};
 use glyph_atlas::{ASCENT, CELL_H, CELL_W, FIRST, GLYPHS, LAST, PIXELS_PER_EM};

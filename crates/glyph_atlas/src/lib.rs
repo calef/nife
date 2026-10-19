@@ -9,10 +9,6 @@
 //! in any of them. That generator's test fails if the tables are not what it makes from
 //! `vendor/dejavu`, byte for byte.
 //!
-//! The cell is Menlo Regular 11 at 2x, whose outlines are DejaVu's: 22 pixels to the em, an advance
-//! of 13.24 pixels in a 14-pixel cell, and the 2,384 units from descender to ascender as 25.6 rows
-//! in 26. The cap height is 16 pixels.
-//!
 //! # Examples
 //!
 //! The baseline sits [`ASCENT`] rows down, so an `L`'s foot is the row just above it, and its stem
@@ -42,8 +38,9 @@
 
 #![no_std]
 
-/// A cell's width in pixels. 14, the 13.24-pixel advance rounded up, so every glyph has its own
-/// column of pixels and the grid stays `x / CELL_W`.
+/// A cell's width in pixels: Menlo Regular 11 at 2x, whose outlines are DejaVu's. 14 is the
+/// 13.24-pixel advance rounded up, so every glyph has its own column of pixels and the grid stays
+/// `x / CELL_W`.
 pub const CELL_W: u32 = 14;
 /// A cell's height in pixels: ascender to descender, 25.6 pixels at [`PIXELS_PER_EM`], rounded up.
 pub const CELL_H: u32 = 26;
@@ -121,6 +118,13 @@ impl Face {
 /// assert_eq!(blend(0x00ff_0000, 0x0000_00ff, 128), 0x0080_007f);
 /// ```
 pub const fn blend(fg: u32, bg: u32, coverage: u8) -> u32 {
+    // Most of a screen is background or solid ink, and the kernel test runs this for every pixel
+    // of the scanout; the two ends are also the two values the arithmetic below must return exactly.
+    match coverage {
+        0 => return bg,
+        u8::MAX => return fg,
+        _ => {}
+    }
     let a = coverage as u32;
     let mut out = 0;
     let mut shift = 0;

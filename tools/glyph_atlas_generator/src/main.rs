@@ -8,6 +8,8 @@
 //!
 //! The gate is `tests/regenerate.rs`, which `cargo xtask test` runs; `--check` is the same
 //! comparison for a person at a prompt.
+//!
+//! Name: provisional, the program's name is the package's. calef names things.
 
 use std::process::ExitCode;
 
