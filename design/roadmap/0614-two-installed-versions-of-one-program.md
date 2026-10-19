@@ -1,11 +1,7 @@
 ---
-status: PARTIAL
+status: BUILT
 raised: 2026-09-27
-milestone_dependencies: 47
-decision_dependencies: 208, 219, 229, 241
-machine_requirements: none
-specific_machine: none
-needs_person: no
+built: 2026-10-19
 ---
 # 614. Two installed versions of one program, each runnable, and a caller granted the one it needs
 
@@ -238,9 +234,10 @@ the reasoning is kept to one line each so a reader can check the rule against it
 
 Added by the build lane, 2026-09-29.
 
-- **Outstanding.** The `script/swish-check` lines are typed on every leg and not yet proven by a
-  run: this lane never boots QEMU, and the transcript bullet of Done means holds only when a green
-  run names them. How checked: `script/swish-check` green on aarch64, riscv64 and x86_64 in CI.
+- **Done.** The transcript bullet of Done means, by merge-queue run 39267144306 at `42836328b`:
+  job 118109695594 (aarch64, riscv64) and job 118109695819 (x86_64). The gate wants every phrase
+  inside its own line's answer, in order, and skips none of these lines in CI. A local
+  `NIFE_SHOW_TRANSCRIPT=1` run at that commit shows the answers on all three legs.
 - **Done.** Ratification, by calef on 2026-10-07 (UTC), recorded in §258 (names for two installed
   versions of one program). Ratified as they stood: `program@version`, the `as` recipe key, the `default` line kind,
   `NO_VERSION`, `versions_of` and `without_version`. Renamed: the `versions` file is
