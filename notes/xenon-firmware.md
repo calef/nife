@@ -89,9 +89,10 @@ step: `design/roadmap/0378-read-the-dmar-on-xenon.md`.
 
 The unit's half is answered. Milestone 317 (the interrupt-remapping flags) reads `ECAP.IR` on every
 boot. xenon's tour of 2026-09-17 at 22:51 UTC printed `interrupt remapping offered (unused)` on its
-`iommu` line (`bench/xenon-2026-09-17/tour-display-225100.log`, line 119). The DMAR's own
-`INTR_REMAP` flag is still parsed and not printed, which is what milestone 378 (read the DMAR) has
-left.
+`iommu` line (`bench/xenon-2026-09-17/tour-display-225100.log`, line 119). The platform's half is
+unread on xenon. The same line now ends `dmar INTR_REMAP set` or `clear` (milestone 378 (read the
+DMAR)), and the first xenon boot of a kernel carrying it is the one that says whether xenon's
+firmware and its units agree.
 
 ### A number that disagrees with the boot tour, recorded rather than resolved
 

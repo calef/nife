@@ -27,17 +27,17 @@ use crate::command::{self as c, Command, Data, Response};
 use crate::host::{Error, Host, Registers};
 
 /// The identification clock, the spec's ceiling for it.
-pub const IDENTIFY_HZ: u32 = 400_000;
+pub(crate) const IDENTIFY_HZ: u32 = 400_000;
 /// The transfer clock: default speed, the spec's ceiling for it on SD and the legacy eMMC ceiling
 /// (26 MHz) rounded down.
-pub const TRANSFER_HZ: u32 = 25_000_000;
+pub(crate) const TRANSFER_HZ: u32 = 25_000_000;
 /// One block.
 pub const BLOCK: usize = 512;
 /// How long `ACMD41` or `CMD1` may report busy before the card is declared dead: the SD spec gives
 /// a card one second from the first `ACMD41`.
-pub const POWER_UP_DEADLINE_US: u64 = 1_000_000;
+pub(crate) const POWER_UP_DEADLINE_US: u64 = 1_000_000;
 /// The relative address the host gives an eMMC.
-pub const MMC_RCA: u16 = 1;
+pub(crate) const MMC_RCA: u16 = 1;
 
 /// What kind of card answered.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

@@ -69,6 +69,11 @@ pub enum Event {
     Eof,
     /// ^C: the line in progress was discarded.
     Interrupt,
+    /// ^Z: the line in progress was discarded, and whoever runs a foreground job is asked to
+    /// suspend it (milestone 48 (job control)). At a prompt it is a fresh line, as `^C` is.
+    ///
+    /// Name: provisional, minted 2026-10-18 (UTC) by lane/48-ctrl-z.
+    Suspend,
     /// Tab: nothing was echoed and the line is unchanged. Whoever runs the engine decides what a
     /// Tab means, because completion needs a namespace the engine does not have (§227).
     Tab,
@@ -284,6 +289,12 @@ impl LineDisc {
                 out.put(b"^C\r\n");
                 self.abandon();
                 Event::Interrupt
+            }
+            0x1a => {
+                // ^Z: the same discard as ^C, and the caller decides what a suspend means.
+                out.put(b"^Z\r\n");
+                self.abandon();
+                Event::Suspend
             }
             b'\t' => Event::Tab,
             0x04 => self.eof_or_delete(out),

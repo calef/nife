@@ -15,7 +15,7 @@
 /// The MBR's last two bytes on a valid table.
 pub const SIGNATURE: [u8; 2] = [0x55, 0xaa];
 /// The partition type a GPT disk's protective MBR carries.
-pub const TYPE_PROTECTIVE_GPT: u8 = 0xee;
+pub(crate) const TYPE_PROTECTIVE_GPT: u8 = 0xee;
 
 /// One of the four primary partition entries.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
@@ -96,7 +96,7 @@ impl Mbr {
 
     /// The first used partition's start, or `None` when nothing is partitioned.
     #[must_use]
-    pub fn first_start(&self) -> Option<u32> {
+    pub(crate) fn first_start(&self) -> Option<u32> {
         self.entries
             .iter()
             .filter(|e| e.is_used())

@@ -39,7 +39,7 @@ pub const SDIO1_BASE: u64 = 0x1602_0000;
 /// Each controller's window, `0x10000` in both trees.
 pub const WINDOW_SIZE: u64 = 0x1_0000;
 /// The rate both trees assign the `ciu` clock, which the controller divides for the card.
-pub const CIU_HZ: u32 = 50_000_000;
+pub(crate) const CIU_HZ: u32 = 50_000_000;
 /// Both trees' `fifo-depth`.
 pub const FIFO_DEPTH: u32 = 32;
 /// Mainline's interrupt numbers at the PLIC, slot 0 and slot 1.

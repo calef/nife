@@ -16,17 +16,17 @@ pub const POWER: u32 = 1 << 9;
 /// Connect Status Change, write one to clear.
 pub const CONNECT_CHANGE: u32 = 1 << 17;
 /// Port Enabled/Disabled Change, write one to clear.
-pub const ENABLE_CHANGE: u32 = 1 << 18;
+pub(crate) const ENABLE_CHANGE: u32 = 1 << 18;
 /// Warm Port Reset Change, write one to clear.
-pub const WARM_RESET_CHANGE: u32 = 1 << 19;
+pub(crate) const WARM_RESET_CHANGE: u32 = 1 << 19;
 /// Over-current Change, write one to clear.
-pub const OVER_CURRENT_CHANGE: u32 = 1 << 20;
+pub(crate) const OVER_CURRENT_CHANGE: u32 = 1 << 20;
 /// Port Reset Change, write one to clear.
 pub const RESET_CHANGE: u32 = 1 << 21;
 /// Port Link State Change, write one to clear.
-pub const LINK_CHANGE: u32 = 1 << 22;
+pub(crate) const LINK_CHANGE: u32 = 1 << 22;
 /// Port Config Error Change, write one to clear.
-pub const CONFIG_ERROR_CHANGE: u32 = 1 << 23;
+pub(crate) const CONFIG_ERROR_CHANGE: u32 = 1 << 23;
 
 /// Every change bit: what a driver writes back to acknowledge all of them.
 pub const CHANGES: u32 = CONNECT_CHANGE
@@ -40,7 +40,7 @@ pub const CHANGES: u32 = CONNECT_CHANGE
 /// The bits a write may carry back unchanged: the read-only ones (ignored on write) and the
 /// read-write ones that must keep their value (power, indicator, link state without its strobe,
 /// wake enables). The same set Linux's `xhci_port_state_to_neutral` keeps.
-pub const PRESERVE: u32 =
+pub(crate) const PRESERVE: u32 =
     1 | 1 << 3 | 0xf << 10 | 1 << 30 | 0xf << 5 | 1 << 9 | 0x3 << 14 | 0x7 << 25;
 
 /// Port speed ids, the default ones every xHCI uses (xHCI 1.2 Table 7-13).
@@ -48,13 +48,13 @@ pub mod speed {
     /// Full speed, 12 Mb/s: most keyboards.
     pub const FULL: u8 = 1;
     /// Low speed, 1.5 Mb/s: cheap keyboards.
-    pub const LOW: u8 = 2;
+    pub(crate) const LOW: u8 = 2;
     /// High speed, 480 Mb/s.
-    pub const HIGH: u8 = 3;
+    pub(crate) const HIGH: u8 = 3;
     /// `SuperSpeed`, 5 Gb/s.
-    pub const SUPER: u8 = 4;
+    pub(crate) const SUPER: u8 = 4;
     /// `SuperSpeedPlus`, 10 Gb/s.
-    pub const SUPER_PLUS: u8 = 5;
+    pub(crate) const SUPER_PLUS: u8 = 5;
 }
 
 /// The attached device's speed id, from bits 13:10.

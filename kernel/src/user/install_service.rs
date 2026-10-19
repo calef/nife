@@ -130,7 +130,7 @@ pub(crate) fn offer() {
         return; // nife is already on this disk. See BUGS: there is no reinstall.
     }
 
-    if !asked(disk.size_bytes) {
+    if !ask_to_confirm(disk.size_bytes) {
         crate::println!("  install     : not confirmed; continuing the boot.");
         return;
     }
@@ -286,11 +286,11 @@ pub(crate) fn confirm() {
 /// Print what is about to be destroyed and read the answer. `true` only for exactly
 /// [`CONFIRMATION`].
 ///
-/// Name: provisional, flagged 2026-09-24 by the boolean-predicate pass
-/// (design/naming/functions-that-answer-yes-or-no-worklist.md). It acts, so the Rust predicate rule calef
-/// ratified 2026-09-24 exempts it, but it is a participle that reads as a question, on a function
-/// that prompts and reads the reply; recommended `ask_to_confirm`.
-fn asked(size_bytes: u64) -> bool {
+/// Name: provisional, minted 2026-10-18 (UTC) by maintainer/names-comply-question-shapes, as the
+/// yes-or-no worklist recommended.
+/// Refused `asked` (a participle that reads as a question, on a function that prompts and reads
+/// the reply).
+fn ask_to_confirm(size_bytes: u64) -> bool {
     crate::println!("  install     : this system was booted from a file and can install itself.");
     crate::println!(
         "  install     :   TARGET: the NVMe disk attached to this machine, {size_bytes} bytes."

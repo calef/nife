@@ -31,13 +31,13 @@ pub const EV_SYN: u16 = 0;
 pub const EV_KEY: u16 = 1;
 
 /// `KEY_LEFTSHIFT`.
-pub const KEY_LEFTSHIFT: u16 = 42;
+pub(crate) const KEY_LEFTSHIFT: u16 = 42;
 /// `KEY_RIGHTSHIFT`.
-pub const KEY_RIGHTSHIFT: u16 = 54;
+pub(crate) const KEY_RIGHTSHIFT: u16 = 54;
 /// `KEY_LEFTCTRL`.
-pub const KEY_LEFTCTRL: u16 = 29;
+pub(crate) const KEY_LEFTCTRL: u16 = 29;
 /// `KEY_RIGHTCTRL`.
-pub const KEY_RIGHTCTRL: u16 = 97;
+pub(crate) const KEY_RIGHTCTRL: u16 = 97;
 
 /// The highest evdev code this table knows. Above it, [`byte`] answers `None`.
 pub const MAX_CODE: u16 = 57;
@@ -59,25 +59,25 @@ static SHIFTED: [u8; MAX_CODE as usize + 1] =
 // [`cluster`] rather than a much wider table padded with zeros in between.
 
 /// `KEY_HOME`.
-pub const KEY_HOME: u16 = 102;
+pub(crate) const KEY_HOME: u16 = 102;
 /// `KEY_UP`.
-pub const KEY_UP: u16 = 103;
+pub(crate) const KEY_UP: u16 = 103;
 /// `KEY_PAGEUP`.
-pub const KEY_PAGEUP: u16 = 104;
+pub(crate) const KEY_PAGEUP: u16 = 104;
 /// `KEY_LEFT`.
-pub const KEY_LEFT: u16 = 105;
+pub(crate) const KEY_LEFT: u16 = 105;
 /// `KEY_RIGHT`.
-pub const KEY_RIGHT: u16 = 106;
+pub(crate) const KEY_RIGHT: u16 = 106;
 /// `KEY_END`.
-pub const KEY_END: u16 = 107;
+pub(crate) const KEY_END: u16 = 107;
 /// `KEY_DOWN`.
-pub const KEY_DOWN: u16 = 108;
+pub(crate) const KEY_DOWN: u16 = 108;
 /// `KEY_PAGEDOWN`.
-pub const KEY_PAGEDOWN: u16 = 109;
+pub(crate) const KEY_PAGEDOWN: u16 = 109;
 /// `KEY_INSERT`.
-pub const KEY_INSERT: u16 = 110;
+pub(crate) const KEY_INSERT: u16 = 110;
 /// `KEY_DELETE`.
-pub const KEY_DELETE: u16 = 111;
+pub(crate) const KEY_DELETE: u16 = 111;
 
 // The clusters sit entirely above the main block's own table, checked at compile time so a future
 // edit that moved `MAX_CODE` up past 102 fails the build rather than silently making `byte`'s
@@ -88,7 +88,7 @@ pub const KEY_DELETE: u16 = 111;
 const _: () = assert!(KEY_HOME > MAX_CODE);
 
 /// Is this key a shift?
-pub const fn is_shift(code: u16) -> bool {
+pub(crate) const fn is_shift(code: u16) -> bool {
     code == KEY_LEFTSHIFT || code == KEY_RIGHTSHIFT
 }
 

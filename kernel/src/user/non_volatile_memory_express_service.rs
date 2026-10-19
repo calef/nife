@@ -284,7 +284,10 @@ impl DmaEscape {
     /// True when every byte of the victim frame is still the canary, i.e. the controller's DMA
     /// never reached it. A `READ` escape that the IOMMU failed to refuse would have copied the
     /// disk's bytes over it, so this goes false exactly when the confinement does.
-    pub fn canary_intact(&self) -> bool {
+    ///
+    /// Name: provisional, minted 2026-10-18 (UTC) by maintainer/names-comply-question-shapes.
+    /// Refused `canary_intact` (an adjective alone reads as a getter).
+    pub fn is_canary_intact(&self) -> bool {
         let p = crate::arch::mmu::phys_to_virt(self.victim) as *const u8;
         (0..page_frames::FRAME_SIZE as usize).all(|i| {
             // SAFETY: `victim` is a frame this wiring allocated and frees only in `release`, which

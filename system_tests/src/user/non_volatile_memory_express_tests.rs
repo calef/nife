@@ -370,7 +370,7 @@ fn a_confined_el0_server_cannot_dma_outside_its_region() {
     // have copied the disk's bytes over the canary. This is the direct memory proof, independent of
     // the fault queue, and it is the assertion the falsification's widened domain flips.
     assert!(
-        esc.canary_intact(),
+        esc.is_canary_intact(),
         "the victim frame at {:#x} was overwritten: the controller's DMA reached a frame outside \
          its region",
         esc.victim,

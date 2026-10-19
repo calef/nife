@@ -45,7 +45,7 @@ cannot see; the detail sections say which is which.
 | 11 | Encode a page writable and executable | Held, near miss | ELF refuses W+X; `map_segments` maps exec as `user_code`. W^X lives only in the `Flags` constructors, not the encoders, and the W+X test skips `write_combining`. Not reachable from userspace today. |
 | 12 | Set a reserved bit in an IOMMU entry | Held (VT-d); gap (AMD-Vi) | `VTD_PERMITTED_BITS` proved over every u64. AMD-Vi's DTE has no literal guard and no Kani harness (see its section). |
 | 13 | Point a device outside its region | Held | `is_in_region` uses checked adds and `end <= limit`. |
-| 14 | Send a device to an unvalidated descriptor | Held | `check_descriptor` refuses indirect first. |
+| 14 | Send a device to an unvalidated descriptor | Held | `is_descriptor_allowed` refuses indirect first. |
 | 15 | Walk outside the rings, or forever | Held | Batch bounded `<= qsize`; chain walk bounded by `qsize`. |
 | 16 | One queue's validation touches another's rings | Held | Distinct shadow blocks. |
 | 17 | A post-validation change reaches the device | Near miss | `shadow_one_head` writes the shadow descriptor as two non-atomic `write64`s with no barrier and no idle-slot check. A device reading a republished live slot sees a new `addr` with an old `len`. virtio-mmio has no IOMMU, so the validator is the only boundary. The Kani model treats table and shadow as disjoint and cannot see it. |

@@ -32,7 +32,7 @@ pub const DCBAAP: u64 = 0x30;
 /// Operational register: `CONFIG`, whose low byte is how many slots are enabled.
 pub const CONFIG: u64 = 0x38;
 /// Operational register: port 1's `PORTSC`; port `n`'s is `0x10 * (n - 1)` further.
-pub const PORTSC_BASE: u64 = 0x400;
+pub(crate) const PORTSC_BASE: u64 = 0x400;
 
 /// `USBCMD` Run/Stop.
 pub const CMD_RUN: u32 = 1 << 0;
@@ -55,7 +55,7 @@ pub const STS_NOT_READY: u32 = 1 << 11;
 pub const STS_CONTROLLER_ERROR: u32 = 1 << 12;
 
 /// Interrupter 0's register set, from `RTSOFF`.
-pub const INTERRUPTER_0: u64 = 0x20;
+pub(crate) const INTERRUPTER_0: u64 = 0x20;
 /// Interrupter register: `IMAN` (pending, enable).
 pub const IMAN: u64 = 0x00;
 /// Interrupter register: `IMOD` (moderation interval).
@@ -67,7 +67,7 @@ pub const ERSTBA: u64 = 0x10;
 /// Interrupter register: `ERDP` (dequeue pointer).
 pub const ERDP: u64 = 0x18;
 /// How many bytes one interrupter register set is.
-pub const INTERRUPTER_BYTES: u64 = 0x20;
+pub(crate) const INTERRUPTER_BYTES: u64 = 0x20;
 
 /// `IMAN` Interrupt Pending, write one to clear.
 pub const IMAN_PENDING: u32 = 1 << 0;
@@ -157,7 +157,7 @@ impl Capabilities {
     /// **The byte ranges a driver must reach, inclusive**: the capability and operational
     /// registers through the last port's status set, interrupter 0, and every slot's doorbell.
     /// What [`crate::register_window`] checks the mapped pages against.
-    pub const fn needed_ranges(&self) -> [(u64, u64); 3] {
+    pub(crate) const fn needed_ranges(&self) -> [(u64, u64); 3] {
         [
             (0, self.portsc(self.max_ports) + 0x0f),
             (

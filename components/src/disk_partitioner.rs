@@ -90,7 +90,7 @@ pub const R_PARTITIONED: u64 = 0x_50_41_52_54_44;
 /// partition at all because it would look right (DECISIONS §42).
 pub const R_NO_ENTROPY: u64 = 0x_4E_4F_52_4E_47;
 /// The disk refused a read or a write, or the layout did not fit it. The second word says where.
-pub const R_DISK_FAILED: u64 = 0x_44_49_53_4B_45;
+pub(crate) const R_DISK_FAILED: u64 = 0x_44_49_53_4B_45;
 
 // The verify role's flags, the report's first word. Must match system_tests/src/user/disk_tests.rs.
 /// LBA 0 holds a well-formed protective MBR covering the whole disk.
@@ -104,7 +104,7 @@ pub const F_NIFE: u64 = 1 << 3;
 /// Every partition's name decoded as UTF-8 and matched the layout's.
 pub const F_NAMES: u64 = 1 << 4;
 /// Every partition's unique GUID is distinct, non-zero, and stamped version 4.
-pub const F_UNIQUE: u64 = 1 << 5;
+pub(crate) const F_UNIQUE: u64 = 1 << 5;
 
 /// The entry array under construction, and the buffer
 /// `GloballyUniqueIdentifierPartitionTable::create` writes into. 16 KiB, so it goes in `.bss`

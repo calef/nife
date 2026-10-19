@@ -4,7 +4,9 @@
 //! Cut from the table in `script.rs` verbatim by milestone 900 (the swish-check script
 //! splits by topic before it crosses the ceiling).
 //!
-//! Name: provisional (milestone 900's lane, 2026-10-15 UTC).
+//! Name: provisional, minted 2026-10-18 (UTC) by maintainer/names-comply-free-crates. Refused
+//! `clock_config` (`config` is spelled out, per §154 (the acronym test is whether the phrase is
+//! spoken)).
 
 use super::*;
 

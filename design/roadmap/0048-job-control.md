@@ -1,20 +1,23 @@
 ---
-status: PARTIAL
+status: BUILT
 raised: 2026-07-31
+built: 2026-10-18
 milestone_dependencies: 47
-decision_dependencies: 300
+decision_dependencies: 300, 309
 machine_requirements: none
 specific_machine: none
 needs_person: no
 ---
 # 48. Job control: `jobs`, `wait`, `kill`, `fg`, `bg`, and a stopped state
 
-**PARTIAL, 2026-10-18 (UTC).** Phase one is built for supervised jobs: a trailing `&`, `jobs`,
-`wait`, `kill` and `fg`, proved at a real prompt by `script/swish-check` on all three
-architectures. Phase two, `ThreadControlBlock::SUSPEND`/`RESUME` and `Ctrl-Z`, is not built.
-[§300 (the paused state)](../decisions/0300-tcb-suspend-resume-the-paused-state.md) decided the
-verbs on 2026-10-15: they ride the TCB capability, resume continues at the PC, and
-[§26 (the fault endpoint)](../decisions/0026-fault-endpoint.md) carries no stopped event.
+**BUILT, 2026-10-18 (UTC).** For supervised jobs, a trailing `&`, `jobs`, `wait`, `kill`, `fg`,
+`bg` and `Ctrl-Z` work at a real prompt, proved by `script/swish-check` on all three architectures.
+[§300 (the paused state)](../decisions/0300-tcb-suspend-resume-the-paused-state.md) gives the
+kernel `ThreadControlBlock::SUSPEND` and `RESUME`: they ride the TCB capability, resume continues
+at the PC, and [§26 (the fault endpoint)](../decisions/0026-fault-endpoint.md) carries no stopped
+event. [§309 (a supervised job's `ThreadControlBlock` goes to the shell that asked for
+it)](../decisions/0309-a-supervised-jobs-tcb-goes-to-the-shell.md) puts that capability in the
+shell's hands.
 
 Why it matters. Unix job control is one of the most intricate things in a kernel: sessions, a
 controlling terminal, process groups, `tcsetpgrp`, and `SIGTSTP`/`SIGCONT`/`SIGTTIN`/`SIGTTOU`. Most
@@ -74,31 +77,33 @@ host-tested in `grant_plan` (`job_operand`, `kill_operands`) and `swish::sequenc
 ## Phase two: the stopped state
 
 Only `Ctrl-Z`, `bg` on a stopped job, and zsh's `suspend` need pausing a thread resumably. §24's
-tiers are notify and kill, with pause deliberately absent. §300 adds `ThreadControlBlock::SUSPEND`
-and `RESUME`, silent, designed for all three of §24's triggers (job control, a userspace pager,
-and a debugger) rather than for job control alone.
+tiers are notify and kill, with pause deliberately absent. §300 adds `SUSPEND` and `RESUME`,
+silent, designed for all three of §24's triggers (job control, a userspace pager, and a debugger)
+rather than for job control alone. `notes/suspend-and-resume.md` has the kernel's cases.
 
-`Ctrl-Z` then reads like `^C`: the line discipline counts it as it counts `^C`
-(`OPERATION_INTRCOUNT`), the shell suspends the foreground job and returns to the prompt, and `bg`
-resumes it without watching. What is open is how the shell comes to hold the TCB it suspends,
-since the progenitor deletes it at `START`; that ruling is asked on the shell's phase-two pull
-request.
+- The progenitor builds a supervised job with `Retention::Requester` and sends its TCB, `WRITE`
+  without `GRANT`, as the one message after `SPAWN_OK` (§309). The shell keeps it with the job.
+- The line discipline counts `^Z` as it counts `^C` (`OPERATION_SUSPEND_COUNT` beside
+  `OPERATION_INTRCOUNT`). While the shell watches a foreground job, an advance suspends the job,
+  and the prompt comes back with `[N] name stopped`.
+- `bg [%N]` resumes a stopped job without watching it; `fg [%N]` resumes it and watches.
+- `kill %N` on a stopped job sets the flag and resumes it so it can see the request, which is
+  bash's order; `wait` does not wait for a stopped job.
+- A program is never told. `c_library` still ignores `SIGTSTP` and `SIGCONT`, because no signal
+  arrives on either side of a silent stop.
+
+### BUGS
+
+- zsh's `suspend`, the shell stopping itself, is not built: nothing holds the shell's own TCB.
 
 ## Follow-on
 
-- **Outstanding.** Phase two's kernel half, `ThreadControlBlock::SUSPEND`/`RESUME` per §300 on
-  all three architectures. Checked 2026-10-18: `kernel/src/sched` has no paused state.
-- **Outstanding.** `Ctrl-Z` and `bg`, which wait on the kernel verbs and on how the shell comes to
-  hold the TCB. Checked 2026-10-18: nothing counts `^Z` in `components/src/line_editor.rs`.
+- **Done.** The kernel verbs, by nifeos/nife#2331, and `Ctrl-Z` and `bg`, by nifeos/nife#2332.
 - **Recorded.** `&` on anything but a supervised job is refused, in this block's BUGS and in
   `components/src/swish/jobs.rs`.
+- **Recorded.** zsh's `suspend` is not built, in this block's BUGS.
 - **Proposed.** Job control for every program:
   `design/roadmap/proposals/every-job-is-built-the-way-a-supervised-job-is.md`.
-
-The kernel verbs are built, on all three architectures: `SUSPEND` stops a thread silently and
-returns once it is off every core, and `RESUME` continues it at its saved PC
-([notes/suspend-and-resume.md](../../notes/suspend-and-resume.md) has the cases). What is left is
-the shell's half, `Ctrl-Z` and `bg`.
 
 ## The open question: `disown`
 
@@ -112,9 +117,6 @@ subtree's death) records the hole that makes
 the cascade close to the only coherent answer. §32 (a supervisor may collect a corpse) authorizes
 reaping by matching the
 child's recorded `fault_ep`, which nobody can satisfy once the supervisor's endpoint is gone.
-
-Sequencing. Phase two is startable: §300 is decided. Effort: 1 lane estimated for it, noting
-estimates for unbuilt work are guesses on a history-calibrated scale.
 
 ## Index row
 

@@ -776,7 +776,8 @@ impl Service<'_> {
             let page = unsafe {
                 core::slice::from_raw_parts(theirs as *const u8, spawnproto::IMAGE_PAGE as usize)
             };
-            let w = grant_plan::verb_of_page(page)?;
+            let mut read = [0u8; grant_plan::MAX_VERB];
+            let w = grant_plan::verb_of_page(page, &mut read)?;
             verb[..w.len()].copy_from_slice(w);
             Some(w.len())
         });
@@ -820,7 +821,9 @@ impl Service<'_> {
                 &ChildEndowment {
                     maps: &[(CHILD_JOB_PAGE_FRAME_VA, fr, abi::address_space::MAP_RW)],
                     stack_pages: CHILD_STACK_PAGES,
-                    ..ChildEndowment::new(Retention::Nothing)
+                    ..ChildEndowment::new(Retention::Requester {
+                        reason: "the shell suspends its supervised job on ^Z (DECISIONS §309)",
+                    })
                 },
             )
             .ok(),
@@ -828,6 +831,7 @@ impl Service<'_> {
         };
         match built {
             Some(child) => {
+                let tcb = child.tcb;
                 let ok = start_child(child, 0, req.arg, 0);
                 send(
                     result_ep,
@@ -839,6 +843,15 @@ impl Service<'_> {
                     0,
                     0,
                 );
+                // **The job's TCB is the one message after `SPAWN_OK`** (§309 (a supervised job's
+                // `ThreadControlBlock` goes to the shell that asked for it)): the shell receives
+                // it before anything else, so this `SEND` cannot strand. A job that did not start
+                // owes nothing, and its TCB is deleted unsent.
+                if ok {
+                    hand_to_requester(tcb, result_ep);
+                } else {
+                    forget_thread_control_block(tcb);
+                }
             }
             None if failure == spawnproto::SPAWN_NOT_IN_IMAGE => {
                 send(result_ep, failure, 0, 0);
@@ -884,11 +897,14 @@ impl Service<'_> {
         // for a `std` job whose verb holds it, asked on the owner's console (the unbadged spawn
         // endpoint, as the installer is), and whose line named no directory of its own, since the
         // `std` layout has one directory slot. Not granted is not refused: a `jig` without it says
-        // what it lacks.
-        let index_rights = manifest
-            .and_then(|m| m.indexes.rights())
+        // what it lacks. `jig list -u` is granted `activation/` itself, read only, in its place.
+        let store = manifest
+            .and_then(|m| match m.activation_directory {
+                true => Some(ActivationGrant::ReadOnly),
+                false => m.indexes.rights().map(ActivationGrant::IndexStore),
+            })
             .filter(|_| std_layout && !req.wiring.directory_grant && req.badge == 0);
-        let dir = self.wire_directory(req, manifest, region, (wants.sync, index_rights));
+        let dir = self.wire_directory(req, manifest, region, (wants.sync, store));
         // **And its copy of the image's index sources**, beside the store and only with it.
         let sources_page = match (dir.index_store, region) {
             (true, Some(r)) => copy_text(own_ut, r, self.c.index_sources),
@@ -925,7 +941,7 @@ impl Service<'_> {
         // spawn rather than running the program without the words its line gave it.
         let args_page = match (std_layout, region, req.args_seen) {
             (true, Some(r), Some(theirs)) => copy_args(own_ut, r, theirs, |copy| {
-                grant_plan::verb_of_page(copy) == job.verb()
+                grant_plan::verb_of_page(copy, &mut [0u8; grant_plan::MAX_VERB]) == job.verb()
             }),
             _ => None,
         };
@@ -1068,7 +1084,7 @@ impl Service<'_> {
         req: &Request,
         manifest: Option<grant_plan::Manifest>,
         region: Option<u64>,
-        (wants_sync, index_rights): (bool, Option<u64>),
+        (wants_sync, store): (bool, Option<ActivationGrant>),
     ) -> DirWiring {
         let Channels {
             own_ut, fs, disk, ..
@@ -1110,7 +1126,7 @@ impl Service<'_> {
         // `activation/indexes` with the verb's rights, on a line that named no directory. Only a
         // server that enforces bindings itself can make one, since the path is longer than a
         // caretaker's name; on any other the store is not granted and `jig` says so.
-        let index_store = !wiring.directory_grant && self.fs_scoped && index_rights.is_some();
+        let index_store = !wiring.directory_grant && self.fs_scoped && store.is_some();
         // A sync-only grant takes a window too (milestone 805): its badge is bound sync-only
         // rather than to a directory, and it is held until the reap like any other.
         let window = if (wiring.directory_grant || wants_sync || index_store) && fs.is_some() {
@@ -1118,13 +1134,13 @@ impl Service<'_> {
         } else {
             None
         };
-        let bound = match (index_store, fs, index_rights, window) {
-            (true, Some(f), Some(rights), Some(w)) => bound_index_store(
+        let bound = match (index_store, fs, store, window) {
+            (true, Some(f), Some(store), Some(w)) => bound_index_store(
                 f,
                 (&mut spawn.windows, w),
                 own_ut,
                 &mut self.fs_mapped,
-                rights,
+                store,
             ),
             _ => None,
         };
@@ -1186,7 +1202,8 @@ impl Service<'_> {
             dir_failed,
             sync_ep,
             sync_failed,
-            index_store: index_store && bound.is_some(),
+            // The sources page goes with the store alone, not with `activation/`.
+            index_store: matches!(store, Some(ActivationGrant::IndexStore(_))) && bound.is_some(),
             mounted: false,
         }
     }

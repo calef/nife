@@ -61,7 +61,7 @@ pub fn crc32(bytes: &[u8]) -> u32 {
 /// substitution has to happen. Doing it here, by feeding three pieces to one running CRC, avoids
 /// the alternative: a block-sized scratch buffer on the stack, inside a kernel, to change four
 /// bytes.
-pub fn crc32_pieces(pieces: &[&[u8]]) -> u32 {
+pub(crate) fn crc32_pieces(pieces: &[&[u8]]) -> u32 {
     let mut crc = !0u32;
     for piece in pieces {
         crc = update(crc, piece);

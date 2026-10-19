@@ -155,7 +155,7 @@ impl Report {
 /// sweep reached the mapper's own table), let it go, and wait for it to report.
 fn round(sweep: Sweep, frames: u64, phys: u64, report: &Report) -> bool {
     assert!(
-        wait_for(delegation_pause::parked),
+        wait_for(delegation_pause::is_parked),
         "the mapper never reached the seam, so no {sweep:?} landed inside its MAP",
     );
     sweep.run(frames, phys);
@@ -384,7 +384,7 @@ fn a_destroy_inside_a_memory_region_map_leaves_no_mapping() {
     .expect("no mapper thread");
 
     assert!(
-        wait_for(delegation_pause::parked),
+        wait_for(delegation_pause::is_parked),
         "the mapper never reached the seam, so no DESTROY landed inside its MAP",
     );
     assert_eq!(

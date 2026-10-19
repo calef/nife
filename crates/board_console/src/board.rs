@@ -75,7 +75,7 @@ pub enum Sign {
 impl Sign {
     /// Is this sign present in `line`? `complete` says whether the line has finished arriving.
     #[must_use]
-    pub fn is_seen_in(&self, line: &str, complete: bool) -> bool {
+    pub(crate) fn is_seen_in(&self, line: &str, complete: bool) -> bool {
         match self {
             Sign::Text(text) => line.contains(text),
             Sign::WordAfter { prefix, not } => {
@@ -148,7 +148,7 @@ impl Rung {
 
     /// Does this line say the rung was reached? `complete` says whether the line has finished.
     #[must_use]
-    pub fn is_seen_in(&self, line: &str, complete: bool) -> bool {
+    pub(crate) fn is_seen_in(&self, line: &str, complete: bool) -> bool {
         self.signs
             .iter()
             .any(|sign| sign.is_seen_in(line, complete))
@@ -233,7 +233,7 @@ impl Profile {
 /// Every marker was first quoted from `notes/visionfive2.md`'s bench runbook and then checked
 /// against bytes off the wire on 2026-09-01; the captures are in `tests/fixtures/captured/` and the
 /// tests assert on them. See `notes/board-console.md` for the table of where each one came from.
-pub static RADON: Profile = Profile {
+pub(crate) static RADON: Profile = Profile {
     name: "radon",
     prologue: &[
         // DRAM and the PLLs are up and we are running out of SRAM.

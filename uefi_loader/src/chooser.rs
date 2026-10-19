@@ -61,7 +61,7 @@ use crate::{BOOT_FILE_MAX, PAGE, allocate_below, say, say_decimal};
 /// file and itself, and a reader running `strings` on the image should meet them without decoding.
 ///
 /// Provisional, like everything else about this format; calef names what a reader meets.
-pub const STARTED_BY_CHOOSER: &[u8] = b"nife-slot=";
+pub(crate) const STARTED_BY_CHOOSER: &[u8] = b"nife-slot=";
 
 /// How many boot slots the chooser will consider on one disk. Two are laid out; the policy does not
 /// care and this is only the size of the arrays below.
@@ -126,7 +126,7 @@ impl Scratch {
 /// `None` means the firmware started this file directly, which is the stick, the first boot after
 /// an install, and every `-kernel` boot. The caller uses it twice: to know not to act as a chooser,
 /// and to know that there is no boot file to read back.
-pub fn started_from_slot(handle: Handle, services: &BootServices) -> Option<u8> {
+pub(crate) fn started_from_slot(handle: Handle, services: &BootServices) -> Option<u8> {
     let loaded = loaded_image(handle, services)?;
     if loaded.load_options.is_null() {
         return None;

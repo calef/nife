@@ -67,7 +67,7 @@ pub fn is_in_region(base: u64, size: u64, addr: u64, len: u64) -> bool {
 /// arithmetic that would overflow, which can only over-reject:
 ///
 /// ```
-/// use direct_memory_access_validator::{Desc, F_INDIRECT, F_NEXT, check_descriptor, is_in_region};
+/// use direct_memory_access_validator::{Desc, F_INDIRECT, F_NEXT, is_descriptor_allowed, is_in_region};
 ///
 /// let (base, size, qsize) = (0x4000_0000u64, 0x1_0000u64, 8u16);
 ///
@@ -76,12 +76,12 @@ pub fn is_in_region(base: u64, size: u64, addr: u64, len: u64) -> bool {
 /// // outright rather than validated, whatever it points at.
 /// let indirect = Desc { addr: base, word: 16 | ((F_INDIRECT as u64) << 32) };
 /// assert!(indirect.is_indirect());
-/// assert!(!check_descriptor(base, size, qsize, indirect));
+/// assert!(!is_descriptor_allowed(base, size, qsize, indirect));
 ///
 /// // A `next` link outside the ring would walk the chain off the end of the queue.
 /// let bad_link = Desc { addr: base, word: 16 | ((F_NEXT as u64) << 32) | ((qsize as u64) << 48) };
 /// assert!(bad_link.has_next() && bad_link.next() == qsize);
-/// assert!(!check_descriptor(base, size, qsize, bad_link));
+/// assert!(!is_descriptor_allowed(base, size, qsize, bad_link));
 ///
 /// // And arithmetic that would overflow answers "refuse" rather than panicking. A wrapping region
 /// // can only ever over-reject, which is the safe direction.
@@ -127,17 +127,16 @@ impl Desc {
 /// first, so it is the property the whole confinement rests on, isolated as a loopless function the
 /// `an_accepted_descriptor_is_confined` proof can quantify over all inputs.
 ///
-/// Name: provisional, flagged 2026-09-24 by the boolean-predicate pass
-/// (design/naming/functions-that-answer-yes-or-no-worklist.md). It does not yet follow the Rust predicate rule
-/// calef ratified 2026-09-24; recommended `is_descriptor_allowed`, because `check_` reads as an
-/// action, and the function only answers.
+/// Name: provisional, minted 2026-10-18 (UTC) by maintainer/names-comply-free-crates, as the
+/// yes-or-no worklist recommended. Refused `check_descriptor` (`check_` reads as an action, and
+/// the function only answers).
 ///
 /// # Examples
 ///
 /// Every address the device will touch is inside the window, in either direction:
 ///
 /// ```
-/// use direct_memory_access_validator::{Desc, check_descriptor, is_in_region};
+/// use direct_memory_access_validator::{Desc, is_descriptor_allowed, is_in_region};
 ///
 /// // One 64 KiB region, granted to a userspace virtio driver.
 /// let (base, size) = (0x4000_0000u64, 0x1_0000u64);
@@ -146,21 +145,21 @@ impl Desc {
 /// // A descriptor pointing at a 1500-byte frame inside the region. Fine in either direction: the
 /// // device may read it (transmit) or write it (receive).
 /// let ok = Desc { addr: base + 0x1000, word: 1500 };
-/// assert!(check_descriptor(base, size, qsize, ok));
+/// assert!(is_descriptor_allowed(base, size, qsize, ok));
 ///
 /// // The same length, aimed at the kernel. Refused, and this is the whole point of the crate: a
 /// // receive buffer here would let the device overwrite the kernel, and a transmit buffer would
 /// // let it put the kernel on the wire.
 /// let escape = Desc { addr: 0xffff_0000_0000_0000, word: 1500 };
-/// assert!(!check_descriptor(base, size, qsize, escape));
+/// assert!(!is_descriptor_allowed(base, size, qsize, escape));
 ///
 /// // A buffer that starts inside and runs off the end is refused too. One predicate closes both,
 /// // which is why there is only one.
 /// let overrun = Desc { addr: base + size - 8, word: 1500 };
-/// assert!(!check_descriptor(base, size, qsize, overrun));
+/// assert!(!is_descriptor_allowed(base, size, qsize, overrun));
 /// assert!(!is_in_region(base, size, base + size - 8, 1500));
 /// ```
-pub fn check_descriptor(base: u64, size: u64, qsize: u16, d: Desc) -> bool {
+pub fn is_descriptor_allowed(base: u64, size: u64, qsize: u16, d: Desc) -> bool {
     if d.is_indirect() {
         return false; // an indirect table is never copied, so the device would follow it unchecked
     }
@@ -177,7 +176,7 @@ pub fn check_descriptor(base: u64, size: u64, qsize: u16, d: Desc) -> bool {
 /// ring the device reads.** This is the security-critical function, moved verbatim out of the kernel.
 ///
 /// For each newly-available head in `from_idx .. to_idx`, walk the chain in the *driver's* descriptor
-/// table, check every descriptor with [`check_descriptor`], and copy the validated bytes into the
+/// table, check every descriptor with [`is_descriptor_allowed`], and copy the validated bytes into the
 /// *shadow* table at the same index. Then mirror the head into the shadow available ring, and finally
 /// publish the shadow's `avail.idx`. The device is programmed to read the shadow (which the driver
 /// cannot write), so the bytes the device acts on are exactly the bytes validated here: mutating a
@@ -252,7 +251,7 @@ pub fn validate_and_shadow(
 
 /// **Validate and shadow one head's descriptor chain: the core of the confinement.** Walk the chain
 /// starting at `head` in the driver's descriptor table, check every descriptor with
-/// [`check_descriptor`], and copy each validated descriptor into the shadow table at the same index.
+/// [`is_descriptor_allowed`], and copy each validated descriptor into the shadow table at the same index.
 /// Returns `false` (having possibly copied earlier, validated descriptors, which is harmless because
 /// the caller does not publish the head on failure) if any descriptor escapes the region, is
 /// indirect, or names a `next` link out of range.
@@ -286,7 +285,7 @@ fn shadow_one_head(
             word: read64(src + 8),
         };
 
-        if !check_descriptor(
+        if !is_descriptor_allowed(
             direct_memory_access_base,
             direct_memory_access_size,
             qsize,

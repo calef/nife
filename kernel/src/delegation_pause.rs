@@ -67,7 +67,10 @@ pub fn arm(target: ThreadId) {
 }
 
 /// Whether the armed thread has reached its seam and is waiting there.
-pub fn parked() -> bool {
+///
+/// Name: provisional, minted 2026-10-18 (UTC) by maintainer/names-comply-question-shapes. Refused
+/// `parked` (a participle alone reads as a getter).
+pub fn is_parked() -> bool {
     PARKED.load(Ordering::SeqCst)
 }
 

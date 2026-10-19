@@ -194,11 +194,11 @@ pub mod memory_type {
     /// Free RAM.
     pub const CONVENTIONAL: u32 = 7;
     /// RAM the firmware found faulty.
-    pub const UNUSABLE: u32 = 8;
+    pub(crate) const UNUSABLE: u32 = 8;
     /// Holds ACPI tables; reclaimable once they have been read.
-    pub const ACPI_RECLAIM: u32 = 9;
+    pub(crate) const ACPI_RECLAIM: u32 = 9;
     /// ACPI non-volatile storage.
-    pub const ACPI_NVS: u32 = 10;
+    pub(crate) const ACPI_NVS: u32 = 10;
     /// Memory-mapped IO.
     pub const MMIO: u32 = 11;
     /// Memory-mapped IO port space.
@@ -206,7 +206,7 @@ pub mod memory_type {
     /// Processor abstraction-layer code.
     pub const PAL_CODE: u32 = 13;
     /// Byte-addressable persistent memory.
-    pub const PERSISTENT: u32 = 14;
+    pub(crate) const PERSISTENT: u32 = 14;
 }
 
 /// `EFI_ALLOCATE_TYPE::AllocateMaxAddress`: give me pages **at or below** the address I pass in.

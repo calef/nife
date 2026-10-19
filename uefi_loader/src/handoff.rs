@@ -47,17 +47,17 @@ pub const MAGIC: u32 = 0x336e_c578;
 pub const VERSION: u32 = 1;
 
 /// E820 type 1: ordinary RAM, the only kind a frame allocator may hand out.
-pub const E820_RAM: u32 = 1;
+pub(crate) const E820_RAM: u32 = 1;
 /// E820 type 2: somebody else owns it.
-pub const E820_RESERVED: u32 = 2;
+pub(crate) const E820_RESERVED: u32 = 2;
 /// E820 type 3: ACPI tables, reclaimable after they have been read.
-pub const E820_ACPI_RECLAIMABLE: u32 = 3;
+pub(crate) const E820_ACPI_RECLAIMABLE: u32 = 3;
 /// E820 type 4: ACPI non-volatile storage.
-pub const E820_ACPI_NVS: u32 = 4;
+pub(crate) const E820_ACPI_NVS: u32 = 4;
 /// E820 type 5: RAM the firmware found faulty.
-pub const E820_UNUSABLE: u32 = 5;
+pub(crate) const E820_UNUSABLE: u32 = 5;
 /// E820 type 7: byte-addressable persistent memory.
-pub const E820_PERSISTENT: u32 = 7;
+pub(crate) const E820_PERSISTENT: u32 = 7;
 
 /// **Translate one UEFI memory type into the E820 type PVH's map carries.**
 ///

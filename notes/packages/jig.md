@@ -38,13 +38,30 @@ $ jig list
   uptime 0.1.0
   greeting 0.3.0
 $ jig install uptime
-  passed over https://packages.basalt.test:8443/rolling/targets/uptime-0.1.0-riscv64.nifepkg: NotFound
+  passed over https://packages.basalt.test:8443/rolling/targets/uptime-0.1.0-riscv64.nifepkg: not resolved: NotFound
   refused: the index does not vouch for the bytes that arrived; nothing was sent to the installer
 $ jig install greeting@0.3.0
-  passed over https://packages.basalt.test:8443/rolling/targets/greeting-0.3.0-riscv64.nifepkg: NotFound
+  passed over https://packages.basalt.test:8443/rolling/targets/greeting-0.3.0-riscv64.nifepkg: not resolved: NotFound
   fetched greeting-0.3.0-riscv64 from basalt.test over TLS
   fetched and installed; generation 6 is live
 ```
+
+`jig list -u`, typed after that `update` and before `greeting` 0.3.0 is installed, compares the
+live generation, which holds `greeting` 0.1.0 and 0.2.0, with the copy:
+
+```
+$ jig list -u
+  installed packages the index offers newer (the copy jig update wrote):
+  greeting 0.2.0 -> 0.3.0
+$ jig list --upgradable
+  refused: jig spells that list -u; it takes no long form
+```
+
+Newer is Debian's order, dpkg's `verrevcmp` (calef, 2026-10-18 UTC: "Debian dpkg order"), in
+`package_index::version`: `1.10` is newer than `1.9`, and `1.0~rc1` older than `1.0`. A version
+dpkg would refuse or warn about (an empty one, one not starting with a digit, or one with a
+character outside `0-9 A-Z a-z . + ~`) refuses an index at `update`, and an installed row's at
+`list -u`, naming it.
 
 The image's catalog names no `greeting` 0.3.0, so the installer took it on the index copy's word.
 The listed location is passed over because this prompt cannot resolve it; the repository's own
@@ -68,6 +85,7 @@ and the root cannot be narrowed to one name.
 | 17, and a page | a copy of the image's catalog | `Manifest::catalog` |
 | 4 | the file a word names, read-only | the line, for `install <path>` |
 | 4 | the index store, `activation/indexes`: read and write for `update`, read for `list` and `install <name>` | `Manifest::indexes`, on a line that names no directory |
+| 4 | `activation/`, read only, for `list -u`: the live generation and the index copy beneath it | `Manifest::activation_directory`, in the index store's place |
 | 18, and a page | the image's index sources: where its index is, and the root its TLS must chain to | `Manifest::indexes` |
 | 5, 6 | the clock and entropy, for TLS | `update` and `install` |
 
@@ -115,19 +133,24 @@ region one package larger, from the progenitor's image pool (`grant_plan::named_
   catalog of a page or more and `update` refuses an index whose lines for this architecture are.
 - An image names the test peer and root (`xtask`'s `image_index_sources`), reached at 10.0.2.9 by
   the sources' address, unless it is built with `NIFE_INDEX_SOURCES=basalt`, which packs
-  `package_index::BASALT_SOURCES` (`basalt.nifeos.org` pinned to ISRG Root X1). No boot proves the
-  production text.
+  `package_index::BASALT_SOURCES` (`basalt.nifeos.org` pinned to ISRG Root X1). No check boots
+  the production text, since a check may not depend on a host outside the runner.
 - A listed location is fetched through `pinned_tls_client::listed`: the root the index names for it
   among those the image carries, then at most one redirect. The redirect is held to the
   public-address check and to the index's root, per the third amendment of §250 (an image names its
-  distribution's package index). At the prompt no listed location resolves, so the boot check never
-  takes that path; `package_fetch_exerciser` proves it, calling the same function.
+  distribution's package index). Under the test sources no listed location resolves at the prompt,
+  because slirp asks the host's resolver, which knows no `.test` name, so the boot check never
+  fetches from one. It does require that the name reaches the name server
+  (`resolver_refusal_failure` in `xtask/src/swish_check/boot.rs`), and `package_fetch_exerciser`
+  proves the fetch, calling the same function.
 - `update` keeps no record of which address answered, and `install` tries the image's addresses
   in order again.
 - The index store needs a file server that binds grants itself; on one that does not, `jig` is
   not granted it and says so.
 - Its own refusals name no generation, and a `remove <package>@<version>` it cannot pick names no
-  candidates. It holds no view of `activation/`.
+  candidates. Only `list -u` holds a view of `activation/`.
+- `list -u` compares versions only: an entry whose digest changed at the same version is not
+  reported.
 - Before `update`, the package source is the runners' fixture peer, plain HTTP; outside QEMU there
   is none.
 - Nothing gates its dependencies to the public contracts the block names; `jig/Cargo.toml` lists

@@ -30,13 +30,13 @@
 use calendar::{Civil, days_in_month};
 
 /// Minutes in a day.
-pub const MINUTES_PER_DAY: i64 = 1440;
+pub(crate) const MINUTES_PER_DAY: i64 = 1440;
 
 /// How far [`next`] looks, in days, before it answers `None`. The longest gap any accepted rule can
 /// have is a 99-month count, about 3,013 days, plus a month's slack for a month day; a rule limited
 /// with `in` repeats within a year. Past this bound the rule has no next occurrence, which is how a
 /// line spent by `through` reads too.
-pub const HORIZON_DAYS: i64 = 99 * 31 + 62;
+pub(crate) const HORIZON_DAYS: i64 = 99 * 31 + 62;
 
 /// How often a rule repeats: RFC 5545's FREQ.
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
@@ -90,13 +90,13 @@ pub struct Rule {
 }
 
 /// Every day of the week.
-pub const ALL_DAYS: u8 = 0x7f;
+pub(crate) const ALL_DAYS: u8 = 0x7f;
 /// Monday to Friday.
-pub const WEEKDAYS: u8 = 0x1f;
+pub(crate) const WEEKDAYS: u8 = 0x1f;
 /// Saturday and Sunday.
-pub const WEEKEND: u8 = 0x60;
+pub(crate) const WEEKEND: u8 = 0x60;
 /// Every month.
-pub const ALL_MONTHS: u16 = 0x0fff;
+pub(crate) const ALL_MONTHS: u16 = 0x0fff;
 
 /// **Why a calendar line is refused.** Each message names what to write instead, because every one
 /// of these is a line that means something reasonable and would have been answered quietly and
@@ -172,7 +172,7 @@ pub enum Parsed<'a> {
 }
 
 /// The day of the week of day number `d`, Monday 0 to Sunday 6. 1970-01-01 was a Thursday.
-pub const fn weekday_of(d: i64) -> u8 {
+pub(crate) const fn weekday_of(d: i64) -> u8 {
     (d + 3).rem_euclid(7) as u8
 }
 
@@ -191,7 +191,7 @@ fn day_number(year: i32, month: u8, day: u8) -> Option<i64> {
 
 /// **Does a month day match**, given the day's number in its month, its weekday, and the month's
 /// length. The monthly half of [`day_matches`], kept free of the calendar so Kani can reach it.
-pub fn month_day_matches(on: MonthDay, dom: u8, dow: u8, month_len: u8) -> bool {
+pub(crate) fn month_day_matches(on: MonthDay, dom: u8, dow: u8, month_len: u8) -> bool {
     match on {
         MonthDay::Any => true,
         MonthDay::Days(bits) => dom <= 28 && bits & (1 << dom) != 0,
@@ -215,7 +215,7 @@ pub fn month_day_matches(on: MonthDay, dom: u8, dow: u8, month_len: u8) -> bool 
 
 /// **Is day `d` one the rule fires on**, ignoring the time of day. RFC 5545's day-level expansion,
 /// written as a predicate: `next` asks it of each day in turn, so no matching day can be skipped.
-pub fn day_matches(rule: &Rule, d: i64) -> bool {
+pub(crate) fn day_matches(rule: &Rule, d: i64) -> bool {
     if rule.starting.is_some_and(|s| d < s) || rule.through.is_some_and(|t| d > t) {
         return false;
     }
@@ -269,7 +269,7 @@ fn in_phase(rule: &Rule, d: i64, year: i32, month: u8) -> bool {
 ///
 /// Twenty-four iterations at most and one trailing-zero count each, which is what lets Kani prove
 /// its three properties over every mask (`proofs::a_time_of_day_is_strictly_later_and_listed`).
-pub fn next_time(hours: u32, minutes: u64, after: i32) -> Option<u16> {
+pub(crate) fn next_time(hours: u32, minutes: u64, after: i32) -> Option<u16> {
     let minutes = minutes & ((1u64 << 60) - 1);
     let mut h = if after < 0 { 0 } else { (after / 60) as u32 };
     while h < 24 {
@@ -727,7 +727,7 @@ fn check_rule(rule: &Rule) -> Result<(), Refusal> {
 }
 
 /// Write a rule as the RRULE it is, for the printed plan: `FREQ=MONTHLY;BYDAY=-1FR;BYHOUR=17;...`.
-pub fn write_rrule(rule: &Rule, out: &mut dyn FnMut(&[u8])) {
+pub(crate) fn write_rrule(rule: &Rule, out: &mut dyn FnMut(&[u8])) {
     const DOW: [&[u8]; 7] = [b"MO", b"TU", b"WE", b"TH", b"FR", b"SA", b"SU"];
     out(match rule.freq {
         Freq::Daily => b"FREQ=DAILY",

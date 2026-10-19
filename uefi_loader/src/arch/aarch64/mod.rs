@@ -53,7 +53,7 @@ unsafe extern "C" {
 /// **The ceiling on everything the kernel reads before its own page tables are up**: the device
 /// tree and the archive. `boot.s`'s boot map covers RAM with a single 1 GiB block at
 /// `0x4000_0000`, so the last byte it reaches is `0x7fff_ffff`.
-pub const ALLOCATION_CEILING: u64 = 0x7fff_ffff;
+pub(crate) const ALLOCATION_CEILING: u64 = 0x7fff_ffff;
 
 /// The firmware's device tree, found before anything moves.
 pub struct Found {

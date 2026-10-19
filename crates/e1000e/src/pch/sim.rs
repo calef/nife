@@ -68,7 +68,7 @@ pub struct Sim {
     lanphypc_low: bool,
 }
 
-pub const PHY_ID: u32 = 0x0154_00a0;
+pub(crate) const PHY_ID: u32 = 0x0154_00a0;
 /// `SMBus` address 2, frequency field 3, NVM size field 0 (one 4 KiB NVM: two 1024-word banks).
 const STRAP_VALUE: u32 = 0x0004_3000;
 

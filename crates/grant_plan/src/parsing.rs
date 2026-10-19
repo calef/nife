@@ -115,7 +115,7 @@ pub fn each_word(
 ///
 /// Name: provisional (milestone 47, 2026-09-26).
 pub const BUILTINS: &[&[u8]] = &[
-    b"apropos", b"bind", b"caps", b"cd", b"echo", b"fg", b"help", b"jobs", b"kill", b"ls",
+    b"apropos", b"bg", b"bind", b"caps", b"cd", b"echo", b"fg", b"help", b"jobs", b"kill", b"ls",
     b"mkdir", b"pwd", b"time", b"touch", b"wait", b"xargs",
 ];
 
@@ -213,6 +213,7 @@ pub fn parse(line: &[u8]) -> Command<'_> {
         b"wait" => Command::Wait(trim(rest)),
         b"kill" => Command::Kill(trim(rest)),
         b"fg" => Command::Fg(trim(rest)),
+        b"bg" => Command::Bg(trim(rest)),
         // **`rm` is deliberately not here.** It was a builtin in the commands lane and is a program
         // now (milestone 47's rmdir lane): a builtin runs with the shell's whole endowment, and a
         // destructive loop should take an explicit attenuated grant instead. Since builtins are

@@ -155,7 +155,7 @@ impl Attr {
     }
 
     /// Whether SGR 4 is in force. Name: provisional (milestone 142's lane, 2026-09-26).
-    pub const fn is_underlined(self) -> bool {
+    pub(crate) const fn is_underlined(self) -> bool {
         self.has(UNDERLINE)
     }
 
@@ -165,7 +165,7 @@ impl Attr {
     }
 
     /// Whether SGR 9 is in force. Name: provisional (milestone 142's lane, 2026-09-26).
-    pub const fn is_struck_through(self) -> bool {
+    pub(crate) const fn is_struck_through(self) -> bool {
         self.has(STRIKETHROUGH)
     }
 
