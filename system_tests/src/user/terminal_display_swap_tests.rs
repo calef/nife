@@ -309,6 +309,9 @@ fn the_display_terminal_is_replaced_live_and_its_screen_and_history_survive() {
     let expect: &mut video_terminal::Vt = unsafe { &mut *expect_p };
     expect.reset_to(COLS, ROWS);
     let w = wiring(sink, sink_page, surface);
+    // An empty write is answered only once the terminal is serving, which is after its first,
+    // blank, paint: the stand-in sends no report a driver would.
+    w.print(b"");
     w.assert_screen_is(
         expect,
         "the supervised terminal before anything was printed",
