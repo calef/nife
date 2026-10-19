@@ -10,6 +10,8 @@ pub use measured_boot::Digest;
 use super::grants::{Grant, Granted, ROOT_ZONE, classify_grant, grant_before, grants};
 
 /// Why a table or an edit was refused.
+///
+/// Name: provisional, minted 2026-09-24 (UTC) by milestone/198-rung-3a-consumer.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Error {
     /// A line is neither a row nor a pointer line, so the table vouches for nothing.
@@ -48,6 +50,8 @@ pub enum Error {
 /// came from, and its digest as it was verified at install. The **digest is the row's key** and the
 /// other three are label columns (milestone 614, ruling 2): a rebuild that produces new bytes is a
 /// second row even when the version string is one already live.
+///
+/// Name: provisional, minted 2026-09-24 (UTC) by milestone/198-rung-3a-consumer.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Entry<'a> {
     /// The name a person types, and the name the spawner is asked for.
@@ -67,16 +71,16 @@ pub struct Entry<'a> {
     pub digest: Digest,
     /// **Which package manager installed the row** (milestone 809, calef's 2026-10-06 ruling): the
     /// program that held the installer endpoint, or [`OWNER`] for the owner's console. A label like
-    /// the version, never part of the key. [`NO_MANAGER`] for a row written before the column.
+    /// the version, never part of the key. `NO_MANAGER` for a row written before the column.
     pub manager: &'a str,
 }
 
 /// **A default pointer line**: the row the bare word for `program` runs ([`lookup`]). Read with
-/// [`defaults`], written by [`with_entries`] and [`without_package`]. The `default` line kind was
+/// `defaults`, written by [`with_entries`] and [`without_package`]. The `default` line kind was
 /// ratified 2026-10-07 by calef (§258 (names for two installed versions of one program)); this
 /// struct's own name was not ruled on.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub struct Pointer<'a> {
+pub(crate) struct Pointer<'a> {
     /// The program whose bare word this pointer answers.
     pub program: &'a str,
     /// The digest of the row the pointer names. Naming a digest that is not a package row of the
@@ -86,7 +90,9 @@ pub struct Pointer<'a> {
 
 /// Every row in a generation, or [`Error::Malformed`] at the first line that is not one. Blank
 /// lines, `#` comments and well-formed pointer lines are skipped; a malformed pointer line is a
-/// malformed table. The pointer lines themselves are read with [`defaults`].
+/// malformed table. The pointer lines themselves are read with `defaults`.
+///
+/// Name: provisional, minted 2026-09-24 (UTC) by milestone/198-rung-3a-consumer.
 pub fn entries(table: &str) -> impl Iterator<Item = Result<Entry<'_>, Error>> {
     table
         .lines()
@@ -116,7 +122,7 @@ pub fn entries(table: &str) -> impl Iterator<Item = Result<Entry<'_>, Error>> {
 /// Every default pointer line in a generation, or [`Error::Malformed`] at the first line that is
 /// not a row, a comment, a blank, or a well-formed pointer line. The whole table is validated
 /// either way, so a caller that reads only pointers still refuses a broken row.
-pub fn defaults(table: &str) -> impl Iterator<Item = Result<Pointer<'_>, Error>> {
+pub(crate) fn defaults(table: &str) -> impl Iterator<Item = Result<Pointer<'_>, Error>> {
     table
         .lines()
         .map(str::trim)
@@ -147,7 +153,7 @@ pub(super) enum Line<'a> {
 }
 
 /// Classify one line. A row is `<digest> <program> <version> <package> <manager>`, or the four
-/// words before the manager column existed (read as [`NO_MANAGER`]); a pointer line is
+/// words before the manager column existed (read as `NO_MANAGER`); a pointer line is
 /// `default <program> <digest>`; anything else is malformed. A digest is its text form,
 /// `sha256:<64 hex>` (`measured_boot::parse_digest`), so an unlabeled or unknown one makes the line
 /// malformed and the table unreadable. A row's first word is the key, which is why `default` is a
@@ -206,6 +212,8 @@ pub(super) fn classify(line: &str) -> Line<'_> {
 /// The whole table is checked first, so a malformed line anywhere is a refusal even when the name
 /// asked for is on a good line. Was `lookup_name` until milestone 614 folded the pointer into
 /// [`lookup`], which used to answer with any row of the name.
+///
+/// Name: provisional, minted 2026-09-24 (UTC) by milestone/198-rung-3a-consumer.
 pub fn lookup<'a>(table: &'a str, program: &str) -> Result<Option<Entry<'a>>, Error> {
     let Some(digest) = default_of(table, program)? else {
         return Ok(None);
@@ -227,6 +235,8 @@ pub fn lookup<'a>(table: &'a str, program: &str) -> Result<Option<Entry<'a>>, Er
 /// deterministically. That is harmless because the manifest an installed program is endowed with is
 /// in its bytes (an ELF note, milestone 597 (a program carries its manifest in an ELF note)), not
 /// in its row: one digest is one set of bytes and so one manifest, whichever name was installed.
+///
+/// Name: provisional, minted 2026-09-25 (UTC) by milestone/198-rung-3a-image.
 pub fn lookup_digest<'a>(table: &'a str, digest: &Digest) -> Result<Option<Entry<'a>>, Error> {
     let mut found = None;
     for entry in entries(table) {
@@ -241,7 +251,9 @@ pub fn lookup_digest<'a>(table: &'a str, digest: &Digest) -> Result<Option<Entry
 /// **The package row for this program at this version**, first in file order: what a version set's
 /// `<program> <version>` line resolves to at activation. Owner's vouches are not versions and
 /// never answer. A rebuild claiming a version already live is a second row, so the first is answered; the digest decides
-/// what runs either way. Name: provisional, milestone 614's build lane, 2026-09-29.
+/// what runs either way.
+///
+/// Name: provisional, minted 2026-09-29 (UTC) by milestone/614-every-version-live.
 pub fn lookup_version<'a>(
     table: &'a str,
     program: &str,
@@ -317,6 +329,8 @@ pub fn versions_of<'a>(
 /// let generation_3 = core::str::from_utf8(&third[..n]).unwrap();
 /// assert!(lookup(generation_3, "a.out").unwrap().is_none());
 /// ```
+///
+/// Name: provisional, minted 2026-09-24 (UTC) by milestone/198-rung-3a-consumer.
 pub fn with_entry(
     table: &str,
     entry: &Entry<'_>,
@@ -360,6 +374,8 @@ impl From<Error> for Refused<'_> {
 /// whole package and `out` means nothing. `entries` is called once per pass and must yield the same
 /// rows each time; `image_carries` answers, for one program's name, what [`with_entry`]'s flag
 /// answers for its one.
+///
+/// Name: provisional, minted 2026-10-13 (UTC) by lane/multi-program-build.
 pub fn with_entries<'a, I>(
     table: &'a str,
     entries: impl Fn() -> I,
@@ -668,6 +684,8 @@ fn default_of(table: &str, program: &str) -> Result<Option<Digest>, Error> {
 }
 
 /// The live generation's number, from the `current` file: decimal digits and an optional newline.
+///
+/// Name: provisional, minted 2026-09-24 (UTC) by milestone/198-rung-3a-consumer.
 pub fn parse_current(text: &str) -> Option<u32> {
     let digits = text.strip_suffix('\n').unwrap_or(text);
     if digits.is_empty() || !digits.bytes().all(|b| b.is_ascii_digit()) {
@@ -677,14 +695,20 @@ pub fn parse_current(text: &str) -> Option<u32> {
 }
 
 /// The directory the installed-programs table lives in, at the root of the file service. Provisional.
+///
+/// Name: provisional, minted 2026-09-25 (UTC) by milestone/198-rung-3a-image.
 pub const DIRECTORY: &str = "activation";
 
 /// The one-line file in [`DIRECTORY`] naming the live generation ([`parse_current`]).
+///
+/// Name: provisional, minted 2026-09-25 (UTC) by milestone/198-rung-3a-image.
 pub const CURRENT: &str = "current";
 
 /// **Where `current` is written before it is renamed over the real one** (milestone 198 rung 3a's
 /// installer), so the flip is one `RENAME` and a reader meets the old line or the new one, never a
 /// torn write. Provisional; a name no generation can have, because it is not all digits.
+///
+/// Name: provisional, minted 2026-09-25 (UTC) by milestone/198-installer.
 pub const CURRENT_STAGED: &str = "current.next";
 
 /// **The directory an installed program's bytes are placed under**, at the root of the file
@@ -693,6 +717,8 @@ pub const CURRENT_STAGED: &str = "current.next";
 /// prompt is at most sixteen bytes and `uptime-0.1.0-aarch64` is twenty. The progenitor hashes
 /// whatever bytes a person runs (DECISIONS §219 option D), so this is where they are kept, not
 /// what vouches for them. Provisional.
+///
+/// Name: provisional, minted 2026-09-25 (UTC) by milestone/198-installer.
 pub const PACKAGES: &str = "packages";
 
 /// **What a row's package column says when the owner vouched for the bytes** (DECISIONS §221
@@ -703,19 +729,21 @@ pub const PACKAGES: &str = "packages";
 /// rollback. It never claims a bare name (§229, B2): [`lookup`] skips it, [`with_entry`] keeps it
 /// beside a package's row of the same name rather than replacing either, and only a later vouch of
 /// that name replaces it. Provisional, like the column.
+///
+/// Name: provisional, minted 2026-09-26 (UTC) by milestone/198-owner-console.
 pub const OWNER: &str = "owner";
 
 /// **What a row's manager column reads as when the row has none**: written before milestone 809
 /// (the package client becomes a program) added the column (calef, 2026-10-06, quoted as he said it: "each
 /// activation set row records which manager installed it"), by the shell's `package` builtin, which the same change
 /// removed. Never written. A row's manager is otherwise `jig` or [`OWNER`]. Provisional.
-pub const NO_MANAGER: &str = "-";
+pub(crate) const NO_MANAGER: &str = "-";
 
 /// **Whether `requester` may remove or roll back a row `row_manager` installed** (milestone 809,
 /// calef's ruling of 2026-10-06: "if the owner ever grants a second manager the endpoint, `jig`
 /// refuses to remove or roll back a row it did not install"). A manager may edit its own rows, the
 /// owner's ([`OWNER`]: the owner runs every manager it granted the endpoint, and a vouch is undone
-/// by a rollback), and rows nothing recorded ([`NO_MANAGER`]). It may not edit another manager's.
+/// by a rollback), and rows nothing recorded (`NO_MANAGER`). It may not edit another manager's.
 /// The owner's console, which holds the spawn endpoint itself, may edit any row.
 ///
 /// Name: provisional.
@@ -763,6 +791,8 @@ pub fn foreign_change<'a>(
 pub const NO_VERSION: &str = "-";
 
 /// The file name of generation `number` in [`DIRECTORY`]: its decimal digits, no padding.
+///
+/// Name: provisional, minted 2026-09-25 (UTC) by milestone/198-rung-3a-image.
 pub fn generation_name(number: u32, out: &mut [u8; 10]) -> &str {
     let mut n = number;
     let mut at = out.len();
@@ -779,6 +809,8 @@ pub fn generation_name(number: u32, out: &mut [u8; 10]) -> &str {
 }
 
 /// Write the `current` file naming generation `number`. Returns the length written.
+///
+/// Name: provisional, minted 2026-09-24 (UTC) by milestone/198-rung-3a-consumer.
 pub fn format_current(number: u32, out: &mut [u8]) -> Result<usize, Error> {
     let mut digits = [0u8; 10];
     let mut n = number;
