@@ -205,6 +205,18 @@
 
 #if (defined(__linux__) || defined(__nife__))
 /**
+ * Read and write without the file server's cache.
+ *
+ * nife: added 2026-10-18 (UTC) for ioping (milestone 834), with Linux's generic value. The library
+ * keeps the flag on the descriptor and `fcntl(F_SETFL)` may set or clear it, as on Linux. Whether a
+ * read skips a cache is the server's doing, not the library's, and the file contract has no way to
+ * ask: `redoxfs_server` caches, so the flag there changes nothing (BUGS, `c_library/README.md`).
+ */
+#define O_DIRECT 16384
+#endif
+
+#if (defined(__linux__) || defined(__nife__))
+/**
  * Atomically set the `FD_CLOEXEC` flag on the new file desciptor.
  */
 #define O_CLOEXEC 524288

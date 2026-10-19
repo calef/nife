@@ -27,14 +27,16 @@ at that line; the fixed tree reads `slots held: 0 1 2 3 4 5 20 21 62` and exits 
 run-unvouched slot was 30 on that date and is 62 since milestone 754 (the capability table grows to 64 slots); the replay was not repeated.)
 Re-cut 2026-10-12 (UTC) by the long-function paydown lane, when `boot` was split along its steps:
 the same insertion, now in `boot` right after `finish_shell_endowment` places the machine page.
+Re-cut 2026-10-18 (UTC) by lane/ioping-direct-io, when the second mounted tree became the disk
+tree: the same insertion, against the new lines above it.
 
 diff --git a/crates/system_initializer/src/boot_sequence.rs b/crates/system_initializer/src/boot_sequence.rs
 --- a/crates/system_initializer/src/boot_sequence.rs
 +++ b/crates/system_initializer/src/boot_sequence.rs
-@@ -98,6 +98,18 @@ pub fn boot(
-     let mounted_tree_ep = start_mounted_tree_caretaker(&w, mounted_tree, p.care_elf.as_ref());
-     let (shell, sh_clock_slot) = build_shell(&w, &sh_elf, chan, sh_budget, mounted_tree_ep);
-     finish_shell_endowment(g, shell.tcb, mounted_tree_ep);
+@@ -133,6 +133,18 @@ pub fn boot(
+     let mounted_tree = mounted_tree.filter(|_| w.with_fs);
+     let (shell, sh_clock_slot) = build_shell(&w, &sh_elf, chan, sh_budget);
+     finish_shell_endowment(g, shell.tcb, mounted_tree);
 +    if devices.screen.held {
 +        let t = &devices.screen;
 +        let lent = [t.gpu[0], t.gpu[1], t.gpu[2], t.gpu[3], t.kbd[0], t.kbd[1], t.kbd[2]];

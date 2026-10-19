@@ -17,7 +17,10 @@
 //!   round-tripped, so a hang in bring-up is distinguishable from a hang in the first read;
 //! - mapped: **one page of BAR0**, device-typed, the **doorbell page** at `bar0 + 0x1000`;
 //! - mapped: **the data plane's run of its DMA region**, read/write: the I/O submission and
-//!   completion rings and [`crate::non_volatile_memory_express::TRANSFER_PAGES`] pages of buffer.
+//!   completion rings and one window of [`crate::non_volatile_memory_express::TRANSFER_PAGES`]
+//!   pages of buffer per client. A client is granted the request endpoint badged with its window
+//!   ([`Wiring::client_capability`]) and is mapped that window alone ([`Wiring::window_phys`]), so two
+//!   clients staging at once cannot reach each other's pages.
 //!
 //! Denied:
 //!
@@ -73,8 +76,9 @@ const DATA_PLANE_VA: u64 = address_space_map::pair_page(0x0000_0000_0098_0000);
 /// can grow without colliding with it.
 const DOORBELL_VA: u64 = address_space_map::pair_page(0x0000_0000_009c_0000);
 
-/// How many pages the data plane is mapped: the two I/O rings, then the transfer buffer.
-const DATA_PLANE_PAGES: usize = 2 + crate::non_volatile_memory_express::TRANSFER_PAGES as usize;
+/// How many pages the data plane is mapped: the two I/O rings, then every client's transfer window.
+const DATA_PLANE_PAGES: usize = 2 + crate::non_volatile_memory_express::TRANSFER_PAGES as usize
+    * ::non_volatile_memory_express::CLIENT_WINDOWS;
 
 /// Everything one wiring of the server is, from the outside.
 pub struct Wiring {
@@ -84,9 +88,10 @@ pub struct Wiring {
     /// The request endpoint. **This is the capability a client is given**, with WRITE; the server
     /// holds READ. Nothing about it names the device, the doorbells, or the DMA region.
     pub request: RendezvousId,
-    /// The **physical** base of the transfer buffer, for a caller that wants to stage or check
-    /// bytes through the direct map. Not something a client of the blk contract needs; the kernel
-    /// test uses it to read back what the disk returned.
+    /// The **physical** base of window 0's transfer buffer
+    /// (`non_volatile_memory_express::FILESYSTEM_WINDOW`), the window an unbadged request stages
+    /// in: the filesystem server's, and the kernel's own when it plays a client. The other
+    /// windows follow it contiguously; [`Wiring::window_phys`] names one.
     pub transfer_phys: u64,
     /// True when the IOMMU unit this kernel programmed is **the one that owns the controller's
     /// requester id** ([`crate::iommu::Scope::is_confining`]), and the controller was confined to the
@@ -429,6 +434,29 @@ pub fn start_dma_escape(image: &'static [u8]) -> Option<DmaEscape> {
 }
 
 impl Wiring {
+    /// The physical base of client window `window`'s transfer buffer: the pages a client granted
+    /// [`Wiring::client_capability`]`(window)` must be mapped, and no others.
+    ///
+    /// Name: provisional, minted 2026-10-18 (UTC) by lane/ioping-direct-io.
+    pub fn window_phys(&self, window: u64) -> u64 {
+        assert!(
+            ::non_volatile_memory_express::client_window(window).is_some(),
+            "no NVMe client was given window {window}",
+        );
+        self.transfer_phys
+            + window * crate::non_volatile_memory_express::TRANSFER_PAGES * page_frames::FRAME_SIZE
+    }
+
+    /// The request endpoint as client window `window` is granted it: `WRITE`, badged with the
+    /// window, so the server stages that client's requests in [`Wiring::window_phys`]`(window)`.
+    /// Window 0 is unbadged, as the filesystem server has always held it.
+    ///
+    /// Name: provisional, minted 2026-10-18 (UTC) by lane/ioping-direct-io.
+    pub fn client_capability(&self, window: u64) -> crate::cap::Cap {
+        assert!(::non_volatile_memory_express::client_window(window).is_some());
+        crate::cap::rendezvous_cap_badged(self.request, Rights::WRITE, window)
+    }
+
     /// Take the startup report, or `None` when this caller was not the one that wired the server.
     /// Word 0 is [`filesystem_contract::READY`] when the first command round-tripped, and
     /// a `0xDEAD_..` word naming the failing step otherwise; word 1 is the namespace size the

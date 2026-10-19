@@ -41,13 +41,20 @@ use crate::arch::mmu;
 /// block server serves the FS server without a translation layer.
 pub const BLOCK_SIZE: usize = filesystem_contract::blk::BLOCK_SIZE;
 
+/// The EL0 server's client windows (milestone 834 (ioping on nife and Linux)), named here for the NVMe system tests.
+#[cfg(feature = "system_tests")]
+pub use ::non_volatile_memory_express::{
+    CLIENT_WINDOWS, DISK_TREE_WINDOW, FILESYSTEM_WINDOW, INSTALLER_WINDOW,
+};
+
 /// The DMA region's layout, in page offsets. One contiguous run, allocated by [`bring_up`] and
 /// confined as one region, in two halves that are **not** the same authority:
 ///
 /// - pages 0..[`DATA_PLANE_PAGE`] are the **admin plane's**, and no EL0 process is mapped them:
 ///   the two admin rings and the IDENTIFY buffer;
 /// - pages [`DATA_PLANE_PAGE`].. are the **data plane's**, mapped into the EL0 server: the I/O
-///   submission ring, the I/O completion ring, and [`TRANSFER_PAGES`] pages of transfer buffer.
+///   submission ring, the I/O completion ring, and one window of [`TRANSFER_PAGES`] pages of
+///   transfer buffer per client (`non_volatile_memory_express::CLIENT_WINDOWS`).
 ///
 /// The IOMMU confines the device to the whole run, because the controller fetches from both
 /// halves. Splitting the *mappings* is what withholds the admin plane from the driver; see
@@ -63,7 +70,7 @@ const IO_CQ_PAGE: u64 = 4;
 /// same offset from what it was handed; the constant is duplicated there against this one because
 /// the two live in different address spaces and nothing but the spawn contract joins them.
 pub(crate) const TRANSFER_PAGES: u64 = filesystem_contract::blk::TRANSFER_BLOCKS as u64;
-const DMA_PAGES: u64 = 5 + TRANSFER_PAGES;
+const DMA_PAGES: u64 = 5 + TRANSFER_PAGES * ::non_volatile_memory_express::CLIENT_WINDOWS as u64;
 
 /// **Test-only escape-target hook for the confinement falsification** (milestone 261's Outstanding
 /// item; milestone 202 (every confinement test is a ritual until somebody breaks the confinement and watches it fail)'s convention: a claim, a test, a replayable falsification). Zero in every

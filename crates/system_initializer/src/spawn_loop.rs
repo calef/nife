@@ -85,6 +85,11 @@ pub(super) struct Channels {
     /// holds nothing it could hand a caretaker; the progenitor is the only process here that can build one,
     /// which is what made `rm` a refusal at the prompt for six weeks.
     pub(super) fs: Option<Fs>,
+    /// **The second mounted tree's service and its client-window pool** (milestone 834 (ioping on nife and Linux)), or `None`
+    /// on a boot without one. [`fs`](Channels::fs)'s shape and reason: a directory grant the shell
+    /// names through `/disk` is built from this, badged per job
+    /// (`grant_plan::spawnproto::in_mounted_tree`).
+    pub(super) disk: Option<Fs>,
     /// **A client view of the entropy service** (milestone 111), endowed to a child whose manifest
     /// declares [`grant_plan::Manifest::entropy`]. `None` on a boot that built no entropy service
     /// (no virtio-rng device, no `entropy` program in the initial ramdisk, or a service that did
@@ -201,6 +206,7 @@ pub(super) fn spawn_service(
         fs_scoped,
         // Whether the file page is mapped here yet, for the installed-programs table (first image request).
         fs_mapped: false,
+        disk_mapped: false,
         // The spawn endpoint, its reaped messages, and the windows they free (milestone 685).
         spawn: SpawnEndpoint::new(spawn_ep, resolver),
     };
@@ -219,6 +225,8 @@ struct Service<'a> {
     discipline: SessionDiscipline,
     fs_scoped: bool,
     fs_mapped: bool,
+    /// Whether the second mounted tree's pool is mapped here yet, for zeroing a window between jobs.
+    disk_mapped: bool,
     spawn: SpawnEndpoint,
 }
 
@@ -364,6 +372,9 @@ struct DirWiring {
     /// Whether `narrowed` is the machine's index store rather than a directory the line named
     /// (milestone 801 (packages over the internet)).
     index_store: bool,
+    /// Whether `window` is the second mounted tree's (milestone 834) rather than the file
+    /// service's, which is the pool it goes back to.
+    mounted: bool,
 }
 
 /// A native child's endowment: its in-order capabilities, its named slots, and its mappings.
@@ -1075,13 +1086,23 @@ impl Service<'_> {
         region: Option<u64>,
         (wants_sync, store): (bool, Option<ActivationGrant>),
     ) -> DirWiring {
-        let Channels { own_ut, fs, .. } = self.c;
+        let Channels {
+            own_ut, fs, disk, ..
+        } = self.c;
         let Request {
             wiring,
             grant,
             set_seen,
             ..
         } = *req;
+        // **A grant in the second mounted tree** (milestone 834): its own pool and a caretaker
+        // over the disk tree, never a bound badge (that server enforces no subtree), and nothing
+        // else this function wires, since what it wires is the first tree's.
+        if let (true, Some((care_words, _)), Some(tree)) = (wiring.directory_grant, grant, disk)
+            && let Some(care_words) = mounted_grant(care_words)
+        {
+            return self.wire_mounted(req, manifest, region, tree, care_words, wants_sync);
+        }
         let spawn = &mut self.spawn;
         // **The caretaker, built before the program it serves**, because the program's slot 0 is
         // the endpoint this returns. `None` means either that this is not a directory grant or
@@ -1183,6 +1204,50 @@ impl Service<'_> {
             sync_failed,
             // The sources page goes with the store alone, not with `activation/`.
             index_store: matches!(store, Some(ActivationGrant::IndexStore(_))) && bound.is_some(),
+            mounted: false,
+        }
+    }
+
+    /// [`Service::wire_directory`] for a grant in the second mounted tree: the job's window of the
+    /// disk tree's pool, the disk tree's endpoint badged with it, and a caretaker over that.
+    fn wire_mounted(
+        &mut self,
+        req: &Request,
+        manifest: Option<grant_plan::Manifest>,
+        region: Option<u64>,
+        tree: Fs,
+        care_words: (u64, u64, u64),
+        wants_sync: bool,
+    ) -> DirWiring {
+        let own_ut = self.c.own_ut;
+        let label = self.spawn.label();
+        let window = self.spawn.until_reaped(|s| s.disk_windows.take(label));
+        let channel =
+            window.and_then(|w| mounted_job_channel(tree, w, own_ut, &mut self.disk_mapped));
+        let narrowed = match (region, channel) {
+            (Some(r), Some(ch)) => build_grant(
+                own_ut,
+                r,
+                ch,
+                &self.care,
+                care_words,
+                req.set_seen,
+                manifest,
+            ),
+            _ => None,
+        };
+        DirWiring {
+            label,
+            window,
+            bound: None,
+            channel,
+            dir_failed: narrowed.is_none(),
+            narrowed,
+            sync_ep: None,
+            // A program that must be able to sync is not started without it, as on the first tree.
+            sync_failed: wants_sync && self.c.fs.is_some(),
+            index_store: false,
+            mounted: true,
         }
     }
 
@@ -1554,8 +1619,10 @@ impl Service<'_> {
         // job whose whole answer goes to the shell's result endpoint, under `job_undertaker`,
         // is one a later short pool may wait for: the shell reads that answer to its end
         // before it sends another request ([`ReapsDue`]).
-        if let (false, Some(w)) = (ok, dir.window) {
-            self.spawn.windows.release(w);
+        match (ok, dir.window, dir.mounted) {
+            (false, Some(w), false) => self.spawn.windows.release(w),
+            (false, Some(w), true) => self.spawn.disk_windows.release(w),
+            _ => {}
         }
         if ok && labeled.is_some() && req.delegated.sink.is_none() {
             self.spawn.due.expect(label);

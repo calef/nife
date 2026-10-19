@@ -36,6 +36,13 @@ pub const O_SYNC: c_int = 0x10_1000;
 /// Synchronized read I/O operations. Linux makes it [`O_SYNC`]; a read on nife never waits on a
 /// write, so it changes nothing.
 pub const O_RSYNC: c_int = O_SYNC;
+/// Read and write without the file server's cache.
+///
+/// nife: added 2026-10-18 (UTC) for ioping (milestone 834), with Linux's generic value. The library
+/// keeps the flag on the descriptor and `fcntl(F_SETFL)` may set or clear it, as on Linux. Whether a
+/// read skips a cache is the server's doing, not the library's, and the file contract has no way to
+/// ask: `redoxfs_server` caches, so the flag there changes nothing (BUGS, `c_library/README.md`).
+pub const O_DIRECT: c_int = 0x4000;
 /// Atomically set the `FD_CLOEXEC` flag on the new file desciptor.
 pub const O_CLOEXEC: c_int = 0x8_0000;
 /// Non-POSIX, see <https://www.man7.org/linux/man-pages/man2/open.2.html>.

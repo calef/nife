@@ -66,6 +66,10 @@ pub extern "C" fn _start(role: u64, arg: u64, clock: u64) -> ! {
         user_mode_runtime::is_granted(grant_plan::SHELL_CONFIGURATION_SLOT),
         core::sync::atomic::Ordering::Relaxed,
     );
+    HOLDS_MOUNTED_TREE.store(
+        user_mode_runtime::is_granted(spawnproto::MOUNTED_TREE_SLOT),
+        core::sync::atomic::Ordering::Relaxed,
+    );
     // After the probes, which must see the table as its builder left it. The two witness roles
     // hold no budget at slot 3.
     if !matches!(role, ROLE_NAVIGATE | ROLE_GLOB) {
@@ -110,6 +114,17 @@ pub(super) fn interactive(rights: u64) -> ! {
     } else {
         Nav::rooted_at(DIR_TERMINAL, rights)
     };
+    // **The second mounted tree, when the progenitor placed one** (milestone 834 (ioping on nife and Linux)): the disk tree,
+    // at `/disk`. It shares the first tree's page, so it needs nothing mapped of its own.
+    if rights != 0 && HOLDS_MOUNTED_TREE.load(core::sync::atomic::Ordering::Relaxed) {
+        let mut mount = nav::Cwd::root();
+        mount.descend(spawnproto::MOUNTED_TREE_NAME);
+        nav.holds.mounted = grant_plan::MountedTree::mounted_at(mount);
+        nav.second = Some(Tree {
+            slot: spawnproto::MOUNTED_TREE_SLOT,
+            rights: spawnproto::MOUNTED_TREE_RIGHTS,
+        });
+    }
     let mut line = [0u8; 128];
     loop {
         let (n, flags) = edit_line(&mut nav, b"$ ", &mut line);

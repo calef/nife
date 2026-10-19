@@ -9,6 +9,7 @@ component_plan,dependents,replace > with >=,killed,killed; the ledger's componen
 component_plan,plan,replace > with ==,killed,killed; the ledger's component_plan section (census-2026-10-03-triage.md) says the sweep afterwards reports only that section's equivalents and gaps
 component_plan,plan,replace > with >=,killed,killed; the ledger's component_plan section (census-2026-10-03-triage.md) says the sweep afterwards reports only that section's equivalents and gaps
 component_plan,slot_of,replace < with <=,killed,killed; the ledger's component_plan section (census-2026-10-03-triage.md) says the sweep afterwards reports only that section's equivalents and gaps
+disk_tree,,replace | with ^,equivalent,"ROOT_RIGHTS is three disjoint dir bits, so | and ^ give the same mask"
 entropy_protocol,bringup_failure,replace | with ^,equivalent,"operands are disjoint by contract, or both arms return the same at the boundary"
 entropy_protocol,req,replace | with ^,equivalent,"operands are disjoint by contract, or both arms return the same at the boundary"
 entropy_protocol,want,replace > with >=,equivalent,"operands are disjoint by contract, or both arms return the same at the boundary"

@@ -298,12 +298,21 @@ fn leg_runner(arch: &str, kvm: bool, uefi_timeout_secs: u64) -> Command {
         c
     } else {
         let target = if riscv { RISCV_TARGET } else { TARGET };
+        // **An NVMe disk, for the second mounted tree** (milestone 834 (ioping on nife and Linux)): the disk tree serves it
+        // at `/disk`, and the after-reboot script times reads of it with `ioping`. Zeros, made
+        // fresh for each boot. `x86_64` attaches none, because a blank NVMe disk there is offered
+        // the install (`verdict::swish_check_omits` says so where the lines are left out).
+        let nvme = crate::disk::swish_check_nvme_path();
+        if let Err(e) = std::fs::write(&nvme, std::vec![0u8; crate::disk::SWISH_CHECK_NVME_BYTES]) {
+            eprintln!("swish-check: could not write {nvme}: {e}");
+        }
         let mut c = Command::new(if riscv {
             "helpers/qemu-runner-riscv64.sh"
         } else {
             RUNNER
         });
         c.arg(format!("target/{target}/{}/kernel", profile_dir()));
+        c.env("NIFE_NVME", &nvme);
         c.env(
             "NIFE_INITIAL_RAMDISK",
             if riscv {
