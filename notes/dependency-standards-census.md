@@ -64,7 +64,7 @@ the helper ran unchanged on the crate's published source:
   aarch64 macOS, in a scratch workspace (`tools/runtests.sh`). Toolchain pins in a package were
   removed so no old compiler was installed.
 - Miri: `cargo miri test` on nightly-2026-10-18 for 17 crates chosen for their unsafe code
-  (`tools/runmiri.sh`). Mutation: cargo-mutants on a sample (`tools/runmutants.sh`, results below).
+  (`tools/runmiri.sh`). Mutation: cargo-mutants on one crate (`tools/runmutants.sh`, results below).
 - Upstream practice: each repository's default branch, read through the GitHub API (CI files,
   `fuzz/`, OSS-Fuzz projects, contributors, archive state).
 - Registry and history: the crates.io API, the RustSec advisory database at `999ec89`, and the
@@ -160,7 +160,12 @@ versions, `heapless`, `smallvec`, `httparse`, `lz4_flex`, `once_cell`, `zeroize`
 `arrayvec` and `r-efi`. `inout`'s package has no tests, so its clean run proves nothing. Miri
 checks only the paths a package's tests reach.
 
-Mutation: see the table at the end.
+Mutation: one crate, partly. cargo-mutants 27.1.0 reached 342 of `httparse`'s 387 mutants before the
+run was stopped. Of the 241 viable ones scored, the package's tests caught 179 (176 failed, 3 timed
+out) and missed 62, so 74 percent were killed. nife's own census kills 96.0 percent. The sample is one
+crate, the run is incomplete, and the published package carries only part of upstream's tests, so
+read it as a single data point. The other four planned crates (`vte`, `base64ct`, `managed`,
+`subtle`) were not run.
 
 ### The risk checks find things worth knowing
 
