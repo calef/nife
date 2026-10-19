@@ -1,3 +1,4 @@
+#cites	section names below cite §212 (a prose budget), §213 (writing standards), §266 (a Rust source file stays under 2,000 lines), §282 (when a file is split, the parent becomes an index) and §277 (cite a heading or a symbol, never a line number)
 #exit	0
 #total	125.94
 0.07	<preamble>
