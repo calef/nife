@@ -1,6 +1,7 @@
 ---
-status: PARTIAL
+status: BUILT
 raised: 2026-10-12
+built: 2026-10-17
 milestone_dependencies: 836, 809, 810
 decision_dependencies: 297, 195, 197, 250
 machine_requirements: none
@@ -14,12 +15,13 @@ reaches a nife system as a package `jig` installs from basalt's index, the kerne
 number is provisional until the merge queue lands it; 905 was held by #2022 and 906 by this lane's
 ioping block when this was written. The title and slug are drafts.)*
 
-**PARTIAL, 2026-10-14 (UTC).** basalt builds hackbench from a recipe that pins `hackbench.c` by
+**BUILT, 2026-10-17 (UTC).** basalt builds hackbench from a recipe that pins `hackbench.c` by
 SHA-256 and publishes one package per architecture. nife builds no hackbench. On all three
 architectures under QEMU, `swish-check` types `jig install hackbench` against basalt's package
 and runs the installed program's thread mode, and the kernel suite runs both of
-`c_thread_tests`' hackbench runs on the same bytes. Left, as for milestones 810 and 906: the
-package's digest in the recipe. "Built" below has the rest.
+`c_thread_tests`' hackbench runs on the same bytes. The recipe records each architecture's
+package digest, and basalt's build refuses a package that does not match it. "Built" below has
+the rest.
 
 calef, 2026-10-12 (UTC): *"They should all be installed via jig through basalt. I missed that for
 our benchmarking tools, so I created debt by prioritizing them first."* This is that debt for
@@ -92,9 +94,21 @@ with the download fails basalt's build.
 Reuse: the helper's pinned fetch and flags and milestone 810's recipe, build job and publishing,
 moved rather than rewritten.
 
+## The package's digest, checked 2026-10-19 (UTC)
+
+- basalt's `recipes/hackbench.toml` carries a `[package_digest]` table, one SHA-256 for each of
+  aarch64, riscv64 and x86_64, recorded by milestone 917 (basalt's packages build reproducibly)
+  in nifeos/basalt#29. basalt's pin-bump rewrites it with each new pin.
+- basalt's `helpers/packages.py build` refuses a package whose bytes hash to anything else, and
+  basalt's `packages` workflow builds twice, in separate checkouts, and fails unless the two
+  repositories are byte-identical.
+- At the basalt commit `xtask/basalt-pin` names, the recipe's three digests equal the assets of
+  the Release that commit published. `cargo xtask basalt-fetch` accepts each package only under
+  them, through `package_index::accept`, and `jig install hackbench` checks the index line built from
+  them.
+
 ## BUGS
 
-- The recipe records the source's digest, not the package's, as milestones 810's and 906's do.
 - At the prompt the run is smaller than the kernel suite's: an unvouched `std` program gets 256
   pages of heap, and each of hackbench's threads asks for a 64 KiB stack. Milestone 827's silicon
   runs need its recipe to vouch for a larger heap (§195), or a smaller run per process.
@@ -102,12 +116,12 @@ moved rather than rewritten.
 
 ## Follow-on
 
-- **Outstanding.** The package's digest in the recipe: needs a build reproducible across machines.
-  Checked 2026-10-14 (UTC): `recipes/hackbench.toml` records the sources' digests only.
+- **Done.** The package's digest in the recipe, by milestone 917 (basalt's packages build
+  reproducibly, and the recipe records each package's digest).
 - **Recorded.** The prompt's heap limit on hackbench's threads, in this block's `BUGS`, for
   milestone 827.
-- **Milestone 897.** Milestone 897 (SQLite is packaged in basalt) is next on the C recipe shape;
-  its amalgamation is a zip, which the shape does not unpack yet.
+- **Done.** Milestone 897 (SQLite is packaged in basalt) builds on the same C recipe shape, which
+  unpacks its amalgamation's zip.
 - **Recorded.** The man page `hackbench.8` waits on `jig` installing documentation, noted in
   "Built" above.
 
