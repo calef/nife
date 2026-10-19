@@ -37,17 +37,25 @@
 use filesystem_contract::{blk, dir, dirent, fs, operation, reply_err, verb, xattr};
 
 /// The one directory under the root: the controller, as Linux's `nvme0`.
+///
+/// Name: provisional, minted 2026-10-18 (UTC) by lane/ioping-direct-io.
 pub const DIRECTORY: &[u8] = b"nvme0";
 /// The one file in [`DIRECTORY`]: namespace 1, as Linux's `nvme0n1`.
+///
+/// Name: provisional, minted 2026-10-18 (UTC) by lane/ioping-direct-io.
 pub const FILE: &[u8] = b"n1";
 
 /// What the root carries: list it, walk into it, read what is in it. Nothing that writes, so no
 /// handle this server mints can carry a right to write either ([`dir::Rights::attenuate`] cannot
 /// widen).
+///
+/// Name: provisional, minted 2026-10-18 (UTC) by lane/ioping-direct-io.
 pub const ROOT_RIGHTS: u64 = dir::ENUMERATE | dir::READ | dir::DESCEND;
 
 /// Open handles across every client, the root included. The table is per server, as
 /// `redoxfs_server`'s is, because a caretaker translates its client's numbers into these.
+///
+/// Name: provisional, minted 2026-10-18 (UTC) by lane/ioping-direct-io.
 pub const HANDLES: usize = 32;
 
 const ENOENT: i32 = 2;
@@ -83,6 +91,8 @@ impl Node {
 /// **One device read, and what to do with it.** The server reads `blocks` blocks starting at
 /// `block` into its transfer window, copies `len` bytes starting `skip` bytes in to the start of
 /// the client's page, and replies `len`.
+///
+/// Name: provisional, minted 2026-10-18 (UTC) by lane/ioping-direct-io.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct Read {
     /// The first device block, in [`blk::BLOCK_SIZE`] units.
@@ -96,6 +106,8 @@ pub struct Read {
 }
 
 /// What a request comes to.
+///
+/// Name: provisional, minted 2026-10-18 (UTC) by lane/ioping-direct-io.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Answer {
     /// Reply with these two words; the page already holds whatever the reply describes.
@@ -109,6 +121,8 @@ fn err(errno: i32) -> Answer {
 }
 
 /// The namespace and its handle table.
+///
+/// Name: provisional, minted 2026-10-18 (UTC) by lane/ioping-direct-io.
 pub struct Tree {
     size: u64,
     handles: [Option<(Node, dir::Rights)>; HANDLES],
@@ -116,6 +130,8 @@ pub struct Tree {
 
 impl Tree {
     /// A tree over a disk of `size` bytes, with the root installed at [`fs::ROOT`].
+    ///
+    /// Name: provisional, minted 2026-10-18 (UTC) by lane/ioping-direct-io.
     pub fn new(size: u64) -> Self {
         let mut handles = [None; HANDLES];
         handles[fs::ROOT as usize] = Some((Node::Root, dir::Rights::root(ROOT_RIGHTS)));
@@ -139,6 +155,8 @@ impl Tree {
     /// **Answer one request.** `w0` and `w1` are the request's two words; `page` is the client's
     /// shared page, holding the name for a verb that takes one and receiving a listing for
     /// [`fs::READDIR`].
+    ///
+    /// Name: provisional, minted 2026-10-18 (UTC) by lane/ioping-direct-io.
     pub fn handle(&mut self, w0: u64, w1: u64, page: &mut [u8]) -> Answer {
         let code = operation(w0);
         let Some(v) = verb::of(code) else {

@@ -1,3 +1,7 @@
+//! Host tests for the disk tree's namespace and block arithmetic.
+//!
+//! Name: provisional, minted 2026-10-18 (UTC) by lane/ioping-direct-io.
+
 extern crate std;
 
 use super::*;

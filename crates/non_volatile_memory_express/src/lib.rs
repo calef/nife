@@ -528,15 +528,23 @@ pub const MAX_DSTRD: u32 = 8;
 /// The clients are a fixed set the kernel wires, one window each, so there is no pool and nothing
 /// to hand back: [`FILESYSTEM_WINDOW`], [`INSTALLER_WINDOW`] and [`DISK_TREE_WINDOW`]. A new client
 /// gets a new constant and this count grows by one; each window costs 64 KiB of the DMA region.
+///
+/// Name: provisional, minted 2026-10-18 (UTC) by lane/ioping-direct-io.
 pub const CLIENT_WINDOWS: usize = 3;
 
 /// The unbadged window: the filesystem server, and every kernel-side caller of the request endpoint.
+///
+/// Name: provisional, minted 2026-10-18 (UTC) by lane/ioping-direct-io.
 pub const FILESYSTEM_WINDOW: u64 = 0;
 /// `system_installer`'s window, whether it is installing or confirming a boot slot beside a live
 /// filesystem server.
+///
+/// Name: provisional, minted 2026-10-18 (UTC) by lane/ioping-direct-io.
 pub const INSTALLER_WINDOW: u64 = 1;
 /// The read-only disk tree's window (`components/src/disk_tree.rs`), which reads the namespace
 /// beside a live filesystem server.
+///
+/// Name: provisional, minted 2026-10-18 (UTC) by lane/ioping-direct-io.
 pub const DISK_TREE_WINDOW: u64 = 2;
 
 /// **Whether a window's client may write the disk.** The disk tree's may not: it serves a read-only
@@ -563,6 +571,8 @@ pub const fn can_write(window: u64) -> bool {
 /// assert_eq!(client_window(DISK_TREE_WINDOW), Some(2));
 /// assert_eq!(client_window(CLIENT_WINDOWS as u64), None);
 /// ```
+///
+/// Name: provisional, minted 2026-10-18 (UTC) by lane/ioping-direct-io.
 pub const fn client_window(badge: u64) -> Option<usize> {
     if badge < CLIENT_WINDOWS as u64 {
         Some(badge as usize)

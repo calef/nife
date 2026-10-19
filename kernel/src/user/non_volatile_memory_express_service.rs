@@ -433,6 +433,8 @@ pub fn start_dma_escape(image: &'static [u8]) -> Option<DmaEscape> {
 impl Wiring {
     /// The physical base of client window `window`'s transfer buffer: the pages a client granted
     /// [`Wiring::client_cap`]`(window)` must be mapped, and no others.
+    ///
+    /// Name: provisional, minted 2026-10-18 (UTC) by lane/ioping-direct-io.
     pub fn window_phys(&self, window: u64) -> u64 {
         assert!(
             ::non_volatile_memory_express::client_window(window).is_some(),
@@ -445,6 +447,8 @@ impl Wiring {
     /// The request endpoint as client window `window` is granted it: `WRITE`, badged with the
     /// window, so the server stages that client's requests in [`Wiring::window_phys`]`(window)`.
     /// Window 0 is unbadged, as the filesystem server has always held it.
+    ///
+    /// Name: provisional, minted 2026-10-18 (UTC) by lane/ioping-direct-io.
     pub fn client_cap(&self, window: u64) -> crate::cap::Cap {
         assert!(::non_volatile_memory_express::client_window(window).is_some());
         crate::cap::rendezvous_cap_badged(self.request, Rights::WRITE, window)

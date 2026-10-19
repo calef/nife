@@ -327,6 +327,8 @@ pub const MOUNTED_TREE_NAME: &[u8] = b"disk";
 /// nothing that writes, so a shell that asked for more could not `cd` there (`OPENDIR` refuses a
 /// request it cannot meet in full). `filesystem_contract::dir`'s `ENUMERATE | READ | DESCEND`,
 /// spelled as a number because this crate does not link the contract; a host test pins the two.
+///
+/// Name: provisional, minted 2026-10-18 (UTC) by lane/ioping-direct-io.
 pub const MOUNTED_TREE_RIGHTS: u64 = 0b10_0011;
 
 /// **Which tree a directory grant's name is in, and its name there** (milestone 834): the second
@@ -338,6 +340,8 @@ pub const MOUNTED_TREE_RIGHTS: u64 = 0b10_0011;
 /// assert_eq!(in_mounted_tree(b"diskette"), None);
 /// assert_eq!(in_mounted_tree(MOUNTED_TREE_NAME), None);
 /// ```
+///
+/// Name: provisional, minted 2026-10-18 (UTC) by lane/ioping-direct-io.
 pub fn in_mounted_tree(name: &[u8]) -> Option<&[u8]> {
     name.strip_prefix(MOUNTED_TREE_NAME)?
         .strip_prefix(b"/")
