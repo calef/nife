@@ -250,7 +250,7 @@ if [ "$(git -C "$repo_root" config --bool nife.fleet 2>/dev/null)" != true ]; th
     git -C "$repo_root" config nife.fleet true
 fi
 # The same machine shares one stash stack across every lane, so `git stash` is blocked here for all
-# of them (milestone 118's budget rule 3; helpers/stash-block.sh). An existing stash leaves it
+# of them (milestone 118 (CLAUDE.md has a budget)'s budget rule 3; helpers/stash-block.sh). An existing stash leaves it
 # unblocked and is listed, never dropped: it is some lane's work.
 (cd "$repo_root" && helpers/stash-block.sh) || true
 

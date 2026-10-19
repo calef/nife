@@ -29,7 +29,7 @@
 #   the block, and its name says where to read.
 # - `git update-ref -d` on the block removes it. Nothing reinstalls it until the next claim or push.
 #
-# Name: provisional, minted 2026-10-19 (UTC) by lane/118-budget-rules-2-3 (milestone 118's budget
+# Name: provisional, minted 2026-10-19 (UTC) by lane/118-budget-rules-2-3 (milestone 118 (CLAUDE.md has a budget)'s budget
 # rule 3). calef has not ruled on it.
 
 BLOCK=refs/stash/no-git-stash-see-worktree-commits-skill

@@ -1,6 +1,7 @@
 ---
 status: BUILT
 raised: 2026-08-05
+built: 2026-10-19
 milestone_dependencies: none
 decision_dependencies: none
 machine_requirements: none
@@ -206,9 +207,9 @@ honestly, which is a culture rather than a mechanism. Say so where the reader me
   `com.nife.merge-drain` and its sibling running unattended on patagonia under `launchd`, with the
   asleep-or-shut-down gap named as accepted rather than closed.
 - **Done.** Budget rule 2, pruning a lane's worktree at merge: `helpers/prune_worktrees.py
-  --remove` (name provisional) runs hourly from launchd and removes every worktree whose pull
-  request merged, that `git status` calls clean, whose HEAD origin holds and that nothing wrote
-  to for an hour, without `--force`. Its dry run on 2026-10-19 (UTC) found 13 such worktrees on
+  --remove` (name provisional) runs hourly from launchd, without `--force`. It removes a worktree
+  whose pull request merged, that `git status` calls clean, whose HEAD origin holds and that
+  nothing wrote to for an hour. Its dry run on 2026-10-19 (UTC) found 13 such worktrees on
   the fleet machine. `script/lint-fleet` runs its selftest.
 - **Done.** Budget rule 3 is "a pushed commit is never rewritten", which replaced squashing against
   the recorded base, plus never `git stash`. The stash half is unrepresentable on a fleet clone:

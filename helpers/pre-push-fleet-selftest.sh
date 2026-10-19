@@ -30,7 +30,7 @@ g init -q
 g config user.name selftest
 g config user.email selftest@invalid
 cp "$here/../.githooks/pre-push" "$repo/.githooks/pre-push"
-cp "$here/pre-push-fleet.sh" "$here/push-queued-check.sh" "$repo/helpers/"
+cp "$here/pre-push-fleet.sh" "$here/push-queued-check.sh" "$here/push-rewrite-check.sh" "$here/stash-block.sh" "$repo/helpers/"
 stub() { printf '#!/bin/sh\nexit %s\n' "$2" >"$repo/script/$1"; chmod +x "$repo/script/$1"; }
 stub fmt 0
 stub lint 0

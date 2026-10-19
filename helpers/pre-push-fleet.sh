@@ -33,7 +33,7 @@ refs="$(cat)"
 case "${1:-}" in
 queued)
     # **A push that rewrites a pushed commit is refused**, and the stash block is put back if it
-    # is missing (milestone 118's budget rule 3). Both run here, ahead of the empty-push skip,
+    # is missing (milestone 118 (CLAUDE.md has a budget)'s budget rule 3). Both run here, ahead of the empty-push skip,
     # because a forced empty commit rewrites history as well as any other. The headers of
     # helpers/push-rewrite-check.sh and helpers/stash-block.sh have the reasoning.
     printf '%s\n' "$refs" | "$root/helpers/push-rewrite-check.sh" || exit 1

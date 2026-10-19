@@ -5,7 +5,7 @@
     python3 helpers/prune_worktrees.py --remove   # remove exactly those, and their local branches
     python3 helpers/prune_worktrees.py --selftest
 
-PROVISIONAL NAME, minted 2026-10-19 (UTC) by lane/118-budget-rules-2-3 for milestone 118's budget
+PROVISIONAL NAME, minted 2026-10-19 (UTC) by lane/118-budget-rules-2-3 for milestone 118 (CLAUDE.md has a budget)'s budget
 rule 2, after its sibling helpers/prune_build_output.py. calef has not ruled on it.
 
 Why this exists. A lane's worktree is pruned the moment its pull request merges

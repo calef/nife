@@ -23,7 +23,7 @@
 # - It sees only pushes from a clone with `nife.fleet` set. The bot workflows force-push their own
 #   branches from CI, which is why nothing server-side refuses a force-push on every branch.
 #
-# Name: provisional, minted 2026-10-19 (UTC) by lane/118-budget-rules-2-3 (milestone 118's budget
+# Name: provisional, minted 2026-10-19 (UTC) by lane/118-budget-rules-2-3 (milestone 118 (CLAUDE.md has a budget)'s budget
 # rule 3), after helpers/push-queued-check.sh. calef has not ruled on it.
 
 zero=0000000000000000000000000000000000000000
