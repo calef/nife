@@ -14,11 +14,11 @@
 //! - Under QEMU, `cargo xtask uefi-boot` asks the emulator for a screendump and reads the tour off
 //!   it. That gates the whole framebuffer path on every run: the loader's `LocateProtocol`, the
 //!   byte order, the stride, the mapping surviving `mmu::init`, and the glyphs.
-//! - The same decoder, at the same time, is how the graphical `swish-check` leg reads the display
-//!   terminal's live, typed screen back (milestone 377 (two screendump decoders, in two crates,
-//!   reading the same font), which merged the decoder that leg used to carry in `xtask`). There is
-//!   no picture of a live session to predict, so the leg searches the rows this returns for what
-//!   it typed.
+//! - The graphical `swish-check` leg reads the display terminal's live, typed screen back with
+//!   [`decode_exact`], this module's parse and grid with the cell drawn by the caller's own font
+//!   (milestone 377 (two screendump decoders, in two crates, reading the same font) merged the
+//!   decoder that leg used to carry in `xtask`). There is no picture of a live session to predict,
+//!   so the leg searches the rows this returns for what it typed.
 //! - On a machine nobody can attach a cable to, a **photograph of the screen** is not this: it is
 //!   not pixel-aligned and it is not a screendump. Turning one into text is a different problem
 //!   this module does not solve, and `notes/serial-less-output.md` says so where a reader meets it.
@@ -253,6 +253,69 @@ fn decode_rows(
                 .collect()
         })
         .collect()
+}
+
+/// **Turn a screendump of `cell_w` by `cell_h` cells back into rows of text by exact match**: a
+/// cell reads as the first byte of `alphabet` whose `draw(ch, x, y)`, a `0x00RRGGBB` word for
+/// pixel `(x, y)` of the cell, equals every pixel the dump holds there, and as `?` otherwise.
+///
+/// For a picture whose glyphs are not monochrome, such as the display terminal's anti-aliased
+/// `glyph_atlas` cells, where [`decode`]'s ink-against-paper threshold has nothing to separate. The
+/// caller passes the drawing function the guest painted with, so a match is the guest's own
+/// pixels, not a resemblance. The grid is drawn 1:1.
+///
+/// # Errors
+///
+/// [`ReadError`] when the bytes are not a readable binary PPM.
+///
+/// # Examples
+///
+/// ```
+/// use board_console::screen;
+///
+/// // Two 2x1 cells: `a` is left-half ink, `b` right-half, on black.
+/// let draw = |ch: char, x: u32, _y: u32| match (ch, x) {
+///     ('a', 0) | ('b', 1) => 0x00ff_ffff,
+///     _ => 0,
+/// };
+/// let mut ppm = b"P6\n4 1\n255\n".to_vec();
+/// for x in 0..4u32 {
+///     let word = draw(if x < 2 { 'b' } else { 'a' }, x % 2, 0);
+///     ppm.extend_from_slice(&[(word >> 16) as u8, (word >> 8) as u8, word as u8]);
+/// }
+/// assert_eq!(screen::decode_exact(&ppm, 2, 1, b"ab", draw).unwrap().rows, ["ba"]);
+/// ```
+///
+/// Name: provisional.
+pub fn decode_exact(
+    ppm: &[u8],
+    cell_w: u32,
+    cell_h: u32,
+    alphabet: &[u8],
+    draw: impl Fn(char, u32, u32) -> u32,
+) -> Result<Screendump, ReadError> {
+    let (width, height, pixels) = parse_pixmap(ppm)?;
+    let (cw, ch) = (cell_w as usize, cell_h as usize);
+    let at = |col: usize, row: usize, x: usize, y: usize| {
+        let i = ((row * ch + y) * width + col * cw + x) * 3;
+        (pixels[i] as u32) << 16 | (pixels[i + 1] as u32) << 8 | pixels[i + 2] as u32
+    };
+    let read = |col: usize, row: usize| {
+        alphabet
+            .iter()
+            .map(|&b| b as char)
+            .find(|&c| {
+                (0..ch).all(|y| (0..cw).all(|x| at(col, row, x, y) == draw(c, x as u32, y as u32)))
+            })
+            .unwrap_or('?')
+    };
+    Ok(Screendump {
+        width: u32::try_from(width).unwrap_or(u32::MAX),
+        height: u32::try_from(height).unwrap_or(u32::MAX),
+        rows: (0..height / ch)
+            .map(|row| (0..width / cw).map(|col| read(col, row)).collect())
+            .collect(),
+    })
 }
 
 /// The character in one cell, or `?` when the cell matches nothing in `alphabet`.

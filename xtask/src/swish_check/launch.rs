@@ -251,27 +251,31 @@ impl RebootPhase<'_> {
 
 /// **The screendump decoded back into rows of text, in the terminal's own scheme.**
 ///
-/// The decoder is the one in `board_console::screen` (milestone 377 (two screendump decoders,
+/// The decoder is `board_console::screen::decode_exact` (milestone 377 (two screendump decoders,
 /// in two crates, reading the same font), which deleted this leg's own `parse_ppm`,
 /// `decode_cell` and `scanout_rows`); what this call site contributes is the
-/// two things that belong to the leg and not to a decoder:
+/// three things that belong to the leg and not to a decoder:
 ///
 /// - **The geometry assertion `scanout_rows` used to carry**, kept here where it belongs: this
 ///   leg grades the graphical terminal's own surface, and a scanout of any other size is a
 ///   `SET_SCANOUT` bug, not a near miss. `Err` rather than a full grid of `?`s, so a wrong-sized
 ///   dump is skipped and the next poll tries again, exactly as before the merge.
 /// - **The colors**: `video_terminal::Attr::DEFAULT`'s, read from that crate so the scheme
-///   stays the terminal's own choice rather than a constant copied here. The scale is 1 because
-///   the terminal paints its grid 1:1 onto the surface, the same 1:1 `Vt::pixel` is graded at
-///   by [`super::super::scanout`]'s exact text check.
+///   stays the terminal's own choice rather than a constant copied here.
+/// - **The font**: `glyph_atlas::REGULAR` at `video_terminal`'s cell, drawn 1:1, the same function
+///   `Vt::pixel` paints with and [`super::super::scanout`]'s exact text check grades.
 ///
 /// The alphabet is the caller's: this leg only ever searches for what it itself types.
 fn screen_rows(bytes: &[u8], alphabet: &[u8]) -> Result<board_console::screen::Screendump, String> {
     let (fg, bg) = video_terminal::Attr::DEFAULT.colours();
-    let ink = [(fg >> 16) as u8, (fg >> 8) as u8, fg as u8];
-    let paper = [(bg >> 16) as u8, (bg >> 8) as u8, bg as u8];
-    let screen =
-        board_console::screen::decode(bytes, ink, paper, alphabet, 1).map_err(|e| e.to_string())?;
+    let screen = board_console::screen::decode_exact(
+        bytes,
+        video_terminal::CELL_W,
+        video_terminal::CELL_H,
+        alphabet,
+        |ch, x, y| glyph_atlas::REGULAR.cell_pixel(ch, x, y, fg, bg),
+    )
+    .map_err(|e| e.to_string())?;
     if (screen.width, screen.height) != (graphics_contract::WIDTH, graphics_contract::HEIGHT) {
         return Err(format!(
             "scanout is {}x{}, the surface is {}x{}",
