@@ -1,0 +1,10 @@
+//! **sRGB to linear light**, one `u16` per sRGB code, written by `tools/glyph_atlas_generator`
+//! (`linear_source`) and checked by its regenerate gate. Do not edit; regenerate.
+//!
+//! Name: provisional.
+
+/// Linear light for each sRGB code, `0` black and `u16::MAX` white.
+///
+/// Name: provisional.
+#[rustfmt::skip] // the generator's layout, so the regenerate gate compares bytes
+pub const SRGB_TO_LINEAR: [u16; 256] = [
