@@ -1914,4 +1914,19 @@ mod tests {
             Err(Error::Malformed.into())
         );
     }
+
+    /// **Two default pointers for one program are no single answer** (milestone 614 (two installed
+    /// versions of one program, each runnable)'s default pointer): `lookup` refuses the table as
+    /// malformed rather than pick one, while one pointer answers.
+    #[test]
+    fn two_default_pointers_for_one_program_make_the_table_malformed() {
+        let (a, b) = ([1u8; 32], [2u8; 32]);
+        let text = |d: &Digest| String::from_utf8(measured_boot::digest_text(d).to_vec()).unwrap();
+        let (ta, tb) = (text(&a), text(&b));
+        let rows = format!("{ta} uptime 0.1.0 uptime jig\n{tb} uptime 0.2.0 uptime jig\n");
+        let one = format!("{rows}default uptime {tb}\n");
+        assert_eq!(lookup(&one, "uptime").unwrap().unwrap().version, "0.2.0");
+        let two = format!("{one}default uptime {ta}\n");
+        assert_eq!(lookup(&two, "uptime"), Err(Error::Malformed));
+    }
 }

@@ -1168,7 +1168,7 @@ fn type_one_line(
         if !console.wait_after(at, cue, line_secs) {
             return Err(format!("`{line}` never asked {cue:?}"));
         }
-        if write!(stdin, "{reply}\n").is_err() || stdin.flush().is_err() {
+        if writeln!(stdin, "{reply}").is_err() || stdin.flush().is_err() {
             return Err(format!("could not answer {cue:?} under `{line}`"));
         }
     }
