@@ -39,7 +39,7 @@ The TLS graph is the bulk of it. `jig` links 68 of the 99, nearly all of them Ru
 rustls. The kernel links three: `aarch64-cpu`, `spin` 0.12.3 and `tock-registers`. The Rust
 standard library itself ships too, through `-Zbuild-std`, and is outside this census.
 
-The candidates under milestone 784 were measured the same way, with their dependency closures:
+The candidates under milestone 784 (reuse what the tree wrote) were measured the same way, with their dependency closures:
 `r-efi` 7.1.0 (item (e)), `vte` 0.15.0 with `arrayvec` (item (b), held for 705), `plist` 1.10.1 with
 13 crates (item (f)), and `pulldown-cmark` 0.13.4 with `bitflags` and `unicase` (item (f2)). The
 terminal lane has named no others.
@@ -51,10 +51,11 @@ the helper ran unchanged on the crate's published source:
 
 - Unsafe density, `unsafe impl Send`/`Sync` and `static mut`: `helpers/rust_source.py`'s
   `unsafe_census`, over the package minus `tests/`, `benches/`, `examples/`, `fuzz/` and `build.rs`.
-- Function length: `helpers/function_length.py`'s `measure`, over every `.rs` file, as §283 scopes
+- Function length: `helpers/function_length.py`'s `measure`, over every `.rs` file, as §283 (a function is held to 100 code lines by a lint ratchet) scopes
   nife's own.
-- Comment blocks: `helpers/comment_block_ratchet.py`'s `blocks_over`. File length: physical lines,
-  as §266 counts them.
+- Comment blocks: `helpers/comment_block_ratchet.py`'s `blocks_over`, the ceiling of §267 (a
+  comment states the constraint as it is now). File length: physical lines, as §266 (a Rust source
+  file stays under 2,000 lines, held by a ratchet that only falls) counts them.
 - `# Safety` on every `unsafe fn`: `script/lint`'s check, copied into `tools/measure.py`.
 - SAFETY comments: a text check, because clippy's `undocumented_unsafe_blocks` does not fire on a
   dependency. On nife's own kernel, crates and components, where clippy holds the rule at zero
@@ -180,8 +181,8 @@ Mutation: see the table at the end.
 ### The vendored trees and the kernel
 
 `vendor/relibc` holds 1,469 unsafe blocks in 22,561 code lines, a density of 651, with SAFETY
-comments on about 7 percent. `vendor/redoxfs` is at 144 with none. Both are upstream's code under
-§46's vendoring rule, and nife's own unsafe census leaves `vendor/` out.
+comments on about 7 percent. `vendor/redoxfs` is at 144 with none. Both are upstream's code under the
+vendoring rule of §46 (thin primitives or whole subsystems; we write everything in between), and nife's own unsafe census leaves `vendor/` out.
 
 The kernel's three dependencies run unconfined. Between them they hold 71 unsafe blocks. The text
 check finds SAFETY comments on 34 percent of `spin` 0.12.3's and on none of `aarch64-cpu`'s or

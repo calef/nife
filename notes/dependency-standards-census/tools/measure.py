@@ -8,8 +8,11 @@ imported. Every measured tree is only read.
 Scopes, chosen to match nife's own:
   shipped source  every .rs except tests/, benches/, examples/, fuzz/ and build.rs: the unsafe census
                   scope (helpers/rust_source.py HOST_ONLY leaves out code that does not run on nife).
-  all source      every .rs in the package: §283's function-length scope and §266's file-length
-                  scope are every Rust file, test code included.
+  all source      every .rs in the package: the scope of §283 (a function is held to 100 code
+                  lines by a lint ratchet) and of §266 (a Rust source file stays under 2,000
+                  lines, held by a ratchet that only falls) is every Rust file, tests included.
+                  §267 (a comment states the constraint as it is now) sets the comment-block
+                  ceiling counted here.
 """
 import os, re, sys
 

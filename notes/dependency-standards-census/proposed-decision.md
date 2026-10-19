@@ -3,9 +3,10 @@
 Status: proposed, for an architect. Provisional; the integrator mints a section number if it is
 ruled. The data is [the census](../dependency-standards-census.md), measured 2026-10-18 and
 2026-10-19 (UTC) over the 99 crate versions nife ships, its two vendored trees and the milestone 784
-candidates.
+(reuse what the tree wrote) candidates.
 
-§46 decides whether nife takes a dependency. Nothing says what a taken dependency must be. Today
+§46 (thin primitives or whole subsystems; we write everything in between) decides whether nife
+takes a dependency. Nothing says what a taken dependency must be. Today
 the only written bar is `deny.toml` through `script/supply-chain`: licenses, advisories, the
 unmaintained list, yanked versions, crates.io as the only source, and one version per crate. This
 proposal takes nife's internal standards one at a time and asks which should hold dependencies too.
@@ -130,8 +131,8 @@ dependencies. No organization requires it, and measuring it needs a per-crate in
 
 ## Q5. Does Miri run on dependencies?
 
-nife runs Miri weekly over its own host crates (milestone 79). That run is a report, not a required
-check.
+Under milestone 79 (Miri over the host crates), nife runs Miri weekly over its own code. That run is
+a report, not a required check.
 
 - Measured: 31 of 99 run Miri in upstream CI. nife ran `cargo miri test` on 17 crates chosen for
   their unsafe code, and all ran clean. Miri checks only the paths a package's tests reach.
@@ -151,8 +152,8 @@ here that looks inside a crate's unsafe code by machine.
 
 ## Q6. Are dependencies that parse untrusted input fuzzed?
 
-nife fuzzes its own parsers of bytes it did not write, 60 seconds per target, as a required check
-(milestone 42).
+Under milestone 42 (supply chain and fuzzing in CI), nife fuzzes its own parsers of bytes it did not
+write, 60 seconds per target, as a required check.
 
 - Measured: 9 of 99 have upstream fuzz targets, and three have their own OSS-Fuzz project
   (`httparse`, `lz4_flex`, `rustls`). The shipped crates that parse bytes from the network or a
@@ -172,7 +173,7 @@ lines.
 
 ## Q7. What makes a dependency maintained enough?
 
-§198 refused `rustls-rustcrypto` on maintenance: an alpha release, 17 months stale, two of three
+§198 (the glue is ours, the primitives are not) refused `rustls-rustcrypto` on maintenance: an alpha release, 17 months stale, two of three
 versions yanked, and pinned superseded majors. cargo-deny's `unmaintained = "all"` fires only when
 RustSec has published an advisory.
 
@@ -197,8 +198,8 @@ date check. A recorded judgment can tell them apart; a threshold cannot.
 ## Q8. Do nife's size and documentation rules apply to dependencies?
 
 These are the file limit of §266 (a Rust source file stays under 2,000 lines), the function limit
-of §283 (a function is held to 100 code lines by a lint ratchet), and §267's 40-line ceiling on a
-comment block. With them go the BUGS-section practice and clippy at `-D warnings`.
+of §283 (a function is held to 100 code lines by a lint ratchet), and the 40-line comment-block ceiling
+of §267 (a comment states the constraint as it is now). With them go the BUGS-section practice and clippy at `-D warnings`.
 
 - Passing today: files 84 of 99, functions 77, comment blocks 33, BUGS heading 0. Clippy was not
   measured, because its lints are capped for dependencies. 79 run clippy upstream.
