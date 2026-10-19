@@ -568,11 +568,7 @@ fn write_tree(
 }
 
 /// Say what the ACPI tables described, and which optional pieces the kernel will do without.
-fn say_acpi_machine(
-    table: &SystemTable,
-    machine: &device_tree_from_acpi::Machine,
-    madt: &Madt,
-) {
+fn say_acpi_machine(table: &SystemTable, machine: &device_tree_from_acpi::Machine, madt: &Madt) {
     say(
         table,
         "uefi_loader: no device tree; describing this machine from ACPI\r\n",
@@ -600,7 +596,10 @@ fn say_acpi_machine(
             say_decimal(table, madt.its_count - 1);
             say(table, " more");
         }
-        say(table, "; not described to the kernel, which drives no ITS\r\n");
+        say(
+            table,
+            "; not described to the kernel, which drives no ITS\r\n",
+        );
     }
     if machine.uart.is_none() {
         say(
