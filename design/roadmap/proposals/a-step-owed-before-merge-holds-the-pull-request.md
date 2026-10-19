@@ -54,8 +54,9 @@ the routine.
 
 ## The ruling
 
-calef, 2026-10-19 (UTC): "C. A '- [ ] Before merge: ...' task-list item in the PR body is the
-hold; architect hold fails while one is unticked, and ticking it releases it."
+calef chose option C on 2026-10-19 (UTC), in his words: "A '- [ ] Before merge: ...' task-list
+item in the PR body is the hold; architect hold fails while one is unticked, and ticking it
+releases it."
 
 The check folds into the existing `architect hold` job, so the ruleset is unchanged. The off-tree
 maintainer routine is unchanged too: it arms only clean, green pull requests, and a red required
@@ -102,7 +103,7 @@ the floor for that residue, and the skill says so where a reader meets it.
 ## The skill rule: do the step first where it can go first
 
 Where the code can be made harmless until the step lands, the step goes before the pull request is
-marked ready, and nothing is owed at merge. #2393 had that shape: the job line was behind an
+marked ready, and nothing is owed at merge. Pull request #2393 had that shape: the job line was behind an
 `[ -f ]` guard, so wiring it first was safe. This is a rule in the developer-lane skill, rung four.
 A step that can only follow merge (a pin bump, a ruleset change that names a new check) takes the
 `Before merge:` item.
