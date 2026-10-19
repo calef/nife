@@ -171,16 +171,71 @@ pub fn tables() -> Vec<(&'static str, Vec<u8>)> {
         .collect()
 }
 
+/// Where the sRGB-to-linear table is written: Rust source, so the runtime crate reads it as a
+/// `const` and a reviewer reads it as numbers.
+///
+/// Name: provisional.
+pub const LINEAR_PATH: &str = "crates/glyph_atlas/src/linear.rs";
+
+/// **The sRGB-to-linear table as Rust source**: each of the 256 sRGB codes as linear light scaled
+/// to `u16::MAX`, by IEC 61966-2-1's curve, rounded to nearest. Computed here in `f64` so the
+/// runtime crate does no floating point: `glyph_atlas::blend` only indexes the table and searches
+/// it. `powf` is the platform's, so a host whose `pow` rounds differently at one of these 256
+/// points fails the regenerate gate rather than shipping a different table.
+///
+/// Name: provisional.
+pub fn linear_source() -> String {
+    let mut out = String::from(
+        "//! **sRGB to linear light**, one `u16` per sRGB code, written by \
+         `tools/glyph_atlas_generator`\n\
+         //! (`linear_source`) and checked by its regenerate gate. Do not edit; regenerate.\n\
+         //!\n\
+         //! Name: provisional.\n\n\
+         /// Linear light for each sRGB code, `0` black and `u16::MAX` white.\n\
+         ///\n\
+         /// Name: provisional.\n\
+         #[rustfmt::skip] // the generator's layout, so the regenerate gate compares bytes\n\
+         pub const SRGB_TO_LINEAR: [u16; 256] = [\n",
+    );
+    for row in 0..32 {
+        out.push_str("   ");
+        for code in row * 8..row * 8 + 8 {
+            let c = code as f64 / 255.0;
+            let linear = if c <= 0.04045 {
+                c / 12.92
+            } else {
+                ((c + 0.055) / 1.055).powf(2.4)
+            };
+            out.push_str(&format!(" {},", (linear * 65535.0).round() as u16));
+        }
+        out.push('\n');
+    }
+    out.push_str("];\n");
+    out
+}
+
+/// Everything the generator writes, beside its path: the four face tables and the linear table.
+///
+/// Name: provisional.
+pub fn outputs() -> Vec<(&'static str, Vec<u8>)> {
+    let mut all = tables();
+    all.push((LINEAR_PATH, linear_source().into_bytes()));
+    all
+}
+
 /// The first difference between the checked-in tables and what this tool makes now, described in
 /// glyphs and pixels, or `None` when every table is byte-identical.
 ///
 /// Name: provisional.
 pub fn check() -> Option<String> {
-    for (path, want) in tables() {
+    for (path, want) in outputs() {
         let got = match std::fs::read(root().join(path)) {
             Ok(b) => b,
             Err(e) => return Some(format!("{path}: {e}")),
         };
+        if path == LINEAR_PATH && got != want {
+            return Some(format!("{path}: differs from what the generator writes"));
+        }
         if got.len() != want.len() {
             return Some(format!(
                 "{path}: {} bytes checked in, the generator makes {}",

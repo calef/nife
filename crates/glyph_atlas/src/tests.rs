@@ -86,3 +86,17 @@ fn each_face_is_the_one_its_name_says() {
         );
     }
 }
+
+/// **The way back is exact.** [`to_srgb`] searches [`SRGB_TO_LINEAR`] for the nearest code, which
+/// is only sound if the table rises strictly; and every code must come back as itself, or a cell
+/// at full coverage of an exotic color and one at 254 would disagree by more than the coverage.
+#[test]
+fn the_linear_table_rises_and_round_trips() {
+    for c in 1..256 {
+        assert!(SRGB_TO_LINEAR[c] > SRGB_TO_LINEAR[c - 1], "code {c} does not rise");
+    }
+    for c in 0..=255u8 {
+        assert_eq!(to_srgb(SRGB_TO_LINEAR[c as usize] as u32), c);
+    }
+    assert_eq!((SRGB_TO_LINEAR[0], SRGB_TO_LINEAR[255]), (0, u16::MAX));
+}

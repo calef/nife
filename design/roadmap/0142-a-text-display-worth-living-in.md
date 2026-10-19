@@ -39,7 +39,7 @@ cluster (home, end, insert, delete, page up and down, with xterm's shift forms).
 keyboard needs a new opcode, because `line_editor` sits in front of `display_terminal`;
 [milestone 668 (scrollback from the keyboard)](0668-scrollback-from-the-keyboard.md) holds it. Increment six
 is built (checked 2026-10-03, UTC). Increment three is built: the atlas, its generator and gate,
-and an 80x24 scanout at the atlas's cell. Increment four has not started, and nothing blocks it.
+and an 80x24 scanout at the atlas's cell. Increment four is built: the atlas blends in linear light.
 [Sequencing](#sequencing) has each increment's state.
 
 The working behind each section below is in [its appendices](0142-a-text-display-worth-living-in/README.md),
@@ -153,11 +153,11 @@ the larger half of "would use it outside a GUI".
 3. The atlas and the host-side generator. BUILT. `tools/glyph_atlas_generator` turns
    `vendor/dejavu`'s four faces into `crates/glyph_atlas`'s coverage tables (14x26, 96 glyphs, one
    byte a pixel), and its test, run by `cargo xtask test`, fails unless regenerating reproduces them
-   byte for byte. The terminal draws from the regular face, blended in sRGB, and the scanout is
+   byte for byte. The terminal draws from the regular face, and the scanout is
    1120x624, exactly 80x24 cells.
-4. Blending, in linear light, with the sRGB tables. NOT-STARTED on purpose, since it has no consumer
-   until the atlas exists. Small, and it is what makes the atlas look like type rather than gray
-   mush.
+4. Blending, in linear light, with the sRGB tables. BUILT. `glyph_atlas::blend` takes each channel
+   through `SRGB_TO_LINEAR`, a 256-entry `u16` table the generator writes and its gate checks, and
+   back by the nearest code in that same table. Integer only at runtime.
 5. Rich attributes. PARTIAL. Widen `Attr` and `Cell` for truecolor, real weights and underline
    styles, and ship the bold, italic and bold-italic faces. The widening is built, and the faces are
    in the atlas (`glyph_atlas::BOLD`, `OBLIQUE`, `BOLD_OBLIQUE`) but drawn nowhere, so *bold is
@@ -172,7 +172,7 @@ it as its own milestone when rung three is live.
 
 ## What is an architect's
 
-Nothing blocks increment four. The family was §104's (2026-08-20) and the face count §166's
+Nothing blocks increment five. The family was §104's (2026-08-20) and the face count §166's
 (2026-10-05). Still calef's, and blocking nothing:
 
 - Names. `glyph_atlas`, `glyph_atlas_generator` and any glyph service are all provisional.
@@ -262,4 +262,4 @@ is partial (truecolour and the line renditions built 2026-09-26; the faces are g
 be drawn). The navigation cluster is in the keymap, and scrollback from the keyboard is a proposal because its
 route needs a new opcode. Six, the palette, is built (the gate of milestone 141, a palette worth
 looking at). Three is built: DejaVu Sans Mono from a checked-in atlas on an 80x24 scanout. Four
-remains NOT-STARTED, and nothing blocks it.
+is built: the atlas blends in linear light.

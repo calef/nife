@@ -6,7 +6,7 @@
 //!
 //! The rasteriser is not here. It ran once, on the host, in `tools/glyph_atlas_generator`, and its
 //! output is the four files under `coverage/`, one byte of coverage a pixel. So drawing a glyph is a
-//! lookup and a blend, exactly as pure as `bitmap_font`'s bit test, and the three parties that draw,
+//! lookup and a blend in linear light, exactly as pure as `bitmap_font`'s bit test, and the three parties that draw,
 //! predict and grade the terminal's picture keep computing it independently without a font engine
 //! in any of them. That generator's test fails if the tables are not what it makes from
 //! `vendor/dejavu`, byte for byte.
@@ -33,13 +33,13 @@
 //!   where it is a different design.
 //! - A glyph is clipped to its cell. The oblique faces lean up to 1.2 pixels past either side
 //!   (`X`, `W`), which a terminal that overdraws its neighbors would show and this one cuts off.
-//! - The blend is in sRGB, not linear light, so light text on a dark ground looks thinner than the
-//!   font intends. Increment 4 of milestone 142 (a text display good enough that people use it
-//!   instead of a GUI) replaces [`blend`].
 //!
 //! Name: provisional, for the crate and every item in it. calef names things.
 
 #![no_std]
+
+mod linear;
+pub use linear::SRGB_TO_LINEAR;
 
 /// A cell's width in pixels: Menlo Regular 11 at 2x, whose outlines are DejaVu's. 14 is the
 /// 13.24-pixel advance rounded up, so every glyph has its own column of pixels and the grid stays
@@ -144,15 +144,23 @@ impl Face {
     }
 }
 
-/// **`fg` over `bg` at `coverage` of 255**, each `0x00RRGGBB` channel mixed on its own and rounded
-/// to nearest, so 0 is exactly `bg` and 255 exactly `fg`. In sRGB, see the crate's BUGS.
+/// **`fg` over `bg` at `coverage` of 255, in linear light**: each `0x00RRGGBB` channel is taken
+/// to linear light through [`SRGB_TO_LINEAR`], mixed there, and brought back to the sRGB code
+/// whose linear value is nearest. 0 is exactly `bg` and 255 exactly `fg`.
+///
+/// Mixing the sRGB codes directly makes light text on a dark ground look bolder than its outline
+/// and dark on light thinner, because sRGB's codes are not proportional to light; Solarized Dark
+/// is the first case. Half coverage of white on black is half the light, sRGB 188, not code 128.
+/// Integer only: the table is a `const`, and the way back is a search of the same table, so no
+/// second table can disagree with the first.
 ///
 /// ```
 /// use glyph_atlas::blend;
 ///
 /// assert_eq!(blend(0x00ff_ffff, 0x0000_0000, 0), 0x0000_0000);
 /// assert_eq!(blend(0x00ff_ffff, 0x0000_0000, 255), 0x00ff_ffff);
-/// assert_eq!(blend(0x00ff_0000, 0x0000_00ff, 128), 0x0080_007f);
+/// assert_eq!(blend(0x00ff_ffff, 0x0000_0000, 128), 0x00bc_bcbc);
+/// assert_eq!(blend(0x00ff_0000, 0x0000_00ff, 128), 0x00bc_00bb);
 /// ```
 ///
 /// Name: provisional.
@@ -168,11 +176,35 @@ pub const fn blend(fg: u32, bg: u32, coverage: u8) -> u32 {
     let mut out = 0;
     let mut shift = 0;
     while shift < 24 {
-        let (f, b) = ((fg >> shift) & 0xff, (bg >> shift) & 0xff);
-        out |= ((f * a + b * (255 - a) + 127) / 255) << shift;
+        let f = SRGB_TO_LINEAR[((fg >> shift) & 0xff) as usize] as u32;
+        let b = SRGB_TO_LINEAR[((bg >> shift) & 0xff) as usize] as u32;
+        out |= (to_srgb((f * a + b * (255 - a) + 127) / 255) as u32) << shift;
         shift += 8;
     }
     out
+}
+
+/// The sRGB code whose linear value in [`SRGB_TO_LINEAR`] is nearest `linear`, the lower on a tie.
+/// A binary search: the table rises strictly, which `the_linear_table_rises_and_round_trips`
+/// holds it to.
+const fn to_srgb(linear: u32) -> u8 {
+    // The first code whose linear value is at least `linear`.
+    let (mut lo, mut hi) = (0usize, 256usize);
+    while lo < hi {
+        let mid = (lo + hi) / 2;
+        if (SRGB_TO_LINEAR[mid] as u32) < linear {
+            lo = mid + 1;
+        } else {
+            hi = mid;
+        }
+    }
+    if lo == 256 {
+        return u8::MAX;
+    }
+    if lo > 0 && linear - SRGB_TO_LINEAR[lo - 1] as u32 <= SRGB_TO_LINEAR[lo] as u32 - linear {
+        return (lo - 1) as u8;
+    }
+    lo as u8
 }
 
 #[cfg(test)]
