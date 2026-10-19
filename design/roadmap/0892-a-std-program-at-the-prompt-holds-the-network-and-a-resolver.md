@@ -1,5 +1,5 @@
 ---
-status: PARTIAL
+status: BUILT
 raised: 2026-10-09
 promoted_from: a-std-program-at-the-prompt-holds-the-network-and-a-resolver
 milestone_dependencies: 384, 595
@@ -10,39 +10,29 @@ needs_person: no
 ---
 # 892. A std program at the prompt holds the network and a name resolver
 
-**PARTIAL, 2026-10-19 (UTC).** Items 1 and 3 are built for `jig`, and a forget verb the block did
-not foresee is built under them. Item 4 is met: its positive and refusal halves are proved in the
-kernel harness, which calef accepted as the proof (ruling B on #2011, 2026-10-12 UTC). He approved
-the forget verb as written (Q2, "Approve", the same day), and ruled item 3's fork, also the same
-day ("yes, record c"). Then he ruled that a manifest declares the network beside its zones and
-the owner grants both at install ("a", the same day). What is left is building both for installed
-programs, under "Item 3, ruled" and "The network at install, ruled" below. The refusal half is
-built: an installed program is refused the network, by name, until its grant is recorded. A
-manifest note carries its zones, and `jig install` lists the asks. The table's grant lines are
-read, and each granted zone is a badge the PAL asks in order, so a granted program would hold the
-network and its zones. "Rulings of 2026-10-19" has calef's four rulings. What is left is writing a grant at
-install, which waits on the stdin contract proposed below.
+**BUILT, 2026-10-19 (UTC).** An installed `std` program started at the prompt holds the network
+and a resolver badge per zone, because the owner granted them at `jig install`. A package the owner
+does not approve is not installed, and bytes vouched for without a grant are refused the network by
+name. `script/swish-check` proves both halves on aarch64, riscv64 and
+x86_64; the kernel harness proves a name resolved inside a zone, which calef accepted as the proof
+(ruling B on #2011, 2026-10-12 UTC). His rulings are under "Item 3, ruled", "The network at
+install, ruled" and "Rulings of 2026-10-19".
 
 *(The title and slug are provisional.)*
 
 Milestone 801 (packages over the internet) built a std program that resolves a name through
-`std::net` and fetches the package index over TLS. Only the kernel test harness can start it.
+`std::net` and fetches the package index over TLS.
 
-## The gap
+## The pieces this joins
 
-Three pieces exist and are not joined at the prompt.
-
-- The name resolver runs only when a test starts it. Milestone 384 (in a capability system the
-  resolver is a grant)'s BUGS gave starting it from the lease to 801. 801 built the client half
-  and left this, because nothing at the prompt could use it.
-- A std program cannot hold the network at the prompt. Milestone 595 (the shell runs a `std`
-  program)'s BUGS: the progenitor does not mint the socket frames' budget slot 3 needs, so
-  `grant_plan` refuses a std manifest that declares the network.
-- A std program's resolver is a badge at `std_runtime_contract::RESOLVER_SLOT` (slot 9,
-  provisional), placed today only by `system_tests`' `std_service`.
+- The name resolver, which the progenitor starts once the lease arrives (item 1). Milestone 384
+  (in a capability system the resolver is a grant)'s BUGS gave that to 801, and 801 to this.
+- The network for a `std` program: the stack at slot 2 and the socket frames' budget at slot 3
+  (item 2), which milestone 595 (the shell runs a `std` program)'s BUGS left unminted.
+- A resolver badge per granted zone, at `std_runtime_contract::RESOLVER_SLOTS` (item 3).
 
 `jig` (milestone 809 (the package client becomes a program)) needs all three to reach
-`basalt.nifeos.org` by name, so rung 3c's exit criterion on xenon waits on this.
+`basalt.nifeos.org` by name, so rung 3c's exit criterion on xenon rests on this.
 
 ## The work
 
@@ -77,7 +67,7 @@ alone would have let the ninth `jig` of a boot be refused.
 - Item 1. The progenitor starts `domain_name_resolver` once the lease arrives, on either stack,
   told the lease's name server over UDP, and says so: `progenitor: name resolver up; asks
   10.0.2.3, the lease's name server`. `script/swish-check` requires that sentence on every boot
-  with a network. One more resting capability slot: `CAPABILITY_TABLE_PEAK_MEASURED` is 34.
+  with a network. The resolver's endpoint is one more capability the progenitor holds for life.
 - Item 2 was built for `jig` by milestone 809 (the package client becomes a program).
 - Item 3, for `jig`. `grant_plan::Program::resolver_zone` (provisional) names the zone in the
   program table, not in `Manifest`, so installed bytes can never carry one. Each `jig` job whose
@@ -106,16 +96,8 @@ versioned)). The owner can narrow them later. The details he accepted:
   the others.
 - A program that asks for nothing gets no resolver.
 
-What that leaves to build:
-
-1. The zones in a program's manifest note, the ask. `capability_manifest_note` is a format two programs agree
-   on, so the encoding is decided once.
-2. The granted zones in the installed-programs table's entry, which is where an owner's narrowing lands too.
-3. The progenitor grants one badge per granted zone at spawn and forgets each at the reap. The std
-   PAL holds one resolver slot today, so a program with several zones needs a slot per badge, or
-   a PAL that picks the badge whose zone holds the name.
-4. The line at install: each zone listed, and a root-zone ask flagged apart. One confirmation
-   covers it with the other grants; who builds it is below.
+All four pieces are built: the zones in the note, the granted zones in the table, a badge per
+zone, and the line at install. "Built 2026-10-19" has each.
 
 ## The network at install, ruled 2026-10-12 (UTC)
 
@@ -134,22 +116,15 @@ The question as put was loose on two points. The ruling reads as follows with bo
   approval file allows) lists them apart.
 - A manifest can already declare the network. `Manifest::network` is one flag (byte 34 of
   `capability_manifest_note`), and a program in the image table gets it today. What is missing is the install
-  path: `grant_plan::image_manifest` refuses vouched bytes whose note sets it
-  (`ImageRefusal::NetworkNotGranted`, provisional), and nothing at install lists it.
+  path, built 2026-10-19 under "Built 2026-10-19".
 
 So "network use" means the existing grant: a client view of the network stack carrying `WRITE`,
 at `NETWORK_SLOT` (slot 10) for a native program and slot 2 for a `std` one. A `std` program also
 gets the socket frames' budget at slot 3, as item 2 mints it for `jig`. It connects out and cannot
 listen (`socket_contract::NO_LISTEN_GRANT`).
 
-What that leaves to build, beside item 3's four pieces and in the same places:
-
-1. The progenitor endows the network to an installed program only when its installed-programs entry
-   records the owner's grant. `image_manifest` keeps refusing bytes with no such entry.
-2. The granted network in the installed-programs table's entry, in the same grant record as the zones, so an
-   owner's narrowing and 911's approval file reach it the same way.
-3. The line at install, "reaches the network (connects out)", in the one confirmation with the
-   zones.
+All three are built with item 3's: the network is endowed only on a recorded grant, recorded in
+the same grant lines as the zones, and listed in the one confirmation.
 
 The grant stays one flag, ruled 2026-10-12 (UTC). Once the network grant was found to bound no
 addresses, calef was asked whether it should be limited per destination now (b), or kept as one flag
@@ -159,87 +134,54 @@ today), and a per-destination limit comes from a filter layer such as Little Sni
 already bound which names a program can look up, and a filter in the network stack is a milestone of
 its own. (a) can be undone; (b) would have committed to building that filter now.
 
-## The refusal half, built 2026-10-19 (UTC)
+## Built 2026-10-19 (UTC)
 
-An installed program whose note asks for the network is refused it, native or `std`, until the
-owner's grant is read. `grant_plan::image_manifest` answers `ImageRefusal::NetworkNotGranted` for
-vouched bytes that ask. Unvouched bytes that ask still run granted nothing, as §219 (how the shell
-names an installed program to the spawner) rules for every unvouched ask. The progenitor and `caps` call the same function. At run the shell hashes such a file
-first, as `caps` does, so the prompt names the missing grant and does not fall back to the generic
-manifest refusal:
+Lane `milestone/892-installed-programs-hold-the-network-and-zones` (#2405).
 
-```text
-nife> dialer
-  refused: its manifest asks for the network, and no owner's grant of the network is recorded for it among the installed programs
-```
+- **The ask.** `capability_manifest_note` version 2: version 1's 56 bytes, then one to eight zones,
+  each a length byte and dotted ASCII. A note with no zone stays version 1, so no existing digest
+  changes. Zones are spelled as the resolver spells them
+  (`domain_name_resolution_contract::is_canonical_zone`), sorted, each once; the root zone is empty.
+  A program carries them with `carry!(MANIFEST, zones = &["nife.test"])`.
+- **The confirmation.** `jig install` lists each program's network and zone asks, the root zone
+  apart in capitals, and asks once; only `y` or `yes` sends the package. `jig` reads the answer as
+  standard input: the boot terminal badged `line_editor::proto::STDIN_BADGE`, at
+  `std_runtime_contract::STDIN_SLOT` (29), served `OPERATION_READ_LINE_BYTES` (eight bytes of the
+  typed line a reply) and nothing else. It is placed only for `Manifest::console_input`, which no
+  note can spell and which rides with the installer authority in `jig`'s verb table. The spawn
+  service holds that copy while it builds the job, which is the progenitor's capability peak:
+  `kernel::cap::CAPABILITY_TABLE_PEAK_MEASURED`, measured with and without it.
 
-`script/swish-check` installs `dialer` (`fixtures/src/dialer.rs` and `packages/dialer.recipe.toml`,
-both provisional), runs it and `caps` it, and requires the sentence on aarch64, riscv64 and x86_64.
-Host test: `vouched_bytes_asking_for_the_network_are_refused_and_unvouched_ones_get_nothing`.
+  ```text
+  $ jig install ./reach.nifepkg
+    reach asks for:
+      reaches the network (connects out)
+      looks up names in nife.test
+    grant these and install? [y/N] y
+    installed; generation … is live
+  ```
 
-## Zones in the manifest note, built 2026-10-19 (UTC)
-
-`capability_manifest_note` reads
-and writes a version 2 descriptor: version 1's 56 bytes, then a count of one to eight zones, each a
-length byte and dotted ASCII. A manifest that asks for no zone stays version 1, so no existing
-note's bytes or digest change, and a version 2 count of zero is refused. Zones are lowercase,
-sorted, each once, with no empty label; the root zone is length 0. `decode` reads either version
-into the same `Manifest`, and `zones` reads the asks. A program carries them with
-`carry!(MANIFEST, zones = &["", "nife.test"])`.
-
-Host tests: `a_zoned_descriptor_has_one_encoding`,
-`a_zoned_note_names_its_exact_length_and_pads_to_four` and `the_zone_limits_are_the_resolvers`.
-
-`jig install` lists each program's network and zone asks before it sends the package, with the
-root zone apart, in capitals. It asks nothing yet: the yes needs the stdin contract below.
-
-```text
-  dialer asks for:
-    reaches the network (connects out)
-    looks up names in nife.test
-    LOOKS UP ANY NAME AT ALL (the root zone)
-  none of these is granted: no owner's grant is recorded at install yet
-```
-
-## The grant record, built 2026-10-19 (UTC)
-
-The installed-programs table holds the owner's grants as lines of their own, keyed on the
-executable's digest, after the pointers:
-
-```text
-grant sha256:… network
-grant sha256:… zone .
-grant sha256:… zone nife.test
-```
-
-One line per grant, sorted, each once. The root zone is `.` (provisional spelling). A zone holds
-to the resolver's spelling (`domain_name_resolution_contract::is_canonical_zone`, which the
-manifest note uses too). A grant for no row, out of order, repeated or misspelled makes the table
-unreadable. An install carries forward the grants of the rows it keeps, and a removal drops its
-rows' grants. Approval is all or nothing at install: the grants are exactly the asks (milestone 911).
-
-Reading it is built. `installed_programs::network_granted` answers for a digest, and
-`grant_plan::image_manifest` takes a required `Vouch` (`Unvouched`, or `Vouched { network }`).
-The progenitor and the shell's run and `caps` build it from the table, so a granted program is
-endowed the network: slot 10 native, or slots 2 and 3 for `std`. A grant gives nothing the note did
-not ask for. Host tests: `grant_lines_are_read_strictly_and_follow_their_rows` and
-`vouched_bytes_asking_for_the_network_are_refused_and_unvouched_ones_get_nothing`.
-
-Writing a grant is not built, and nothing writes one: it needs the owner's yes, which needs the
-stdin contract below.
-
-**Several zones, built.** A `std` job holding the network gets one resolver badge per zone. A
-program in `grant_plan`'s table gets the table's one zone; an installed image gets each zone its
-`grant` lines give and its note asks for. The badges sit at `std_runtime_contract::RESOLVER_SLOTS`
-(9, then 22 to 28) in the table's order, and all are forgotten at the reap. The PAL's
-`lookup_host` asks them in slot order, lending its one page to each the first time, and moves on
-only when the resolver answers `DENIED`. Kernel test:
-`a_std_program_asks_each_badge_in_order_until_one_holds_the_name`, two badges whose first zone
-holds none of the names.
+- **The record.** The installer writes `grant <digest> network` and `grant <digest> zone <name>`
+  lines after the pointers, exactly each program's asks; the root zone is `.` (provisional).
+  `installed_programs` reads them strictly: a grant for no row, out of order, repeated or misspelled
+  makes the table unreadable. A removal drops its rows' grants.
+- **The endowment.** `grant_plan::image_manifest` takes a required `Vouch`. Vouched bytes whose note
+  asks for the network get it only on a `grant` line; without one they are refused by name
+  (`ImageRefusal::NetworkNotGranted`), native or `std`, and an owner's `vouch`, which records no
+  grant, is refused the same way. Unvouched bytes still run granted nothing (§219 (how the shell
+  names an installed program to the spawner)). A granted image gets one resolver badge per zone its
+  grants give and its note asks, at `std_runtime_contract::RESOLVER_SLOTS` (9, then 22 to 28),
+  forgotten at the reap. std's `lookup_host` asks them in order and moves on only on `DENIED`.
+- **The proof.** `script/swish-check` answers `n` for `dialer` (nothing is installed) and `y` for
+  `reach`, a `std` program (`std_exerciser/src/bin/std_reach.rs`, provisional), which then echoes
+  through the runner's peer and reads `PermissionDenied` for `example.com`, outside its zone. Kernel
+  tests: `a_std_program_asks_each_badge_in_order_until_one_holds_the_name` and
+  `a_copy_badged_as_stdin_reads_the_typed_line_and_nothing_else`. Host tests in
+  `capability_manifest_note`, `installed_programs` and `grant_plan` cover the encodings.
 
 ## Rulings of 2026-10-19 (UTC), on #2405
 
-calef took the recommendation each time, and each is built above unless noted.
+calef took the recommendation each time.
 
 - Zones in the note ("approve version 2?" "Yes"): descriptor version 2.
 - The grant record ("a"): `grant` lines keyed on the digest. Approval is all or nothing; the
@@ -248,35 +190,24 @@ calef took the recommendation each time, and each is built above unless noted.
   slots 22 to 28, the first seven free in a row, since `jig` holds 15 to 18 and the shell's
   configuration is 21.
 - The owner's yes ("a"): a byte-source contract gives a std program stdin, granted to `jig` at
-  the owner's console, with no `--yes` and no second verb. Its shape is proposed below.
-
-## The stdin contract, proposed
-
-calef chose a byte source for the owner's yes; its opcodes, framing and slot are open. Three
-options and a recommendation, a cooked read on a badged terminal copy at std slot 29, are in
-[the appendix](./0892-a-std-program-at-the-prompt-holds-the-network-and-a-resolver/stdin-contract.md).
-
-## Who builds the confirmation at install, decided 2026-10-19 (UTC)
-
-The maintainer's sequencing call on #2405: 892 builds `jig install`'s confirmation, with its zone
-and network lines and one yes, and milestone 910 (a package declares a service) adds its service
-line to it.
+  the owner's console, with no `--yes` and no second verb.
+- Its shape ("a"): the cooked read on a badged terminal copy at slot 29. The options are in
+  [the appendix](./0892-a-std-program-at-the-prompt-holds-the-network-and-a-resolver/stdin-contract.md).
+- The maintainer's sequencing call: 892 builds the install confirmation, and milestone 910 adds
+  its service line to it.
 
 ## BUGS
 
-- An installed program cannot hold the network or a zone yet: nothing writes a `grant` line (that
-  waits on the stdin contract).
 - Every badge is one of the resolver's eight windows, shared by every job on the machine, so one
   program granted eight zones leaves none for anyone else while it runs.
-- A granted program's network is proved by host tests only. No prompt proof exists until an
-  install can write a grant.
 - A program whose note asks for zones but not the network runs without a resolver; nothing refuses
   it by name.
-- `jig install` lists the asks but cannot take a yes: `jig` holds no input.
 - The shell hashes a file whose note asks for the network before each run, to name the missing
   grant, so such a run reads the file twice.
-
-- Item 3 is built for `jig` only; "Item 3, ruled" says what is left.
+- No verb narrows a grant after install. The format allows it (a generation without the line), and
+  milestone 911 (scripted installs grant only what the owner's approval file allows) owns revoking.
+- A stdin read that a terminal quiesce interrupts reads end of input, and the rest of a line a
+  program stopped reading stays for the next reader of the badge.
 - No program at the prompt resolves a name yet. `jig` holds the badge and fetches by a fixed
   address until milestone 809's item 6.
 - A screen-narrowed job gets no resolver. The shell, not `job_undertaker`, reaps it, so the
@@ -291,15 +222,13 @@ line to it.
 
 ## Follow-on
 
-- **Outstanding.** Item 3 for installed programs: the four pieces under "Item 3, ruled".
-- **Outstanding.** The network at install: the three pieces under "The network at install, ruled".
-  Both wait on the stdin contract for the owner's yes.
-- **Milestone 911.** Its approval file's "the network's socket budget" is this grant, and now cites
-  this block.
-- **Milestone 809.** `jig` resolves the index's host through this badge at item 6.
+- **Milestone 911.** Its approval file's "the network's socket budget" is this grant, and its grant
+  record is this block's `grant` lines.
+- **Milestone 910 (a package declares a service).** Adds its service line to `jig install`'s
+  confirmation.
+- **Milestone 809.** `jig` resolves the index's host through its badge at item 6.
 
 ## Index row
 
-A `std` program started at the prompt can hold the network and a name resolver. Today the pieces
-exist but join only when the kernel test harness starts them, so a package client cannot run from
-the shell.
+A `std` program installed with `jig` and started at the prompt holds the network and a name
+resolver, because the owner granted them at install; one not granted is refused by name.

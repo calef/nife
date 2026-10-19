@@ -1396,6 +1396,18 @@ pub(super) fn run(nav: &mut Nav, cmd: &[u8], spec: ParsedInvocation) {
             // DECISIONS §170 (how a foreign program is told what to do)). Assembled here, where a refusal can still name the program, and
             // before anything is sent, so a line that does not fit spawns nothing.
             _ if endow.program.manifest().program_argument.hears_words() => {
+                // **A job that reads the console needs the line discipline** (milestone 892 (a std
+                // program at the prompt holds the network and a resolver)): the terminal answers its
+                // stdin read only in cooked mode, so the shell leaves raw mode first, as it does for a
+                // supervised job, and the next prompt's editor takes it back.
+                let mut verb = [0u8; grant_plan::MAX_VERB];
+                let verb = grant_plan::verb_of(spec.line(), &mut verb);
+                let program = endow.program;
+                if grant_plan::narrow_by_verb(&program.manifest(), program.verbs(), verb)
+                    .console_input
+                {
+                    super::prompt::leave_raw();
+                }
                 match assemble_argv(spec.line(), 0) {
                     Ok(a) => spawn(endow, Some(a)),
                     Err(Some(r)) => refuse(spec, r),

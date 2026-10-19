@@ -4,7 +4,8 @@ An appendix of [milestone 892 (a std program at the prompt holds the network and
 resolver)](../0892-a-std-program-at-the-prompt-holds-the-network-and-a-resolver.md), kept apart
 under the word cap of §212 (a prose budget).
 
-calef chose a byte source; its opcodes, framing and slot are open. Names are provisional.
+calef chose a byte source, then its shape: (a), on #2405, 2026-10-19 (UTC). It is built as
+written here. Names are provisional.
 
 - (a) Recommended: a cooked read on a badged terminal copy. A new `line_editor::proto` opcode,
   `OPERATION_READ_LINE_BYTES`, asks for up to eight bytes of the current line. The terminal runs its

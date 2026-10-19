@@ -125,6 +125,7 @@ const QUEUE: usize = 4;
 static mut DISC: LineDisc = LineDisc::new();
 static mut LINE_QUEUE: LineQueue = LineQueue::new();
 static mut RAW_QUEUE: RawQueue = RawQueue::new();
+static mut STDIN_LINE: StdinLine = StdinLine::new();
 
 #[unsafe(no_mangle)]
 pub extern "C" fn _start(mode: u64, control: u64, start: u64) -> ! {
@@ -142,10 +143,15 @@ pub extern "C" fn _start(mode: u64, control: u64, start: u64) -> ! {
     let raw_queue_p = &raw mut RAW_QUEUE;
     // SAFETY: see above.
     let raw_queue = unsafe { &mut *raw_queue_p };
+    let stdin_p = &raw mut STDIN_LINE;
+    // SAFETY: see above.
+    let stdin = unsafe { &mut *stdin_p };
     let mut term = Terminal {
         disc,
         queue,
         raw_queue,
+        stdin,
+        pending_stdin: None,
         con: Con { used: 0, mode },
         pending: None,
         intr_count: 0,
@@ -181,12 +187,21 @@ pub extern "C" fn _start(mode: u64, control: u64, start: u64) -> ! {
         // keystrokes over the UART) may switch raw mode and read raw bytes, and nothing it sends
         // can reach the queue the shell reads its next command from. An allowlist, so a request
         // added to the contract later is refused here until somebody decides a reader may send it.
-        if badge != 0
-            && !matches!(
-                proto::operation(w0),
-                proto::OPERATION_RAWMODE | proto::OPERATION_READRAW
-            )
-        {
+        //
+        // **A copy badged `proto::STDIN_BADGE` is a program's standard input and nothing else**
+        // (milestone 892 (a std program at the prompt holds the network and a resolver)): it reads
+        // the line being typed, eight bytes at a time, and the unbadged surface never serves that
+        // read, so the shell's own lines cannot be taken through it.
+        let op = proto::operation(w0);
+        let allowed = match badge {
+            0 => op != proto::OPERATION_READ_LINE_BYTES,
+            proto::RAW_ONLY_BADGE => {
+                matches!(op, proto::OPERATION_RAWMODE | proto::OPERATION_READRAW)
+            }
+            proto::STDIN_BADGE => op == proto::OPERATION_READ_LINE_BYTES,
+            _ => false,
+        };
+        if !allowed {
             reply(slot, proto::BAD_REQUEST, 0);
             continue;
         }
@@ -200,6 +215,10 @@ struct Terminal {
     disc: &'static mut LineDisc,
     queue: &'static mut LineQueue,
     raw_queue: &'static mut RawQueue,
+    /// The line a [`proto::STDIN_BADGE`] reader is draining, `\n` included.
+    stdin: &'static mut StdinLine,
+    /// A parked `OPERATION_READ_LINE_BYTES`, answered when a line is complete.
+    pending_stdin: Option<Reply>,
     con: Con,
     // A parked READLINE: the slot holding the caller's one-shot Reply capability. The caller
     // stays blocked (that is CALL's contract) while we serve everyone else.
@@ -278,6 +297,13 @@ impl Terminal {
             proto::OPERATION_READLINE if self.raw_mode => {
                 reply(slot, proto::BAD_REQUEST, 0);
             }
+            proto::OPERATION_READ_LINE_BYTES if self.raw_mode || self.pending_stdin.is_some() => {
+                reply(slot, proto::BAD_REQUEST, 0);
+            }
+            proto::OPERATION_READ_LINE_BYTES => {
+                self.pending_stdin = Some(slot);
+                self.deliver_stdin();
+            }
             proto::OPERATION_WRITE => self.write(w0, slot),
             proto::OPERATION_READLINE => self.read_line(w0, slot),
             proto::OPERATION_PRINT => {
@@ -350,6 +376,7 @@ impl Terminal {
                     if let Some(p) = self.pending.take() {
                         reply(p, 0, proto::FLAG_INTERRUPTED);
                     }
+                    self.end_stdin();
                 }
                 // ^Z: only counted. The shell polls the count while it watches a foreground job
                 // and suspends the job; a pending read is not failed, since nothing was asked.
@@ -365,6 +392,7 @@ impl Terminal {
         self.con.flush();
         reply(slot, 0, 0);
         deliver(self.queue, &mut self.pending);
+        self.deliver_stdin();
     }
 
     /// `OPERATION_RAWMODE`: switch modes, abandoning the one being left.
@@ -380,6 +408,7 @@ impl Terminal {
             if let Some(p) = self.pending.take() {
                 reply(p, proto::BAD_REQUEST, 0);
             }
+            self.end_stdin();
         } else {
             *self.raw_queue = RawQueue::new();
             if let Some(p) = self.pending_raw.take() {
@@ -440,6 +469,8 @@ impl Terminal {
         if let Some(p) = self.pending_raw.take() {
             reply(p, 0, proto::FLAG_RETRY);
         }
+        // A stdin reader is not in the handoff blob: it reads end of input instead.
+        self.end_stdin();
         if self.start & proto::START_HANDOFF != 0 {
             // Written before the reply, so the supervisor's QUIESCED is also the receipt
             // that the page holds this instance's final state.
@@ -465,6 +496,77 @@ impl Terminal {
         if what != proto::CTL_RESUME {
             user_mode_runtime::exit()
         }
+    }
+}
+
+impl Terminal {
+    /// **Answer a parked stdin read** from the line it is draining, or take the next complete line
+    /// for it when the shell is not waiting for one: the shell's own read comes first, since a
+    /// line typed while it reads is a command.
+    fn deliver_stdin(&mut self) {
+        if self.pending_stdin.is_none() {
+            return;
+        }
+        if self.stdin.is_drained() {
+            if self.pending.is_some() || self.queue.count == 0 {
+                return;
+            }
+            let flags = self.queue.pop_front_with(|line| self.stdin.fill(line));
+            if flags & proto::FLAG_EOF != 0 {
+                self.end_stdin();
+                return;
+            }
+        }
+        let (n, packed) = self.stdin.take8();
+        if let Some(p) = self.pending_stdin.take() {
+            reply(p, n as u64, packed);
+        }
+    }
+
+    /// End a stdin reader's input: answer a parked read with count 0, and drop the rest of the line.
+    fn end_stdin(&mut self) {
+        *self.stdin = StdinLine::new();
+        if let Some(p) = self.pending_stdin.take() {
+            reply(p, 0, 0);
+        }
+    }
+}
+
+/// **The line a stdin reader is draining**, with its `\n`, and how far it has read.
+struct StdinLine {
+    bytes: [u8; LINE_MAX + 1],
+    len: usize,
+    at: usize,
+}
+
+impl StdinLine {
+    const fn new() -> Self {
+        StdinLine {
+            bytes: [0; LINE_MAX + 1],
+            len: 0,
+            at: 0,
+        }
+    }
+
+    fn is_drained(&self) -> bool {
+        self.at == self.len
+    }
+
+    fn fill(&mut self, line: &[u8]) {
+        let n = line.len().min(LINE_MAX);
+        self.bytes[..n].copy_from_slice(&line[..n]);
+        self.bytes[n] = b'\n';
+        self.len = n + 1;
+        self.at = 0;
+    }
+
+    /// Up to eight bytes, packed little-endian, as `OPERATION_READRAW` packs them.
+    fn take8(&mut self) -> (usize, u64) {
+        let n = (self.len - self.at).min(8);
+        let mut word = [0u8; 8];
+        word[..n].copy_from_slice(&self.bytes[self.at..self.at + n]);
+        self.at += n;
+        (n, u64::from_le_bytes(word))
     }
 }
 
@@ -595,6 +697,16 @@ impl LineQueue {
     }
 
     /// Pop the oldest line into the page at `base`; returns (length, flags).
+    /// The front line handed to `f`, then dropped from the queue; its flags.
+    fn pop_front_with(&mut self, f: impl FnOnce(&[u8])) -> u64 {
+        let (line, len, flags) = &self.lines[self.head];
+        f(&line[..*len]);
+        let flags = *flags;
+        self.head = (self.head + 1) % QUEUE;
+        self.count -= 1;
+        flags
+    }
+
     fn pop_front_into(&mut self, base: u64) -> (usize, u64) {
         let (line, len, flags) = &self.lines[self.head];
         for (i, &b) in line[..*len].iter().enumerate() {

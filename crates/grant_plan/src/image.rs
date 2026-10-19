@@ -121,6 +121,8 @@ pub fn image_can_carry(m: &Manifest) -> bool {
         && m.indexes == IndexStoreDeclaration::Forbidden
         // Milestone 809: and the activation directory, which shows what is installed.
         && !m.activation_directory
+        // Milestone 892: and the console's input, which only the owner's console hands out.
+        && !m.console_input
         && std == (m.program_argument.hears_words())
         && (!std
             || (m.output == OutputDeclaration::Bytes

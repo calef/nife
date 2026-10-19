@@ -510,13 +510,46 @@ pub fn with_entries<'a, I>(
 where
     I: Iterator<Item = Entry<'a>>,
 {
+    with_entries_granting(table, entries, image_carries, core::iter::empty, out)
+}
+
+/// **[`with_entries`], and the owner's grants to the new rows** (milestone 892 (a std program at
+/// the prompt holds the network and a resolver); calef's ruling "a" on #2405: the grant record).
+/// `granted` yields each grant the owner approved, keyed on a new row's digest; the grants are
+/// exactly a program's asks, all or nothing. Every existing grant is kept: a digest is one set of
+/// bytes and so one note, so a digest installed again asks what it asked before, and its lines
+/// merge with themselves. The lines come out sorted and each once, as [`grants`] reads them. A grant for no new row, or a zone
+/// spelled other than the resolver spells it, is [`Error::Malformed`] and nothing is written.
+///
+/// Name: provisional, minted 2026-10-19 (UTC) by milestone/892-installed-programs-hold-the-network-and-zones.
+pub fn with_entries_granting<'a, I, G>(
+    table: &'a str,
+    entries: impl Fn() -> I,
+    image_carries: impl Fn(&str) -> bool,
+    granted: impl Fn() -> G,
+    out: &mut [u8],
+) -> Result<usize, Refused<'a>>
+where
+    I: Iterator<Item = Entry<'a>>,
+    G: Iterator<Item = Grant<'a>>,
+{
     for entry in entries() {
         refuse_entry(table, &entry, image_carries(entry.program))?;
+    }
+    for g in granted() {
+        let named = entries().any(|e| e.digest == g.digest);
+        let spelled = match g.what {
+            Granted::Network => true,
+            Granted::Zone(z) => domain_name_resolution_contract::is_canonical_zone(z.as_bytes()),
+        };
+        if !named || !spelled {
+            return Err(Error::Malformed.into());
+        }
     }
     let mut writer = Writer { out, at: 0 };
     write_rows(table, &entries, &mut writer)?;
     write_pointers(table, &entries, &mut writer)?;
-    write_grants(table, |_| true, &mut writer)?;
+    write_grants(table, |_| true, &granted, &mut writer)?;
     Ok(writer.at)
 }
 
@@ -578,22 +611,43 @@ where
 }
 
 /// The grant lines of `table` whose digest `keep` answers yes for, in their order, which is
-/// already sorted ([`grants`] refuses a table that is not). Nothing writes a new grant yet: the
-/// owner's yes at install has no input to arrive on (the BUGS of milestone 892 (a std program at
-/// the prompt holds the network and a resolver)).
+/// already sorted ([`grants`] refuses a table that is not), merged with `granted`'s in one sorted
+/// order. Each line is the least one greater than the last written, chosen by a scan of both, which
+/// needs no buffer and no allocation; a table holds a few dozen grants at most, so the quadratic
+/// scan costs nothing a person sees.
 #[inline(never)]
-fn write_grants(
-    table: &str,
+fn write_grants<'a, G>(
+    table: &'a str,
     keep: impl Fn(&Digest) -> bool,
+    granted: &impl Fn() -> G,
     writer: &mut Writer<'_>,
-) -> Result<(), Error> {
+) -> Result<(), Error>
+where
+    G: Iterator<Item = Grant<'a>>,
+{
     for g in grants(table) {
-        let g = g?;
-        if keep(&g.digest) {
-            writer.grant(&g)?;
-        }
+        g?;
     }
-    Ok(())
+    let candidates = || {
+        grants(table)
+            .flatten()
+            .filter(|g| keep(&g.digest))
+            .chain(granted())
+    };
+    let mut last: Option<Grant<'_>> = None;
+    loop {
+        let next = candidates()
+            .filter(|c| last.is_none_or(|l| grant_before(&l, c)))
+            .fold(None, |best: Option<Grant<'_>>, c| match best {
+                Some(b) if !grant_before(&c, &b) => Some(b),
+                _ => Some(c),
+            });
+        let Some(g) = next else {
+            return Ok(());
+        };
+        writer.grant(&g)?;
+        last = Some(g);
+    }
 }
 
 /// Whether `entry` may join `table`: its names read back, a package's program is not the image's
@@ -698,6 +752,7 @@ pub fn without_package(
                 .flatten()
                 .any(|e| e.digest == *digest && !gone(&e))
         },
+        &core::iter::empty,
         &mut writer,
     )?;
     Ok(writer.at)
@@ -1856,6 +1911,115 @@ mod tests {
         assert!(
             after.contains(&format!("grant {tb} zone nife.test")),
             "and only its rows'"
+        );
+    }
+
+    /// **An install writes the owner's grants beside its rows, sorted and once** (calef's ruling
+    /// "a" on #2405, the grant record): the new grants merge with the kept ones in line order, a
+    /// grant for no new row or with a misspelled zone refuses the install whole, and installing the
+    /// same digest again changes nothing.
+    #[test]
+    fn an_install_writes_its_grants_in_order() {
+        let (a, b) = ([0xaau8; 32], [0x11u8; 32]);
+        let text = |d: &Digest| String::from_utf8(measured_boot::digest_text(d).to_vec()).unwrap();
+        let entry = |program, digest| Entry {
+            program,
+            version: "0.1.0",
+            package: program,
+            digest,
+            manager: "jig",
+        };
+        let reach = [
+            Grant {
+                digest: a,
+                what: Granted::Zone("nife.test"),
+            },
+            Grant {
+                digest: a,
+                what: Granted::Network,
+            },
+        ];
+        let mut out = vec![0u8; 4096];
+        let n = with_entries_granting(
+            "",
+            || core::iter::once(entry("reach", a)),
+            |_| false,
+            || reach.into_iter(),
+            &mut out,
+        )
+        .unwrap();
+        let first = core::str::from_utf8(&out[..n]).unwrap().to_string();
+        let (ta, tb) = (text(&a), text(&b));
+        assert!(
+            first.ends_with(&format!("grant {ta} network\ngrant {ta} zone nife.test\n")),
+            "network sorts before zone: {first}"
+        );
+        assert_eq!(network_granted(&first, &a), Ok(true));
+
+        // A second package's grant sorts between by digest, and the first's lines are kept.
+        let other = [Grant {
+            digest: b,
+            what: Granted::Zone(""),
+        }];
+        let n = with_entries_granting(
+            &first,
+            || core::iter::once(entry("other", b)),
+            |_| false,
+            || other.into_iter(),
+            &mut out,
+        )
+        .unwrap();
+        let second = core::str::from_utf8(&out[..n]).unwrap().to_string();
+        let lines: vec::Vec<_> = second.lines().filter(|l| l.starts_with("grant ")).collect();
+        assert_eq!(
+            lines,
+            [
+                format!("grant {tb} zone ."),
+                format!("grant {ta} network"),
+                format!("grant {ta} zone nife.test"),
+            ]
+        );
+        // The same bytes again: the same table.
+        let n = with_entries_granting(
+            &second,
+            || core::iter::once(entry("reach", a)),
+            |_| false,
+            || reach.into_iter(),
+            &mut out,
+        )
+        .unwrap();
+        assert_eq!(core::str::from_utf8(&out[..n]).unwrap(), second);
+
+        let stray = [Grant {
+            digest: b,
+            what: Granted::Network,
+        }];
+        assert_eq!(
+            with_entries_granting(
+                &first,
+                || core::iter::once(entry("reach", a)),
+                |_| false,
+                || stray.into_iter(),
+                &mut out
+            )
+            .map(|_| ()),
+            Err(Error::Malformed.into()),
+            "a grant for no new row"
+        );
+        let misspelled = [Grant {
+            digest: a,
+            what: Granted::Zone("Nife.test"),
+        }];
+        assert_eq!(
+            with_entries_granting(
+                "",
+                || core::iter::once(entry("reach", a)),
+                |_| false,
+                || misspelled.into_iter(),
+                &mut out
+            )
+            .map(|_| ()),
+            Err(Error::Malformed.into())
         );
     }
 }

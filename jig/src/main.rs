@@ -67,6 +67,7 @@ capability_manifest_note::carry!(grant_plan::Manifest {
     catalog: false,
     indexes: grant_plan::IndexStoreDeclaration::Forbidden,
     activation_directory: false,
+    console_input: false,
     ..grant_plan::Program::Jig.manifest()
 });
 
@@ -364,11 +365,10 @@ fn ask(verb: Activation, staged: Option<&Staged>, name: Option<&str>) -> Reply {
 /// flagged apart in capitals, since it is any name at all. A program that asks for neither is not
 /// listed. Bytes this cannot read are left for the progenitor to refuse.
 ///
-/// **It lists and does not ask.** The owner's yes has nowhere to be recorded until the
-/// installed-programs table holds a grant record, so nothing here is granted, and the line says so.
-fn say_asks(bytes: &[u8]) {
+/// Whether anything was listed, which is whether the owner must be asked ([`owner_says_yes`]).
+fn say_asks(bytes: &[u8]) -> bool {
     let Ok(package) = package_archive::Package::parse(bytes) else {
-        return;
+        return false;
     };
     let mut any = false;
     for index in 0..package.len() {
@@ -408,15 +408,36 @@ fn say_asks(bytes: &[u8]) {
             println!("    LOOKS UP ANY NAME AT ALL (the root zone)");
         }
     }
-    if any {
-        println!("  none of these is granted: no owner's grant is recorded at install yet");
+    any
+}
+
+/// **The owner's one yes for every grant listed** (milestone 892; calef's rulings on #2405: one
+/// confirmation, all or nothing, read from the console as standard input). `y` or `yes`, in any
+/// case, grants them; anything else, end of input included, grants nothing and installs nothing.
+/// A `jig` started with no console input (a script, a line that is not `install`) reads end of
+/// input at once, so it can never install a package that asks for something.
+fn owner_says_yes() -> bool {
+    use std::io::{BufRead, Write};
+    print!("  grant these and install? [y/N] ");
+    let _ = std::io::stdout().flush();
+    let mut answer = String::new();
+    if std::io::stdin().lock().read_line(&mut answer).is_err() {
+        return false;
     }
+    if !answer.ends_with('\n') {
+        // End of input reached before a line: say so on its own line.
+        println!();
+    }
+    matches!(answer.trim().to_ascii_lowercase().as_str(), "y" | "yes")
 }
 
 /// **Send `staged` to the installer and say what came of it**, naming a refused program from these
 /// bytes, which are the ones the progenitor judged (milestone 919).
 fn send_install(staged: &mut Staged, fetched: bool) -> ExitCode {
-    say_asks(staged.bytes());
+    if say_asks(staged.bytes()) && !owner_says_yes() {
+        println!("  not installed; nothing was granted");
+        return ExitCode::FAILURE;
+    }
     let reply = ask(Activation::Install, Some(staged), None);
     let program = reply.member.checked_sub(1).and_then(|index| {
         let package = package_archive::Package::parse(staged.bytes()).ok()?;

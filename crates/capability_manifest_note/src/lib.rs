@@ -247,6 +247,11 @@ pub const fn encode(m: &Manifest) -> [u8; DESCRIPTOR_LEN] {
         !m.activation_directory,
         "a manifest note cannot carry `activation_directory`: only the owner's console grants it"
     );
+    // Milestone 892: and standard input from the console.
+    assert!(
+        !m.console_input,
+        "a manifest note cannot carry `console_input`: only the owner's console grants it"
+    );
     let mut out = [0u8; DESCRIPTOR_LEN];
     let v = VERSION.to_le_bytes();
     out[0] = v[0];
@@ -431,6 +436,7 @@ pub fn decode(d: &[u8]) -> Result<Manifest, Error> {
         catalog: false,
         indexes: IndexStoreDeclaration::Forbidden,
         activation_directory: false,
+        console_input: false,
         startup,
     })
 }
@@ -686,7 +692,7 @@ impl<'a> Zones<'a> {
     /// The zones in their sorted order, each as dotted text; the root zone is empty.
     ///
     /// Name: provisional, minted 2026-10-19 (UTC) by milestone/892-installed-programs-hold-the-network-and-zones.
-    pub fn iter(&self) -> impl Iterator<Item = &'a [u8]> + '_ {
+    pub fn iter(&self) -> impl Iterator<Item = &'a [u8]> + use<'a> {
         let mut rest = self.records;
         core::iter::from_fn(move || {
             let (&len, tail) = rest.split_first()?;

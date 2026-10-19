@@ -271,6 +271,11 @@ pub(crate) const DOWNLOADED_SOLO: &str = "downloads/solo.nifepkg";
 /// granted, so it is refused once installed. Provisional name.
 pub(crate) const DOWNLOADED_DIALER: &str = "downloads/dialer.nifepkg";
 
+/// **`reach`'s package, on the disk when `std_exerciser` was built** (milestone 892): a `std`
+/// program whose note asks for the network and the zone `nife.test`, which the gate installs
+/// answering yes and then runs holding both. Provisional name.
+pub(crate) const DOWNLOADED_REACH: &str = "downloads/reach.nifepkg";
+
 /// **What the gate's package source serves this architecture** (milestone 198 rung 3a's fetch):
 /// `helpers/package-http-peer` reads `NIFE_PACKAGE_SOURCE`, and `script/swish-check` points it here,
 /// one directory per architecture so two legs never share one. It holds `greeting`'s package as the
@@ -549,6 +554,8 @@ fn stage_installed(architecture: &str) -> Result<String, String> {
     let duet = read_built_package(&root, &format!("duet-0.1.0-{architecture}"))?;
     let solo = read_built_package(&root, &format!("solo-0.1.0-{architecture}"))?;
     let dialer = read_built_package(&root, &format!("dialer-0.1.0-{architecture}"))?;
+    // Built only beside `std_exerciser` (`package::Source::StdProgram`); its lines go with it.
+    let reach = read_built_package(&root, &format!("reach-0.1.0-{architecture}")).ok();
     let (archive, image) = image_lacking_the_packages(architecture)?;
 
     let source = package_source_dir(architecture);
@@ -586,6 +593,9 @@ fn stage_installed(architecture: &str) -> Result<String, String> {
     write_seed_file(tree.join(DOWNLOADED_DUET), &duet)?;
     write_seed_file(tree.join(DOWNLOADED_SOLO), &solo)?;
     write_seed_file(tree.join(DOWNLOADED_DIALER), &dialer)?;
+    if let Some(reach) = &reach {
+        write_seed_file(tree.join(DOWNLOADED_REACH), reach)?;
+    }
     eprintln!(
         "seed_installed ({architecture}): {stem} ({} bytes, digest {}) at {DOWNLOADED_PACKAGE}, \
          a tampered copy, {noteless_stem} at \

@@ -296,6 +296,7 @@ struct Wants {
     share: bool,
     reboot: bool,
     sync: bool,
+    console_input: bool,
 }
 
 impl Wants {
@@ -343,6 +344,9 @@ impl Wants {
             share: wants_share,
             reboot: wants_reboot,
             sync: wants_sync,
+            // And standard input from the console (milestone 892 (a std program at the prompt
+            // holds the network and a resolver)), which only a program in the table declares.
+            console_input: manifest.is_some_and(|m| m.console_input),
         }
     }
 }
@@ -352,12 +356,13 @@ impl Wants {
 type PackageParts = (Option<(u64, u64)>, Option<u64>, bool, bool);
 
 /// What a `std` child is placed beyond [`Wants`]: its argv page, installer endpoints, catalog page,
-/// resolver badges and index sources page.
+/// resolver badges, index sources page and standard input.
 type StdParts = (
     Option<u64>,
     Option<(u64, u64)>,
     Option<u64>,
     Resolvers,
+    Option<u64>,
     Option<u64>,
 );
 
@@ -398,6 +403,8 @@ struct JobLeftovers {
     /// The badged copies of the resolver's endpoint the child was placed, one per zone (milestone
     /// 892).
     resolvers: Resolvers,
+    /// The badged copy of the terminal endpoint the child was placed as its stdin (milestone 892).
+    stdin: Option<u64>,
     catalog_page: Option<u64>,
     /// The child's copy of the image's index sources (milestone 801).
     sources_page: Option<u64>,
@@ -938,6 +945,15 @@ impl Service<'_> {
         } else {
             (NO_RESOLVERS, false)
         };
+        // **The console as standard input** (milestone 892), for a `std` job whose manifest says
+        // so: the boot terminal, badged so the terminal serves it the typed line and nothing else
+        // (`line_editor::proto::STDIN_BADGE`). Not for a screen-narrowed job, whose keystrokes are
+        // its session's. A job that should hold it and could not be given it is refused.
+        let wants_stdin = std_layout && wants.console_input && req.delegated.screen.is_none();
+        let stdin = wants_stdin
+            .then(|| badged(self.c.boot_terminal, line_editor::proto::STDIN_BADGE).ok())
+            .flatten();
+        let stdin_failed = wants_stdin && stdin.is_none();
 
         let out = self.output(req);
         let native = self.native_endowment(req, manifest, &wants, &dir, out);
@@ -958,7 +974,14 @@ impl Service<'_> {
         let args_failed = std_layout && req.args_seen.is_some() && args_page.is_none();
         let std_parts = match (std_layout, region) {
             (true, Some(r)) => {
-                let parts = (args_page, installer, catalog_page, resolvers, sources_page);
+                let parts = (
+                    args_page,
+                    installer,
+                    catalog_page,
+                    resolvers,
+                    sources_page,
+                    stdin,
+                );
                 Some(self.std_layout(r, out, &wants, &dir, parts))
             }
             _ => None,
@@ -982,6 +1005,7 @@ impl Service<'_> {
                 && !installer_failed
                 && !catalog_failed
                 && !resolver_failed
+                && !stdin_failed
                 && fault.is_some()
         });
         let built = build_job(
@@ -1003,6 +1027,7 @@ impl Service<'_> {
             dir,
             installer,
             resolvers,
+            stdin,
             catalog_page,
             sources_page,
             args_page,
@@ -1597,7 +1622,7 @@ impl Service<'_> {
         out: (u64, u64),
         wants: &Wants,
         dir: &DirWiring,
-        (args_page, installer, catalog_page, resolvers, index_sources): StdParts,
+        (args_page, installer, catalog_page, resolvers, index_sources, stdin): StdParts,
     ) -> StdLayout {
         let Channels {
             clock_page,
@@ -1622,6 +1647,7 @@ impl Service<'_> {
                 catalog: catalog_page,
                 resolvers,
                 index_sources,
+                stdin,
             },
         )
     }
@@ -1635,6 +1661,7 @@ impl Service<'_> {
             dir,
             installer,
             resolvers,
+            stdin,
             catalog_page,
             sources_page,
             args_page,
@@ -1683,7 +1710,7 @@ impl Service<'_> {
         // The narrowed endpoint was only ever the means of wiring: the child holds its own copy
         // and the caretaker holds the other end. Dropped whether or not the build worked, so a
         // failed spawn does not cost this capability table a slot for the rest of the boot.
-        for endpoint in [dir.narrowed, dir.sync_ep]
+        for endpoint in [dir.narrowed, dir.sync_ep, stdin]
             .into_iter()
             .chain(resolvers)
             .flatten()

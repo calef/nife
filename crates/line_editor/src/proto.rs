@@ -99,12 +99,33 @@ pub const OPERATION_READRAW: u64 = 7;
 /// The spawn service mints this one (`abi::rendezvous::BADGE`) for a `graphical_terminal`
 /// session with no keyboard, whose keystrokes come from the boot's own discipline. The badge is
 /// the kernel's word on every receive (§230 (badged endpoint capabilities)) and a badged copy
-/// cannot be re-badged, so a holder cannot widen it back to the unbadged surface. The rule is
-/// "non-zero", not "this value", so the terminal holds no table; the value is fixed only so the
-/// one minting site and a test agree on it.
+/// cannot be re-badged, so a holder cannot widen it back to the unbadged surface. The terminal
+/// serves a badge by its value: this one, [`STDIN_BADGE`], and nothing on any other.
 ///
 /// Name: provisional (the lane for milestone 709, 2026-10-03).
 pub const RAW_ONLY_BADGE: u64 = 1;
+
+/// **The badge on a copy of the terminal endpoint that is a program's standard input** (milestone
+/// 892 (a std program at the prompt holds the network and a resolver); calef, 2026-10-19 (UTC), on
+/// #2405: "a"). The terminal serves [`OPERATION_READ_LINE_BYTES`] on it and refuses everything else
+/// with [`BAD_REQUEST`], so its holder reads the lines the owner types and can neither type one,
+/// print, nor switch modes. The spawn service mints it for a program whose manifest sets
+/// `grant_plan::Manifest::console_input`, which only `grant_plan`'s table can, and std reads it at
+/// `std_runtime_contract::STDIN_SLOT`.
+///
+/// Name: provisional, minted 2026-10-19 (UTC) by milestone/892-installed-programs-hold-the-network-and-zones.
+pub const STDIN_BADGE: u64 = 2;
+
+/// Application → terminal, on a [`STDIN_BADGE`] copy only: **up to eight bytes of the line being
+/// typed** (milestone 892, ruled with [`STDIN_BADGE`]). The terminal's own line discipline echoes
+/// and edits the line; once it is complete, the reply is r0 = count (1..=8) and r1 = the bytes,
+/// packed little-endian as [`OPERATION_READRAW`] packs them. Later calls drain the rest of the line,
+/// its `\n` included, before the next line is taken. r0 = 0 is end of input: `^D`, a `^C`, a
+/// quiesce, or raw mode, none of which a reader can be made to wait through. Refused in raw mode,
+/// and while another such read is parked. No page is involved.
+///
+/// Name: provisional, minted 2026-10-19 (UTC) by milestone/892-installed-programs-hold-the-network-and-zones.
+pub const OPERATION_READ_LINE_BYTES: u64 = 10;
 
 /// Supervisor → terminal: **stop serving so a replacement can take over** (milestone 23 (a capability-routed component OS with live replacement), the
 /// `line_editor` swap; ruled by calef 2026-09-26, "1a"). It rides the served endpoint, so its

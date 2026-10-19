@@ -30,8 +30,8 @@
 ///   `grant_plan::INSTALLER_SLOT` has the rights). Slot 18 and a read-only page at
 ///   `INDEX_SOURCES_PAGE`: the image's index sources, beside the index store at slot 4 (milestone
 ///   801 (packages over the internet)).
-/// - slot 9, then 22 to 28 (`std_runtime_contract::RESOLVER_SLOTS`): the name resolver, `WRITE`, one
-///   badge per granted zone, for a job holding the network (milestone 892 (a std program at the
+/// - slots 9 and 22 to 28: one resolver badge per granted zone, for a job holding the network; slot
+///   29: the boot terminal as stdin, for `console_input` (milestone 892 (a std program at the
 ///   prompt holds the network and a resolver)).
 ///
 /// Name: provisional.
@@ -47,7 +47,7 @@
 ///   and not `SPLIT`, which is the syscall surface and an architect's call.
 pub(super) struct StdLayout {
     pub(super) caps: [(u64, u64); 2],
-    placed: [(u64, u64, u64); 22],
+    placed: [(u64, u64, u64); 23],
     placed_n: usize,
     maps: [(u64, u64, u64); 6],
     maps_n: usize,
@@ -75,6 +75,8 @@ pub(super) struct StdGrants {
     pub(super) resolvers: Resolvers,
     /// The child's own copy of the image's index sources (milestone 801).
     pub(super) index_sources: Option<u64>,
+    /// The boot terminal, badged as standard input (milestone 892).
+    pub(super) stdin: Option<u64>,
 }
 
 // `caps` lands in order from slot 0, so the two in-order slots must be 0 and 1. Checked here rather
@@ -129,6 +131,7 @@ impl StdLayout {
             catalog,
             resolvers,
             index_sources,
+            stdin,
         } = g;
         // The heap's budget is spend-only, unless the child holds the installer: `jig` stages a
         // package in pages retyped from its heap and lends them to the progenitor, and since
@@ -141,7 +144,7 @@ impl StdLayout {
         };
         let mut l = StdLayout {
             caps: [(region, heap), out],
-            placed: [(0, 0, 0); 22],
+            placed: [(0, 0, 0); 23],
             placed_n: 0,
             maps: [(0, 0, 0); 6],
             maps_n: 0,
@@ -168,6 +171,9 @@ impl StdLayout {
         if let Some((endpoint, reply)) = installer {
             l.place(grant_plan::INSTALLER_SLOT, endpoint, WRITE);
             l.place(grant_plan::INSTALLER_REPLY_SLOT, reply, READ);
+        }
+        if let Some(endpoint) = stdin {
+            l.place(rt::STDIN_SLOT, endpoint, WRITE);
         }
         for (slot, endpoint) in rt::RESOLVER_SLOTS.into_iter().zip(resolvers) {
             if let Some(endpoint) = endpoint {

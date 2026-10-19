@@ -667,7 +667,9 @@ impl OptionalPrograms {
                 // not built the exerciser ("no such name in this directory").
                 || line == "wc < args.txt"
                 || line.contains(crate::disk::INSTALLED_STD_ECHO)
-                || line.contains(crate::disk::INSTALLED_STD_GREP))
+                || line.contains(crate::disk::INSTALLED_STD_GREP)
+                // `reach`'s package is built from the same workspace (milestone 892).
+                || crate::swish_check::script::REACH_LINES.contains(&line))
                 && !self.std_built)
     }
 }
@@ -1064,6 +1066,7 @@ fn type_script<'s>(
     for &Line {
         typed: line,
         echoed,
+        asks,
         ..
     } in leg.script
     {
@@ -1095,7 +1098,7 @@ fn type_script<'s>(
             took.push((prev, typed.elapsed()));
         }
         previous = Some((line, Instant::now()));
-        if let Err(why) = type_one_line(line, echoed, line_secs, console, stdin) {
+        if let Err(why) = type_one_line((line, echoed, asks), line_secs, console, stdin) {
             failed.push(why);
             break;
         }
@@ -1116,8 +1119,7 @@ fn type_script<'s>(
 /// under a line [`SWISH_CHECK_INTERRUPTED`] names once it says it is running. `Err` says which
 /// step failed.
 fn type_one_line(
-    line: &str,
-    echoed: &str,
+    (line, echoed, asks): (&str, &str, Option<(&str, &str)>),
     line_secs: u64,
     console: &Console,
     stdin: &mut std::process::ChildStdin,
@@ -1159,6 +1161,16 @@ fn type_one_line(
     };
     if !console.wait_after(at, &format!("{echoed}\n"), echo_bound) {
         return Err(format!("the prompt never echoed `{echoed}` for {line:?}"));
+    }
+    // **A question, answered once it is asked** (milestone 892): the reply goes to the running
+    // program, whose read the terminal's line discipline answers with what was typed.
+    if let Some((cue, reply)) = asks {
+        if !console.wait_after(at, cue, line_secs) {
+            return Err(format!("`{line}` never asked {cue:?}"));
+        }
+        if write!(stdin, "{reply}\n").is_err() || stdin.flush().is_err() {
+            return Err(format!("could not answer {cue:?} under `{line}`"));
+        }
     }
     if SWISH_CHECK_INTERRUPTED.contains(&line) {
         if !console.wait_after(at, SWISH_CHECK_RUNNING, line_secs) {
@@ -1298,6 +1310,7 @@ fn one_answer_failures(l: &Line, answer: &str, before_next: &str) -> Vec<String>
         echoed: line,
         jobs,
         answer: want,
+        ..
     } = *l;
     let mut failed = Vec::new();
     // **A line abandoned with `^C` ran nothing** (DECISIONS §227 option D): the

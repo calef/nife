@@ -26,6 +26,7 @@
 //!   slot 11 thread      its own first thread, WRITE  with slot 10
 //!   slot 12 space       its own address space, READ  for futex waits; without it locks yield
 //!   slots 22-28 endpoints  further resolver badges     one per further zone granted, in order
+//!   slot 29 endpoint    standard input, badged       only for a program the owner's console types to
 //! ```
 //!
 //! Slots 13 to 21 are not this contract's: `grant_plan` places the installer, its reply, the
@@ -99,6 +100,21 @@ pub const RESOLVER_SLOT: u64 = 9;
 /// Name: provisional, minted 2026-10-19 (UTC) by milestone/892-installed-programs-hold-the-network-and-zones.
 pub const RESOLVER_SLOTS: [u64; 8] = [RESOLVER_SLOT, 22, 23, 24, 25, 26, 27, 28];
 
+/// **Standard input: the terminal endpoint, badged `line_editor::proto::STDIN_BADGE`** (milestone
+/// 892; calef, 2026-10-19 (UTC), on #2405: "a"). std's `Stdin::read` asks it for the line being
+/// typed, eight bytes at a time (`OPERATION_READ_LINE_BYTES`); an empty slot is end of input at
+/// once. Placed only for a program whose manifest sets `grant_plan::Manifest::console_input`.
+///
+/// Name: provisional, minted 2026-10-19 (UTC) by milestone/892-installed-programs-hold-the-network-and-zones.
+pub const STDIN_SLOT: u64 = 29;
+
+/// **The word std `CALL`s [`STDIN_SLOT`] with**: `line_editor::proto::OPERATION_READ_LINE_BYTES` in
+/// the opcode bits, no length. Restated as a number for the PAL, which cannot name `line_editor`;
+/// this crate's test pins it to the terminal's own encoding.
+///
+/// Name: provisional, minted 2026-10-19 (UTC) by milestone/892-installed-programs-hold-the-network-and-zones.
+pub const STDIN_READ_REQUEST: u64 = 10 << 56;
+
 /// **This program's own process, with `BIND`** (milestone 812 (`std::thread::spawn` runs real
 /// threads in one address space)): what `std::thread::spawn` joins a new thread to. Only if the
 /// program may have threads; without it, a spawn answers `Unsupported`.
@@ -117,7 +133,7 @@ pub const SPACE_SLOT: u64 = 12;
 /// capabilities (threads, keys) at or above it (`RETYPE_OBJ`'s floor). A loader places a std
 /// program's capabilities at the fixed slot numbers and nowhere else; the reserved fault slot is
 /// last in the table and far above them.
-pub const SLOTS: u64 = 29;
+pub const SLOTS: u64 = 30;
 
 /// Where the loader maps the page a std program shares with its file service: one file block,
 /// carrying a name out on `OPEN` and file bytes both ways on `READ` and `WRITE`.
@@ -178,6 +194,16 @@ mod tests {
 
     const PAGE: u64 = 4096;
 
+    /// The stdin request is the terminal's own encoding of its read, which the PAL cannot import.
+    #[test]
+    fn the_stdin_request_is_the_terminals_read() {
+        use line_editor::proto;
+        assert_eq!(
+            STDIN_READ_REQUEST,
+            proto::req(proto::OPERATION_READ_LINE_BYTES, 0)
+        );
+    }
+
     #[test]
     fn every_slot_is_distinct_and_inside_the_fixed_range() {
         let slots = [
@@ -201,6 +227,7 @@ mod tests {
             RESOLVER_SLOTS[5],
             RESOLVER_SLOTS[6],
             RESOLVER_SLOTS[7],
+            STDIN_SLOT,
         ];
         for (i, a) in slots.iter().enumerate() {
             assert!(
@@ -212,11 +239,7 @@ mod tests {
             }
         }
         assert_eq!(RESOLVER_SLOTS[0], RESOLVER_SLOT);
-        assert_eq!(
-            RESOLVER_SLOTS[7] + 1,
-            SLOTS,
-            "the further badges end the fixed range"
-        );
+        assert_eq!(STDIN_SLOT + 1, SLOTS, "standard input ends the fixed range");
     }
 
     /// The shared pages must not land on each other, on the heap, or inside the window the
