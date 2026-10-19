@@ -133,7 +133,7 @@ fn a_revoke_inside_a_send_cap_leaves_the_receiver_no_copy() {
     .expect("no sender thread");
 
     assert!(
-        wait_for(delegation_pause::parked),
+        wait_for(delegation_pause::is_parked),
         "the sender never reached the delegation seam, so no revoke landed inside its SEND_CAP",
     );
     crate::revoke::revoke_page_frame(phys);
@@ -217,7 +217,7 @@ fn a_revoke_inside_a_cap_insert_leaves_the_embryo_no_copy() {
     .expect("no spawner thread");
 
     assert!(
-        wait_for(delegation_pause::parked),
+        wait_for(delegation_pause::is_parked),
         "the spawner never reached the delegation seam, so no revoke landed inside its CAP_INSERT",
     );
     crate::revoke::revoke_page_frame(phys);
@@ -281,7 +281,7 @@ fn a_reclamation_inside_a_slice_leaves_the_slicer_no_slice() {
     .expect("no slicer thread");
 
     assert!(
-        wait_for(delegation_pause::parked),
+        wait_for(delegation_pause::is_parked),
         "the slicer never reached the delegation seam, so no sweep landed inside its SLICE",
     );
     crate::revoke::revoke_region(base, 2 * page_frames::FRAME_SIZE);

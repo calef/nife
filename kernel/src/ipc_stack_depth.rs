@@ -306,7 +306,7 @@ fn call_reply_kernel() {
 
 /// Both kernel-thread shapes, then their report. Returns how many series fell short of a usable
 /// measurement (see [`report`]); zero is a clean run.
-pub fn kernel_thread_shapes() -> usize {
+pub(crate) fn kernel_thread_shapes() -> usize {
     // The calibration: the same `measured` around an operation that does nothing. Whatever it
     // reads is the instrument's own reach (the closure call, `scan`'s frame), and it must be its
     // floor; anything deeper means the margin is too small for this build and every other line
@@ -487,7 +487,7 @@ fn reset_el0() {
 /// whatever ran on this stack while the thread was in user mode, which is only an interrupt taken
 /// from EL0; that is the tail the median discards.
 #[inline(never)]
-pub fn after_syscall(nr: u64, method: u64) {
+pub(crate) fn after_syscall(nr: u64, method: u64) {
     if !EL0_ARMED.load(Ordering::Relaxed) {
         return;
     }
@@ -667,7 +667,7 @@ fn call_reply_el0() -> Option<()> {
 
 /// Both EL0 shapes, then their report, in the same form as [`kernel_thread_shapes`].
 #[cfg(initial_ramdisk)]
-pub fn el0_shapes() -> usize {
+pub(crate) fn el0_shapes() -> usize {
     use abi::rendezvous::{CALL, RECEIVE, RECEIVE_CAP, SEND};
     let mut bad = 0;
     if send_receive_el0().is_some() {

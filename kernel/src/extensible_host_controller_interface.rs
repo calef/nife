@@ -48,7 +48,7 @@ use crate::arch::mmu;
 /// **Why there is no xHCI driver this boot.** [`Absent::NoController`] is a fact about the machine
 /// and prints nothing; every other variant is a fact about this driver and is a sentence.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum Absent {
+pub(crate) enum Absent {
     /// No function on the bus carries the xHCI class code.
     NoController,
     /// The register window could not be drawn without mapping the interrupt message's page.
@@ -64,7 +64,7 @@ pub enum Absent {
 
 /// **A controller ready to be handed to a driver**: where its registers are, which pages of them
 /// the driver gets, its DMA region, its interrupt.
-pub struct Found {
+pub(crate) struct Found {
     /// BAR0's physical base.
     pub bar0: u64,
     /// The spawn words.

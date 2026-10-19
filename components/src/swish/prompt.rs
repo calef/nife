@@ -309,7 +309,8 @@ pub(super) fn edit_line(nav: &mut Nav, prompt: &[u8], out: &mut [u8]) -> (usize,
                     echo.flush();
                     return (0, proto::FLAG_EOF);
                 }
-                line_editor::Event::Interrupt => {
+                // At the prompt there is no foreground job, so ^Z abandons the line as ^C does.
+                line_editor::Event::Interrupt | line_editor::Event::Suspend => {
                     echo.flush();
                     return (0, proto::FLAG_INTERRUPTED);
                 }

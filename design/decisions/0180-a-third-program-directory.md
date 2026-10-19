@@ -72,8 +72,9 @@ directory name two senses, which is the ground §154 and naming.md's recognition
 refuse elsewhere (milestone 440's block makes the same refusal of `runner` on a measured 163 files).
 
 The alternatives, so they are refused on the record rather than silently: `bin/` is Unix's and says
-nothing about authority, which is the §39 failure wearing a different hat; `commands/`,
-`programs/` and `utilities/` are each one of the generic words naming.md names as a failure mode.
+nothing about authority, which is the §39 (a component is named for what it is) failure wearing a
+different hat. `commands/`, `programs/` and `utilities/` are each one of the generic words naming.md
+names as a failure mode.
 
 ## What it costs, measured
 
@@ -88,14 +89,14 @@ Doing it later costs the repoint twice, which is milestone 175's own argument fo
 ## Recommendation
 
 None on question 1, because it is a name, and a directory name is the most expensive kind in this
-tree: it lands in `xtask`, in four exclusion lists, in `script/lint`, `script/names` and
+tree. It lands in `xtask`, in four exclusion lists, in `script/lint`, `script/names` and
 `script/verify`, and in every citation that points into it. AGENTS.md's rule is that a fork this
 irreversible arrives with options rather than with a winner.
 
 What this section does recommend is the sequencing: if question 1 is yes, it should happen soon
-rather than eventually, because a reader meets a directory before they meet anything in it, and
-`notes/adding-a-program.md` already spends a paragraph saying that `wc.rs` and `net_stack.rs` are
-not the same kind of thing.
+rather than eventually. The reason is that a reader meets a directory before they meet anything in
+it, and `notes/adding-a-program.md` already spends a paragraph saying that `wc.rs` and
+`net_stack.rs` are not the same kind of thing.
 
 ## What this does not decide
 

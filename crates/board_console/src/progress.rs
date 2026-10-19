@@ -596,7 +596,7 @@ impl BootProgress {
     ///
     /// Idempotent: stages ratchet and the failure is recorded once, so the same text may be
     /// offered any number of times.
-    pub fn observe_line(&mut self, line: &str) {
+    pub(crate) fn observe_line(&mut self, line: &str) {
         self.observe(line, true);
     }
 
@@ -615,7 +615,7 @@ impl BootProgress {
     /// latched before the rest of the line arrived. So a tail may ratchet a stage, because a
     /// substring match is monotone and more bytes cannot unmake it; it may not settle a word
     /// boundary, and it may not capture text.
-    pub fn observe_partial(&mut self, tail: &str) {
+    pub(crate) fn observe_partial(&mut self, tail: &str) {
         self.observe(tail, false);
     }
 
@@ -937,7 +937,7 @@ pub(crate) fn field(text: &str, name: &str) -> Option<u64> {
 /// prompt is printed with no newline after it, so a console tool that only recognises complete
 /// lines waits forever at exactly the moment the board is waiting for *it*.
 #[derive(Debug, Default)]
-pub struct LineFeeder {
+pub(crate) struct LineFeeder {
     pending: String,
 }
 
@@ -984,7 +984,7 @@ impl LineFeeder {
 
 /// What one chunk of bytes turned into: the lines it completed and the tail still in flight.
 #[derive(Debug)]
-pub struct Feeding {
+pub(crate) struct Feeding {
     /// Lines that ended with `\n` or `\r`, in order.
     pub lines: Vec<String>,
     /// The bytes after the last line ending, which may still grow.

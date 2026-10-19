@@ -341,6 +341,10 @@ pub mod designware_mobile_storage_service;
 #[cfg_attr(not(feature = "system_tests"), allow(dead_code))] // the tests are its callers
 pub mod non_volatile_memory_express_service;
 
+/// **The disk tree** (milestone 834 (ioping on nife and Linux)): the whole NVMe namespace as one read-only, uncached file, the
+/// installed system's second mounted tree. The NVMe server's second client, in its own window.
+pub mod disk_tree_service;
+
 /// **`net_stack` over the `e1000e` NIC** (milestone 494 (a driver for the network card a PC
 /// actually has)): the kernel resets the controller and programs its rings, and the process is
 /// handed the two queue pages of BAR0 and the confined DMA region, in milestone 261 (the NVMe driver leaves the kernel)'s shape. What

@@ -43,7 +43,7 @@ unsafe extern "C" {
 /// Everything the kernel is handed has to be nameable by a 32-bit instruction stream running with
 /// paging off, which is the state `_start` is entered in. A `hvm_start_info` at 5 GiB would be a
 /// pointer the kernel's trampoline literally cannot load.
-pub const ALLOCATION_CEILING: u64 = 0xffff_ffff;
+pub(crate) const ALLOCATION_CEILING: u64 = 0xffff_ffff;
 
 /// **The page a STARTUP IPI can name**, which the kernel's AP bring-up copies its real-mode
 /// trampoline into.

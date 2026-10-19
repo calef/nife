@@ -502,10 +502,16 @@ impl Pal for Sys {
                     end.access() | if end.nonblocking() { O_NONBLOCK } else { 0 }
                 }
             }),
-            // Only a stream has a flag that can change: whether it waits (`O_NONBLOCK`).
+            // A stream may change whether it waits (`O_NONBLOCK`), and a file whether it asks for
+            // direct I/O (`O_DIRECT`, which ioping sets this way after opening). The access mode
+            // and the creation flags are fixed at open, as on Linux.
             F_SETFL => {
-                if let Description::Stream(end) = d {
-                    end.set_nonblocking(arg as c_int & O_NONBLOCK != 0);
+                match d {
+                    Description::Stream(end) => end.set_nonblocking(arg as c_int & O_NONBLOCK != 0),
+                    Description::File { flags, .. } => {
+                        *flags = (*flags & !O_DIRECT) | (arg as c_int & O_DIRECT);
+                    }
+                    _ => {}
                 }
                 Ok(0)
             }
@@ -1386,16 +1392,19 @@ fn bit(n: usize) -> sigset_t {
     1 << (n - 1)
 }
 
-/// What the default disposition does to signal `n` in a process that cannot be stopped or
-/// continued: ignore it, or end the process.
+/// What the default disposition does to signal `n` in a process that cannot stop or continue
+/// itself: ignore it, or end the process.
 fn default_action(n: usize) {
     use crate::header::signal::{
         SIGABRT, SIGBUS, SIGCHLD, SIGCONT, SIGFPE, SIGILL, SIGQUIT, SIGSEGV, SIGSTOP, SIGSYS,
         SIGTRAP, SIGTSTP, SIGTTIN, SIGTTOU, SIGURG, SIGWINCH, SIGXCPU, SIGXFSZ,
     };
     match n {
-        // Ignored by default. The stop signals are here too: there is no job control to stop a
-        // nife process for, so stopping is the one default action this layer cannot take.
+        // Ignored by default. The stop signals are here too. nife's job control stops a process
+        // from outside, with `ThreadControlBlock::SUSPEND` on a TCB its shell holds, and that is
+        // silent (DECISIONS §300 (the paused state, a TCB verb, silent)): no `SIGTSTP` arrives
+        // before the stop and no `SIGCONT` after it. A process holds no TCB for itself, so a stop
+        // it raises is the one default action this layer cannot take.
         SIGCHLD | SIGURG | SIGWINCH | SIGCONT | SIGSTOP | SIGTSTP | SIGTTIN | SIGTTOU => {}
         // "Terminate with a core": `std`'s abort, a breakpoint fault the supervisor sees.
         SIGABRT | SIGBUS | SIGFPE | SIGILL | SIGQUIT | SIGSEGV | SIGSYS | SIGTRAP | SIGXCPU

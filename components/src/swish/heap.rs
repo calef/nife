@@ -7,7 +7,7 @@ use super::BUDGET;
 /// **Room for a fixed number of values, on the heap.** A slice once filled (indexing works), and
 /// there is no way to grow it: `Vec` is private to this module, so nothing outside can call a
 /// method that would allocate and panic on failure.
-pub struct Room<T>(alloc::vec::Vec<T>);
+pub(crate) struct Room<T>(alloc::vec::Vec<T>);
 
 impl<T> core::ops::Deref for Room<T> {
     type Target = [T];

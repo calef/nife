@@ -82,8 +82,10 @@ which notes cite it*) exists because of exactly this coupling.
 
 So:
 
-- A dependency is a fact about the work and stays true forever. That milestone 554 (a good upgrade sticks: what marks a trial boot successful) needed
-  milestone 525 (a bad upgrade cannot brick the machine: two boot slots, tries and priority) before it could exist does not stop being true once 525 is built.
+- A dependency is a fact about the work and stays true forever. Milestone 554 (a good upgrade
+  sticks: what marks a trial boot successful) needed milestone 525 (a bad upgrade cannot brick the
+  machine: two boot slots, tries and priority) before it could exist. That does not stop being
+  true once 525 is built.
 - Blocked is a question, not a stored field. A milestone is blocked when any dependency it names
   is unresolved, computed at read time from the target's own status, which is recorded in exactly
   one place already.
@@ -235,14 +237,14 @@ this whole section exists to remove.
 
 A dependency that resolved before the dependent branch was cut leaves no trace in git or in prose.
 Nobody wrote a sentence and no branch points anywhere. That is calef's creation-order observation
-stated as a limit: the backfill recovers history and pattern, the idiom parser catches what an author
-bothered to mark, and neither can recover a dependency that was simply satisfied before anyone needed
-to mention it. This is why the fields are asked for going forward rather than reconstructed, and
-why the backfill is evidence rather than the deliverable.
+stated as a limit. The backfill recovers history and pattern, and the idiom parser catches what an
+author bothered to mark. Neither can recover a dependency that was simply satisfied before anyone
+needed to mention it. This is why the fields are asked for going forward rather than
+reconstructed, and why the backfill is evidence rather than the deliverable.
 
 ## What would refute it now
 
 The section has survived the tests above, so what remains is an operational failure rather than an
-empirical one: if the fields are added and then go stale, because nothing populates them and no
+empirical one. If the fields are added and then go stale, because nothing populates them and no
 reader consults them, this will have bought a format instead of a graph. The tell would be
 `--unblocked` returning roughly what `NOT-STARTED` returns today.

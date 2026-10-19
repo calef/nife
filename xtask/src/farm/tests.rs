@@ -1,4 +1,4 @@
-use super::exerciser::exerciser_target_dir;
+use super::exerciser::exerciser_target_directory;
 use super::*;
 
 /// The falsification of the shared link: two worktrees must never compute one toolchain name,
@@ -107,18 +107,18 @@ fn the_farm_copies_rustc_and_its_driver_and_links_the_rest() {
 /// announcing a "correction" that changes nothing would train readers to skim past the real
 /// one.
 #[test]
-fn the_exerciser_target_dir_is_pinned_and_an_override_is_named() {
-    let (pinned, notes) = exerciser_target_dir(None);
+fn the_exerciser_target_directory_is_pinned_and_an_override_is_named() {
+    let (pinned, notes) = exerciser_target_directory(None);
     assert!(notes.is_empty(), "nothing exported, nothing to correct");
     assert!(pinned.ends_with("std_exerciser/target"));
 
-    let (_, notes) = exerciser_target_dir(Some(&pinned.display().to_string()));
+    let (_, notes) = exerciser_target_directory(Some(&pinned.display().to_string()));
     assert!(
         notes.is_empty(),
         "an export equal to the pin is already right"
     );
 
-    let (still, notes) = exerciser_target_dir(Some("/nonexistent/elsewhere/target"));
+    let (still, notes) = exerciser_target_directory(Some("/nonexistent/elsewhere/target"));
     assert_eq!(still, pinned, "the pin does not follow the export");
     assert_eq!(notes.len(), 1);
     assert!(

@@ -85,6 +85,11 @@ pub(super) struct Channels {
     /// holds nothing it could hand a caretaker; the progenitor is the only process here that can build one,
     /// which is what made `rm` a refusal at the prompt for six weeks.
     pub(super) fs: Option<Fs>,
+    /// **The second mounted tree's service and its client-window pool** (milestone 834 (ioping on nife and Linux)), or `None`
+    /// on a boot without one. [`fs`](Channels::fs)'s shape and reason: a directory grant the shell
+    /// names through `/disk` is built from this, badged per job
+    /// (`grant_plan::spawnproto::in_mounted_tree`).
+    pub(super) disk: Option<Fs>,
     /// **A client view of the entropy service** (milestone 111), endowed to a child whose manifest
     /// declares [`grant_plan::Manifest::entropy`]. `None` on a boot that built no entropy service
     /// (no virtio-rng device, no `entropy` program in the initial ramdisk, or a service that did
@@ -185,7 +190,7 @@ pub(super) struct Fs {
 /// second party in the teardown path for memory that is not ours, racing the shell's `DESTROY`.
 pub(super) fn spawn_service(
     c: Channels,
-    progs: &[Option<elf::Elf>; grant_plan::PROGRAM_COUNT],
+    spawnable: &crate::boot_steps::Spawnable,
     care: Caretakers,
     discipline: SessionDiscipline,
     fs_scoped: bool,
@@ -194,12 +199,14 @@ pub(super) fn spawn_service(
     let resolver = c.resolver;
     let mut service = Service {
         c,
-        progs,
+        progs: &spawnable.progs,
+        absent: &spawnable.absent,
         care,
         discipline,
         fs_scoped,
         // Whether the file page is mapped here yet, for the installed-programs table (first image request).
         fs_mapped: false,
+        disk_mapped: false,
         // The spawn endpoint, its reaped messages, and the windows they free (milestone 685).
         spawn: SpawnEndpoint::new(spawn_ep, resolver),
     };
@@ -213,10 +220,13 @@ pub(super) fn spawn_service(
 struct Service<'a> {
     c: Channels,
     progs: &'a [Option<elf::Elf<'a>>; grant_plan::PROGRAM_COUNT],
+    absent: &'a [bool; grant_plan::PROGRAM_COUNT],
     care: Caretakers,
     discipline: SessionDiscipline,
     fs_scoped: bool,
     fs_mapped: bool,
+    /// Whether the second mounted tree's pool is mapped here yet, for zeroing a window between jobs.
+    disk_mapped: bool,
     spawn: SpawnEndpoint,
 }
 
@@ -362,6 +372,9 @@ struct DirWiring {
     /// Whether `narrowed` is the machine's index store rather than a directory the line named
     /// (milestone 801 (packages over the internet)).
     index_store: bool,
+    /// Whether `window` is the second mounted tree's (milestone 834) rather than the file
+    /// service's, which is the pool it goes back to.
+    mounted: bool,
 }
 
 /// A native child's endowment: its in-order capabilities, its named slots, and its mappings.
@@ -478,7 +491,7 @@ impl Service<'_> {
         };
 
         if req.interruptible {
-            self.spawn_interruptible(&req, elf);
+            self.spawn_interruptible(&req, elf, job.failure);
         } else {
             self.spawn_job(&req, &job, elf, image_region, staging);
         }
@@ -763,7 +776,8 @@ impl Service<'_> {
             let page = unsafe {
                 core::slice::from_raw_parts(theirs as *const u8, spawnproto::IMAGE_PAGE as usize)
             };
-            let w = grant_plan::verb_of_page(page)?;
+            let mut read = [0u8; grant_plan::MAX_VERB];
+            let w = grant_plan::verb_of_page(page, &mut read)?;
             verb[..w.len()].copy_from_slice(w);
             Some(w.len())
         });
@@ -775,6 +789,8 @@ impl Service<'_> {
         };
         let failure = if unvouched && !presented {
             spawnproto::SPAWN_UNVOUCHED
+        } else if !wiring.image && prog.is_some_and(|p| self.absent[p.id() as usize]) {
+            spawnproto::SPAWN_NOT_IN_IMAGE
         } else if refused_by_manifest {
             spawnproto::SPAWN_REFUSED_BY_MANIFEST
         } else {
@@ -790,7 +806,7 @@ impl Service<'_> {
     }
 
     /// Build and start an interruptible job from the shell's own job untyped, and answer it.
-    fn spawn_interruptible(&self, req: &Request, elf: Option<&elf::Elf>) {
+    fn spawn_interruptible(&self, req: &Request, elf: Option<&elf::Elf>, failure: u64) {
         let Channels {
             result_ep, own_ut, ..
         } = self.c;
@@ -805,7 +821,9 @@ impl Service<'_> {
                 &ChildEndowment {
                     maps: &[(CHILD_JOB_PAGE_FRAME_VA, fr, abi::address_space::MAP_RW)],
                     stack_pages: CHILD_STACK_PAGES,
-                    ..ChildEndowment::new(Retention::Nothing)
+                    ..ChildEndowment::new(Retention::Requester {
+                        reason: "the shell suspends its supervised job on ^Z (DECISIONS §309)",
+                    })
                 },
             )
             .ok(),
@@ -813,6 +831,7 @@ impl Service<'_> {
         };
         match built {
             Some(child) => {
+                let tcb = child.tcb;
                 let ok = start_child(child, 0, req.arg, 0);
                 send(
                     result_ep,
@@ -824,6 +843,18 @@ impl Service<'_> {
                     0,
                     0,
                 );
+                // **The job's TCB is the one message after `SPAWN_OK`** (§309 (a supervised job's
+                // `ThreadControlBlock` goes to the shell that asked for it)): the shell receives
+                // it before anything else, so this `SEND` cannot strand. A job that did not start
+                // owes nothing, and its TCB is deleted unsent.
+                if ok {
+                    hand_to_requester(tcb, result_ep);
+                } else {
+                    forget_thread_control_block(tcb);
+                }
+            }
+            None if failure == spawnproto::SPAWN_NOT_IN_IMAGE => {
+                send(result_ep, failure, 0, 0);
             }
             None => {
                 send(result_ep, spawnproto::SPAWN_FAILED, 0, 0);
@@ -866,11 +897,14 @@ impl Service<'_> {
         // for a `std` job whose verb holds it, asked on the owner's console (the unbadged spawn
         // endpoint, as the installer is), and whose line named no directory of its own, since the
         // `std` layout has one directory slot. Not granted is not refused: a `jig` without it says
-        // what it lacks.
-        let index_rights = manifest
-            .and_then(|m| m.indexes.rights())
+        // what it lacks. `jig list -u` is granted `activation/` itself, read only, in its place.
+        let store = manifest
+            .and_then(|m| match m.activation_directory {
+                true => Some(ActivationGrant::ReadOnly),
+                false => m.indexes.rights().map(ActivationGrant::IndexStore),
+            })
             .filter(|_| std_layout && !req.wiring.directory_grant && req.badge == 0);
-        let dir = self.wire_directory(req, manifest, region, (wants.sync, index_rights));
+        let dir = self.wire_directory(req, manifest, region, (wants.sync, store));
         // **And its copy of the image's index sources**, beside the store and only with it.
         let sources_page = match (dir.index_store, region) {
             (true, Some(r)) => copy_text(own_ut, r, self.c.index_sources),
@@ -907,7 +941,7 @@ impl Service<'_> {
         // spawn rather than running the program without the words its line gave it.
         let args_page = match (std_layout, region, req.args_seen) {
             (true, Some(r), Some(theirs)) => copy_args(own_ut, r, theirs, |copy| {
-                grant_plan::verb_of_page(copy) == job.verb()
+                grant_plan::verb_of_page(copy, &mut [0u8; grant_plan::MAX_VERB]) == job.verb()
             }),
             _ => None,
         };
@@ -1050,15 +1084,25 @@ impl Service<'_> {
         req: &Request,
         manifest: Option<grant_plan::Manifest>,
         region: Option<u64>,
-        (wants_sync, index_rights): (bool, Option<u64>),
+        (wants_sync, store): (bool, Option<ActivationGrant>),
     ) -> DirWiring {
-        let Channels { own_ut, fs, .. } = self.c;
+        let Channels {
+            own_ut, fs, disk, ..
+        } = self.c;
         let Request {
             wiring,
             grant,
             set_seen,
             ..
         } = *req;
+        // **A grant in the second mounted tree** (milestone 834): its own pool and a caretaker
+        // over the disk tree, never a bound badge (that server enforces no subtree), and nothing
+        // else this function wires, since what it wires is the first tree's.
+        if let (true, Some((care_words, _)), Some(tree)) = (wiring.directory_grant, grant, disk)
+            && let Some(care_words) = mounted_grant(care_words)
+        {
+            return self.wire_mounted(req, manifest, region, tree, care_words, wants_sync);
+        }
         let spawn = &mut self.spawn;
         // **The caretaker, built before the program it serves**, because the program's slot 0 is
         // the endpoint this returns. `None` means either that this is not a directory grant or
@@ -1082,7 +1126,7 @@ impl Service<'_> {
         // `activation/indexes` with the verb's rights, on a line that named no directory. Only a
         // server that enforces bindings itself can make one, since the path is longer than a
         // caretaker's name; on any other the store is not granted and `jig` says so.
-        let index_store = !wiring.directory_grant && self.fs_scoped && index_rights.is_some();
+        let index_store = !wiring.directory_grant && self.fs_scoped && store.is_some();
         // A sync-only grant takes a window too (milestone 805): its badge is bound sync-only
         // rather than to a directory, and it is held until the reap like any other.
         let window = if (wiring.directory_grant || wants_sync || index_store) && fs.is_some() {
@@ -1090,13 +1134,13 @@ impl Service<'_> {
         } else {
             None
         };
-        let bound = match (index_store, fs, index_rights, window) {
-            (true, Some(f), Some(rights), Some(w)) => bound_index_store(
+        let bound = match (index_store, fs, store, window) {
+            (true, Some(f), Some(store), Some(w)) => bound_index_store(
                 f,
                 (&mut spawn.windows, w),
                 own_ut,
                 &mut self.fs_mapped,
-                rights,
+                store,
             ),
             _ => None,
         };
@@ -1158,7 +1202,52 @@ impl Service<'_> {
             dir_failed,
             sync_ep,
             sync_failed,
-            index_store: index_store && bound.is_some(),
+            // The sources page goes with the store alone, not with `activation/`.
+            index_store: matches!(store, Some(ActivationGrant::IndexStore(_))) && bound.is_some(),
+            mounted: false,
+        }
+    }
+
+    /// [`Service::wire_directory`] for a grant in the second mounted tree: the job's window of the
+    /// disk tree's pool, the disk tree's endpoint badged with it, and a caretaker over that.
+    fn wire_mounted(
+        &mut self,
+        req: &Request,
+        manifest: Option<grant_plan::Manifest>,
+        region: Option<u64>,
+        tree: Fs,
+        care_words: (u64, u64, u64),
+        wants_sync: bool,
+    ) -> DirWiring {
+        let own_ut = self.c.own_ut;
+        let label = self.spawn.label();
+        let window = self.spawn.until_reaped(|s| s.disk_windows.take(label));
+        let channel =
+            window.and_then(|w| mounted_job_channel(tree, w, own_ut, &mut self.disk_mapped));
+        let narrowed = match (region, channel) {
+            (Some(r), Some(ch)) => build_grant(
+                own_ut,
+                r,
+                ch,
+                &self.care,
+                care_words,
+                req.set_seen,
+                manifest,
+            ),
+            _ => None,
+        };
+        DirWiring {
+            label,
+            window,
+            bound: None,
+            channel,
+            dir_failed: narrowed.is_none(),
+            narrowed,
+            sync_ep: None,
+            // A program that must be able to sync is not started without it, as on the first tree.
+            sync_failed: wants_sync && self.c.fs.is_some(),
+            index_store: false,
+            mounted: true,
         }
     }
 
@@ -1530,8 +1619,10 @@ impl Service<'_> {
         // job whose whole answer goes to the shell's result endpoint, under `job_undertaker`,
         // is one a later short pool may wait for: the shell reads that answer to its end
         // before it sends another request ([`ReapsDue`]).
-        if let (false, Some(w)) = (ok, dir.window) {
-            self.spawn.windows.release(w);
+        match (ok, dir.window, dir.mounted) {
+            (false, Some(w), false) => self.spawn.windows.release(w),
+            (false, Some(w), true) => self.spawn.disk_windows.release(w),
+            _ => {}
         }
         if ok && labeled.is_some() && req.delegated.sink.is_none() {
             self.spawn.due.expect(label);

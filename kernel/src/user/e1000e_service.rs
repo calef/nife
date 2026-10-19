@@ -115,7 +115,7 @@ pub fn start_net_server(image: &'static [u8], listen_grant: u64) -> Result<Wirin
 
 /// Why the booted system has no stack over this NIC, when one is on the bus.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum NotAtBoot {
+pub(crate) enum NotAtBoot {
     /// What [`start_net_server`] would have said.
     Absent(Absent),
     /// **A part no gate has driven**, an I219 or another PCH part ([`::e1000e::pch::is_pch`]). Left
@@ -141,7 +141,7 @@ pub enum NotAtBoot {
 /// authority at the prompt, and two refusals of its own ([`NotAtBoot`]) that a test does not want
 /// and a boot does: a test that hangs is stopped by its runner, a boot that hangs has no prompt to
 /// say why.
-pub fn start_for_boot(image: &'static [u8]) -> Result<Wiring, NotAtBoot> {
+pub(crate) fn start_for_boot(image: &'static [u8]) -> Result<Wiring, NotAtBoot> {
     let dev = crate::pci::find_e1000e_device().ok_or(NotAtBoot::Absent(Absent::NoController))?;
     if ::e1000e::pch::is_pch(dev.device) && !PCH_PROVEN_ON_SILICON {
         return Err(NotAtBoot::Unproven { device: dev.device });
@@ -163,7 +163,7 @@ pub fn start_for_boot(image: &'static [u8]) -> Result<Wiring, NotAtBoot> {
 /// ending `verdict LEASED-AND-MEASURED` (notes/e1000e.md, "calef's bench step on xenon", with its
 /// Results row filled in). Nothing a lane can run proves it: QEMU's 82574L never takes the PCH
 /// path, and the host simulation is this tree's reading of FreeBSD, not the device.
-pub const PCH_PROVEN_ON_SILICON: bool = false;
+pub(crate) const PCH_PROVEN_ON_SILICON: bool = false;
 
 fn refuse_if_busy() -> Result<(), Absent> {
     let previous = SERVER.load(core::sync::atomic::Ordering::Acquire);
@@ -315,7 +315,10 @@ pub fn start_package_fetch(
 /// `TEST_TCP_DRAIN` against `peer`, packed `ipv4 << 16 | port`. The selector's number is the
 /// client's, spelled again here as every kernel-side caller of that client spells it.
 #[cfg_attr(not(feature = "network_bench"), allow(dead_code))]
-pub fn start_drain(image: &'static [u8], peer: u64) -> Result<(RendezvousId, Wiring), Absent> {
+pub(crate) fn start_drain(
+    image: &'static [u8],
+    peer: u64,
+) -> Result<(RendezvousId, Wiring), Absent> {
     const TEST_TCP_DRAIN: u64 = 7;
     start_with_client(
         image,

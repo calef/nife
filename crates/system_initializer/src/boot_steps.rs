@@ -90,6 +90,9 @@ pub(super) struct LoginPrograms {
 /// The programs the shell can spawn, and the names the measurement refused among them.
 pub(super) struct Spawnable {
     pub(super) progs: [Option<elf::Elf<'static>>; grant_plan::PROGRAM_COUNT],
+    /// Which programs this initial ramdisk has no entry for, so a spawn of one is answered
+    /// [`grant_plan::spawnproto::SPAWN_NOT_IN_IMAGE`] rather than as a build failure.
+    pub(super) absent: [bool; grant_plan::PROGRAM_COUNT],
     pub(super) refused: [&'static str; grant_plan::PROGRAM_COUNT],
     pub(super) refused_n: usize,
 }
@@ -387,10 +390,12 @@ pub(super) fn measure_spawnable(fs: &nifefs::Fs<'static>, table: &str) -> Spawna
     let mut progs: [Option<elf::Elf>; grant_plan::PROGRAM_COUNT] = core::array::from_fn(|_| None);
     let mut refused = [""; grant_plan::PROGRAM_COUNT];
     let mut refused_n = 0usize;
+    let mut absent = [false; grant_plan::PROGRAM_COUNT];
     for (id, slot) in progs.iter_mut().enumerate() {
         let Some(name) = Program::from_id(id as u64).and_then(archive_name) else {
             continue;
         };
+        absent[id] = fs.read(name).is_none();
         let found = measured(fs, table, name);
         if found.unvouched {
             refused[refused_n] = name;
@@ -400,6 +405,7 @@ pub(super) fn measure_spawnable(fs: &nifefs::Fs<'static>, table: &str) -> Spawna
     }
     Spawnable {
         progs,
+        absent,
         refused,
         refused_n,
     }
@@ -1124,59 +1130,6 @@ pub(super) fn retype_spawn_channel(ut: u64) -> SpawnChannel {
     }
 }
 
-/// Build the caretaker for a configured second directory grant, before the shell that will hold
-/// its endpoint. `None` when there is no grant or it cannot be built.
-#[inline(never)]
-pub(super) fn start_mounted_tree_caretaker(
-    w: &Wiring,
-    mounted_tree: Option<MountedTreeGrant>,
-    care_elf: Option<&elf::Elf<'static>>,
-) -> Option<u64> {
-    let (g, ut) = (w.g, w.ut);
-    // **The second grant, when this boot was configured with one** (milestone 154's "wiring a
-    // second grant into the real boot"). Built here, before the shell, for the same reason
-    // `build_caretaker` is always called before the process that will hold its endpoint: the
-    // caretaker must exist and answer ready before anything could `CALL` it.
-    //
-    // Meaningless without a first directory ([`MountedTreeGrant`]'s own doc), so this is `None`
-    // whenever the boot has no filesystem at all, and it degrades to "no second grant" rather
-    // than a boot failure whenever the caretaker cannot be built, the same posture this file
-    // already takes toward a missing `sink_elf` or `care_elf`: a component the archive did not
-    // pack or the table would not vouch for costs a feature, not a boot.
-    //
-    // # BUGS
-    //
-    // **Unverified against a real boot.** `mounted_tree` is `None` at every shipped entry point
-    // (DECISIONS §126 (a real, single, moving `cwd`): what the subtree should be is an architect's
-    // call), so this branch has never
-    // run
-    // under `script/swish-check`, which is the only thing in the tree that runs a real progenitor.
-    // `build_caretaker` retypes two more objects into *this process's* capability table right
-    // where the comment two screens up already documents this table as tight ("the shell's
-    // `build_child` had no slot left ... and failed silently"). The failure mode if this pushes
-    // the progenitor over sixteen slots is exactly that one: a boot that reaches userspace and prints
-    // nothing. Whoever first passes `Some` here should watch for it and run `script/swish-check`
-    // before trusting this path.
-    mounted_tree.filter(|_| w.with_fs).and_then(|sd| {
-        assert!(
-            filesystem_contract::grant::fits(sd.name.as_bytes()),
-            "a granted directory's name rides in two argument words; this one does not fit",
-        );
-        let region = memory_region_split(ut, SECOND_DIR_CARETAKER_PAGES).ok()?;
-        let care = care_elf?;
-        let (lo, hi) = filesystem_contract::grant::pack_name(sd.name.as_bytes());
-        let spec = filesystem_contract::grant::spec(sd.name.len(), sd.rights);
-        // Window 0's page, sliced out of the pool for the build and dropped after (milestone 599).
-        let zero = window_zero(Fs {
-            ep: g.fs_ep,
-            page: g.fs_page,
-        })?;
-        let built = build_caretaker(ut, region, care, zero, (lo, hi, spec), None);
-        cap_delete(zero.page);
-        built
-    })
-}
-
 /// Step 4: build the shell, not yet started, with its terminal, spawn channel, budget, filesystem,
 /// clock and configuration page. Returns the child and the slot its clock landed in.
 #[inline(never)]
@@ -1185,20 +1138,12 @@ pub(super) fn build_shell(
     sh_elf: &elf::Elf<'static>,
     chan: SpawnChannel,
     sh_budget: u64,
-    mounted_tree_ep: Option<u64>,
 ) -> (supervision_protocol::Child, u64) {
     let (g, ut, with_fs) = (w.g, w.ut, w.with_fs);
     // Slot 4 is the filesystem when this boot has one, which is the whole of what `>` and `<` need
     // (milestone 50, notes/pipes.md): the shell resolves a redirection against it and writes the
     // file itself. Narrowed to WRITE, which on an endpoint is the right to CALL, and without GRANT,
     // so the shell can hand it to nobody.
-    //
-    // **Slot 5, when this boot also has a second grant**, is [`mounted_tree_ep`]: the narrowed
-    // caretaker endpoint built above. It shares [`SH_FS_VA`] rather than needing a map of its own,
-    // for `narrow_dir`'s own reason one level narrower: caretaker and client both map the *same*
-    // physical frame the FS server shares with everything downstream of it, and the shell is one
-    // thread of control with at most one `CALL` in flight, so it is never mid-request on both
-    // endpoints at once.
     //
     // **And a read-only clock last, always** (milestone 86), which is what `time <command>`
     // measures with. It is [`BootEndowment::clock_page`], the same frame this progenitor was granted and
@@ -1208,10 +1153,9 @@ pub(super) fn build_shell(
     // the manifests this crate reads (DECISIONS §43) rather than by anything typed at a prompt.
     //
     // Clock last in the list whatever else is granted, which is why the shell is *told* its slot
-    // in `x2`/`a2` instead of assuming one; see swish.rs's `CLOCK_SLOT`. That was already true
-    // before this milestone (4 without a disk, 5 with one); it now also moves to 6 when a second
-    // grant lands, and the mechanism that keeps the shell honest about the number is unchanged.
-    let mut sh_caps = [(0u64, 0u64); 7];
+    // in `x2`/`a2` instead of assuming one; see swish.rs's `CLOCK_SLOT`: 4 without a disk, 5 with
+    // one. The second mounted tree is placed at a named slot instead ([`finish_shell_endowment`]).
+    let mut sh_caps = [(0u64, 0u64); 6];
     let mut sh_maps = [(0u64, 0u64, 0u64); 5];
     let mut n_caps = 0usize;
     let mut n_maps = 0usize;
@@ -1244,10 +1188,6 @@ pub(super) fn build_shell(
         n_caps += 1;
         sh_maps[n_maps] = (SH_FS_VA, zero.page, abi::address_space::MAP_RW);
         n_maps += 1;
-    }
-    if let Some(ep) = mounted_tree_ep {
-        sh_caps[n_caps] = (ep, abi::rights::WRITE);
-        n_caps += 1;
     }
     sh_caps[n_caps] = (g.clock_page, abi::rights::READ);
     n_caps += 1;
@@ -1299,13 +1239,12 @@ pub(super) fn build_shell(
     (shell, sh_clock_slot)
 }
 
-/// Hand the shell the machine statistics page, keeping no copy, and drop the second grant's
-/// wiring endpoint.
+/// Hand the shell the machine statistics page, keeping no copy, and its second mounted tree.
 #[inline(never)]
 pub(super) fn finish_shell_endowment(
     g: &BootEndowment,
     shell_tcb: u64,
-    mounted_tree_ep: Option<u64>,
+    mounted_tree: Option<MountedTreeGrant>,
 ) {
     // **The machine statistics page goes to the session, and this process keeps no copy**
     // (milestone 126, DECISIONS §225). Placed now, before the login block, because that block is
@@ -1331,11 +1270,19 @@ pub(super) fn finish_shell_endowment(
     // session: the prompt asks for a launch and cannot hand a device to anything. They stay in the
     // boot endowment's own slots, read from [`GraphicalTerminalCaps`]; [`graphical_terminal_grants`]
     // already deleted whatever no session can be built from.
-    // The caretaker's endpoint was only ever the means of wiring: the shell holds its own copy and
-    // the caretaker holds the other end, the same disposal `spawn_service`'s dynamic directory
-    // grants already give their own narrowed endpoint below.
-    if let Some(ep) = mounted_tree_ep {
-        cap_delete(ep);
+    // **The second mounted tree** (milestone 834 (ioping on nife and Linux)): the disk tree's endpoint, `WRITE` and no
+    // `GRANT`, at the named slot the shell probes. Unbadged, so the disk tree stages the shell's
+    // requests in its window 0, which the kernel mapped onto the first file service's window 0:
+    // the frame the shell already maps at [`SH_FS_VA`]. Sound for the reason the two-tree witness
+    // gives, that the shell is one thread with one `CALL` in flight. This process keeps its own
+    // copy, which the spawn service badges per job.
+    if let Some(t) = mounted_tree {
+        must_ok(place_at(
+            shell_tcb,
+            t.ep,
+            abi::rights::WRITE,
+            spawnproto::MOUNTED_TREE_SLOT,
+        ));
     }
 }
 

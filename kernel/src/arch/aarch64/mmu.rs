@@ -166,7 +166,7 @@ static KERNEL_ROOT: AtomicU64 = AtomicU64::new(0);
 /// kernel code and reach its `.bss` boot stack and the UART, but **not** the thread-stack area far
 /// up the high half. This switches it to the same fine map the boot core built and verified, so all
 /// cores translate identically (W^X, the guard pages, the full direct map).
-pub fn init_secondary() {
+pub(crate) fn init_secondary() {
     let root = KERNEL_ROOT.load(Ordering::Relaxed);
     debug_assert!(root != 0, "init_secondary before init");
 
@@ -319,16 +319,16 @@ where
 /// The virtio-mmio device window on QEMU `virt`: 32 slots of 0x200 bytes at 0x0a000000, with
 /// interrupts SPI 16..47 (INTID 48..79). Fixed by the machine, like [`UART_BASE`].
 pub const VIRTIO_MMIO_BASE: u64 = 0x0a00_0000;
-pub const VIRTIO_MMIO_SIZE: u64 = 32 * 0x200;
+pub(crate) const VIRTIO_MMIO_SIZE: u64 = 32 * 0x200;
 /// SPI 16 becomes INTID 48 (SPIs start at 32). Slot `i` uses INTID `VIRTIO_IRQ_BASE + i`.
-pub const VIRTIO_IRQ_BASE: u32 = 48;
+pub(crate) const VIRTIO_IRQ_BASE: u32 = 48;
 /// aarch64's `virt` lays out 32 virtio-mmio slots 0x200 apart (RISC-V's are 8, 0x1000 apart). The
 /// probe (`virtio::find_block_device`) walks them.
-pub const VIRTIO_SLOT_STRIDE: u64 = 0x200;
-pub const VIRTIO_SLOTS: u64 = 32;
+pub(crate) const VIRTIO_SLOT_STRIDE: u64 = 0x200;
+pub(crate) const VIRTIO_SLOTS: u64 = 32;
 /// How many slots the probe walks. All of them: aarch64 `virt` is the only machine this
 /// architecture maps the window on. A function because riscv64's answer depends on the device tree.
-pub const fn virtio_slots() -> u64 {
+pub(crate) const fn virtio_slots() -> u64 {
     VIRTIO_SLOTS
 }
 
@@ -342,19 +342,19 @@ pub const fn virtio_slots() -> u64 {
 /// **The floor, not the answer, since milestone 320.** `pci::ecam_buses()` is what the kernel maps
 /// and reads: this value until a survey has run, and the machine's own topology afterwards. On this
 /// architecture no survey runs, so it stays 1 and is the truth here.
-pub const PCI_ECAM_BUSES: u16 = 1;
+pub(crate) const PCI_ECAM_BUSES: u16 = 1;
 
 /// How much of the 32-bit PCI memory window the kernel maps and assigns BARs from; the window
 /// itself (base `0x1000_0000` on QEMU `virt`) comes from the machine's `ranges` via
 /// `memory::pci_regions`. Nobody has programmed a BAR before us (we boot without EDK2, so there
 /// is no PCI firmware), and the kernel places them itself, exactly as on riscv. A 2 MB mapped
 /// slice bounds the page-table spend.
-pub const PCI_BAR_MAPPED: u64 = 0x20_0000;
+pub(crate) const PCI_BAR_MAPPED: u64 = 0x20_0000;
 
 /// PCI INTx line A routes to GIC SPI 3 (INTID 32 + 3 = 35); B, C, D follow, by the standard
 /// swizzle (`pci::intx_irq`). The pci crate's fixture test walks the machine's own
 /// `interrupt-map` and asserts the formula matches all sixteen entries.
-pub const PCI_IRQ_BASE: u32 = 35;
+pub(crate) const PCI_IRQ_BASE: u32 = 35;
 
 /// Map a range of *virtual* addresses to the physical ones they were linked against.
 ///
@@ -615,7 +615,7 @@ fn install_reserved_ttbr0() {
 /// Compose the value `TTBR0_EL1` actually holds: the table root in the low bits, the ASID in
 /// bits 63:48. This composed value is what travels through the switch path, so the register
 /// write and the "already installed?" comparison are both one operation on one word.
-pub fn ttbr0_value(root: u64, asid: u16) -> u64 {
+pub(crate) fn ttbr0_value(root: u64, asid: u16) -> u64 {
     root | (asid as u64) << 48
 }
 
@@ -647,7 +647,7 @@ pub fn permit_kernel_access_to_user_pages(_allowed: bool) -> bool {
 /// separate `TTBR1` that every process shares implicitly, so a process's `TTBR0` root carries only
 /// user mappings. It exists so portable `user::AddressSpace` can call it unconditionally; on RISC-V,
 /// with one `satp` per address space, it copies the kernel high-half into the root. See DECISIONS §17.
-pub fn share_kernel_half(_root: u64) {}
+pub(crate) fn share_kernel_half(_root: u64) {}
 
 /// Point `TTBR0_EL1` at a composed root-plus-ASID value ([`ttbr0_value`]). **No TLB flush.**
 ///
@@ -772,25 +772,25 @@ pub fn deactivate_user() {
 #[cfg_attr(not(feature = "system_tests"), allow(dead_code))]
 pub fn user_can_read(va: u64) -> bool {
     // SAFETY: address translation has no side effects beyond PAR_EL1.
-    unsafe { translate_as_el0(va, false) }
+    unsafe { can_el0_access(va, false) }
 }
 
 /// As [`user_can_read`], for a write. `AT S1E0W`. Same disposition, same test.
 #[cfg_attr(not(feature = "system_tests"), allow(dead_code))]
 pub fn user_can_write(va: u64) -> bool {
     // SAFETY: as above.
-    unsafe { translate_as_el0(va, true) }
+    unsafe { can_el0_access(va, true) }
 }
 
 /// # Safety
 /// Sound for any address. The result is advisory only in the sense that the mapping could change
 /// afterwards; (the old `syscall::user_slice` reader that relied on this was removed in milestone 8).
 ///
-/// Name: provisional, flagged 2026-09-24 by the boolean-predicate pass
-/// (design/naming/functions-that-answer-yes-or-no-worklist.md). It does not yet follow the Rust predicate rule
-/// calef ratified 2026-09-24; recommended `can_el0_access`, because it is named for the `AT`
-/// instruction it issues, but the answer is about access.
-unsafe fn translate_as_el0(va: u64, write: bool) -> bool {
+/// Name: provisional, minted 2026-10-18 (UTC) by maintainer/names-comply-question-shapes, as the
+/// yes-or-no worklist recommended.
+/// Refused `translate_as_el0` (named for the `AT` instruction it issues, where the answer is about
+/// access).
+unsafe fn can_el0_access(va: u64, write: bool) -> bool {
     // PAR_EL1 IS A SINGLE SHARED REGISTER, and between the `at` and the `mrs` we could be
     // preempted by the timer, switched to another thread, and switched back with somebody else's
     // translation result sitting in it. Masking interrupts for two instructions closes that, and
@@ -840,7 +840,7 @@ pub fn current_user_root() -> u64 {
 /// why it takes an explicit `root` rather than the installed one: the holder is usually some other
 /// process. The database that drives it forgets a root before its `AddressSpace` frees its tables,
 /// so `root` here is always a live low-half table.
-pub fn unmap_user_at(root: u64, va: u64) -> Option<u64> {
+pub(crate) fn unmap_user_at(root: u64, va: u64) -> Option<u64> {
     // SAFETY: `root` is a live L0 table built with `Half::Low`; the direct map makes `phys_to_ptr`
     // valid; `unmap` allocates nothing.
     let mut mapper = unsafe { Mapper::<_, _, Aarch64>::new(root, Half::Low, || None, phys_to_ptr) };
@@ -858,7 +858,7 @@ pub fn unmap_user_at(root: u64, va: u64) -> Option<u64> {
 /// go back: see `paging::Mapper::unlink_table` for why the cut is one entry. The flush is by ASID
 /// rather than by page because the span is up to a whole table's reach and the walk caches above
 /// the leaves have to go too, and a by-tag flush reaches both on every core.
-pub fn cut_user_table(root: u64, va: u64, table: u64, asid: u16) -> Option<(u64, u64)> {
+pub(crate) fn cut_user_table(root: u64, va: u64, table: u64, asid: u16) -> Option<(u64, u64)> {
     // SAFETY: `root` is a live low-half table (the registry forgets a root before its space frees
     // it); the direct map makes `phys_to_ptr` valid; a cut allocates nothing.
     let mut mapper = unsafe { Mapper::<_, _, Aarch64>::new(root, Half::Low, || None, phys_to_ptr) };
@@ -884,7 +884,7 @@ pub fn translate_at(root: u64, va: u64) -> Option<(u64, Flags)> {
 /// The `PageFrame::MAP` and `MemoryRegion::MAP` path. The leaf is not allocated here: it is the
 /// page the frame capability names, or the page `MemoryRegion::MAP` has just retyped. `alloc` supplies page-table nodes only, so a caller can point them at an untyped and
 /// keep the kernel out of the allocation entirely.
-pub fn map_current_user_page_frame(
+pub(crate) fn map_current_user_page_frame(
     va: u64,
     phys: u64,
     flags: Flags,
@@ -905,7 +905,7 @@ pub fn map_current_user_page_frame(
 
 /// The empty table that means "no process is running", composed with the kernel's ASID 0,
 /// ready for [`switch_user_root`].
-pub fn reserved_root() -> u64 {
+pub(crate) fn reserved_root() -> u64 {
     ttbr0_value(RESERVED_TTBR0.load(Ordering::Relaxed), 0)
 }
 
@@ -935,7 +935,7 @@ pub fn reserved_root() -> u64 {
 /// out from under the `IPC_TABLES` lock *on purpose*, so that the lock is released before the context
 /// switch, and a lifetime tied to the `AddressSpace` cannot survive that drop. So the obligation
 /// stays a sentence, and `unsafe fn` is what puts it in front of a caller.
-pub unsafe fn switch_user_root(ttbr: u64) {
+pub(crate) unsafe fn switch_user_root(ttbr: u64) {
     if TTBR0_EL1.get() == ttbr {
         return;
     }
@@ -981,7 +981,7 @@ fn kernel_mapper() -> Mapper<impl FnMut() -> Option<u64>, fn(u64) -> *mut PageTa
 ///
 /// Refuses to overwrite an existing mapping (`MapError::AlreadyMapped`), which is what forces
 /// break-before-make: to *change* a mapping you must [`unmap_page`] first.
-pub fn map_page(va: u64, pa: u64, flags: Flags) -> Result<(), MapError> {
+pub(crate) fn map_page(va: u64, pa: u64, flags: Flags) -> Result<(), MapError> {
     let _guard = KERNEL_MMU.lock(); // exclusive: two cores must not mutate the tables at once
     kernel_mapper().map(va, pa, flags)
 }
@@ -992,7 +992,7 @@ pub fn map_page(va: u64, pa: u64, flags: Flags) -> Result<(), MapError> {
 ///
 /// The `TlbFlush` obligation is discharged here, properly, with a real `tlbi`. It cannot be
 /// forgotten: dropping one un-discharged panics.
-pub fn unmap_page(va: u64) -> Result<u64, MapError> {
+pub(crate) fn unmap_page(va: u64) -> Result<u64, MapError> {
     let _guard = KERNEL_MMU.lock(); // exclusive: see map_page
     let (pa, flush) = kernel_mapper().unmap(va)?;
     flush.flush(flush_tlb);
@@ -1011,7 +1011,7 @@ pub fn unmap_page(va: u64) -> Result<u64, MapError> {
 /// `dsb ish` afterwards because **TLB maintenance is not synchronous**. Without it, the next
 /// instruction may still be using the translation you just told the CPU to forget. And `isb`
 /// because instruction fetch may have already prefetched through the old mapping.
-pub fn flush_tlb(va: u64) {
+pub(crate) fn flush_tlb(va: u64) {
     // SAFETY: TLB maintenance is always sound. Getting it wrong means a stale translation, not
     // memory unsafety in the Rust sense; but a stale translation IS memory unsafety in the
     // sense that matters here.
@@ -1027,7 +1027,7 @@ pub fn flush_tlb(va: u64) {
     }
 }
 
-pub fn is_enabled() -> bool {
+pub(crate) fn is_enabled() -> bool {
     SCTLR_EL1.is_set(SCTLR_EL1::M)
 }
 
@@ -1081,7 +1081,7 @@ pub fn translate_user(va: u64) -> Option<(u64, Flags)> {
     any(test, feature = "system_tests", feature = "bench"),
     allow(dead_code)
 )]
-pub fn print_summary() {
+pub(crate) fn print_summary() {
     println!(
         "  mmu             : {}, kernel in TTBR1 at {:#018x}, TTBR0 free for userspace",
         if is_enabled() { "on" } else { "OFF" },

@@ -63,7 +63,7 @@ pub fn walk_user(root: u64, va: u64) -> paging::Walk {
 /// (`init`'s `verify` asserts it), so every user address faults, which is what a kernel thread
 /// should get.
 #[allow(dead_code)]
-pub fn reserved_root() -> u64 {
+pub(crate) fn reserved_root() -> u64 {
     ttbr0_value(KERNEL_ROOT.load(Ordering::Relaxed), 0)
 }
 
@@ -79,7 +79,7 @@ pub fn reserved_root() -> u64 {
 /// What that costs is stated where it is paid: [`flush_asid`] cannot flush one address space,
 /// because the hardware holds no tag to select on.
 #[allow(dead_code)]
-pub fn ttbr0_value(root: u64, asid: u16) -> u64 {
+pub(crate) fn ttbr0_value(root: u64, asid: u16) -> u64 {
     debug_assert_eq!(
         root & 0xfff,
         0,
@@ -105,7 +105,7 @@ pub fn ttbr0_value(root: u64, asid: u16) -> u64 {
 ///
 /// Called by `user::AddressSpace::new` right after it allocates a root.
 #[allow(dead_code)]
-pub fn share_kernel_half(root: u64) {
+pub(crate) fn share_kernel_half(root: u64) {
     let kernel_root = KERNEL_ROOT.load(Ordering::Relaxed);
     assert_ne!(
         kernel_root, 0,
@@ -136,7 +136,7 @@ pub fn share_kernel_half(root: u64) {
 /// this architecture is a page fault taken with tables that cannot describe the fault handler: a
 /// double fault, then a triple fault, then a silent machine reset.
 #[allow(dead_code)]
-pub unsafe fn switch_user_root(cr3: u64) {
+pub(crate) unsafe fn switch_user_root(cr3: u64) {
     if read_cr3() == cr3 {
         return;
     }
@@ -243,7 +243,7 @@ pub fn flush_asid(asid: u16) {
 /// was mapped and unmapped inside one address space would otherwise keep the old translation, and
 /// distinguishing the two cases here would be a foot gun for one `invlpg`.
 #[allow(dead_code)]
-pub fn map_current_user_page_frame(
+pub(crate) fn map_current_user_page_frame(
     va: u64,
     phys: u64,
     flags: paging::Flags,
@@ -261,7 +261,7 @@ pub fn map_current_user_page_frame(
 /// Unmap one user page at `va` in the space rooted at `root`, invalidate the TLB, and return the
 /// frame it named (the caller's to free; the mapper never owned it).
 #[allow(dead_code)]
-pub fn unmap_user_at(root: u64, va: u64) -> Option<u64> {
+pub(crate) fn unmap_user_at(root: u64, va: u64) -> Option<u64> {
     // SAFETY: `root` is a low-half-owning root; `unmap` allocates nothing, so the `|| None`
     // allocator is never called; the direct map makes `phys_to_ptr` valid.
     let mut mapper = unsafe { Mapper::<_, _, Ia32e>::new(root, Half::Low, || None, phys_to_ptr) };
@@ -279,7 +279,7 @@ pub fn unmap_user_at(root: u64, va: u64) -> Option<u64> {
 /// go back: see `paging::Mapper::unlink_table` for why the cut is one entry. The flush is by ASID
 /// rather than by page because the span is up to a whole table's reach and the walk caches above
 /// the leaves have to go too, and a by-tag flush reaches both on every core.
-pub fn cut_user_table(root: u64, va: u64, table: u64, asid: u16) -> Option<(u64, u64)> {
+pub(crate) fn cut_user_table(root: u64, va: u64, table: u64, asid: u16) -> Option<(u64, u64)> {
     // SAFETY: `root` is a live low-half table (the registry forgets a root before its space frees
     // it); the direct map makes `phys_to_ptr` valid; a cut allocates nothing.
     let mut mapper = unsafe { Mapper::<_, _, Ia32e>::new(root, Half::Low, || None, phys_to_ptr) };

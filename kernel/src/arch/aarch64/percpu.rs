@@ -45,14 +45,14 @@ pub fn entry_el() -> u64 {
 /// the kernel keeps a per-core pointer in it and reads it back in one `mrs`. This is the
 /// standard aarch64 per-CPU base (Linux uses `TPIDR_EL1` identically). The portable side of
 /// this lives in `kernel/src/cpu.rs`; only the register touch belongs here (DECISIONS §4).
-pub fn set_percpu(ptr: usize) {
+pub(crate) fn set_percpu(ptr: usize) {
     TPIDR_EL1.set(ptr as u64);
 }
 
 /// The logical id of the core the kernel boots on. On aarch64's `virt` the boot core is MPIDR
 /// affinity 0, so it is always 0; the SMP bring-up starts every *other* core. (RISC-V's boot hart is
 /// not guaranteed to be 0, so its `arch::boot_cpu_id` reads the actual hart id.)
-pub fn boot_cpu_id() -> usize {
+pub(crate) fn boot_cpu_id() -> usize {
     0
 }
 

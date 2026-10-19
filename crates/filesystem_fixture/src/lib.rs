@@ -162,7 +162,7 @@ pub mod throughput {
     /// have moved sixteen times as much data at 64 KiB as at 4 KiB. Two runs of this phase move
     /// the same file however the requests are shaped, which is what makes a before and an after
     /// comparable.
-    pub const TOTAL: u64 = 1024 * 1024;
+    pub(crate) const TOTAL: u64 = 1024 * 1024;
 
     /// Transfers per phase: [`TOTAL`] divided by [`UNIT`]. 256 at one page, 16 at sixteen.
     pub const BLOCKS: u64 = TOTAL / UNIT as u64;
@@ -649,13 +649,17 @@ pub mod walk {
     }
 
     /// Directories a full walk from [`ROOT`] lists: the four regions, and the chain's levels.
-    pub const WALK_DIRS: usize = 4 + DEPTH;
+    ///
+    /// Name: provisional, minted 2026-10-18 (UTC) by maintainer/names-comply-question-shapes.
+    /// Refused `WALK_DIRS` (`dir` is spelled out, per §154 (the acronym test is whether the phrase
+    /// is spoken)).
+    pub const WALK_DIRECTORIES: usize = 4 + DEPTH;
     /// Files a full walk opens.
     pub const WALK_FILES: usize = (DEPTH + 1) + WIDE_COUNT + 1 + SIZE_FILES.len();
     /// Entries a full walk is handed by `read_dir`, which is every directory and every file
     /// once. Printed and asserted by the priced program, so a walk that silently skipped a
     /// directory it could not look into fails on a count rather than on a slower figure.
-    pub const WALK_ENTRIES: usize = WALK_DIRS + WALK_FILES;
+    pub const WALK_ENTRIES: usize = WALK_DIRECTORIES + WALK_FILES;
     /// Bytes a full walk reads.
     pub const WALK_BYTES: usize = {
         let mut sized = 0;

@@ -181,6 +181,96 @@ fn a_confined_el0_process_serves_the_block_interface_end_to_end() {
     assert!(disk.blk(0xfe, 0) < 0, "the server answered an unknown verb");
 }
 
+/// **Each client stages in the window its badge names, and the disk tree's cannot write**
+/// (milestone 834 (ioping on nife and Linux); calef, 2026-10-18 23:06 UTC, "Per-client window"). The NVMe server keeps one
+/// transfer window per client so the filesystem server, the installer and the disk tree can
+/// each have a request in flight without overwriting another's staging. What would go wrong without
+/// it is a write that carries another client's bytes, so that is what this checks: a write through
+/// the installer's window lands the installer's bytes and leaves window 0's staging untouched, and
+/// a read through the disk tree's window comes back in that window and nowhere else.
+///
+/// **Named to run before `a_confined_el0_server_cannot_dma_outside_its_region`**, which the suite
+/// runs in name order: that test's attacker leaves the controller answering nothing, and a request
+/// after it times out and comes back `EIO` (CI, 2026-10-19 UTC). `ensure` wires the server once per
+/// boot, so this needs no other case to have run first.
+///
+/// Falsification: replayable `system_tests/falsifications/user.non_volatile_memory_express_tests.a_client_stages_in_the_window_its_badge_names.patch`
+#[test_case]
+fn a_client_stages_in_the_window_its_badge_names() {
+    use filesystem_contract::blk;
+
+    use crate::non_volatile_memory_express::{
+        CLIENT_WINDOWS, DISK_TREE_WINDOW, FILESYSTEM_WINDOW, INSTALLER_WINDOW,
+    };
+    let Some(disk) = start() else {
+        crate::testing::skip!("no NVMe controller came up (NIFE_NVME not set on this leg?)");
+    };
+    const BLOCK: u64 = 41;
+    let staged = |w: u64| {
+        // SAFETY: each window is a block or more of the server's transfer buffer, which the direct
+        // map covers, and the server touches it only inside a CALL this thread is not making.
+        unsafe {
+            &mut *(crate::arch::mmu::phys_to_virt(disk.window_phys(w))
+                as *mut [u8; crate::non_volatile_memory_express::BLOCK_SIZE])
+        }
+    };
+    let call = |op, badge| {
+        crate::sched::ipc_call_badged(disk.request, [blk::req(op, 1), BLOCK], badge)[0] as i64
+    };
+    let pattern = |i: usize| (i as u64 % 239) as u8 ^ 0x3c;
+
+    staged(FILESYSTEM_WINDOW).fill(0x11);
+    for (i, b) in staged(INSTALLER_WINDOW).iter_mut().enumerate() {
+        *b = pattern(i);
+    }
+    assert_eq!(
+        call(blk::WRITE, INSTALLER_WINDOW),
+        0,
+        "the installer's write was refused"
+    );
+    assert!(
+        staged(FILESYSTEM_WINDOW).iter().all(|&b| b == 0x11),
+        "the installer's write touched window 0's staging"
+    );
+
+    staged(DISK_TREE_WINDOW).fill(0xaa);
+    assert_eq!(
+        call(blk::READ, DISK_TREE_WINDOW),
+        0,
+        "the disk tree's read was refused"
+    );
+    for (i, b) in staged(DISK_TREE_WINDOW).iter().enumerate() {
+        assert_eq!(
+            *b,
+            pattern(i),
+            "byte {i} of the disk tree's read came back wrong"
+        );
+    }
+    assert!(
+        staged(FILESYSTEM_WINDOW).iter().all(|&b| b == 0x11),
+        "the disk tree's read landed in window 0"
+    );
+
+    // **Read-only is the capability's, not the disk tree's code** (`can_write`).
+    let erofs = filesystem_contract::reply_err(30);
+    assert_eq!(
+        call(blk::WRITE, DISK_TREE_WINDOW),
+        erofs,
+        "the disk tree's window wrote"
+    );
+    assert_eq!(
+        call(blk::FLUSH, DISK_TREE_WINDOW),
+        erofs,
+        "the disk tree's window flushed"
+    );
+    // **A badge no client was given is refused**, not folded onto window 0.
+    assert_eq!(
+        call(blk::READ, CLIENT_WINDOWS as u64),
+        filesystem_contract::reply_err(22),
+        "a badge past the last window was served"
+    );
+}
+
 /// **A confined EL0 NVMe server cannot DMA outside its region** (milestone 261's Outstanding item;
 /// milestone 202 (every confinement test is a ritual until somebody breaks the confinement and watches it fail)'s convention: a claim, a test, a replayable falsification). The storage twin of
 /// `display_tests::a_backing_outside_the_grant_is_refused_by_the_iommu` and of `block_driver`'s two
@@ -283,7 +373,7 @@ fn a_confined_el0_server_cannot_dma_outside_its_region() {
     // have copied the disk's bytes over the canary. This is the direct memory proof, independent of
     // the fault queue, and it is the assertion the falsification's widened domain flips.
     assert!(
-        esc.canary_intact(),
+        esc.is_canary_intact(),
         "the victim frame at {:#x} was overwritten: the controller's DMA reached a frame outside \
          its region",
         esc.victim,

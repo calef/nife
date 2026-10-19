@@ -42,10 +42,10 @@
 /// with its equality asserted in `xtask` until the dependency that made the question moot
 /// arrived (2026-10-04): the console's reader taking the color from the crate that paints is
 /// the same argument that brought that dependency in.
-pub const INK: [u8; 3] = rgb(screen_console::ScreenConsole::FOREGROUND);
+pub(crate) const INK: [u8; 3] = rgb(screen_console::ScreenConsole::FOREGROUND);
 
 /// What it paints background with: [`screen_console::ScreenConsole::BACKGROUND`].
-pub const PAPER: [u8; 3] = rgb(screen_console::ScreenConsole::BACKGROUND);
+pub(crate) const PAPER: [u8; 3] = rgb(screen_console::ScreenConsole::BACKGROUND);
 
 /// The three channels of a `0x00RRGGBB` word, in the order a PPM stores them.
 const fn rgb(word: u32) -> [u8; 3] {

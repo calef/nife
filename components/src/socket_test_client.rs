@@ -64,12 +64,12 @@ const STACK: u64 = 1;
 const MEMORY_REGION: u64 = 2;
 
 /// Test selectors (the entry role), and the success word the kernel test asserts.
-pub const TEST_NAME_RESOLUTION: u64 = 1;
-pub const TEST_TCP_ECHO: u64 = 2;
-pub const TEST_TCP_REOPEN: u64 = 3;
-pub const TEST_UDP_TFTP: u64 = 4;
-pub const TEST_TCP_ACCEPT: u64 = 5;
-pub const TEST_HTTP_PACKAGE: u64 = 6;
+pub(crate) const TEST_NAME_RESOLUTION: u64 = 1;
+pub(crate) const TEST_TCP_ECHO: u64 = 2;
+pub(crate) const TEST_TCP_REOPEN: u64 = 3;
+pub(crate) const TEST_UDP_TFTP: u64 = 4;
+pub(crate) const TEST_TCP_ACCEPT: u64 = 5;
+pub(crate) const TEST_HTTP_PACKAGE: u64 = 6;
 /// **Drain a TCP stream from a peer named at spawn, and time it** (milestone 494 (a driver for the
 /// network card a PC actually has)'s bench boot). The second start word is the peer, packed
 /// `ipv4 << 16 | port`. Not a gate: its peer is a host on a real LAN, or a slirp `guestfwd` command
@@ -83,19 +83,19 @@ pub const TEST_TCP_DRAIN: u64 = 7;
 /// [`TEST_SOCKET_TAKE`], which holds no front door to the stack at all, receives it on slot 3 and
 /// runs the TFTP round trip through it; [`TEST_UDP_TFTP_HELD`] is the TFTP client with its socket
 /// open and waiting, so another client can try to reach it while it exists.
-pub const TEST_SOCKET_GIVE: u64 = 9;
-pub const TEST_SOCKET_TAKE: u64 = 10;
-pub const TEST_UDP_TFTP_HELD: u64 = 11;
+pub(crate) const TEST_SOCKET_GIVE: u64 = 9;
+pub(crate) const TEST_SOCKET_TAKE: u64 = 10;
+pub(crate) const TEST_UDP_TFTP_HELD: u64 = 11;
 /// **One `ACCEPT` that nobody answers**, on a NIC with no `hostfwd`: it must come back refused at
 /// `net_stack`'s bound rather than block. [`tcp_accept_unheard`] says why. Name: provisional, the
 /// riscv-cpu-net-flake lane, 2026-10-13 (UTC).
-pub const TEST_TCP_ACCEPT_UNHEARD: u64 = 12;
+pub(crate) const TEST_TCP_ACCEPT_UNHEARD: u64 = 12;
 /// **The badge forgery** (an eighth outsider pass at claim 34): open a UDP socket, try to mint a
 /// second badge for the minted socket capability, and prove the socket still works afterwards.
 /// A minted socket capability is born badged (the stack mints it from its serve endpoint), so the
 /// badge rule's "set once, never changed" is the only thing standing between a client and a second
 /// name for the same socket.
-pub const TEST_SOCKET_BADGE_FORGE: u64 = 13;
+pub(crate) const TEST_SOCKET_BADGE_FORGE: u64 = 13;
 /// The first word a waiting role reports before it waits.
 pub const READY: u64 = 0x5EAD;
 /// Slot 3 of the three roles above: the hand-off endpoint (`WRITE` to the giver, `READ` to the
@@ -881,7 +881,7 @@ const CATALOGUE_VA: u64 = address_space_map::pair_page(0x0000_0000_00C0_0000);
 /// Reported in a word of its own when the fetched bytes did not match the catalogue's digest, which
 /// is the refusal the tampered fetch must produce. Distinct from `OK` and from every stage failure,
 /// so a test asserting a refusal cannot be satisfied by a broken fetch.
-pub const DIGEST_REFUSED: u64 = 3;
+pub(crate) const DIGEST_REFUSED: u64 = 3;
 // The package source the runners put at 10.0.2.9:8080 (`helpers/package-http-peer`).
 use socket_contract::fixture::{
     PACKAGE_PEER_HOST, PACKAGE_PEER_IP as PACKAGE_IP, PACKAGE_PEER_PORT as PACKAGE_PORT,

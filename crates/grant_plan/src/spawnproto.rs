@@ -293,6 +293,61 @@ const _: () = assert!(SHELL_GPU_SLOT > MACHINE_PAGE_SLOT);
 const _: () = assert!(SHELL_GPU_SLOT > crate::SHELL_CONFIGURATION_SLOT);
 const _: () = assert!(SHELL_GPU_SLOT + 6 < RUN_UNVOUCHED_SLOT);
 
+/// **Where the boot shell holds its second mounted tree** (milestone 154's mechanism, milestone 834 (ioping on nife and Linux)'s
+/// use): the disk tree's endpoint, `WRITE` and no `GRANT`, the read-only and uncached view of the
+/// NVMe disk calef ruled for the prompt (2026-10-18 21:36 UTC, "Yes, read-only at prompt"). Empty
+/// on a machine with no NVMe disk, and the shell's `_start` probe is what tells that apart. A named
+/// slot for [`RUN_UNVOUCHED_SLOT`]'s reasons, one under [`MACHINE_PAGE_SLOT`]: below the
+/// graphical block, so `caps`'s census on a boot with the tree still runs from the configuration
+/// page (21) straight to the run-unvouched slot (62).
+///
+/// The tree shares the shell's one page with the first ([`MOUNTED_TREE_NAME`] says where it is
+/// mounted): the kernel maps the disk tree's window 0 onto the filesystem server's window 0 frame,
+/// which is sound for the reason the two-tree witness gives, that the shell has one `CALL` in
+/// flight. Only the boot shell is given it; a `login` session holds one tree.
+///
+/// Name: provisional (lane `lane/ioping-direct-io`, 2026-10-18 UTC).
+pub const MOUNTED_TREE_SLOT: u64 = 19;
+
+const _: () = assert!(MOUNTED_TREE_SLOT < MACHINE_PAGE_SLOT);
+const _: () = assert!(MOUNTED_TREE_SLOT < crate::SHELL_CONFIGURATION_SLOT);
+
+/// **The name the second mounted tree appears at in the shell's one tree**: `/disk`. One component,
+/// so `/disk/nvme0` is a directory one level into the mounted tree, which is what a grant needs.
+///
+/// **The progenitor routes a grant by it** (milestone 834): a directory grant whose name is
+/// `disk/<directory>` is built against the disk tree, as `<directory>`. The shell can never plan a
+/// first-tree grant with that first component, because the mount hides the first tree's own
+/// `/disk`, so the name says which tree without a wire bit of its own.
+///
+/// Name: provisional (lane `lane/ioping-direct-io`, 2026-10-18 UTC).
+pub const MOUNTED_TREE_NAME: &[u8] = b"disk";
+
+/// **The rights the second mounted tree's root carries**: list, walk, read. The disk tree answers
+/// nothing that writes, so a shell that asked for more could not `cd` there (`OPENDIR` refuses a
+/// request it cannot meet in full). `filesystem_contract::dir`'s `ENUMERATE | READ | DESCEND`,
+/// spelled as a number because this crate does not link the contract; a host test pins the two.
+///
+/// Name: provisional, minted 2026-10-18 (UTC) by lane/ioping-direct-io.
+pub const MOUNTED_TREE_RIGHTS: u64 = 0b10_0011;
+
+/// **Which tree a directory grant's name is in, and its name there** (milestone 834): the second
+/// tree, as `rest`, for `disk/<rest>`; the first, unchanged, for anything else.
+///
+/// ```
+/// use grant_plan::spawnproto::{in_mounted_tree, MOUNTED_TREE_NAME};
+/// assert_eq!(in_mounted_tree(b"disk/nvme0"), Some(&b"nvme0"[..]));
+/// assert_eq!(in_mounted_tree(b"diskette"), None);
+/// assert_eq!(in_mounted_tree(MOUNTED_TREE_NAME), None);
+/// ```
+///
+/// Name: provisional, minted 2026-10-18 (UTC) by lane/ioping-direct-io.
+pub fn in_mounted_tree(name: &[u8]) -> Option<&[u8]> {
+    name.strip_prefix(MOUNTED_TREE_NAME)?
+        .strip_prefix(b"/")
+        .filter(|rest| !rest.is_empty())
+}
+
 /// **The directory grant is a set of names, and the set follows as one frame** (milestone 205 (how
 /// a foreign program is told what to do), §170 clauses 2 to 5). Meaningful with [`Wiring::directory_grant`]: the
 /// progenitor builds `fs_nameset_caretaker` rather than `fs_subtree_caretaker` for the grant, and
@@ -902,6 +957,15 @@ pub const SPAWN_REFUSED_BY_MANIFEST: u64 = u64::MAX - 3;
 /// ruling covered the mechanism only.
 pub const SPAWN_NO_DISPLAY: u64 = u64::MAX - 4;
 
+/// **The progenitor's word for a program this image does not carry**: the initial ramdisk has no
+/// entry under the program's name, so there was nothing to build. Distinct from [`SPAWN_FAILED`]
+/// for [`SPAWN_UNVOUCHED`]'s reason: an image built without `jig` answered `jig` with "out of
+/// memory", which sent a person looking at the job pool for a fault in how the image was built.
+/// Five below `u64::MAX`, for [`JOB_FAULTED`]'s reason.
+///
+/// Name: provisional, minted 2026-10-18 (UTC) by lane/image-needs-jig.
+pub const SPAWN_NOT_IN_IMAGE: u64 = u64::MAX - 5;
+
 /// The ack the progenitor sends on the result endpoint when a **supervised** (interruptible) child started
 /// cleanly. An interruptible child reports its own progress and exit through the shared job frame,
 /// not the result endpoint, so the progenitor sends this once as the go-ahead: the shell reads it, then begins
@@ -911,6 +975,15 @@ pub const SPAWN_OK: u64 = 0;
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn the_mounted_trees_rights_are_list_walk_and_read() {
+        use filesystem_contract::dir;
+        assert_eq!(
+            MOUNTED_TREE_RIGHTS,
+            dir::ENUMERATE | dir::READ | dir::DESCEND
+        );
+    }
 
     /// The reaped message carries the label and the thread id, in that order, and a zero third
     /// word, so it cannot be read as a delegated capability's.
@@ -1148,6 +1221,7 @@ mod tests {
             SPAWN_UNVOUCHED,
             SPAWN_REFUSED_BY_MANIFEST,
             SPAWN_NO_DISPLAY,
+            SPAWN_NOT_IN_IMAGE,
         ];
         for (i, a) in all.iter().enumerate() {
             assert!(*a > u64::MAX - 8, "{a:#x}");

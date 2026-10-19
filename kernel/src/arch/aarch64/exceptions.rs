@@ -77,7 +77,7 @@ impl TrapFrame {
     /// bug and is not.
     /// The syscall number the caller passed. aarch64 ABI: register `x8` (DECISIONS §10). The
     /// portable syscall dispatcher reads it through here so it never names a register directly.
-    pub fn syscall_nr(&self) -> u64 {
+    pub(crate) fn syscall_nr(&self) -> u64 {
         self.x[8]
     }
 
@@ -173,7 +173,7 @@ fn entered_user_with_no_entry_point(sp_el0: u64) -> ! {
 /// thread that trapped from EL0 (a syscall, or a timer preemption while spinning) left its frame at
 /// `stack_top - size_of::<TrapFrame>()`, where `elr` is its EL0 PC. Used by the watchdog dump to say
 /// *where* each thread is, not just its scheduler state. Meaningless for a pure kernel thread.
-pub fn user_pc(stack_top: u64) -> u64 {
+pub(crate) fn user_pc(stack_top: u64) -> u64 {
     let frame = (stack_top - size_of::<TrapFrame>() as u64) as *const TrapFrame;
     // SAFETY: diagnostic read of the frame the vector's SAVE_CONTEXT wrote at the stack top.
     unsafe { core::ptr::read_volatile(core::ptr::addr_of!((*frame).elr)) }
@@ -202,7 +202,7 @@ pub unsafe fn set_user_arg(stack_top: u64, i: usize, v: u64) {
 ///
 /// Exists so the tests can prove the handler actually ran, rather than proving only
 /// that we didn't crash.
-pub static BRK_COUNT: AtomicUsize = AtomicUsize::new(0);
+pub(crate) static BRK_COUNT: AtomicUsize = AtomicUsize::new(0);
 
 /// **Prove the trap path works end to end: execute a breakpoint and return** (milestone 268).
 ///
@@ -228,7 +228,7 @@ pub static BRK_COUNT: AtomicUsize = AtomicUsize::new(0);
     any(test, feature = "system_tests", feature = "bench"),
     allow(dead_code)
 )]
-pub fn self_test() -> usize {
+pub(crate) fn self_test() -> usize {
     let before = BRK_COUNT.load(Ordering::Relaxed);
     // SAFETY: `brk #0` raises a synchronous exception the dispatcher handles, and the guard in that
     // arm (`!is_from_lower_el`) admits this one because it comes from EL1. It has no other effect.
@@ -241,26 +241,26 @@ pub fn self_test() -> usize {
 /// The single most useful field in the machine when something has gone wrong. It says
 /// *what kind* of thing happened, and everything else is detail.
 mod ec {
-    pub const UNKNOWN: u64 = 0x00;
-    pub const TRAPPED_WFI_WFE: u64 = 0x01;
+    pub(crate) const UNKNOWN: u64 = 0x00;
+    pub(crate) const TRAPPED_WFI_WFE: u64 = 0x01;
     /// Access to SVE, Advanced SIMD or floating-point functionality, trapped by
     /// `CPACR_EL1.FPEN`. The first-use trap milestone 447 (a thread's vector registers are its
     /// own) turns into an enable; see
     /// `arch::aarch64::fp`.
-    pub const FP_SIMD_ACCESS: u64 = 0x07;
-    pub const ILLEGAL_EXECUTION_STATE: u64 = 0x0e;
-    pub const SVC64: u64 = 0x15;
-    pub const TRAPPED_MSR_MRS: u64 = 0x18;
-    pub const INSTRUCTION_ABORT_LOWER_EL: u64 = 0x20;
-    pub const INSTRUCTION_ABORT_SAME_EL: u64 = 0x21;
-    pub const PC_ALIGNMENT_FAULT: u64 = 0x22;
-    pub const DATA_ABORT_LOWER_EL: u64 = 0x24;
-    pub const DATA_ABORT_SAME_EL: u64 = 0x25;
-    pub const SP_ALIGNMENT_FAULT: u64 = 0x26;
-    pub const SERROR: u64 = 0x2f;
-    pub const BREAKPOINT_LOWER_EL: u64 = 0x30;
-    pub const BREAKPOINT_SAME_EL: u64 = 0x31;
-    pub const BRK64: u64 = 0x3c;
+    pub(crate) const FP_SIMD_ACCESS: u64 = 0x07;
+    pub(crate) const ILLEGAL_EXECUTION_STATE: u64 = 0x0e;
+    pub(crate) const SVC64: u64 = 0x15;
+    pub(crate) const TRAPPED_MSR_MRS: u64 = 0x18;
+    pub(crate) const INSTRUCTION_ABORT_LOWER_EL: u64 = 0x20;
+    pub(crate) const INSTRUCTION_ABORT_SAME_EL: u64 = 0x21;
+    pub(crate) const PC_ALIGNMENT_FAULT: u64 = 0x22;
+    pub(crate) const DATA_ABORT_LOWER_EL: u64 = 0x24;
+    pub(crate) const DATA_ABORT_SAME_EL: u64 = 0x25;
+    pub(crate) const SP_ALIGNMENT_FAULT: u64 = 0x26;
+    pub(crate) const SERROR: u64 = 0x2f;
+    pub(crate) const BREAKPOINT_LOWER_EL: u64 = 0x30;
+    pub(crate) const BREAKPOINT_SAME_EL: u64 = 0x31;
+    pub(crate) const BRK64: u64 = 0x3c;
 }
 
 fn ec_name(class: u64) -> &'static str {
@@ -695,10 +695,10 @@ fn handle_irq(_frame: &mut TrapFrame) {
 }
 
 /// Interrupts the GIC raised and then withdrew. Not an error; worth counting.
-pub static SPURIOUS_IRQS: AtomicUsize = AtomicUsize::new(0);
+pub(crate) static SPURIOUS_IRQS: AtomicUsize = AtomicUsize::new(0);
 
 /// Interrupts we enabled but have no handler for. Definitely worth counting.
-pub static UNEXPECTED_IRQS: AtomicUsize = AtomicUsize::new(0);
+pub(crate) static UNEXPECTED_IRQS: AtomicUsize = AtomicUsize::new(0);
 
 /// Print everything we know and stop.
 ///

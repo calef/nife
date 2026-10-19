@@ -10,6 +10,13 @@
 
 use super::*;
 
+/// **The one line that resolves a name at the prompt**: `jig install uptime` tries the entry's
+/// listed location, `packages.basalt.test`, by name before the repository's own copy. Typed from
+/// this constant so `resolver_refusal_failure` reads the line the script types.
+///
+/// Name: provisional, minted 2026-10-18 (UTC) by lane `lane/jig-resolves-by-name`.
+pub(in crate::swish_check) const RESOLVING_LINE: &str = "jig install uptime";
+
 /// **What the second boot types** (milestone 198 (a package manager) rung 3a): the installed
 /// program still runs after a reboot, a removal takes its vouch away without deleting it, and a
 /// rollback vouches for it again. The disk is the only thing the first boot hands this one.
@@ -111,13 +118,40 @@ pub(in crate::swish_check) const SWISH_CHECK_AFTER_REBOOT: &[Line] = &[
             "  greeting 0.3.0",
         ],
     ),
-    // **A lying repository, refused by the index's digest** before the installer is asked: the
-    // peer serves `uptime` with a byte flipped. `jig` tries the entry's listed location first,
-    // which this prompt cannot resolve, and then the repository's own copy.
+    // **`list -u`: what is installed against what the copy offers** (milestone 809 (the package
+    // client becomes a program)). The live generation holds `greeting` 0.1.0 and 0.2.0, from the
+    // first boot's catalog and file installs, and the copy offers 0.3.0, newer in Debian's order
+    // than the newest of them. The line holds
+    // `activation/` read only and nothing else, which `caps` shows; `--upgradable` is refused
+    // naming `-u` (calef, 2026-10-17 UTC).
+    line(
+        0,
+        "caps jig list -u",
+        &["endpoint  dir      /activation  read-only."],
+    ),
     line(
         1,
-        "jig install uptime",
+        "jig list -u",
         &[
+            "installed packages the index offers newer (the copy jig update wrote):",
+            "  greeting 0.2.0 -> 0.3.0",
+        ],
+    ),
+    line(
+        1,
+        "jig list --upgradable",
+        &["refused: jig spells that list -u; it takes no long form"],
+    ),
+    // **A lying repository, refused by the index's digest** before the installer is asked: the
+    // peer serves `uptime` with a byte flipped. `jig` tries the entry's listed location first,
+    // which this prompt cannot resolve, and then the repository's own copy. That listed location
+    // is the one name a std program resolves at this prompt, through the resolver the progenitor
+    // started, so its line is where `resolver_refusal_failure` looks.
+    line(
+        1,
+        RESOLVING_LINE,
+        &[
+            "passed over https://packages.basalt.test:8443",
             "refused: the index does not vouch for the bytes that arrived; nothing was sent to the \
              installer",
         ],
@@ -138,6 +172,12 @@ pub(in crate::swish_check) const SWISH_CHECK_AFTER_REBOOT: &[Line] = &[
         1,
         "packages/greeting/0.3.0/greeting",
         &["hello from a package this image never carried"],
+    ),
+    // With 0.3.0 installed beside the others, the newest installed is the newest offered.
+    line(
+        1,
+        "jig list -u",
+        &["no installed package has a newer version in the index copy"],
     ),
     // **A package carries several programs** (milestone 919 (a package carries several
     // programs)). `duet` carries `bin/alto` and `bin/tenor`, neither named after it: one install
@@ -265,6 +305,26 @@ pub(in crate::swish_check) const SWISH_CHECK_AFTER_REBOOT: &[Line] = &[
         ],
     ),
     line(0, "cd /", &[]),
+    // **The same program, timing the disk rather than a file server's memory** (milestone 834 (ioping on nife and Linux)).
+    // `/disk` is the second mounted tree, the disk tree: the whole NVMe namespace as one
+    // read-only file, `n1`, served with no cache, so every request reaches the controller.
+    // `-o 1m -S 4m` is the range Linux's side of the bench names by flag, scaled to this 8 MiB
+    // disk. The library's `O_DIRECT` is not asked for here: basalt's ioping is built without
+    // `HAVE_DIRECT_IO`, so `-D` would be refused until it is rebuilt.
+    line(0, "ls /disk/nvme0", &["n1"]),
+    line(0, "cd /disk/nvme0", &[]),
+    line(
+        1,
+        DISK_TREE_IOPING_LINE,
+        &[
+            "4 KiB <<< n1 ",
+            "request=5 ",
+            "ioping statistics ---",
+            "4 requests completed in ",
+            ", 16 KiB read, ",
+        ],
+    ),
+    line(0, "cd /", &[]),
     // **`hackbench`, basalt's second C package** (milestone 907 (hackbench is packaged in basalt,
     // and its test installs it with `jig`)), installed the same way. Its thread mode is the run
     // `c_thread_tests` makes, smaller: one group of two senders and two receivers, four threads
@@ -349,6 +409,15 @@ const HACKBENCH_LINE: &str = "hackbench -T -p -g 1 -f 2 -l 10";
 /// flags, pointed at the installed program's own file rather than a directory.
 const IOPING_LINE: &str = "ioping -c 5 -i 0 -s 4k ioping/1.3/ioping";
 
+/// `ioping` against the disk tree (milestone 834): five 4 KiB reads at random offsets in the 4 MiB
+/// from 1 MiB of swish-check's NVMe disk.
+const DISK_TREE_IOPING_LINE: &str = "ioping -c 5 -i 0 -s 4k -S 4m -o 1m n1";
+
+/// The lines that read the disk tree, left out where a leg attaches no NVMe disk
+/// (`verdict::swish_check_omits`).
+pub(in crate::swish_check) const ON_THE_DISK_TREE: &[&str] =
+    &["ls /disk/nvme0", "cd /disk/nvme0", DISK_TREE_IOPING_LINE];
+
 /// The lines that need a repository from basalt (milestones 810, 906, 907, 897, 921 and 922),
 /// skipped without one outside CI.
 pub(in crate::swish_check) const FROM_BASALT: &[&str] = &[
@@ -357,6 +426,7 @@ pub(in crate::swish_check) const FROM_BASALT: &[&str] = &[
     "jig install ioping",
     "ioping -v",
     IOPING_LINE,
+    DISK_TREE_IOPING_LINE,
     "jig install hackbench",
     HACKBENCH_LINE,
     "jig install sqlite",

@@ -16,9 +16,9 @@ use super::*;
 ///
 /// `initial_ramdisk_len` is the archive length the kernel passed at entry; `fs_rights` is the
 /// `filesystem_contract::dir` rights the file-service endpoint carries, and 0 means this boot
-/// attached no disk (so `fs_ep` and `fs_page` are empty). `mounted_tree`, when `Some`, hands the
-/// shell a second, disjoint directory capability (see [`MountedTreeGrant`]); every real entry point
-/// passes `None`, because what that subtree should be is boot policy no call site decides.
+/// attached no disk (so `fs_ep` and `fs_page` are empty). `mounted_tree`, when `Some` and its slots
+/// hold something, is the shell's second mounted tree (see [`MountedTreeGrant`]); the real
+/// progenitor passes the disk tree's pair.
 ///
 /// # Examples
 ///
@@ -56,6 +56,9 @@ pub fn boot(
     fs_rights: u64,
     mounted_tree: Option<MountedTreeGrant>,
 ) -> ! {
+    // Probed before anything here allocates, because a slot the kernel left empty is one a later
+    // retype may land in.
+    let mounted_tree = mounted_tree.filter(|t| is_granted(t.ep) && is_granted(t.pool));
     let (fs, table) = open_archive(g, initial_ramdisk_len);
     let p = read_boot_programs(&fs, table);
     let spawnable = measure_spawnable(&fs, table);
@@ -126,9 +129,10 @@ pub fn boot(
         term,
         with_fs: fs_rights != 0,
     };
-    let mounted_tree_ep = start_mounted_tree_caretaker(&w, mounted_tree, p.care_elf.as_ref());
-    let (shell, sh_clock_slot) = build_shell(&w, &sh_elf, chan, sh_budget, mounted_tree_ep);
-    finish_shell_endowment(g, shell.tcb, mounted_tree_ep);
+    // Meaningless without a first tree, whose page the second shares.
+    let mounted_tree = mounted_tree.filter(|_| w.with_fs);
+    let (shell, sh_clock_slot) = build_shell(&w, &sh_elf, chan, sh_budget);
+    finish_shell_endowment(g, shell.tcb, mounted_tree);
 
     // Free every boot cap the spawn service does not need, so the progenitor's 16-slot capability table has room to
     // build a supervised child (which holds a job untyped and a job frame while the loader retypes
@@ -184,10 +188,10 @@ pub fn boot(
             kept,
             devices,
             p.sink_elf.is_some().then_some(term_sink),
-            fs,
+            (fs, mounted_tree),
             (p.catalog, p.index_sources),
         ),
-        &spawnable.progs,
+        &spawnable,
         Caretakers {
             subtree: p.care_elf,
             nameset: p.set_elf,
@@ -383,7 +387,7 @@ fn spawn_channels(
     kept: Kept,
     devices: DeviceServices,
     term_sink: Option<u64>,
-    fs: Option<Fs>,
+    (fs, mounted_tree): (Option<Fs>, Option<MountedTreeGrant>),
     (catalog, index_sources): (&'static str, &'static str),
 ) -> Channels {
     Channels {
@@ -401,6 +405,12 @@ fn spawn_channels(
         // go straight to the screen, through a process that can do nothing else with them.
         term_sink,
         fs,
+        // **The second mounted tree's service and pool** (milestone 834 (ioping on nife and Linux)), kept for the life of
+        // the boot for `fs`'s reason: a directory grant inside it is built from this copy.
+        disk: mounted_tree.map(|t| Fs {
+            ep: t.ep,
+            page: t.pool,
+        }),
         // **The client view of the entropy service, if this boot has one** (milestone 111).
         // The same endpoint the login stack drew its password from, kept rather than dropped,
         // so a program a *person* types can be endowed randomness the same way `date` is

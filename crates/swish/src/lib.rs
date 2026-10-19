@@ -71,8 +71,8 @@ pub use routing::{Route, route};
 pub use say::{HEAP_MAX_BYTES, Say, write_say};
 pub use sentences::{
     FAULTED_SENTENCE, NO_DISPLAY_SENTENCE, REFUSED_BY_MANIFEST_SENTENCE, UNVOUCHED_SENTENCE,
-    USER_USAGE, VOUCH_USAGE, image_refusal_sentence, write_help, write_outcome, write_pwd,
-    write_refusal, write_vouch,
+    USER_USAGE, VOUCH_USAGE, image_refusal_sentence, spawn_failure_sentence, write_help,
+    write_outcome, write_pwd, write_refusal, write_vouch,
 };
 pub use status::{STATUS_WORD, Status};
 pub use timing::{Untimed, write_duration, write_timing, write_untimed};

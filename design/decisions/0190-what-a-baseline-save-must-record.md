@@ -45,8 +45,8 @@ answered when it was asked.
 
 It shipped on 2026-09-23 in commit `1c5dee224` ("A baseline save records why the number moved,
 beside the number"), PR #1126. `cargo xtask bench --save` now refuses to run without at least one
-`--why "<reason>"` (`xtask/src/bench.rs`, the check before the kernel build), and writes one
-`# why:` line per reason into the baseline's header beside a `# date:` line; `--check` prints those
+`--why "<reason>"` (`xtask/src/bench.rs`, the check before the kernel build). It writes one
+`# why:` line per reason into the baseline's header beside a `# date:` line. `--check` prints those
 reasons back when a row moves. The usage line is `xtask/src/main.rs:276`. So the "Item 2 is not
 built" bullet below, and its `xtask/src/main.rs:7460` citation, describe the tree of 2026-09-19.
 
@@ -106,9 +106,9 @@ Most of that accumulation is honest, disclosed in the commit that caused it. The
 nothing in the tree can tell the honest part from the rest. Two saves on 2026-09-15 prove it.
 `44890a8a` re-saved the x86_64 baseline attributing +5 to +8% to the toolchain. Milestone 300
 (decompose the icount baseline drift) then measured that toolchain term across exactly those two
-nightlies at ~0, and PR #886 found
-the real cause and recovered ~5.9% by deleting a const-`false` element still threaded through the
-shared context-switch tuple. `85edb1ed` did the same on the other two architectures the same day.
+nightlies at ~0. PR #886 found the real cause and recovered ~5.9% by deleting a const-`false`
+element still threaded through the shared context-switch tuple. `85edb1ed` did the same on the other
+two architectures the same day.
 
 This is the move milestone 237 exists to refuse, one instrument over: re-saving because the number
 moved, which launders growth into the new normal and retires the gate that was supposed to catch it.
@@ -129,12 +129,13 @@ decided feature with a real cost at the switch, and `spawn_el0` legitimately fel
 ISAs when `b918337b` bounded a walk by occupancy. An anchor with no ledger of intended deltas fires
 on both.
 
-And the threshold itself is already decided. Milestone 25 (cross-OS performance comparison) demoted `--check` from a 2% gate to
-the coarse 10% tripwire deliberately, because adding unrelated live code moves untouched benchmarks
-several percent non-uniformly through whole-crate inlining decisions; the audit re-confirms it, since
-`9890eb02` moved every kernel-side IPC row by 4 to 8.5% by adding one benchmark. Item 4,
-tightening the threshold, stays refused, and it would not have caught either 2026-09-15 step, both
-of which were real costs honestly measured and wrongly explained.
+And the threshold itself is already decided. Milestone 25 (cross-OS performance comparison)
+demoted `--check` from a 2% gate to the coarse 10% tripwire deliberately. It did so because adding
+unrelated live code moves untouched benchmarks several percent non-uniformly through whole-crate
+inlining decisions. The audit re-confirms it, since `9890eb02` moved every kernel-side IPC row by 4
+to 8.5% by adding one benchmark. Item 4, tightening the threshold, stays refused, and it would not
+have caught either 2026-09-15 step, both of which were real costs honestly measured and wrongly
+explained.
 
 ## The question this section actually puts to calef
 

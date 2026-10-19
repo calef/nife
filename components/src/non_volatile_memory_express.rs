@@ -12,8 +12,8 @@
 //!
 //! Held, the complete list: slot 0, the request endpoint (`filesystem_contract::blk`, as the virtio
 //! block server speaks); slot 1, a readiness endpoint; the data plane's pages at [`DATA_PLANE_VA`]
-//! (the I/O rings and [`TRANSFER_BLOCKS`] pages of buffer); and one page of BAR0, the doorbells, at
-//! [`DOORBELL_VA`]. Denied, each by decision: BAR0's register page (`CC`, `CSTS`, the admin ring
+//! (the I/O rings and one window of [`TRANSFER_BLOCKS`] pages of buffer per client); and one page of
+//! BAR0, the doorbells, at [`DOORBELL_VA`]. Denied, each by decision: BAR0's register page (`CC`, `CSTS`, the admin ring
 //! registers), which NVMe 1.4 puts on its own page so this split costs no syscall; the admin
 //! plane's pages; every admin command, so where the rings live is the kernel's statement; an `Irq`;
 //! a `Virtio`; any name for the two windows, installed before `_start`; and everything else.
@@ -47,7 +47,10 @@
 #![no_main]
 
 use filesystem_contract::blk;
-use non_volatile_memory_express::{Command, Completion, CqState, Doorbell, Handoff, SqState};
+use non_volatile_memory_express::{
+    CLIENT_WINDOWS, Command, Completion, CqState, Doorbell, Handoff, SqState, can_write,
+    client_window,
+};
 use user_mode_runtime::mapped_window::{MappedWindow, PAGE};
 use user_mode_runtime::{exit, receive_request, reply, send};
 
@@ -74,11 +77,16 @@ const IO_SQ_OFF: u64 = 0;
 const IO_CQ_OFF: u64 = PAGE;
 const TRANSFER_OFF: u64 = 2 * PAGE;
 
-/// The whole data-plane window: two rings and the buffer.
+/// The whole data-plane window: two rings and one transfer window per client, window `w` at
+/// `TRANSFER_OFF + w * TRANSFER_BLOCKS` pages.
 // SAFETY: the spawner maps exactly these pages read/write at DATA_PLANE_VA before `_start` runs
 // (`kernel/src/user/non_volatile_memory_express_service.rs`), for the lifetime of this process.
-const DATA: MappedWindow =
-    unsafe { MappedWindow::new(DATA_PLANE_VA, TRANSFER_OFF + TRANSFER_BLOCKS as u64 * PAGE) };
+const DATA: MappedWindow = unsafe {
+    MappedWindow::new(
+        DATA_PLANE_VA,
+        TRANSFER_OFF + (CLIENT_WINDOWS * TRANSFER_BLOCKS) as u64 * PAGE,
+    )
+};
 
 /// The doorbell page. Device-typed, so every access is uncached and unreordered, which is what a
 /// doorbell needs: a cached write is a command the controller never hears about.
@@ -207,9 +215,17 @@ impl Plane {
         Ok(())
     }
 
-    /// One whole-filesystem-block transfer into or out of buffer page `slot_index`.
-    fn transfer(&mut self, block: u64, slot_index: usize, write: bool) -> Result<(), u16> {
-        let data_phys = self.handoff.data_plane_phys + TRANSFER_OFF + slot_index as u64 * PAGE;
+    /// One whole-filesystem-block transfer into or out of page `slot_index` of client window
+    /// `window`.
+    fn transfer(
+        &mut self,
+        block: u64,
+        window: usize,
+        slot_index: usize,
+        write: bool,
+    ) -> Result<(), u16> {
+        let page = (window * TRANSFER_BLOCKS + slot_index) as u64;
+        let data_phys = self.handoff.data_plane_phys + TRANSFER_OFF + page * PAGE;
         let cid = self.next_cid();
         let cmd = self
             .handoff
@@ -263,7 +279,7 @@ pub extern "C" fn _start(arg0: u64, arg1: u64, arg2: u64) -> ! {
     // up" should mean "a client that asks will be answered", not that the spawn completed. It is
     // also the only end-to-end check available here, since this process cannot read `CSTS` to ask
     // the controller how it is.
-    let first = plane.transfer(0, 0, false);
+    let first = plane.transfer(0, 0, 0, false);
     let report = if first.is_ok() {
         filesystem_contract::READY
     } else {
@@ -285,11 +301,16 @@ pub extern "C" fn _start(arg0: u64, arg1: u64, arg2: u64) -> ! {
 /// The serve loop: one endpoint, one wait point, forever. `filesystem_contract::blk`, the same
 /// four verbs the virtio block server answers, so the FS server and the disk tools cannot tell
 /// which kind of disk is underneath.
+///
+/// **A request stages in the window its badge names** (milestone 834 (ioping on nife and Linux)). Each client maps only its
+/// own window (`kernel/src/user/non_volatile_memory_express_service.rs`), and this server answers
+/// one request at a time, so two clients staging at once touch different pages. A badge no client
+/// was given is refused before anything is staged.
 fn serve(mut plane: Plane) -> ! {
     loop {
         let req = receive_request(REQ);
         let (w0, block) = (req.w0, req.w1);
-        let Some(reply_cap) = req.delivered.into_reply() else {
+        let Some(reply_to) = req.delivered.into_reply() else {
             // A plain SEND or a SEND_CAP on a CALL-only contract: nothing to answer, and a
             // delegation is deleted rather than answered into (milestone 706 (a `CALL` server can
             // tell a Reply from a delegation)).
@@ -300,9 +321,18 @@ fn serve(mut plane: Plane) -> ! {
         // request is never trusted to stay inside the region it shares just because the packing
         // allows a larger number to be spelled.
         let count = blk::req_blocks(w0).min(TRANSFER_BLOCKS);
-        let r0: i64 = match filesystem_contract::operation(w0) {
-            blk::READ => transfer_range(&mut plane, block, count, false),
-            blk::WRITE => transfer_range(&mut plane, block, count, true),
+        let Some(window) = client_window(req.badge) else {
+            reply(reply_to, filesystem_contract::reply_err(22) as u64, 0); // EINVAL
+            continue;
+        };
+        let op = filesystem_contract::operation(w0);
+        if (op == blk::WRITE || op == blk::FLUSH) && !can_write(req.badge) {
+            reply(reply_to, filesystem_contract::reply_err(30) as u64, 0); // EROFS
+            continue;
+        }
+        let r0: i64 = match op {
+            blk::READ => transfer_range(&mut plane, block, window, count, false),
+            blk::WRITE => transfer_range(&mut plane, block, window, count, true),
             blk::SIZE => plane.handoff.size_bytes as i64,
             blk::FLUSH => {
                 let cid = plane.next_cid();
@@ -321,7 +351,7 @@ fn serve(mut plane: Plane) -> ! {
             }
             _ => filesystem_contract::reply_err(22), // EINVAL: an opcode this server has no verb for
         };
-        reply(reply_cap, r0 as u64, 0);
+        reply(reply_to, r0 as u64, 0);
     }
 }
 
@@ -363,10 +393,10 @@ fn run_dma_escape(plane: &mut Plane, victim: u64) -> ! {
 
 /// `count` contiguous blocks, one command each. See this module's `BUGS` for why it is not one
 /// command: `non_volatile_memory_express::prp_pair` refuses a transfer needing a PRP list, and a multi-page one does.
-fn transfer_range(plane: &mut Plane, block: u64, count: usize, write: bool) -> i64 {
+fn transfer_range(plane: &mut Plane, block: u64, window: usize, count: usize, write: bool) -> i64 {
     for i in 0..count {
         if plane
-            .transfer(block.saturating_add(i as u64), i, write)
+            .transfer(block.saturating_add(i as u64), window, i, write)
             .is_err()
         {
             return filesystem_contract::reply_err(5); // EIO

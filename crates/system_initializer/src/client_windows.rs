@@ -83,6 +83,61 @@ pub(super) const fn job_windows() -> Windows {
     Windows::new(1, login_contract::DURABLE_WINDOW)
 }
 
+/// **The second mounted tree's job windows** (milestone 834 (ioping on nife and Linux)): every window but 0, which is the
+/// shell's (the first file service's window 0 frame, [`MountedTreeGrant::pool`]). No `login` window
+/// is reserved, because `login` holds one tree.
+pub(super) const fn mounted_job_windows() -> Windows {
+    Windows::new(1, fs_operation::CLIENT_WINDOWS as u64)
+}
+
+/// **A directory grant in the second mounted tree, as the disk tree will see it**: the caretaker's
+/// words with `disk/` taken off the name (`grant_plan::spawnproto::in_mounted_tree`), or `None` for
+/// a grant in the first tree.
+pub(super) fn mounted_grant((lo, hi, spec): (u64, u64, u64)) -> Option<(u64, u64, u64)> {
+    use filesystem_contract::grant;
+    let mut buf = [0u8; grant::MAX_NAME];
+    let n = grant::unpack_name(lo, hi, grant::spec_len(spec), &mut buf);
+    let rest = spawnproto::in_mounted_tree(&buf[..n])?;
+    let (lo, hi) = grant::pack_name(rest);
+    Some((lo, hi, grant::spec(rest.len(), grant::spec_rights(spec))))
+}
+
+/// **A channel of its own for one job behind a grant in the second mounted tree**: [`job_channel`]
+/// over the disk tree's pool, which this process maps once at [`MOUNTED_TREE_POOL_VA`] to zero a
+/// window's first page between jobs, so nothing one job staged there reaches the next.
+pub(super) fn mounted_job_channel(tree: Fs, w: u64, own_ut: u64, mapped: &mut bool) -> Option<Fs> {
+    if !*mapped {
+        // SAFETY: the syscall; read/write, to zero.
+        *mapped = unsafe {
+            invoke(
+                tree.page,
+                abi::page_frame::MAP,
+                MOUNTED_TREE_POOL_VA,
+                1,
+                own_ut,
+            )
+        } == 0;
+    }
+    if !*mapped {
+        return None;
+    }
+    // SAFETY: the pool is mapped read/write at MOUNTED_TREE_POOL_VA, whole run, and window `w`'s
+    // first page lies inside it; no client is using window `w` between two jobs.
+    unsafe {
+        core::ptr::write_bytes(
+            (MOUNTED_TREE_POOL_VA + w * fs_operation::TRANSFER_MAX as u64) as *mut u8,
+            0,
+            PAGE_BYTES,
+        );
+    }
+    let page = window_page(tree.page, w)?;
+    let Some(ep) = window_endpoint(tree.ep, w) else {
+        cap_delete(page);
+        return None;
+    };
+    Some(Fs { ep, page })
+}
+
 /// **Whether a file server's image says it enforces subtree grants itself** (milestone 606, ruling
 /// T1): it carries a `capability_manifest_note::SUBTREE_GRANTS` note naming the one scope crate there is. No
 /// image, no note, or a note that does not decode all answer `false`.
@@ -169,24 +224,50 @@ fn bind_window(
     Some(Fs { ep, page })
 }
 
-/// **A bound channel to the machine's index store** (milestone 801 (packages over the internet),
-/// ruling I2): [`bound_channel`]'s shape for the one directory the progenitor names rather than
-/// the line, `activation/indexes`, made if it is not there yet and then opened with `rights`. It
-/// lives under `activation/` because what it holds decides what installs, the same trust as the
-/// generations beside it, and a path the progenitor names cannot collide with a package's name the
-/// way `packages/indexes` would.
+/// **Which directory under `activation/` the progenitor binds for a `std` job** whose line named
+/// none: the index store (milestone 801 (packages over the internet)) with the verb's rights, or
+/// the activation directory itself, read only (milestone 809 (the package client becomes a
+/// program), `jig list -u`). Never both: the `std` layout has one directory slot.
+///
+/// Name: provisional 2026-10-18 (UTC), lane `milestone/809-jig-list-u`, with its variants.
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+pub(super) enum ActivationGrant {
+    /// `activation/indexes`, opened with these rights.
+    IndexStore(u64),
+    /// `activation/`, read only.
+    ReadOnly,
+}
+
+/// **A bound channel to the machine's index store, or to the activation directory** (milestone
+/// 801 (packages over the internet), ruling I2; milestone 809): [`bound_channel`]'s shape for a
+/// directory the progenitor names rather than the line. The store is `activation/indexes`, made if
+/// it is not there yet and then opened with the verb's rights. It lives under `activation/` because
+/// what it holds decides what installs, the same trust as the generations beside it, and a path the
+/// progenitor names cannot collide with a package's name the way `packages/indexes` would.
 ///
 /// Name: provisional 2026-10-12 (UTC), lane `milestone/801-jig-installs-from-the-index`, as is
-/// the directory's name.
+/// the store directory's name.
 pub(super) fn bound_index_store(
     fs: Fs,
     (windows, w): (&mut Windows, u64),
     own_ut: u64,
     mapped: &mut bool,
-    rights: u64,
+    grant: ActivationGrant,
 ) -> Option<Fs> {
     let files = FsCalls::map(Some(fs), own_ut, mapped)?;
     files.unbind(windows, w);
+    let rights = match grant {
+        ActivationGrant::IndexStore(rights) => rights,
+        ActivationGrant::ReadOnly => {
+            let handle = files.named(
+                fs_operation::OPENDIR,
+                fs_operation::ROOT,
+                installed_programs::DIRECTORY,
+                grant_plan::WordGrant::ReadOnly.rights(),
+            );
+            return bind_window(fs, &files, (windows, w), handle);
+        }
+    };
     let act = files.directory(fs_operation::ROOT, installed_programs::DIRECTORY);
     if act < 0 {
         return None;

@@ -298,12 +298,21 @@ fn leg_runner(arch: &str, kvm: bool, uefi_timeout_secs: u64) -> Command {
         c
     } else {
         let target = if riscv { RISCV_TARGET } else { TARGET };
+        // **An NVMe disk, for the second mounted tree** (milestone 834 (ioping on nife and Linux)): the disk tree serves it
+        // at `/disk`, and the after-reboot script times reads of it with `ioping`. Zeros, made
+        // fresh for each boot. `x86_64` attaches none, because a blank NVMe disk there is offered
+        // the install (`verdict::swish_check_omits` says so where the lines are left out).
+        let nvme = crate::disk::swish_check_nvme_path();
+        if let Err(e) = std::fs::write(&nvme, std::vec![0u8; crate::disk::SWISH_CHECK_NVME_BYTES]) {
+            eprintln!("swish-check: could not write {nvme}: {e}");
+        }
         let mut c = Command::new(if riscv {
             "helpers/qemu-runner-riscv64.sh"
         } else {
             RUNNER
         });
         c.arg(format!("target/{target}/{}/kernel", profile_dir()));
+        c.env("NIFE_NVME", &nvme);
         c.env(
             "NIFE_INITIAL_RAMDISK",
             if riscv {
@@ -566,6 +575,7 @@ fn transcript_failures(leg: &Leg, console: &Console, failed: &mut Vec<String>) -
         failed.extend(rg_walk_failure(arch, &transcript));
     }
     failed.extend(kernel_fault_failure(&transcript));
+    failed.extend(resolver_refusal_failure(&transcript));
     let raw_transcript = console.raw.lock().expect("transcript lock").clone();
     failed.extend(slot_gauge_failure(
         arch,
@@ -587,7 +597,7 @@ struct OptionalPrograms {
 
 impl OptionalPrograms {
     /// Look for each program's image, and say on the first boot what is skipped and why. `None`
-    /// when the leg must refuse instead: `jig` is missing, or CI is missing one it always builds.
+    /// when the leg must refuse instead: CI is missing one it always builds.
     fn find(arch: &str, fresh: bool) -> Option<Self> {
         // **`std_exerciser` is in this boot's archive only if it was built** (milestone 595
         // (provisional)): `cargo xtask std-exerciser` compiles it against this worktree's patched std farm, which
@@ -596,18 +606,8 @@ impl OptionalPrograms {
         // than the boot, so the line is skipped and says why. **Not in CI**, where `test` always builds
         // it first: a missing image there means the build broke, and skipping would hide exactly that.
         let std_built = crate::farm::std_exerciser_elf(&format!("{arch}-unknown-nife")).exists();
-        // **`jig` is built by the same step, and is not skippable** (milestone 809 (the package client
-        // becomes a program)): every package line from the first install to the second boot's
-        // rollback goes through it, and each later line reads the generation the one before wrote, so
-        // skipping its lines would fail the rest for a reason nobody typed. Refused up front instead,
-        // naming the step, on both boots and everywhere.
-        if !crate::farm::jig_elf(&format!("{arch}-unknown-nife")).exists() {
-            eprintln!(
-                "swish-check ({arch}): no jig was built for this architecture, and every package line \
-                 needs it; run `cargo xtask std-exerciser` (or `script/test`) first"
-            );
-            return None;
-        }
+        // `jig` is not optional: every archive builds it for its own target and refuses to pack
+        // without it (`crate::archive`'s `SHIPPED_STD_PROGRAMS`), so its lines are never skipped.
         // Said once per leg, on the first boot: the second boot types no `std` line.
         if fresh && !std_built {
             if std::env::var_os("CI").is_some() {
@@ -1172,6 +1172,17 @@ fn type_one_line(
             return Err(format!("could not press ^C under `{line}`"));
         }
     }
+    if SWISH_CHECK_SUSPENDED.contains(&line) {
+        if !console.wait_after(at, SWISH_CHECK_RUNNING, line_secs) {
+            return Err(format!(
+                "`{line}` never said it was running under supervision ({SWISH_CHECK_RUNNING:?})"
+            ));
+        }
+        // SUB, the byte a terminal sends for `^Z`.
+        if stdin.write_all(&[0x1a]).is_err() || stdin.flush().is_err() {
+            return Err(format!("could not press ^Z under `{line}`"));
+        }
+    }
     Ok(())
 }
 
@@ -1354,6 +1365,30 @@ fn rg_walk_failure(arch: &str, transcript: &str) -> Option<String> {
         }
         Err(why) => Some(why),
     }
+}
+
+/// **A name asked at the prompt must reach the name server** (milestone 892 (a std program at the
+/// prompt holds the network and a name resolver)). [`RESOLVING_LINE`]'s listed location is the one
+/// name a program resolves at this prompt. Under slirp the lease's 10.0.2.3 forwards to the host's
+/// resolver, which knows no `.test` name, so the answer is `NotFound` with a network and
+/// `TimedOut` without one; neither is asserted. What is refused is `NetworkUnreachable`: the
+/// resolver's own socket was refused a step, and no query left the guest. Nothing else here
+/// notices, because `jig` falls back to the address the sources give, so every other line passes
+/// on a boot where no name resolves.
+///
+/// Falsification: replayable `xtask/falsifications/swish_check.boot.resolver_refusal_failure.patch`
+fn resolver_refusal_failure(transcript: &str) -> Option<String> {
+    let (answer, _) = swish_check_answer(transcript, 0, RESOLVING_LINE)?;
+    let refused = answer
+        .lines()
+        .find(|l| l.contains(": NetworkUnreachable"))?;
+    Some(format!(
+        "`{RESOLVING_LINE}` asked a name that never reached the name server: {:?}. The resolver \
+         the progenitor started was refused a network step (the parentheses name it), so no \
+         program at this prompt can resolve a name; `build_domain_name_resolver`'s endowment is \
+         the first place to look.",
+        refused.trim()
+    ))
 }
 
 /// **Nothing may have died** (milestone 233 (`login` dies on every boot, and the boot says it is

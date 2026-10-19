@@ -26,7 +26,7 @@ index 459a98410..36c978edd 100644
              word: read64(src + 8),
          };
  
--        if !check_descriptor(
+-        if !is_descriptor_allowed(
 -            direct_memory_access_base,
 -            direct_memory_access_size,
 -            qsize,
@@ -42,7 +42,7 @@ index 459a98410..36c978edd 100644
          write64(dst, desc.addr);
          write64(dst + 8, desc.word);
  
-+        if !check_descriptor(
++        if !is_descriptor_allowed(
 +            direct_memory_access_base,
 +            direct_memory_access_size,
 +            qsize,

@@ -128,7 +128,7 @@ mod uart {
     pub fn arm_rx_interrupt() {
         regs().IMSC.modify(IMSC::RXIM::SET);
     }
-    pub fn clear_interrupt() {
+    pub(crate) fn clear_interrupt() {
         regs().ICR.set(0x7ff);
     }
 }
@@ -170,7 +170,7 @@ mod uart {
     pub fn arm_rx_interrupt() {
         wr(IER, IER_ERBFI);
     }
-    pub fn clear_interrupt() {
+    pub(crate) fn clear_interrupt() {
         // The NS16550 clears the receive interrupt when the byte is read (rx_get, in drain).
     }
 }
@@ -222,7 +222,7 @@ mod uart {
         outb(MCR, inb(MCR) | MCR_OUT2);
         outb(IER, IER_ERBFI);
     }
-    pub fn clear_interrupt() {
+    pub(crate) fn clear_interrupt() {
         // The 16550 clears the receive interrupt when the byte is read (rx_get, in drain).
     }
 }

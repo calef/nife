@@ -89,6 +89,8 @@ pub fn image_can_carry(m: &Manifest) -> bool {
         // Milestone 801 (packages over the internet): the index store is the owner's console's to
         // grant, as the installer is.
         && m.indexes == IndexStoreDeclaration::Forbidden
+        // Milestone 809: and the activation directory, which shows what is installed.
+        && !m.activation_directory
         && std == (m.program_argument.hears_words())
         && (!std
             || (m.output == OutputDeclaration::Bytes

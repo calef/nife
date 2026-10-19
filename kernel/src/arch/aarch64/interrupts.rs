@@ -24,7 +24,7 @@ use super::instructions;
 const I_BIT: u64 = 1 << 7;
 
 /// Are IRQs currently *unmasked*, i.e. can one fire right now?
-pub fn is_enabled() -> bool {
+pub(crate) fn is_enabled() -> bool {
     instructions::read_daif() & I_BIT == 0
 }
 

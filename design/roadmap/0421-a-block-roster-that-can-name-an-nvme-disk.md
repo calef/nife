@@ -1,6 +1,7 @@
 ---
-status: NOT-STARTED
+status: BUILT
 raised: 2026-09-17
+built: 2026-10-18
 promoted_from: a-block-roster-that-can-name-an-nvme-disk
 milestone_dependencies: none
 decision_dependencies: 193
@@ -8,97 +9,61 @@ machine_requirements: none
 specific_machine: none
 needs_person: no
 ---
-# 421. The block roster cannot name an NVMe disk, and the reason it could not has just gone away
+# 421. The block roster names an NVMe disk
 
-Promoted from the proposal `a-block-roster-that-can-name-an-nvme-disk`,
-filed 2026-09-17 by the milestone 261 (the NVMe driver leaves the kernel) lane (the EL0 NVMe
-server). That lane closed the question this was
-waiting on and deliberately did not take the work, because the work is a wire shape and that is the
-expensive category. *(Number provisional until the merge queue lands it.)*
+`block_roster` is the read-only page a process holds when it may know which block devices exist
+without holding any of them (milestone 57 (partitioning and formatting a real drive),
+`notes/block-devices.md`). It lists NVMe controllers beside the virtio disks, so `disk_surveyor`
+sees the one disk in this tree whose driver is a confined process (milestone 261 (the NVMe driver
+leaves the kernel)).
 
-calef, 2026-09-19, correcting the token this block carried on promotion. The
-hardware is not the constraint and never was. QEMU's NVMe is attached on every leg of all three
-runners already (`NIFE_NVME`), and the surveyor's two clients run there today. What stops a lane is
-§193 (what a block-roster entry calls an NVMe disk, and whether it carries more than virtio does).
-It was written up on 2026-09-19. Calef had asked
-whether this gate had a decision behind it, and the answer was no. The ask lived only in this block's
-own *What is needed from calef* section, one rung above a chat message. It is the expensive category
-rather than a preference:
-**a transport kind is a wire value two programs read**. Shipping the wrong spelling cannot be
-un-shipped, and whether an NVMe entry carries a namespace id or a controller identity is the same
-kind of question. §86 routed both to him rather than to a lane, and milestone 261's own lane closed
-the question this block was waiting on and then **deliberately did not take the work**, for this
-reason.
+## What is built
 
-**The token was `NONE` from 2026-09-17 to 2026-09-19**. It is recorded rather than quietly fixed
-because it is the failure mode the gate vocabulary exists to prevent. `NONE` put the block on
-`script/roadmap --ready`, the list a lane picks work from, while its own last section said a decision
-was owed. A lane taking it would have reached the wire shape and either stopped or guessed. Milestone
-433's slice 4 found it while promoting the file, flagged it, and correctly did not change a gate,
-because changing one was not in that pass's method.
+- The kinds, as §193 (what a block-roster entry calls an NVMe disk) rules.
+  `TRANSPORT_VIRTIO_MEMORY_MAPPED_IO = 0`, `TRANSPORT_VIRTIO_PCI = 1` and
+  `TRANSPORT_NON_VOLATILE_MEMORY_EXPRESS = 2`, in `crates/block_roster`. An entry is 8 bytes for
+  every kind: an ordinal and a kind. A host test pins the three wire values as literals.
+- The printed names. `transport_name` prints `virtio-mmio`, `virtio-pci` and `nvme`. `nvme`
+  is what QEMU calls the device model (`-device nvme`), what Linux calls the driver and its
+  device nodes, and what this tree's own NVMe diagnostics already print (`diag nvme ...`,
+  `disk-throughput`'s preflight).
+- The entry. `kernel/src/user/disk_service.rs` lists NVMe controllers after every virtio
+  disk, from `pci::count_non_volatile_memory_express_controllers`. That count reads config space
+  and nothing else, for the reason the virtio-pci count does: `pci::find_nvme_device` places BARs
+  and enables bus mastering, and bring-up resets the controller, none of which a listing may
+  cause. Both walk the bus through one function, so the controller
+  `non_volatile_memory_express_service` serves is always the roster's NVMe ordinal 0.
+- The listing. `disk_surveyor` reports one count per kind (virtio-mmio, virtio-pci, nvme). The
+  kernel side compares their sum with what it wrote, so an entry of a kind the surveyor does not
+  count still shows.
+- The gate. `disk_tests::the_disk_surveyor_reads_a_table_gptfdisk_wrote` asserts exactly one
+  NVMe entry, last in the roster, at ordinal 0 and printed `nvme`, whenever `NIFE_NVME` was set
+  for the build. `cargo xtask test` sets it on all three legs. `system_tests/build.rs` bakes it in
+  as `NON_VOLATILE_MEMORY_EXPRESS_ATTACHED`, since the guest cannot read the host's environment.
+  So any leg where the block roster cannot name an NVMe disk that is attached goes red.
 
-**Premise re-checked 2026-09-19 and still true.** `crates/block_roster` still encodes exactly two
-transport kinds, `TRANSPORT_MMIO` and `TRANSPORT_PCI`, in the four bytes at offset 4 of an entry.
-`transport_name` still matches those two alone. There is no NVMe kind and no entry the surveyor
-could fill in from
-`kernel/src/user/non_volatile_memory_express_service.rs`.
+## What it settles
 
-## What the work is
+Milestone 57's claim is that listing the disks and holding one are different powers. It now holds
+for two kinds of disk behind two drivers, one in the kernel's virtio path and one a confined EL0
+server. The roster's shape is about block devices, not about virtio.
 
-`block_roster` is the read-only listing a process holds when it may know *what block devices exist*
-without holding any of them (milestone 57, `notes/block-devices.md`). It has a transport kind for
-virtio and none for NVMe, so `disk_surveyor` cannot list the machine's NVMe disk. The one
-device in this tree whose driver is now a confined process is the one the roster cannot see.
+## Follow-on
 
-The work is a transport kind, the roster entry that carries it, and the wiring that fills it in from
-`kernel/src/user/non_volatile_memory_express_service.rs` the way the virtio disks are filled in from theirs.
-
-## Why now, and why not before
-
-[DECISIONS §86](../decisions/0086-el0-nvme-driver.md) listed this under "what is blocked until it is
-answered", with the reason stated precisely: *"small, but its wire shape depends on who owns the
-controller."* That dependency was real. A roster entry for a kernel-resident driver and one for a
-confined EL0 server are different entries, because what a holder of the roster can then *ask for* is
-different. With the driver in the kernel there is no endpoint to name, and with the driver at EL0
-there is.
-
-Milestone 261 answered it. A process owns the controller's data plane, it serves
-`filesystem_contract::blk` on a request endpoint, and that endpoint is exactly the shape the roster's
-virtio entries already point at. So the wire shape is decidable now and was not before.
-
-## Why milestone 261's lane did not take it
-
-Two reasons, and the second is the one that decides.
-
-It is off that milestone's scope, which is the driver leaving the kernel. And a roster entry is
-something two programs agree on. AGENTS.md's *move fast on what can be undone* tenet puts it
-in the irreversible category along with names, dependencies and the syscall surface. §86 names it
-directly as "the genuinely expensive thing" in that section, above the capability question. A lane
-that invented a transport-kind encoding on its way past would be committing the tree to it.
-
-## What it would settle
-
-Whether the surveyor's authority split survives a second kind of disk. The claim milestone 57 makes
-is that listing what exists and holding one of them are different powers. Today that claim has only
-been exercised against devices of one kind, behind one transport, all of them virtio. An NVMe entry
-is the first test of whether the roster's shape is about *block devices* or about *virtio*.
-
-## What is needed from calef
-
-The transport kind's spelling, since it is a wire value two programs read, and whether an NVMe entry
-carries anything a virtio one does not (a namespace id, a controller identity). Both are the kind of
-question §86 already routed to him rather than to a lane.
+- **Recorded.** No program is handed the NVMe endpoint because the roster lists it, and the FS
+  server's default disk is still virtio-blk. Which program holds which device is decided at wiring
+  time (§86 (whether an NVMe driver can leave the kernel), milestone 57). `notes/non-volatile-memory-express.md`'s `BUGS` says so beside the
+  driver.
+- **Decision.** An NVMe ordinal counts controllers, which identifies a disk only while each
+  controller has one namespace, as every controller this tree drives does.
+  `design/decisions/0193-nvme-in-the-block-roster.md` names a controller with two namespaces as the
+  measurement that would make an entry say which.
 
 ## Index row
 
-`block_roster` is the read-only listing a process holds when it may know what block devices exist
-without holding any of them. It has a transport kind for virtio and none for NVMe, so
-`disk_surveyor` cannot list the machine's NVMe disk. The one device whose driver is a confined
-process is the one the roster cannot see. §86 listed this as blocked on who owns the controller,
-because a roster entry for a kernel-resident driver and one for a confined EL0 server differ in what
-a holder may then ask for. Milestone 261 answered it by putting the data plane in a process that
-serves `filesystem_contract::blk` on a request endpoint, which is the shape the virtio entries
-already point at. What it settles is whether the roster's shape is about block devices or about
-virtio, since milestone 57's claim that listing and holding are different powers has only ever been
-exercised against one transport. The transport kind's spelling is a wire value two programs read and
-is an architect's, along with whether an NVMe entry carries a namespace id or a controller identity.
+`block_roster`, the read-only page that says which disks exist without granting any, lists NVMe
+controllers beside virtio disks under `TRANSPORT_NON_VOLATILE_MEMORY_EXPRESS = 2`, printed `nvme`,
+with the two virtio kinds named `TRANSPORT_VIRTIO_MEMORY_MAPPED_IO` and `TRANSPORT_VIRTIO_PCI`
+(§193). The kernel counts controllers from config space alone, so a listing never brings one up,
+and ordinal 0 is the controller the EL0 NVMe server drives. `disk_surveyor` reports a count per
+kind, and the roster test fails on any leg where `NIFE_NVME` is set and the NVMe entry is missing.

@@ -374,9 +374,12 @@ fn words_directory_grant(
             if !holds.directory {
                 return Err(Refusal::NoSuchCapability(CapabilityKind::File));
             }
+            // The tree the shell stands in, and its position there: under a mount point that is
+            // the second tree, from its own root, as every other grant records it.
+            let (which, directory) = holds.locate(&holds.cwd);
             Some(DirectoryGrant {
-                which: nav::Which::A,
-                directory: holds.cwd,
+                which,
+                directory,
                 names: if d.is_here() {
                     NameSet::empty()
                 } else {

@@ -36,8 +36,10 @@ channel="$(sed -n 's/^channel *= *"\(.*\)"/\1/p' rust-toolchain.toml)"
 [ -n "$channel" ] || channel="nightly"
 
 echo "==> Ensuring Rust toolchain '$channel' (components + bare-metal targets)"
-rustup toolchain install "$channel" --profile minimal
-rustup component add --toolchain "$channel" rust-src llvm-tools rustfmt clippy miri
+# Through helpers/rustup-retry.sh because every CI job runs this against static.rust-lang.org with
+# nothing cached, and one dropped connection there should cost a retry, not a red check.
+helpers/rustup-retry.sh toolchain install "$channel" --profile minimal
+helpers/rustup-retry.sh component add --toolchain "$channel" rust-src llvm-tools rustfmt clippy miri
 # **Every target the pin declares**, read from `rust-toolchain.toml` rather than spelled here, the
 # way `channel` above already is and the way `script/drift` does it. The hand-written list this
 # replaces named two of the supported bare-metal targets and not `x86_64-unknown-none`, which was
@@ -48,7 +50,7 @@ rustup component add --toolchain "$channel" rust-src llvm-tools rustfmt clippy m
 # second list to forget. See notes/architecture-list-sweep.md, option A.
 all_targets="$(awk -F'"' '/^targets *=/ {for (i = 2; i < NF; i += 2) printf "%s ", $i}' rust-toolchain.toml)"
 # shellcheck disable=SC2086  # word splitting is the point: one flag per target
-rustup target add --toolchain "$channel" $all_targets
+helpers/rustup-retry.sh target add --toolchain "$channel" $all_targets
 
 # --- QEMU ---------------------------------------------------------------------------------
 # The kernel runs under qemu-system-aarch64, the riscv port under qemu-system-riscv64, and the

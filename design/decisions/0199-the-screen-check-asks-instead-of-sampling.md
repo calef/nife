@@ -18,8 +18,8 @@ wait is bounded, so a knob set by mistake cannot wedge a machine.
 ## What was wrong, and it was the mechanism rather than the timing
 
 `cargo xtask uefi-boot` proves the claim of milestone 243 (a machine with no serial port has no way
-to say anything) by polling QMP `screendump` every 50ms, needing to catch the kernel's banner in the
-window between the tour painting it and the userspace terminal taking the screen, which
+to say anything) by polling QMP `screendump` every 50ms. It needs to catch the kernel's banner in
+the window between the tour painting it and the userspace terminal taking the screen, which
 `xtask/src/uefi.rs` calls "a couple of seconds under TCG".
 
 On 2026-09-20 a full `script/test` run read zero rows and reported *"the tour was never readable
@@ -45,9 +45,9 @@ That is rung four of `AGENTS.md`'s ladder, sampling and hoping, dressed as a tes
 ## What this costs, stated because it is the reason C existed
 
 A test-only affordance now exists in the handover path, and this tree is strict about that. Three
-things bound it: the knob is off by default, so a real boot performs no serial read and pays no
-latency; the wait is bounded, so the failure mode of a mis-set knob is a delay rather than a
-dead machine; and the code says at the knob that it is a debugging affordance, since a reader who
+things bound it. The knob is off by default, so a real boot performs no serial read and pays no
+latency. The wait is bounded, so the failure mode of a mis-set knob is a delay rather than a
+dead machine. And the code says at the knob that it is a debugging affordance, since a reader who
 meets it otherwise reads it as a design.
 
 The knob's own name, and the parity question of whether `script/boot-check` shares the race on

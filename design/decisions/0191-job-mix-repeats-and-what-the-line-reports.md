@@ -27,7 +27,7 @@ The paragraph below, and the rest of this file, are the section as it stood befo
 The tree now implements one of the options, and this section is still open. On 2026-09-19,
 hours after this was written and in a different session, milestone 168's lane built options 1 and
 3 together, a uniform `REPEATS` of 21 with the median reported between the minimum and the
-maximum, and refused option 2 (a per-point table) on measured board time. That lane had the
+maximum. It refused option 2 (a per-point table) on measured board time. That lane had the
 change assigned in its brief and recorded it in milestone 168 rather than implying it, which is the
 right thing to have done from inside a lane. It does not make this `DECIDED`. What is asked of
 calef has changed shape rather than gone away: ratify what shipped, or overrule it, on a line
@@ -61,8 +61,8 @@ REPEATS: usize = 21;` with a compile-time assertion that it stays odd, and `ECHO
 ## The measurement
 
 Across five boots of an identical image the reported figure at `tasks=4` ranged from 766,361 to
-991,671 jobs per minute, a 29.4% spread, while boot 3's three repeats *on their own* spanned
-132,148 to 181,408 ticks, which contains the whole boot-to-boot range.
+991,671 jobs per minute, a 29.4% spread. Boot 3's three repeats *on their own* spanned 132,148 to
+181,408 ticks, which contains the whole boot-to-boot range.
 
 **The variance is within a boot, so power cycling does not reduce it.** That is the finding that
 decides the shape of the fix: more boots buy nothing, more samples might.
@@ -104,7 +104,7 @@ neither honest nor a win.
 
 ## Recommendation
 
-3, with 4 as the interim, and the reason is the one this section opened with: the job mix exists
+3, with 4 as the interim, and the reason is the one this section opened with. The job mix exists
 to measure what contention costs, and a report that keeps only the least-contended sample is
 answering a different question than the one §96 asked.
 
@@ -113,9 +113,9 @@ commit. It changes a line two programs read, which is the category that cannot b
 it is calef's rather than a lane's. Until it is decided the honest thing is option 4, which is what
 milestone 168's block now does.
 
-Option 2 should be refused if 3 is taken, rather than stacked on it: reporting the spread makes
+Option 2 should be refused if 3 is taken, rather than stacked on it. Reporting the spread makes
 the sample count legible in the output, so varying it per sweep point stops being a hidden fact and
-becomes one more column, which is a second format change for the same problem.
+becomes one more column. That is a second format change for the same problem.
 
 ## Would we still choose 3 if all four cost the same
 

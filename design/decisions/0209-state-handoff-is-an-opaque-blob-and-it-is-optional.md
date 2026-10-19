@@ -14,13 +14,14 @@ Ruled by calef on 2026-09-23, on the maintainer's recommendation, reopening
 
 1. The transport is the sketch §116 (live component state handoff is declined, for want of a customer) already left. State moves as an opaque blob over a
    granted shared `Frame`. Capabilities move by `GRANT`. The kernel does not know what the
-   bytes mean and neither does the supervisor; the shape of the state is the component's own
+   bytes mean and neither does the supervisor. The shape of the state is the component's own
    business, exactly as §116 argued when it refused to design one wire format for fifty different
    kinds of live state.
 
 2. Handoff is optional, declared in the component manifest beside `depends_on`. A component that
-   declares nothing is kill-and-replaced, which is what the console already is under §41 (the endpoint is the broker, and a device is revoked by taking it back):
-   the endpoint is the stable name, and a device is revoked by taking it back. Nothing about the
+   declares nothing is kill-and-replaced. That is what the console already is under §41 (the
+   endpoint is the broker, and a device is revoked by taking it back): the endpoint is the stable
+   name, and a device is revoked by taking it back. Nothing about the
    existing swap changes for a component that has no state to move.
 
 3. **Failure does not commit.** If the incoming instance cannot absorb the blob, the swap does not
@@ -53,8 +54,8 @@ stopped being right.
 
 `components/src/` holds 52 components. Mandatory handoff makes all fifty-two answer a question
 that roughly fifty of them do not have. An audit sink, a clock, a block roster and a compositor are
-either stateless or hold state that is cheaper to rebuild than to move, and a manifest field they
-must fill in with "nothing" is a field that teaches nobody anything.
+either stateless or hold state that is cheaper to rebuild than to move. A manifest field they must
+fill in with "nothing" is a field that teaches nobody anything.
 
 §92 (a caretaker is supervised by the client it serves)'s test, answered out loud: optional is also the cheaper option, and that is effort. It is
 less to build, less to migrate, and less to keep working. Saying so is the rule, so it is said.
@@ -99,8 +100,9 @@ this. Milestone 23 (a capability-routed component OS with live replacement)'s bl
 
 ## What it unblocks
 
-- Milestone 198 (a package manager, and the trivial install that makes a second customer possible)'s rung 3a, the client half: installing a package onto a running system can now
-  replace a stateful component rather than only a stateless one, which is what §208 (installing a package is granting it)'s second
-  argument was for.
+- Milestone 198 (a package manager, and the trivial install that makes a second customer
+  possible)'s rung 3a, the client half: installing a package onto a running system can now replace
+  a stateful component rather than only a stateless one. That is what §208 (installing a package is
+  granting it)'s second argument was for.
 - Milestone 23 (a capability-routed component OS with live replacement)'s last residual, which has been the only thing holding that block short of done since
   the other three parts landed.

@@ -1,6 +1,8 @@
 ---
-status: PROPOSED
+status: DECIDED
 raised: 2026-09-19
+decided: 2026-10-18
+ratified_by: calef
 ---
 
 # 193. What a block-roster entry calls an NVMe disk, and whether it carries more than virtio does
@@ -10,6 +12,21 @@ whether milestone 421's `DECISION` gate had a decision behind it. It did not: th
 that block's own *What is needed from calef* section, which is one rung above a chat message and
 below where AGENTS.md says an open decision belongs. *(Section number provisional until the merge
 queue lands it.)*
+
+## The ruling
+
+calef, 2026-10-18 (UTC), recorded by the maintainer at 22:02Z.
+
+- The entry stays 8 bytes (question 2, layout A): an ordinal and a transport kind, for NVMe as
+  for virtio. A holder that needs more asks the server that owns the disk.
+- The NVMe kind is `TRANSPORT_NON_VOLATILE_MEMORY_EXPRESS = 2` (question 1, spelling A), by the
+  `nvme` row of §154 (the acronym test is whether the phrase is spoken). No exception is made for a wire constant.
+- The two virtio kinds say virtio, and `mmio` expands. `TRANSPORT_MMIO` becomes
+  `TRANSPORT_VIRTIO_MEMORY_MAPPED_IO` and `TRANSPORT_PCI` becomes `TRANSPORT_VIRTIO_PCI`. An NVMe
+  disk is also a PCI device, so a bare `PCI` beside it would claim NVMe too. Their wire values
+  (0 and 1) do not change.
+- `transport_name` keeps printing `virtio-mmio` and `virtio-pci`, the virtio specification's own
+  names. Only identifiers move, as §154 has it for `nvme`.
 
 ## What is being decided
 
@@ -27,7 +44,7 @@ writes and a `no_std` program reads:
 reason stated precisely: *"small, but its wire shape depends on who owns the controller."* That
 dependency was real, because a roster entry for a kernel-resident driver and one for a confined EL0
 server differ in what a holder may then ask for. Milestone 261 answered it by putting the data
-plane in a process that serves `filesystem_protocol::blk` on a request endpoint, and that lane
+plane in a process that serves `filesystem_protocol::blk` on a request endpoint. That lane
 deliberately did not take this work, correctly: a transport kind is a wire value two programs read,
 which is the category AGENTS.md prices as expensive and routes here.
 
@@ -84,7 +101,7 @@ Whether that rename rides with this change or is refused is calef's, and refusin
 | **C** | 8 bytes now, a second entry kind later if needed | Keeps A's cheapness and admits the format may need to grow, at the cost of a versioning question nobody has asked yet. |
 
 Recommendation: A, and the argument is the crate's own stated purpose rather than economy.
-A roster says *a device exists*, explicitly not what it is or how to reach it; a namespace id is a
+A roster says *a device exists*, explicitly not what it is or how to reach it. A namespace id is a
 property of a device you have been given, and asking for it is one message to a server that already
 answers `SIZE`. And there is exactly one namespace, so B would add a field that can only ever
 hold one value, which is the speculative generality this tree refuses elsewhere.
@@ -99,12 +116,10 @@ Nothing about who gets the endpoint. §86 and milestone 57 already hold that: th
 which program gets which device's endpoint at wiring time, and nothing a program computes from a
 roster changes it. This decision is only about what the page says.
 
-## What is blocked until this is answered
+## What it unblocks
 
 Milestone 421, which is gate `DECISION` for exactly this and nothing else. Its other dependency
 is closed: QEMU's NVMe is attached on every leg of all three runners (`NIFE_NVME`) and the
-surveyor's two clients run there today, so the work starts the day this is answered.
-
-Nothing else. The roster is correct as it stands for the two transports it names; what it cannot do
-is name the one device in this tree whose driver is a confined process, which is the irony milestone
-421's index row records.
+surveyor's two clients run there today. The roster is correct as it stands for the two transports
+it names. What it cannot do is name the one device in this tree whose driver is a confined process,
+which is the irony milestone 421 (the block roster cannot name an NVMe disk) records.

@@ -108,7 +108,7 @@ pub unsafe fn init(base: usize, context: usize) {
 /// which is the only value we ever write. The affinity work made this reachable from the boot hart
 /// for *another* hart's context, which is what put it on the audit list; it is a plain store, so it
 /// stays a plain store.
-pub fn open_context(context: usize) {
+pub(crate) fn open_context(context: usize) {
     write(THRESHOLD_BASE + context * CONTEXT_STRIDE, 0);
 }
 
@@ -222,7 +222,7 @@ pub fn enable(source: u32, context: usize) {
 /// `design/roadmap/0368-a-flat-entry-set-counts-bytes-no-syscall-fetches.md`, whose "the next
 /// one will look different" is now observed rather than predicted.
 #[inline(never)]
-pub fn disable(source: u32, context: usize) {
+pub(crate) fn disable(source: u32, context: usize) {
     set_enable_bit(source, context, false);
 }
 

@@ -18,6 +18,11 @@ use super::*;
 /// scratch window, `supervision_protocol::SCRATCH_WINDOW`, which starts at `0x1000_0000`).
 pub(super) const ACTIVATION_FS_VA: u64 = address_space_map::pair_page(0x0f40_0000);
 
+/// **Where the progenitor maps the second mounted tree's client-window pool** (milestone 834 (ioping on nife and Linux)), to
+/// zero a window between two jobs. Past [`ACTIVATION_FS_VA`]'s pool, which is the same size, and
+/// below [`IMAGE_STAGING_VA`].
+pub(super) const MOUNTED_TREE_POOL_VA: u64 = address_space_map::pair_page(0x0f50_0000);
+
 /// **Where the progenitor keeps its own copy of an image**, [`spawnproto::IMAGE_MAX_PAGES`] pages
 /// at most. A fixed window rather than more of the loader's scratch window, because every page mapped
 /// here comes from a staging region *this process* destroys once the child is built, and a destroy
@@ -126,6 +131,8 @@ pub(super) struct SpawnEndpoint {
     ep: u64,
     /// The file service's client windows, each held until its job is reaped.
     pub(super) windows: Windows,
+    /// The second mounted tree's client windows (milestone 834), held the same way.
+    pub(super) disk_windows: Windows,
     /// The finished jobs whose reap a short pool may wait for.
     pub(super) due: ReapsDue,
     /// First messages, with their badges, from senders this loop was not serving when they arrived;
@@ -166,6 +173,7 @@ impl SpawnEndpoint {
         Self {
             ep,
             windows: job_windows(),
+            disk_windows: mounted_job_windows(),
             due: ReapsDue::new(),
             stashed: [None; STASHED],
             serving: 0,
@@ -287,6 +295,7 @@ impl SpawnEndpoint {
     /// holder's reply endpoint goes with it, and a request it was in the middle of is abandoned.
     fn reaped(&mut self, label: u64) {
         self.windows.reaped(label);
+        self.disk_windows.reaped(label);
         self.due.reaped(label);
         self.forget_resolver(label);
         for r in &mut self.replies {

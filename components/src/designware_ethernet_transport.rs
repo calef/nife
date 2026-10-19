@@ -83,7 +83,7 @@ impl Tails for Channel {
 }
 
 /// The port as `net_stack` sees it.
-pub struct DesignWareNic {
+pub(crate) struct DesignWareNic {
     plane: DataPlane,
     mac: [u8; 6],
 }
@@ -105,14 +105,14 @@ impl DesignWareNic {
     }
 
     /// The next received frame, if the device has written one.
-    pub fn rx_take(&mut self) -> Option<Vec<u8>> {
+    pub(crate) fn rx_take(&mut self) -> Option<Vec<u8>> {
         let mut buf = [0u8; MAX_FRAME];
         let n = self.plane.receive(&mut Plane, &mut Channel, &mut buf)?;
         Some(buf[..n].to_vec())
     }
 
     /// Queue `frame`, waiting a bounded while for a descriptor if the ring is full.
-    pub fn tx_send(&mut self, frame: &[u8]) {
+    pub(crate) fn tx_send(&mut self, frame: &[u8]) {
         for _ in 0..100_000 {
             if self.plane.can_transmit(&mut Plane) {
                 break;
@@ -125,7 +125,7 @@ impl DesignWareNic {
     }
 
     /// Whether a frame is waiting, without taking it, so the poll loop can skip a sleep.
-    pub fn frame_waiting(&self) -> bool {
+    pub(crate) fn frame_waiting(&self) -> bool {
         let des3 = (PLANE.r64(layout::rx_descriptor(self.plane.rx_cursor()) + 8) >> 32) as u32;
         designware_ethernet::rx_verdict(des3, MAX_FRAME) != designware_ethernet::RxVerdict::NotYet
     }

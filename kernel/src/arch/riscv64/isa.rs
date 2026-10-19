@@ -171,14 +171,14 @@ pub fn get() -> Isa {
 /// Record the measured `satp.ASID` width. Called by `mmu::init` right after its probe, which is the
 /// earliest moment the number exists: the probe writes the live `satp`, so it needs the real kernel
 /// tables installed first.
-pub fn record_asid_bits(bits: usize) {
+pub(crate) fn record_asid_bits(bits: usize) {
     if let Some(cpu) = ISA.lock().as_mut() {
         cpu.asid_bits = bits.min(u8::MAX as usize) as u8;
     }
 }
 
 /// The boot line. Two of them: what the silicon is, and what the firmware under it is.
-pub fn print_summary() {
+pub(crate) fn print_summary() {
     let cpu = get();
 
     print!("  isa         : {}", cpu.base.name());

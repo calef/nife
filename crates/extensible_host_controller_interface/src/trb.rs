@@ -33,7 +33,7 @@ impl Trb {
     }
 
     /// The same TRB stamped with `cycle`.
-    pub const fn with_cycle(self, cycle: bool) -> Trb {
+    pub(crate) const fn with_cycle(self, cycle: bool) -> Trb {
         let mut d = self.0;
         d[3] = (d[3] & !1) | cycle as u32;
         Trb(d)

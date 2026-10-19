@@ -49,7 +49,7 @@ fn in_region_is_sound() {
 
 /// **An accepted descriptor is confined and not indirect, in either direction.** For every
 /// descriptor bit pattern (the `flags` field is fully symbolic, so the device-writable RX bit and
-/// the device-readable TX shape are both covered) and every region, if [`check_descriptor`]
+/// the device-readable TX shape are both covered) and every region, if [`is_descriptor_allowed`]
 /// accepts it then it carries no indirect flag and its whole buffer is in-region. This is the
 /// per-descriptor core of the walk, isolated so it is proved without any loop.
 /// Falsification: replayable `crates/direct_memory_access_validator/falsifications/verification.an_accepted_descriptor_is_confined.patch`
@@ -61,9 +61,9 @@ fn an_accepted_descriptor_is_confined() {
         addr: kani::any(),
         word: kani::any(),
     };
-    if check_descriptor(base, size, QS, d) {
+    if is_descriptor_allowed(base, size, QS, d) {
         // **The indirect bit and the containment stated over the word** (milestone 211).
-        // `check_descriptor` refuses on `d.is_indirect()` and on `!is_in_region(..)`, so a
+        // `is_descriptor_allowed` refuses on `d.is_indirect()` and on `!is_in_region(..)`, so a
         // harness phrased only through those two calls proves that the guard and the
         // assertion agree. `is_in_region` is pinned independently by `in_region_is_sound`
         // just above; `is_indirect` was pinned by nothing, and an `is_indirect` stuck at
@@ -87,7 +87,7 @@ fn an_accepted_descriptor_is_confined() {
         // **The two assertions that used to sit here are gone** (milestone 307).
         // `assert!(!d.is_indirect())` and `assert!(is_in_region(base, size, d.addr,
         // d.buf_len()))` were the same two calls, with the same arguments, that
-        // `check_descriptor` returns false on: pure restatements of the `if` guard just
+        // `is_descriptor_allowed` returns false on: pure restatements of the `if` guard just
         // passed, so neither could fail under any defect in this crate. They carried the two
         // readable messages while the milestone 211 assertions above did the work, which is
         // the citation failure this milestone swept for. The comment above records why the

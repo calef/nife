@@ -95,7 +95,7 @@ fn a_revocation_landing_inside_the_delegation_window_is_still_seen() {
     .expect("no sender thread");
 
     assert!(
-        super::wait_for(crate::delegation_pause::parked),
+        super::wait_for(crate::delegation_pause::is_parked),
         "the sender never reached the seam, so the window was never forced",
     );
     assert_eq!(
@@ -164,7 +164,7 @@ fn the_same_seam_without_a_revoke_delivers(region: u64, ep: sched::RendezvousId)
     .expect("no control sender thread");
 
     assert!(
-        super::wait_for(crate::delegation_pause::parked),
+        super::wait_for(crate::delegation_pause::is_parked),
         "the control sender never reached the seam",
     );
     crate::delegation_pause::release();

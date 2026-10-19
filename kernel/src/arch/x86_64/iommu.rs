@@ -39,7 +39,9 @@
 //!   fault from one device can hide another's and a burst past it is lost (`FSTS.PFO`). A caller
 //!   reading one device's faults must first quiesce every other device on the bus.
 
-use machine_discovery::acpi::{DmarUnits, Drhd, MAX_DRHDS, MAX_RMRR_SCOPES, SCOPE_PCI_ENDPOINT};
+use machine_discovery::acpi::{
+    DmarUnits, Drhd, InterruptRemappingClaims, MAX_DRHDS, MAX_RMRR_SCOPES, SCOPE_PCI_ENDPOINT,
+};
 use paging::PageFormat;
 use paging::x86_64::Vtd;
 
@@ -522,7 +524,7 @@ fn owner_index(rid: u32) -> Option<usize> {
 /// must also map (VT-d 4.1 section 3.16). [`crate::iommu::confine`] adds them to every domain it
 /// builds, so confining a USB controller or the GPU never takes away memory the firmware still
 /// DMAs into. Name: provisional (milestone 594).
-pub fn for_each_reserved_region(rid: u32, each: &mut dyn FnMut(paging::domain::DmaRegion)) {
+pub(crate) fn for_each_reserved_region(rid: u32, each: &mut dyn FnMut(paging::domain::DmaRegion)) {
     if super::amd_vi::is_active() {
         return super::amd_vi::for_each_reserved_region(rid, each);
     }
@@ -557,7 +559,7 @@ pub fn for_each_reserved_region(rid: u32, each: &mut dyn FnMut(paging::domain::D
 /// different claims. Since milestone 594 every unit is brought up, so the answer is `Owned`
 /// whenever the device has an owner and that owner came up; `Elsewhere` now means a unit this
 /// kernel refused (`owner: Some`) or no owner at all (`owner: None`).
-pub fn scope_of(rid: u32) -> crate::iommu::Scope {
+pub(crate) fn scope_of(rid: u32) -> crate::iommu::Scope {
     use crate::iommu::Scope;
     if super::amd_vi::is_active() {
         return super::amd_vi::scope_of(rid);
@@ -610,7 +612,7 @@ pub fn scope_of(rid: u32) -> crate::iommu::Scope {
 // finding the warning still fired. A test-only helper gets the not(test) allowance the tree's
 // test-only items carry.
 #[cfg_attr(not(test), allow(dead_code))]
-pub fn interrupt_remapping_available() -> Option<bool> {
+pub(crate) fn interrupt_remapping_available() -> Option<bool> {
     let g = IOMMU.lock();
     let mut any = false;
     let mut all = true;
@@ -637,10 +639,15 @@ pub fn interrupt_remapping_available() -> Option<bool> {
     any(test, feature = "system_tests", feature = "bench"),
     allow(dead_code)
 )]
-pub fn print_summary() {
+pub(crate) fn print_summary() {
     if super::amd_vi::print_summary() {
         return;
     }
+    // Copied out before `IOMMU` is taken: both locks share a rank.
+    let platform = DMAR
+        .lock()
+        .as_ref()
+        .is_some_and(|d| d.platform_interrupt_remapping);
     let g = IOMMU.lock();
     let mut any = false;
     for s in g.iter() {
@@ -649,12 +656,11 @@ pub fn print_summary() {
                 any = true;
                 crate::println!(
                     "  iommu           : VT-d drhd at {:#018x}, root table default-deny, translating, \
-                     interrupt remapping {} (unused)",
+                     {}",
                     u.base,
-                    if u.interrupt_remapping {
-                        "offered"
-                    } else {
-                        "absent"
+                    InterruptRemappingClaims {
+                        unit: u.interrupt_remapping,
+                        platform,
                     },
                 );
             }
@@ -683,7 +689,7 @@ pub fn is_active() -> bool {
 /// return its root: [`paging::x86_64::AmdVi`] when an AMD-Vi unit is up, [`Vtd`] otherwise. The two
 /// share the CPU's four-level, 4 KiB-leaf shape and nothing else that matters: `Vtd`'s and
 /// `AmdVi`'s own docs say why neither encoding, nor `Ia32e`'s, would work in the other's place.
-pub fn build_domain(regions: &[paging::domain::DmaRegion]) -> u64 {
+pub(crate) fn build_domain(regions: &[paging::domain::DmaRegion]) -> u64 {
     if super::amd_vi::is_active() {
         crate::iommu::build_identity::<paging::x86_64::AmdVi>(regions)
     } else {
@@ -845,7 +851,7 @@ pub fn take_fault() -> Option<Fault> {
 /// in DRAM), GSTS and FSTS, then every Fault Recording Register whose F bit is set, and the root
 /// and context entries for `rid` as the CPU sees them. Bounded at about eight lines.
 #[cfg(feature = "disk_throughput")]
-pub fn print_faults(rid: u32) {
+pub(crate) fn print_faults(rid: u32) {
     if super::amd_vi::is_active() {
         return super::amd_vi::print_faults(rid);
     }
@@ -942,7 +948,7 @@ fn print_context_entry(s: &Unit, ctx_tables: &[Option<u64>; 256], rid: u32) {
 /// The context-entry line on its own, for a bring-up that succeeded: the bench photograph then
 /// shows the entry the unit accepted, not only the one it refused.
 #[cfg(feature = "disk_throughput")]
-pub fn print_context(rid: u32) {
+pub(crate) fn print_context(rid: u32) {
     if super::amd_vi::is_active() {
         return super::amd_vi::print_faults(rid);
     }

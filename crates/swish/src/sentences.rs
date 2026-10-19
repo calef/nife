@@ -47,7 +47,8 @@ pub fn write_help(out: &mut dyn FnMut(&[u8])) {
     out(b"  jobs                    the background jobs this shell holds\n");
     out(b"  wait [%N]               until that job (or every job) finishes; ^C stops waiting\n");
     out(b"  kill [-9] %N            ask job N to stop; -9 tears it down and takes its memory back\n");
-    out(b"  fg [%N]                 watch job N (or the newest) in the foreground; ^C interrupts it\n");
+    out(b"  fg [%N]                 watch job N (or the newest) in the foreground; ^Z suspends it\n");
+    out(b"  bg [%N]                 let a suspended job run on in the background\n");
     out(b"  jig install <file>      install every program of a package this image vouches for\n");
     out(b"  jig install <name>      fetch a package and install it\n");
     out(
@@ -210,6 +211,21 @@ pub fn write_vouch(status: spawnproto::ActivationStatus, live: u64, out: &mut dy
     }
 }
 
+/// **What the prompt says when a spawn was not built**, by the progenitor's word: a program this
+/// image does not carry ([`spawnproto::SPAWN_NOT_IN_IMAGE`]) is named as that, and anything else
+/// is the job pool. Every site that answers a failed spawn reads it here, so the two cannot drift
+/// apart one call site at a time.
+///
+/// Name: provisional, minted 2026-10-18 (UTC) by lane/image-needs-jig.
+#[must_use]
+pub const fn spawn_failure_sentence(answer: u64) -> &'static [u8] {
+    if answer == spawnproto::SPAWN_NOT_IN_IMAGE {
+        b"  could not spawn (this image was built without that program)\n"
+    } else {
+        b"  could not spawn (the progenitor is out of memory)\n"
+    }
+}
+
 /// What a malformed `vouch` line is answered with, sending nothing.
 pub const VOUCH_USAGE: &[u8] =
     b"  vouch <file>: a path to a program, whose last name is at most sixteen bytes\n";
@@ -219,8 +235,8 @@ pub const USER_USAGE: &[u8] = b"  user suspend <name> | user resume <name>\n";
 
 /// Report what the spawned program did, in terms of the grant it was given.
 pub fn write_outcome(e: &Endowment, answer: u64, out: &mut dyn FnMut(&[u8])) {
-    if answer == spawnproto::SPAWN_FAILED {
-        out(b"  could not spawn (the progenitor is out of memory)\n");
+    if answer == spawnproto::SPAWN_FAILED || answer == spawnproto::SPAWN_NOT_IN_IMAGE {
+        out(spawn_failure_sentence(answer));
         return;
     }
     if answer == spawnproto::SPAWN_UNVOUCHED {

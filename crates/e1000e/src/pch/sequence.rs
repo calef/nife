@@ -716,7 +716,7 @@ pub fn init_hw(hw: &mut impl Hw) -> Result<(), Error> {
 /// `e1000_set_master_slave_mode` is left out: FreeBSD's `em` runs it with `e1000_ms_hw_default`,
 /// which writes `PHY_1000T_CTRL` back unchanged. FreeBSD's short wait for link afterwards is the
 /// kernel's own `STATUS.LU` wait.
-pub fn setup_copper_link(hw: &mut impl Hw) -> Result<(), Error> {
+pub(crate) fn setup_copper_link(hw: &mut impl Hw) -> Result<(), Error> {
     let c = (hw.read(mac::CTRL) | crate::CTRL_SLU) & !(CTRL_FRCSPD | CTRL_FRCDPX);
     hw.write(mac::CTRL, c);
     let f = Swflag::acquire(hw)?;

@@ -442,6 +442,7 @@ const RENDERS_AS_IT_READS: Manifest = Manifest {
     installer: false,
     catalog: false,
     indexes: IndexStoreDeclaration::Forbidden,
+    activation_directory: false,
     startup: StartupContract::Native,
 };
 

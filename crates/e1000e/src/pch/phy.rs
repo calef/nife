@@ -87,42 +87,42 @@ pub enum Error {
 /// `MDIC` register bits, from FreeBSD's `e1000_defines.h`.
 pub mod mdic {
     /// The register field's shift.
-    pub const REG_SHIFT: u32 = 16;
+    pub(crate) const REG_SHIFT: u32 = 16;
     /// The register field.
-    pub const REG_MASK: u32 = 0x001f_0000;
+    pub(crate) const REG_MASK: u32 = 0x001f_0000;
     /// The PHY address field's shift.
-    pub const PHY_SHIFT: u32 = 21;
+    pub(crate) const PHY_SHIFT: u32 = 21;
     /// Read opcode.
-    pub const OP_READ: u32 = 0x0800_0000;
+    pub(crate) const OP_READ: u32 = 0x0800_0000;
     /// Write opcode.
-    pub const OP_WRITE: u32 = 0x0400_0000;
+    pub(crate) const OP_WRITE: u32 = 0x0400_0000;
     /// The transaction completed.
     pub const READY: u32 = 0x1000_0000;
     /// The transaction failed.
     pub const ERROR: u32 = 0x4000_0000;
     /// Polls before giving up: `E1000_GEN_POLL_TIMEOUT * 3`.
-    pub const POLLS: u32 = 640 * 3;
+    pub(crate) const POLLS: u32 = 640 * 3;
     /// Between polls, in microseconds.
     pub const POLL_US: u64 = 50;
 }
 
 /// The highest MDIO register number (`MAX_PHY_REG_ADDRESS`).
-pub const MAX_REG: u32 = 0x1f;
+pub(crate) const MAX_REG: u32 = 0x1f;
 /// Registers above this one sit behind a page select (`MAX_PHY_MULTI_PAGE_REG`).
-pub const MAX_UNPAGED_REG: u32 = 0xf;
+pub(crate) const MAX_UNPAGED_REG: u32 = 0xf;
 /// The page-select register (`IGP01E1000_PHY_PAGE_SELECT`).
-pub const PAGE_SELECT: u32 = 0x1f;
+pub(crate) const PAGE_SELECT: u32 = 0x1f;
 /// How a page and a register pack into one offset (`PHY_PAGE_SHIFT`).
-pub const PAGE_SHIFT: u32 = 5;
+pub(crate) const PAGE_SHIFT: u32 = 5;
 /// The first page reached at PHY address 1 rather than 2 (`HV_INTC_FC_PAGE_START`).
-pub const HV_PAGE_START: u32 = 768;
+pub(crate) const HV_PAGE_START: u32 = 768;
 /// The host wakeup page (`BM_WUC_PAGE`), refused.
-pub const WAKEUP_PAGE: u32 = 800;
+pub(crate) const WAKEUP_PAGE: u32 = 800;
 
 /// The highest page whose select value (`page << 5`) fits the 16-bit `MDIC` data field. FreeBSD
 /// passes `page << IGP_PAGE_SHIFT` to `e1000_set_page_igp` as a `u16` and so silently truncates a
 /// higher one; this port refuses it instead. Found while writing this module's Kani harness.
-pub const MAX_PAGE: u32 = 0x7ff;
+pub(crate) const MAX_PAGE: u32 = 0x7ff;
 
 /// `PHY_REG(page, reg)`.
 pub const fn reg(page: u32, r: u32) -> u32 {
@@ -136,46 +136,46 @@ pub mod r {
     /// MII control.
     pub const CONTROL: u32 = 0x00;
     /// PHY identifier, high word.
-    pub const ID1: u32 = 0x02;
+    pub(crate) const ID1: u32 = 0x02;
     /// PHY identifier, low word and revision.
-    pub const ID2: u32 = 0x03;
+    pub(crate) const ID2: u32 = 0x03;
     /// Autonegotiation advertisement.
-    pub const AUTONEG_ADV: u32 = 0x04;
+    pub(crate) const AUTONEG_ADV: u32 = 0x04;
     /// 1000BASE-T control.
-    pub const CTRL_1000T: u32 = 0x09;
+    pub(crate) const CTRL_1000T: u32 = 0x09;
     /// 82577-family configuration (`I82577_CFG_REG`).
-    pub const I82577_CFG: u32 = 22;
+    pub(crate) const I82577_CFG: u32 = 22;
     /// 82577-family control 2 (`I82577_PHY_CTRL_2`).
-    pub const I82577_CTRL_2: u32 = 18;
+    pub(crate) const I82577_CTRL_2: u32 = 18;
     /// Kumeran mode control (`HV_KMRN_MODE_CTRL`).
     pub const KMRN_MODE_CTRL: u32 = reg(769, 16);
     /// Port general configuration (`BM_PORT_GEN_CFG`).
-    pub const PORT_GEN_CFG: u32 = reg(769, 17);
+    pub(crate) const PORT_GEN_CFG: u32 = reg(769, 17);
     /// `SMBus` control (`CV_SMB_CTRL`).
-    pub const SMB_CTRL: u32 = reg(769, 23);
+    pub(crate) const SMB_CTRL: u32 = reg(769, 23);
     /// Power management control (`HV_PM_CTRL`).
-    pub const PM_CTRL: u32 = reg(770, 17);
+    pub(crate) const PM_CTRL: u32 = reg(770, 17);
     /// Ultra-low-power configuration 1 (`I218_ULP_CONFIG1`).
-    pub const ULP_CONFIG1: u32 = reg(779, 16);
+    pub(crate) const ULP_CONFIG1: u32 = reg(779, 16);
     /// OEM bits: LPLU, gigabit disable, restart autonegotiation (`HV_OEM_BITS`).
-    pub const OEM_BITS: u32 = reg(768, 25);
+    pub(crate) const OEM_BITS: u32 = reg(768, 25);
     /// `SMBus` address (`HV_SMB_ADDR`).
-    pub const SMB_ADDR: u32 = reg(768, 26);
+    pub(crate) const SMB_ADDR: u32 = reg(768, 26);
     /// LED configuration (`HV_LED_CONFIG`).
-    pub const LED_CONFIG: u32 = reg(768, 30);
+    pub(crate) const LED_CONFIG: u32 = reg(768, 30);
 }
 
 /// `PHY_REVISION_MASK`: the identifier without its revision nibble.
-pub const ID_MASK: u32 = 0xffff_fff0;
+pub(crate) const ID_MASK: u32 = 0xffff_fff0;
 
 /// How long to wait for someone else's `SWFLAG` to clear, in ms (`PHY_CFG_TIMEOUT`).
-pub const SWFLAG_FREE_MS: u32 = 100;
+pub(crate) const SWFLAG_FREE_MS: u32 = 100;
 /// How long to wait for ours to stick, in ms (`SW_FLAG_TIMEOUT`).
-pub const SWFLAG_TAKE_MS: u32 = 1000;
+pub(crate) const SWFLAG_TAKE_MS: u32 = 1000;
 /// `EXTCNF_CTRL.SWFLAG`.
-pub const EXTCNF_CTRL_SWFLAG: u32 = 0x0000_0020;
+pub(crate) const EXTCNF_CTRL_SWFLAG: u32 = 0x0000_0020;
 /// `FWSM.RSPCIPHY`: clear while firmware blocks a PHY reset.
-pub const FWSM_RSPCIPHY: u32 = 0x0000_0040;
+pub(crate) const FWSM_RSPCIPHY: u32 = 0x0000_0040;
 
 /// One MDIO read of `reg` at PHY address `phy`, `e1000_read_phy_reg_mdic`.
 pub fn read_mdic(hw: &mut impl Hw, phy: u32, r: u32) -> Result<u16, Error> {
@@ -190,7 +190,7 @@ pub fn read_mdic(hw: &mut impl Hw, phy: u32, r: u32) -> Result<u16, Error> {
 }
 
 /// One MDIO write, `e1000_write_phy_reg_mdic`.
-pub fn write_mdic(hw: &mut impl Hw, phy: u32, r: u32, data: u16) -> Result<(), Error> {
+pub(crate) fn write_mdic(hw: &mut impl Hw, phy: u32, r: u32, data: u16) -> Result<(), Error> {
     if r > MAX_REG {
         return Err(Error::OutOfRange);
     }
@@ -231,7 +231,7 @@ pub struct Swflag(());
 impl Swflag {
     /// `e1000_acquire_swflag_ich8lan`: wait for the flag to be free, set it, and wait for it to
     /// read back set. On a refusal it clears the bit it wrote, as FreeBSD does.
-    pub fn acquire(hw: &mut impl Hw) -> Result<Self, Error> {
+    pub(crate) fn acquire(hw: &mut impl Hw) -> Result<Self, Error> {
         let mut ext = 0;
         let mut free = false;
         for _ in 0..SWFLAG_FREE_MS {
@@ -269,11 +269,11 @@ impl Swflag {
 
     /// **The flag is given up to a global reset**, which clears `EXTCNF_CTRL`. FreeBSD's
     /// `e1000_reset_hw_ich8lan` takes it before `CTRL.RST` and never releases it; this names that.
-    pub fn lost_to_reset(self) {}
+    pub(crate) fn lost_to_reset(self) {}
 }
 
 /// Which PHY address a page lives at (`e1000_get_phy_addr_for_hv_page`).
-pub const fn address_for(page: u32) -> u32 {
+pub(crate) const fn address_for(page: u32) -> u32 {
     if page >= HV_PAGE_START { 1 } else { 2 }
 }
 
@@ -343,7 +343,7 @@ pub fn update(
 
 /// `e1000_check_reset_block_ich8lan`: is firmware blocking a PHY reset? Polls `FWSM.RSPCIPHY` up to
 /// 31 times 10 ms apart, as FreeBSD does.
-pub fn reset_blocked(hw: &mut impl Hw) -> bool {
+pub(crate) fn reset_blocked(hw: &mut impl Hw) -> bool {
     for i in 0..=30 {
         if hw.read(super::regs::FWSM) & FWSM_RSPCIPHY != 0 {
             return false;

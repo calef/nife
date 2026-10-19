@@ -19,8 +19,13 @@
 //!
 //!   an entry:
 //!   0..4     ordinal: which device of this transport, 0-based
-//!   4..8     transport: TRANSPORT_MMIO or TRANSPORT_PCI
+//!   4..8     transport: one of the TRANSPORT_ kinds below
 //! ```
+//!
+//! An NVMe entry carries exactly what a virtio one does (§193 (what a block-roster entry calls an
+//! NVMe disk)). Its ordinal counts NVMe controllers, and that identifies a disk only while each
+//! controller has one namespace, which is every controller this tree drives. A controller with two
+//! namespaces is the measurement that would make an entry need to say which.
 //!
 //! Little-endian, fixed width, no pointers, between a `no_std` reader and the kernel. A zeroed frame
 //! has the wrong magic and [`Roster::read`] refuses it, so a page nobody wrote never reads as a
@@ -42,10 +47,24 @@ pub const HEADER_BYTES: usize = 16;
 
 /// A virtio-mmio device: the ordinal is its position among block devices on the mmio bus, counted
 /// the way the kernel's own scan counts them.
-pub const TRANSPORT_MMIO: u32 = 0;
+///
+/// Name: ratified 2026-10-18 (calef), as §193 (what a block-roster entry calls an NVMe disk) rules:
+/// the kind says virtio, because an NVMe disk is a PCI device too, and `mmio` expands under §154.
+pub const TRANSPORT_VIRTIO_MEMORY_MAPPED_IO: u32 = 0;
 
 /// A virtio-blk function on the PCIe bus (DECISIONS §18's transport).
-pub const TRANSPORT_PCI: u32 = 1;
+///
+/// Name: ratified 2026-10-18 (calef), as §193 (what a block-roster entry calls an NVMe disk) rules:
+/// a bare `PCI` beside the NVMe kind would claim NVMe as well.
+pub const TRANSPORT_VIRTIO_PCI: u32 = 1;
+
+/// An NVMe controller on the PCIe bus, found by its class code: the ordinal is its position among
+/// NVMe controllers in the kernel's bus walk, so ordinal 0 is the controller
+/// `kernel/src/user/non_volatile_memory_express_service.rs` serves.
+///
+/// Name: ratified 2026-10-18 (calef), as §193 (what a block-roster entry calls an NVMe disk) rules,
+/// by the `nvme` row of §154 (the acronym test is whether the phrase is spoken).
+pub const TRANSPORT_NON_VOLATILE_MEMORY_EXPRESS: u32 = 2;
 
 /// One attached block device: which bus, and which one of them.
 ///
@@ -57,17 +76,23 @@ pub const TRANSPORT_PCI: u32 = 1;
 pub struct Device {
     /// Which block device of this transport, 0-based, in the order the kernel's scan finds them.
     pub ordinal: u32,
-    /// [`TRANSPORT_MMIO`] or [`TRANSPORT_PCI`].
+    /// [`TRANSPORT_VIRTIO_MEMORY_MAPPED_IO`], [`TRANSPORT_VIRTIO_PCI`] or
+    /// [`TRANSPORT_NON_VOLATILE_MEMORY_EXPRESS`].
     pub transport: u32,
 }
 
 impl Device {
     /// The transport's name, for a listing a person reads. `None` for a number this build does not
     /// know, which is what a reader of a page written by a newer kernel would see.
+    ///
+    /// The printed names are the ones the outside world already uses rather than the identifiers:
+    /// the virtio specification's two transports, and `nvme`, which is QEMU's device model, Linux's
+    /// driver and device prefix, and what this tree's own NVMe diagnostics print.
     pub const fn transport_name(&self) -> Option<&'static str> {
         match self.transport {
-            TRANSPORT_MMIO => Some("virtio-mmio"),
-            TRANSPORT_PCI => Some("virtio-pci"),
+            TRANSPORT_VIRTIO_MEMORY_MAPPED_IO => Some("virtio-mmio"),
+            TRANSPORT_VIRTIO_PCI => Some("virtio-pci"),
+            TRANSPORT_NON_VOLATILE_MEMORY_EXPRESS => Some("nvme"),
             _ => None,
         }
     }
@@ -90,17 +115,19 @@ pub const fn capacity_of(len: usize) -> usize {
 /// # Examples
 ///
 /// ```
-/// # use block_roster::{Device, Roster, TRANSPORT_MMIO, TRANSPORT_PCI};
+/// # use block_roster::{Device, Roster, TRANSPORT_NON_VOLATILE_MEMORY_EXPRESS};
+/// # use block_roster::{TRANSPORT_VIRTIO_MEMORY_MAPPED_IO, TRANSPORT_VIRTIO_PCI};
 /// let mut page = [0u8; 4096];
 /// let devices = [
-///     Device { ordinal: 0, transport: TRANSPORT_MMIO },
-///     Device { ordinal: 0, transport: TRANSPORT_PCI },
+///     Device { ordinal: 0, transport: TRANSPORT_VIRTIO_MEMORY_MAPPED_IO },
+///     Device { ordinal: 0, transport: TRANSPORT_VIRTIO_PCI },
+///     Device { ordinal: 0, transport: TRANSPORT_NON_VOLATILE_MEMORY_EXPRESS },
 /// ];
 /// block_roster::write(&mut page, &devices).unwrap();
 ///
 /// let roster = Roster::read(&page).unwrap();
-/// assert_eq!(roster.len(), 2);
-/// assert_eq!(roster.get(1).unwrap().transport, TRANSPORT_PCI);
+/// assert_eq!(roster.len(), 3);
+/// assert_eq!(roster.get(2).unwrap().transport_name(), Some("nvme"));
 /// ```
 pub fn write(page: &mut [u8], devices: &[Device]) -> Result<(), Full> {
     let capacity = capacity_of(page.len());
@@ -196,19 +223,19 @@ mod tests {
         [
             Device {
                 ordinal: 0,
-                transport: TRANSPORT_MMIO,
+                transport: TRANSPORT_VIRTIO_MEMORY_MAPPED_IO,
             },
             Device {
                 ordinal: 1,
-                transport: TRANSPORT_MMIO,
+                transport: TRANSPORT_VIRTIO_MEMORY_MAPPED_IO,
             },
             Device {
                 ordinal: 2,
-                transport: TRANSPORT_MMIO,
+                transport: TRANSPORT_VIRTIO_MEMORY_MAPPED_IO,
             },
             Device {
                 ordinal: 0,
-                transport: TRANSPORT_PCI,
+                transport: TRANSPORT_VIRTIO_PCI,
             },
         ]
     }
@@ -224,8 +251,8 @@ mod tests {
             assert_eq!(r.get(i).unwrap(), *want);
         }
         assert_eq!(r.get(4), None, "past the end is None, not the next entry");
-        assert_eq!(r.count_on(TRANSPORT_MMIO), 3);
-        assert_eq!(r.count_on(TRANSPORT_PCI), 1);
+        assert_eq!(r.count_on(TRANSPORT_VIRTIO_MEMORY_MAPPED_IO), 3);
+        assert_eq!(r.count_on(TRANSPORT_VIRTIO_PCI), 1);
         assert_eq!(r.iter().count(), 4);
     }
 
@@ -273,7 +300,7 @@ mod tests {
         assert_eq!(
             Device {
                 ordinal: 0,
-                transport: TRANSPORT_MMIO
+                transport: TRANSPORT_VIRTIO_MEMORY_MAPPED_IO
             }
             .transport_name(),
             Some("virtio-mmio"),
@@ -281,10 +308,18 @@ mod tests {
         assert_eq!(
             Device {
                 ordinal: 0,
-                transport: TRANSPORT_PCI
+                transport: TRANSPORT_VIRTIO_PCI
             }
             .transport_name(),
             Some("virtio-pci"),
+        );
+        assert_eq!(
+            Device {
+                ordinal: 0,
+                transport: TRANSPORT_NON_VOLATILE_MEMORY_EXPRESS
+            }
+            .transport_name(),
+            Some("nvme"),
         );
         assert_eq!(
             Device {
@@ -294,6 +329,16 @@ mod tests {
             .transport_name(),
             None,
         );
+    }
+
+    /// The kinds are wire values a `no_std` reader built from another commit compares against, so
+    /// an identifier may move and its number may not. Pinned as literals because a test written
+    /// against the constants would follow a renumbering instead of catching it.
+    #[test]
+    fn the_transport_kinds_keep_their_wire_values() {
+        assert_eq!(TRANSPORT_VIRTIO_MEMORY_MAPPED_IO, 0);
+        assert_eq!(TRANSPORT_VIRTIO_PCI, 1);
+        assert_eq!(TRANSPORT_NON_VOLATILE_MEMORY_EXPRESS, 2);
     }
 
     /// The magic is a fixed byte string on disk, not whatever `u64::from_le_bytes` happens to

@@ -31,10 +31,10 @@ The ruling below asks whether work is *mechanical*. The sharper question is whet
 output is something nobody specified, and that is what the evidence of 2026-09-21 separates.
 
 Opus found that `size_of::<PerCpu>()` growing from 128 to 136 broke shift-based indexing and cost
-5.4% of the IPC fastpath; that a capability parked in a thread's hand-off slot survived every
-revocation sweep; and that an x86 calibration was wrong by a factor of eleven. None of those was
-asked for. Sonnet did the promotion repair and the falsification refresh: complete specifications,
-executed correctly, and it caught an error in the maintainer's own brief.
+5.4% of the IPC fastpath. It found that a capability parked in a thread's hand-off slot survived
+every revocation sweep, and that an x86 calibration was wrong by a factor of eleven. None of those
+was asked for. Sonnet did the promotion repair and the falsification refresh: complete
+specifications, executed correctly, and it caught an error in the maintainer's own brief.
 
 | tier | when |
 |---|---|
@@ -140,7 +140,7 @@ gaps needing a real tty, six timeouts unchanged under the file's own convention.
 The maintainer predicted where it would fail and was wrong, which is worth recording because the
 prediction was written before the lane reported. The expectation was competent kills and weak ledger
 prose, with equivalence arguments that assert rather than demonstrate. The one equivalence claim
-does the opposite: it names the mutation (`BootProgress::reach`'s `>` becoming `>=`), the only
+does the opposite. It names the mutation (`BootProgress::reach`'s `>` becoming `>=`), the only
 variant that can reach the extra branch, the invariant that makes the two rungs the same
 (`every_profiles_depths_count_from_one_without_gaps`), and therefore why the reassignment is
 unobservable. It also recorded that at the function, per this file's own convention, rather than
@@ -168,8 +168,8 @@ calls, no maintainer repair.
 The claim worth checking was "all sixteen are equivalent", because a lane that wants to be
 finished can rationalize there and no gate would catch it. Three were read closely and they hold.
 The four `CellRect::union` selectors are equivalent for a reason that is a proof rather than an
-observation: a selector of the form `if a < b { a } else { b }` returns the same value on both
-branches whenever `a == b`, and `<` against `<=` disagrees only about which branch fires at exactly
+observation. A selector of the form `if a < b { a } else { b }` returns the same value on both
+branches whenever `a == b`. `<` against `<=` disagrees only about which branch fires at exactly
 that point, so no input can separate them rather than merely no input a test tried.
 
 And it discriminated where it would have been easier not to. The size clamp had four survivors;
@@ -188,8 +188,8 @@ triage than average.
 The maintainer picked the crate badly. It was chosen off the census record as the hardest
 remaining case, a boot-path parser with 77 survivors whose callers are three kernels. It had
 already been triaged, on 2026-09-19, by a lane that landed through an integration branch and so
-left no obvious pull request: 58 killed, 11 equivalent, 8 recorded gaps, all accounted for in
-`notes/mutation-testing/machine-discovery.md`, which the maintainer did not read
+left no obvious pull request. That triage found 58 killed, 11 equivalent, 8 recorded gaps, all
+accounted for in `notes/mutation-testing/machine-discovery.md`, which the maintainer did not read
 before briefing.
 
 That is the third crate in a row whose census row did not mean what it appeared to, after
@@ -199,11 +199,11 @@ from the ledger and recent history, not from the census.
 
 What the lane did with a bad brief is the actual result. It did not redo the work. It identified
 the earlier lane by commit, re-derived the sweep against the current tree, and checked whether two
-pull requests that landed *after* that triage had introduced anything: 714 mutants, 612 caught, 19
-missed and 9 timeouts, every one matching an already-argued equivalent, recorded gap or
-noticing-timeout by file, line and operator, and the 21 new mutants from those later pull requests
-all caught. It concluded that nothing was owed and wrote a 30-line dated addendum rather than a
-milestone's worth of redundant tests.
+pull requests that landed *after* that triage had introduced anything. The sweep came to 714
+mutants, 612 caught, 19 missed and 9 timeouts. Every one matched an already-argued equivalent,
+recorded gap or noticing-timeout by file, line and operator, and the 21 new mutants from those later
+pull requests were all caught. It concluded that nothing was owed and wrote a 30-line dated
+addendum rather than a milestone's worth of redundant tests.
 
 **Refusing to manufacture work is the behavior this routing most needed to demonstrate**, and no
 gate would have caught the opposite. A lane that had written 19 tests against already-argued
@@ -238,7 +238,7 @@ distinction is the table above.
 ## What a brief owes when it routes down
 
 The brief carries more of the hazard, not less. A lane that cannot infer the trap has to be told
-it: the gloss must sit on the same line as its number, the ratchet reads the committed tip, a
+it. The gloss must sit on the same line as its number, the ratchet reads the committed tip, a
 worktree shares one stash stack, `origin/*` is not a fixed point. Those are already in the briefs
 this tree writes; routing down makes them load-bearing rather than courteous.
 

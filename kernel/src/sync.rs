@@ -155,7 +155,7 @@ pub mod rank {
 
     /// The virtio transport table (DMA confinement; fixed since 14 B.1). Taken from a syscall
     /// with no other lock held; the rank records where that syscall sits, not any nesting need.
-    pub const VIRTIO: u32 = 56;
+    pub(crate) const VIRTIO: u32 = 56;
 
     /// The IOMMU driver's device (milestone 16b): the SMMUv3's stream table and queues, the
     /// RISC-V IOMMU's device directory and queues, whichever this arch has. A pure leaf: `attach`
@@ -186,14 +186,14 @@ pub mod rank {
     /// serialized. **Below `IPC_TABLES`** (a `KernelStack`'s `Drop` unmaps from under `reap`, which
     /// holds `IPC_TABLES`) and **below `STACK_VA`** (a stack's `new` maps pages), and **above the allocators**
     /// (mapping allocates intermediate page-table frames). See DECISIONS §11.
-    pub const KERNEL_MMU: u32 = 45;
+    pub(crate) const KERNEL_MMU: u32 = 45;
 
-    pub const PAGE_FRAMES: u32 = 30;
+    pub(crate) const PAGE_FRAMES: u32 = 30;
     pub const RAM: u32 = 30;
 
     /// The ASID allocator (milestone 15). Taken alone at address-space creation and teardown;
     /// near the leaves because it needs nothing beneath it.
-    pub const ASIDS: u32 = 15;
+    pub(crate) const ASIDS: u32 = 15;
 
     /// The interrupt controller, whichever one this architecture has: the GIC on aarch64, the PLIC
     /// on RISC-V.
@@ -221,12 +221,12 @@ pub mod rank {
     /// A leaf, and above the console because the boot print reads it and then prints. It copies the
     /// record out and releases before the first `println!`, so the two are never actually nested,
     /// but the ordering is stated rather than relied on to stay accidental.
-    pub const ISA: u32 = 12;
+    pub(crate) const ISA: u32 = 12;
 
     pub const CONSOLE: u32 = 10;
 
     /// Holding nothing.
-    pub const NONE: u32 = u32::MAX;
+    pub(crate) const NONE: u32 = u32::MAX;
 }
 
 /// The lowest rank currently held is kept in **this core's per-CPU block**
@@ -240,7 +240,7 @@ pub mod rank {
 ///
 /// What is the lowest-ranked lock we currently hold? Test support.
 #[cfg_attr(not(test), allow(dead_code))] // the ranking tests; also a debugger's friend
-pub fn current_rank() -> u32 {
+pub(crate) fn current_rank() -> u32 {
     crate::cpu::current().held_rank.load(Ordering::Relaxed)
 }
 
@@ -249,7 +249,7 @@ pub fn current_rank() -> u32 {
 /// Exists because the violation itself is an `assert!`, and an assert in a kernel test is a
 /// dead kernel. This lets the tests check the *predicate* without pulling the trigger.
 #[cfg_attr(not(test), allow(dead_code))] // the ranking tests are the only callers
-pub fn would_violate(rank: u32) -> bool {
+pub(crate) fn would_violate(rank: u32) -> bool {
     rank >= current_rank()
 }
 
@@ -267,7 +267,7 @@ pub fn would_violate(rank: u32) -> bool {
 /// The bookkeeping is a debugging aid. It must never be the thing that stops us saying what
 /// went wrong. Resets only the calling core's block, which is exactly right: a fault is handled
 /// on the core that took it.
-pub unsafe fn force_reset_ranks() {
+pub(crate) unsafe fn force_reset_ranks() {
     crate::cpu::current()
         .held_rank
         .store(rank::NONE, Ordering::Relaxed);
@@ -387,7 +387,7 @@ impl<T> IrqSafeMutex<T> {
     /// The caller must accept that whatever the previous holder was doing is now
     /// half-finished, and that its data may be inconsistent. That is an acceptable trade
     /// when the alternative is a silent hang, and an unacceptable one at any other time.
-    pub unsafe fn force_unlock(&self) {
+    pub(crate) unsafe fn force_unlock(&self) {
         // SAFETY: this function's own `# Safety` contract is exactly the one this call needs; it forwards, it does not weaken.
         unsafe { self.inner.force_unlock() }
     }
@@ -404,7 +404,7 @@ impl<T> IrqSafeMutex<T> {
 /// `None` from `find` restores the state and takes nothing. The guard restores the state found
 /// before `find` ran, so the whole of it is one critical section.
 #[inline]
-pub fn lock_found<'a, T>(
+pub(crate) fn lock_found<'a, T>(
     find: impl FnOnce() -> Option<&'a IrqSafeMutex<T>>,
 ) -> Option<IrqSafeGuard<'a, T>> {
     let irqs_were_enabled = interrupts::disable();

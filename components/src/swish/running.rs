@@ -103,11 +103,6 @@ pub(super) fn words_grant(
     grant: grant_plan::WordGrant,
     stage: usize,
 ) -> Result<WordsGrant, Option<&'static [u8]>> {
-    if g.which != nav::Which::A {
-        return Err(Some(
-            b"  that directory is in a mounted tree, and the progenitor builds a caretaker\n  from the root tree; a grant there is not built\n",
-        ));
-    }
     let dir = match g.directory.depth() {
         1 => g.directory.component(0),
         0 => {
@@ -119,6 +114,25 @@ pub(super) fn words_grant(
             return Err(Some(
                 b"  this shell is standing more than one level down, and the progenitor builds one\n  caretaker per grant; a deeper grant is a chain of them, which is not built\n",
             ));
+        }
+    };
+    // **A directory in the mounted tree is named through the mount** (milestone 834 (ioping on nife and Linux)): the
+    // progenitor builds the caretaker against the tree `spawnproto::in_mounted_tree` says.
+    let mut routed = [0u8; filesystem_contract::grant::MAX_NAME + 1];
+    let dir = match g.which {
+        nav::Which::A => dir,
+        nav::Which::B => {
+            let mount = spawnproto::MOUNTED_TREE_NAME;
+            let n = mount.len() + 1 + dir.len();
+            if n > routed.len() {
+                return Err(Some(
+                    b"  that name does not fit in a grant's two argument words\n",
+                ));
+            }
+            routed[..mount.len()].copy_from_slice(mount);
+            routed[mount.len()] = b'/';
+            routed[mount.len() + 1..n].copy_from_slice(dir);
+            &routed[..n]
         }
     };
     if !filesystem_contract::grant::fits(dir) {
@@ -1100,8 +1114,9 @@ pub(super) fn drain_text() {
         // Checked before decoding: the progenitor's sentinel is `u64::MAX`, whose top byte is an opcode this
         // contract does not define, so it would otherwise read as a malformed message rather than as
         // the one thing it is.
-        if w0 == spawnproto::SPAWN_FAILED {
-            print(b"could not spawn (the progenitor is out of memory)\n");
+        if w0 == spawnproto::SPAWN_FAILED || w0 == spawnproto::SPAWN_NOT_IN_IMAGE {
+            // Past the sentence's own indent: this function printed one before the first read.
+            print(&swish::spawn_failure_sentence(w0)[2..]);
             return;
         }
         // **Refused as unvouched** (DECISIONS §219), which nothing but an image request earns.
@@ -1340,7 +1355,7 @@ pub(super) fn run(nav: &mut Nav, cmd: &[u8], spec: ParsedInvocation) {
         Err(refusal) => refuse(spec, refusal),
         // A supervised job runs under the two-tier ^C path (DECISIONS §24); a fast job is simply
         // spawned and waited on.
-        Ok(endow) if endow.interruptible => spawn_interruptible(endow),
+        Ok(endow) if endow.interruptible => spawn_interruptible(&mut nav.jobs, endow),
         // **`wc report.txt`**, which is `wc < report.txt` with the operator left out: the planner
         // put the designated name in the *source* (`grant_plan`'s input operand), so this line is a
         // one-stage pipeline the shell feeds, and it runs down exactly the path a `<` runs down.

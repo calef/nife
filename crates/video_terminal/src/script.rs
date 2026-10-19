@@ -112,13 +112,13 @@ pub const SCROLL_LINES: usize = 48;
 
 /// **How many more lines arrive in one write**, after the per-line ones: five scrolls inside a
 /// single present, the shape a program printing a paragraph produces. See [`SCROLL_LINES`].
-pub const SCROLL_TAIL_LINES: usize = 5;
+pub(crate) const SCROLL_TAIL_LINES: usize = 5;
 
 /// One scroller line, `scroll NN\r\n` with `NN` zero-padded: written into `out`, returning its
 /// length. The number is the line's own index, so a picture scrolled by the wrong number of rows
 /// disagrees with the oracle at every cell that faces the wrong number, which is the failure this
 /// content exists to catch.
-pub fn scroll_line(i: usize, out: &mut [u8]) -> usize {
+pub(crate) fn scroll_line(i: usize, out: &mut [u8]) -> usize {
     const HEAD: &[u8] = b"scroll ";
     out[..HEAD.len()].copy_from_slice(HEAD);
     out[HEAD.len()] = b'0' + (i / 10 % 10) as u8;

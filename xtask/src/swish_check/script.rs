@@ -12,13 +12,15 @@
 
 use std::sync::LazyLock;
 
-pub(super) use after_reboot::{FROM_BASALT, SWISH_CHECK_AFTER_REBOOT};
+pub(super) use after_reboot::{
+    FROM_BASALT, ON_THE_DISK_TREE, RESOLVING_LINE, SWISH_CHECK_AFTER_REBOOT,
+};
 pub(super) use line::{JOB_DID_NOT_RUN, Line, interrupted_at_prompt, keys, line};
 
 use super::*;
 
 mod after_reboot;
-mod clock_config;
+mod clock_configuration;
 mod directories;
 mod installer;
 mod interrupts;
@@ -56,7 +58,7 @@ pub(super) const SWISH_CHECK_KEYBOARD_BOOT: &[Line] =
 pub(super) static SWISH_CHECK_SCRIPT: LazyLock<Vec<Line>> = LazyLock::new(|| {
     [
         pipes_files::LINES,
-        clock_config::LINES,
+        clock_configuration::LINES,
         navigation::LINES,
         process_tools::LINES,
         installer::LINES,
@@ -78,6 +80,13 @@ pub(super) static SWISH_CHECK_SCRIPT: LazyLock<Vec<Line>> = LazyLock::new(|| {
 /// here is also one `every_spawnable_program_has_a_swish_check_line` would otherwise have to excuse.
 pub(super) const SWISH_CHECK_INTERRUPTED: [&str; 4] =
     ["interrupt_heeder", "interrupt_ignorer", "wait", "fg %1"];
+
+/// **The lines after which this gate presses `^Z`** (milestone 48 (job control)), once the shell
+/// has said the job is running, as [`SWISH_CHECK_INTERRUPTED`] does for `^C`. The job is suspended
+/// and the prompt comes back, so nothing else needs pressing.
+///
+/// Name: provisional, minted 2026-10-18 (UTC) by lane/48-ctrl-z.
+pub(super) const SWISH_CHECK_SUSPENDED: [&str; 1] = ["fg"];
 
 /// What the shell prints once a supervised job is running and watched. Pressing `^C` before it
 /// would still be counted (the shell's watermark catches an early one), but after it is the case a

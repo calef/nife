@@ -88,4 +88,31 @@ pub(super) const LINES: &[Line] = &[
     ),
     line(0, "jobs", &["no jobs"]),
     line(0, "date &", &["& runs only a supervised job"]),
+    // **Ctrl-Z** (milestone 48's phase two): a job brought to the foreground with a bare `fg`,
+    // which is in [`SWISH_CHECK_SUSPENDED`], is suspended by the `^Z` the gate presses, listed
+    // stopped, resumed in the background with `bg`, and finished in the foreground with `^C`.
+    line(
+        0,
+        "interrupt_heeder &",
+        &["[1] interrupt_heeder running in the background"],
+    ),
+    line(
+        0,
+        "fg",
+        &[
+            "running interrupt_heeder in the foreground",
+            "[1] interrupt_heeder stopped",
+        ],
+    ),
+    line(0, "jobs", &["[1] interrupt_heeder stopped"]),
+    line(0, "bg", &["[1] interrupt_heeder running in the background"]),
+    line(0, "jobs", &["[1] interrupt_heeder running"]),
+    line(
+        0,
+        "fg %1",
+        &[
+            "running interrupt_heeder in the foreground",
+            "the job caught the interrupt and stopped cleanly after",
+        ],
+    ),
 ];

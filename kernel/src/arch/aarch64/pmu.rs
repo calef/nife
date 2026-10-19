@@ -188,7 +188,7 @@ pub(super) fn is_pmuv3_present() -> bool {
 /// Called from `timer::init`, which every core runs (core 0 from `kernel_main`, each secondary from
 /// `smp::secondary_main`), after `PMUSERENR_EL0` has been closed. Init-time only: nothing here is on
 /// the context-switch path, which milestone 237 measured and keeps clean.
-pub fn init_this_cpu() {
+pub(crate) fn init_this_cpu() {
     let cpu = cpu::id();
     if !is_pmuv3_present() {
         OUTCOME[cpu].store(CycleCounter::NoPmuV3 as u8, Ordering::Release);
@@ -304,7 +304,7 @@ fn read_pmcr() -> u64 {
 /// It names core 0's answer in full and how many of the cores that reached init agree, because the
 /// failure worth seeing on a board is one core disagreeing (a big.LITTLE part, or a secondary whose
 /// firmware state differs), and a line about core 0 alone would hide it.
-pub fn print_summary() {
+pub(crate) fn print_summary() {
     let boot = cpu::id();
     let mut initialised = 0;
     let mut running = 0;
