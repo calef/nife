@@ -136,7 +136,8 @@ pub(crate) const MAX_RENDEZVOUS: usize = 512;
 ///
 /// # The ledger at the peak
 ///
-/// Measured 2026-10-19 on the `system_tests` image (milestone 608):
+/// Measured 2026-10-19 on the `system_tests` image by milestone 608 (kernel tests give back their
+/// rendezvous points):
 ///
 /// | architecture | peak | spare | on kernel chunks |
 /// |---|---|---|---|

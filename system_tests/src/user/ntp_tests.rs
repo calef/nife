@@ -44,7 +44,8 @@ fn witness_image() -> &'static [u8] {
 ///
 /// Built in a region of its own and returned with the [`Holding`] that ends it, which the test
 /// releases last: the service parks in `RECEIVE` on `propose` for good, so without the holding
-/// every test here left a thread and two endpoints behind (milestone 608).
+/// each test would leave a thread and two endpoints behind (milestone 608 (kernel tests give back
+/// their rendezvous points)).
 fn clock() -> (clock_service::Wiring, Holding) {
     let image = program("clock").expect("no clock program in the initial ramdisk");
     let region =

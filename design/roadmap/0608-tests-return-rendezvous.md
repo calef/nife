@@ -85,7 +85,8 @@ Nothing for this milestone's aim. The largest remaining holders on aarch64, all 
 NTP and sink helpers this block covers: `compositor_tests` (31) and `display_tests` (15) through
 `compositor_service::start`, `disk_tests` (16) through `disk_service`, `credential_tests` (9),
 `block_driver_tests` (8), `clock_tests` (8), and `login_tests` with `login_user_schedule_tests`
-(10). Milestone 670 holds them.
+(10). Milestone 670 (test helpers give their clients a region to retype their rendezvous from)
+holds them.
 
 ## Follow-on
 

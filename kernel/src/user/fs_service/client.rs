@@ -17,7 +17,7 @@ pub(super) const CLIENT_EXTRA_STACK: usize = 8;
 
 /// The pages a granted client's endpoints are retyped from: its caretaker's two, the program's
 /// report, and one spare. One page per endpoint, so a grant's whole wiring goes back with one
-/// region (milestone 608).
+/// region (milestone 608 (kernel tests give back their rendezvous points)).
 pub(super) const GRANT_ENDPOINT_PAGES: u64 = 4;
 
 /// Spawn one client holding exactly a file-service endpoint, a report endpoint and its view of

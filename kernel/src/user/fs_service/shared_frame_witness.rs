@@ -32,9 +32,10 @@ use super::*;
 ///
 /// Returns `(readiness, victim_report, held)`: the service's readiness sentinels if this call wired
 /// it, the endpoint the victim reports its verdict on, and the holding that hands back both clients
-/// and the three endpoints (milestone 608). The attacker never reports; it signals the victim and
-/// exits. `None` when no RedoxFS disk is attached, or when the pool has no free window
-/// (which cannot happen with two clients against [`CLIENT_WINDOWS`] of at least three).
+/// and the three endpoints (milestone 608 (kernel tests give back their rendezvous points)). The
+/// attacker never reports; it signals the victim and exits. `None` when no RedoxFS disk is
+/// attached, or when the pool has no free window (which cannot happen with two clients against
+/// [`CLIENT_WINDOWS`] of at least three).
 ///
 /// Provisional name (this lane's coinage); an architect names functions.
 #[cfg_attr(not(any(test, feature = "system_tests")), allow(dead_code))]

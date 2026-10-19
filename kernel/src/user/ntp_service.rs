@@ -116,7 +116,8 @@ fn stack_pages() -> [Mapping; STACK_PAGES as usize] {
 ///
 /// Both endpoints are retyped from `region`, and the server's thread goes into `held`. The server
 /// serves until it is killed: once `region` is reclaimed its `RECEIVE` fails at once and it loops,
-/// so the caller hands `region` to the same holding, whose kill ends it (milestone 608).
+/// so the caller hands `region` to the same holding, whose kill ends it (milestone 608 (kernel
+/// tests give back their rendezvous points)).
 pub fn start_server(
     image: &'static [u8],
     variant: u64,
