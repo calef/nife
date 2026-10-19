@@ -503,7 +503,7 @@ pub enum ActivationStatus {
     /// past the first message and nothing was written. Provisional.
     NotServedHere = 14,
     /// **A removal or a rollback would undo a row another package manager installed**
-    /// (`installed_programs::may_edit`; calef's ruling of 2026-10-06 on milestone 809: a manager
+    /// (`installed_programs::can_edit`; calef's ruling of 2026-10-06 on milestone 809: a manager
     /// "refuses to remove or roll back a row it did not install"). Nothing was written.
     /// Provisional.
     NotYours = 15,

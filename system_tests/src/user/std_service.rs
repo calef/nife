@@ -172,10 +172,12 @@ pub fn start_on_full(
 pub struct Network {
     pub stack: RendezvousId,
     pub frames: u64,
-    /// A name resolver's endpoint and the badge the spawner granted a zone, placed at
-    /// `std_runtime_contract::RESOLVER_SLOT` (milestone 801 (packages over the internet)). `None`
-    /// leaves the slot empty, and `ToSocketAddrs` then resolves numeric addresses only.
-    pub resolver: Option<(RendezvousId, u32)>,
+    /// A name resolver's endpoint and the badges the spawner granted a zone each, placed in order
+    /// at `std_runtime_contract::RESOLVER_SLOTS` (milestone 801 (packages over the internet);
+    /// several since milestone 892 (a std program at the prompt holds the network and a
+    /// resolver)). `None` leaves the slots empty, and `ToSocketAddrs` then resolves numeric
+    /// addresses only.
+    pub resolver: Option<(RendezvousId, &'static [u32])>,
 }
 
 /// The `std` slot for the `Stack` endpoint and the one for the socket frames' budget.
@@ -219,7 +221,7 @@ pub fn start_networked_resolving(
     clock_image: &'static [u8],
     entropy_image: &'static [u8],
     stack: RendezvousId,
-    resolver: Option<(RendezvousId, u32)>,
+    resolver: Option<(RendezvousId, &'static [u32])>,
 ) -> NetworkedRun {
     let report_region = crate::memory_region::create(1).expect("no region for the std stdout");
     let report = crate::sched::create_rendezvous_from(report_region).expect("no std stdout");
@@ -372,12 +374,15 @@ fn spawn_std(
                 memory_region_lending_capability(net.frames),
             )
             .expect("the std socket-frame slot was already occupied");
-            if let Some((resolver, badge)) = net.resolver {
-                crate::sched::grant_at(
-                    std_runtime_contract::RESOLVER_SLOT,
-                    rendezvous_cap_badged(resolver, Rights::WRITE, badge as u64),
-                )
-                .expect("the std resolver slot was already occupied");
+            if let Some((resolver, badges)) = net.resolver {
+                assert!(badges.len() <= std_runtime_contract::RESOLVER_SLOTS.len());
+                for (slot, badge) in std_runtime_contract::RESOLVER_SLOTS.iter().zip(badges) {
+                    crate::sched::grant_at(
+                        *slot,
+                        rendezvous_cap_badged(resolver, Rights::WRITE, *badge as u64),
+                    )
+                    .expect("a std resolver slot was already occupied");
+                }
             }
         }
         run(

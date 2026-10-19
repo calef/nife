@@ -262,10 +262,13 @@ const _: () = assert!(core::mem::size_of::<CapabilityTable>() == 2064);
 pub(crate) type CapabilityTable = capability::CapabilityTable<Object, CAPABILITY_TABLE_SLOTS>;
 
 /// **What a real interactive boot actually reaches**: the progenitor's peak capability count,
-/// measured on `script/swish-check`'s aarch64 leg. The highest is the gpu-and-keyboard boot with an
-/// NVMe disk, at 36 of [`CAPABILITY_TABLE_SLOTS`] (2026-10-18 UTC); a boot with no gpu peaks lower,
-/// and one with no NVMe disk two lower, because the disk tree's endpoint and client-window pool
-/// (milestone 834 (ioping on nife and Linux)) are held for the life of the boot. `notes/capability-peak-trace.md`
+/// measured on `script/swish-check`'s aarch64 leg: 37 of [`CAPABILITY_TABLE_SLOTS`] (2026-10-19 UTC),
+/// on the boot that runs the full script, while the spawn service builds `jig install` and holds the
+/// copy of the boot terminal it places as that job's standard input (milestone 892 (a std program
+/// at the prompt holds the network and a resolver)). The same boot with that copy disabled peaks at
+/// 36, measured the same day. A boot with no NVMe disk peaks two lower, because the disk tree's
+/// endpoint and client-window pool (milestone 834 (ioping on nife and Linux)) are held for the life
+/// of the boot. `notes/capability-peak-trace.md`
 /// itemises what sits on the peak: the capabilities the progenitor never gives back (among them the
 /// entropy and network client endpoints it endows children from, the display grants, its own
 /// address space, the reboot object and the name resolver's endpoint), the login block's own, and
@@ -281,7 +284,7 @@ pub(crate) type CapabilityTable = capability::CapabilityTable<Object, CAPABILITY
 /// The check is against this record rather than the ceiling, which would only fire on a boot that
 /// had already died, or a fraction of it, which would be a margin picked out of the air. A
 /// recorded measurement going stale is a fact about the tree that stopped being true.
-pub(crate) const CAPABILITY_TABLE_PEAK_MEASURED: usize = 36;
+pub(crate) const CAPABILITY_TABLE_PEAK_MEASURED: usize = 37;
 
 // The headroom milestone 230 left is what this pair means, so the two cannot silently invert.
 const _: () = assert!(CAPABILITY_TABLE_PEAK_MEASURED < CAPABILITY_TABLE_SLOTS);

@@ -90,7 +90,7 @@ fn a_package_is_fetched_through_the_index_by_name_over_tls_and_judged_by_its_dig
         image("clock"),
         image("entropy"),
         w.stack,
-        Some((service, GRANTED)),
+        Some((service, &[GRANTED])),
     );
     let run = &spawned.run;
     let mut got = [0u8; 4096];

@@ -76,6 +76,7 @@ dependencies = [
 name = "capability_manifest_note"
 version = "0.1.0"
 dependencies = [
+ "domain_name_resolution_contract",
  "grant_plan",
 ]
 
@@ -253,6 +254,17 @@ dependencies = [
  "crypto-common",
  "subtle",
 ]
+
+[[package]]
+name = "domain_name_resolution_contract"
+version = "0.1.0"
+dependencies = [
+ "domain_name_system",
+]
+
+[[package]]
+name = "domain_name_system"
+version = "0.1.0"
 
 [[package]]
 name = "ecdsa"
@@ -460,6 +472,7 @@ dependencies = [
 name = "installed_programs"
 version = "0.1.0"
 dependencies = [
+ "domain_name_resolution_contract",
  "measured_boot",
 ]
 
@@ -470,6 +483,7 @@ dependencies = [
  "abi",
  "address_space_map",
  "capability_manifest_note",
+ "elf",
  "entropy_backend",
  "filesystem_contract",
  "grant_plan",

@@ -92,6 +92,12 @@ struct Recipe {
 enum Source {
     /// A built ELF for the recipe's architecture, resolved from `target/`.
     Program(String),
+    /// **A `std` program `cargo xtask std-exerciser` built** for the recipe's architecture,
+    /// resolved from `std_exerciser/target/<arch>-unknown-nife/release/` (milestone 892 (a std
+    /// program at the prompt holds the network and a resolver)). Optional where the exerciser is:
+    /// the image's catalog leaves out a recipe whose `std` program was not built, so its package is
+    /// in the image exactly when the gate's lines for it can run. Key name provisional.
+    StdProgram(String),
     /// A path relative to the repository root.
     File(String),
 }
@@ -183,7 +189,9 @@ pub(crate) fn build(root: &std::path::Path, text: &str) -> Result<Built, String>
         // process from, and debug sections nobody on the target reads would have cost more than the
         // program. Found by rung 3a's consumer lane, 2026-09-24.
         let content = match source {
-            Source::Program(_) => crate::inspect::read_stripped(&path.display().to_string()),
+            Source::Program(_) | Source::StdProgram(_) => {
+                crate::inspect::read_stripped(&path.display().to_string())
+            }
             Source::File(_) => std::fs::read(&path),
         }
         .map_err(|e| format!("{name}: could not read {}: {e}", path.display()))?;
@@ -283,7 +291,15 @@ pub(crate) fn image_catalogue(architecture: &str) -> Result<String, String> {
     for path in recipes {
         let text = std::fs::read_to_string(&path)
             .map_err(|e| format!("could not read {}: {e}", path.display()))?;
-        if parse_recipe(&text)?.architecture != architecture {
+        let recipe = parse_recipe(&text)?;
+        if recipe.architecture != architecture {
+            continue;
+        }
+        // A `std` program that was not built leaves its package out, and the gate's lines for it
+        // are skipped the same way (`Source::StdProgram`).
+        if recipe.members.iter().any(|(_, source)| {
+            matches!(source, Source::StdProgram(name) if !std_program_path(&root, architecture, name).exists())
+        }) {
             continue;
         }
         let built = build(&root, &text).map_err(|c| format!("{}: {c}", relative(&root, &path)))?;
@@ -395,6 +411,17 @@ fn labeled(digest: &measured_boot::Digest) -> String {
 fn resolve(root: &std::path::Path, architecture: &str, source: &Source) -> Result<PathBuf, String> {
     match source {
         Source::File(path) => Ok(root.join(path)),
+        Source::StdProgram(name) => {
+            let path = std_program_path(root, architecture, name);
+            if path.exists() {
+                Ok(path)
+            } else {
+                Err(format!(
+                    "{} is not built; `cargo xtask std-exerciser` builds it",
+                    relative(root, &path)
+                ))
+            }
+        }
         Source::Program(name) => {
             let triple = match architecture {
                 "aarch64" => TARGET,
@@ -420,6 +447,13 @@ fn resolve(root: &std::path::Path, architecture: &str, source: &Source) -> Resul
             }
         }
     }
+}
+
+/// Where `cargo xtask std-exerciser` leaves the `std` program `name` for `architecture`.
+fn std_program_path(root: &std::path::Path, architecture: &str, name: &str) -> PathBuf {
+    root.join(format!(
+        "std_exerciser/target/{architecture}-unknown-nife/release/{name}"
+    ))
 }
 
 /// Parse a recipe, or say which key could not be read and why.
@@ -465,27 +499,36 @@ fn parse_recipe(text: &str) -> Result<Recipe, String> {
         };
         let field = |key: &str| entry.get(key).and_then(toml::Value::as_str);
         for key in entry.keys() {
-            if !["program", "name", "file", "as"].contains(&key.as_str()) {
+            if !["program", "std_program", "name", "file", "as"].contains(&key.as_str()) {
                 return Err(format!("member {number}: unknown key {key}"));
             }
         }
         if field("as").is_some_and(str::is_empty) {
             return Err(format!("member {number}: `as` is a non-empty name"));
         }
-        match (field("program"), field("as"), field("name"), field("file")) {
-            (Some(program), as_name, None, None) => {
+        match (
+            (field("program"), field("std_program")),
+            field("as"),
+            field("name"),
+            field("file"),
+        ) {
+            ((Some(program), None), as_name, None, None) => {
                 // `as` renames the member: the ELF is built under one name and packaged under
                 // another, which is how `greeting` at 0.2.0 packs the second fixture's bytes.
                 let named = as_name.unwrap_or(program);
                 members.push((named.to_string(), Source::Program(program.to_string())));
             }
-            (None, None, Some(member), Some(path)) => {
+            ((None, Some(program)), as_name, None, None) => {
+                let named = as_name.unwrap_or(program);
+                members.push((named.to_string(), Source::StdProgram(program.to_string())));
+            }
+            ((None, None), None, Some(member), Some(path)) => {
                 members.push((member.to_string(), Source::File(path.to_string())));
             }
             _ => {
                 return Err(format!(
-                    "member {number} is either `program` alone (optionally `as` a member name) \
-                     or `name` with `file`"
+                    "member {number} is either `program` or `std_program` alone (optionally `as` a \
+                     member name) or `name` with `file`"
                 ));
             }
         }
@@ -612,8 +655,8 @@ file = "LICENSE-MIT"
         );
         assert_eq!(
             parse_recipe(&RECIPE.replace("file = \"LICENSE-MIT\"", "")).unwrap_err(),
-            "member 2 is either `program` alone (optionally `as` a member name) or `name` with \
-             `file`"
+            "member 2 is either `program` or `std_program` alone (optionally `as` a \
+             member name) or `name` with `file`"
         );
         assert_eq!(
             parse_recipe("name = \"\"\n").unwrap_err(),
@@ -659,8 +702,8 @@ as = \"greeting\"
                  = \"x\"\nfile = \"LICENSE-MIT\"\nas = \"y\"\n"
             )
             .unwrap_err(),
-            "member 1 is either `program` alone (optionally `as` a member name) or `name` with \
-             `file`"
+            "member 1 is either `program` or `std_program` alone (optionally `as` a \
+             member name) or `name` with `file`"
         );
     }
 

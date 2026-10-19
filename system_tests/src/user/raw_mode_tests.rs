@@ -504,3 +504,58 @@ fn a_badged_copy_of_the_terminal_reads_keystrokes_and_cannot_type_them() {
     );
     held.release_or_fail("raw_mode_service");
 }
+
+/// **A copy badged as standard input reads the typed line and does nothing else** (milestone 892
+/// (a std program at the prompt holds the network and a resolver); calef, 2026-10-19 (UTC), on
+/// #2405: "a"). `jig install` reads the owner's yes through such a copy, so it must not be able to
+/// type a line the shell runs, print, or switch modes, and the unbadged surface must not serve its
+/// read, or the shell's next command could be taken through it.
+///
+/// The line is typed by the input driver as the owner types it, longer than eight bytes, so the
+/// reads drain it in two replies and the `\n` that ends it. Then the attacks: every other request
+/// on the copy is refused, and an unbadged `OPERATION_READ_LINE_BYTES` is refused too.
+///
+/// Falsification: replayable `system_tests/falsifications/user.raw_mode_tests.a_copy_badged_as_stdin_reads_the_typed_line_and_nothing_else.patch`
+#[test_case]
+fn a_copy_badged_as_stdin_reads_the_typed_line_and_nothing_else() {
+    use line_editor::proto::{self, BAD_REQUEST, STDIN_BADGE};
+    let (w, held) = svc::start();
+    let stdin = |operation: u64, len: u64, w1: u64| {
+        sched::ipc_call_badged(w.term, [proto::req(operation, len), w1], STDIN_BADGE)
+    };
+
+    // The owner types "yes, ok!!" and Enter, in two bursts as a driver delivers them.
+    send_bytes(w.term, b"yes, ok!");
+    send_bytes(w.term, b"!\r");
+    let r = stdin(proto::OPERATION_READ_LINE_BYTES, 0, 0);
+    assert_eq!(
+        (r[0], r[1].to_le_bytes()),
+        (8, *b"yes, ok!"),
+        "the first read was not the line's first eight bytes"
+    );
+    let r = stdin(proto::OPERATION_READ_LINE_BYTES, 0, 0);
+    assert_eq!(
+        (r[0], &r[1].to_le_bytes()[..2]),
+        (2, &b"!\n"[..]),
+        "the second read was not the rest of the line and its newline"
+    );
+
+    for (operation, what) in [
+        (proto::OPERATION_BYTES, "OPERATION_BYTES"),
+        (proto::OPERATION_PRINT, "OPERATION_PRINT"),
+        (proto::OPERATION_WRITE, "OPERATION_WRITE"),
+        (proto::OPERATION_RAWMODE, "OPERATION_RAWMODE"),
+        (proto::OPERATION_READRAW, "OPERATION_READRAW"),
+        (proto::OPERATION_READLINE, "OPERATION_READLINE"),
+        (proto::OPERATION_QUIESCE, "OPERATION_QUIESCE"),
+    ] {
+        let r = stdin(operation, 1, u64::from(b'x'));
+        assert_eq!(r[0], BAD_REQUEST, "a stdin holder's {what} was served");
+    }
+    let r = sched::ipc_call(w.term, [proto::req(proto::OPERATION_READ_LINE_BYTES, 0), 0]);
+    assert_eq!(
+        r[0], BAD_REQUEST,
+        "the unbadged surface served a stdin read, which could take the shell's next line"
+    );
+    held.release_or_fail("raw_mode_service");
+}

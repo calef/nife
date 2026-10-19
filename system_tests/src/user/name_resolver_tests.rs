@@ -434,7 +434,7 @@ const STD_UNGRANTED: &[&str] = &[
 fn std_resolve_prints(
     program_image: &'static [u8],
     stack: RendezvousId,
-    resolver: Option<(RendezvousId, u32)>,
+    resolver: Option<(RendezvousId, &'static [u32])>,
     want: &[&str],
 ) {
     use core::sync::atomic::Ordering;
@@ -519,11 +519,58 @@ fn a_std_program_resolves_its_granted_zone_and_nothing_without_a_grant() {
     std_resolve_prints(
         std_resolve,
         w.stack,
-        Some((service, GRANTED_STD)),
+        Some((service, &[GRANTED_STD])),
         STD_GRANTED,
     );
     std_resolve_prints(std_resolve, w.stack, None, STD_UNGRANTED);
 
     w.held
         .release_or_fail("net_stack and domain_name_resolver, for std_resolve");
+}
+
+/// The badges of [`a_std_program_asks_each_badge_in_order_until_one_holds_the_name`]: one granted a
+/// zone that holds none of the fixture's names, at slot 9, then the fixture's zone, at slot 22.
+const ELSEWHERE_THEN_ZONE: &[u32] = &[0x802, 0x803];
+
+/// **A `std` program with two resolver badges asks the second when the first answers that the name
+/// is outside its zone** (milestone 892 (a std program at the prompt holds the network and a
+/// resolver); calef, 2026-10-19 (UTC), on #2405: "First zone at slot 9, the rest at fixed slots
+/// above 12, probed in order."). The first badge's zone, `elsewhere.test`, holds none of
+/// `std_resolve`'s names, so every lookup is the resolver's local `DENIED` there; the transcript can
+/// match the one-badge test's only if the PAL then lent its page to the badge at slot 22 and asked
+/// again. `example.com` is outside both zones and still reads `PermissionDenied`.
+///
+/// Falsification: replayable `system_tests/falsifications/user.name_resolver_tests.a_std_program_asks_each_badge_in_order_until_one_holds_the_name.patch`
+#[test_case]
+fn a_std_program_asks_each_badge_in_order_until_one_holds_the_name() {
+    let Some(std_resolve) = program("std_resolve") else {
+        crate::testing::skip!(std_service::NO_STD_EXERCISER);
+    };
+    let Some(entropy) = entropy() else {
+        crate::testing::skip!("no entropy source on this machine, and the resolver needs one");
+    };
+    let mut w = match e1000e_service::start_net_server(
+        image("net_stack"),
+        socket_contract::NO_LISTEN_GRANT,
+    ) {
+        Ok(w) => w,
+        Err(e1000e_service::Absent::NoController) => {
+            crate::testing::skip!("no e1000e NIC attached");
+        }
+        Err(why) => panic!("the e1000e NIC is on the bus and its bring-up refused: {why:?}"),
+    };
+    let _ = crate::sched::ipc_receive(w.report);
+    let service = start_resolver(w.stack, entropy, &mut w.held);
+    grant(service, ELSEWHERE_THEN_ZONE[0], "elsewhere.test");
+    grant(service, ELSEWHERE_THEN_ZONE[1], fixture::ZONE);
+
+    std_resolve_prints(
+        std_resolve,
+        w.stack,
+        Some((service, ELSEWHERE_THEN_ZONE)),
+        STD_GRANTED,
+    );
+
+    w.held
+        .release_or_fail("net_stack and domain_name_resolver, for std_resolve's two badges");
 }
