@@ -29,8 +29,8 @@ and the job timeout is exactly the event that loses the evidence.
 - At the deadline it writes `target/hang-evidence/`: `summary.md` (the job, the last leg banner, the
   last kernel test announced, libtest's long-running warnings, the output's tail), `ps.txt` (the
   whole process forest with wait channels), and per descendant process its command line, status,
-  threads with their names and wait channels, kernel stack, open files and, for leaf processes and
-  every QEMU, a `gdb` backtrace of every thread. libtest names a test's thread after the test, so
+  threads with their names and wait channels, kernel stack, open files and a `gdb` backtrace of
+  every thread. libtest names a test's thread after the test, so
   the thread list names a hung host test. Then it kills the command's whole tree and exits 124, so
   the job's `if: always()` steps run and upload.
 - Every job that runs one uploads `target/hang-evidence/` with
@@ -66,7 +66,8 @@ import time
 WORKFLOW = ".github/workflows/ci.yml"
 EVIDENCE_DIR = "target/hang-evidence"
 # The dump, the kill and every later `if: always()` step (two artifact uploads, the time summary,
-# the budget check) fit in this. Measured on the falsification run in the pull request that added it.
+# the budget check) fit in this. Measured 2026-10-19 UTC on run 39326171835 (a hung host test with a
+# paused QEMU child, five descendants): deadline to the job's end took 12 s, gdb's install included.
 RESERVE_SECONDS = 240
 DUMP_SECONDS = 150
 GDB_INSTALL_SECONDS = 90
@@ -164,7 +165,7 @@ def ensure_gdb():
     return "gdb installed on demand" if shutil.which("gdb") else "gdb unavailable:\n" + out[-2000:]
 
 
-def dump_process(pid, outdir, want_backtrace, gdb_ok):
+def dump_process(pid, outdir, gdb_ok):
     comm = read("/proc/%d/comm" % pid, "").strip() or "gone"
     d = os.path.join(outdir, "procs", "%d-%s" % (pid, re.sub(r"[^A-Za-z0-9_.-]", "_", comm)))
     os.makedirs(d, exist_ok=True)
@@ -182,7 +183,7 @@ def dump_process(pid, outdir, want_backtrace, gdb_ok):
         threads.append("%s\t%s\t%s\t%s" % (tid, read(t + "/comm").strip(), read(t + "/wchan").strip(),
                                            state.group(1) if state else "?"))
     parts["threads"] = "tid\tname\twchan\tstate\n" + "\n".join(threads) + "\n"
-    if want_backtrace and gdb_ok:
+    if gdb_ok:
         parts["backtrace"] = sh(["gdb", "-batch", "-nx", "-p", str(pid), "-ex", "info threads",
                                  "-ex", "thread apply all bt"], GDB_SECONDS, sudo=True)
     for name, text in parts.items():
@@ -206,9 +207,7 @@ def dump(root_pid, tail, log_path, job, cmd, started, outdir):
         if time.time() > give_up:
             dumped.append("%d (skipped: dump out of time)" % pid)
             continue
-        comm = read("/proc/%d/comm" % pid, "").strip()
-        leaf = pid not in procs.values()
-        dumped.append("%d %s" % (pid, dump_process(pid, outdir, leaf or "qemu" in comm, gdb_ok)))
+        dumped.append("%d %s" % (pid, dump_process(pid, outdir, gdb_ok)))
     if log_path and os.path.exists(log_path):
         shutil.copy(log_path, os.path.join(outdir, "step.log"))
     elapsed = (time.time() - started) / 60.0
