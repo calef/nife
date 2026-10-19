@@ -18,6 +18,8 @@
 # which puts it in §134's verb half where its form already sits. no architect has ratified it.
 
 set -e
+# A heavy job: wait for one of the machine's heavy-job slots first (helpers/heavy_slot.py).
+. "$(dirname "$0")/../helpers/heavy-slot.sh"
 cd "$(dirname "$0")/.."
 
 # This project's own QEMU, if `script/ci-qemu` has built one. This file matches its own
@@ -143,6 +145,12 @@ helpers/commit-msg-selftest.sh >/dev/null
 helpers/lint-no-cargo-selftest.sh >/dev/null
 # Every section runs, and the verdict is still fail-fast's (helpers/lint-sections.sh).
 helpers/lint-sections-selftest.sh >/dev/null
+
+echo "==> the heavy-job slots (a full machine holds a job back; a killed holder frees its slot)"
+# helpers/heavy_slot.py caps how many heavy jobs run on the machine at once, and this file is one of
+# them. Proved in a scratch tree with a private slot directory and one slot, so it never waits on a
+# real job: helpers/heavy-slot-selftest.sh lists its four stages and what breaks each.
+helpers/heavy-slot-selftest.sh >/dev/null
 
 echo "==> the rustup retry (a dropped CDN connection retries; a real error does not)"
 # A stub rustup, no network. The retry only runs during a CDN outage, which no green CI run

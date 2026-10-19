@@ -519,6 +519,68 @@ impl IdentifyNamespace {
 /// the disk driver rather than as a diagnosis.
 pub const MAX_DSTRD: u32 = 8;
 
+/// **How many transfer windows the EL0 server keeps, one per client** (milestone 834 (ioping on nife and Linux); calef ruled
+/// "Per-client window" on nifeos/nife#2371, 2026-10-18 23:06 UTC). Each window is
+/// `filesystem_contract::blk::TRANSFER_BLOCKS` pages of the DMA region, and the server stages a
+/// request in window `badge`, the badge on the endpoint capability the client called
+/// (milestone 599 (a frame per filesystem client channel)'s pattern), so two clients staging at once cannot overwrite each other.
+///
+/// The clients are a fixed set the kernel wires, one window each, so there is no pool and nothing
+/// to hand back: [`FILESYSTEM_WINDOW`], [`INSTALLER_WINDOW`] and [`DISK_TREE_WINDOW`]. A new client
+/// gets a new constant and this count grows by one; each window costs 64 KiB of the DMA region.
+///
+/// Name: provisional, minted 2026-10-18 (UTC) by lane/ioping-direct-io.
+pub const CLIENT_WINDOWS: usize = 3;
+
+/// The unbadged window: the filesystem server, and every kernel-side caller of the request endpoint.
+///
+/// Name: provisional, minted 2026-10-18 (UTC) by lane/ioping-direct-io.
+pub const FILESYSTEM_WINDOW: u64 = 0;
+/// `system_installer`'s window, whether it is installing or confirming a boot slot beside a live
+/// filesystem server.
+///
+/// Name: provisional, minted 2026-10-18 (UTC) by lane/ioping-direct-io.
+pub const INSTALLER_WINDOW: u64 = 1;
+/// The read-only disk tree's window (`components/src/disk_tree.rs`), which reads the namespace
+/// beside a live filesystem server.
+///
+/// Name: provisional, minted 2026-10-18 (UTC) by lane/ioping-direct-io.
+pub const DISK_TREE_WINDOW: u64 = 2;
+
+/// **Whether a window's client may write the disk.** The disk tree's may not: it serves a read-only
+/// view at the prompt (calef, 2026-10-18 21:36 UTC), and refusing its `WRITE` and `FLUSH` here makes
+/// that a property of the capability it holds rather than of the code it runs.
+///
+/// Name: provisional, minted 2026-10-18 (UTC) by lane/ioping-direct-io.
+///
+/// ```
+/// use non_volatile_memory_express::{DISK_TREE_WINDOW, FILESYSTEM_WINDOW, can_write};
+/// assert!(can_write(FILESYSTEM_WINDOW));
+/// assert!(!can_write(DISK_TREE_WINDOW));
+/// ```
+pub const fn can_write(window: u64) -> bool {
+    window != DISK_TREE_WINDOW
+}
+
+/// **Which window a request's badge names**, or `None` for a badge no client was given. Refused
+/// rather than clamped: a badge folded onto window 0 would stage in the filesystem server's window,
+/// which is the corruption the windows exist to prevent (`redoxfs_server`'s milestone 599 lesson).
+///
+/// ```
+/// use non_volatile_memory_express::{CLIENT_WINDOWS, DISK_TREE_WINDOW, client_window};
+/// assert_eq!(client_window(DISK_TREE_WINDOW), Some(2));
+/// assert_eq!(client_window(CLIENT_WINDOWS as u64), None);
+/// ```
+///
+/// Name: provisional, minted 2026-10-18 (UTC) by lane/ioping-direct-io.
+pub const fn client_window(badge: u64) -> Option<usize> {
+    if badge < CLIENT_WINDOWS as u64 {
+        Some(badge as usize)
+    } else {
+        None
+    }
+}
+
 /// **The sentinel that selects the test-only DMA-escape role**, written by the confinement
 /// falsification's wiring into the first `u64` of the data plane's transfer buffer before `_start`
 /// runs, with the victim frame's physical address in the next `u64`. The EL0 server reads it first

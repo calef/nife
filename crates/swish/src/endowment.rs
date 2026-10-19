@@ -43,7 +43,9 @@ pub fn write_holdings(
             // tree serves a path is otherwise kept out of sight (calef, 2026-09-26); this table is
             // the one place that says it.
             out(b"    cap 4  endpoint  directory  the files it can narrow into per-file grants\n");
-            out(b"    cap 5  endpoint  directory  a second tree, mounted at ");
+            out(b"    cap ");
+            write_num(grant_plan::spawnproto::MOUNTED_TREE_SLOT, out);
+            out(b" endpoint  directory  a second tree, mounted at ");
             let mut buf = [0u8; nav::RENDER_MAX];
             let n = sd.mount().render(&mut buf);
             out(&buf[..n]);

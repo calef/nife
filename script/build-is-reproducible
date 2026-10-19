@@ -63,6 +63,8 @@
 # reads as a thing but says nothing about what is reproducible, and the other candidates
 # (`script/repro`, `script/rebuild-check`) are an abbreviation and a generic word respectively.
 set -eu
+# A heavy job: wait for one of the machine's heavy-job slots first (helpers/heavy_slot.py).
+. "$(dirname "$0")/../helpers/heavy-slot.sh"
 
 # Every artifact this compares, as `package|target|path-under-the-target-dir`.
 TARGETS='kernel|aarch64-unknown-none-softfloat|aarch64-unknown-none-softfloat/release/kernel'

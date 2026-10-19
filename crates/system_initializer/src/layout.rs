@@ -150,15 +150,6 @@ pub(super) const FS_CLIENT_PAGE_VA: u64 = address_space_map::pair_page(0x0060_00
 /// program's `SET_VA`, as [`FS_CLIENT_PAGE_VA`] matches its `PAGE_VA`.
 pub(super) const NAMESET_PAGE_VA: u64 = address_space_map::pair_page(0x0070_0000);
 
-/// **One shell-boot second-directory caretaker's region** (milestone 154's "wiring a second
-/// grant into the real boot"). Sized for one caretaker alone, the way [`CARETAKER_STACK_PAGES`]
-/// already is: unlike [`DIR_JOB_REGION_PAGES`], nothing else is built out of this region, because
-/// the confined program here is the shell itself, already built directly out of `ut` rather than
-/// out of a region of its own. Conservative rather than tight (the same headroom
-/// [`JOB_REGION_PAGES`] carries for one child), since this is spent once per boot rather than
-/// once per command.
-pub(super) const SECOND_DIR_CARETAKER_PAGES: u64 = JOB_REGION_PAGES;
-
 /// **The job pool.** Six live jobs at once, which is far more than a prompt has ever needed and is
 /// deliberately small: the whole claim of this increment is that a *bounded* budget is enough once
 /// the regions come back, so a budget nobody could exhaust would prove nothing. `script/swish-check`

@@ -326,5 +326,6 @@ The directory and stems are provisional names; [the directory's README](scripts/
 | [helpers-and-bootstrap.md](scripts/helpers-and-bootstrap.md) | Two things that are deliberately the way they are |
 | [one-kernel-test.md](scripts/one-kernel-test.md) | How the filter reaches the kernel; What the flag turns off |
 | [piped-gate.md](scripts/piped-gate.md) | a piped gate's exit status, and the fix |
+| [heavy-job-slots.md](scripts/heavy-job-slots.md) | how many heavy jobs run at once, and nesting |
 | [lint-job-rename.md](scripts/lint-job-rename.md) | the lint job, and the three steps that rename a required check |
 | [outsider-passes.md](scripts/outsider-passes.md) | `script/launch-pass` and `script/booted-rows`: full rows, EXAMPLES and BUGS |

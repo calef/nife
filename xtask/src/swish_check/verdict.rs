@@ -27,7 +27,14 @@ pub(super) fn swish_check_omits(arch: &str, line: &str) -> Option<&'static str> 
     // the kernel builds on x86_64's `e1000e` (`kernel::user::boot_e1000e_network`), and the
     // disk install that stood in for the fetch there went with them. Nothing is omitted today;
     // the function stays because the next leg-specific gap needs somewhere to say why.
-    let _ = (arch, line);
+    //
+    // **The disk tree's lines** (milestone 834 (ioping on nife and Linux)): `x86_64`'s leg attaches no NVMe disk, because the
+    // kernel offers a blank one the install and waits for an answer (`install_service::offer`),
+    // so that boot has no second mounted tree. `cargo xtask install-boot` reads the tree on
+    // `x86_64`, on the installed machine.
+    if arch == "x86_64" && crate::swish_check::script::ON_THE_DISK_TREE.contains(&line) {
+        return Some("x86_64's leg attaches no NVMe disk, so it mounts no disk tree");
+    }
     None
 }
 

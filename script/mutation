@@ -42,6 +42,8 @@
 # `verify`, `fuzz` and `coverage` all name the function and none names its tool.
 
 set -e
+# A heavy job: wait for one of the machine's heavy-job slots first (helpers/heavy_slot.py).
+. "$(dirname "$0")/../helpers/heavy-slot.sh"
 cd "$(dirname "$0")/.."
 
 baseline_file=".cargo/mutants-baseline.txt"

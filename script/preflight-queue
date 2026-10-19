@@ -126,6 +126,8 @@
 # calef has not ruled on it.
 
 set -e
+# A heavy job: wait for one of the machine's heavy-job slots first (helpers/heavy_slot.py).
+. "$(dirname "$0")/../helpers/heavy-slot.sh"
 cd "$(dirname "$0")/.."
 . helpers/qemu-path.sh
 

@@ -400,6 +400,15 @@ path = "src/non_volatile_memory_express.rs"
 test = false
 bench = false
 
+# The disk tree (milestone 834 (ioping on nife and Linux)): the whole NVMe namespace as one read-only file, served with no
+# cache, as the installed system's second mounted tree. The NVMe server's second client, in a
+# transfer window of its own. Name provisional.
+[[bin]]
+name = "disk_tree"
+path = "src/disk_tree.rs"
+test = false
+bench = false
+
 # The credential service (milestone 56, the credential half): holds the credential store and serves
 # one question over one endpoint. Its authority to *write* the store is a second endpoint that it
 # deletes at the seal, so a client cannot be refused permission to write it; there is no object left
@@ -709,6 +718,7 @@ measured_boot = { version = "0.1.0", path = "../crates/measured_boot" }
 # the live generation exactly as the progenitor will, with the same parser. In-tree, pure logic,
 # and it brings only `measured_boot`, already above.
 installed_programs = { version = "0.1.0", path = "../crates/installed_programs" }
+disk_tree = { version = "0.1.0", path = "../crates/disk_tree" }
 filesystem_contract = { version = "0.1.0", path = "../crates/filesystem_contract" }
 filesystem_fixture = { version = "0.1.0", path = "../crates/filesystem_fixture" }
 # The NVMe queue arithmetic (milestone 53's crate, milestone 261's consumer):

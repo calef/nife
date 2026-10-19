@@ -243,27 +243,22 @@ pub struct BootEndowment {
     pub for_test_roles: &'static [u64],
 }
 
-/// **A second, disjoint directory capability for the shell** (milestone 154's "wiring a second
-/// grant into the real boot", design/roadmap/0154-multi-directory-namespace.md), passed to [`boot`](crate::boot)
-/// alongside [`BootEndowment`] rather than folded into it: this is not a kernel grant like every
-/// field above, it is something [`boot`](crate::boot) itself constructs (a second `fs_subtree_caretaker`,
-/// narrowing the same file service [`BootEndowment::fs_ep`] already names) out of capabilities the
-/// kernel already granted.
+/// **The shell's second mounted tree** (milestone 154 (a process that holds two directory capabilities)'s mechanism; milestone 834 (ioping on nife
+/// and Linux) gave it a server): a second file service the kernel granted, which the boot shell
+/// holds at `grant_plan::spawnproto::MOUNTED_TREE_SLOT` and sees at `/disk`
+/// (`grant_plan::spawnproto::MOUNTED_TREE_NAME`). Passed to [`boot`](crate::boot) beside
+/// [`BootEndowment`] rather than folded into it, because it is the mounted tree's whole
+/// description and a boot without one passes `None`.
 ///
-/// **`None` at every real entry point today.** The mechanism here is real and reachable through
-/// the one function the real progenitor calls (`components/src/progenitor.rs`), not a synthetic
-/// kernel-side test harness. What it does
-/// not decide is *what* the second subtree should be: [DECISIONS
-/// §126](../../../design/decisions/0126-two-directory-cwd.md) named that a boot-time policy
-/// question reserved for an architect, so no shipped boot enables it. A second, separate gap:
-/// nothing yet tells the shell process *which* label and cspace slot this landed at (the `START`
-/// ABI's three words are already spoken for by the role, the argument, and the clock slot), so a
-/// shell built with one of these today would hold a capability its own `Nav` has no way to learn
-/// about. Provisional shape.
+/// On the real boot it is the disk tree, the whole NVMe namespace as one read-only file served with
+/// no cache (calef, 2026-10-18 21:36 UTC, "Yes, read-only at prompt"), and both slots are empty on a
+/// machine with no NVMe disk, which [`boot`](crate::boot) probes.
 #[derive(Clone, Copy)]
 pub struct MountedTreeGrant {
-    /// One component under the image root, the same shape a `DirectoryGrant`'s `name` already takes.
-    pub name: &'static str,
-    /// The `filesystem_contract::dir` rights the caretaker asks for on its descent.
-    pub rights: u64,
+    /// The service's endpoint, `WRITE | GRANT`. The shell is placed `WRITE`; the spawn service keeps
+    /// this copy and badges it per job, as it does [`BootEndowment::fs_ep`].
+    pub ep: u64,
+    /// The service's client-window pool, one run, as [`BootEndowment::fs_page`] is. Its window 0 is
+    /// the first file service's window 0 frame, so the shell's one page serves both trees.
+    pub pool: u64,
 }

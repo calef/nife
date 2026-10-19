@@ -30,6 +30,8 @@
 # Introduced 2026-08-02 with milestone 42's four targets.
 
 set -e
+# A heavy job: wait for one of the machine's heavy-job slots first (helpers/heavy_slot.py).
+. "$(dirname "$0")/../helpers/heavy-slot.sh"
 cd "$(dirname "$0")/.."
 
 # Every target, in the order they cost us the most if they are wrong: the device tree is parsed before

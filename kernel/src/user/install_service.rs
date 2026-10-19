@@ -225,14 +225,12 @@ pub(crate) fn offer() {
 /// to a block range), so it *could* write anywhere on that disk, as `system_installer`'s `BUGS`
 /// records.
 ///
-/// **Nothing serializes this against the filesystem server; an ordering does.** One NVMe server has
-/// one transfer region shared by every client, and two clients staging at once would corrupt each
-/// other. This write is safe only because it runs **after the filesystem server's ready report and
-/// before the progenitor's first instruction**, when the single-threaded boot path is the only
-/// thing that could wake that server. **This is a foot gun**: if something spawns a second disk
-/// client before the progenitor runs, or this call moves after it, the symptom is a corrupted
-/// partition table on an installed machine. A transfer region per client, or a `blk` endpoint
-/// bounded to a block range, would make it hold; both are wire decisions.
+/// **It runs beside a live filesystem server, and the NVMe server keeps them apart.** The
+/// installer is granted the request endpoint badged with its own transfer window
+/// (`non_volatile_memory_express::INSTALLER_WINDOW`) and is mapped that window alone, so its
+/// staging and the filesystem server's land in different pages whenever either runs. What it
+/// writes is the partition table, which the filesystem server never reads after mounting, so the
+/// two do not contend for a block either.
 pub(crate) fn confirm() {
     let Some(slot) = crate::memory::boot_slot() else {
         return; // No chooser started this boot: there is nothing to confirm.
@@ -331,8 +329,10 @@ fn spawn_system_installer(
     let report = crate::sched::create_rendezvous();
     let budget = crate::memory_region::create(SYSTEM_INSTALLER_BUDGET_PAGES)
         .expect("no budget for system_installer");
-    let blk_ep = disk.request;
-    let blk_shared = disk.transfer_phys;
+    // The installer's own window (milestone 834 (ioping on nife and Linux)), so a confirm beside a live filesystem server
+    // stages in pages that server never reads.
+    let blk_capability = disk.client_capability(::non_volatile_memory_express::INSTALLER_WINDOW);
+    let blk_shared = disk.window_phys(::non_volatile_memory_express::INSTALLER_WINDOW);
     // Read only when `entropy` is `Some`; copied out here so the closure captures a plain `u64`,
     // the same shape `disk_service::start_partitioner` uses for the same reason.
     let ep = entropy.unwrap_or_default();
@@ -341,7 +341,7 @@ fn spawn_system_installer(
         let maps = system_installer_maps(boot_file_len);
         crate::sched::grant_at(SLOT_REPORT, rendezvous_cap(report, Rights::WRITE))
             .expect("system_installer slot 0 was occupied");
-        crate::sched::grant_at(SLOT_BLK, rendezvous_cap(blk_ep, Rights::WRITE))
+        crate::sched::grant_at(SLOT_BLK, blk_capability)
             .expect("system_installer slot 1 was occupied");
         // **Slot 2 is the difference between the two roles and nothing else is.** A survey holds
         // the same disk, writable; without entropy it cannot draw the unique ids a *new* table

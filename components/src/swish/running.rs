@@ -103,11 +103,6 @@ pub(super) fn words_grant(
     grant: grant_plan::WordGrant,
     stage: usize,
 ) -> Result<WordsGrant, Option<&'static [u8]>> {
-    if g.which != nav::Which::A {
-        return Err(Some(
-            b"  that directory is in a mounted tree, and the progenitor builds a caretaker\n  from the root tree; a grant there is not built\n",
-        ));
-    }
     let dir = match g.directory.depth() {
         1 => g.directory.component(0),
         0 => {
@@ -119,6 +114,25 @@ pub(super) fn words_grant(
             return Err(Some(
                 b"  this shell is standing more than one level down, and the progenitor builds one\n  caretaker per grant; a deeper grant is a chain of them, which is not built\n",
             ));
+        }
+    };
+    // **A directory in the mounted tree is named through the mount** (milestone 834 (ioping on nife and Linux)): the
+    // progenitor builds the caretaker against the tree `spawnproto::in_mounted_tree` says.
+    let mut routed = [0u8; filesystem_contract::grant::MAX_NAME + 1];
+    let dir = match g.which {
+        nav::Which::A => dir,
+        nav::Which::B => {
+            let mount = spawnproto::MOUNTED_TREE_NAME;
+            let n = mount.len() + 1 + dir.len();
+            if n > routed.len() {
+                return Err(Some(
+                    b"  that name does not fit in a grant's two argument words\n",
+                ));
+            }
+            routed[..mount.len()].copy_from_slice(mount);
+            routed[mount.len()] = b'/';
+            routed[mount.len() + 1..n].copy_from_slice(dir);
+            &routed[..n]
         }
     };
     if !filesystem_contract::grant::fits(dir) {

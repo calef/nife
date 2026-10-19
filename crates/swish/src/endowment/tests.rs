@@ -99,7 +99,7 @@ fn a_second_grant_prints_its_row_and_where_it_is_mounted() {
     let s = shown(|o| write_holdings(128, holdings, None, None, o));
     assert!(s.contains("cap 4  endpoint  directory"), "{s}");
     assert!(
-        s.contains("cap 5  endpoint  directory  a second tree, mounted at /media/usb"),
+        s.contains("cap 19 endpoint  directory  a second tree, mounted at /media/usb"),
         "{s}"
     );
     assert!(s.contains("namespace: one tree"), "{s}");
