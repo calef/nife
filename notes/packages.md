@@ -267,8 +267,8 @@ removed) is met, and so is §219's gate D2. The boot prompt is the owner's conso
   writes through. §221 (the boot prompt is the owner's console) ruled that is the owner's right.
 - The boot prompt, holding the spawn endpoint, may install, remove, roll back and vouch; `jig`,
   holding an installer endpoint, all but vouch.
-- A vouch, the owner's or a package's, now grants whatever the bytes' own note asks, the network
-  included (milestone 597 (a program carries its manifest in an ELF note)).
+- A vouch, the catalog's, the owner's or [the index copy's](packages/jig.md), grants whatever the
+  note asks, the network included (milestone 597 (a program carries its manifest in an ELF note)).
 - Nothing collects `packages/`. A removed package's bytes stay, which is what rollback needs.
 - Rollback is by number, to the generation one below the live one, as Nix's is (recalled, not
   read). Undoing a rollback is another install.

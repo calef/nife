@@ -8,6 +8,9 @@ name = "c_library"
 version = "0.1.0"
 edition = "2024"
 license = "MIT"
+# Never published, so its path dependencies need no version: `deny.toml` refuses an unversioned
+# path dependency in a crate that could be.
+publish = false
 
 [lib]
 crate-type = ["rlib"]

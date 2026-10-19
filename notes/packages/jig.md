@@ -128,6 +128,12 @@ region one package larger, from the progenitor's image pool (`grant_plan::named_
 
 ## BUGS
 
+- **`jig` is inside the trusted base for installs** until the index carries a signature the
+  progenitor checks (option I3 in milestone 809's block). The progenitor installs whatever the index
+  copy vouches for, and `jig` writes the copy from a reply it parses first, so a defect in `jig` or in
+  the index host's certificate becomes a defect in what runs. An owner's yes that `jig` collects for
+  a grant (milestone 892 (a std program at the prompt holds the network and a name resolver)) is inside the same base. A compromised `jig` already holds the network,
+  so that adds only a grant that outlives it.
 - Before any `update`, `list` reads the image's catalog, and a name is fetched over plain HTTP
   from the LAN source. The catalog and the index copy are each one page, so `xtask` refuses a
   catalog of a page or more and `update` refuses an index whose lines for this architecture are.
