@@ -39,12 +39,13 @@ name: project metrics
 # **The Monday/daily split does not, on its own, protect the columns a schema change adds.** On
 # 2026-09-20 a merge conflict in the data, then one wide `weekly.csv` and since split per measure
 # by milestone 581 (one metrics file per measure), was resolved by restoring an older copy (one still
-# missing that week's newly merged `unsafe_trust_*` columns) and then running `--update`, which only
-# ever rewrites the current week and any week missing entirely; every other existing row is left
-# exactly as read. So the restored columns stayed blank on every past row for three days, until
-# someone ran `--backfill`, which recomputes every row from git history rather than trusting what
-# is already there. That is `--update`'s documented contract, not a bug in it: `--update` doing this
-# more often (daily instead of weekly) does not add new exposure to that failure, because the trigger
+# missing that week's newly merged `unsafe_trust_*` columns) and then running `--update`, which
+# rewrites the current week and any past week whose row is missing or not at that week's last
+# commit; every other existing row is left exactly as read. So the restored columns stayed blank on
+# every past row for three days, until someone ran `--backfill`, which recomputes every row from
+# git history rather than trusting what is already there. That is `--update`'s documented contract,
+# not a bug in it: `--update` doing this more often (daily instead of weekly) does not add new
+# exposure to that failure, because the trigger
 # was the wrong command after a merge conflict, not the run frequency. The narrower claim two
 # paragraphs below (`--update` heals a week that is entirely missing) is real and unrelated: verified
 # 2026-09-23 by deleting a past week's row outright and re-running `--update`, which restored it.
@@ -52,9 +53,9 @@ name: project metrics
 # **Monday does not close the week that just ended**, which this header used to claim. `--update`
 # writes the week HEAD's commit falls in, and on 2026-09-14 nine pull requests merged between 00:40
 # and 05:49 UTC, so HEAD was already in 2026W38 when this fired and 2026W37 was never written. The
-# fix is in `script/metrics`, not in the schedule: `--update` now also writes every week history has
-# and the CSV lacks, and `--check` fails on a gap. No hour would have been safe, because lanes merge
-# around the clock.
+# fix is in `script/metrics`, not in the schedule: `--update` also writes every week history has
+# and the CSV lacks, restates every closed week whose row stopped before the week's last commit,
+# and `--check` fails on either. No hour would have been safe, because lanes merge around the clock.
 #
 # **Nothing here builds the kernel.** `script/metrics` is ls-tree, cat-file and regular expressions,
 # which is what lets it walk the whole history in seconds, and it is why coverage is the one column
