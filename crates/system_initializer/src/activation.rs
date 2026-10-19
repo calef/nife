@@ -417,7 +417,7 @@ fn remove(
         e.package == package
             && e.package != installed_programs::OWNER
             && version.is_none_or(|v| e.version == v)
-            && !installed_programs::may_edit(e.manager, manager)
+            && !installed_programs::can_edit(e.manager, manager)
     });
     if foreign {
         return (S::NotYours, live);

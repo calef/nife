@@ -746,8 +746,8 @@ pub(crate) const NO_MANAGER: &str = "-";
 /// by a rollback), and rows nothing recorded (`NO_MANAGER`). It may not edit another manager's.
 /// The owner's console, which holds the spawn endpoint itself, may edit any row.
 ///
-/// Name: provisional.
-pub fn may_edit(row_manager: &str, requester: &str) -> bool {
+/// Name: provisional, minted 2026-10-19 (UTC) by milestone/892-installed-programs-hold-the-network-and-zones.
+pub fn can_edit(row_manager: &str, requester: &str) -> bool {
     requester == OWNER
         || row_manager == requester
         || row_manager == OWNER
@@ -755,7 +755,7 @@ pub fn may_edit(row_manager: &str, requester: &str) -> bool {
 }
 
 /// **The first row that differs between two generations whose manager `requester` may not edit**
-/// ([`may_edit`]), if any: what a rollback from `newer` to `older` would undo on another manager's
+/// ([`can_edit`]), if any: what a rollback from `newer` to `older` would undo on another manager's
 /// behalf. A row differs when no row with the same program and digest is in the other table. Both
 /// tables are read whole first, so a malformed line in either is [`Error::Malformed`].
 ///
@@ -777,7 +777,7 @@ pub fn foreign_change<'a>(
     };
     for (from, other) in [(older, newer), (newer, older)] {
         for entry in entries(from).flatten() {
-            if !present(other, &entry) && !may_edit(entry.manager, requester) {
+            if !present(other, &entry) && !can_edit(entry.manager, requester) {
                 return Ok(Some(entry));
             }
         }
@@ -1385,14 +1385,14 @@ mod tests {
 
     /// **A manager may not undo another manager's rows** (calef, 2026-10-06), and the owner may
     /// undo anything. `foreign_change` is what a rollback asks of the two generations it moves
-    /// between, and `may_edit` what a removal asks of the row.
+    /// between, and `can_edit` what a removal asks of the row.
     #[test]
     fn a_manager_may_not_undo_another_managers_rows() {
-        assert!(may_edit("jig", "jig"));
-        assert!(may_edit(OWNER, "jig"));
-        assert!(may_edit(NO_MANAGER, "jig"));
-        assert!(!may_edit("other", "jig"));
-        assert!(may_edit("other", OWNER));
+        assert!(can_edit("jig", "jig"));
+        assert!(can_edit(OWNER, "jig"));
+        assert!(can_edit(NO_MANAGER, "jig"));
+        assert!(!can_edit("other", "jig"));
+        assert!(can_edit("other", OWNER));
         let mut a = [0u8; 512];
         let n = with_entry("", &row("greeting", "greeting", "0.1.0", 3), false, &mut a).unwrap();
         let older = core::str::from_utf8(&a[..n]).unwrap();
