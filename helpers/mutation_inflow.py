@@ -12,6 +12,7 @@ triage ledgers are prose.
         --snapshot-out OUT.csv.gz [--summary FILE] SHARD_DIR...
     python3 helpers/mutation_inflow.py snapshot --census DATE --run ID --sha SHA --out OUT SHARD_DIR...
     python3 helpers/mutation_inflow.py --selftest      # fixtures, no git, no network; script/lint
+    python3 helpers/mutation_inflow.py orphans         # every triage row names a package; script/lint
 
 `check` reads one census's `missed.txt` shard files, diffs them against the latest committed survivor
 list that is older than this census, blames each new survivor's line to the commit and merged pull
@@ -130,6 +131,26 @@ def resolve(name, chain):
         seen.add(name)
         name = chain[name]
     return name
+
+
+def orphans(triage_path, chain, root):
+    """Triage-row crate names that, through the rename table, name no package in the tree.
+
+    A row is keyed by crate name, so a crate renamed without a row in the rename table strands every
+    row it had: the next census reports its survivors under the new name, none of them matches, and
+    because their lines predate the previous census `check` files them as unattributed rather than
+    failing. The 2026-10-18 `_contract` rename stranded 75 survivors that way. A package is a
+    directory holding `Cargo.toml` and `src/`, at the root or one level down (cargo-mutants takes
+    the crate name from the path component before `/src/`). A deleted crate's rows go with it.
+    """
+    root = pathlib.Path(root)
+    seen = set()
+    for row in csv.DictReader(pathlib.Path(triage_path).open()):
+        seen.add(resolve(row["crate"], chain))
+    def present(name):
+        return any((d / "Cargo.toml").is_file() and (d / "src").is_dir()
+                   for d in [root / name, *root.glob(f"*/{name}")])
+    return sorted(n for n in seen if not present(n))
 
 
 def counts(mutants, chain):
@@ -411,6 +432,15 @@ def selftest():
             pass
         else:
             raise AssertionError("a bad disposition was accepted")
+        # a crate renamed without a rename row strands its triage rows; the row un-strands them
+        for name in ("lib_now", "kept"):
+            (tmp / "crates" / name / "src").mkdir(parents=True)
+            (tmp / "crates" / name / "Cargo.toml").write_text("")
+        rows = tmp / "rows.csv"
+        rows.write_text("crate,function,mutation,disposition,reason\n"
+                        "lib_was,f,m,equivalent,r\nkept,f,m,equivalent,r\n")
+        assert orphans(rows, {}, tmp) == ["lib_was"]
+        assert orphans(rows, {"lib_was": "lib_now"}, tmp) == []
     # the key's three shapes
     assert parse_mutant("crates/a/src/lib.rs:1:2: replace < with <= in T<'a>::f")[:3] == ("a", "T<'a>::f", "replace < with <=")
     assert parse_mutant("crates/a/src/lib.rs:1:2: replace X::g -> u64 with 0")[:3] == ("a", "X::g", "replace X::g -> u64 with 0")
@@ -425,6 +455,10 @@ def main(argv):
         return selftest()
     ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     sub = ap.add_subparsers(dest="cmd", required=True)
+    o = sub.add_parser("orphans", help="fail when a triage row's crate names no package")
+    o.add_argument("--triage", default="notes/project-metrics/mutation-triage.csv")
+    o.add_argument("--renames", default="notes/project-metrics/mutation-census-renames.csv")
+    o.add_argument("--root", default=".")
     for name in ("check", "snapshot"):
         p = sub.add_parser(name)
         p.add_argument("--census", required=True)
@@ -442,6 +476,13 @@ def main(argv):
             p.add_argument("--out", required=True)
     args = ap.parse_args(argv)
     try:
+        if args.cmd == "orphans":
+            lost = orphans(args.triage, load_renames(args.renames), args.root)
+            for name in lost:
+                print(f"mutation_inflow: triage rows name `{name}`, which is no package in the tree; "
+                      "if it was renamed, run script/mutation-census --renames and commit the table, "
+                      "and if it was deleted, remove its rows", file=sys.stderr)
+            return 1 if lost else 0
         if args.cmd == "snapshot":
             n = write_snapshot(args.out, read_shards(args.shards),
                                {"census": args.census, "run": args.run, "sha": args.sha})
