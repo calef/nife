@@ -358,9 +358,65 @@ fn ask(verb: Activation, staged: Option<&Staged>, name: Option<&str>) -> Reply {
     }
 }
 
+/// **What each program in a package asks the owner for**, listed before the package is sent
+/// (milestone 892 (a std program at the prompt holds the network and a resolver), "The network at
+/// install, ruled"): the network and each resolver zone its manifest note names, the root zone
+/// flagged apart in capitals, since it is any name at all. A program that asks for neither is not
+/// listed. Bytes this cannot read are left for the progenitor to refuse.
+///
+/// **It lists and does not ask.** The owner's yes has nowhere to be recorded until the
+/// installed-programs table holds a grant record, so nothing here is granted, and the line says so.
+fn say_asks(bytes: &[u8]) {
+    let Ok(package) = package_archive::Package::parse(bytes) else {
+        return;
+    };
+    let mut any = false;
+    for index in 0..package.len() {
+        let (Some(name), Some(member)) = (
+            package_archive::program_name(&package, index),
+            package.member(index),
+        ) else {
+            continue;
+        };
+        let Ok(elf) = elf::Elf::parse(member) else {
+            continue;
+        };
+        let Ok(Some(d)) = elf.note(
+            capability_manifest_note::OWNER,
+            capability_manifest_note::MANIFEST,
+        ) else {
+            continue;
+        };
+        let (Ok(m), Ok(zones)) = (
+            capability_manifest_note::decode(d),
+            capability_manifest_note::zones(d),
+        ) else {
+            continue;
+        };
+        if !m.network && zones.is_empty() {
+            continue;
+        }
+        any = true;
+        println!("  {name} asks for:");
+        if m.network {
+            println!("    reaches the network (connects out)");
+        }
+        for zone in zones.iter().filter(|z| !z.is_empty()) {
+            println!("    looks up names in {}", String::from_utf8_lossy(zone));
+        }
+        if zones.has_root() {
+            println!("    LOOKS UP ANY NAME AT ALL (the root zone)");
+        }
+    }
+    if any {
+        println!("  none of these is granted: no owner's grant is recorded at install yet");
+    }
+}
+
 /// **Send `staged` to the installer and say what came of it**, naming a refused program from these
 /// bytes, which are the ones the progenitor judged (milestone 919).
 fn send_install(staged: &mut Staged, fetched: bool) -> ExitCode {
+    say_asks(staged.bytes());
     let reply = ask(Activation::Install, Some(staged), None);
     let program = reply.member.checked_sub(1).and_then(|index| {
         let package = package_archive::Package::parse(staged.bytes()).ok()?;

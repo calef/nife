@@ -470,6 +470,7 @@ dependencies = [
  "abi",
  "address_space_map",
  "capability_manifest_note",
+ "elf",
  "entropy_backend",
  "filesystem_contract",
  "grant_plan",

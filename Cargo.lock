@@ -152,6 +152,7 @@ version = "0.1.0"
 name = "capability_manifest_note"
 version = "0.1.0"
 dependencies = [
+ "domain_name_resolution_contract",
  "grant_plan",
 ]
 

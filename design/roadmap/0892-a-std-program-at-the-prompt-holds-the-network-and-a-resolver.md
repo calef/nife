@@ -17,8 +17,9 @@ the forget verb as written (Q2, "Approve", the same day), and ruled item 3's for
 day ("yes, record c"). Then he ruled that a manifest declares the network beside its zones and
 the owner grants both at install ("a", the same day). What is left is building both for installed
 programs, under "Item 3, ruled" and "The network at install, ruled" below. The refusal half is
-built: an installed program is refused the network, by name, until its grant is recorded. The rest
-waits on the three calls under "Three calls the rulings leave open".
+built: an installed program is refused the network, by name, until its grant is recorded. A
+manifest note carries its zones (Q1, ruled), and `jig install` lists the asks. The rest
+waits on the two calls under "Calls the rulings leave open", Q2 and Q3.
 
 *(The title and slug are provisional.)*
 
@@ -174,19 +175,43 @@ nife> dialer
   refused: its manifest asks for the network, and no owner's grant of the network is recorded for it among the installed programs
 ```
 
-`script/swish-check` installs `dialer` (`packages/dialer.recipe.toml`, provisional: the bytes of
-`unreachable_network_witness`, whose note asks for the network), runs it and `caps` it, and requires
-the sentence on aarch64, riscv64 and x86_64. Host test:
-`vouched_bytes_asking_for_the_network_are_refused_and_unvouched_ones_get_nothing`.
+`script/swish-check` installs `dialer` (`fixtures/src/dialer.rs` and `packages/dialer.recipe.toml`,
+both provisional), runs it and `caps` it, and requires the sentence on aarch64, riscv64 and x86_64.
+Host test: `vouched_bytes_asking_for_the_network_are_refused_and_unvouched_ones_get_nothing`.
 
-## Three calls the rulings leave open
+## Zones in the manifest note, ruled and built 2026-10-19 (UTC)
+
+calef, on #2405, asked "approve version 2?" (Q1 below): "Yes". `capability_manifest_note` reads
+and writes a version 2 descriptor: version 1's 56 bytes, then a count of one to eight zones, each a
+length byte and dotted ASCII. A manifest that asks for no zone stays version 1, so no existing
+note's bytes or digest change, and a version 2 count of zero is refused. Zones are lowercase,
+sorted, each once, with no empty label; the root zone is length 0. `decode` reads either version
+into the same `Manifest`, and `zones` reads the asks. A program carries them with
+`carry!(MANIFEST, zones = &["", "nife.test"])`.
+
+Host tests: `a_zoned_descriptor_has_one_encoding`,
+`a_zoned_note_names_its_exact_length_and_pads_to_four` and `the_zone_limits_are_the_resolvers`.
+
+`jig install` lists each program's network and zone asks before it sends the package, with the
+root zone apart, in capitals. It asks nothing yet, since a yes has nowhere to be recorded until Q2:
+
+```text
+  dialer asks for:
+    reaches the network (connects out)
+    looks up names in nife.test
+    LOOKS UP ANY NAME AT ALL (the root zone)
+  none of these is granted: no owner's grant is recorded at install yet
+```
+
+## Calls the rulings leave open
 
 Checked on `main` at `42836328b` (2026-10-19 UTC). Both ruled halves for installed programs wait on
 these. Nothing that depends on them is built, because each fixes a format two programs share.
-Each is put with a recommendation; none is ruled.
+Each is put with a recommendation. Q1 is ruled; Q2 and Q3 are open.
 
-**Q1. How a manifest note carries its zones (a wire format).** Version 1 is 56 fixed bytes and its
-last zero byte is 55, so zones need a new version word (`capability_manifest_note`'s own rule).
+**Q1, ruled (a): how a manifest note carries its zones (a wire format).** Version 1 is 56 fixed
+bytes and its last zero byte is 55, so zones need a new version word (`capability_manifest_note`'s
+own rule).
 
 - (a) Version 2: version 1's fields at the same offsets, then a zone count (at most
   `GRANTS_MAX`, 8) and each zone as a length byte and dotted ASCII (at most 253 bytes, the
@@ -232,7 +257,10 @@ NOT-STARTED behind 849, so 892 could not finish behind it.
 
 ## BUGS
 
-- An installed program cannot hold the network at all yet: no grant of it is recorded or read.
+- An installed program cannot hold the network or a zone yet: no grant of either is recorded or read.
+- A program whose note asks for zones but not the network runs without a resolver; nothing refuses
+  it by name.
+- `jig install` lists the asks but cannot take a yes: `jig` holds no input.
 - The shell hashes a file whose note asks for the network before each run, to name the missing
   grant, so such a run reads the file twice.
 
@@ -253,7 +281,7 @@ NOT-STARTED behind 849, so 892 could not finish behind it.
 
 - **Outstanding.** Item 3 for installed programs: the four pieces under "Item 3, ruled".
 - **Outstanding.** The network at install: the three pieces under "The network at install, ruled".
-  Both outstanding items wait on Q1 to Q3.
+  Both outstanding items wait on Q2 and Q3.
 - **Milestone 911.** Its approval file's "the network's socket budget" is this grant, and now cites
   this block.
 - **Milestone 809.** `jig` resolves the index's host through this badge at item 6.

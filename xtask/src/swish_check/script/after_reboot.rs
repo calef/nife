@@ -252,15 +252,24 @@ pub(in crate::swish_check) const SWISH_CHECK_AFTER_REBOOT: &[Line] = &[
         &["alto: one of two programs in the package duet"],
     ),
     line(1, "jig remove solo", &["removed; generation 10 is live"]),
-    // **Installing does not grant the network** (milestone 892 (a std program at the prompt holds
-    // the network and a resolver), "The network at install, ruled"). `dialer`'s note asks for it;
-    // the owner grants the network apart, and no grant is recorded, so the installed program is
-    // refused, by name of the grant, both when run and in `caps`. Nothing is spawned.
+    // **Installing lists what a program asks the owner for, and does not grant the network**
+    // (milestone 892 (a std program at the prompt holds the network and a resolver), "The network
+    // at install, ruled"). `dialer`'s version 2 note asks for the network, `nife.test` and the root
+    // zone, which `jig install` lists with the root zone apart; the owner grants them apart, and no
+    // grant is recorded, so the installed program is refused, by name of the grant, both when run
+    // and in `caps`. Nothing is spawned.
     line(0, "cd downloads", &[]),
     line(
         1,
         "jig install ./dialer.nifepkg",
-        &["installed; generation 11 is live"],
+        &[
+            "dialer asks for:",
+            "reaches the network (connects out)",
+            "looks up names in nife.test",
+            "LOOKS UP ANY NAME AT ALL (the root zone)",
+            "none of these is granted: no owner's grant is recorded at install yet",
+            "installed; generation 11 is live",
+        ],
     ),
     line(0, "cd /", &[]),
     line(
