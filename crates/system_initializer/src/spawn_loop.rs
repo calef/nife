@@ -197,6 +197,7 @@ pub(super) fn spawn_service(
 ) -> ! {
     let spawn_ep = c.spawn_ep;
     let resolver = c.resolver;
+    let files = c.fs.map(|f| f.ep);
     let mut service = Service {
         c,
         progs: &spawnable.progs,
@@ -208,7 +209,7 @@ pub(super) fn spawn_service(
         fs_mapped: false,
         disk_mapped: false,
         // The spawn endpoint, its reaped messages, and the windows they free (milestone 685).
-        spawn: SpawnEndpoint::new(spawn_ep, resolver),
+        spawn: SpawnEndpoint::new(spawn_ep, files, resolver),
     };
     loop {
         service.serve();
@@ -1193,7 +1194,7 @@ impl Service<'_> {
         let channel = match (bound, fs, window) {
             (Some(b), ..) => Some(b),
             (None, Some(f), Some(w)) if wiring.directory_grant => {
-                job_channel(f, (&mut spawn.windows, w), own_ut, &mut self.fs_mapped)
+                job_channel(f, w, own_ut, &mut self.fs_mapped)
             }
             _ => None,
         };
@@ -1700,7 +1701,7 @@ impl Service<'_> {
         // is one a later short pool may wait for: the shell reads that answer to its end
         // before it sends another request ([`ReapsDue`]).
         match (ok, dir.window, dir.mounted) {
-            (false, Some(w), false) => self.spawn.windows.release(w),
+            (false, Some(w), false) => self.spawn.release(w),
             (false, Some(w), true) => self.spawn.disk_windows.release(w),
             _ => {}
         }
