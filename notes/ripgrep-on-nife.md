@@ -142,11 +142,14 @@ refusal is about enumeration alone.
 
 ## The walk at the prompt
 
-`script/swish-check` stages a copy of `crates/` at `/search/crates` when `rg` was fetched, and types
-this in `/search` (2026-10-07, milestone 121):
+`script/swish-check` stages a copy of `crates/` at `/search/crates` on the first boot when `rg` was
+fetched. The second boot inherits the disk, installs `rg` with `jig install ripgrep` from the index
+basalt publishes, and types this in `/search` by the bare name (milestone 121's exit 4). `caps rg
+BUGS crates` first shows the grant: `crates` alone, read-only, which is `ENUMERATE | READ |
+DESCEND` and nothing else.
 
 ```
-$ /installed/rg BUGS crates
+$ rg BUGS crates
   crates/abi/src/lib.rs:    /// # BUGS
 crates/abi/src/lib.rs:    /// # BUGS
 ...

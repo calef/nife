@@ -1,6 +1,7 @@
 ---
-status: PARTIAL
+status: BUILT
 raised: 2026-08-13
+built: 2026-10-19
 milestone_dependencies: 205, 206, 595, 809, 810
 decision_dependencies: none
 machine_requirements: none
@@ -34,19 +35,17 @@ Two questions this block left open are answered by measurement. The 256-page hea
 run retyped 65 pages of it. `--no-mmap` need not be a default: the control runs without it, on a
 single named file, which is where `ripgrep` reaches for a map, and the stub fails over to reads.
 
-What is left is the prompt. The exit below gains `rg pattern dir` at the swish prompt (calef,
-2026-10-07, on #1797's fork 4). That clause waits on `rg` being installed rather than built into
-the base image. Two milestones do that: the packaging milestone #1797 mints (`ripgrep` packaged in
-nifeos/basalt), and milestone 809 (the package client becomes a program, `jig`, with the verbs an
-index needs), which installs it. calef, 2026-10-07: "With a functional jig, ripgrep should be installed via jig and not
-part of the base image. It isn't base." Until both land, this stays PARTIAL with that one clause
-outstanding.
-
-Walked 2026-10-07 (UTC) at the prompt (lane `milestone/121-rg-walk`). In `/search`, holding a copy
-of `crates/` (661 files, 275 directories, 8.2 MB), `script/swish-check` types `/installed/rg BUGS
-crates` with no flag. All three legs printed exactly the 349 lines the host's `rg` 14.1.1 prints
-over the same copy. notes/ripgrep-on-nife.md has the three faults it exposed, fixed here, and the
-timings.
+**Built 2026-10-19 (UTC)** (lane `milestone/121-rg-via-jig`): `rg pattern dir` at the swish
+prompt, with `rg` installed by `jig` and never part of the base image (calef, 2026-10-07, on
+#1797's fork 4: "With a functional jig, ripgrep should be installed via jig and not part of the
+base image. It isn't base."). `script/swish-check`'s second boot types `jig install ripgrep`, which
+fetches basalt's package by the index's digest over TLS (milestone 810), then in `/search`, holding
+a copy of `crates/`, `caps rg BUGS crates` and `rg BUGS crates` by the bare name. `caps` prints the
+whole grant: `/packages/ripgrep/14.1.1/rg` gets `crates` alone, read-only, which is `ENUMERATE |
+READ | DESCEND`, and nothing else on the disk. The walk's answer must equal, line for line, what
+the host's `rg` 14.1.1 prints over the same copy; on 2026-10-19 that was 322 lines from 177 files,
+matched on all three architectures. A boot that types the walk and whose answer is missing fails.
+notes/ripgrep-on-nife.md has the faults the walk exposed and the timings.
 
 Re-checked in CI from 2026-10-08 (UTC) (lane `milestone/121-rg-ci`, #1853), the first gap of
 calef's amber ruling on fatal risk 1. `script/ci-build`'s `swish-check` rows fetch basalt's `rg`
@@ -168,9 +167,8 @@ run grep. The confinement claim needs no explanation to anyone who has ever type
 3. The search is measured against Linux with `--threads 1 --no-mmap` on both sides. Done
    2026-10-07, aarch64 under HVF (the one tier where both run on matched hardware).
 4. `rg pattern dir` at the swish prompt, holding `ENUMERATE | READ | DESCEND` over `dir` and nothing
-   else. Added 2026-10-07 by calef's ruling on #1797's fork 4. Waits on the packaging milestone
-   #1797 mints and on milestone 809 (`jig`) to install `rg`, and on milestone 595 (the shell runs a
-   `std` program) to start it. `rg` is never added to the base image for this.
+   else, with `rg` installed by `jig` and never in the base image. Done 2026-10-19, all three
+   architectures, `script/swish-check`'s second boot.
 
 ## The benchmark, which is the part worth the lane
 
@@ -214,7 +212,9 @@ ripgrep working beautifully and confinement being decorative.
   size, and a recursive walk meets many directories. Unmeasured, and this milestone is what would
   measure it.
 - Threaded since milestone 812 (`std::thread::spawn` runs real threads in one address space). A
-  published number states its thread count; a comparison pins both sides to it.
+  published number states its thread count; a comparison pins both sides to it. No threaded
+  comparison with Linux exists: `rg_search` and `bench/host/run_linux_rg.sh` both pass
+  `--threads 1`.
 - ripgrep memory-maps large files by default and this system has no `mmap`, which milestone 99 (`git` on
   nife)'s block also names as a gap. Measured 2026-10-07: it costs nothing to correctness, since
   `memmap2`'s stub fails and `ripgrep` reads instead, so `--no-mmap` is a measurement pin and not a
@@ -234,23 +234,23 @@ ripgrep working beautifully and confinement being decorative.
   pessimistic. `bench/host/run_linux_rg.sh` says so where it does it.
 - CI's `test` job fetches no `rg`, so the kernel suite's four `rg` tests skip there; the
   `rg-threads` rows run them.
-
+- `ignore`'s parallel walker carries one patch, basalt's `patches/ripgrep-ignore-walk.patch`, which
+  nife maintains and re-checks at every `rg` or `ignore` bump. No upstream issue is filed for it.
 - Spawning `rg` at the prompt takes up to 39 s under load, the walk up to 432 s on `x86_64` under
   TCG, and neither is explained; its peak memory there is unmeasured (notes/ripgrep-on-nife.md).
 
 ## Follow-on
 
-- **Outstanding.** nife maintains basalt's `patches/ripgrep-ignore-walk.patch`, re-checked at every
-  `rg` or `ignore` bump. Upstream issue: (link pending).
+- **Recorded.** The patch nifeos/basalt carries for `ignore`'s parallel walker, in BUGS.
 - **Milestone 205.** The ABI has no argument vector, which is what stops `rg` after it loads and
   resolves its own directory. `design/roadmap/0205-foreign-program-arguments.md` was minted from
   this lane on 2026-08-31 and carries the wire-format fork.
 - **Milestone 206.** The 896 KiB image ceiling this lane found became
   `design/roadmap/0206-user-image-ceiling.md`, which also owns the mapping error that names an
   overlap rather than a size.
-- **Outstanding.** Exit clause 4. Checked 2026-10-13: `jig install ripgrep` runs in CI, and no
-  gate types `rg pattern dir` by bare name.
-- **Outstanding.** A threaded comparison with Linux. Checked 2026-10-12: `rg_search` and `bench/host/run_linux_rg.sh` still run `RG_SEARCH`, which passes `--threads 1`.
+- **Done.** 2026-10-19: exit clause 4, `rg BUGS crates` by bare name after `jig install ripgrep`,
+  in `script/swish-check`'s second boot.
+- **Recorded.** A threaded comparison with Linux, in BUGS. Checked 2026-10-12: `rg_search` and `bench/host/run_linux_rg.sh` still run `RG_SEARCH`, which passes `--threads 1`.
 - **Done.** 2026-10-07: `rg` searches the priced tree and its counts match the fixture, on all
   three architectures (`ripgrep_tests::ripgrep_searches_the_tree_it_was_granted`).
 - **Done.** 2026-10-07: the same refusal with `rg` as the walker, and a named-file control
@@ -265,7 +265,7 @@ ripgrep working beautifully and confinement being decorative.
 - **Milestone 303.** The x86_64 run, done 2026-09-16. Milestone 184 closed the `std` half of this
   gap on 2026-09-14 and `ripgrep` built there; 303 gave the FS service a disk it can find on `q35`,
   and the transcript is the same 62 bytes as the other two architectures.
-- **Outstanding.** Directory reading still reads a listing whole rather than streaming it, and the
+- **Recorded.** Directory reading still reads a listing whole rather than streaming it, and the
   memory cost of a deep walk over large directories is unmeasured. Checked 2026-09-03 against the
   filesystem shim under `patches/std-nife/overlay/std/src/sys/`.
 
@@ -278,6 +278,4 @@ architectures with zero source changes, finds exactly the fixture's 138 matches 
 through a grant lacking `ENUMERATE` says so and searches nothing. On the same HVF machine the search
 takes 1.24 to 1.33 ms against Linux's 0.82 to 0.87 ms, single-threaded on both. At the swish
 prompt it walks a copy of `crates/`, 661 files in 275 directories, and prints exactly the host's
-349 matching lines on all three. What is left is `rg` installed rather than on the data disk, which
-waits on `rg` being packaged and installed with `jig`
-(milestone 809 and the packaging milestone #1797 mints), never on the base image.
+349 matching lines on all three. There `rg` is the one `jig` installed from basalt's index, never part of the base image.
