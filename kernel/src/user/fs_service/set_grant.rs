@@ -60,7 +60,7 @@ pub fn start_granted_set(
     caretaker_image: &'static [u8],
     client_image: &'static [u8],
     grant: SetGrant<'_>,
-) -> Option<RendezvousId> {
+) -> Option<(RendezvousId, super::holding::Holding)> {
     let SetGrant {
         dir,
         names,
@@ -75,8 +75,16 @@ pub fn start_granted_set(
         "a granted directory's name rides in two argument words; this one does not fit",
     );
     let (file_ep, file_shared, readiness) = ensure(blk_image, fs_server_image)?;
-    let narrow_ep = crate::sched::create_rendezvous();
-    let caretaker_ready = crate::sched::create_rendezvous();
+    // From one region the returned holding reclaims, as [`start_granted`]'s are. The set's own
+    // frame is not in it: the caretaker maps that page, and a mapped page is freed only after its
+    // reader is gone (`Holding::add_region_after_death`'s reason), which this wiring never had.
+    let ep_region =
+        crate::memory_region::create(GRANT_ENDPOINT_PAGES).expect("no endpoint region for a grant");
+    let endpoint =
+        || crate::sched::create_rendezvous_from(ep_region).expect("no endpoint for a grant");
+    let narrow_ep = endpoint();
+    let caretaker_ready = endpoint();
+    let report = endpoint();
 
     // The set, encoded into its own frame before anything can see it. `encode` refuses rather
     // than truncating, and a truncated set would be a capability nobody planned.
@@ -93,7 +101,7 @@ pub fn start_granted_set(
     let (lo, hi) = filesystem_contract::grant::pack_name(dir.as_bytes());
     let spec = filesystem_contract::grant::spec(dir.len(), rights);
 
-    crate::sched::spawn(move || {
+    let caretaker = crate::sched::spawn(move || {
         run(
             caretaker_image,
             Spawn {
@@ -128,7 +136,10 @@ pub fn start_granted_set(
     wait_for_service(readiness);
     wait_for_caretaker(caretaker_ready);
 
-    Some(spawn_fs_client(
+    let mut held = super::holding::Holding::new();
+    held.add_thread(caretaker);
+    held.add_region(ep_region);
+    held.add_thread(spawn_fs_client(
         client_image,
         narrow_ep,
         file_shared,
@@ -136,5 +147,7 @@ pub fn start_granted_set(
         client_arg,
         client_arg2,
         stack_pages,
-    ))
+        report,
+    ));
+    Some((report, held))
 }

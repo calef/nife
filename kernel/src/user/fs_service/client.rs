@@ -15,8 +15,16 @@ use super::*;
 /// looking at, not a number that wants raising.
 pub(super) const CLIENT_EXTRA_STACK: usize = 8;
 
+/// The pages a granted client's endpoints are retyped from: its caretaker's two, the program's
+/// report, and one spare. One page per endpoint, so a grant's whole wiring goes back with one
+/// region (milestone 608).
+pub(super) const GRANT_ENDPOINT_PAGES: u64 = 4;
+
 /// Spawn one client holding exactly a file-service endpoint, a report endpoint and its view of
-/// the shared page. Returns the report endpoint.
+/// the shared page. Returns the client's thread.
+///
+/// `report` is the caller's, so the caller decides where it lives: a granted client's comes out
+/// of the region its caretaker's endpoints do, and goes back with them (milestone 608).
 ///
 /// `extra_stack` is pages **below** the single one `run` maps. The hand-written `fs_test_client` roles
 /// need none: they hold a handle and a small buffer. The navigating shell (milestone 47's
@@ -38,6 +46,7 @@ pub(super) const CLIENT_EXTRA_STACK: usize = 8;
 /// default, found short under `script/test`'s own aarch64 run (a data abort at the stack's guard
 /// page). Those roles went with `session_reviver` on 2026-09-27; the granted-directory spawners
 /// below still pass their callers' stack pages through it.
+#[allow(clippy::too_many_arguments)]
 pub(crate) fn spawn_fs_client(
     client_image: &'static [u8],
     file_ep: RendezvousId,
@@ -46,12 +55,12 @@ pub(crate) fn spawn_fs_client(
     arg: u64,
     arg2: u64,
     extra_stack: usize,
-) -> RendezvousId {
+    report: RendezvousId,
+) -> crate::thread::ThreadId {
     assert!(
         extra_stack <= CLIENT_EXTRA_STACK,
         "an FS client asked for more stack than this wiring maps",
     );
-    let report = crate::sched::create_rendezvous();
     crate::sched::spawn(move || {
         let mut maps = [Mapping {
             va: 0,
@@ -83,8 +92,7 @@ pub(crate) fn spawn_fs_client(
             },
         )
     })
-    .expect("could not spawn the FS client");
-    report
+    .expect("could not spawn the FS client")
 }
 
 /// Wire the service (or reuse this boot's) and spawn the hand-written client
@@ -101,7 +109,17 @@ pub fn start(
 ) -> Option<(Readiness, RendezvousId)> {
     let (file_ep, file_shared, readiness) = ensure(blk_image, fs_server_image)?;
     // 0 = the end-to-end proof; 1 = the fs_read benchmark loop.
-    let report = spawn_fs_client(client_image, file_ep, file_shared, client_role, 0, 0, 0);
+    let report = crate::sched::create_rendezvous();
+    spawn_fs_client(
+        client_image,
+        file_ep,
+        file_shared,
+        client_role,
+        0,
+        0,
+        0,
+        report,
+    );
     Some((readiness, report))
 }
 

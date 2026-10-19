@@ -286,7 +286,7 @@ fn a_writable_per_file_grant_writes_that_file_and_still_only_that_file() {
 /// The riscv half of the aarch64 twin's helper; the only difference is the block-server binary
 /// (the portable `block_driver` here, the PL011-tied `hello` there).
 fn attack_a_grant(rights: u64, writable: bool) -> Option<u64> {
-    let Some(report) = fs_service::start_granted(
+    let Some((report, held)) = fs_service::start_granted(
         blk_image(),
         program("redoxfs_server").expect("no redoxfs_server program in the initial ramdisk"),
         program("fs_file_caretaker").expect("no fs_file_caretaker program in the initial ramdisk"),
@@ -310,6 +310,7 @@ fn attack_a_grant(rights: u64, writable: bool) -> Option<u64> {
     // The two handshakes happened inside `start_granted`, before this attacker existed: they
     // are what makes the caretaker's own staged request safe on a page all three share.
     let [tag, verdict, ..] = sched::ipc_receive(report);
+    held.release_or_fail("a per-file grant and its attacker");
     assert_eq!(
         tag,
         filesystem_fixture::VERDICT,
