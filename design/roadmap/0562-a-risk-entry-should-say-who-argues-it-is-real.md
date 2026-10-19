@@ -28,11 +28,11 @@ what an entry must contain without mentioning this at all.
 
 ## Why it is worth stating rather than leaving to recur
 
-The file's purpose is to hold claims that, if true, mean the project should stop. An entry that
-only this project has ever argued is weaker than one a stranger has published and measured, and a
-reader has no way to tell them apart today. Risk 8's new paragraph carries 1475 bucketed CVEs from
-people with no stake here; risk 5's entry carries our own worry. Both are legitimate and they are not
-the same kind of evidence.
+The file's purpose is to hold claims that, if true, mean the project should stop. An entry that only
+this project has ever argued is weaker than one a stranger has published and measured, and a reader
+has no way to tell them apart today. Risk 8's appendix note (nobody needs it) carries 1475 bucketed
+CVEs from people with no stake here; risk 5's entry carries our own worry. Both are legitimate and
+they are not the same kind of evidence.
 
 ## What to add, and it is small
 
@@ -55,5 +55,6 @@ that implied otherwise would rank risks by how well studied they are rather than
 
 ## Index row
 
-Risk 4 grew a published counter-thesis paragraph, then risk 8 did; the file's rule section should say
-that an entry names who else argues the risk is real, and says so when nobody does.
+Risk 4 grew a published counter-thesis paragraph, and so did risk 8's appendix note; the file's rule
+section should say that an entry names who else argues the risk is real, and says so when nobody
+does.

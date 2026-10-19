@@ -60,6 +60,10 @@ fn main() {
         // Set only by the PVH x86_64 leg, which attaches all five block fixtures; the OVMF leg
         // attaches the nifefs disk alone and unsets it (`xtask/src/uefi.rs`, `uefi_test`).
         ("NIFE_X86_FIXTURES_REQUIRED", "NIFE_X86_FIXTURES_REQUIRED"),
+        // On every architecture, unlike the three above: `cargo xtask test` attaches an NVMe
+        // controller on all three legs, and the roster test owes exactly one NVMe entry when it
+        // did. The value is the image's path; only whether it is set is read.
+        ("NIFE_NVME", "NIFE_NVME_ATTACHED"),
     ] {
         println!("cargo::rerun-if-env-changed={host}");
         println!(

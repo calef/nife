@@ -35,7 +35,7 @@
 //!
 //! ```text
 //!   ROLE_SURVEY on the milestone-57 test disk (a 64 MiB image sgdisk partitioned):
-//!     roster : 4 devices, 3 virtio-mmio, 1 virtio-pci
+//!     roster : 7 devices, 5 virtio-mmio, 1 virtio-pci, 1 nvme
 //!     table  : 3 partitions, disk GUID 1A2B3C4D-5E6F-4718-9A0B-C1D2E3F40506
 //!              1  EFI system    2048..10239
 //!              2  linux root   10240..30719
@@ -64,7 +64,10 @@
 #![allow(missing_docs)]
 #![no_main]
 
-use block_roster::{Roster, TRANSPORT_MMIO, TRANSPORT_PCI};
+use block_roster::{
+    Roster, TRANSPORT_NON_VOLATILE_MEMORY_EXPRESS, TRANSPORT_VIRTIO_MEMORY_MAPPED_IO,
+    TRANSPORT_VIRTIO_PCI,
+};
 use filesystem_contract::{blk, req};
 use globally_unique_identifier_partition_table::entry::NAME_UNITS;
 use globally_unique_identifier_partition_table::guid::types;
@@ -213,16 +216,19 @@ fn survey() -> ! {
     // The roster first, because it is the cheaper authority and answers a different question.
     // A page that is not a roster reports as no devices AND no F_ROSTER, so "nobody wired me a
     // roster" never reads as "this machine has no disks" (DECISIONS §42).
-    let (roster_ok, total, mmio, pci) = match Roster::read(roster_page()) {
+    //
+    // One count per kind and no total: `SEND` carries three words, and the kernel side compares
+    // their sum with what it wrote, so an entry of a kind this program does not count still shows.
+    let (roster_ok, mmio, pci, nvme) = match Roster::read(roster_page()) {
         Some(r) => (
             F_ROSTER,
-            r.len() as u64,
-            r.count_on(TRANSPORT_MMIO) as u64,
-            r.count_on(TRANSPORT_PCI) as u64,
+            r.count_on(TRANSPORT_VIRTIO_MEMORY_MAPPED_IO) as u64,
+            r.count_on(TRANSPORT_VIRTIO_PCI) as u64,
+            r.count_on(TRANSPORT_NON_VOLATILE_MEMORY_EXPRESS) as u64,
         ),
         None => (0, 0, 0, 0),
     };
-    send(REPORT, total, mmio, pci);
+    send(REPORT, mmio, pci, nvme);
 
     let mut flags = roster_ok;
     let mut partitions = 0u64;

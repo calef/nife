@@ -19,10 +19,10 @@ name below is provisional.
 §220 is decided. The dependency addition still reaches an architect at merge, as
 every dependency does (see below).
 
-It is not on fatal risk 8's path (nobody needs it). §220 records that a first customer installs by
-digest vouching, which milestone 198 (a package manager) built on 2026-09-26. This serves a second
-vendor, or a developer whose build crosses machines, and it waits behind anything that gets a real
-workload running.
+It is not on the path to a first user (nobody needs it, a non-fatal note in fatal risk 8's
+appendix). §220 records that a first customer installs by digest vouching, which milestone 198 (a
+package manager) built on 2026-09-26. This serves a second vendor, or a developer whose build
+crosses machines, and it waits behind anything that gets a real workload running.
 
 ## What gets built
 
@@ -88,4 +88,4 @@ format, not before building.
 
 ## Index row
 
-DECISIONS §220 rules that a signed build installs up to its key's ceiling and that removing the key drops what it vouched. Proposed: the build that implements it, for a second vendor or a developer whose build crosses machines; it is off fatal risk 8's path.
+DECISIONS §220 rules that a signed build installs up to its key's ceiling and that removing the key drops what it vouched. Proposed: the build that implements it, for a second vendor or a developer whose build crosses machines; it is off the path to a first user.

@@ -2,7 +2,7 @@
 status: NOT-STARTED
 raised: 2026-08-30
 milestone_dependencies: 242, 400, 515, 801, 809
-decision_dependencies: unwritten
+decision_dependencies: none
 machine_requirements: two x86_64 UEFI PCs, each with a USB keyboard and a monitor
 specific_machine: none
 needs_person: yes
@@ -56,8 +56,10 @@ the second PC.
 - Rungs 1 to 3 pass on a machine that is not xenon, with a USB keyboard, so milestone 242 is
   built.
 - A release exists. `gh release list` returns nothing today (§157's measurement); the download
-  carries a checksum, and a signature if the trust or Secure Boot ruling creates a key.
-- The Secure Boot ruling is answered on the page, before its first instruction.
+  carries a checksum, and a signature if the trust ruling's key signs it. The Secure Boot ruling
+  creates no key.
+- The page's first instruction is milestone 500's: turn Secure Boot off, after writing down the
+  BitLocker recovery key.
 - Something checks DECISIONS §135's requirement 1 ("no conveyed artifact carries copyleft") for
   the image the page conveys; §135's own `BUGS` says nothing enforces it.
 - The stranger harness passes against the download, and records the time from page to prompt.
@@ -65,12 +67,12 @@ the second PC.
 
 ## Which rulings it needs
 
-| Ruling | The question | Where the options are |
+| Ruling | The question | Where it stands |
 |---|---|---|
-| Secure Boot | Does a stranger turn Secure Boot off, or do we sign, and if we sign, is it the same key as the package key? | milestone 500 (a stick that boots with Secure Boot on, or a page that says how to turn it off) |
+| Secure Boot | Does a stranger turn Secure Boot off, or do we sign? | Ruled K1, turn it off, so nife holds no boot key. Milestone 500 (a stick that boots with Secure Boot on, or a page that says how to turn it off) is the record |
 | Publication | Is it time to put the page up? | §157, step 1: calef's act |
 
-The Secure Boot question is the `unwritten` decision dependency. Publication is `needs_person`.
+Publication is `needs_person`.
 
 Reuse: `stick_maker`, the installer and the package client are the tree's own and are built;
 the release and the page are not surveyed yet, and the lane that builds them owes that survey under
@@ -114,7 +116,8 @@ procedure on the page when a machine a stranger plausibly owns exists for it.
 ## Index row
 
 The door principle 1 names: calef, 2026-08-30, no third party sees nife until there is a package
-manager and a trivial install. Milestone 198 keeps the package manager. A stranger follows a web page from a download to a stick to an installed system that grows
-by packages over the internet (§157). It holds rungs 1d (a second PC) and 4 (the page), and waits
-on the screen (400), the USB keyboard (242), the installer (515), packages over the internet (801),
-the Secure Boot ruling and calef's act of publication.
+manager and a trivial install. Milestone 198 keeps the package manager. A stranger follows a web
+page from a download to a stick to an installed system that grows by packages over the internet
+(§157). It holds rungs 1d (a second PC) and 4 (the page), and waits on the screen (400), the USB
+keyboard (242), the installer (515), packages over the internet (801) and calef's act of
+publication. Its first instruction is milestone 500's: turn Secure Boot off.
