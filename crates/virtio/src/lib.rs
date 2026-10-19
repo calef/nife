@@ -28,10 +28,13 @@
 //! and `pci` ground. It names the whole device family (milestone 63 (directory and package names)
 //! refused `virtio_net` for the transport adapter because this crate also drives net).
 
-use abi::interrupt;
 use filesystem_contract::blk;
-use user_mode_runtime::virtio::virtio_ring_barrier;
-use user_mode_runtime::{exit, invoke, receive_request, reply, send};
+use user_mode_runtime::virtio::{
+    notify, read_register, setup_queue, virtio_ring_barrier, write_register,
+};
+use user_mode_runtime::{
+    exit, interrupt_acknowledge, interrupt_wait, receive_request, reply, send,
+};
 
 // The kernel maps the DMA page at this fixed VA (must match kernel/src/user/virtio_service.rs).
 // The device REGISTERS are NOT mapped: we drive the device through a `Virtio` capability (slot 2),
@@ -114,14 +117,12 @@ const BLOCK: usize = 512;
 
 /// Read a device register, through the kernel. Reads are DMA-safe, so any register is allowed.
 fn mr(off: u64) -> u32 {
-    // SAFETY: `svc`; the kernel validates the Virtio capability in slot 2.
-    unsafe { invoke(VIRTIO, abi::virtio::READ_REGISTER, off, 0, 0) as u32 }
+    read_register(VIRTIO, off) as u32
 }
 /// Write a DMA-*safe* device register (status, features, interrupt-ack) through the kernel. The
 /// queue-address and notify registers are NOT writable this way: the kernel owns them.
 fn mw(off: u64, v: u32) {
-    // SAFETY: `svc`.
-    unsafe { invoke(VIRTIO, abi::virtio::WRITE_REGISTER, off, v as u64, 0) };
+    write_register(VIRTIO, off, v as u64);
 }
 
 fn direct_memory_access_write<T>(off: u64, val: T) {
@@ -190,8 +191,8 @@ fn init_with_features(driver_features_lo: u32, want_flush: bool) -> bool {
     mw(STATUS, S_ACKNOWLEDGE | S_DRIVER | S_FEATURES_OK);
     assert!(mr(STATUS) & S_FEATURES_OK != 0);
 
-    // SAFETY: `svc`; the layout constants (OFF_DESC/AVAIL/USED) are the contract the kernel uses.
-    assert!(unsafe { invoke(VIRTIO, abi::virtio::SETUP_QUEUE, QSIZE as u64, 0, 0) } == 0);
+    // The layout constants (OFF_DESC/AVAIL/USED) are the contract the kernel uses.
+    assert!(setup_queue(VIRTIO, QSIZE as u64, 0) == 0);
 
     mw(
         STATUS,
@@ -370,8 +371,7 @@ pub fn run_attack(direct_memory_access_phys: u64) -> ! {
     virtio_ring_barrier();
 
     // Submit. The kernel walks the descriptor, sees KERNEL_ADDR is outside our region, and refuses.
-    // SAFETY: `svc`.
-    let r = unsafe { invoke(VIRTIO, abi::virtio::NOTIFY, 0, 0, 0) };
+    let r = notify(VIRTIO, 0);
     send(REPORT, if r < 0 { 1 } else { 0 }, 0, 0); // 1 = refused (good), 0 = it went through (bad)
 
     let _ = direct_memory_access_phys;
@@ -419,8 +419,8 @@ pub fn run_attack_indirect(direct_memory_access_phys: u64) -> ! {
     direct_memory_access_write::<u16>(OFF_AVAIL + 2, idx.wrapping_add(1));
     virtio_ring_barrier();
 
-    // SAFETY: `svc`. The kernel refuses the indirect descriptor and never rings the device.
-    let r = unsafe { invoke(VIRTIO, abi::virtio::NOTIFY, 0, 0, 0) };
+    // The kernel refuses the indirect descriptor and never rings the device.
+    let r = notify(VIRTIO, 0);
     send(REPORT, if r < 0 { 1 } else { 0 }, 0, 0); // 1 = refused (good), 0 = it went through (bad)
 
     let _ = direct_memory_access_phys;
@@ -519,8 +519,8 @@ fn submit_block(direct_memory_access_phys: u64, sector: u64, req_type: u32) -> u
 
     // Submit THROUGH THE KERNEL. The kernel walks the descriptors we just published and, only if
     // every one stays inside our DMA region, rings the device. If we pointed one outside our
-    // region, it returns an error and the device is never told to go. SAFETY: `svc`.
-    if unsafe { invoke(VIRTIO, abi::virtio::NOTIFY, 0, 0, 0) } < 0 {
+    // region, it returns an error and the device is never told to go.
+    if notify(VIRTIO, 0) < 0 {
         report_code(0xE5); // the kernel refused our request (a descriptor escaped our region)
     }
 
@@ -544,17 +544,14 @@ fn complete_block(used_before: u16) {
         // buffer on the used ring; the kernel (milestone 9a) masks the line, turns it into a
         // notification, and wakes us. If the interrupt already fired between the notify above and
         // this call, the kernel's pending count makes WAIT return at once instead of blocking on
-        // an event that is already over. SAFETY: `svc`; the kernel validates the Irq capability.
-        unsafe { invoke(IRQ, interrupt::WAIT, 0, 0, 0) };
+        // an event that is already over.
+        interrupt_wait(IRQ);
 
         // Quiet the device (read its interrupt-status, acknowledge it), then re-enable the line at
-        // the controller, which the kernel masked when it fired. SAFETY: `svc`.
+        // the controller, which the kernel masked when it fired.
         let istatus = mr(INTERRUPT_STATUS);
         mw(INTERRUPT_ACK, istatus);
-        // SAFETY: `invoke` traps to the kernel, which validates the capability and the method
-        // before acting (user_mode_runtime's contract). A caller cannot break an invariant by passing a
-        // bad slot or method; it gets an error back.
-        unsafe { invoke(IRQ, interrupt::ACK, 0, 0, 0) };
+        interrupt_acknowledge(IRQ);
 
         virtio_ring_barrier();
         if direct_memory_access_read::<u16>(OFF_USED + 2) != used_before {
@@ -715,10 +712,9 @@ fn init_net() {
     assert!(mr(STATUS) & S_FEATURES_OK != 0);
 
     // Both queues, through the kernel: it programs each queue's ring addresses to that queue's block
-    // in our DMA region, so we never choose them. SAFETY: `svc`.
-    assert!(unsafe { invoke(VIRTIO, abi::virtio::SETUP_QUEUE, QSIZE as u64, NET_RX_Q, 0) } == 0);
-    // SAFETY: as above: the kernel validates the capability and the method.
-    assert!(unsafe { invoke(VIRTIO, abi::virtio::SETUP_QUEUE, QSIZE as u64, NET_TX_Q, 0) } == 0);
+    // in our DMA region, so we never choose them.
+    assert!(setup_queue(VIRTIO, QSIZE as u64, NET_RX_Q) == 0);
+    assert!(setup_queue(VIRTIO, QSIZE as u64, NET_TX_Q) == 0);
 
     mw(
         STATUS,
@@ -753,8 +749,8 @@ fn post_rx(direct_memory_access_phys: u64, avail_idx: u16) {
     virtio_ring_barrier();
     direct_memory_access_write::<u16>(NET_RX_AVAIL + 2, avail_idx.wrapping_add(1));
     virtio_ring_barrier();
-    // SAFETY: `svc`. The kernel validates the receive descriptor (device-writable, in our region).
-    if unsafe { invoke(VIRTIO, abi::virtio::NOTIFY, NET_RX_Q, 0, 0) } < 0 {
+    // The kernel validates the receive descriptor (device-writable, in our region).
+    if notify(VIRTIO, NET_RX_Q) < 0 {
         report_code(0xE7);
     }
 }
@@ -777,8 +773,7 @@ fn send_frame(direct_memory_access_phys: u64, frame_len: u64, avail_idx: u16) {
     virtio_ring_barrier();
     direct_memory_access_write::<u16>(NET_TX_AVAIL + 2, avail_idx.wrapping_add(1));
     virtio_ring_barrier();
-    // SAFETY: `svc`.
-    if unsafe { invoke(VIRTIO, abi::virtio::NOTIFY, NET_TX_Q, 0, 0) } < 0 {
+    if notify(VIRTIO, NET_TX_Q) < 0 {
         report_code(0xE8);
     }
 }
@@ -867,12 +862,12 @@ fn build_dhcp_discover() -> u64 {
 /// `complete_block`: the used ring, not the wakeup, is the completion.
 fn wait_rx(rx_used_before: u16) -> bool {
     for _ in 0..64 {
-        // SAFETY: `svc`; blocks until the device raises its line.
-        unsafe { invoke(IRQ, abi::interrupt::WAIT, 0, 0, 0) };
+        // Blocks until the device raises its line.
+        interrupt_wait(IRQ);
         let istatus = mr(INTERRUPT_STATUS);
         mw(INTERRUPT_ACK, istatus);
-        // SAFETY: `svc`; re-enable the line the kernel masked when it fired.
-        unsafe { invoke(IRQ, abi::interrupt::ACK, 0, 0, 0) };
+        // Re-enable the line the kernel masked when it fired.
+        interrupt_acknowledge(IRQ);
         virtio_ring_barrier();
         if direct_memory_access_read::<u16>(NET_RX_USED + 2) != rx_used_before {
             return true;
@@ -1084,12 +1079,10 @@ fn complete_blk(used_before: u16) {
     // already pending and the kernel's pending-signal count (DECISIONS §9a) returns this WAIT at once
     // rather than blocking on an event already over. See notes/dma.md.
     loop {
-        // SAFETY: as above: the kernel validates the capability and the method.
-        unsafe { invoke(IRQ, interrupt::WAIT, 0, 0, 0) };
+        interrupt_wait(IRQ);
         let istatus = mr(INTERRUPT_STATUS);
         mw(INTERRUPT_ACK, istatus);
-        // SAFETY: as above: the kernel validates the capability and the method.
-        unsafe { invoke(IRQ, interrupt::ACK, 0, 0, 0) };
+        interrupt_acknowledge(IRQ);
         virtio_ring_barrier();
         if direct_memory_access_read::<u16>(OFF_USED + 2) != used_before {
             break; // our request is on the used ring; this wakeup was really ours
@@ -1186,8 +1179,8 @@ fn submit_flush(direct_memory_access_phys: u64) -> u16 {
     direct_memory_access_write::<u16>(OFF_AVAIL + 2, idx.wrapping_add(1));
     virtio_ring_barrier();
 
-    // SAFETY: `svc`. As `submit_blk`: the kernel validates every descriptor against the region.
-    if unsafe { invoke(VIRTIO, abi::virtio::NOTIFY, 0, 0, 0) } < 0 {
+    // As `submit_blk`: the kernel validates every descriptor against the region.
+    if notify(VIRTIO, 0) < 0 {
         panic!();
     }
     used_before
@@ -1197,12 +1190,10 @@ fn submit_flush(direct_memory_access_phys: u64) -> u16 {
 /// [`blk_flush`] for why the difference is deliberate.
 fn complete_flush(used_before: u16) -> bool {
     loop {
-        // SAFETY: `svc`; the kernel validates the capability and the method.
-        unsafe { invoke(IRQ, interrupt::WAIT, 0, 0, 0) };
+        interrupt_wait(IRQ);
         let istatus = mr(INTERRUPT_STATUS);
         mw(INTERRUPT_ACK, istatus);
-        // SAFETY: as above.
-        unsafe { invoke(IRQ, interrupt::ACK, 0, 0, 0) };
+        interrupt_acknowledge(IRQ);
         virtio_ring_barrier();
         if direct_memory_access_read::<u16>(OFF_USED + 2) != used_before {
             break; // our request is on the used ring; this wakeup was really ours
@@ -1260,9 +1251,9 @@ fn submit_blk(direct_memory_access_phys: u64, sector: u64, req_type: u32, count:
     direct_memory_access_write::<u16>(OFF_AVAIL + 2, idx.wrapping_add(1));
     virtio_ring_barrier();
 
-    // SAFETY: `svc`. The kernel validates every descriptor against the 2-page region before ringing;
-    // a refusal here is a block-server bug, so fault rather than limp on.
-    if unsafe { invoke(VIRTIO, abi::virtio::NOTIFY, 0, 0, 0) } < 0 {
+    // The kernel validates every descriptor against the 2-page region before ringing; a refusal
+    // here is a block-server bug, so fault rather than limp on.
+    if notify(VIRTIO, 0) < 0 {
         panic!();
     }
     used_before
