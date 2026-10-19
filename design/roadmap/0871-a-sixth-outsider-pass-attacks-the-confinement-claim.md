@@ -61,9 +61,34 @@ path. It was literally just shipped, but counts." Criterion (c)'s count restarte
 test is green on aarch64, riscv64 and x86_64, and red on all three when connect-by-name is patched
 back.
 
-Not done: the 34-row sweep and the variant work against the fixed escapes. With the count already
+Row 35 of `notes/confinement-claims.md` holds the fetch path's claim: a listed location never
+reaches a private or link-local address, and the address dialed is the one the check passed. Its
+record is replayable: the patch makes the client connect by name again, and it booted red
+on aarch64, riscv64 and x86_64 on 2026-10-19 (UTC). The weekly sweep replays it.
+
+Not done: the table sweep and the variant work against the fixed escapes. With the count already
 at zero, they could no longer make this pass a clean one. See
 `notes/confinement-outsider-pass-6.md` for the escape, the fix and the refusal log.
+
+## What the remaining sweep needs
+
+It is a GLM 5.3 pass under `briefs/confinement-outsider-pass.md`, launched by
+`script/launch-pass` from milestone 920 (an outsider pass is launched pinned and floor-checked).
+To run it:
+
+- A commit: `main` at or after this block's merge, so the table has 35 rows and row 35's test.
+- From calef: a GLM 5.3 API key made for the pass and revoked after, in the launcher's
+  environment, and patagonia's podman machine at 6 CPUs and 8 GiB or more. Nothing else needs him.
+- A lane: it mints the pass's block, claims it, runs
+  `script/launch-pass --reviewer glm --commit <sha>`, reproduces each booted row one ISA at a time,
+  and counts with `script/booted-rows`. Below the floor it runs the one completion round.
+- The floor: 28 of 35 rows. Rows 12 to 18 are exempt, 1 to 3 may carry from pass 7, and 27 to 29
+  and 33 boot on x86_64 only. Rows 34 and 35 are this pass's variant ground. They are rows, so the
+  floor covers them and the prompt names neither.
+
+The eighth pass, milestone 913 (an eighth outsider pass attacks the confinement claim), was by
+GLM 5.3. It graded 25 of the 27 bootable rows of the 34-row table `booted` and did not count. No
+pass has attacked row 35.
 
 ## Done means
 
@@ -76,14 +101,7 @@ at zero, they could no longer make this pass a clean one. See
 
 ## Follow-on
 
-- **Outstanding.** The rest of this pass: the 34-row sweep and the variant work, unrun. A seventh
-  pass starts criterion (c)'s count afresh and would cover the same rows, so this remainder is
-  likely covered by it rather than run on its own; that is the maintainer's call when it is
-  minted.
-- **Milestone 855.** A claims-table row for the package fetch: "A listed location never reaches a
-  private or link-local address" has no row in `notes/confinement-claims.md`. Criterion (b) wants
-  every row replayable, and this test's falsification can only be `attested` until milestone 855
-  (the TLS graph enters the gated build) puts the exerciser in a gate, so the row waits on 855.
+- **Outstanding.** The table sweep and the variant work, unrun, scheduled as above.
 - **Milestone 198.** A human review, or a public bounty once a stranger can install nife, is the
   stronger form and waits on milestone 198 (a package manager, and the trivial install that makes
   a second customer possible).
