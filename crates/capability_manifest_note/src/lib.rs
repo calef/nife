@@ -206,24 +206,9 @@ const fn put8(out: &mut [u8; DESCRIPTOR_LEN], at: usize, v: u64) {
     }
 }
 
-/// **`m` as a version 1 descriptor.**
-///
-/// A `const fn`, so a program's note is computed by the compiler from the same constant its source
-/// declares ([`carry!`]). It panics on the manifests the layout has no spelling for, and in
-/// a constant that panic is a compile error rather than a note nobody can read: a declared second
-/// stream at a slot other than `grant_plan::DIAGNOSTICS_SLOT`, a subtree option that is not one of
-/// the declared letters (or is declared without a directory grant),
-/// `grant_plan::Manifest::reboot` or `grant_plan::Manifest::sync`, and since milestone 809 (the
-/// package client becomes a program) `installer` and `catalog`, for the same reason: no image may
-/// be endowed them, and `jig` is endowed from the table.
-///
-/// **`reboot` and `sync` have no byte on purpose** (milestone 805 (`reboot` at the prompt), DECISIONS §251
-/// (restarting the machine is a kernel object the progenitor hands out)). A note is how installed
-/// bytes ask for authority, and `grant_plan::image_can_carry` refuses both to every image, so a
-/// byte for either would spell a request no reader may grant. Leaving it out keeps the
-/// layout's last zero byte for version 2 and keeps this wire format unamended; the one program that
-/// declares them is endowed from `grant_plan`'s table, which carries no note.
-pub const fn encode(m: &Manifest) -> [u8; DESCRIPTOR_LEN] {
+/// **The grants a note has no spelling for**, refused at compile time in a constant: each is the
+/// owner's console's to grant, or no image's at all, so no installed bytes may ask for it.
+const fn refuse_what_no_note_carries(m: &Manifest) {
     assert!(
         !m.reboot,
         "a manifest note cannot carry `reboot`: no image may be endowed the reboot object"
@@ -252,6 +237,27 @@ pub const fn encode(m: &Manifest) -> [u8; DESCRIPTOR_LEN] {
         !m.console_input,
         "a manifest note cannot carry `console_input`: only the owner's console grants it"
     );
+}
+
+/// **`m` as a version 1 descriptor.**
+///
+/// A `const fn`, so a program's note is computed by the compiler from the same constant its source
+/// declares ([`carry!`]). It panics on the manifests the layout has no spelling for, and in
+/// a constant that panic is a compile error rather than a note nobody can read: a declared second
+/// stream at a slot other than `grant_plan::DIAGNOSTICS_SLOT`, a subtree option that is not one of
+/// the declared letters (or is declared without a directory grant),
+/// `grant_plan::Manifest::reboot` or `grant_plan::Manifest::sync`, and since milestone 809 (the
+/// package client becomes a program) `installer` and `catalog`, for the same reason: no image may
+/// be endowed them, and `jig` is endowed from the table.
+///
+/// **`reboot` and `sync` have no byte on purpose** (milestone 805 (`reboot` at the prompt), DECISIONS §251
+/// (restarting the machine is a kernel object the progenitor hands out)). A note is how installed
+/// bytes ask for authority, and `grant_plan::image_can_carry` refuses both to every image, so a
+/// byte for either would spell a request no reader may grant. Leaving it out keeps the
+/// layout's last zero byte for version 2 and keeps this wire format unamended; the one program that
+/// declares them is endowed from `grant_plan`'s table, which carries no note.
+pub const fn encode(m: &Manifest) -> [u8; DESCRIPTOR_LEN] {
+    refuse_what_no_note_carries(m);
     let mut out = [0u8; DESCRIPTOR_LEN];
     let v = VERSION.to_le_bytes();
     out[0] = v[0];
