@@ -274,7 +274,7 @@ B. How a program names what runs it. Options:
    on the contract, as Fuchsia's API levels do, not a range on the providing package. calef added,
    2026-10-07 (UTC): *"The runner dependencies may need versions too. Something to think about."*
    A script may need Python 3.12 and not 3.8, so this fork covers runner versions as well. Its
-   seven questions are in
+   nine questions are in
    [the versioning proposal](proposals/versions-belong-to-contracts-and-runners.md).
 
 Every fork is ruled except fork 5. Names still provisional: `contracts`, `runners`, `runner`,

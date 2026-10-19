@@ -15,7 +15,7 @@ packages update together. The answer is that it is unbuilt: fork 5 of milestone 
 declares what it needs at run time) is the one fork there still open. calef added on 2026-10-07
 (UTC) that runner versions need covering too: a script may need Python 3.12 and not 3.8.
 
-This file splits fork 5 into seven questions, one decision each. A "no" to any of them leaves fork
+This file splits fork 5 into nine questions, one decision each. A "no" to any of them leaves fork
 5 held, and milestone 809 (the package client becomes a program) goes on installing without a
 version check, as it does today.
 
@@ -168,6 +168,57 @@ interpreter install side by side. A loses because it is the one path that admits
 overlap, and that break is what forces quiescing both ends and swapping both at once. Debian needed
 exactly that relaxation, unpacking a mutually exact-versioned pair together. B makes that case
 unrepresentable instead of handling it.
+
+### 8. How a provider serving two levels knows which one a client speaks
+
+Most changes need no answer. A new level that only adds operations, leaving the old ones unchanged,
+is served by one dispatcher for every level, and an old client never sends the new opcodes. That is
+the rule to write first. The question is a breaking change, where one opcode means two things.
+
+- A, recommended: the progenitor puts the client's level in the badge of the endpoint copy it
+  hands over, read from the client's note. The kernel delivers the badge on every receive (§230
+  (badged endpoint capabilities)), and a badged copy cannot be re-badged, so a client cannot claim
+  another level. Milestone 709 (a graphical terminal session on the no-keyboard arm holds only the
+  raw half of the boot discipline)'s `RAW_ONLY_BADGE` and `spawnproto::INSTALLER_BADGE` already
+  narrow a surface this way.
+- B: one endpoint per level. The provider serves each level on its own endpoint, and the
+  progenitor hands over the matching one. Nothing shares a badge, but a single-threaded server then
+  waits on two endpoints, and a receive here takes one endpoint, with at most a bound notification
+  beside it (`abi::notification::BIND`).
+- C: a breaking change becomes a new contract name. That moves the problem rather than solving it,
+  since a provider serving both names on one endpoint faces the same dispatch.
+
+A costs no kernel change and no opcode. Its costs are in the badge word, which is 64 bits, set
+once, by whoever mints the copy:
+
+- The level shares that word with each contract's own use of it. The progenitor already mints a
+  per-writer badge for `system_log`, and the socket stack marks sockets with bit 63. So the level
+  takes a fixed field, say bits 48 to 55, and every contract's badge constants stay clear of it. A
+  test in one shared crate checks that.
+- A server that reads "non-zero" as meaning something breaks. `line_editor` treats any badge as
+  raw-only, so its rule becomes a test of its own bit before any terminal copy carries a level.
+- A server that mints derived capabilities, as the socket stack does per socket, copies the level
+  field from the badge it was reached through.
+- A client handed an unbadged copy with `GRANT` could mint its own level. The progenitor hands a
+  multi-level contract's copy already badged, which closes that.
+- One `BADGE` call per endowment, which `system_log`'s writers already pay.
+
+### 9. How long a level stays served
+
+Question 7 sets the minimum: one release of overlap. This sets when a floor may rise after that.
+
+- A, recommended: until no package in the distribution needs it. basalt's gate computes that over
+  its own index, and refuses a provider release that raises its floor past a level some package
+  in the index still needs. On a machine, question 5's check refuses an install that would strand a
+  locally installed consumer, so a file installed by path is covered too.
+- B: a number of releases, Fuchsia's phases.
+- C: a period of time.
+
+A is derived from the record, so it cannot be wrong about who still needs a level. B and C
+are guesses that are early for a slow consumer and late for a dead one. Under §297 (software
+reaches nife as a package `jig` installs from basalt), every supported program is in basalt's index,
+so the index is the whole population. An abandoned consumer holds a level until basalt updates
+or drops it, which is an explicit act rather than a calendar.
 
 ## Prior art, and what each gave
 
