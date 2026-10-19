@@ -16,7 +16,7 @@ lands in window 0 too, and window 2 still holds the 0xaa the test filled it with
 Replayed 2026-10-18 (UTC), aarch64: failed at exactly that assertion.
 
 diff --git a/components/src/non_volatile_memory_express.rs b/components/src/non_volatile_memory_express.rs
-index 6c0b5f157..8d742f355 100644
+index d2fc5b86d..078c6bb29 100644
 --- a/components/src/non_volatile_memory_express.rs
 +++ b/components/src/non_volatile_memory_express.rs
 @@ -321,7 +321,7 @@ fn serve(mut plane: Plane) -> ! {
@@ -25,6 +25,6 @@ index 6c0b5f157..8d742f355 100644
          let count = blk::req_blocks(w0).min(TRANSFER_BLOCKS);
 -        let Some(window) = client_window(req.badge) else {
 +        let Some(window) = client_window(req.badge).map(|_| 0) else {
-             reply(reply_cap, filesystem_contract::reply_err(22) as u64, 0); // EINVAL
+             reply(reply_to, filesystem_contract::reply_err(22) as u64, 0); // EINVAL
              continue;
          };
