@@ -16,6 +16,14 @@
 //! the low three bytes its value. Only the cells in use are written: `cols * rows` of the live grid,
 //! then the scrollback's rows oldest first, so a blob is as long as the screen has history.
 //!
+//! # BUGS
+//!
+//! **A blob for a grid of another shape is refused, not reflowed** ([`Refusal::Geometry`]). The
+//! replacement negotiates its geometry with the screen before it absorbs, so a swap that also
+//! changes the screen's size, or a build that changes `MAX_CELLS` or the scrollback budget so the
+//! old shape no longer fits, rolls back and the incumbent serves on. Reading an earlier layout is
+//! kept across builds; reading another geometry is not attempted.
+//!
 //! Name: provisional (the lane for milestone 23, 2026-10-19 UTC), for this module and every item
 //! in it. calef names things.
 
@@ -27,7 +35,11 @@ use crate::vt::MAX_PARAMS;
 ///
 /// Name: provisional, minted 2026-10-19 (UTC) by the lane for milestone 23.
 pub const MAGIC: u32 = 0x4d52_5456;
-/// The one layout this build writes and reads.
+/// The layout this build writes. **A build reads every earlier one too** (calef, 2026-10-19 UTC:
+/// a replacement reads its predecessor's handoff layout). So a change to the layout is a new
+/// number, the reader for the old number stays, and the new layout's blob is added to the fixtures
+/// in `handoff/tests.rs`, whose tests fail on a layout that changed without a bump and on a bump
+/// without a fixture.
 ///
 /// Name: provisional, minted 2026-10-19 (UTC) by the lane for milestone 23.
 pub const LAYOUT: u32 = 1;

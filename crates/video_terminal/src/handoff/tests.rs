@@ -123,3 +123,102 @@ fn the_largest_blob_fits_the_handoff_pages() {
     }
     assert!(HANDOFF_BYTES as u64 <= HANDOFF_PAGES * address_space_map::PAGE);
 }
+
+/// **What every fixture blob was written from**: a 20 by 6 terminal fed these bytes. A scrollback
+/// ring that has wrapped (sixty lines at twenty columns is past its depth), every rendition flag and
+/// both color forms in force on some cell, a wrap pending, and a 24-bit color cut after its `2;`.
+/// Small on purpose, so a fixture is a few kilobytes in the tree.
+const FIXTURE_COLS: u32 = 20;
+const FIXTURE_ROWS: u32 = 6;
+
+fn fixture_terminal() -> Vt {
+    let mut t = Vt::new(FIXTURE_COLS, FIXTURE_ROWS);
+    for i in 0..60 {
+        t.feed(std::format!("\x1b[3{}m{i:02} history\x1b[0m\r\n", i % 8).as_bytes());
+    }
+    t.feed(b"\x1b[1;2;4;7;9m\x1b[38;5;202m\x1b[48;2;1;2;3mall of it\x1b[0m\r\n");
+    t.feed(b"\x1b[33m");
+    t.feed(&[b'w'; FIXTURE_COLS as usize]);
+    t.feed(b"\x1b[38;2;");
+    t
+}
+
+/// **Every handoff layout a build has ever written, as that build wrote it**, oldest first. A
+/// replacement must read its predecessor's blob (calef, 2026-10-19 UTC), so a build that bumps
+/// [`LAYOUT`] keeps the reader for the old one and adds its own blob here:
+/// `cargo test -p video_terminal write_the_fixture_for_this_layout -- --ignored` writes it.
+const FIXTURES: &[(u32, &[u8])] = &[(1, include_bytes!("layout1.blob"))];
+
+/// **This build reads every layout that came before it.** Each fixture is absorbed and must
+/// behave exactly as a terminal fed the fixture's bytes today: every pixel at every scroll depth,
+/// and after the cut sequence is finished. Compared through behavior rather than bytes, so the
+/// test holds across a bump whatever the new layout looks like.
+#[test]
+fn a_replacement_reads_every_earlier_handoff_layout() {
+    for &(layout, blob) in FIXTURES {
+        let mut want = fixture_terminal();
+        let mut got = Vt::new(FIXTURE_COLS, FIXTURE_ROWS);
+        got.absorb_handoff(blob)
+            .unwrap_or_else(|r| panic!("layout {layout}'s fixture was refused: {r:?}"));
+        for depth in 0..=want.scrollback_len() {
+            for t in [&mut want, &mut got] {
+                t.scroll_down(u32::MAX);
+                t.scroll_up(depth);
+            }
+            for y in 0..want.height() {
+                for x in 0..want.width() {
+                    assert_eq!(
+                        got.pixel(x, y),
+                        want.pixel(x, y),
+                        "layout {layout}, history depth {depth}: pixel ({x}, {y})"
+                    );
+                }
+            }
+        }
+        for t in [&mut want, &mut got] {
+            t.feed(b"9;8;7mX\r\nafter");
+        }
+        assert_eq!(
+            got.cell(0, 4),
+            want.cell(0, 4),
+            "layout {layout}: the cut sequence"
+        );
+        assert_eq!(got.cursor(), want.cursor(), "layout {layout}: the cursor");
+    }
+}
+
+/// **The newest fixture is what this build writes**, so the layout cannot change without the
+/// number changing, and the number cannot change without a fixture for it.
+#[test]
+fn the_newest_fixture_is_this_builds_layout_byte_for_byte() {
+    let &(layout, blob) = FIXTURES.last().expect("no fixture");
+    assert_eq!(
+        layout, LAYOUT,
+        "LAYOUT is {LAYOUT} but the newest fixture is layout {layout}: a bump adds its fixture \
+         (run the ignored test write_the_fixture_for_this_layout) and keeps every older one"
+    );
+    let t = fixture_terminal();
+    let mut out = vec![0u8; t.handoff_len()];
+    t.write_handoff(&mut out)
+        .expect("the fixture terminal's blob does not fit");
+    assert!(
+        out == blob,
+        "this build writes layout {LAYOUT} differently from its fixture: a layout that changed \
+         is a new LAYOUT, with the old reader kept"
+    );
+}
+
+/// Writes `layout<N>.blob` beside this file for this build's [`LAYOUT`]. Run once at a bump, then
+/// add the file to [`FIXTURES`]; never rerun it for an existing layout.
+#[test]
+#[ignore = "writes a fixture into the tree; run by hand at a LAYOUT bump"]
+fn write_the_fixture_for_this_layout() {
+    let t = fixture_terminal();
+    let mut out = vec![0u8; t.handoff_len()];
+    t.write_handoff(&mut out).expect("fits");
+    let path = std::format!(
+        "{}/src/handoff/layout{LAYOUT}.blob",
+        env!("CARGO_MANIFEST_DIR")
+    );
+    std::fs::write(&path, &out).expect("could not write the fixture");
+}

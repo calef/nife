@@ -136,6 +136,10 @@ calef ruled four questions on 2026-10-19 (UTC), and `display_terminal` is swappe
 - **A swap carries everything** ("everything"): the whole `Vt`, grid and scrollback, with the
   cursor, the rendition and the parser's state, as a §209 blob (`video_terminal::handoff`). It is
   twelve bytes a cell, so the largest is 132 pages, not the 176 the sixteen-byte cell gave.
+  **A replacement reads its predecessor's layout** (calef, 2026-10-19, "b"): a build that changes
+  the layout bumps `LAYOUT` and keeps the old reader, and `video_terminal`'s host tests absorb a
+  checked-in blob of every earlier layout. A blob for another grid shape is refused, and the swap
+  rolls back; that limit is in `video_terminal::handoff`'s `BUGS`.
 - **The compositor is its own milestone** ("Split"): 932.
 
 Measured on 2026-10-19 (UTC) with `MemoryRegion::USAGE`, debug images: an instance commits 207 to
