@@ -228,11 +228,23 @@ const _: () = assert!(supervisor::BUDGET_PAGES == 112);
 // pool has few pages to spare, so a spawner that passes a swap endpoint pays for exactly what the
 // bounded quiesce builds.
 const _: () = assert!(supervisor::SWAPPING_BUDGET_PAGES == 160);
-// Both lengths come back from the packed start argument, at sizes past a 16-bit half so a shift or
-// mask of the wrong width shows. A build error under any changed operator but one: `|` becoming `^`
-// is the same function for two lengths under 4 GiB, whose bits never overlap.
-const _: () = {
-    let (editor, own) =
-        supervisor::unpack_image_lengths(supervisor::image_lengths(160_872, 155_600));
-    assert!(editor == 160_872 && own == 155_600);
-};
+#[cfg(test)]
+mod tests {
+    use super::supervisor::{image_lengths, unpack_image_lengths};
+
+    /// Both lengths come back from the packed start argument `system_initializer` and the kernel's
+    /// test write and `terminal_supervisor` reads, at sizes past a 16-bit half so a shift or mask
+    /// of the wrong width shows. (`|` becoming `^` is the same function here: the two lengths'
+    /// bits never overlap.)
+    #[test]
+    fn both_image_lengths_survive_the_packed_start_argument() {
+        assert_eq!(
+            unpack_image_lengths(image_lengths(160_872, 155_600)),
+            (160_872, 155_600)
+        );
+        assert_eq!(
+            unpack_image_lengths(image_lengths(160_872, 0)),
+            (160_872, 0)
+        );
+    }
+}
