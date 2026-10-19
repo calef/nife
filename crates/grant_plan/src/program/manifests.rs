@@ -108,6 +108,7 @@ const fn least_authority_demo_manifest() -> Manifest {
         catalog: false,
         indexes: IndexStoreDeclaration::Forbidden,
         activation_directory: false,
+        console_input: false,
         startup: StartupContract::Native,
     }
 }
@@ -141,6 +142,7 @@ const fn memory_grant_depleter_manifest() -> Manifest {
         catalog: false,
         indexes: IndexStoreDeclaration::Forbidden,
         activation_directory: false,
+        console_input: false,
         startup: StartupContract::Native,
     }
 }
@@ -177,6 +179,7 @@ const fn interrupt_heeder_manifest() -> Manifest {
         catalog: false,
         indexes: IndexStoreDeclaration::Forbidden,
         activation_directory: false,
+        console_input: false,
         startup: StartupContract::Native,
     }
 }
@@ -206,6 +209,7 @@ const fn interrupt_ignorer_manifest() -> Manifest {
         catalog: false,
         indexes: IndexStoreDeclaration::Forbidden,
         activation_directory: false,
+        console_input: false,
         startup: StartupContract::Native,
     }
 }
@@ -264,6 +268,7 @@ const fn date_manifest() -> Manifest {
         catalog: false,
         indexes: IndexStoreDeclaration::Forbidden,
         activation_directory: false,
+        console_input: false,
         startup: StartupContract::Native,
     }
 }
@@ -307,6 +312,7 @@ const fn rm_manifest() -> Manifest {
         catalog: false,
         indexes: IndexStoreDeclaration::Forbidden,
         activation_directory: false,
+        console_input: false,
         startup: StartupContract::Native,
     }
 }
@@ -345,6 +351,7 @@ const fn wc_manifest() -> Manifest {
         catalog: false,
         indexes: IndexStoreDeclaration::Forbidden,
         activation_directory: false,
+        console_input: false,
         startup: StartupContract::Native,
     }
 }
@@ -384,6 +391,7 @@ const fn mdr_manifest() -> Manifest {
         catalog: false,
         indexes: IndexStoreDeclaration::Forbidden,
         activation_directory: false,
+        console_input: false,
         startup: StartupContract::Native,
     }
 }
@@ -426,6 +434,7 @@ const fn ps_manifest() -> Manifest {
         catalog: false,
         indexes: IndexStoreDeclaration::Forbidden,
         activation_directory: false,
+        console_input: false,
         startup: StartupContract::Native,
     }
 }
@@ -471,6 +480,7 @@ const fn pgrep_manifest() -> Manifest {
         catalog: false,
         indexes: IndexStoreDeclaration::Forbidden,
         activation_directory: false,
+        console_input: false,
         startup: StartupContract::Native,
     }
 }
@@ -510,6 +520,7 @@ const fn top_manifest() -> Manifest {
         catalog: false,
         indexes: IndexStoreDeclaration::Forbidden,
         activation_directory: false,
+        console_input: false,
         startup: StartupContract::Native,
     }
 }
@@ -542,6 +553,7 @@ const fn printenv_manifest() -> Manifest {
         catalog: false,
         indexes: IndexStoreDeclaration::Forbidden,
         activation_directory: false,
+        console_input: false,
         startup: StartupContract::Native,
     }
 }
@@ -577,6 +589,7 @@ const fn uptime_manifest() -> Manifest {
         catalog: false,
         indexes: IndexStoreDeclaration::Forbidden,
         activation_directory: false,
+        console_input: false,
         startup: StartupContract::Native,
     }
 }
@@ -612,6 +625,7 @@ const fn network_echo_client_manifest() -> Manifest {
         catalog: false,
         indexes: IndexStoreDeclaration::Forbidden,
         activation_directory: false,
+        console_input: false,
         startup: StartupContract::Native,
     }
 }
@@ -643,6 +657,7 @@ const fn unreachable_network_witness_manifest() -> Manifest {
         catalog: false,
         indexes: IndexStoreDeclaration::Forbidden,
         activation_directory: false,
+        console_input: false,
         startup: StartupContract::Native,
     }
 }
@@ -686,6 +701,7 @@ const fn uuid_manifest() -> Manifest {
         catalog: false,
         indexes: IndexStoreDeclaration::Forbidden,
         activation_directory: false,
+        console_input: false,
         startup: StartupContract::Native,
     }
 }
@@ -720,6 +736,7 @@ const fn free_manifest() -> Manifest {
         catalog: false,
         indexes: IndexStoreDeclaration::Forbidden,
         activation_directory: false,
+        console_input: false,
         startup: StartupContract::Native,
     }
 }
@@ -753,6 +770,7 @@ const fn vmstat_manifest() -> Manifest {
         catalog: false,
         indexes: IndexStoreDeclaration::Forbidden,
         activation_directory: false,
+        console_input: false,
         startup: StartupContract::Native,
     }
 }
@@ -785,6 +803,7 @@ const fn slabtop_manifest() -> Manifest {
         catalog: false,
         indexes: IndexStoreDeclaration::Forbidden,
         activation_directory: false,
+        console_input: false,
         startup: StartupContract::Native,
     }
 }
@@ -820,6 +839,7 @@ const fn graphical_terminal_manifest() -> Manifest {
         catalog: false,
         indexes: IndexStoreDeclaration::Forbidden,
         activation_directory: false,
+        console_input: false,
         startup: StartupContract::Native,
     }
 }
@@ -858,6 +878,7 @@ const fn reboot_manifest() -> Manifest {
         catalog: false,
         indexes: IndexStoreDeclaration::Forbidden,
         activation_directory: false,
+        console_input: false,
         startup: StartupContract::Native,
     }
 }
@@ -897,6 +918,7 @@ const fn std_exerciser_manifest() -> Manifest {
         catalog: false,
         indexes: IndexStoreDeclaration::Forbidden,
         activation_directory: false,
+        console_input: false,
         startup: StartupContract::Std,
     }
 }
@@ -937,6 +959,9 @@ const fn jig_manifest() -> Manifest {
         indexes: IndexStoreDeclaration::ReadWrite,
         // What is installed, read beside the index copy beneath it: `list -u` (milestone 809).
         activation_directory: true,
+        // The owner's yes at `install` (milestone 892 (a std program at the prompt holds the
+        // network and a resolver)), read from the console while the line runs.
+        console_input: true,
         startup: StartupContract::Std,
     }
 }

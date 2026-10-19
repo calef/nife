@@ -120,6 +120,7 @@ Per fork 1, needs live only in program manifests and the build derives the rest.
    (`check_declared_programs`, `xtask/src/archive.rs:265`). It emits each package's derived needs,
    and `packages.py` applies the kind rules `depends` already has (fork 3).
 4. Install: the derived needs go into the package metadata and the index, per fork 1.
+5. Versions: levels, the gates and the badge field, as the versioning appendix lists.
 
 `depends` stays link-only. Counted cost: nine fields to map, a `provides` table in about six
 packages, one function in `grant_plan`, one emitter in `xtask`, one rule in `packages.py`. B loses on
@@ -270,12 +271,13 @@ B. How a program names what runs it. Options:
    only baking it into the base image is excluded. It depends on milestone 809 for that. Milestone 810 (ripgrep is packaged in basalt) holds the
    work; milestone 121 (`ripgrep` on nife) depends on it only for `rg` at the prompt. The earlier
    draft's `[[foreign]]` key is withdrawn.
-5. Versioning. Held for milestone 809 (the package client becomes a program): a later version goes
-   on the contract, as Fuchsia's API levels do, not a range on the providing package. calef added,
-   2026-10-07 (UTC): *"The runner dependencies may need versions too. Something to think about."*
-   A script may need Python 3.12 and not 3.8, so this fork covers runner versions as well.
+5. Versioning, runner versions included. Ruled by calef, 2026-10-19 (UTC), nine rules as
+   [the versioning appendix](0849-a-package-declares-what-it-needs-at-run-time/versioning.md)
+   states them. A contract carries a level. A provider declares the levels it serves, and a
+   consumer the one the build stamped. A runner keeps its upstream version, and a script states a
+   range. The progenitor checks every generation it commits and every spawn.
 
-Every fork is ruled except fork 5. Names still provisional: `contracts`, `runners`, `runner`,
+Every fork is ruled. Names still provisional: `level`, `contracts`, `runners`, `runner`,
 `Manifest::contracts`, the manifest field `log` and contract identifiers.
 
 ## BUGS
@@ -297,4 +299,4 @@ Every fork is ruled except fork 5. Names still provisional: `contracts`, `runner
 
 ## Index row
 
-A program's manifest declares what it needs at run time, a package declares what it provides, and a gate proves a route from each need to a provider. Every fork is ruled except runner versioning.
+A program's manifest declares what it needs at run time, a package declares what it provides, and a gate proves a route from each need to a provider. Every fork is ruled, versioning included.

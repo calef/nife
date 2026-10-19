@@ -587,7 +587,11 @@ fn transcript_failures(leg: &Leg, console: &Console, failed: &mut Vec<String>) -
     if failed.is_empty() {
         failed.extend(answer_failures(leg.script, &transcript, &|l| leg.skips(l)));
     }
-    if failed.is_empty() && leg.programs.rg_built && !leg.skips(RG_WALK_LINE) {
+    if failed.is_empty()
+        && leg.script.iter().any(|l| l.typed == RG_WALK_LINE)
+        && leg.programs.rg_built
+        && !leg.skips(RG_WALK_LINE)
+    {
         failed.extend(rg_walk_failure(arch, &transcript));
     }
     failed.extend(kernel_fault_failure(&transcript));
@@ -683,7 +687,9 @@ impl OptionalPrograms {
                 // not built the exerciser ("no such name in this directory").
                 || line == "wc < args.txt"
                 || line.contains(crate::disk::INSTALLED_STD_ECHO)
-                || line.contains(crate::disk::INSTALLED_STD_GREP))
+                || line.contains(crate::disk::INSTALLED_STD_GREP)
+                // `reach`'s package is built from the same workspace (milestone 892).
+                || crate::swish_check::script::REACH_LINES.contains(&line))
                 && !self.std_built)
     }
 }
@@ -1080,6 +1086,7 @@ fn type_script<'s>(
     for &Line {
         typed: line,
         echoed,
+        asks,
         ..
     } in leg.script
     {
@@ -1111,7 +1118,7 @@ fn type_script<'s>(
             took.push((prev, typed.elapsed()));
         }
         previous = Some((line, Instant::now()));
-        if let Err(why) = type_one_line(line, echoed, line_secs, console, stdin) {
+        if let Err(why) = type_one_line((line, echoed, asks), line_secs, console, stdin) {
             failed.push(why);
             break;
         }
@@ -1132,8 +1139,7 @@ fn type_script<'s>(
 /// under a line [`SWISH_CHECK_INTERRUPTED`] names once it says it is running. `Err` says which
 /// step failed.
 fn type_one_line(
-    line: &str,
-    echoed: &str,
+    (line, echoed, asks): (&str, &str, Option<(&str, &str)>),
     line_secs: u64,
     console: &Console,
     stdin: &mut std::process::ChildStdin,
@@ -1175,6 +1181,16 @@ fn type_one_line(
     };
     if !console.wait_after(at, &format!("{echoed}\n"), echo_bound) {
         return Err(format!("the prompt never echoed `{echoed}` for {line:?}"));
+    }
+    // **A question, answered once it is asked** (milestone 892): the reply goes to the running
+    // program, whose read the terminal's line discipline answers with what was typed.
+    if let Some((cue, reply)) = asks {
+        if !console.wait_after(at, cue, line_secs) {
+            return Err(format!("`{line}` never asked {cue:?}"));
+        }
+        if writeln!(stdin, "{reply}").is_err() || stdin.flush().is_err() {
+            return Err(format!("could not answer {cue:?} under `{line}`"));
+        }
     }
     if SWISH_CHECK_INTERRUPTED.contains(&line) {
         if !console.wait_after(at, SWISH_CHECK_RUNNING, line_secs) {
@@ -1314,6 +1330,7 @@ fn one_answer_failures(l: &Line, answer: &str, before_next: &str) -> Vec<String>
         echoed: line,
         jobs,
         answer: want,
+        ..
     } = *l;
     let mut failed = Vec::new();
     // **A line abandoned with `^C` ran nothing** (DECISIONS §227 option D): the
@@ -1369,7 +1386,13 @@ fn one_answer_failures(l: &Line, answer: &str, before_next: &str) -> Vec<String>
 /// enumeration as a capability, and what the walk costs)), which no list of
 /// wanted phrases can say: a phrase list passes an answer that dropped a directory.
 fn rg_walk_failure(arch: &str, transcript: &str) -> Option<String> {
-    let (answer, _) = swish_check_answer(transcript, 0, RG_WALK_LINE)?;
+    // Only a boot whose script types the walk asks, so an answer that cannot be found is a failure:
+    // passing it would let the one check no phrase list can make go quiet.
+    let Some((answer, _)) = swish_check_answer(transcript, 0, RG_WALK_LINE) else {
+        return Some(format!(
+            "`{RG_WALK_LINE}` was typed and its answer is not in the transcript"
+        ));
+    };
     let expected = crate::disk::ripgrep_walk_expected();
     match std::fs::read_to_string(&expected)
         .map_err(|e| format!("{}: {e}", expected.display()))

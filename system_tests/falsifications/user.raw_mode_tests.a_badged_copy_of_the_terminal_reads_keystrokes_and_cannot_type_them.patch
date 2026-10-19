@@ -6,8 +6,8 @@ built for every ISA from one source).
 The defect this restores is the one milestone 709 closes: the boot line discipline served every
 request the same whatever the badge on the capability that sent it, so a `graphical_terminal`
 session holding a copy of its endpoint could `OPERATION_BYTES` a command line into the queue the boot shell
-reads with `OPERATION_READLINE`. The patch removes the badge guard ahead of `term.serve(w0, w1, slot)` and the
-`badge` binding it reads (so the build stays warning-free).
+reads with `OPERATION_READLINE`. The patch lets the raw-only badge through the serve loop's
+allowlist whole (`proto::RAW_ONLY_BADGE => true`), which is that guard removed for this badge.
 
 Expected to fail: `assert_eq!(r[0], BAD_REQUEST, "a badged holder's OPERATION_BYTES was served (r0 = 0):
 it can type a line the boot shell reads")`, the first assertion in the test. Under the patch the
@@ -26,35 +26,14 @@ lines removed. Replayed red on aarch64 the same day, at the same first assertion
 diff --git a/components/src/line_editor.rs b/components/src/line_editor.rs
 --- a/components/src/line_editor.rs
 +++ b/components/src/line_editor.rs
-@@ -175,7 +175,7 @@
- 
-     loop {
-         let req = receive_request(TERM);
--        let (w0, w1, badge) = (req.w0, req.w1, req.badge);
-+        let (w0, w1) = (req.w0, req.w1);
-         let Some(slot) = req.delivered.into_reply() else {
-             // A plain SEND or a SEND_CAP slipped in; the contract says CALL. With no Reply there is
-             // nobody to answer, so the only honest move is to drop it, and a delegated capability
-@@ -183,22 +183,6 @@
-             // delegation)).
-             continue;
+@@ -195,9 +195,7 @@
+         let op = proto::operation(w0);
+         let allowed = match badge {
+             0 => op != proto::OPERATION_READ_LINE_BYTES,
+-            proto::RAW_ONLY_BADGE => {
+-                matches!(op, proto::OPERATION_RAWMODE | proto::OPERATION_READRAW)
+-            }
++            proto::RAW_ONLY_BADGE => true,
+             proto::STDIN_BADGE => op == proto::OPERATION_READ_LINE_BYTES,
+             _ => false,
          };
--        // **A badged copy of this endpoint is the raw half and nothing else** (milestone 709 (a
--        // graphical terminal session on the no-keyboard arm holds only the raw half of the boot
--        // discipline), `proto::RAW_ONLY_BADGE`). Every holder the boot wires is unbadged and is
--        // served below exactly as before; a badged holder (a `graphical_terminal` session reading
--        // keystrokes over the UART) may switch raw mode and read raw bytes, and nothing it sends
--        // can reach the queue the shell reads its next command from. An allowlist, so a request
--        // added to the contract later is refused here until somebody decides a reader may send it.
--        if badge != 0
--            && !matches!(
--                proto::operation(w0),
--                proto::OPERATION_RAWMODE | proto::OPERATION_READRAW
--            )
--        {
--            reply(slot, proto::BAD_REQUEST, 0);
--            continue;
--        }
-         term.serve(w0, w1, slot);
-     }
- }

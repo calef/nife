@@ -399,6 +399,25 @@ fn plan_image(nav: &mut Nav, spec: ParsedInvocation) -> Option<PlannedImage> {
         ));
         return None;
     }
+    // **A note that asks for the network is judged on the vouch before anything is sent** (milestone
+    // 892): vouched bytes with no `grant` line for it are refused it, which the progenitor would
+    // answer only as `SPAWN_REFUSED_BY_MANIFEST`, so the shell hashes the file as `caps` does and
+    // says which grant is missing. Only such notes pay for the hash; the progenitor still judges its own copy.
+    if m.network {
+        let vouch = super::capabilities::file_digest(t, handle, size)
+            .and_then(|d| super::capabilities::live_generation_listing(nav, &d))
+            .map_or(grant_plan::Vouch::Unvouched, |v| {
+                grant_plan::Vouch::Vouched {
+                    network: v.network_granted,
+                }
+            });
+        if let Err(r) = grant_plan::image_manifest(declared, vouch) {
+            nav.close(handle);
+            refused();
+            print(swish::image_refusal_sentence(r));
+            return None;
+        }
+    }
     // **Expanded, or designated, once the note says which** (milestone 205): bytes that hear words
     // have their words designated rather than their patterns expanded, and only the note says
     // whether these do.
@@ -1377,6 +1396,18 @@ pub(super) fn run(nav: &mut Nav, cmd: &[u8], spec: ParsedInvocation) {
             // DECISIONS §170 (how a foreign program is told what to do)). Assembled here, where a refusal can still name the program, and
             // before anything is sent, so a line that does not fit spawns nothing.
             _ if endow.program.manifest().program_argument.hears_words() => {
+                // **A job that reads the console needs the line discipline** (milestone 892 (a std
+                // program at the prompt holds the network and a resolver)): the terminal answers its
+                // stdin read only in cooked mode, so the shell leaves raw mode first, as it does for a
+                // supervised job, and the next prompt's editor takes it back.
+                let mut verb = [0u8; grant_plan::MAX_VERB];
+                let verb = grant_plan::verb_of(spec.line(), &mut verb);
+                let program = endow.program;
+                if grant_plan::narrow_by_verb(&program.manifest(), program.verbs(), verb)
+                    .console_input
+                {
+                    super::prompt::leave_raw();
+                }
                 match assemble_argv(spec.line(), 0) {
                     Ok(a) => spawn(endow, Some(a)),
                     Err(Some(r)) => refuse(spec, r),

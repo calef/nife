@@ -252,6 +252,27 @@ pub(in crate::swish_check) const SWISH_CHECK_AFTER_REBOOT: &[Line] = &[
         &["alto: one of two programs in the package duet"],
     ),
     line(1, "jig remove solo", &["removed; generation 10 is live"]),
+    // **Installing asks the owner, and a no installs nothing** (milestone 892 (a std program at
+    // the prompt holds the network and a resolver); calef's rulings on #2405). `dialer`'s note
+    // asks for the network, `nife.test` and the root zone; `jig install` lists them, the root zone
+    // apart, and asks once. The gate answers `n`, so no generation is written and the bare word
+    // reaches nothing.
+    line(0, "cd downloads", &[]),
+    asked(
+        1,
+        "jig install ./dialer.nifepkg",
+        (OWNERS_QUESTION, "n"),
+        &[
+            "dialer asks for:",
+            "reaches the network (connects out)",
+            "looks up names in nife.test",
+            "LOOKS UP ANY NAME AT ALL (the root zone)",
+            "grant these and install? [y/N] n\n",
+            "not installed; nothing was granted",
+        ],
+    ),
+    line(0, "cd /", &[]),
+    line(0, "dialer", &["no such program"]),
     // **`ripgrep`, built and published by basalt** (milestone 810 (`ripgrep` is packaged in
     // basalt and installed with `jig`)): the package basalt published, fetched by its pinned
     // digest (`cargo xtask basalt-fetch`), or the repository basalt's own gate just built
@@ -268,6 +289,28 @@ pub(in crate::swish_check) const SWISH_CHECK_AFTER_REBOOT: &[Line] = &[
         ],
     ),
     line(1, "rg --version", &["ripgrep "]),
+    // **`rg pattern dir` at the prompt, `rg` as `jig` installed it** (milestone 121 (`ripgrep`:
+    // enumeration as a capability), exit 4, calef's 2026-10-07 ruling on #1797's fork 4).
+    // `/search/crates` is a copy of this repository's `crates/` (`crate::disk::RIPGREP_CORPUS`),
+    // hundreds of files in nested directories, which the first boot wrote and this boot inherits
+    // with the disk. `caps` shows the whole grant before anything runs: the one directory the word
+    // named, read-only, which is `ENUMERATE | READ | DESCEND` and nothing else. No flag narrows the
+    // walk: `rg` lists every directory it meets, opens every file, skips the binary ones itself, and
+    // prints every matching line. The answer is wanted whole, so the line lists nothing here and
+    // `rg_walk_verdict` compares it line for line with what the host's `rg` printed over the same
+    // copy.
+    line(0, RG_WALK_CD, &[]),
+    line(
+        0,
+        RG_WALK_PREVIEW,
+        &[
+            "endpoint  dir",
+            "(only crates in it, named on the line)",
+            "...read-only, and everything under what was named",
+        ],
+    ),
+    line(1, RG_WALK_LINE, &[]),
+    line(0, "cd /", &[]),
     // **`ioping`, basalt's first C package** (milestone 906 (ioping is packaged in basalt, and its
     // test installs it with `jig`)), on `ripgrep`'s terms: compiled by basalt against the C library
     // at the nife commit basalt pins. Installed, it times five 4 KiB reads of a file its word
@@ -398,8 +441,46 @@ pub(in crate::swish_check) const SWISH_CHECK_AFTER_REBOOT: &[Line] = &[
             "refused: the image carries the program least_authority_demo; a new base updates it, not \
              install; generation 15 is live",
         ],
+    ), // **A yes grants exactly what was asked, and the program holds it** (milestone 892). `reach`
+    // is a `std` program whose note asks for the network and `nife.test`. The gate answers `y`, so
+    // the generation records a `grant` line for each, and run at the prompt it connects to the
+    // runner's echo peer and holds a resolver badge for its zone: a name outside it is the
+    // resolver's own refusal, which needs no name server the runner cannot provide. Last in the
+    // script, and with no generation numbers, because it is skipped where `std_exerciser` was not
+    // built ([`REACH_LINES`]).
+    line(0, "cd downloads", &[]),
+    asked(
+        1,
+        "jig install ./reach.nifepkg",
+        (OWNERS_QUESTION, "y"),
+        &[
+            "reach asks for:",
+            "reaches the network (connects out)",
+            "looks up names in nife.test",
+            "grant these and install? [y/N] y\n",
+            "installed; generation",
+        ],
     ),
+    line(0, "cd /", &[]),
+    line(
+        1,
+        "reach",
+        &[
+            "reach: echo ok",
+            "reach: lookup example.com: PermissionDenied",
+        ],
+    ),
+    line(1, "jig remove reach", &["removed; generation"]),
+    line(0, "reach", &["no such program"]),
 ];
+
+/// What `jig install` asks before it installs a package that asks for grants (milestone 892).
+const OWNERS_QUESTION: &str = "grant these and install? [y/N]";
+
+/// The lines that install and run `reach`, skipped where `std_exerciser` was not built, since its
+/// package is built from that workspace (`package::Source::StdProgram`).
+pub(in crate::swish_check) const REACH_LINES: &[&str] =
+    &["jig install ./reach.nifepkg", "reach", "jig remove reach"];
 
 /// The run `jig install hackbench` is followed by (milestone 907): `c_thread_tests`' pipe run,
 /// with one group of two and ten messages a sender.
@@ -423,6 +504,9 @@ pub(in crate::swish_check) const ON_THE_DISK_TREE: &[&str] =
 pub(in crate::swish_check) const FROM_BASALT: &[&str] = &[
     "jig install ripgrep",
     "rg --version",
+    RG_WALK_CD,
+    RG_WALK_PREVIEW,
+    RG_WALK_LINE,
     "jig install ioping",
     "ioping -v",
     IOPING_LINE,
