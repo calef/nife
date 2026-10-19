@@ -7,8 +7,8 @@
 name = "display"
 kind = "optional"
 home = { repo = "display", status = "provisional" }
-interfaces = ["compositor"]
-crates = ["video_terminal", "usb", "extensible_host_controller_interface"]
+interfaces = ["compositor", "video_terminal"]
+crates = ["usb", "extensible_host_controller_interface"]
 programs = [
     "compositor",
     "gpu_driver",

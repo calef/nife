@@ -1,25 +1,26 @@
 # Swapping the interactive stack
 
 *Which of the interactive stack's three components can be swapped live, for milestone 23 (a
-capability-routed component OS with live replacement). `line_editor` is swapped live by
-`terminal_supervisor`. `display_terminal` and `compositor` are not, and each is a different
-problem.*
+capability-routed component OS with live replacement). `line_editor` and `display_terminal` are
+swapped live by `terminal_supervisor`. The compositor is not, because no boot runs it: milestone
+932 (swap the compositor live).*
 
 ## What the tree says, checked
 
 | component | who builds it on a real boot | who could swap it | state it holds |
 |---|---|---|---|
 | `line_editor` | `system_initializer`, out of its own budget (`crates/system_initializer/src/lib.rs`, item 3) | `system_initializer`: it holds every object it routed | the edit line, the kill buffer, eight lines of history, up to four queued lines, raw or cooked mode, the interrupt count: under 4 KiB, measured (see BUGS) |
-| `display_terminal` | `system_initializer`, at a `graphical_terminal` launch (`build_graphical_terminal_session`; no boot builds it, per milestone 632 (graphics on demand)) | nobody: no userspace process holds its endowment or its supervision endpoint | the character grid and scrollback, several hundred KiB (`video_terminal::Vt`) |
+| `display_terminal` | `system_initializer`, at a `graphical_terminal` launch (`build_graphical_terminal_session`; no boot builds it, per milestone 632 (graphics on demand)); `terminal_supervisor`, when a spawner hands it the image | `terminal_supervisor`, when it built it: only the kernel's test does that today | the character grid and scrollback, the cursor, the rendition and the parser's state (`video_terminal::Vt`), up to 132 pages as a blob |
 | `compositor` | no boot builds it. Only the tests of milestone 33 (a compositor: one screen, mutually distrusting clients) spawn it (`kernel/src/user/compositor_service.rs`, `#[cfg_attr(not(test), ...)]`); the graphical stack (option A of milestone 177 (wire the graphical terminal stack into the real interactive boot), built at a `graphical_terminal` launch) has "no compositor in this path" | nobody outside a test | nothing it could not rebuild: each client's surface is a frame the client owns |
 
 All three run under the kernel test harness. Outside it, two are built and only `line_editor` has
 a supervisor that could swap it.
 
-`display_terminal` and `compositor` have no `component_plan` declaration: their endowments are
-literals in their builders, the defect milestone 23's manifest work removed from `swapper` and
-nowhere else. A declaration for either is written against the ELF-note manifest of milestone 597
-(a program carries its manifest in an ELF note).
+`display_terminal` and `compositor` have no `component_plan` declaration. `display_terminal`'s
+slots are one list every builder reads (`video_terminal::component`), because two of them are a
+map budget and frame runs, which `component_plan::Direction` has no word for. A declaration for
+either is written against the ELF-note manifest of milestone 597 (a program carries its manifest
+in an ELF note).
 
 ## line_editor: swapped live
 
@@ -69,21 +70,31 @@ What is built:
 What is left is the trigger. [§308 (the installer asks the terminal to swap)](../design/decisions/0308-the-installer-asks-the-terminal-to-swap.md)
 rules it, and `design/roadmap/0694-the-installer-asks-the-terminal-to-swap.md` builds it.
 
-## display_terminal: a budget, a handoff and a holder
+## display_terminal: swapped live through the swap reserve
 
-`system_initializer` builds `display_terminal` (milestone 600 (the graphical terminal stack is built
-in userspace)), so a supervisor could hold it, and it already serves `line_editor::proto`, so its
-quiesce needs no new opcode. Three things are left, and each is an architect's:
+calef ruled its three questions on 2026-10-19 (UTC), and milestone 23's block records the rulings.
+How it works:
 
-- One instance is 177 pages of `.bss`, a swap holds two, and a `graphical_terminal` session has 144
-  pages of its job pool to spare.
-- Its state is far past a page. A replacement that starts with an empty grid over a surface that
-  still shows the old text would look right until the first scroll. Carrying the visible grid is
-  72 pages; the scrollback too, 176. Which to carry is a taste call.
-- Something has to hold it: `terminal_supervisor` beside `line_editor`, or a second supervisor.
+- **The holder is its spawner.** `terminal_supervisor`, in display mode and handed
+  `display_terminal`'s image, builds it before `line_editor` and holds it beside it. `SWAP`'s second
+  word is `CHILD_LINE_EDITOR` or `CHILD_DISPLAY_TERMINAL`. Each child has its own fault endpoint,
+  so a death collected is always the child's it was waited for.
+- **The pages come from the swap reserve.** The supervisor's budget holds one `display_terminal`
+  bay, not two. A swap is lent the machine's reserve (`supervisor::SWAP_RESERVE_PAGES`) with
+  `LEND` first; without it the answer is `NEEDS_RESERVE`. The supervisor retypes the handoff run
+  at the reserve's base, builds the replacement in the rest, and swaps into it. A swap is
+  then two moves: into the reserve, and home to the bay with the same image, which reads its own
+  blob. The supervisor deletes every capability it made from the reserve before it answers, and
+  the lender's `DESTROY` revokes the run's mappings. A second swap while the reserve is lent finds
+  nothing to split.
+- **The handoff is everything.** `video_terminal::handoff` writes the live grid, the scrollback
+  oldest first, the cursor, the rendition and the parser's state, three little-endian words a
+  cell. Because the run exists only during a swap, it is sent rather than mapped at build:
+  `CTL_HANDOFF`, a `SEND_CAP` on the control endpoint, answered `NOTE_WRITTEN` once the blob is in
+  it. A replacement started `START_ABSORB` takes the same message before it paints, so its first
+  picture is the incumbent's screen rendered from the absorbed state.
 
-`design/roadmap/proposals/swap-the-display-terminal-live.md` has the options, their costs and a
-recommendation for each.
+`system_tests::user::terminal_display_swap_tests` is the proof, on all three architectures.
 
 ## compositor: not before it has a boot path
 
@@ -98,7 +109,7 @@ the harness.
   supervisor rather than `system_initializer`, as ruled.
 - Milestone 600 (the graphical terminal stack is built in userspace) is built, so
   `system_initializer` builds `display_terminal`.
-- The compositor gets no milestone until it has a boot path; that is recorded in the block.
+- Milestone 932 (swap the compositor live) waits for a boot that runs the compositor.
 
 ## BUGS
 
@@ -107,7 +118,18 @@ the harness.
 - Nothing on a real boot asks it to swap. `system_initializer` passes no swap endpoint, so the
   supervisor builds the terminal and waits; only the kernel's test swaps. Milestone 694 (the
   installer asks the terminal to swap) builds the trigger, and §308's frame run, sent with `SWAP`,
-  is how a new image arrives. Until then a replacement is the same image.
+  is how a new image arrives. Until then a replacement is the same image, and the swap reserve is
+  held by the kernel's test.
+- A `graphical_terminal` session builds its own `display_terminal` and hands the supervisor its
+  endpoint, so a session's `display_terminal` is not supervised. Holding it would cost the session
+  the image's 220 pages and buy nothing until a boot can ask for a swap.
+- `OPERATION_QUIESCE` is served to any holder of the endpoint, `display_terminal`'s as
+  `line_editor`'s. An application that sends it freezes its own terminal until the supervisor's
+  next word, which never comes outside a swap.
+- A `display_terminal` replacement that refuses its own blob on the move home leaves the terminal
+  serving from the reserve, answered `IN_RESERVE`. The reserve stays lent until a later `SWAP`
+  finishes the move. Same-image refusal is what the host round trip in `video_terminal::handoff`
+  is there to rule out.
 - A hung `line_editor`'s state is lost, and its callers are told `Gone`. Only the incumbent can
   write the blob, so the half-typed line, the history and any queued lines are gone. `swish` and
   `rmle` handle `FLAG_RETRY` but not `Gone`, and the terminal contract does not say which of its
@@ -130,7 +152,9 @@ full ring of near-maximal history lines serializes to under 2 KiB, and with four
 whole blob is under 4 KiB, so it fits the one page it declares. `MemoryRegion::RETYPE` takes a page
 count anyway, DECISIONS §233 (`MemoryRegion::RETYPE` takes a page count), because `redoxfs_server`
 will not fit a page and `swapper`'s fixture uses two.
-`display_terminal`'s size is still read from `video_terminal::Vt`'s own doc comment.
+`display_terminal`'s instance was measured with `MemoryRegion::USAGE` on 2026-10-19 (UTC): 207 to
+212 pages committed, most of it the 177 pages of grid, which are in `.data` because a blank cell
+is not zero bytes.
 
 ## See also
 
