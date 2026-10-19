@@ -131,3 +131,7 @@ pub(crate) fn put_word(out: &mut [u8], i: usize, w: u32) {
 
 #[cfg(test)]
 mod tests;
+
+// Written out for `component`'s reason: 33 header words and three a cell over 44,832 cells.
+const _: () = assert!(HANDOFF_BYTES == 538_116);
+const _: () = assert!(HANDOFF_PAGES == 132);

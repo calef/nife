@@ -103,3 +103,10 @@ pub const SWAP_PAGES: u64 = BAY_PAGES + crate::handoff::HANDOFF_PAGES;
 ///
 /// Name: provisional, minted 2026-10-19 (UTC) by the lane for milestone 23.
 pub const SUPERVISOR_PAGES: u64 = BAY_PAGES + 4 + 4;
+
+// The sizes written out, so a changed operator in a sum is a build error rather than a reserve
+// that quietly no longer fits (`line_editor::component`'s precedent; the mutation gate's
+// survivors on these lines, 2026-10-19).
+const _: () = assert!(BAY_PAGES == 264);
+const _: () = assert!(SWAP_PAGES == 396);
+const _: () = assert!(SUPERVISOR_PAGES == 272);

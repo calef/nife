@@ -4,6 +4,7 @@
 use super::*;
 use crate::Vt;
 use crate::geometry::{MAX_ROWS, SCROLLBACK_ROWS};
+use crate::vt::MAX_PARAMS;
 extern crate std;
 use std::vec;
 
@@ -221,4 +222,103 @@ fn write_the_fixture_for_this_layout() {
         env!("CARGO_MANIFEST_DIR")
     );
     std::fs::write(&path, &out).expect("could not write the fixture");
+}
+
+/// **Every parser state, and every bound at its edge, survives a swap.** Each cut leaves the
+/// terminal somewhere the fixture does not: at an escape, inside a title string and at its
+/// terminator, inside a parameter list long enough to be ignored and one exactly full, three bytes
+/// short of a four-byte character, with the cursor hidden and no wrap pending, and scrolled all
+/// the way back. The rest of the sequence is fed to both, and what follows must match.
+#[test]
+fn every_parser_state_and_every_edge_carries_across() {
+    let full = std::format!("\x1b[31{}", ";0".repeat(15));
+    // Seventeen 31s: one more than fits, so the whole list is ignored, and red if it were not.
+    let over = std::format!("\x1b[31{}", ";31".repeat(16));
+    let cases: [(&[u8], &[u8]); 8] = [
+        (b"\x1b", b"[32mG"),
+        (b"\x1b]title", b"\x07T"),
+        (b"\x1b]title\x1b", b"\\T"),
+        (full.as_bytes(), b"mR"),
+        (over.as_bytes(), b"mN"),
+        (b"\xf0", b"\x9f\x98\x80U"),
+        (b"", b"H"),
+        (b"", b"Z"),
+    ];
+    for (k, (cut, rest)) in cases.iter().enumerate() {
+        let mut old = Vt::new(12, 4);
+        for i in 0..30 {
+            old.feed(std::format!("{i}\r\n").as_bytes());
+        }
+        old.feed(cut);
+        if k == 6 {
+            old.set_cursor_visible(false); // with no wrap pending: both flags clear
+        }
+        if k == 7 {
+            old.scroll_up(u32::MAX); // view_offset == sb_len, the bound's edge
+        }
+        let blob = blob_of(&old);
+        let mut new = Vt::new(12, 4);
+        new.absorb_handoff(&blob)
+            .unwrap_or_else(|r| panic!("case {k}: refused {r:?}"));
+        if k == 7 {
+            assert_eq!(new.view_offset(), new.scrollback_len(), "case {k}");
+        }
+        for t in [&mut old, &mut new] {
+            t.feed(rest);
+        }
+        assert_eq!(blob_of(&new), blob_of(&old), "case {k}");
+        for y in 0..old.height() {
+            for x in 0..old.width() {
+                assert_eq!(
+                    new.pixel(x, y),
+                    old.pixel(x, y),
+                    "case {k}: pixel ({x}, {y})"
+                );
+            }
+        }
+    }
+}
+
+/// **Each field out of range is refused**, one at a time, from a blob that is otherwise good. The
+/// header words are counted from the blob's start: column 4, row 5, history 6, view 7, flags 8,
+/// parameter count 10, UTF-8 bytes owed 11, rendition flags 16, then the first cell's foreground.
+#[test]
+fn each_header_field_out_of_range_is_refused() {
+    let mut t = Vt::new(12, 4);
+    for i in 0..10 {
+        t.feed(std::format!("{i}\r\n").as_bytes());
+    }
+    let good = blob_of(&t);
+    let depth = t.scrollback_depth();
+    let sb_len = t.scrollback_len();
+    let first_cell = 4 * HEADER_WORDS;
+    for (word, value) in [
+        (4, 12),
+        (5, 4),
+        (6, depth + 1),
+        (7, sb_len + 1),
+        (8, 1 << 3),
+        (10, MAX_PARAMS as u32 + 1),
+        (11, 4),
+        (16, 1 << 6),
+    ] {
+        let mut bad = good.clone();
+        bad[4 * word..4 * word + 4].copy_from_slice(&value.to_le_bytes());
+        assert_eq!(
+            t.clone_absorb(&bad),
+            Err(Refusal::Malformed),
+            "word {word} = {value}"
+        );
+    }
+    // An indexed color past 255 is not one.
+    let mut bad = good.clone();
+    bad[first_cell + 4..first_cell + 8].copy_from_slice(&0x100u32.to_le_bytes());
+    assert_eq!(t.clone_absorb(&bad), Err(Refusal::Malformed));
+}
+
+impl Vt {
+    /// Absorb into a fresh terminal of this one's shape.
+    fn clone_absorb(&self, blob: &[u8]) -> Result<(), Refusal> {
+        Vt::new(self.cols(), self.rows()).absorb_handoff(blob)
+    }
 }

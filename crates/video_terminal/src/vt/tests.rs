@@ -1237,6 +1237,10 @@ fn a_painter_that_moves_and_renders_what_damage_says_ends_with_the_engines_pictu
             b"\x1b[2;3Hmid\x1b[6;1H\r\n\r\n\r\n",
             b"x\r\ny\r\nzzzzzzzzzzzzzzzzzzz\r\n\r\n",
             b"a\r\nb\r\nc\r\nd\r\ne\r\nf\r\ng\r\n",
+            // Two full rows, then two feeds with nothing written: the move exposes the bottom row,
+            // whose old pixels are the second full row.
+            b"AAAAAAAAAAAAAAAAAAA\r\nBBBBBBBBBBBBBBBBBBB",
+            b"\r\n\r\n",
         ] {
             t.feed(feed);
             if let Some(d) = t.take_damage() {
@@ -1262,4 +1266,28 @@ fn a_painter_that_moves_and_renders_what_damage_says_ends_with_the_engines_pictu
             }
         }
     }
+}
+
+/// **A change's box moves up with the change, and a box at the top shrinks by the row that left.**
+/// Two marks on the top two rows, then one scroll over a blank bottom row: what is left to render
+/// is the one row the second mark moved to, not two.
+#[test]
+fn a_scroll_carries_the_box_of_what_changed_up_with_it() {
+    let mut t = vt(4, 3);
+    t.set_cursor_visible(false);
+    t.feed(b"ab\r\ncd\r\n");
+    t.take_damage();
+    t.feed(b"\x1b[1;1HX\x1b[2;1HY\x1b[3;1H\n");
+    let d = t.take_damage().expect("a scroll is a report");
+    assert_eq!(d.scrolled, 1);
+    assert_eq!(
+        d.rect,
+        CellRect {
+            col: 0,
+            row: 0,
+            cols: 1,
+            rows: 1
+        },
+        "the X scrolled off; only the Y, now on row 0, is left to render"
+    );
 }
