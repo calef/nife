@@ -11,7 +11,7 @@
 //! The layout is fixed little-endian words, never a memory image of `Vt`, so a build with a
 //! different field order or a different `Cell` padding reads it the same way. A cell is three words:
 //! the character with the rendition flags in its top byte (a `char` needs 21 bits), then the
-//! foreground and the background. A colour word's top byte is its kind (`0` indexed, `1` 24-bit) and
+//! foreground and the background. A color word's top byte is its kind (`0` indexed, `1` 24-bit) and
 //! the low three bytes its value. Only the cells in use are written: `cols * rows` of the live grid,
 //! then the scrollback's rows oldest first, so a blob is as long as the screen has history.
 //!
@@ -82,14 +82,14 @@ const fn word_state(w: u32) -> Option<State> {
     }
 }
 
-const fn colour_word(c: Colour) -> u32 {
+const fn color_word(c: Colour) -> u32 {
     match c {
         Colour::Indexed(i) => i as u32,
         Colour::Rgb(r, g, b) => 1 << 24 | (r as u32) << 16 | (g as u32) << 8 | b as u32,
     }
 }
 
-const fn word_colour(w: u32) -> Option<Colour> {
+const fn word_color(w: u32) -> Option<Colour> {
     match w >> 24 {
         0 if w <= 0xff => Some(Colour::Indexed(w as u8)),
         1 => Some(Colour::Rgb((w >> 16) as u8, (w >> 8) as u8, w as u8)),
@@ -100,8 +100,8 @@ const fn word_colour(w: u32) -> Option<Colour> {
 fn cell_words(c: Cell) -> [u32; CELL_WORDS] {
     [
         c.ch as u32 | (c.attr.flags as u32) << 24,
-        colour_word(c.attr.fg),
-        colour_word(c.attr.bg),
+        color_word(c.attr.fg),
+        color_word(c.attr.bg),
     ]
 }
 
@@ -113,8 +113,8 @@ fn words_cell(w: [u32; CELL_WORDS]) -> Option<Cell> {
     Some(Cell {
         ch: char::from_u32(w[0] & 0x00ff_ffff)?,
         attr: Attr {
-            fg: word_colour(w[1])?,
-            bg: word_colour(w[2])?,
+            fg: word_color(w[1])?,
+            bg: word_color(w[2])?,
             flags: flags as u8,
         },
     })
@@ -169,8 +169,8 @@ impl Vt {
             u32::from(self.utf8_need),
             self.utf8_code,
             0,
-            colour_word(self.attr.fg),
-            colour_word(self.attr.bg),
+            color_word(self.attr.fg),
+            color_word(self.attr.bg),
             self.attr.flags as u32,
         ];
         for (i, w) in header.iter().enumerate() {
@@ -224,8 +224,8 @@ impl Vt {
         let utf8_need = w(11)?;
         let utf8_code = w(12)?;
         let attr = Attr {
-            fg: word_colour(w(14)?).ok_or(Refusal::Malformed)?,
-            bg: word_colour(w(15)?).ok_or(Refusal::Malformed)?,
+            fg: word_color(w(14)?).ok_or(Refusal::Malformed)?,
+            bg: word_color(w(15)?).ok_or(Refusal::Malformed)?,
             flags: u8::try_from(w(16)?).map_err(|_| Refusal::Malformed)?,
         };
         let mut params = [0u16; MAX_PARAMS];

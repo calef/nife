@@ -31,7 +31,7 @@ enum State {
 }
 
 /// How many numeric parameters a CSI sequence may carry. **Sixteen since milestone 142's truecolour
-/// pass**, up from four: one 24-bit colour is five parameters (`38;2;r;g;b`), a foreground and a
+/// pass**, up from four: one 24-bit color is five parameters (`38;2;r;g;b`), a foreground and a
 /// background together are ten, and a highlighter commonly adds a reset and a rendition or two in
 /// the same sequence. A seventeenth is swallowed rather than growing the array, because a parameter
 /// list that long belongs to a sequence this engine does not implement.
@@ -305,7 +305,7 @@ impl Vt {
     /// **The pixel at `(x, y)` of the terminal's surface.** The whole of rendering, as a pure
     /// function of the grid (and, since milestone 142 increment 2, of the scroll position).
     ///
-    /// The cursor is a **block**, drawn by swapping the cell's own two colours. Drawing it here
+    /// The cursor is a **block**, drawn by swapping the cell's own two colors. Drawing it here
     /// rather than as a separate overlay is what keeps the picture a function of the state: a test
     /// that predicts the screen predicts the cursor too, and a cursor left in the wrong place is a
     /// failure rather than a cosmetic difference nobody notices.
@@ -906,11 +906,11 @@ impl Vt {
     /// `CSI ... m`: the rendition. An empty parameter list is `CSI 0 m`, a reset, which is the one
     /// place the "absent means zero" default differs from the cursor sequences' "absent means one".
     ///
-    /// The extended colours (`38`/`48` followed by `5;n` or `2;r;g;b`) consume the parameters they
+    /// The extended colors (`38`/`48` followed by `5;n` or `2;r;g;b`) consume the parameters they
     /// name, so the loop walks an index rather than iterating. A malformed one (a missing or
-    /// out-of-range component, or a colour space other than 2 or 5) ends the sequence's effect
-    /// there, which is xterm's behaviour: the parameters after it cannot be told apart from the
-    /// broken colour's own.
+    /// out-of-range component, or a color space other than 2 or 5) ends the sequence's effect
+    /// there, which is xterm's behavior: the parameters after it cannot be told apart from the
+    /// broken color's own.
     fn sgr(&mut self) {
         let n = self.nparams.max(1);
         let mut i = 0;
@@ -966,7 +966,7 @@ impl Vt {
                         Attr { bg: colour, ..a }
                     }
                 }
-                // Everything else (italic, blink, overline, the underline colour) is dropped. Italic
+                // Everything else (italic, blink, overline, the underline color) is dropped. Italic
                 // needs a face this font does not have (increment 3), and blink needs a clock this
                 // engine deliberately does not read; drawing the *text* in the wrong style is better
                 // than not drawing it.
@@ -975,7 +975,7 @@ impl Vt {
         }
     }
 
-    /// The colour named by the parameters from `i` onward, after a `38` or `48`, and how many
+    /// The color named by the parameters from `i` onward, after a `38` or `48`, and how many
     /// parameters it used. `None` for a malformed one; see [`Vt::sgr`].
     fn extended_colour(&self, i: usize, n: usize) -> Option<(Colour, usize)> {
         let component = |k: usize| -> Option<u8> {

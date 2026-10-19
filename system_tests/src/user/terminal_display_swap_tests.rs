@@ -81,7 +81,7 @@ fn both(w: &display_service::TerminalWiring, expect: &mut video_terminal::Vt, by
     expect.feed(bytes);
 }
 
-/// `count` numbered lines in eight colours, a page at a time.
+/// `count` numbered lines in eight colors, a page at a time.
 fn lines(
     w: &display_service::TerminalWiring,
     expect: &mut video_terminal::Vt,
@@ -281,8 +281,8 @@ fn the_display_terminal_is_replaced_live_and_its_screen_and_history_survive() {
         "the supervised terminal before anything was printed",
     );
 
-    // Everything a swap must carry: a hundred and twenty coloured lines, so seventy-eight rows of
-    // history; a bold underlined rendition left on; and a 24-bit colour cut after its `2;`.
+    // Everything a swap must carry: a hundred and twenty colored lines, so seventy-eight rows of
+    // history; a bold underlined rendition left on; and a 24-bit color cut after its `2;`.
     lines(&w, expect, 0, 120);
     both(&w, expect, b"\x1b[1;4mstill bold ");
     both(&w, expect, b"\x1b[38;2;");

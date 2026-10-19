@@ -115,7 +115,7 @@ fn stand_in() -> ! {
 fn image_at(va: u64, len: u64) -> Option<elf::Elf<'static>> {
     // SAFETY: the builder copied the image to `va`, at the length it packed, before starting us,
     // and nothing writes it afterwards. Each image has its own window below the scratch window
-    // (`supervisor::ELF_VA` and its neighbours).
+    // (`supervisor::ELF_VA` and its neighbors).
     let bytes = unsafe { core::slice::from_raw_parts(va as *const u8, len as usize) };
     elf::Elf::parse(bytes).ok()
 }

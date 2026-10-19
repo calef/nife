@@ -142,7 +142,7 @@ Measured on 2026-10-19 (UTC) with `MemoryRegion::USAGE`, debug images: an instan
 212 pages and its map budget 4. `system_tests::user::terminal_display_swap_tests` swaps a
 supervised `display_terminal` twice on a real `gpu_driver`, on all three architectures. It
 compares every scanout pixel with an engine the kernel runs, and the blob carried home with the
-one that engine writes, byte for byte. A 24-bit colour cut in half by the swap finishes on the
+one that engine writes, byte for byte. A 24-bit color cut in half by the swap finishes on the
 other side. A second lend while the first is out is refused, and the retried swap commits.
 
 The test found a fault in the scroll fast path: a write that scrolled several rows left the tail

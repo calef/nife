@@ -4,7 +4,7 @@ use std::vec;
 
 /// A terminal with everything a swap must carry set to something other than its default: a
 /// scrollback ring `lines` deep (past 200 at 132 columns it has wrapped), a rendition in force, a wrap pending, a scrolled-back view,
-/// and a 24-bit colour sequence cut off after its `2;`, so the parser is mid-CSI with three
+/// and a 24-bit color sequence cut off after its `2;`, so the parser is mid-CSI with three
 /// parameters taken.
 fn busy(cols: u32, rows: u32, lines: u32) -> Vt {
     let mut t = Vt::new(cols, rows);
