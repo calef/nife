@@ -19,8 +19,8 @@ check a number.
 
 # THE RULE
 
-- Every `ci.yml` job that checks out the tree opens with a step that records `JOB_STARTED_AT`, and
-  closes with an `if: always()` step that runs `check`.
+- Every job in `WORKFLOWS` (`ci.yml` and `verify.yml`) that checks out the tree opens with a step
+  that records `JOB_STARTED_AT`, and closes with an `if: always()` step that runs `check`.
 - `check` warns at 85% of the budget (17 of 20 minutes) and fails above it. The warning never
   changes the exit status. It was 75% until milestone 808 (every gate accounts for its time) moved it
   to the line §254 (a gate prints what each item cost, and a job near its budget warns rather than
@@ -43,9 +43,8 @@ budget does not depend on anyone remembering to give the next job one.
 
 # BUGS
 
-- Only `.github/workflows/ci.yml` is covered. `verify.yml` also runs on `merge_group` with 45 and 60
-  minute bounds, but no median for its jobs has been measured, so a 25-minute cap there would be a
-  guess. Add it to `WORKFLOWS` once its medians exist.
+- `ci.yml` and `verify.yml` both have a job named `gate`, so the two share one budget key. Both run
+  in seconds.
 - The clock starts at the job's first step, so runner provisioning and image setup before it are not
   counted. That is seconds, not minutes, on hosted runners.
 - A job that hits `timeout-minutes` is killed before its last step runs, so it reports the timeout
@@ -60,7 +59,7 @@ import time
 BUDGET_MINUTES = 20
 WARN_FRACTION = 0.85
 MARGIN_MINUTES = 5
-WORKFLOWS = [".github/workflows/ci.yml"]
+WORKFLOWS = [".github/workflows/ci.yml", ".github/workflows/verify.yml"]
 RATCHET = ".github/ci-job-budgets"
 
 START_MARK = "JOB_STARTED_AT"

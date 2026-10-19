@@ -227,6 +227,15 @@ impl TimebasePage {
 mod tests {
     use super::*;
 
+    /// `buffer` read as a mapped [`TimebasePage`] for the length of `f`, and the one place these tests
+    /// argue `TimebasePage::new`'s contract. The page is lent to `f` by reference; a test that copied it
+    /// out would break the argument, and none does.
+    fn with_page<R>(buffer: &[u8; PAGE_BYTES], f: impl FnOnce(&TimebasePage) -> R) -> R {
+        // SAFETY: `buffer` is live, sized and aligned for the page by its type, and borrowed for
+        // the whole call, so it outlives every use of the page inside `f`.
+        f(&unsafe { TimebasePage::new(buffer.as_ptr() as u64) })
+    }
+
     /// The round trip: build a page for a real-looking rate, read it back through a raw pointer
     /// the way a mapped frame would be named.
     /// **The page stays above every band of the address-space map**, on the architecture the
@@ -242,9 +251,9 @@ mod tests {
     #[test]
     fn a_built_page_round_trips_its_rate() {
         let bytes = build_page(2_400_000_000);
-        // SAFETY: `bytes` is a live, aligned buffer of exactly PAGE_BYTES for this call's scope.
-        let page = unsafe { TimebasePage::new(bytes.as_ptr() as u64) };
-        assert_eq!(page.hz(), Some(2_400_000_000));
+        with_page(&bytes, |page| {
+            assert_eq!(page.hz(), Some(2_400_000_000));
+        });
     }
 
     /// A zeroed frame (nothing has ever written a page into it, or calibration has not run) reads
@@ -252,9 +261,9 @@ mod tests {
     #[test]
     fn a_zeroed_frame_reads_as_unknown() {
         let zeroed = [0u8; PAGE_BYTES];
-        // SAFETY: as above.
-        let page = unsafe { TimebasePage::new(zeroed.as_ptr() as u64) };
-        assert_eq!(page.hz(), None);
+        with_page(&zeroed, |page| {
+            assert_eq!(page.hz(), None);
+        });
     }
 
     /// An unrecognized magic refuses the rate even when the bytes after it look plausible: the
@@ -263,9 +272,9 @@ mod tests {
     fn an_unrecognized_magic_reads_as_unknown() {
         let mut bytes = build_page(1_000_000_000);
         bytes[OFF_MAGIC] ^= 0xff;
-        // SAFETY: as above.
-        let page = unsafe { TimebasePage::new(bytes.as_ptr() as u64) };
-        assert_eq!(page.hz(), None);
+        with_page(&bytes, |page| {
+            assert_eq!(page.hz(), None);
+        });
     }
 
     /// The band accepts every rate this tree has actually met and refuses the two shapes the old

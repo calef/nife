@@ -104,8 +104,9 @@ pub const DISPLAY: Requirements = Requirements {
 /// second one; and the terminal endpoint with `WRITE` too, so it can send `OPERATION_QUIESCE`.
 ///
 /// Start arguments: the output sink's mode (`line_editor`'s own `MODE_CONSOLE` = 0 or
-/// `MODE_DISPLAY` = 1), the length of the `line_editor` image copied to [`ELF_VA`](supervisor::ELF_VA), and the slot
-/// of an endpoint to receive swap requests on, `0` for none (a boot today: the trigger is
+/// `MODE_DISPLAY` = 1), the lengths of the `line_editor` image copied to [`ELF_VA`](supervisor::ELF_VA) and of the
+/// supervisor's own image copied to [`OWN_IMAGE_ADDRESS`](supervisor::OWN_IMAGE_ADDRESS), packed by
+/// [`image_lengths`](supervisor::image_lengths), and the slot of an endpoint to receive swap requests on, `0` for none (a boot today: the trigger is
 /// milestone 198 (a package manager, and the trivial install)'s installer, ruled by §308 (the
 /// installer asks the terminal to swap) and not built).
 ///
@@ -126,15 +127,138 @@ pub mod supervisor {
     pub const CLIENT_IN: u64 = 5;
     /// The console's reply endpoint, in console mode only.
     pub const SINK_REPLY: u64 = 6;
+    /// In display mode, when the spawner hands over `display_terminal`'s image: the display
+    /// driver's endpoint it presents through, `WRITE | GRANT`. The slot [`SINK_REPLY`] has in
+    /// console mode, which has no display.
+    ///
+    /// Name: provisional, minted 2026-10-19 (UTC) by the lane for milestone 23.
+    pub const PRESENT: u64 = 6;
+    /// In display mode with `display_terminal`'s image: the scanout's frame run, `READ | WRITE |
+    /// GRANT`. [`SINK`] is then the endpoint `display_terminal` serves and [`SINK_PAGE`] its
+    /// output page, both with `GRANT`.
+    ///
+    /// Name: provisional, minted 2026-10-19 (UTC) by the lane for milestone 23.
+    pub const SURFACE: u64 = 7;
     /// Where the `line_editor` image is copied into the supervisor. Below `supervision_protocol`'s
     /// scratch window, which starts at `0x1000_0000` and grows upward.
     pub const ELF_VA: u64 = 0x0800_0000;
+    /// Where a `display_terminal` image is copied into the supervisor, when the spawner hands
+    /// `display_terminal` to it. Between [`ELF_VA`]'s window and [`OWN_IMAGE_ADDRESS`]'s.
+    ///
+    /// Name: provisional, minted 2026-10-19 (UTC) by the lane for milestone 23.
+    pub const DISPLAY_IMAGE_ADDRESS: u64 = 0x0a00_0000;
+    /// Where the supervisor's own image is copied into it, so it can build the stand-in that
+    /// carries its quiesce (`components/src/terminal_supervisor.rs`). Above the largest
+    /// `line_editor` image [`ELF_VA`] could hold and below the scratch window.
+    ///
+    /// **Only a spawner that passes a swap endpoint copies it**, and grants
+    /// [`SWAPPING_BUDGET_PAGES`] rather than [`BUDGET_PAGES`]. A supervisor never asked to swap
+    /// never quiesces, so a boot pays nothing for the bound. A swap endpoint without the image
+    /// traps at start; one without the budget traps at the first swap.
+    ///
+    /// Name: provisional, minted 2026-10-19 (UTC) by the lane for milestone 23 (a capability-routed
+    /// component OS with live replacement).
+    pub const OWN_IMAGE_ADDRESS: u64 = 0x0c00_0000;
+    /// Pages a stand-in is built out of: its image, a four-page stack, its page tables and
+    /// revocation log. Measured with `MemoryRegion::USAGE`'s committed count on 2026-10-19 (UTC),
+    /// debug images: 27 on aarch64, 26 on riscv64, 33 on `x86_64`, whose image is two pages
+    /// larger and whose page tables are four levels deep. So about one and a half times the
+    /// largest, [`INSTANCE_PAGES`](super::INSTANCE_PAGES)'s margin.
+    ///
+    /// Name: provisional, minted 2026-10-19 (UTC) by the lane for milestone 23.
+    pub const STAND_IN_PAGES: u64 = 48;
+    /// **How long the supervisor waits for `OPERATION_QUIESCE` to be answered before it treats
+    /// `line_editor` as hung**, in milliseconds of the counter `user_mode_runtime::now` reads. The
+    /// measurement behind it is beside the bounded quiesce in `components/src/terminal_supervisor.rs`.
+    ///
+    /// Name: provisional, minted 2026-10-19 (UTC) by the lane for milestone 23.
+    pub const QUIESCE_BOUND_MS: u64 = 250;
     /// How many pages of budget the supervisor needs: two instances at once (the incumbent
     /// and its replacement) and its own handful of objects and page tables.
     pub const BUDGET_PAGES: u64 = 2 * super::INSTANCE_PAGES + 16;
+    /// [`BUDGET_PAGES`] plus a stand-in: what a spawner that passes a swap endpoint grants.
+    ///
+    /// Name: provisional, minted 2026-10-19 (UTC) by the lane for milestone 23.
+    pub const SWAPPING_BUDGET_PAGES: u64 = BUDGET_PAGES + STAND_IN_PAGES;
 
-    /// Requester → supervisor, on the swap endpoint: replace the running `line_editor`.
+    /// The second start argument: the lengths of the `line_editor` image at [`ELF_VA`], of the
+    /// supervisor's own at [`OWN_IMAGE_ADDRESS`] and of `display_terminal`'s at
+    /// [`DISPLAY_IMAGE_ADDRESS`], twenty-one bits each from the low end. `0` for an image not
+    /// copied. Packed because a thread starts with three words and the other two are taken.
+    /// `None` for an image of 2 MiB or more, which does not fit its field; the images this
+    /// supervisor is handed are under 256 KiB.
+    ///
+    /// Name: provisional, minted 2026-10-19 (UTC) by the lane for milestone 23.
+    pub const fn image_lengths(editor: u64, own: u64, display: u64) -> Option<u64> {
+        if (editor | own | display) >> LENGTH_BITS != 0 {
+            return None;
+        }
+        Some(editor | (own << LENGTH_BITS) | (display << (2 * LENGTH_BITS)))
+    }
+
+    /// [`image_lengths`] read back: `(editor, own, display)`.
+    ///
+    /// Name: provisional, minted 2026-10-19 (UTC) by the lane for milestone 23.
+    pub const fn unpack_image_lengths(packed: u64) -> (u64, u64, u64) {
+        let mask = (1 << LENGTH_BITS) - 1;
+        (
+            packed & mask,
+            (packed >> LENGTH_BITS) & mask,
+            (packed >> (2 * LENGTH_BITS)) & mask,
+        )
+    }
+
+    const LENGTH_BITS: u64 = 21;
+
+    /// Requester → supervisor, on the swap endpoint: replace a running child. The second word
+    /// names which: [`CHILD_LINE_EDITOR`] or [`CHILD_DISPLAY_TERMINAL`].
     pub const SWAP: u64 = 1;
+    /// `SWAP`'s second word: `line_editor`.
+    ///
+    /// Name: provisional, minted 2026-10-19 (UTC) by the lane for milestone 23.
+    pub const CHILD_LINE_EDITOR: u64 = 0;
+    /// `SWAP`'s second word: `display_terminal`, which only a supervisor handed its image holds.
+    /// Its swap needs the swap reserve lent first ([`LEND`]).
+    ///
+    /// Name: provisional, minted 2026-10-19 (UTC) by the lane for milestone 23.
+    pub const CHILD_DISPLAY_TERMINAL: u64 = 1;
+    /// Lender → supervisor, a `SEND_CAP` on the swap endpoint carrying a `MemoryRegion` split
+    /// from the machine's swap reserve ([`SWAP_RESERVE_PAGES`]), lent for the
+    /// next `SWAP` of [`CHILD_DISPLAY_TERMINAL`] (calef's ruling "D", 2026-10-19 UTC), with
+    /// `GRANT`, because the replacement's map budget is split from it and delegated. The
+    /// supervisor deletes its capability before it answers that `SWAP`, and the lender then
+    /// `DESTROY`s the region, which revokes whatever was left mapped from it.
+    ///
+    /// Name: provisional, minted 2026-10-19 (UTC) by the lane for milestone 23.
+    pub const LEND: u64 = 3;
+    /// **The machine's swap reserve, in pages** (milestone 23 (a capability-routed component OS with
+    /// live replacement); calef's ruling "D" of 2026-10-19 (UTC)). One per machine, apart from every
+    /// job pool, and sized to the largest swappable instance plus its handoff: today
+    /// `display_terminal`'s, whose budget holds one instance and so cannot hold its replacement
+    /// (`video_terminal::component::SWAP_PAGES`, which `terminal_supervisor` holds to this at compile
+    /// time). Here beside [`LEND`], the message that lends it, because every party to a swap reads
+    /// this module. Whoever drives a swap splits it whole and lends it to the supervisor with the request; the
+    /// supervisor gives it back before it answers, and the lender's `DESTROY` revokes what was made
+    /// from it. So swaps are serialized by the reserve itself: a second swap while one holds it finds
+    /// nothing to split, and is refused until the first one is answered.
+    ///
+    /// The holder is the swap trigger, milestone 694 (the installer asks the terminal to swap). Until
+    /// that is built the kernel's test holds it (`system_tests::user::terminal_display_swap_tests`).
+    ///
+    /// Name: provisional, minted 2026-10-19 (UTC) by the lane for milestone 23.
+    pub const SWAP_RESERVE_PAGES: u64 = 396;
+
+    /// Supervisor → requester: a `SWAP` of [`CHILD_DISPLAY_TERMINAL`] with no reserve lent, or one
+    /// too small. Nothing was quiesced; lend the reserve and ask again.
+    ///
+    /// Name: provisional, minted 2026-10-19 (UTC) by the lane for milestone 23.
+    pub const NEEDS_RESERVE: u64 = 0x5245_5356;
+    /// Supervisor → requester: `display_terminal`'s replacement absorbed the state and serves,
+    /// but from the reserve: its move home was refused (second word: the refusal). The reserve
+    /// stays held, and the next `SWAP` of it finishes the move with no new [`LEND`].
+    ///
+    /// Name: provisional, minted 2026-10-19 (UTC) by the lane for milestone 23.
+    pub const IN_RESERVE: u64 = 0x494e_5253;
     /// Requester → supervisor: retire the running `line_editor` (quiesce it, tell it to quit,
     /// collect it), reply [`STOPPED`], and exit. So a test's terminal can end with every
     /// region back in its budget; nothing on a boot sends it.
@@ -147,6 +271,13 @@ pub mod supervisor {
     /// Supervisor → requester: the replacement refused, and the incumbent serves on. Second
     /// word: the refusal `NOTE_NOT_ABSORBED` carried.
     pub const ROLLED_BACK: u64 = 0x524f_4c4c;
+    /// Supervisor → requester: the incumbent did not answer the quiesce within
+    /// [`QUIESCE_BOUND_MS`], so a replacement was started **without its state** and the incumbent's
+    /// region destroyed. Every caller it was holding is answered `abi::Error::Gone`. Second word:
+    /// how long the supervisor waited, in milliseconds.
+    ///
+    /// Name: provisional, minted 2026-10-19 (UTC) by the lane for milestone 23.
+    pub const REPLACED_HUNG: u64 = 0x4855_4e47;
 }
 
 const _: () = assert!(CONSOLE.problem().is_none());
@@ -170,3 +301,35 @@ const _: () = assert!(
 // so a changed operator in the sum is a build error. Mutation survivor triage, milestone 326
 // (turn a mutation score upward), batch 3.
 const _: () = assert!(supervisor::BUDGET_PAGES == 112);
+// A stand-in more than that, and no more, written out for the same reason: a graphical session's
+// pool has few pages to spare, so a spawner that passes a swap endpoint pays for exactly what the
+// bounded quiesce builds.
+const _: () = assert!(supervisor::SWAPPING_BUDGET_PAGES == 160);
+#[cfg(test)]
+mod tests {
+    use super::supervisor::{image_lengths, unpack_image_lengths};
+
+    /// All three lengths come back from the packed start argument `system_initializer` and the
+    /// kernel's test write and `terminal_supervisor` reads, at sizes past a 16-bit field and at
+    /// the 21-bit maximum, so a shift or mask of the wrong width shows. (`|` becoming `^` is the
+    /// same function here: the lengths' bits never overlap.)
+    #[test]
+    fn every_image_length_survives_the_packed_start_argument() {
+        let max = (1 << 21) - 1;
+        for lengths in [
+            (160_872, 155_600, 0),
+            (160_872, 0, 0),
+            (160_872, 155_600, 98_304),
+            (max, max, max),
+            (0, max, 0),
+        ] {
+            let (e, o, d) = lengths;
+            assert_eq!(
+                image_lengths(e, o, d).map(unpack_image_lengths),
+                Some(lengths)
+            );
+        }
+        // One bit too long for its field is refused rather than spilling into the next length.
+        assert_eq!(image_lengths(0, max + 1, 0), None);
+    }
+}

@@ -31,7 +31,7 @@ fn run_rm(rights: u64, name: &str, flags: u64) -> Option<Outcome> {
         "the operand rides in two argument words",
     );
     let (lo, hi) = filesystem_contract::grant::pack_name(name.as_bytes());
-    let report = fs_service::start_granted_dir(
+    let (report, held) = fs_service::start_granted_dir(
         dir_capability_tests::blk_server_image(),
         program("redoxfs_server").expect("no redoxfs_server program in the initial ramdisk"),
         program("fs_subtree_caretaker")
@@ -63,6 +63,7 @@ fn run_rm(rights: u64, name: &str, flags: u64) -> Option<Outcome> {
         // count in the two words that contract leaves free. It cannot collide with a text frame,
         // whose first word is a byte count of at most sixteen.
         if w0 == byte_sink_contract::eof() {
+            held.release_or_fail("rm's directory grant");
             return Some(Outcome {
                 status: w1,
                 removed: w2,

@@ -83,6 +83,9 @@ pub(crate) fn main() -> ExitCode {
         // xtask/src/stick.rs and notes/boot-stick.md. Names provisional (2026-09-19).
         "stick" => stick::stick(),
         "stick-boot" => stick::stick_boot(),
+        // Milestone 578 (an ACPI discovery path for aarch64): the aarch64 stick with ACPI and no device tree, as a cloud machine boots
+        // it. Name provisional (2026-10-19 UTC).
+        "acpi-boot" => stick::acpi_boot(),
         // **The boot tour read back off a `ramfb`**, milestone 243 (a machine with no serial port),
         // on the two architectures whose firmware never lights a screen. `uefi-boot`'s twin: same
         // decoder, same claim, a different way of getting a framebuffer. Name provisional.

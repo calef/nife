@@ -48,7 +48,8 @@
 #   script/metrics                 print the current commit's row as a table
 #   script/metrics --csv           print the current commit's row as one CSV line
 #   script/metrics --backfill      rewrite every week's row from git history, then the charts
-#   script/metrics --update        recompute THIS week's row in place, then the charts
+#   script/metrics --update        recompute THIS week's row in place, and every past week whose
+#                                  row is missing or not at that week's last commit, then the charts
 #   script/metrics --backfill-measure NAME
 #                                  recompute one measure's columns for every week, each from that
 #                                  week's own commit, and rewrite only that measure's file and the
@@ -56,8 +57,8 @@
 #                                  fills only the current week, and `--backfill` restates every
 #                                  other measure too. First used for `coe-actions` (calef's
 #                                  condition on #1513, 2026-10-03).
-#   script/metrics --check         non-zero if --update would change anything, a missing week
-#                                  included. NOTHING RUNS IT: it cannot gate a pull request,
+#   script/metrics --check         non-zero if --update would change anything, a missing week or
+#                                  a closed week left at a mid-week commit included. NOTHING RUNS IT: it cannot gate a pull request,
 #                                  because every merge moves the current week's numbers.
 #   script/metrics --charts        regenerate the SVGs from the CSV without touching the CSV, and
 #                                  rewrite the table of contents on notes/project-metrics.md
@@ -189,6 +190,7 @@ sys.path.insert(0, 'helpers')
 import baseline_drift                                                       # noqa: E402
 import coe_actions                                                          # noqa: E402
 import comment_block_ratchet                                                # noqa: E402
+import counted_claims                                                       # noqa: E402
 import crate_release                                                        # noqa: E402
 import interface_stability                                                  # noqa: E402
 import line_citations                                                       # noqa: E402
@@ -450,7 +452,7 @@ MEASURES = [
     ('harnesses', ['harnesses_falsified', 'harnesses_unfalsifiable', 'harnesses_unfalsified',
                    'harnesses_total']),
     ('unsafe', ['unsafe_outside_arch', 'unsafe_inside_arch', 'unsafe_thread_safety',
-                'unsafe_code_lines', 'unsafe_density']),
+                'unsafe_code_lines', 'unsafe_density', 'unsafe_density_ceiling']),
     ('unsafe-trust', ['unsafe_trust_kernel', 'unsafe_trust_kernel_code_lines',
                       'unsafe_trust_kernel_density',
                       'unsafe_trust_userspace', 'unsafe_trust_userspace_code_lines',
@@ -1593,8 +1595,12 @@ def bugs(tree):
 
 
 def unsafe_census(tree):
+    """The census, and the ceiling `script/lint` held its density to that week: read through
+    the gate's own marker reader, blank before the marker existed."""
     counts = rust_source.unsafe_census(tree.rust())
-    return {'unsafe_' + key: value for key, value in counts.items()}
+    ceiling = counted_claims.ceiling(rust_source.UNSAFE_DENSITY_MARKER, tree.markdown())
+    return {**{'unsafe_' + key: value for key, value in counts.items()},
+            'unsafe_density_ceiling': '' if ceiling is None else ceiling}
 
 
 def unsafe_trust_census(tree):
@@ -2018,6 +2024,23 @@ def week_commits():
     return dict(sorted(out.items()))
 
 
+def update_targets(weeks, rows, current, head):
+    """`[(week, rev)]` that `--update` recomputes: the current week at HEAD, and every other week
+    whose row is not already at the commit `week_commits` names for it.
+
+    A closed week's row is written while that week is the current one, so it records the commit
+    the last run before the week ended saw. The daily workflow runs at 06:00 UTC and lanes merge
+    until midnight, so that commit is hours short of the week's last one, and whatever merged after
+    it would otherwise draw as a change in the following week. Keying on the recorded commit closes
+    the week on the first run after it ends, whatever hour that run fires. A week with no row has
+    no commit, so it lands here too: a missed or raced run heals on the next one, and `--check`
+    fails on either state rather than passing it.
+    """
+    stale = [w for w in weeks
+             if w != current and rows.get(w, {}).get('commit', '') != weeks[w][:12]]
+    return [(w, weeks[w]) for w in stale] + [(current, weeks.get(current, head))]
+
+
 def read_csv():
     """Every measure file merged into one row per week: `{week: {column: cell}}`.
 
@@ -2175,7 +2198,8 @@ def svg_chart(title, subtitle, weeks, series, path, ceiling=None, absent=None, t
     is an ordinary bar chart, which is what the density and coverage panels are. `ceiling` is a
     number, labelled `ceiling`, or a (number, word) pair when the dashed line is something else:
     coverage's is `script/coverage`'s per-file floor, and labelling a floor a ceiling says the
-    opposite.
+    opposite. A list in place of the number is a ceiling per week (None where there was none),
+    drawn as a step across each week's slot, for a ceiling that moves; the legend gives the newest.
 
     `absent` is a per-week flag for **a week that was not measured, as against a week that measured
     zero**. Both draw no bar, and a reader cannot tell them apart, which for milestone 519's cost
@@ -2202,9 +2226,13 @@ def svg_chart(title, subtitle, weeks, series, path, ceiling=None, absent=None, t
     line_word = 'ceiling'
     if isinstance(ceiling, tuple):
         ceiling, line_word = ceiling
+    moving = isinstance(ceiling, list)
+    steps = ceiling if moving else [ceiling]
+    if moving:
+        ceiling = next((v for v in reversed(steps) if v is not None), None)
     combine = max if grouped else sum
     totals = [combine(s[1][i] for s in series) for i in range(len(weeks))]
-    top = max(totals + ([ceiling] if ceiling else []) + [1]
+    top = max(totals + [v for v in steps if v] + [1]
               + ([v for v, _full in trend[2] if v is not None] if trend else [])
               + [v for _l, vals in (lines or []) for v in vals if v is not None])
     # An axis a person reads: gridlines at 1, 2, 2.5 or 5 times a power of ten, and whichever of
@@ -2236,7 +2264,7 @@ def svg_chart(title, subtitle, weeks, series, path, ceiling=None, absent=None, t
            + (' .tr{stroke:#1f2328;fill:none} .trd{fill:#1f2328}' if trend or lines else '')
            + (' .trh{fill:#ffffff;stroke:#1f2328}' if lines else ''),
            # A halo in the surface colour behind each value label, so a total that lands on the
-           # dashed ceiling (the unsafe chart's 77s against its 88) stays legible.
+           # dashed ceiling stays legible.
            '  .val{paint-order:stroke;stroke:#ffffff;stroke-width:3px;stroke-linejoin:round}',
            # A series with a hue of its own gets a .c class; the rest take palette slots by
            # position, as before. Both are emitted per final series, after series_of has dropped
@@ -2271,7 +2299,18 @@ def svg_chart(title, subtitle, weeks, series, path, ceiling=None, absent=None, t
     # The ceiling is drawn BEFORE the bars and their value labels, so a total landing on it
     # sits on top of the line rather than under it. It used to be drawn last and struck
     # through the unsafe chart's 77s, three of them, sitting just under its 88.
-    if ceiling:
+    # A ceiling per week is one path per run of weeks that had one.
+    run = []
+    for i, value in enumerate((steps if moving else []) + [None]):
+        if value:
+            y = y_of(value)
+            run.append(('V%.1f' % y if run else 'M%.1f,%.1f' % (PAD_L + slot * i, y))
+                       + ' H%.1f' % (PAD_L + slot * (i + 1)))
+        elif run:
+            out.append('<path d="%s" fill="none" stroke="#D55E00" stroke-width="1.5" '
+                       'stroke-dasharray="5 4"/>' % ' '.join(run))
+            run = []
+    if ceiling and not moving:
         y = y_of(ceiling)
         out.append('<line x1="%d" y1="%.1f" x2="%.1f" y2="%.1f" stroke="#D55E00" '
                    'stroke-width="1.5" stroke-dasharray="5 4"/>'
@@ -2395,7 +2434,7 @@ def svg_chart(title, subtitle, weeks, series, path, ceiling=None, absent=None, t
                                       for n, line in enumerate(wrapped))))
         y += 19 + 13 * (len(wrapped) - 1)
     if trend:
-        kinds = [(label, True)] if any(f for _v, f in trend[2]) else []
+        kinds = [(trend[0], True)] if any(f for _v, f in trend[2]) else []
         if not all(f for _v, f in trend[2]):
             kinds.append((trend[1], False))
         for text, full in kinds:
@@ -2649,9 +2688,11 @@ CHARTS = [
      [('falsification on record', 'harnesses_falsified'),
       ('unfalsifiable, with the reason written', 'harnesses_unfalsifiable'),
       ('unfalsified', 'harnesses_unfalsified')], 1.0, None, None),
+    # The ceiling moves every round of milestone 139 (drive the unsafe count down), so it is the
+    # week's own, a stored column.
     ('unsafe.svg', 'unsafe blocks per 10,000 lines outside kernel/src/arch/',
-     'the direction is down; the ceiling is script/lint’s',
-     [('blocks per 10,000 lines', 'unsafe_density')], 1.0, 88, None),
+     'script/lint\'s own census; the direction is down, and the line is the week\'s own ceiling',
+     [('blocks per 10,000 lines', 'unsafe_density')], 1.0, 'unsafe_density_ceiling', None),
     ('unsafe-trust.svg', 'The same unsafe blocks, by trust boundary',
      'kernel: no confinement over it. userspace: confined like any other program. see notes/'
      'project-metrics.md for shared/boot chain/unclassified and why this is not the chart above',
@@ -3258,6 +3299,9 @@ def draw_charts(rows, only=None):
         if name in LINES:
             lines = [(label, [float(rows[w][field]) if rows[w].get(field) not in ('', None) else None
                               for w in weeks]) for label, field in LINES[name]]
+        if isinstance(ceiling, str):
+            ceiling = [float(rows[w][ceiling]) if rows[w].get(ceiling) not in ('', None) else None
+                       for w in weeks]
         svg_chart(title, subtitle, weeks, series, DATA_DIR / name, ceiling, absent, trend,
                   grouped=name in GROUPED, lines=lines, note=note)
         if name == 'ci-jobs.svg':
@@ -3304,6 +3348,22 @@ def _decision_cases():
          {'DECIDED': 1, 'SUPERSEDED': 1}),
         ('a tree from before the split is UNRECORDED, not DECIDED',
          counted({'DECISIONS.md': '## 1. A\n\n## 2. B\n'}), {'UNRECORDED': 2}),
+    ]
+
+
+def _update_target_cases():
+    """A closed week whose row stopped before the week's last commit is restated by `--update`."""
+    weeks = {'2026W41': 'a' * 40, '2026W42': 'b' * 40, '2026W43': 'c' * 40}
+    rows = {'2026W41': {'commit': 'a' * 12},
+            '2026W42': {'commit': 'e' * 12},   # written mid-week; 'b' merged after it
+            '2026W43': {'commit': 'f' * 12}}
+    return [
+        ('a closed week written mid-week is restated at its last commit',
+         update_targets(weeks, rows, '2026W43', 'c' * 40),
+         [('2026W42', 'b' * 40), ('2026W43', 'c' * 40)]),
+        ('a closed week with no row is written',
+         update_targets(weeks, {'2026W43': {}}, '2026W43', 'c' * 40),
+         [('2026W41', 'a' * 40), ('2026W42', 'b' * 40), ('2026W43', 'c' * 40)]),
     ]
 
 
@@ -3398,7 +3458,18 @@ def _ratchet_debt_cases():
              'bench/out.log': at('a.rs', 2), 'art/x.jpg': at('a.rs', 4) + '\0',
              'notes/link.md': at('x.rs', 9)}
     gated = dict(cites, **{line_citations.SELF: 'CODE_CEILING = 1_200\n'})
+    # The trap the unsafe chart fell into: a fenced example and a quoted marker carry a number too.
+    # Only the live marker is the gate's, and the chart's line must be that one.
+    marker = '<!--count-at-most:%s-->' % rust_source.UNSAFE_DENSITY_MARKER
+    held = tree({'notes/ceilings.md': 'At most 51 %s blocks.\nNot `at most 40 %s`.\n'
+                 % (marker, marker),
+                 'notes/example.md': '```markdown\n**at most 60** %s\n```\n' % marker,
+                 'a.rs': 'fn f() { unsafe {} }\n'})
     return [
+        ('unsafe ceiling: the live marker script/lint reads, not an example or a quoted one',
+         unsafe_census(held)['unsafe_density_ceiling'], 51),
+        ('unsafe ceiling: blank before the marker existed',
+         unsafe_census(tree({'a.rs': 'fn f() {}\n'}))['unsafe_density_ceiling'], ''),
         ('line citations: marked ones counted; vendor, data, binary and symlink skipped; the '
          'week\'s own ceiling',
          line_citation_debt(tree(gated, links=['notes/link.md'])),
@@ -3605,6 +3676,7 @@ def selftest():
         ('rendering twice writes the same bytes', twice, once),
         ('a chart with no notes left is back to its original bytes', gone, original_page),
     ]
+    cases += _update_target_cases()
     cases += _chart_total_cases()
     cases += _fatal_risk_cases()
     cases += _decision_cases()
@@ -3746,14 +3818,7 @@ def main(argv):
         rows = {}
         targets = weeks.items()
     else:
-        # The current week, AND every week history has that the CSV does not. This is what closed
-        # the 2026W37 gap: the weekly workflow fires at 06:00 UTC on Monday and used to write only
-        # the week HEAD falls in, so when a lane merged after midnight (nine did on 2026-09-14, the
-        # last eleven minutes before the cron) HEAD was already in the new week and the week that
-        # had just finished was never written by anything. A missed or raced run now heals on the
-        # next one, and `--check` below fails on a gap rather than passing it every time.
-        missing = [w for w in weeks if w not in rows and w != current]
-        targets = [(w, weeks[w]) for w in missing] + [(current, weeks.get(current, head))]
+        targets = update_targets(weeks, rows, current, head)
 
     # A fresh lcov describes the tree HEAD is in and nothing else, so it lands on that week only.
     # It used to be `coverage or kept` for every target, which meant `--backfill --coverage-from`

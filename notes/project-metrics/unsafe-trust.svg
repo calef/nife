@@ -69,19 +69,19 @@
 <text class="mut" x="444.9" y="342" font-size="10" text-anchor="middle">2026W40</text>
 <text class="fg val" x="444.9" y="86.0" font-size="10" text-anchor="middle">1314</text>
 <rect class="seg s0" x="484.2" y="194.9" width="38.7" height="129.1"><title>2026W41, kernel (trusted base): 728</title></rect>
-<rect class="seg s1" x="484.2" y="108.7" width="38.7" height="86.2"><title>2026W41, userspace (confined): 486</title></rect>
-<rect class="seg s2" x="484.2" y="104.8" width="38.7" height="3.9"><title>2026W41, shared (both, unresolved): 22</title></rect>
-<rect class="seg s3" x="484.2" y="91.5" width="38.7" height="13.3"><title>2026W41, boot chain (uefi_loader): 75</title></rect>
-<path class="seg s4" d="M484.2,91.5 V89.6 Q484.2,87.6 486.1,87.6 H520.9 Q522.8,87.6 522.8,89.6 V91.5 Z"><title>2026W41, unclassified: 22</title></path>
+<rect class="seg s1" x="484.2" y="109.8" width="38.7" height="85.1"><title>2026W41, userspace (confined): 480</title></rect>
+<rect class="seg s2" x="484.2" y="108.7" width="38.7" height="1.1"><title>2026W41, shared (both, unresolved): 6</title></rect>
+<rect class="seg s3" x="484.2" y="95.4" width="38.7" height="13.3"><title>2026W41, boot chain (uefi_loader): 75</title></rect>
+<path class="seg s4" d="M484.2,95.4 V88.8 Q484.2,84.8 488.2,84.8 H518.8 Q522.8,84.8 522.8,88.8 V95.4 Z"><title>2026W41, unclassified: 60</title></path>
 <text class="mut" x="503.5" y="342" font-size="10" text-anchor="middle">2026W41</text>
-<text class="fg val" x="503.5" y="82.6" font-size="10" text-anchor="middle">1333</text>
+<text class="fg val" x="503.5" y="79.8" font-size="10" text-anchor="middle">1349</text>
 <rect class="seg s0" x="542.8" y="192.1" width="38.7" height="131.9"><title>2026W42, kernel (trusted base): 744</title></rect>
-<rect class="seg s1" x="542.8" y="103.8" width="38.7" height="88.3"><title>2026W42, userspace (confined): 498</title></rect>
-<rect class="seg s2" x="542.8" y="99.9" width="38.7" height="3.9"><title>2026W42, shared (both, unresolved): 22</title></rect>
-<rect class="seg s3" x="542.8" y="86.9" width="38.7" height="12.9"><title>2026W42, boot chain (uefi_loader): 73</title></rect>
-<path class="seg s4" d="M542.8,86.9 V83.4 Q542.8,80.0 546.2,80.0 H578.0 Q581.4,80.0 581.4,83.4 V86.9 Z"><title>2026W42, unclassified: 39</title></path>
+<rect class="seg s1" x="542.8" y="103.2" width="38.7" height="88.8"><title>2026W42, userspace (confined): 501</title></rect>
+<rect class="seg s2" x="542.8" y="99.3" width="38.7" height="3.9"><title>2026W42, shared (both, unresolved): 22</title></rect>
+<rect class="seg s3" x="542.8" y="86.4" width="38.7" height="12.9"><title>2026W42, boot chain (uefi_loader): 73</title></rect>
+<path class="seg s4" d="M542.8,86.4 V82.9 Q542.8,79.5 546.2,79.5 H578.0 Q581.4,79.5 581.4,82.9 V86.4 Z"><title>2026W42, unclassified: 39</title></path>
 <text class="mut" x="562.1" y="342" font-size="10" text-anchor="middle">2026W42</text>
-<text class="fg val" x="562.1" y="75.0" font-size="10" text-anchor="middle">1376</text>
+<text class="fg val" x="562.1" y="74.5" font-size="10" text-anchor="middle">1379</text>
 <rect class="seg s0" x="601.4" y="192.1" width="38.7" height="131.9"><title>2026W43, kernel (trusted base): 744</title></rect>
 <rect class="seg s1" x="601.4" y="102.5" width="38.7" height="89.6"><title>2026W43, userspace (confined): 505</title></rect>
 <rect class="seg s2" x="601.4" y="98.6" width="38.7" height="3.9"><title>2026W43, shared (both, unresolved): 22</title></rect>

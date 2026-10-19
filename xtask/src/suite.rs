@@ -404,7 +404,10 @@ fn host_pass(hvf: bool, filtered: bool) -> bool {
         );
     }
     if !hvf && !no_host && !filtered {
-        host_tests()
+        let began = std::time::Instant::now();
+        let ok = host_tests();
+        time_record::host_pass(began.elapsed());
+        ok
     } else {
         true
     }

@@ -1,6 +1,7 @@
 ---
-status: PARTIAL
+status: BUILT
 raised: 2026-10-12
+built: 2026-10-17
 milestone_dependencies: 835, 809, 810
 decision_dependencies: 297, 195, 197, 250
 machine_requirements: none
@@ -11,12 +12,12 @@ needs_person: no
 
 *(The title and slug are provisional.)*
 
-**PARTIAL, 2026-10-14 (UTC).** basalt builds ioping from a recipe that pins `ioping.c` by SHA-256
+**BUILT, 2026-10-17 (UTC).** basalt builds ioping from a recipe that pins `ioping.c` by SHA-256
 and publishes one package per architecture. nife builds no ioping. On all three architectures under
 QEMU, every pull request's `swish-check` rows type `jig install ioping` against basalt's package,
 then time five reads with the installed program. The kernel suite times reads in a granted
-directory with the same bytes. Left, as for milestone 810: recording the package's digest in the
-recipe, which needs a reproducible build. "Built" below has the rest.
+directory with the same bytes. The recipe records each architecture's package digest, and
+basalt's build refuses a package that does not match it. "Built" below has the rest.
 
 calef, 2026-10-12 (UTC): *"They should all be installed via jig through basalt. I missed that for
 our benchmarking tools, so I created debt by prioritizing them first."* This is that debt for
@@ -95,10 +96,21 @@ download fails basalt's build.
 Reuse: the helper's pinned fetch and flags, `helpers/build-c-program.sh`'s link, and milestone
 810's recipe, build job and publishing, all moved rather than rewritten.
 
+## The package's digest, checked 2026-10-19 (UTC)
+
+- basalt's `recipes/ioping.toml` carries a `[package_digest]` table, one SHA-256 for each of
+  aarch64, riscv64 and x86_64, recorded by milestone 917 (basalt's packages build reproducibly)
+  in nifeos/basalt#29. basalt's pin-bump rewrites it with each new pin.
+- basalt's `helpers/packages.py build` refuses a package whose bytes hash to anything else, and
+  basalt's `packages` workflow builds twice, in separate checkouts, and fails unless the two
+  repositories are byte-identical.
+- At the basalt commit `xtask/basalt-pin` names, the recipe's three digests equal the assets of
+  the Release that commit published. `cargo xtask basalt-fetch` accepts each package only under
+  them, through `package_index::accept`, and `jig install ioping` checks the index line built from
+  them.
+
 ## BUGS
 
-- The recipe records the source's digest, not the package's, as milestone 810's does. Recording
-  the package's needs a build reproducible across machines, which nobody has measured.
 - At the prompt ioping times reads of a file, not a directory: its unvouched note grants a named
   word read-only. Milestone 834's read pass fits that. Its write pass needs a writable grant, which
   unvouched bytes cannot hold, so 834 needs ioping's recipe to vouch for more (§195) before it
@@ -108,13 +120,12 @@ Reuse: the helper's pinned fetch and flags, `helpers/build-c-program.sh`'s link,
 
 ## Follow-on
 
-- **Outstanding.** The package's digest in the recipe: needs a build reproducible across machines.
-  Checked 2026-10-14 (UTC): `recipes/ioping.toml` records the source's digest only, as ripgrep's
-  does.
+- **Done.** The package's digest in the recipe, by milestone 917 (basalt's packages build
+  reproducibly, and the recipe records each package's digest).
 - **Recorded.** The prompt's ioping holds a named file read-only, so a write pass is refused,
   beside the feature in this block's `BUGS`. Milestone 834's write pass needs §195's vouch.
-- **Milestone 907.** Milestone 907 (hackbench is packaged in basalt) takes the same C recipe shape
-  next, then milestone 897 (SQLite is packaged in basalt).
+- **Done.** Milestones 907 (hackbench is packaged in basalt) and 897 (SQLite is packaged in
+  basalt) build on the same C recipe shape.
 - **Recorded.** The man page `ioping.1` waits on `jig` installing documentation, noted in "Built"
   above for the milestone being minted for packaged documentation.
 

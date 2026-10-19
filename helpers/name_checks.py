@@ -102,6 +102,8 @@ KEPT = {
         ({"question-shape"}, "a finite verb phrase (`matches`) the check cannot see, which the "
                              "question rule allows"),
     "kernel/src/user/test_support.rs::wait_for": ({"question-shape"}, _ACTS),
+    # A gate: it builds, boots and reports whether the boot passed, like `stick_boot` beside it.
+    "xtask/src/stick.rs::acpi_boot": ({"question-shape"}, _ACTS),
 }
 # design/naming.md's question shapes. A finite verb first (`contains`, `starts_with`) is read as a
 # first word ending in `s`, which also passes a plural noun: the check's known false pass.

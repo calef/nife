@@ -125,7 +125,8 @@ pub fn narrow_dir_held(
     // All three live in the region so that one reclaim returns every endpoint this grant made. The
     // kernel's rendezvous registry is a fixed 512 and the suite runs close to it: two endpoints a
     // walk test left live were enough to exhaust it in `uuid_tests` on 2026-09-27.
-    let ep_region = crate::memory_region::create(4).expect("no endpoint region for a caretaker");
+    let ep_region = crate::memory_region::create(GRANT_ENDPOINT_PAGES)
+        .expect("no endpoint region for a caretaker");
     let endpoint =
         || crate::sched::create_rendezvous_from(ep_region).expect("no endpoint for a caretaker");
     let narrow_ep = endpoint();
@@ -197,6 +198,10 @@ fn spawn_caretaker(
     Some((file_shared, tid))
 }
 
+/// Returns the confined program's report endpoint and the [`super::holding::Holding`] that hands
+/// back the caretaker, the program and every endpoint the grant made. Release it once the last
+/// report is read: the caretaker serves until it is killed, so a grant nobody releases is a
+/// thread and three endpoints for the rest of the boot.
 #[cfg_attr(not(any(test, feature = "system_tests")), allow(dead_code))]
 pub fn start_granted_dir(
     blk_image: &'static [u8],
@@ -204,7 +209,7 @@ pub fn start_granted_dir(
     caretaker_image: &'static [u8],
     client_image: &'static [u8],
     grant: DirGrant,
-) -> Option<RendezvousId> {
+) -> Option<(RendezvousId, super::holding::Holding)> {
     let DirGrant {
         name,
         rights,
@@ -213,12 +218,12 @@ pub fn start_granted_dir(
         arg2: client_arg2,
         stack_pages,
     } = grant;
-    let (narrow_ep, file_shared) =
-        narrow_dir(blk_image, fs_server_image, caretaker_image, name, rights)?;
+    let (narrow_ep, file_shared, report, mut held) =
+        narrow_dir_held(blk_image, fs_server_image, caretaker_image, name, rights)?;
 
     // The confined program. Its slot 0 looks exactly like a directory capability from inside,
     // and is one: the same protocol, the same page, a namespace of one subtree.
-    Some(spawn_fs_client(
+    held.add_thread(spawn_fs_client(
         client_image,
         narrow_ep,
         file_shared,
@@ -226,5 +231,7 @@ pub fn start_granted_dir(
         client_arg,
         client_arg2,
         stack_pages,
-    ))
+        report,
+    ));
+    Some((report, held))
 }

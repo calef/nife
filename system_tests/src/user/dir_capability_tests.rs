@@ -17,7 +17,7 @@ pub(super) fn blk_server_image() -> &'static [u8] {
 ///
 /// `None` when no RedoxFS disk is attached (nothing to test; do not fail).
 pub(super) fn attack_a_subtree(rights: u64, run: u64) -> Option<u64> {
-    let Some(report) = fs_service::start_granted_dir(
+    let Some((report, held)) = fs_service::start_granted_dir(
         blk_server_image(),
         program("redoxfs_server").expect("no redoxfs_server program in the initial ramdisk"),
         program("fs_subtree_caretaker")
@@ -40,6 +40,7 @@ pub(super) fn attack_a_subtree(rights: u64, run: u64) -> Option<u64> {
     // Both handshakes happened inside `start_granted_dir`, before this attacker existed. That
     // ordering is the fix for the startup clobber `fs_service::wait_for_caretaker` records.
     let [tag, verdict, ..] = sched::ipc_receive(report);
+    held.release_or_fail("a granted directory and its attacker");
     assert_eq!(
         tag,
         filesystem_fixture::VERDICT,
@@ -219,7 +220,7 @@ fn a_name_set_capability_reads_its_attributes_and_still_names_only_its_set() {
     if fs_service::fs_server_image().is_none() {
         crate::testing::skip!(fs_service::NO_FS_SERVER);
     }
-    let Some(report) = fs_service::start_granted_set(
+    let Some((report, held)) = fs_service::start_granted_set(
         blk_server_image(),
         program("redoxfs_server").expect("no redoxfs_server program in the initial ramdisk"),
         program("fs_nameset_caretaker")
@@ -239,6 +240,7 @@ fn a_name_set_capability_reads_its_attributes_and_still_names_only_its_set() {
         crate::testing::skip!("no RedoxFS disk attached");
     };
     let [tag, v, ..] = sched::ipc_receive(report);
+    held.release_or_fail("a name-set grant and its witness");
     assert_eq!(
         tag,
         filesystem_fixture::VERDICT,
