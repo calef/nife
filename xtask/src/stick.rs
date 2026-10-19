@@ -4,6 +4,7 @@
 //! cargo xtask stick                        # target/stick/EFI/BOOT/*.EFI, and stick_maker for this host
 //! cargo xtask stick --host x86_64-unknown-linux-musl --host x86_64-pc-windows-gnu
 //! cargo xtask stick-boot                   # boot target/stick under all three UEFI firmwares
+//! cargo xtask acpi-boot                    # the aarch64 payload alone, booted with acpi=on
 //! ```
 //!
 //! **The order inside each payload is the seal, and it is not re-derived here.** For every
@@ -383,46 +384,84 @@ pub(super) fn stick_boot() -> bool {
             eprintln!("stick-boot: {file} is not staged; run `cargo xtask stick` first");
             return false;
         }
-        let output = Command::new("helpers/qemu-stick.sh")
-            .args([arch, &stick_dir().display().to_string()])
-            .current_dir(workspace_root())
-            .env(
-                "NIFE_STICK_TIMEOUT",
-                std::env::var("NIFE_STICK_TIMEOUT").unwrap_or("120".into()),
-            )
-            .stdin(std::process::Stdio::null())
-            .output();
-        let Ok(output) = output else {
-            eprintln!("stick-boot: cannot run helpers/qemu-stick.sh");
-            return false;
-        };
-        let transcript = String::from_utf8_lossy(&output.stdout).into_owned();
-        let mut passed = true;
-        for wanted in [
-            "nife uefi_loader: milestone 87",
-            "nife self-test: 5 of 5 passed",
-            "nife: handing the system to the userspace progenitor.",
-        ] {
-            if !transcript.contains(wanted) {
-                eprintln!("stick-boot: {arch}: the transcript is missing {wanted:?}");
-                passed = false;
-            }
-        }
-        if transcript.contains("[PANIC]") {
-            eprintln!("stick-boot: {arch}: the kernel panicked");
-            passed = false;
-        }
-        if passed {
-            eprintln!("stick-boot: {arch}: booted from {file} to the progenitor");
-        } else {
-            let tail: Vec<&str> = transcript.lines().rev().take(25).collect();
-            for line in tail.iter().rev() {
-                eprintln!("stick-boot: {arch}: | {line}");
-            }
-            ok = false;
-        }
+        ok &= boot_and_check("stick-boot", arch, file, &[], &[]);
     }
     ok
+}
+
+/// The lines every stick boot must print, in [`stick_boot`]'s order and for its reasons.
+const BOOTED: [&str; 3] = [
+    "nife uefi_loader: milestone 87",
+    "nife self-test: 5 of 5 passed",
+    "nife: handing the system to the userspace progenitor.",
+];
+
+/// **The aarch64 stick, booted with ACPI and no device tree** (milestone 578 (an ACPI discovery path for aarch64)): the state every
+/// aarch64 cloud machine is in, since SBBR forbids it a tree, and the one the loader meets by
+/// writing a tree from the tables (§278 (an ACPI machine reaches the aarch64 kernel as a device tree the loader writes)). `stick-boot` boots `acpi=off`, so without this the path
+/// every rented Arm machine would take was proved only by a transcript run by hand.
+///
+/// It builds the aarch64 payload alone, release like the stick, rather than requiring `cargo xtask
+/// stick`'s three payloads and host program, which this boot never reads. Beside [`BOOTED`] it
+/// asserts the loader's own ACPI line, so a firmware that went back to offering a device tree
+/// cannot pass it by booting the other path.
+///
+/// Name: provisional (milestone 578's lane, 2026-10-19 UTC), in the family of `stick-boot` and
+/// `uefi-boot`, naming the description it boots from.
+pub(super) fn acpi_boot() -> bool {
+    super::RELEASE.store(true, std::sync::atomic::Ordering::Relaxed);
+    if let Err(e) = std::fs::create_dir_all(boot_dir()) {
+        eprintln!("acpi-boot: cannot create {}: {e}", boot_dir().display());
+        return false;
+    }
+    payload_aarch64()
+        && boot_and_check(
+            "acpi-boot",
+            "aarch64",
+            "BOOTAA64.EFI",
+            &[("NIFE_ACPI", "on")],
+            &["uefi_loader: no device tree; describing this machine from ACPI"],
+        )
+}
+
+/// Boot the staged stick for `arch` and check the transcript holds [`BOOTED`] and `also`, with no
+/// panic. `who` prefixes every line, so a failure names the gate that saw it.
+fn boot_and_check(who: &str, arch: &str, file: &str, env: &[(&str, &str)], also: &[&str]) -> bool {
+    let output = Command::new("helpers/qemu-stick.sh")
+        .args([arch, &stick_dir().display().to_string()])
+        .current_dir(workspace_root())
+        .env(
+            "NIFE_STICK_TIMEOUT",
+            std::env::var("NIFE_STICK_TIMEOUT").unwrap_or("120".into()),
+        )
+        .envs(env.iter().copied())
+        .stdin(std::process::Stdio::null())
+        .output();
+    let Ok(output) = output else {
+        eprintln!("{who}: cannot run helpers/qemu-stick.sh");
+        return false;
+    };
+    let transcript = String::from_utf8_lossy(&output.stdout).into_owned();
+    let mut passed = true;
+    for wanted in BOOTED.iter().chain(also) {
+        if !transcript.contains(wanted) {
+            eprintln!("{who}: {arch}: the transcript is missing {wanted:?}");
+            passed = false;
+        }
+    }
+    if transcript.contains("[PANIC]") {
+        eprintln!("{who}: {arch}: the kernel panicked");
+        passed = false;
+    }
+    if passed {
+        eprintln!("{who}: {arch}: booted from {file} to the progenitor");
+    } else {
+        let tail: Vec<&str> = transcript.lines().rev().take(25).collect();
+        for line in tail.iter().rev() {
+            eprintln!("{who}: {arch}: | {line}");
+        }
+    }
+    passed
 }
 
 #[cfg(test)]

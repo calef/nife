@@ -38,7 +38,7 @@ pub fn parse_madt(body: &[u8]) -> Result<Madt, AcpiError> {
 }
 
 /// One entry of the MADT's list. Only the kinds this tree acts on are decoded, four for x86 and
-/// three for aarch64; the rest keep their type byte so a boot print can say what it skipped rather
+/// four for aarch64; the rest keep their type byte so a boot print can say what it skipped rather
 /// than pretending the list was shorter than it is.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum MadtEntry {
@@ -112,9 +112,38 @@ pub enum MadtEntry {
         /// How many bytes of frames, all cores' together.
         length: u32,
     },
+    /// **A `GICv2m` MSI frame** (type 13, "GIC MSI Frame"): the block a device writes to raise a
+    /// message-signaled interrupt on a GIC that has no ITS, which turns each write into one of a
+    /// range of SPIs. A device tree states it as an `arm,gic-v2m-frame` child of the GIC node. QEMU
+    /// `virt` offers one on every GICv2 machine and, with `msi=gicv2m`, on a GICv3 one too.
+    GicMsiFrame {
+        /// The frame's ID, which IORT and the DSDT use to name this frame.
+        id: u32,
+        /// The frame, physical. Its length is architectural (4 KiB) and the entry does not state it.
+        address: u64,
+        /// The SPIs this frame raises, when the entry states them. `None` means flag bit 0 is clear,
+        /// and **the frame's own `MSI_TYPER` register is the answer**: the entry's count and base
+        /// fields are then not meaningful, so they are not offered.
+        spis: Option<MsiSpis>,
+    },
     /// A kind this decoder does not act on, with its type byte.
     Other(u8),
 }
+
+/// The SPI range a [`MadtEntry::GicMsiFrame`] states in place of its `MSI_TYPER` register.
+///
+/// Name: provisional (the lane of milestone 578 (an ACPI discovery path for aarch64), 2026-10-19
+/// UTC).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct MsiSpis {
+    /// The first SPI's INTID, which is at least 32: INTIDs below that are SGIs and PPIs.
+    pub base: u16,
+    /// How many consecutive SPIs, from `base`.
+    pub count: u16,
+}
+
+/// Flag bit 0 of a GIC MSI frame entry: its SPI count and base fields override `MSI_TYPER`.
+const MSI_FRAME_SPI_SELECT: u32 = 1 << 0;
 
 /// Walks a MADT's entry list. Each entry is `[type, length, ...]`, so the list is self-describing
 /// and a length of zero would loop forever; that is refused by ending the walk.
@@ -191,6 +220,15 @@ impl Iterator for MadtEntries<'_> {
             14 if len >= 16 => MadtEntry::GenericRedistributor {
                 address: u64(e, 4),
                 length: u32(e, 12),
+            },
+            // One length in every revision that has the type (ACPI 5.1 onward): 24 bytes.
+            13 if len >= 24 => MadtEntry::GicMsiFrame {
+                id: u32(e, 4),
+                address: u64(e, 8),
+                spis: (u32(e, 16) & MSI_FRAME_SPI_SELECT != 0).then(|| MsiSpis {
+                    count: u16(e, 20),
+                    base: u16(e, 22),
+                }),
             },
             other => MadtEntry::Other(other),
         })
@@ -455,6 +493,49 @@ mod tests {
             // for the fields the firmware's revision does not have rather than dropping the entry.
             assert_eq!(*mpidr, 0);
         }
+    }
+
+    /// **QEMU's own `GICv2m` frame entry, byte for byte**, as `virt` writes it with
+    /// `gic-version=3,msi=gicv2m`: the last 24 bytes of QEMU's checked-in
+    /// `tests/data/acpi/aarch64/virt/APIC.msi_gicv2m` (QEMU 3f0043f9, read 2026-10-19 UTC), which
+    /// `hw/arm/virt-acpi-build.c` builds as frame 0 at `VIRT_GIC_V2M`, flag 1, 64 SPIs from 80.
+    /// Written from the specification alone, the count and base fields are the easy pair to swap,
+    /// and both are plausible INTIDs.
+    #[test]
+    fn qemus_gicv2m_frame_entry_decodes_to_its_frame_and_spis() {
+        let mut body = std::vec![0u8; MADT_FIXED_LEN];
+        body.extend_from_slice(&[
+            0x0d, 0x18, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0x08, 0x00, 0x00,
+            0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x40, 0x00, 0x50, 0x00,
+        ]);
+        assert_eq!(
+            madt_entries(&body).collect::<std::vec::Vec<_>>(),
+            std::vec![MadtEntry::GicMsiFrame {
+                id: 0,
+                address: 0x0802_0000,
+                spis: Some(MsiSpis {
+                    base: 80,
+                    count: 64
+                }),
+            }]
+        );
+    }
+
+    /// With flag bit 0 clear the entry's SPI fields are not the answer, `MSI_TYPER` is, so a frame
+    /// that left stale numbers in them must not have them read as its range.
+    #[test]
+    fn an_msi_frame_without_the_select_flag_offers_no_spis() {
+        let mut body = std::vec![0u8; MADT_FIXED_LEN];
+        let mut e = [0u8; 24];
+        e[0] = 13;
+        e[1] = 24;
+        e[8..16].copy_from_slice(&0x0802_0000u64.to_le_bytes());
+        e[20..24].copy_from_slice(&[0x40, 0x00, 0x50, 0x00]);
+        body.extend_from_slice(&e);
+        assert!(matches!(
+            madt_entries(&body).next(),
+            Some(MadtEntry::GicMsiFrame { spis: None, .. })
+        ));
     }
 
     /// A full-length (ACPI 6.0, 80-byte) GIC CPU interface entry yields the two addresses and the
@@ -742,11 +823,11 @@ mod tests {
 
     // ---- survivor triage of the 2026-10-03 census ---------------------------------------------
 
-    /// The same for the MADT's three ARM kinds: a GICC, a distributor and a redistributor that stop
-    /// after their header come back as `Other`.
+    /// The same for the MADT's four ARM kinds: a GICC, a distributor, an MSI frame and a
+    /// redistributor that stop after their header come back as `Other`.
     #[test]
     fn a_short_arm_madt_entry_is_other_and_not_read() {
-        for kind in [11u8, 12, 14] {
+        for kind in [11u8, 12, 13, 14] {
             let mut body = std::vec![0u8; MADT_FIXED_LEN];
             body.extend_from_slice(&[kind, 4, 0, 0]);
             let got: std::vec::Vec<_> = madt_entries(&body).collect();
