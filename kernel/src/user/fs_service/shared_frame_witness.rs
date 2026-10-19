@@ -30,10 +30,12 @@ use super::*;
 ///
 /// `shared` puts both clients on one window, the pre-599 wiring, as the witness's negative control.
 ///
-/// Returns `(readiness, victim_report)`: the service's readiness sentinels if this call wired it,
-/// and the endpoint the victim reports its verdict on. The attacker never reports; it signals the
-/// victim and exits. `None` when no RedoxFS disk is attached, or when the pool has no free window
-/// (which cannot happen with two clients against [`CLIENT_WINDOWS`] of at least three).
+/// Returns `(readiness, victim_report, held)`: the service's readiness sentinels if this call wired
+/// it, the endpoint the victim reports its verdict on, and the holding that hands back both clients
+/// and the three endpoints (milestone 608 (kernel tests give back their rendezvous points)). The
+/// attacker never reports; it signals the victim and exits. `None` when no RedoxFS disk is
+/// attached, or when the pool has no free window (which cannot happen with two clients against
+/// [`CLIENT_WINDOWS`] of at least three).
 ///
 /// Provisional name (this lane's coinage); an architect names functions.
 #[cfg_attr(not(any(test, feature = "system_tests")), allow(dead_code))]
@@ -44,11 +46,16 @@ pub fn start_shared_frame_witness(
     victim_role: u64,
     attacker_role: u64,
     shared: bool,
-) -> Option<(Readiness, RendezvousId)> {
+) -> Option<(Readiness, RendezvousId, super::holding::Holding)> {
     let (file_ep, _file_shared, readiness) = ensure(blk_image, fs_server_image)?;
-    let sync = crate::sched::create_rendezvous();
-    let victim_report = crate::sched::create_rendezvous();
-    let attacker_report = crate::sched::create_rendezvous();
+    let ep_region = crate::memory_region::create(3).expect("no endpoint region for the witness");
+    let endpoint =
+        || crate::sched::create_rendezvous_from(ep_region).expect("no endpoint for the witness");
+    let sync = endpoint();
+    let victim_report = endpoint();
+    let attacker_report = endpoint();
+    let mut held = super::holding::Holding::new();
+    held.add_region(ep_region);
 
     // The service must be serving before either client calls: the FS server is parked in its
     // readiness SEND until this drains it, so a victim that called first would block forever. The
@@ -103,7 +110,7 @@ pub fn start_shared_frame_witness(
                 },
             )
         })
-        .expect("could not spawn a shared-frame witness client");
+        .expect("could not spawn a shared-frame witness client")
     };
 
     // The victim first, so it is parked in its first `SEND` on the sync endpoint before the attacker
@@ -112,14 +119,20 @@ pub fn start_shared_frame_witness(
     // victim mints its own badge (exercising the mint syscall); the attacker is handed a pre-badged
     // endpoint (the progenitor's shape). The attacker never calls the server, so its badge is
     // immaterial; what matters is that it maps a different window and cannot reach the victim's.
-    spawn_witness(victim_role, victim_report, victim_win, victim_phys, true);
-    spawn_witness(
+    held.add_thread(spawn_witness(
+        victim_role,
+        victim_report,
+        victim_win,
+        victim_phys,
+        true,
+    ));
+    held.add_thread(spawn_witness(
         attacker_role,
         attacker_report,
         attacker_win,
         attacker_phys,
         false,
-    );
+    ));
 
-    Some((readiness, victim_report))
+    Some((readiness, victim_report, held))
 }

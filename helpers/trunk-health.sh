@@ -232,7 +232,7 @@ state() {
 # The effort capture (milestone 519 (what this project costs, tracked where it cannot rot)) is a
 # person running `script/effort --update` on the machine the lanes ran on, because only that
 # machine has the session records; `--check` asks whether the committed `effort.csv` holds the
-# current week, which needs no network and no records. It prints its row only when dead, the
+# newest closed week, read after it closed, which needs no network and no records. It prints its row only when dead, the
 # `--quiet` rule. The merge watchers (milestone 723 (a stopped merge watcher is reported within
 # three of its own intervals)) have their own rule, from their own cron, in helpers/watcher_watch.py.
 cadence() {

@@ -1936,7 +1936,16 @@ def replay_one(h, tree):
         # Every verdict carries its wall-clock time, build included, because the limit above
         # was chosen from the one run whose timestamps happened to survive, and the next
         # person to move it should have a whole sweep to read instead.
-        took = "(%.1f s)" % (time.monotonic() - began)
+        elapsed = time.monotonic() - began
+        took = "(%.1f s)" % elapsed
+        # The job's time record too (milestone 808 (every gate accounts for its time)), when
+        # NIFE_TIME_RECORD names one, which verify.yml's re-falsify shards set.
+        try:
+            sys.path.insert(0, os.path.join(root, "helpers"))
+            import time_record
+            time_record.append([("host", h.kind, "falsification", record_key(h), elapsed * 1000)])
+        except Exception as e:  # a record that cannot be written changes no verdict
+            print("warning: the time record was not written: %s" % e)
         if verdict == "red":
             lines.append("    red      %s %s" % (detail, took))
             outcome = "red"

@@ -59,7 +59,7 @@ pub(super) const ALWAYS: u64 = nb::PWD_IS_ROOT
 ///
 /// `None` when no RedoxFS disk is attached.
 pub(super) fn navigate(root: &'static str, run: u64) -> Option<u64> {
-    let report = fs_service::start_granted_dir(
+    let (report, held) = fs_service::start_granted_dir(
         dir_capability_tests::blk_server_image(),
         program("redoxfs_server").expect("no redoxfs_server program in the initial ramdisk"),
         program("fs_subtree_caretaker")
@@ -77,6 +77,7 @@ pub(super) fn navigate(root: &'static str, run: u64) -> Option<u64> {
         },
     )?;
     let [tag, verdict, ..] = sched::ipc_receive(report);
+    held.release_or_fail("a granted shell");
     assert_eq!(
         tag,
         filesystem_fixture::VERDICT,

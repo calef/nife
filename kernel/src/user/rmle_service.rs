@@ -72,7 +72,9 @@ pub fn start(dir_name: &'static str, file_name: &str) -> Option<(Wiring, Holding
 
     // The filesystem half: fs_service's own split, built for exactly this (a client that needs a
     // directory *and* something else, milestone 50's own redirection witness).
-    let (dir_ep, file_shared) = fs_service::narrow_dir(
+    // `narrow_dir_held`'s holding ends the caretaker and returns its endpoints, `rmle`'s report
+    // among them; the terminal half joins it below.
+    let (dir_ep, file_shared, report, mut held) = fs_service::narrow_dir_held(
         fs_service::blk_server_image(),
         fs_service::fs_server_image()?,
         program("fs_subtree_caretaker").expect("no fs_subtree_caretaker in the initial ramdisk"),
@@ -80,9 +82,16 @@ pub fn start(dir_name: &'static str, file_name: &str) -> Option<(Wiring, Holding
         filesystem_contract::dir::ALL,
     )?;
 
-    let report = spawn_rmle(image, file_name, term, term_out_phys, dir_ep, file_shared);
+    spawn_rmle(
+        image,
+        file_name,
+        term,
+        term_out_phys,
+        dir_ep,
+        file_shared,
+        report,
+    );
 
-    let mut held = Holding::new();
     held.add_thread(console_tid);
     held.add_thread(line_editor_tid);
     held.add_region(ep_region);
@@ -190,7 +199,8 @@ fn spawn_rmle(
     term_out_phys: u64,
     dir_ep: RendezvousId,
     file_shared: u64,
-) -> RendezvousId {
+    report: RendezvousId,
+) {
     assert!(
         filesystem_contract::grant::fits(file_name.as_bytes()),
         "rmle's target name rides in two argument words; this one does not fit",
@@ -198,7 +208,6 @@ fn spawn_rmle(
     let (lo, hi) = filesystem_contract::grant::pack_name(file_name.as_bytes());
     let spec = filesystem_contract::grant::spec(file_name.len(), 0);
 
-    let report = sched::create_rendezvous();
     sched::spawn(move || {
         let mut maps = [Mapping {
             va: 0,
@@ -231,12 +240,11 @@ fn spawn_rmle(
         )
     })
     .expect("could not spawn rmle");
-    report
 }
 
 // BUGS: the console/line_editor terminal half is spawned before the two fallible calls below it
-// (`fs_service::fs_server_image()?`, `fs_service::narrow_dir(...)?`). If either ever refuses (no
-// RedoxFS disk attached to this run, the same condition `NO_FS_SERVER` skips a test for), this
+// (`fs_service::fs_server_image()?`, `fs_service::narrow_dir_held(...)?`). If either ever refuses
+// (no RedoxFS disk attached to this run, the same condition `NO_FS_SERVER` skips a test for), this
 // function returns `None` with the terminal's two threads already spawned and no `Holding` to
 // release them: a real leak on that path, unreachable in any run where `fs_server_image` succeeds
 // (every run this fix was tested against). Not fixed here because it is orthogonal to the leak

@@ -1,7 +1,10 @@
 name: empty diff
 
+# Observed failing: 2026-10-19, run 39310089020: red on #2420, a throwaway draft of one empty
+#   commit with no `claim:` subject, kept as this check's live falsification; it printed the
+#   "net out to nothing" message. See notes/observed-failing.md.
 # Observed failing: 2026-10-04, run 37228506894: red on #1623, a claim pull request whose only
-#   commit was the empty `claim:` commit. See notes/observed-failing.md.
+#   commit was the empty `claim:` commit, with the claim-commit hint.
 
 # **Fails a pull request, and a merge-queue entry, that changes no file.** Milestone 627 (a pull request that changes nothing
 # does not merge), number provisional: #1460 merged on 2026-09-30 carrying only its empty `claim:` commit §90 (the claim is a draft pull request; the status flip is a gate) while the finished work sat on another branch for three days. Every other gate
@@ -23,9 +26,8 @@ name: empty diff
 # batch, a later entry's commit is built on the previous entry's, and `base_sha..head_sha` covers
 # every entry up to it, so an empty entry behind a non-empty one would pass. The entry's first parent
 # is the previous entry (or the base branch tip for the first), so `HEAD^1..HEAD` is that pull
-# request alone. The two tree facts above are read from this tree's workflows and `merge-drain`'s
-# `gh-readonly-queue/.../pr-N-` refs; the platform's own payload documentation was not re-read for
-# this file, so a first-observed batch of two is still owed (see Falsified below). If a merge-group
+# request alone. Observed 2026-10-19: run 39285597747 (#2391's entry, built in the same second as
+# #2394's) logged BASE as #2394's queue commit `85c51eb0e`, not a commit on `main`. If a merge-group
 # head ever has other than two parents (a rebase-method queue), the step falls back to `base_sha`,
 # which over-covers (it can miss an empty entry behind a non-empty one) but cannot stall the queue.
 #
@@ -35,13 +37,15 @@ name: empty diff
 # once it is required. The `merge_group` run is the authoritative half: a `pull_request` result is
 # a snapshot of the head it ran on, and the queue re-asks on the entry's own merge.
 #
-# **Required-check status.** The job name below is the required context. Adding it to the `main`
-# ruleset is a settings change only calef can make, and it is outstanding (milestone 627's follow-on section):
-# until then this reports and does not gate. A check that never reports on `merge_group` would stall
-# the queue once required, so the trigger is here from the first commit.
+# **Required.** The job name below is a required context in the `main` ruleset, since 2026-10-03
+# 05:23 UTC (the ruleset's history, version 51771000). A check that never reports on `merge_group`
+# would stall the queue, so the trigger is here from the first commit.
 #
 # **Falsified:** helpers/empty-diff-selftest.sh (in `script/lint`) fails four shapes and passes one.
-# Live observation, a throwaway draft pull request of one empty commit: see the PR record on #1482.
+# Live: the two runs in the record above, one per message. The `merge_group` red half has not been
+# watched: an empty pull request fails this check on `pull_request` and so never reaches the queue.
+# It would take a pull request whose diff went empty after its last `pull_request` run. Two pull
+# requests carrying the same change and enqueued together would stage it, but the first one merges.
 
 on:
   pull_request:
