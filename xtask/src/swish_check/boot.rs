@@ -542,7 +542,11 @@ fn drive_the_prompt(
             crate::time_record::leg(arch),
             if leg.kvm { " kvm" } else { "" }
         ),
-        if leg.fresh { "first boot" } else { "second boot" },
+        if leg.fresh {
+            "first boot"
+        } else {
+            "second boot"
+        },
         "line",
         &took,
     );

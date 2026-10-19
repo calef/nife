@@ -915,8 +915,9 @@ fn slowest_items(rows: &[Row]) -> String {
         return String::new();
     }
     items.sort_by_key(|r| std::cmp::Reverse(r.milliseconds));
-    let mut out =
-        String::from("\n#### Slowest items\n\n| seconds | kind | leg | image | item |\n|---:|---|---|---|---|\n");
+    let mut out = String::from(
+        "\n#### Slowest items\n\n| seconds | kind | leg | image | item |\n|---:|---|---|---|---|\n",
+    );
     for r in items.iter().take(SLOWEST) {
         out.push_str(&format!(
             "| {} | {} | {} | {} | `{}` |\n",
@@ -1208,7 +1209,10 @@ mod tests {
             milliseconds: 1_250,
         }];
         let md = markdown(&rows);
-        assert!(md.contains("| 1.2 | line | aarch64 | first boot | `ls /` |"), "{md}");
+        assert!(
+            md.contains("| 1.2 | line | aarch64 | first boot | `ls /` |"),
+            "{md}"
+        );
         assert!(!md.contains("Slowest tests"), "{md}");
         assert!(!md.contains("| leg | image | tests |"), "{md}");
     }
