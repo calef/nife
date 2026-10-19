@@ -281,7 +281,7 @@ pub(in crate::swish_check) const SWISH_CHECK_AFTER_REBOOT: &[Line] = &[
     line(0, RG_WALK_CD, &[]),
     line(
         0,
-        RG_WALK_CAPS,
+        RG_WALK_PREVIEW,
         &[
             "endpoint  dir",
             "(only crates in it, named on the line)",
@@ -446,7 +446,7 @@ pub(in crate::swish_check) const FROM_BASALT: &[&str] = &[
     "jig install ripgrep",
     "rg --version",
     RG_WALK_CD,
-    RG_WALK_CAPS,
+    RG_WALK_PREVIEW,
     RG_WALK_LINE,
     "jig install ioping",
     "ioping -v",

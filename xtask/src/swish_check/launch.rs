@@ -431,7 +431,7 @@ pub(super) fn whole_characters(split: &mut Vec<u8>, bytes: &[u8]) -> String {
 pub(super) const RG_WALK_LINE: &str = "rg BUGS crates";
 
 /// **What [`RG_WALK_LINE`] would grant, asked before it runs**: `caps` previews the same words.
-pub(super) const RG_WALK_CAPS: &str = "caps rg BUGS crates";
+pub(super) const RG_WALK_PREVIEW: &str = "caps rg BUGS crates";
 
 /// **Where [`RG_WALK_LINE`] is typed**, [`crate::disk::RIPGREP_WALK_HOME`]; skipped with it, since
 /// the directory is on the disk only beside `rg`.
