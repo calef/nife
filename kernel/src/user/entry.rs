@@ -317,14 +317,7 @@ fn run_with(image: &[u8], spawn: Spawn, device: Option<DeviceRun>, own_space: Op
     // a device run, and every `PageFrame` run it is granted, since a process maps a granted run
     // into itself and pays its own log for each page (a 1120x624 screen is 683 records, five log
     // pages). See [`load`] for why the number is taken here rather than asked of each caller.
-    let granted_runs: u64 = spawn
-        .grants
-        .iter()
-        .map(|g| match g.object {
-            crate::cap::Object::PageFrame(_, count) => count.get(),
-            _ => 0,
-        })
-        .sum();
+    let granted_runs: u64 = spawn.grants.iter().map(|g| g.object.mappable_pages()).sum();
     let windowed = spawn.maps.len() as u64 + device.as_ref().map_or(0, |d| d.pages) + granted_runs;
     let (mut space, entry) = match load(image, windowed) {
         Ok(v) => v,
