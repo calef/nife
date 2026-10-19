@@ -38,7 +38,7 @@ pub fn parse_madt(body: &[u8]) -> Result<Madt, AcpiError> {
 }
 
 /// One entry of the MADT's list. Only the kinds this tree acts on are decoded, four for x86 and
-/// four for aarch64; the rest keep their type byte so a boot print can say what it skipped rather
+/// five for aarch64; the rest keep their type byte so a boot print can say what it skipped rather
 /// than pretending the list was shorter than it is.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum MadtEntry {
@@ -125,6 +125,19 @@ pub enum MadtEntry {
         /// and **the frame's own `MSI_TYPER` register is the answer**: the entry's count and base
         /// fields are then not meaningful, so they are not offered.
         spis: Option<MsiSpis>,
+    },
+    /// **A GICv3 Interrupt Translation Service** (type 15, "GIC ITS"): the device that turns a
+    /// message-signaled write, tagged with the writer's device ID, into an LPI through tables the
+    /// kernel owns. It is where MSI confinement lives on aarch64 (milestone 317 (the
+    /// interrupt-remapping flags, and where MSI confinement actually lives)). A device tree states it
+    /// as an `arm,gic-v3-its` child of the GIC node. QEMU `virt` offers one with `gic-version=3`
+    /// under TCG, and none under HVF or on a GICv2.
+    GicIts {
+        /// The ITS's ID, which IORT uses to route a device's MSIs to this ITS.
+        id: u32,
+        /// `GITS_CTLR`'s frame, physical. Its length (two 64 KiB frames) is architectural and the
+        /// entry does not state it.
+        address: u64,
     },
     /// A kind this decoder does not act on, with its type byte.
     Other(u8),
@@ -229,6 +242,12 @@ impl Iterator for MadtEntries<'_> {
                     count: u16(e, 20),
                     base: u16(e, 22),
                 }),
+            },
+            // 20 bytes. ACPI 6.0 printed a wrong length for this structure and its Errata A corrected
+            // it, which is the revision QEMU cites beside the 20 it writes.
+            15 if len >= 20 => MadtEntry::GicIts {
+                id: u32(e, 4),
+                address: u64(e, 8),
             },
             other => MadtEntry::Other(other),
         })
@@ -517,6 +536,28 @@ mod tests {
                     base: 80,
                     count: 64
                 }),
+            }]
+        );
+    }
+
+    /// **QEMU's own ITS entry, byte for byte**, as `virt` writes it with `acpi=on,gic-version=3`
+    /// under TCG. None of QEMU's checked-in `tests/data/acpi/aarch64/virt/APIC*` tables holds one,
+    /// so this is the MADT that QEMU 11.1.2 installed under its EDK2, read out of guest RAM with
+    /// `pmemsave` (2026-10-19 UTC): ITS 0 at `VIRT_GIC_ITS`. The address sits at offset 8, past four
+    /// bytes of ID and two reserved, so a decoder that read it at 4 (as the redistributor's is)
+    /// would see the ID's zeros and half the address.
+    #[test]
+    fn qemus_its_entry_decodes_to_its_id_and_frame() {
+        let mut body = std::vec![0u8; MADT_FIXED_LEN];
+        body.extend_from_slice(&[
+            0x0f, 0x14, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x08, 0x08, 0x00, 0x00,
+            0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+        ]);
+        assert_eq!(
+            madt_entries(&body).collect::<std::vec::Vec<_>>(),
+            std::vec![MadtEntry::GicIts {
+                id: 0,
+                address: 0x0808_0000,
             }]
         );
     }
@@ -823,11 +864,11 @@ mod tests {
 
     // ---- survivor triage of the 2026-10-03 census ---------------------------------------------
 
-    /// The same for the MADT's four ARM kinds: a GICC, a distributor, an MSI frame and a
-    /// redistributor that stop after their header come back as `Other`.
+    /// The same for the MADT's five ARM kinds: a GICC, a distributor, an MSI frame, a
+    /// redistributor and an ITS that stop after their header come back as `Other`.
     #[test]
     fn a_short_arm_madt_entry_is_other_and_not_read() {
-        for kind in [11u8, 12, 13, 14] {
+        for kind in [11u8, 12, 13, 14, 15] {
             let mut body = std::vec![0u8; MADT_FIXED_LEN];
             body.extend_from_slice(&[kind, 4, 0, 0]);
             let got: std::vec::Vec<_> = madt_entries(&body).collect();
