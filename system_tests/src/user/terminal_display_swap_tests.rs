@@ -14,6 +14,8 @@
 //! compared byte for byte with the blob that engine writes. The pixels show the screen survived;
 //! the blob shows the scrollback, the cursor, the rendition and the parser's state did, which no
 //! pixel on a live view can.
+//!
+//! Name: provisional, minted 2026-10-19 (UTC) by the lane for milestone 23.
 
 use line_editor::component::supervisor as s;
 use video_terminal::component as display;
@@ -21,8 +23,13 @@ use video_terminal::handoff::HANDOFF_BYTES;
 use video_terminal::script::{COLS, ROWS};
 
 use super::*;
-use crate::cap::{Rights, page_frame_cap, page_frame_run_cap, rendezvous_cap};
+use crate::cap::{
+    Rights, memory_region_root_cap as memory_region_root_capability,
+    page_frame_cap as page_frame_capability, page_frame_run_cap as page_frame_run_capability,
+    page_frame_run_len, rendezvous_cap as rendezvous_capability,
+};
 use crate::sched;
+use crate::sched::ipc_send_cap as send_capability;
 use crate::user::holding::Holding;
 
 /// `display_terminal`'s image is the largest, about 220 pages: its `Vt` is initialized to
@@ -141,7 +148,7 @@ fn swap_and_check(
     // With `GRANT`, because the supervisor endows the replacement with a map budget it splits
     // from the reserve. Lending it whole is safe for the reason a lend is: the `DESTROY` below
     // takes back everything made from it, wherever it was delegated.
-    sched::ipc_send_cap(swap, s::LEND, crate::cap::memory_region_root_cap(lent), 0);
+    send_capability(swap, s::LEND, memory_region_root_capability(lent), 0);
     let swapped = sched::ipc_call(swap, [s::SWAP, s::CHILD_DISPLAY_TERMINAL]);
     assert_eq!(
         (swapped[0], swapped[1]),
@@ -182,6 +189,111 @@ fn swap_and_check(
     });
 }
 
+/// A running `terminal_supervisor` holding `display_terminal` and `line_editor`, as the swap's
+/// requester sees it.
+struct Rig {
+    sink: sched::RendezvousId,
+    sink_page: u64,
+    swap: sched::RendezvousId,
+    budget: u64,
+    held: Holding,
+}
+
+impl Rig {
+    /// Build the supervisor in display mode with all three images, on the driver's display endpoint
+    /// and scanout.
+    fn start(display_ep: sched::RendezvousId, surface: u64) -> Self {
+        let supervisor_image =
+            program("terminal_supervisor").expect("no terminal_supervisor in the initial ramdisk");
+        let editor_image = program("line_editor").expect("no line_editor in the initial ramdisk");
+        let display_image =
+            program("display_terminal").expect("no display_terminal in the initial ramdisk");
+
+        let ep_region = crate::memory_region::create(4).expect("no endpoint region");
+        let term = sched::create_rendezvous_from(ep_region).expect("term");
+        let sink = sched::create_rendezvous_from(ep_region).expect("sink");
+        let swap = sched::create_rendezvous_from(ep_region).expect("swap");
+        let budget =
+            crate::memory_region::create(s::SWAPPING_BUDGET_PAGES + display::SUPERVISOR_PAGES)
+                .expect("no supervisor budget");
+        let image_pages: usize = [editor_image, supervisor_image, display_image]
+            .iter()
+            .map(|i| i.len().div_ceil(FRAME_SIZE as usize))
+            .sum();
+        let frames = crate::memory_region::create((image_pages + EXTRA_STACK_PAGES + 3) as u64)
+            .expect("no frame region");
+        let alloc = || crate::memory_region::retype_page(frames).expect("frame region exhausted");
+        let (sink_page, app_out, app_in) = (alloc(), alloc(), alloc());
+        let windows = copy_the_images_into_frames(
+            [
+                (editor_image, s::ELF_VA),
+                (supervisor_image, s::OWN_IMAGE_ADDRESS),
+                (display_image, s::DISPLAY_IMAGE_ADDRESS),
+            ],
+            alloc,
+        );
+        let maps_p = &raw const ELF_MAPS;
+        // SAFETY: written above, and read only by the supervisor's spawn below.
+        let maps: &'static [Mapping; MAX_WINDOWS] = unsafe { &*maps_p };
+
+        let lengths = s::image_lengths(
+            editor_image.len() as u64,
+            supervisor_image.len() as u64,
+            display_image.len() as u64,
+        )
+        .expect("an image is too long for its start argument");
+        let surface_run = page_frame_run_len(graphics_contract::SURFACE_PAGE_FRAMES as u64);
+        let supervisor_tid = sched::spawn(move || {
+            run(
+                supervisor_image,
+                Spawn {
+                    arg0: 1, // `line_editor`'s display sink
+                    arg1: lengths,
+                    arg2: SWAP_SLOT,
+                    grants: &[
+                        memory_region_root_capability(budget),         // BUDGET
+                        rendezvous_capability(term, Rights::ALL),      // TERMINAL
+                        rendezvous_capability(sink, Rights::ALL), // SINK: display_terminal serves it
+                        page_frame_capability(sink_page, Rights::ALL), // SINK_PAGE
+                        page_frame_capability(app_out, Rights::ALL), // CLIENT_OUT
+                        page_frame_capability(app_in, Rights::ALL), // CLIENT_IN
+                        rendezvous_capability(display_ep, Rights::WRITE.union(Rights::GRANT)), // PRESENT
+                        page_frame_run_capability(surface, surface_run, Rights::ALL), // SURFACE
+                        rendezvous_capability(swap, Rights::READ), // the swap endpoint
+                    ],
+                    maps: &maps[..windows],
+                },
+            )
+        })
+        .expect("could not spawn terminal_supervisor");
+        let mut held = Holding::new();
+        held.add_thread(supervisor_tid);
+        held.add_region(ep_region);
+        held.add_region(frames);
+        Rig {
+            sink,
+            sink_page,
+            swap,
+            budget,
+            held,
+        }
+    }
+
+    /// Retire the supervisor, so every region it built comes home to its budget.
+    fn stop(self) {
+        let stopped = sched::ipc_call(self.swap, [s::STOP, 0]);
+        assert_eq!(stopped[0], s::STOPPED);
+        let deadline = crate::arch::timer::now() + crate::arch::timer::frequency() / 20;
+        while crate::arch::timer::now() < deadline {
+            sched::yield_now();
+        }
+        self.held.release_or_fail("terminal_supervisor");
+        sched::reclaim_region(self.budget).expect(
+            "the supervisor's budget would not reclaim: an instance's region never came home",
+        );
+    }
+}
+
 /// Falsification: replayable `system_tests/falsifications/user.terminal_display_swap_tests.the_display_terminal_is_replaced_live_and_its_screen_and_history_survive.patch`
 #[test_case]
 fn the_display_terminal_is_replaced_live_and_its_screen_and_history_survive() {
@@ -196,72 +308,8 @@ fn the_display_terminal_is_replaced_live_and_its_screen_and_history_survive() {
         "the GPU driver did not come up"
     );
 
-    let supervisor_image =
-        program("terminal_supervisor").expect("no terminal_supervisor in the initial ramdisk");
-    let editor_image = program("line_editor").expect("no line_editor in the initial ramdisk");
-    let display_image =
-        program("display_terminal").expect("no display_terminal in the initial ramdisk");
-
-    let ep_region = crate::memory_region::create(4).expect("no endpoint region");
-    let term = sched::create_rendezvous_from(ep_region).expect("term");
-    let sink = sched::create_rendezvous_from(ep_region).expect("sink");
-    let swap = sched::create_rendezvous_from(ep_region).expect("swap");
-    let budget = crate::memory_region::create(s::SWAPPING_BUDGET_PAGES + display::SUPERVISOR_PAGES)
-        .expect("no supervisor budget");
-    let image_pages: usize = [editor_image, supervisor_image, display_image]
-        .iter()
-        .map(|i| i.len().div_ceil(FRAME_SIZE as usize))
-        .sum();
-    let frames = crate::memory_region::create((image_pages + EXTRA_STACK_PAGES + 3) as u64)
-        .expect("no frame region");
-    let alloc = || crate::memory_region::retype_page(frames).expect("frame region exhausted");
-    let (sink_page, app_out, app_in) = (alloc(), alloc(), alloc());
-    let windows = copy_the_images_into_frames(
-        [
-            (editor_image, s::ELF_VA),
-            (supervisor_image, s::OWN_IMAGE_ADDRESS),
-            (display_image, s::DISPLAY_IMAGE_ADDRESS),
-        ],
-        alloc,
-    );
-    let maps_p = &raw const ELF_MAPS;
-    // SAFETY: written above, and read only by the supervisor's spawn below.
-    let maps: &'static [Mapping; MAX_WINDOWS] = unsafe { &*maps_p };
-
-    let lengths = s::image_lengths(
-        editor_image.len() as u64,
-        supervisor_image.len() as u64,
-        display_image.len() as u64,
-    )
-    .expect("an image is too long for its start argument");
-    let surface_run = crate::cap::page_frame_run_len(graphics_contract::SURFACE_PAGE_FRAMES as u64);
-    let supervisor_tid = sched::spawn(move || {
-        run(
-            supervisor_image,
-            Spawn {
-                arg0: 1, // `line_editor`'s display sink
-                arg1: lengths,
-                arg2: SWAP_SLOT,
-                grants: &[
-                    crate::cap::memory_region_root_cap(budget), // BUDGET
-                    rendezvous_cap(term, Rights::ALL),          // TERMINAL
-                    rendezvous_cap(sink, Rights::ALL),          // SINK: display_terminal serves it
-                    page_frame_cap(sink_page, Rights::ALL),     // SINK_PAGE
-                    page_frame_cap(app_out, Rights::ALL),       // CLIENT_OUT
-                    page_frame_cap(app_in, Rights::ALL),        // CLIENT_IN
-                    rendezvous_cap(display_ep, Rights::WRITE.union(Rights::GRANT)), // PRESENT
-                    page_frame_run_cap(surface, surface_run, Rights::ALL), // SURFACE
-                    rendezvous_cap(swap, Rights::READ),         // the swap endpoint
-                ],
-                maps: &maps[..windows],
-            },
-        )
-    })
-    .expect("could not spawn terminal_supervisor");
-    let mut held = Holding::new();
-    held.add_thread(supervisor_tid);
-    held.add_region(ep_region);
-    held.add_region(frames);
+    let rig = Rig::start(display_ep, surface);
+    let (swap, sink, sink_page) = (rig.swap, rig.sink, rig.sink_page);
 
     // The supervisor's `display_terminal` painted its blank grid: the driver's one report of it.
     let [flushed, ..] = sched::ipc_receive(driver_report);
@@ -319,15 +367,7 @@ fn the_display_terminal_is_replaced_live_and_its_screen_and_history_survive() {
         .expect("the swap refused while the first held the reserve could not be retried");
     swap_and_check(swap, second, &w, expect, 5, "the retried swap");
 
-    let stopped = sched::ipc_call(swap, [s::STOP, 0]);
-    assert_eq!(stopped[0], s::STOPPED);
-    let deadline = crate::arch::timer::now() + crate::arch::timer::frequency() / 20;
-    while crate::arch::timer::now() < deadline {
-        sched::yield_now();
-    }
-    held.release_or_fail("terminal_supervisor");
-    sched::reclaim_region(budget)
-        .expect("the supervisor's budget would not reclaim: an instance's region never came home");
+    rig.stop();
     sched::reclaim_region(reserve.0).expect("the swap reserve would not reclaim");
 }
 

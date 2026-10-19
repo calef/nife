@@ -398,7 +398,7 @@ impl Wiring {
 /// comes from the machine's swap reserve, so it is never mapped at build: a supervisor sends it
 /// with `CTL_HANDOFF` (`video_terminal::component`'s module note has the exchange).
 struct HandoffRun {
-    /// A run is mapped at `HANDOFF_VA`. True from the message that brought it until the reserve it
+    /// A run is mapped at `HANDOFF_ADDRESS`. True from the message that brought it until the reserve it
     /// came from is destroyed, which unmaps it from under this flag: the supervisor sends a plain
     /// `CTL_HANDOFF` only within the swap that sent the run, so the flag is never read stale.
     mapped: bool,
@@ -408,12 +408,12 @@ impl HandoffRun {
     /// The run, read or written whole.
     fn bytes(&mut self) -> &mut [u8] {
         // SAFETY: called only while `mapped`, which means a run of `HANDOFF_PAGES` frames is
-        // mapped read/write at `HANDOFF_VA` in this address space, mapped by `take` below from a
+        // mapped read/write at `HANDOFF_ADDRESS` in this address space, mapped by `take` below from a
         // capability the supervisor sent. This process has one thread, and `&mut self` makes this
         // the only reference.
         unsafe {
             core::slice::from_raw_parts_mut(
-                component::HANDOFF_VA as *mut u8,
+                component::HANDOFF_ADDRESS as *mut u8,
                 video_terminal::handoff::HANDOFF_BYTES,
             )
         }
@@ -424,10 +424,15 @@ impl HandoffRun {
     fn take(&mut self, delivered: Delivered) -> bool {
         match delivered {
             Delivered::Delegation(run) => {
-                self.mapped =
-                    user_mode_runtime::map_page_frame(run, component::HANDOFF_VA, true, BUDGET);
-                // The mapping is what this instance needs; the capability would only hold a slot.
-                user_mode_runtime::cap_delete(run);
+                // The capability stays in its slot: an instance is handed at most two runs in its
+                // life, the one it absorbs and the one it writes, and each goes stale when its
+                // reserve is destroyed.
+                self.mapped = user_mode_runtime::map_page_frame(
+                    run,
+                    component::HANDOFF_ADDRESS,
+                    true,
+                    BUDGET,
+                );
                 self.mapped
             }
             Delivered::Nothing => self.mapped,
@@ -491,20 +496,14 @@ impl HandoffRun {
     }
 }
 
-#[unsafe(no_mangle)]
-pub extern "C" fn _start(mode: u64, control: u64, start: u64) -> ! {
-    // Under a supervisor it names the control endpoint's slot, which is fixed; a spawner that
-    // supervises nothing passes `0`.
-    let supervised = match control {
-        0 => false,
-        component::CONTROL => true,
-        _ => die(E_MODE),
-    };
+/// Map the surface (in [`MODE_DISPLAY`]) and learn its size from whoever owns the screen:
+/// `(width, height, stride)` in pixels and bytes.
+fn negotiate_geometry(mode: u64) -> (u32, u32, u32) {
     // **The geometry is asked for, never assumed**, in both wirings. Rung one added `INFO` for this
     // and rung two publishes a control page for it, and the reason is the same in both: the process
     // that owns the screen decides how big a surface is, and a client that guessed would paint the
     // wrong shape the first time anything changed.
-    let (w, h, stride) = match mode {
+    match mode {
         MODE_DISPLAY => {
             // The scanout and the application's output page are `PageFrame`s this process holds, and it
             // maps them itself out of its own budget (milestone 108). Before the `INFO` call,
@@ -548,7 +547,19 @@ pub extern "C" fn _start(mode: u64, control: u64, start: u64) -> ! {
             )
         }
         _ => die(E_MODE),
+    }
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn _start(mode: u64, control: u64, start: u64) -> ! {
+    // Under a supervisor it names the control endpoint's slot, which is fixed; a spawner that
+    // supervises nothing passes `0`.
+    let supervised = match control {
+        0 => false,
+        component::CONTROL => true,
+        _ => die(E_MODE),
     };
+    let (w, h, stride) = negotiate_geometry(mode);
 
     // A surface too small for one character has nothing to show and is refused. It does **not**
     // have to be a whole number of cells: the font is 7 wide and the scanout is 128, so the normal

@@ -1,4 +1,8 @@
+//! Name: provisional, minted 2026-10-19 (UTC) by the lane for milestone 23.
+
 use super::*;
+use crate::Vt;
+use crate::geometry::{MAX_ROWS, SCROLLBACK_ROWS};
 extern crate std;
 use std::vec;
 
@@ -116,5 +120,5 @@ fn the_largest_blob_fits_the_handoff_pages() {
         assert!(t.handoff_len() <= HANDOFF_BYTES);
         assert!(t.write_handoff(&mut vec![0u8; HANDOFF_BYTES]).is_some());
     }
-    assert!(HANDOFF_BYTES as u64 <= HANDOFF_PAGES * page_frames::FRAME_SIZE);
+    assert!(HANDOFF_BYTES as u64 <= HANDOFF_PAGES * address_space_map::PAGE);
 }

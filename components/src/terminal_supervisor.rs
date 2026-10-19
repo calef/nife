@@ -21,32 +21,19 @@
 //!                callers are answered Gone), and reply REPLACED_HUNG.
 //! ```
 //!
-//! `line_editor` is small, so its budget holds two bays and a swap moves it from one to the other.
-//! `display_terminal` is a whole `Vt` (calef's "D", 2026-10-19 UTC): its budget holds one bay, and
-//! a swap is lent the machine's swap reserve (`supervisor::SWAP_RESERVE_PAGES`) with
-//! `LEND` beforehand. The replacement is built in the reserve and the handoff run is retyped from
-//! it, so the swap is two of the moves above: into the reserve, then home to the bay with the
-//! same image. Both capabilities are deleted before the answer, and the lender's `DESTROY` of the
-//! reserve then revokes anything left mapped from it. A display swap without a lent reserve is
-//! answered `NEEDS_RESERVE`, which is retryable and quiesces nothing.
-//!
-//! A hung child looks like an idle one from here, `BLOCKED` and refused by `REAP`; only an
-//! unanswered quiesce tells them apart (notes/hung-component.md). A `CALL` takes no deadline, so a
-//! stand-in built from this program's own image makes it and signals the answer on a notification
-//! the supervisor's timer also signals. Each child's two control endpoints alternate, so a word
-//! meant for the incumbent never reaches its replacement.
+//! `line_editor`'s budget holds two bays and a swap moves it between them. `display_terminal`'s
+//! holds one: its swap is lent the machine's swap reserve (`supervisor::SWAP_RESERVE_PAGES`) with
+//! `LEND`, and moves into it and home again, answering `NEEDS_RESERVE` when nothing was lent. A
+//! `CALL` takes no deadline, so a stand-in built from this program's own image makes each quiesce
+//! and signals a notification the supervisor's timer also signals (notes/hung-component.md).
 //!
 //! # BUGS
 //!
-//! Nothing on a real boot asks it to swap: that is milestone 694 (the installer asks the terminal
-//! to swap), which also brings a new image with `SWAP` and holds the swap reserve. Until then a
-//! replacement is the same image and the kernel's test holds the reserve. A `graphical_terminal`
-//! session builds `display_terminal` itself and hands this supervisor its endpoint, so a session's
-//! `display_terminal` is not supervised. A hung child's state is lost, and `swish` and `rmle`
-//! read the `Gone` its callers get as a failed read. A slow one is convicted as hung. One that
-//! faults is not restarted. A `display_terminal` replacement that refuses its own blob on the move
-//! home leaves the terminal serving from the reserve, answered `IN_RESERVE`, until a later `SWAP`
-//! finishes the move. notes/interactive-stack-swap.md has each in full.
+//! Nothing on a real boot asks it to swap or holds the reserve: milestone 694 (the installer asks
+//! the terminal to swap). A session's `display_terminal` is not supervised. A hung child's state is
+//! lost; a slow one is convicted as hung; one that faults is not restarted. A `display_terminal`
+//! that refuses its own blob on the move home serves from the reserve, answered `IN_RESERVE`.
+//! notes/interactive-stack-swap.md has each in full.
 //!
 //! Name: ratified 2026-10-06 (calef, "Ratify" it, in conversation). Minted
 //! provisionally 2026-09-27 by the lane for milestone 23.
@@ -60,8 +47,9 @@ use line_editor::component::{self, supervisor as s};
 use line_editor::proto;
 use supervision_protocol::{Child as Built, ChildEndowment, Retention};
 use user_mode_runtime::{
-    Delivered, cap_delete, cntfrq, notification_poll, notification_signal, notification_wait, now,
-    receive, receive_fault, receive_request, reply, send, send_capability, timer_arm,
+    Delivered, cap_delete as delete_capability, cntfrq, notification_poll, notification_signal,
+    notification_wait, now, receive, receive_fault, receive_request, reply, send, send_capability,
+    timer_arm,
 };
 use video_terminal::component as display;
 
@@ -197,7 +185,7 @@ fn supervise(mode: u64, lengths: u64, swap: u64) -> ! {
             Delivered::Reply(caller) => caller,
             Delivered::Delegation(reserve) if req.w0 == s::LEND => {
                 if let Some(stale) = lent.replace(reserve) {
-                    cap_delete(stale);
+                    delete_capability(stale);
                 }
                 continue;
             }
@@ -350,7 +338,7 @@ impl<'a> Child<'a> {
             Kind::DisplayTerminal => {
                 let rw = abi::rights::READ | abi::rights::WRITE;
                 // `video_terminal::component`'s slots, in order.
-                let caps = [
+                let capabilities = [
                     (self.notify, abi::rights::WRITE),
                     (s::PRESENT, abi::rights::WRITE),
                     (self.served, abi::rights::READ),
@@ -361,7 +349,7 @@ impl<'a> Child<'a> {
                     (self.notify, abi::rights::WRITE),
                 ];
                 let endow = ChildEndowment {
-                    caps: &caps,
+                    caps: &capabilities,
                     fault: Some(self.faultep),
                     ..ChildEndowment::new(Retention::Nothing)
                 };
@@ -526,8 +514,8 @@ impl<'a> Child<'a> {
             let written = self.hand_run(cur) && receive(self.notify).0 == proto::NOTE_WRITTEN;
             if !written {
                 // The replacement was laid out and never started: its region destroys whole.
-                cap_delete(laid.child.tcb);
-                cap_delete(laid.aspace);
+                delete_capability(laid.child.tcb);
+                delete_capability(laid.aspace);
                 give_back(laid.region);
                 give_back(laid.budget);
                 send(self.controls[cur], proto::CTL_RESUME, 0, 0);
@@ -598,11 +586,11 @@ impl<'a> Child<'a> {
                 None => fail(),
             }
         }
-        cap_delete(self.run);
+        delete_capability(self.run);
         self.run = 0;
         self.places[1] = 0;
         self.maps_run = [false, false];
-        cap_delete(reserve);
+        delete_capability(reserve);
         *lent = None;
         match out {
             (s::SWAPPED, _) => (s::SWAPPED, self.started),
@@ -646,7 +634,7 @@ impl Supervisor<'_> {
             d.retire(self);
         }
         if let Some(reserve) = lent {
-            cap_delete(reserve);
+            delete_capability(reserve);
         }
         if let Some(d) = &self.deadline {
             end_region(d.bay);
@@ -771,7 +759,7 @@ fn end_region(region: u64) {
 fn give_back(region: u64) {
     if region != 0 {
         end_region(region);
-        cap_delete(region);
+        delete_capability(region);
     }
 }
 
@@ -782,7 +770,7 @@ fn collect(faultep: u64, region: u64) {
     if user_mode_runtime::reap(faultep, tid) != 0 {
         fail()
     }
-    cap_delete(region);
+    delete_capability(region);
 }
 
 fn bay(pages: u64) -> u64 {

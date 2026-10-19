@@ -1219,9 +1219,9 @@ fn moving_pixels_with_k<const K: usize>() {
 /// **A painter that keeps [`Damage`]'s promise ends with the engine's picture**: move the picture up
 /// `scrolled` rows, render `rect`, and every pixel is [`Vt::pixel`]'s. Checked after each feed of
 /// writes that scroll several rows between takes, which is what one `OPERATION_WRITE` of several
-/// lines is. Two shapes broke it before 2026-10-19: a row wider than the rows that replaced it in
-/// one move (its tail stayed on the screen), and a change made above the bottom row and then
-/// scrolled in the same take (its box stayed where the change was made, not where it went).
+/// lines is. Two shapes are the ones that can break it: a row wider than the rows that replace it
+/// in one move (its tail must not stay on the screen), and a change made above the bottom row and
+/// then scrolled in the same take (its box must go where the change went).
 #[test]
 fn a_painter_that_moves_and_renders_what_damage_says_ends_with_the_engines_picture() {
     for cursor in [true, false] {

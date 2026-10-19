@@ -1520,7 +1520,6 @@ dependencies = [
  "address_space_map",
  "bitmap_font",
  "line_editor",
- "page_frames",
 ]
 
 [[package]]

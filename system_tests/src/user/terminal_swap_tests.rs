@@ -22,7 +22,10 @@ use line_editor::component::supervisor as s;
 use line_editor::proto;
 
 use super::*;
-use crate::cap::{Rights, page_frame_cap, rendezvous_cap};
+use crate::cap::{
+    Rights, memory_region_root_cap as memory_region_root_capability,
+    page_frame_cap as page_frame_capability, rendezvous_cap as rendezvous_capability,
+};
 use crate::sched;
 use crate::user::holding::Holding;
 
@@ -172,14 +175,14 @@ impl Terminal {
                     arg1: lengths,
                     arg2: SWAP_SLOT,
                     grants: &[
-                        crate::cap::memory_region_root_cap(budget), // BUDGET
-                        rendezvous_cap(term, Rights::ALL),          // TERMINAL
-                        rendezvous_cap(conreq, Rights::WRITE.union(Rights::GRANT)), // SINK
-                        page_frame_cap(console_page, Rights::ALL),  // SINK_PAGE
-                        page_frame_cap(app_out, Rights::ALL),       // CLIENT_OUT
-                        page_frame_cap(app_in, Rights::ALL),        // CLIENT_IN
-                        rendezvous_cap(conrep, Rights::READ.union(Rights::GRANT)), // SINK_REPLY
-                        rendezvous_cap(swap, Rights::READ),         // the swap endpoint
+                        memory_region_root_capability(budget),    // BUDGET
+                        rendezvous_capability(term, Rights::ALL), // TERMINAL
+                        rendezvous_capability(conreq, Rights::WRITE.union(Rights::GRANT)), // SINK
+                        page_frame_capability(console_page, Rights::ALL), // SINK_PAGE
+                        page_frame_capability(app_out, Rights::ALL), // CLIENT_OUT
+                        page_frame_capability(app_in, Rights::ALL), // CLIENT_IN
+                        rendezvous_capability(conrep, Rights::READ.union(Rights::GRANT)), // SINK_REPLY
+                        rendezvous_capability(swap, Rights::READ), // the swap endpoint
                     ],
                     maps: &maps_ro[..windows],
                 },

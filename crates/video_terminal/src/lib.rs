@@ -35,6 +35,7 @@
 #![no_std]
 
 pub mod component;
+pub mod handoff;
 pub mod keymap;
 pub mod script;
 
@@ -60,5 +61,3 @@ pub use damage::{CellRect, Damage};
 pub use geometry::{MAX_CELLS, MAX_COLS, MAX_ROWS, SCROLLBACK_CELLS, SCROLLBACK_ROWS};
 pub use palette::{DEFAULT_BG, DEFAULT_FG, PALETTE};
 pub use vt::Vt;
-/// A `Vt` as a state handoff blob, for a `display_terminal` replaced live. See the module.
-pub use vt::handoff;

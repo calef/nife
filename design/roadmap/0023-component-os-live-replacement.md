@@ -8,7 +8,7 @@ built: 2026-10-19
 Every residual this block named is built, and so are the advisory warning (§231), the live swap of
 `line_editor` (§232 (the line editor swap contract)) and of `display_terminal`, both under a
 terminal supervisor that notices a hang on its own. Two pieces have milestones of their own: the
-installer asking the terminal to swap (milestone 694), and the compositor's swap (milestone 932),
+installer asking the terminal to swap (milestone 694), and the compositor's swap (milestone 932 (swap the compositor live)),
 which waits for a boot that runs a compositor.
 
 ## The idea
