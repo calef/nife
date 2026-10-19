@@ -591,7 +591,9 @@ fn scanout_check(arch: &str, test_args: &[&str], inbound_wanted: bool) -> bool {
 /// trap), so the verdict comes from reading the transcript, which blocks, and the referee has to be
 /// driven from a second thread beside it. Same state machine, same messages, two drivers.
 pub(crate) struct ScanoutReferee {
+    /// The leg's name, which is the architecture except on the OVMF leg.
     arch: String,
+    qemu_arch: String,
     sock: String,
     shot: PathBuf,
     composed_shot: PathBuf,
@@ -617,10 +619,19 @@ pub(crate) struct ScanoutReferee {
 impl ScanoutReferee {
     /// Clear last run's evidence and tell the runner where to put the monitor socket.
     pub(crate) fn new(arch: &str) -> Self {
-        let sock = gpu_mon_socket(arch);
-        let shot = gpu_shot_path(arch);
-        let composed_shot = gpu_compose_path(arch);
-        let text_shot = gpu_text_path(arch);
+        Self::for_leg(arch, arch)
+    }
+
+    /// [`new`](Self::new) for a leg that is not the architecture's PVH or `virt` boot: `leg` names
+    /// the socket, the evidence files and the report's lines, and `arch` still picks the QEMU whose
+    /// version a red line quotes. The OVMF leg (milestone 420 (x86_64 has one fixture of five and
+    /// no NIC, GPU, keyboard or RNG)) is `x86_64-ovmf`, so its dumps do not overwrite the PVH
+    /// leg's.
+    pub(crate) fn for_leg(arch: &str, leg: &str) -> Self {
+        let sock = gpu_mon_socket(leg);
+        let shot = gpu_shot_path(leg);
+        let composed_shot = gpu_compose_path(leg);
+        let text_shot = gpu_text_path(leg);
         let _ = std::fs::remove_file(&sock);
         let _ = std::fs::remove_file(&shot);
         let _ = std::fs::remove_file(&composed_shot);
@@ -634,7 +645,8 @@ impl ScanoutReferee {
         unsafe { std::env::set_var("NIFE_GPU_MON", &sock) };
 
         Self {
-            arch: arch.to_string(),
+            arch: leg.to_string(),
+            qemu_arch: arch.to_string(),
             sock,
             shot,
             composed_shot,
@@ -731,7 +743,7 @@ impl ScanoutReferee {
         // post-run check does not say which emulator produced it)): these checks drive QEMU's
         // monitor, and versions fail disjoint sets of them. Computed once and carried by the
         // FAILED lines, so a red line interprets itself; the green lines stay as they were.
-        let qemu = crate::host::qemu_version(arch);
+        let qemu = crate::host::qemu_version(&self.qemu_arch);
         let (composed, text, matched) = (&self.composed, &self.text, &self.matched);
         let seen = Seen {
             dumps: self.dumps,

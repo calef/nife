@@ -328,6 +328,29 @@ if [ -n "$NIFE_RNG" ]; then
     RNG="-device virtio-rng-pci,disable-legacy=on,iommu_platform=on"
 fi
 
+# A virtio-gpu under NIFE_GPU and a virtio keyboard under NIFE_KEYBOARD, as on the PVH runner
+# (milestone 420), so the display, compositor and keyboard tests run under `cargo xtask uefi-test`.
+# Same `-vga none` for the same reason: `screendump` writes console 0, and q35's default VGA would
+# be it. That also means the firmware's GOP is the virtio-gpu's, so OVMF's VirtioGpuDxe drives the
+# device before the kernel's driver does. It resets the device at ExitBootServices and reports
+# `PixelBltOnly`, so the loader hands the kernel no screen and the driver starts from a reset
+# device, as it does under PVH. `uefi_boot`'s tour removes both variables: its screen check reads
+# the VGA's linear framebuffer through GOP.
+GPU=""
+if [ -n "$NIFE_GPU" ]; then
+    GPU="-vga none -device virtio-gpu-pci,disable-legacy=on,iommu_platform=on"
+fi
+KBD=""
+if [ -n "$NIFE_KEYBOARD" ]; then
+    KBD="-device virtio-keyboard-pci,disable-legacy=on,iommu_platform=on"
+fi
+# The scanout referee's monitor (xtask's `ScanoutReferee`), beside the screen gate's above: it
+# presses the key the keyboard test waits for and dumps the scanout. QEMU takes two monitors.
+GPU_MON=""
+if [ -n "$NIFE_GPU_MON" ]; then
+    GPU_MON="-monitor unix:$NIFE_GPU_MON,server,nowait"
+fi
+
 exec helpers/qemu-bounded.sh "$TIMEOUT" qemu-system-x86_64 \
     $ACCEL \
     -machine q35 \
@@ -344,6 +367,9 @@ exec helpers/qemu-bounded.sh "$TIMEOUT" qemu-system-x86_64 \
     $NVME \
     $NET \
     $RNG \
+    $GPU \
+    $KBD \
+    $GPU_MON \
     $USBKBD \
     -drive "if=pflash,format=raw,unit=0,readonly=on,file=$NIFE_OVMF_CODE" \
     -drive "if=pflash,format=raw,unit=1,file=$VARS" \

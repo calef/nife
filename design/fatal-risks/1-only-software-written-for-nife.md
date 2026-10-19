@@ -133,6 +133,14 @@ Fact, 2026-10-19 (UTC), from milestone 810's block and nifeos/basalt#29: `rg` re
 package. basalt builds it reproducibly, its recipe records the package's digest, and every pull
 request's `swish-check` installs it with `jig` on all three architectures. The verdict is unchanged.
 
+Fact, 2026-10-19 (UTC), from the blocks of milestones 897 (SQLite is packaged in basalt), 906
+(ioping is packaged in basalt) and 907 (hackbench is packaged in basalt), all BUILT on 2026-10-17:
+the three C programs this page counts now reach nife as basalt packages, not from a helper. Each
+recipe records its package's digest for aarch64, riscv64 and x86_64, basalt's build refuses a
+package that does not match, and every pull request's `swish-check` types `jig install sqlite`,
+`jig install ioping` and `jig install hackbench` on all three architectures. With milestone 810 for
+`rg`, every foreign program here arrives as §297 rules. The verdict is unchanged.
+
 ## Benchmarks that inform this risk
 
 As of 2026-10-08 (UTC), under §262 (nife is measured with the field's standard benchmarks).
