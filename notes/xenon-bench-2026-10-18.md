@@ -234,9 +234,9 @@ and nothing else (`notes/bench-runbook.md`'s BUGS):
   the same path. nife's request crosses the disk tree's server to the NVMe driver, and Linux's goes
   through its block layer. That difference is what risk 6 measures, so the row states it rather
   than hiding it.
-- ioping prints `n1 (  0 B)` on x86_64: it sees the disk tree's file size as zero. The latencies
-  show device reads, but which offsets ioping chose inside the 64 MiB window has not been checked.
-  It is reported to the lane that built `/disk` (#2371).
+- ioping prints `n1 (  0 B)` because its device size is filled in only on platforms its
+  `parse_device` knows, and nife is not one. The working set comes from `st_size`, which nife
+  reports as the namespace's size, so requests land at random offsets in the 64 MiB at 1 MiB.
 - Step 2 builds the evening's installer from a branch that has not merged, because the flag may
   flip only after silicon proves it. The branch's pull request follows the evening.
 - The soak image is a debug build, as radon's were.
