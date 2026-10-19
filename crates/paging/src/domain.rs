@@ -450,6 +450,9 @@ mod tests {
     /// to be discovered as a use-after-free.
     struct FramePool;
 
+    /// A [`Mapper`] that allocates nothing, over this module's synthetic physical memory.
+    type Walker<F> = Mapper<fn() -> Option<u64>, fn(u64) -> *mut PageTable, F>;
+
     impl FramePool {
         /// Open the thread's pool. Panics if one is already open on this thread; see the type's
         /// `BUGS`.
@@ -479,6 +482,29 @@ mod tests {
         fn frame(&self) -> u64 {
             let n = PHYS.with(|m| m.borrow().len()) as u64;
             self.frame_at(POOL_BASE + n * PAGE_SIZE)
+        }
+
+        /// [`build_identity_domain`] over `regions` into a fresh root, every table from this pool,
+        /// and the root back. The one place these tests argue the build's contract.
+        fn build_domain<F: PageFormat>(&self, regions: &[DmaRegion]) -> u64 {
+            let root = self.frame();
+            // SAFETY: `root` and every table the build asks for are zeroed, page-aligned host
+            // frames this pool just allocated and still holds; `phys_to_ptr` is the identity over
+            // exactly those frames; and nothing installs `root` anywhere.
+            unsafe {
+                build_identity_domain::<_, _, F>(root, || Some(self.frame()), phys_to_ptr, regions)
+            }
+            .expect("domain build failed");
+            root
+        }
+
+        /// A walker over the domain at `root`, which allocates nothing, for `translate`. The one
+        /// place these tests argue `Mapper::new`'s contract.
+        fn walker<F: PageFormat>(&self, root: u64) -> Walker<F> {
+            // SAFETY: `root` is a page-aligned frame of this pool, zeroed when the pool made it and
+            // written since only by a build, and `phys_to_ptr` reaches every frame the pool holds.
+            // It panics on any other address, so a walker kept past the pool fails loudly.
+            unsafe { Mapper::new(root, Half::Low, || None, phys_to_ptr) }
         }
     }
 
@@ -511,8 +537,6 @@ mod tests {
     /// page just past the end does not. This is the confinement stated as a property of the tables.
     fn one_region_confines<F: PageFormat>() {
         let pool = FramePool::new();
-        let mut frames: Vec<u64> = Vec::new();
-        let root = pool.frame();
         // The device's data frame, at an address the TEST chooses so the assertions below mean what
         // they say: `base + PAGE_SIZE` must be a page the domain was not given, and with a sequential
         // pool it would have been the next frame allocated instead.
@@ -522,26 +546,9 @@ mod tests {
             size: PAGE_SIZE,
             writable: true,
         }];
-        // SAFETY: root and every alloc'd frame are zeroed, page-aligned host frames; identity
-        // phys_to_ptr satisfies the contract on the host.
-        unsafe {
-            build_identity_domain::<_, _, F>(
-                root,
-                || {
-                    let f = pool.frame();
-                    frames.push(f);
-                    Some(f)
-                },
-                phys_to_ptr,
-                &regions,
-            )
-            .expect("domain build failed");
-        }
+        let root = pool.build_domain::<F>(&regions);
 
-        // SAFETY: root is a live table; translate only reads it.
-        let m = unsafe {
-            Mapper::<fn() -> Option<u64>, _, F>::new(root, Half::Low, || None, phys_to_ptr)
-        };
+        let m = pool.walker::<F>(root);
         assert_eq!(
             m.translate(base),
             Some((base, Flags::user_data())),
@@ -573,27 +580,14 @@ mod tests {
     #[test]
     fn amd_vi_domain_confines_a_region() {
         let pool = FramePool::new();
-        let root = pool.frame();
         let base = pool.frame_at(0x2000_0000);
         let regions = [DmaRegion {
             base,
             size: PAGE_SIZE,
             writable: true,
         }];
-        // SAFETY: as in `one_region_confines`.
-        unsafe {
-            build_identity_domain::<_, _, AmdVi>(
-                root,
-                || Some(pool.frame()),
-                phys_to_ptr,
-                &regions,
-            )
-            .expect("domain build failed");
-        }
-        // SAFETY: `root` is the table the build above populated, reachable through `phys_to_ptr`.
-        let m = unsafe {
-            Mapper::<fn() -> Option<u64>, _, AmdVi>::new(root, Half::Low, || None, phys_to_ptr)
-        };
+        let root = pool.build_domain::<AmdVi>(&regions);
+        let m = pool.walker::<AmdVi>(root);
         let (pa, flags) = m
             .translate(base)
             .expect("an in-region IOVA did not translate");
@@ -612,7 +606,6 @@ mod tests {
     /// `Vtd` and `AmdVi` reports only write, so writability is what is compared.
     fn a_read_only_region_maps_read_only<F: PageFormat>() {
         let pool = FramePool::new();
-        let root = pool.frame();
         let ro = pool.frame_at(0x2000_0000);
         let rw = pool.frame_at(0x3000_0000);
         let regions = [
@@ -627,15 +620,8 @@ mod tests {
                 writable: true,
             },
         ];
-        // SAFETY: as in `one_region_confines`.
-        unsafe {
-            build_identity_domain::<_, _, F>(root, || Some(pool.frame()), phys_to_ptr, &regions)
-                .expect("domain build failed");
-        }
-        // SAFETY: `root` is the table the build above populated, reachable through `phys_to_ptr`.
-        let m = unsafe {
-            Mapper::<fn() -> Option<u64>, _, F>::new(root, Half::Low, || None, phys_to_ptr)
-        };
+        let root = pool.build_domain::<F>(&regions);
+        let m = pool.walker::<F>(root);
         let (pa, flags) = m.translate(ro).expect("the read-only region did not map");
         assert_eq!(pa, ro);
         assert!(
@@ -661,32 +647,14 @@ mod tests {
     #[test]
     fn a_multi_page_grant_maps_its_whole_pages_and_not_the_partial_tail() {
         let pool = FramePool::new();
-        let mut frames: Vec<u64> = Vec::new();
-        let root = pool.frame();
         let base = pool.frame_at(0x2000_0000);
         let regions = [DmaRegion {
             base,
             size: 2 * PAGE_SIZE + PAGE_SIZE / 2,
             writable: true,
         }];
-        // SAFETY: as in `one_region_confines`.
-        unsafe {
-            build_identity_domain::<_, _, Aarch64>(
-                root,
-                || {
-                    let f = pool.frame();
-                    frames.push(f);
-                    Some(f)
-                },
-                phys_to_ptr,
-                &regions,
-            )
-            .expect("domain build failed");
-        }
-        // SAFETY: `root` is the table the build above populated, reachable through `phys_to_ptr`.
-        let m = unsafe {
-            Mapper::<fn() -> Option<u64>, _, Aarch64>::new(root, Half::Low, || None, phys_to_ptr)
-        };
+        let root = pool.build_domain::<Aarch64>(&regions);
+        let m = pool.walker::<Aarch64>(root);
         assert_eq!(m.translate(base), Some((base, Flags::user_data())));
         assert_eq!(
             m.translate(base + PAGE_SIZE),
@@ -705,8 +673,6 @@ mod tests {
     #[test]
     fn two_disjoint_regions_map_and_the_gap_does_not() {
         let pool = FramePool::new();
-        let mut frames: Vec<u64> = Vec::new();
-        let root = pool.frame();
         // Far apart on purpose: the point of this test is the GAP between them, and adjacent regions
         // would prove nothing about it. Sequentially-pooled frames would be adjacent, which is how
         // this assertion could have quietly stopped testing anything.
@@ -724,24 +690,8 @@ mod tests {
                 writable: true,
             },
         ];
-        // SAFETY: as above.
-        unsafe {
-            build_identity_domain::<_, _, Sv39>(
-                root,
-                || {
-                    let f = pool.frame();
-                    frames.push(f);
-                    Some(f)
-                },
-                phys_to_ptr,
-                &regions,
-            )
-            .expect("domain build failed");
-        }
-        // SAFETY: `root` is the table the domain build above just populated, and `phys_to_ptr` is this test's own identity map over the frames it allocated, so every physical address the mapper walks is one it can read.
-        let m = unsafe {
-            Mapper::<fn() -> Option<u64>, _, Sv39>::new(root, Half::Low, || None, phys_to_ptr)
-        };
+        let root = pool.build_domain::<Sv39>(&regions);
+        let m = pool.walker::<Sv39>(root);
         assert!(m.translate(a).is_some(), "region A did not map");
         assert!(m.translate(b).is_some(), "region B did not map");
         // A frame the domain was never given: unmapped, so the device faults on it. In the gap

@@ -9,7 +9,18 @@
 
 use std::cell::{Cell, RefCell};
 
-use paging::{Aarch64, Flags, Half, MapError, Mapper, PAGE_SIZE, PageFormat, PageTable, WalkEnd};
+use paging::{
+    Aarch64, Flags, Half, MapError, Mapper, PAGE_SIZE, PageFormat, PageTable, TlbFlush, WalkEnd,
+};
+
+/// **Discharge `flush` without invalidating**, and the one place this file argues
+/// [`TlbFlush::assume_no_stale_entry`]'s contract. Every table here lives on the host heap and is
+/// never installed in a TTBR, `satp` or CR3, so no hardware has walked it and no TLB can hold an
+/// entry for it.
+fn never_installed(flush: TlbFlush) {
+    // SAFETY: see this function's doc; a host test's tables are never walked by hardware.
+    unsafe { flush.assume_no_stale_entry() }
+}
 
 thread_local! {
     /// Every table the pretend frame allocator hands out, so `TableGuard` can give them back.
@@ -408,9 +419,7 @@ fn unmap_removes_the_mapping_and_returns_the_page_frame() {
     assert_eq!(pa, 0x4000_0000);
     assert_eq!(m.translate(0x1000), None, "the mapping survived unmap");
 
-    // SAFETY: these tables were never installed in a TTBR, so the hardware has never walked
-    // them and no TLB entry can exist.
-    unsafe { flush.assume_no_stale_entry() };
+    never_installed(flush);
 }
 
 #[test]
@@ -469,8 +478,7 @@ fn changing_a_mapping_is_forced_through_break_before_make() {
     assert_eq!(old, 0x4000_0000);
 
     // ...invalidate...
-    // SAFETY: not installed in any TTBR.
-    unsafe { flush.assume_no_stale_entry() };
+    never_installed(flush);
 
     // ...then MAKE.
     m.map(0x1000, 0x5000_0000, Flags::kernel_data()).unwrap();
@@ -492,8 +500,7 @@ fn unmap_then_map_reuses_the_intermediate_tables() {
     assert_eq!(budget.get(), 0);
 
     let (_, flush) = m.unmap(0x1000).unwrap();
-    // SAFETY: not installed.
-    unsafe { flush.assume_no_stale_entry() };
+    never_installed(flush);
 
     // No frames left in the budget, and this still works: the tables were kept.
     m.map(0x1000, 0x5000_0000, Flags::kernel_data())
@@ -560,8 +567,7 @@ fn unlinking_a_table_cuts_its_whole_span_and_nothing_else() {
     let (base, span, flush) = m
         .unlink_table(2 * GIB + 0x1000, l2)
         .expect("the walk to that page passes through its L2");
-    // SAFETY: not installed.
-    unsafe { flush.assume_no_stale_entry() };
+    never_installed(flush);
     assert_eq!((base, span), (2 * GIB, GIB));
 
     assert!(m.translate(2 * GIB).is_none());
