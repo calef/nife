@@ -136,19 +136,20 @@ pub(crate) const MAX_RENDEZVOUS: usize = 512;
 ///
 /// # The ledger at the peak
 ///
-/// Measured 2026-09-26:
+/// Measured 2026-10-19 on the `system_tests` image by milestone 608 (kernel tests give back their
+/// rendezvous points):
 ///
-/// | architecture | peak | spare | on kernel chunks | retyped from a region |
-/// |---|---|---|---|---|
-/// | aarch64 | **505** | 7 | 466 | 39 |
-/// | riscv64 | **491** | 21 | 452 | 39 |
-/// | `x86_64` | **315** | 197 | 302 | 13 |
+/// | architecture | peak | spare | on kernel chunks |
+/// |---|---|---|---|
+/// | aarch64 | **269** | 243 | 188 |
+/// | riscv64 | **260** | 252 | 179 |
+/// | `x86_64` | **189** | 323 | 133 |
 ///
 /// Every test that wires a service with [`create_rendezvous`] spends the registry for the rest of
-/// the boot (on aarch64 the largest spenders are the scheduler's own tests, the oldest userspace
-/// tests, `ntp_tests`, `login_tests` and the file and display services, and 80 are created between
-/// tests). The fix is to retype the endpoint from the run's own region, so it goes when the region
-/// does: `design/roadmap/0671-tests-retype-their-rendezvous-from-their-own-region.md`. Reports and
+/// the boot (on aarch64 the largest spenders are the compositor and display services, the disk
+/// service, and the credential, block-driver, clock and login tests). The fix is to retype the
+/// endpoint from the run's own region, so it goes when the region does:
+/// `design/roadmap/0670-test-helpers-give-their-clients-a-region-to-retype-from.md`. Reports and
 /// does not gate, for [`MAX_THREADS`]'s reason.
 pub(super) static PEAK_RENDEZVOUS: core::sync::atomic::AtomicUsize =
     core::sync::atomic::AtomicUsize::new(0);

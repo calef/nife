@@ -52,7 +52,7 @@ pub fn start_granted(
     caretaker_image: &'static [u8],
     client_image: &'static [u8],
     grant: Grant,
-) -> Option<RendezvousId> {
+) -> Option<(RendezvousId, super::holding::Holding)> {
     let Grant {
         name,
         rights,
@@ -64,8 +64,15 @@ pub fn start_granted(
         "a granted name rides in two argument words; this one does not fit",
     );
     let (file_ep, file_shared, readiness) = ensure(blk_image, fs_server_image)?;
-    let narrow_ep = crate::sched::create_rendezvous();
-    let caretaker_ready = crate::sched::create_rendezvous();
+    // The caretaker's two endpoints and the program's report, from one region the returned
+    // holding reclaims, as [`narrow_dir_held`] does for a directory.
+    let ep_region =
+        crate::memory_region::create(GRANT_ENDPOINT_PAGES).expect("no endpoint region for a grant");
+    let endpoint =
+        || crate::sched::create_rendezvous_from(ep_region).expect("no endpoint for a grant");
+    let narrow_ep = endpoint();
+    let caretaker_ready = endpoint();
+    let report = endpoint();
 
     let (lo, hi) = filesystem_contract::grant::pack_name(name.as_bytes());
     let spec = filesystem_contract::grant::spec(name.len(), rights);
@@ -73,7 +80,7 @@ pub fn start_granted(
     // The caretaker: the directory capability, the narrowed endpoint it serves, and the shared
     // page. The grant itself (the name and the direction) rides in its START arguments, so a
     // per-file grant costs no frame at all.
-    crate::sched::spawn(move || {
+    let caretaker = crate::sched::spawn(move || {
         run(
             caretaker_image,
             Spawn {
@@ -103,7 +110,10 @@ pub fn start_granted(
 
     // The confined program. Its slot 0 looks exactly like a directory capability from inside, and
     // is not one: same protocol, same page, a namespace of one name.
-    Some(spawn_fs_client(
+    let mut held = super::holding::Holding::new();
+    held.add_thread(caretaker);
+    held.add_region(ep_region);
+    held.add_thread(spawn_fs_client(
         client_image,
         narrow_ep,
         file_shared,
@@ -111,5 +121,7 @@ pub fn start_granted(
         client_arg,
         0,
         0,
-    ))
+        report,
+    ));
+    Some((report, held))
 }

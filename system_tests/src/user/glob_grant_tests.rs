@@ -48,7 +48,7 @@ fn what_a_shell_shows_is_what_a_set_grant_takes_away() {
 /// is not the only thing it could ever do. There is no `REMOVE` in it at all, which is the point
 /// of `echo` being the half that demonstrates this: **showing the authority costs none of it.**
 fn shell_expanded() -> Option<u64> {
-    let report = fs_service::start_granted_dir(
+    let (report, held) = fs_service::start_granted_dir(
         dir_capability_tests::blk_server_image(),
         program("redoxfs_server").expect("no redoxfs_server program in the initial ramdisk"),
         program("fs_subtree_caretaker")
@@ -85,6 +85,7 @@ fn shell_expanded() -> Option<u64> {
         },
     )?;
     let [tag, verdict, ..] = sched::ipc_receive(report);
+    held.release_or_fail("a granted shell");
     assert_eq!(tag, VERDICT, "the shell's report is not a verdict word");
     Some(verdict)
 }
@@ -113,7 +114,7 @@ fn assert_shell_agreed(v: u64) {
 /// learns it by enumerating the capability it was handed.
 fn run_rm(name: &str, flags: u64) -> (u64, u64) {
     let (lo, hi) = filesystem_contract::grant::pack_name(name.as_bytes());
-    let report = fs_service::start_granted_set(
+    let (report, held) = fs_service::start_granted_set(
         dir_capability_tests::blk_server_image(),
         program("redoxfs_server").expect("no redoxfs_server program in the initial ramdisk"),
         program("fs_nameset_caretaker")
@@ -140,6 +141,7 @@ fn run_rm(name: &str, flags: u64) -> (u64, u64) {
         // verdict rides in the two words `OPERATION_EOF` leaves free. The shell phase above still reports
         // a `VERDICT`, because that one is a witness's bitmap and not a byte stream.
         if w0 == eof() {
+            held.release_or_fail("rm's set grant");
             return (w1, w2);
         }
         assert!(w0 <= 16, "neither a verdict nor a text frame: {w0:#x}");

@@ -210,7 +210,7 @@ fn provisioning_creates_a_working_credential_and_a_real_subtree() {
     // `narrow_dir` asserts a successful descent internally (`wait_for_caretaker`); reaching this
     // line at all is the proof the subtree is real. See this program's own module docs on why a
     // panic here is the correct failure mode for this suite, matching every other filesystem test.
-    let _ = fs_service::narrow_dir(
+    let (_, _, _, held) = fs_service::narrow_dir_held(
         fs_service::blk_server_image(),
         redoxfs_server_image(),
         caretaker,
@@ -218,6 +218,7 @@ fn provisioning_creates_a_working_credential_and_a_real_subtree() {
         filesystem_contract::dir::ALL,
     )
     .expect("the subtree identity_provisioner created did not open");
+    held.release_or_fail("the caretaker over the provisioned subtree");
 }
 
 /// **A genuine duplicate is refused, and nothing already there is disturbed.** The second attempt
