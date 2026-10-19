@@ -160,8 +160,14 @@ proofs and the type system are standing aside and a person's comment is the whol
   cache argue each contract once. The first uses a test buffer type. The heap tests use `Lent<'a>`,
   whose borrow and by-value `free` the compiler checks. The cache tests use one safe `read`/`write`
   pair over redoxfs's `Disk`, whose `# Safety` asks nothing of a caller.
-- **Recorded.** `environment_contract`, `counter_frequency_contract` and `clock_contract` have the
-  `current_cpu_contract` test shape, three to five blocks each, and are the next candidates.
+- **Done.** The page contracts' tests (`environment_contract`, `counter_frequency_contract`,
+  `clock_contract`) lend the page through one `with_page` helper each. The kernel's `fp` tests hand
+  over through a `Borrowed` token that only the interrupt-masked body holds. The `paging` host tests
+  discharge a TLB flush through one `never_installed` helper per file, and its domain tests build
+  and walk through `FramePool`.
+- **Recorded.** `allocation_cache`'s tests keep their blocks. Each drives a different part of the
+  cache's raw-pointer API (a refused `put` that aliases on purpose, a refill from a heap, a spill
+  into `dealloc`), and a wrapper would hide what they exercise.
 - **Recorded.** `crates/inter_process_communication` carries no `unsafe` in production code.
 - **Recorded.** The NS16550 halves of the console and input programs stay hand-written, because
   the register stride is a runtime fact no register-layout macro can express.

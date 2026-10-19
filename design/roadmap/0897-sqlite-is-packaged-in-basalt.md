@@ -1,6 +1,7 @@
 ---
-status: PARTIAL
+status: BUILT
 raised: 2026-10-10
+built: 2026-10-17
 promoted_from: sqlite-is-packaged-in-basalt
 milestone_dependencies: 835, 810
 decision_dependencies: 265
@@ -12,12 +13,13 @@ needs_person: no
 
 *(The title and slug are provisional.)*
 
-**PARTIAL, 2026-10-14 (UTC).** basalt builds SQLite 3.50.4 and `speedtest1` from pinned sources
+**BUILT, 2026-10-17 (UTC).** basalt builds SQLite 3.50.4 and `speedtest1` from pinned sources
 and publishes a package `sqlite` per architecture. nife builds neither. On all three architectures
 under QEMU, `swish-check` types `jig install sqlite` and runs the installed `speedtest1` in
 memory, and the kernel suite runs both `speedtest1` runs on the same bytes; every run must print
-the same verification hash. Left, as for milestones 810, 906 and 907: the package's digest in the
-recipe. "Built" below has the rest, and why the tests stay in nife.
+the same verification hash. The recipe records each architecture's package digest, and basalt's
+build refuses a package that does not match it. "Built" below has the rest, and why the tests
+stay in nife.
 
 calef, 2026-10-10 (UTC): *"We can't add testing of every program that nife will ever run into
 this tree. We need packages working."*
@@ -66,9 +68,21 @@ Lane `milestone/897-sqlite-is-packaged-in-basalt`, with nifeos/basalt#23.
 - `helpers/build-speedtest1.sh` and `target/speedtest1/` left the tree. `C_PROGRAMS` names only
   `c_library_contract`, which fetches nothing.
 
+## The package's digest, checked 2026-10-19 (UTC)
+
+- basalt's `recipes/sqlite.toml` carries a `[package_digest]` table, one SHA-256 for each of
+  aarch64, riscv64 and x86_64, recorded by milestone 917 (basalt's packages build reproducibly)
+  in nifeos/basalt#29. basalt's pin-bump rewrites it with each new pin.
+- basalt's `helpers/packages.py build` refuses a package whose bytes hash to anything else, and
+  basalt's `packages` workflow builds twice, in separate checkouts, and fails unless the two
+  repositories are byte-identical.
+- At the basalt commit `xtask/basalt-pin` names, the recipe's three digests equal the assets of
+  the Release that commit published. `cargo xtask basalt-fetch` accepts each package only under
+  them, through `package_index::accept`, and `jig install sqlite` checks the index line built from
+  them.
+
 ## BUGS
 
-- The recipe records the sources' digests, not the package's, as for milestones 810, 906 and 907.
 - The package carries no `sqlite3` shell. `shell.c` is in the same zip, unbuilt and untried on
   nife.
 - At the prompt only the in-memory run is typed. The file run needs a writable directory, which an
@@ -76,8 +90,8 @@ Lane `milestone/897-sqlite-is-packaged-in-basalt`, with nifeos/basalt#23.
 
 ## Follow-on
 
-- **Outstanding.** The package's digest in the recipe: needs a build reproducible across machines.
-  Checked 2026-10-14 (UTC): `recipes/sqlite.toml` records the sources' digests only.
+- **Done.** The package's digest in the recipe, by milestone 917 (basalt's packages build
+  reproducibly, and the recipe records each package's digest).
 - **Recorded.** No `sqlite3` shell yet, in this block's `BUGS`.
 - **Recorded.** The prompt's file run, in this block's `BUGS`, waits on a recipe that vouches for
   a writable grant (§195 (a reviewed recipe vouches for a package)).

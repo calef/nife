@@ -13,8 +13,17 @@ use std::cell::{Cell, RefCell};
 
 use paging::{
     Aarch64, Flags, Half, Ia32e, MapError, Mapper, PAGE_SIZE, PageFormat, PageSize, PageTable,
-    Sv39, Sv39Mae, Vtd,
+    Sv39, Sv39Mae, TlbFlush, Vtd,
 };
+
+/// **Discharge `flush` without invalidating**, and the one place this file argues
+/// [`TlbFlush::assume_no_stale_entry`]'s contract. Every table here lives on the host heap and is
+/// never installed in a TTBR, `satp` or CR3, so no hardware has walked it and no TLB can hold an
+/// entry for it.
+fn never_installed(flush: TlbFlush) {
+    // SAFETY: see this function's doc; a host test's tables are never walked by hardware.
+    unsafe { flush.assume_no_stale_entry() }
+}
 
 /// The pretend frame allocator. **The mapper borrows it**, so the borrow checker, not a guard a
 /// test has to remember to bind, is what keeps the tables alive until the mapper is gone and frees
@@ -201,8 +210,7 @@ fn a_block_over_a_table_is_refused<F: PageFormat>() {
     let mut m = pool.mapper::<F>(Half::Low);
     m.map(VA + PAGE_SIZE, 0x1000, Flags::user_data()).unwrap();
     let (_, flush) = m.unmap(VA + PAGE_SIZE).unwrap();
-    // SAFETY: these tables were never installed anywhere, so no TLB holds an entry for them.
-    unsafe { flush.assume_no_stale_entry() };
+    never_installed(flush);
     assert_eq!(
         m.map_block(VA, PA, PageSize::Size2MiB, Flags::user_data()),
         Err(MapError::AlreadyMapped)
@@ -277,8 +285,7 @@ fn a_span_maps_exactly_its_pages<F: PageFormat>() {
         Err(MapError::InsideBlock)
     );
     let (_, flush) = m.unmap(va).unwrap();
-    // SAFETY: never installed.
-    unsafe { flush.assume_no_stale_entry() };
+    never_installed(flush);
 
     // The same span in pages alone costs strictly more tables: the two blocks' worth of bottom
     // tables that blocks do not need.
@@ -324,8 +331,7 @@ fn skewed_spans_are_mapped_in_pages<F: PageFormat>() {
         // A page, not a block, at the one place a block could have started on either side.
         for off in [0, MIB2 - PAGE_SIZE] {
             let (_, flush) = m.unmap(va + off).unwrap();
-            // SAFETY: never installed.
-            unsafe { flush.assume_no_stale_entry() };
+            never_installed(flush);
         }
     }
 }

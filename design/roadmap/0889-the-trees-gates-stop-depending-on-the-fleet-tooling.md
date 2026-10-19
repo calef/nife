@@ -73,10 +73,11 @@ Two edges are kept on purpose, and the lane records why where a reader meets eac
 - Each of the four workflows runs to completion on a dispatch with the App secrets unset.
 - `fleet-metrics.yml` writes byte-identical CSV rows to `metrics.yml`'s last run for the same week.
 
-## Where it stands, 2026-10-12 (UTC)
+## Where it stands, 2026-10-19 (UTC)
 
 PARTIAL. Every cut is made, and four of the five exit checks were run and pass. The fifth needs a
-dispatch this branch cannot make. Each tie from the inventory, checked against the code first:
+dispatch from a fork, which no lane has made. Each tie from the inventory, checked against the code
+first:
 
 | Tie | What the code did | What happened |
 |---|---|---|
@@ -97,52 +98,71 @@ Four places differ from the text above, each for a reason found in the code:
 - The effort and watcher checks went to `helpers/trunk-health.sh`, not `fleet-metrics.yml`. The
   watcher rule promises a stop is reported within three five-minute intervals, and a daily
   workflow would break that.
-- `script/lint-fleet` has 23 checks. The 23rd tests the hook's fleet half, which is new.
+- `script/lint-fleet` has 27 checks. The 23rd tests the hook's fleet half, which is new. The last
+  four test the trunk watcher, `helpers/trunk-health.sh`.
 
-Exit checks, as run:
+Exit checks, as run on 2026-10-19 (UTC) against `42836328b` plus this block's commits:
 
-- **Stranger clone.** With all 72 class-3 helpers, scripts and workflows deleted, every gate in
-  `script/lint --no-cargo` passes. Two record checks still fail, each section run alone to see
-  them all. `script/roadmap --check` fails on six `Recorded.` paths in five old blocks. The
-  prose environment-name check fails on names that only class-3 notes and briefs mention. Both are
-  records citing tooling that has not moved yet, which is §201 (one roadmap until a citation has
-  to cross)'s event, not a gate calling the fleet.
-- **The checks still fire.** 39 breaks, one at a time: a real defect in each tested file where one
-  was cheap to plant (18), and the check's own file failing (21). All 39 turn
-  `script/lint-fleet` red at the right section. The first sweep missed one, a parser that exits
-  while being sourced; `helpers/blocked-by-selftest.sh` now loads it in a child first.
-- **No token.** A fresh clone, no `GH_TOKEN`, GitHub behind a dead proxy and a `gh` that logs and
-  fails: `script/lint --no-cargo` passed, a real `git push` passed through the hook, and `gh` was
-  called 0 times. `main` before this, in the same setup, called `gh` once and failed lint: the
-  `smelter-token` selftest sent its loopback stub through the proxy. It now sets `NO_PROXY`.
-- **Same CSV rows.** Both collectors, run locally, wrote rows byte-identical to `metrics.yml`'s
-  last run (2026-10-11 12:25 UTC) for every finished day.
-- **Not run.** The four workflows have not been dispatched with the App absent. A dispatch needs
-  the file on `main`, and the secrets are scoped to `main`.
+- **Stranger clone.** With all 72 class-3 helpers, scripts and workflows deleted (79 files, fixture
+  directories counted whole), 72 of the 74 sections of `script/lint --no-cargo` pass, with a `gh`
+  that logs and fails on `PATH` and no token: `gh` was called 0 times. The two that fail are record
+  checks. `script/roadmap --check` fails on `Recorded.` paths in old blocks that name class-3
+  files. The prose environment-name check fails on names that only class-3 notes and briefs
+  mention. Both are records citing tooling that has not moved yet, which is §201 (one roadmap until
+  a citation has to cross)'s event, not a gate calling the fleet.
+- **The checks still fire.** `script/lint-fleet` ran green in CI's `lint` job on `42836328b`
+  (merge-group run 39267144306, step "The fleet tooling's checks"). The 39-break sweep of
+  2026-10-12 covers the first 23 checks. For the four trunk-watcher checks, replacing
+  `helpers/trunk-health.sh` or `helpers/repeat_issue.py` with `exit 3` turns `script/lint-fleet`
+  red.
+- **No token.** A fresh clone with `nife.fleet` unset, the hooks installed, no `GH_TOKEN` and the
+  same failing `gh`: a real `git push` of a non-empty commit to a local bare remote ran
+  `script/fmt --check` and `script/lint --no-cargo`, passed, and called `gh` 0 times.
+- **Same CSV rows.** Both collectors, run locally on 2026-10-12, wrote rows byte-identical to
+  `metrics.yml`'s last run before the split (2026-10-11 12:25 UTC) for every finished day.
+  `fleet-metrics.yml` is now the only writer of both files and has run green daily through
+  2026-10-19 (run 39241978532).
+- **Not run.** The four workflows have not been dispatched with the App absent. On nife the secrets
+  sit in the `automation` environment, whose deployment branches are `main` only, and three of the
+  four workflows name that environment on the job that pushes. A dispatch on a lane branch is
+  refused, and one on `main` mints the App's token. A fork has neither the secrets nor the
+  environment, so a dispatch there is the test.
 
 ## BUGS
 
-- A gate split in two can lose a check in the gap. The 39-break sweep above guards the split once;
-  nothing guards it afterwards.
+- A gate split in two can lose a check in the gap. A new selftest of a class-3 file that is added
+  to `script/lint` makes a stranger's lint read the fleet, and only rerunning the stranger clone
+  catches it.
+- The fallback is predicted to fail at its last step. With the App absent, each workflow's
+  `gh pr create` runs on `github.token`, and GitHub refuses that unless the repository allows
+  Actions to create pull requests. That setting is off on nife and off by default on a fork. The
+  comment in each workflow says the ephemeral token "still pushes and opens the pull request".
+  Nothing has run this path yet; the fork dispatch below is what settles it.
+- `falsifications` has not reached its record job on `main` since at least 2026-10-12: the replay
+  job hits its two-hour limit and is cancelled (run 39243857792). A dispatch with the App absent
+  will stop at the same place until that is fixed.
 - The opt-in is per clone. A fleet machine that never ran `script/claim` pushes without the queued
   check until `git config nife.fleet true` is set.
-- Three current-tense mentions of "`script/lint` 4b" sit in files a lane may not edit:
-  `design/naming.md`, `design/tenets/roles-and-the-queue.md` and
-  `notes/skills/developer-lane/SKILL.md`. They now mean `script/lint-fleet`.
+- Four current-tense statements say a fleet check runs in `script/lint`, in files a lane may not
+  edit. Three are the "`script/lint` 4b" mentions in `design/naming.md`,
+  `design/tenets/roles-and-the-queue.md` and `notes/skills/developer-lane/SKILL.md`. The fourth is
+  milestone 495 (a cadence that says "due" reaches nobody), whose block says
+  `helpers/trunk-health-cadence-selftest.sh` "runs in `script/lint`". All four now mean
+  `script/lint-fleet`.
 - The new names are provisional: `script/lint-fleet`, `nife.fleet`, `fleet-metrics.yml`,
   `helpers/pre-push-fleet.sh` and its two selftests.
 
 ## Follow-on
 
 - **Outstanding.** Dispatch `falsifications`, `mutation`, `vendor-watch` and
-  `verify-shard-refresh` with the App absent, on a fork or with the secrets unset, and record the
-  runs. Checked 2026-10-12: each skips its token step when `AUTOMATION_APP_ID` is empty, as
-  `toolchain-bump.yml` already did.
+  `verify-shard-refresh` on a fork's `main` and record each run's exit. A new fork registers no
+  workflows until something is pushed to it or Actions is enabled on its Actions tab. Each workflow
+  skips its token step when `AUTOMATION_APP_ID` is empty, as `toolchain-bump.yml` does.
 - **Milestone 902.** Milestone 902 (nife's tooling, sorted by who needs it, before any of it moves).
-  Moving class 3 as a unit, with the six `Recorded.` paths and the class-3 notes that make the
+  Moving class 3 as a unit, with the `Recorded.` paths and the class-3 notes that make the
   stranger clone's two record checks fail, is the inventory's next step:
   `design/roadmap/0902-tooling-sorted-by-who-needs-it.md`.
-- **Recorded.** The three stale "`script/lint` 4b" mentions, in BUGS above.
+- **Recorded.** The four stale "runs in `script/lint`" statements, in BUGS above.
 
 ## Index row
 
