@@ -266,6 +266,11 @@ pub(crate) const DOWNLOADED_DUET: &str = "downloads/duet.nifepkg";
 /// package, which is refused while `duet` holds the name. Provisional name.
 pub(crate) const DOWNLOADED_SOLO: &str = "downloads/solo.nifepkg";
 
+/// **`dialer`'s package, on the disk for every leg** (milestone 892 (a std program at the prompt
+/// holds the network and a resolver)): a program whose note asks for the network, which no owner
+/// granted, so it is refused once installed. Provisional name.
+pub(crate) const DOWNLOADED_DIALER: &str = "downloads/dialer.nifepkg";
+
 /// **What the gate's package source serves this architecture** (milestone 198 rung 3a's fetch):
 /// `helpers/package-http-peer` reads `NIFE_PACKAGE_SOURCE`, and `script/swish-check` points it here,
 /// one directory per architecture so two legs never share one. It holds `greeting`'s package as the
@@ -543,6 +548,7 @@ fn stage_installed(architecture: &str) -> Result<String, String> {
     // Two packages with several programs between them (milestone 919), one name in common.
     let duet = read_built_package(&root, &format!("duet-0.1.0-{architecture}"))?;
     let solo = read_built_package(&root, &format!("solo-0.1.0-{architecture}"))?;
+    let dialer = read_built_package(&root, &format!("dialer-0.1.0-{architecture}"))?;
     let (archive, image) = image_lacking_the_packages(architecture)?;
 
     let source = package_source_dir(architecture);
@@ -579,11 +585,12 @@ fn stage_installed(architecture: &str) -> Result<String, String> {
     write_seed_file(tree.join(DOWNLOADED_GREETING_0_2_0), &greeting_v2)?;
     write_seed_file(tree.join(DOWNLOADED_DUET), &duet)?;
     write_seed_file(tree.join(DOWNLOADED_SOLO), &solo)?;
+    write_seed_file(tree.join(DOWNLOADED_DIALER), &dialer)?;
     eprintln!(
         "seed_installed ({architecture}): {stem} ({} bytes, digest {}) at {DOWNLOADED_PACKAGE}, \
          a tampered copy, {noteless_stem} at \
          {DOWNLOADED_NOTELESS}, {greeting_v2_stem} at {DOWNLOADED_GREETING_0_2_0}, duet at \
-         {DOWNLOADED_DUET}, solo at {DOWNLOADED_SOLO}, and three \
+         {DOWNLOADED_DUET}, solo at {DOWNLOADED_SOLO}, dialer at {DOWNLOADED_DIALER}, and three \
          unvouched programs; no installed-programs table. The package source at {} serves {greeting_stem} \
          and a lying {stem}",
         package.len(),

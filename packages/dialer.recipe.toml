@@ -1,0 +1,17 @@
+# dialer, as a package: `unreachable_network_witness`'s bytes as `bin/dialer`, whose manifest note
+# asks for the network (milestone 892 (a std program at the prompt holds the network and a
+# resolver)). Installed, it is vouched, and no owner's grant of the network is recorded, so it is
+# refused at the prompt and in `caps` (`grant_plan::ImageRefusal::NetworkNotGranted`).
+# `script/swish-check` installs it from the disk on every leg. Name: provisional 2026-10-19 (UTC).
+
+name = "dialer"
+version = "0.1.0"
+architecture = "aarch64"
+
+[[member]]
+program = "unreachable_network_witness"
+as = "bin/dialer"
+
+[[member]]
+name = "dialer.license"
+file = "LICENSE-MIT"

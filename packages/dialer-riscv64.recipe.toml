@@ -1,0 +1,13 @@
+# dialer, as a riscv64 package. The same package as `dialer.recipe`, which says why it exists.
+
+name = "dialer"
+version = "0.1.0"
+architecture = "riscv64"
+
+[[member]]
+program = "unreachable_network_witness"
+as = "bin/dialer"
+
+[[member]]
+name = "dialer.license"
+file = "LICENSE-MIT"

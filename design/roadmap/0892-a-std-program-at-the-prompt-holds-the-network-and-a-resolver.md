@@ -10,14 +10,15 @@ needs_person: no
 ---
 # 892. A std program at the prompt holds the network and a name resolver
 
-**PARTIAL, 2026-10-12 (UTC).** Items 1 and 3 are built for `jig`, and a forget verb the block did
+**PARTIAL, 2026-10-19 (UTC).** Items 1 and 3 are built for `jig`, and a forget verb the block did
 not foresee is built under them. Item 4 is met: its positive and refusal halves are proved in the
 kernel harness, which calef accepted as the proof (ruling B on #2011, 2026-10-12 UTC). He approved
 the forget verb as written (Q2, "Approve", the same day), and ruled item 3's fork, also the same
 day ("yes, record c"). Then he ruled that a manifest declares the network beside its zones and
 the owner grants both at install ("a", the same day). What is left is building both for installed
-programs, under "Item 3, ruled" and "The network at install, ruled" below. That waits on the
-four calls under "Four calls the rulings leave open".
+programs, under "Item 3, ruled" and "The network at install, ruled" below. The refusal half is
+built: an installed program is refused the network, by name, until its grant is recorded. The rest
+waits on the three calls under "Three calls the rulings leave open".
 
 *(The title and slug are provisional.)*
 
@@ -133,8 +134,8 @@ The question as put was loose on two points. The ruling reads as follows with bo
   approval file allows) lists them apart.
 - A manifest can already declare the network. `Manifest::network` is one flag (byte 34 of
   `capability_manifest_note`), and a program in the image table gets it today. What is missing is the install
-  path: `grant_plan::image_can_carry` refuses installed bytes whose note sets it, and nothing at
-  install lists it.
+  path: `grant_plan::image_manifest` refuses vouched bytes whose note sets it
+  (`ImageRefusal::NetworkNotGranted`, provisional), and nothing at install lists it.
 
 So "network use" means the existing grant: a client view of the network stack carrying `WRITE`,
 at `NETWORK_SLOT` (slot 10) for a native program and slot 2 for a `std` one. A `std` program also
@@ -144,7 +145,7 @@ listen (`socket_contract::NO_LISTEN_GRANT`).
 What that leaves to build, beside item 3's four pieces and in the same places:
 
 1. The progenitor endows the network to an installed program only when its installed-programs entry
-   records the owner's grant. `image_can_carry` keeps refusing bytes with no such entry.
+   records the owner's grant. `image_manifest` keeps refusing bytes with no such entry.
 2. The granted network in the installed-programs table's entry, in the same grant record as the zones, so an
    owner's narrowing and 911's approval file reach it the same way.
 3. The line at install, "reaches the network (connects out)", in the one confirmation with the
@@ -159,11 +160,30 @@ today), and a per-destination limit comes from a filter layer such as Little Sni
 already bound which names a program can look up, and a filter in the network stack is a milestone of
 its own. (a) can be undone; (b) would have committed to building that filter now.
 
-## Four calls the rulings leave open
+## The refusal half, built 2026-10-19 (UTC)
+
+An installed program whose note asks for the network is refused it, native or `std`, until the
+owner's grant is read. `grant_plan::image_manifest` answers `ImageRefusal::NetworkNotGranted` for
+vouched bytes that ask. Unvouched bytes that ask still run granted nothing, as §219 rules for every
+unvouched ask. The progenitor and `caps` call the same function. At run the shell hashes such a file
+first, as `caps` does, so the prompt names the missing grant and does not fall back to the generic
+manifest refusal:
+
+```text
+nife> dialer
+  refused: its manifest asks for the network, and no owner's grant of the network is recorded for it among the installed programs
+```
+
+`script/swish-check` installs `dialer` (`packages/dialer.recipe.toml`, provisional: the bytes of
+`unreachable_network_witness`, whose note asks for the network), runs it and `caps` it, and requires
+the sentence on aarch64, riscv64 and x86_64. Host test:
+`vouched_bytes_asking_for_the_network_are_refused_and_unvouched_ones_get_nothing`.
+
+## Three calls the rulings leave open
 
 Checked on `main` at `42836328b` (2026-10-19 UTC). Both ruled halves for installed programs wait on
-these. Nothing for them is built, because each fixes a format two programs share or moves work
-between milestones. Each is put with a recommendation; none is ruled.
+these. Nothing that depends on them is built, because each fixes a format two programs share.
+Each is put with a recommendation; none is ruled.
 
 **Q1. How a manifest note carries its zones (a wire format).** Version 1 is 56 fixed bytes and its
 last zero byte is 55, so zones need a new version word (`capability_manifest_note`'s own rule).
@@ -202,19 +222,19 @@ badge at `RESOLVER_SLOT` (9), and `std_runtime_contract::SLOTS` is 13.
 
 Recommended: (a).
 
-**Q4. Who builds the confirmation at install (a sequencing call).** "The network at install,
-ruled" puts the zone and network lines in milestone 910's confirmation. 910 is NOT-STARTED and
-waits on 849, also NOT-STARTED, so 892 cannot finish behind it. `jig install` lists no grants and
-asks nothing today.
+## Who builds the confirmation at install, decided 2026-10-19 (UTC)
 
-- (a) 892 builds the confirmation with its two lines (zones, root zone flagged apart, and
-  "reaches the network (connects out)") and one yes. 910 adds its service line to it.
-- (b) 892 waits on 910.
-
-Recommended: (a). 892 is on the customer path, and 910's line has nowhere to go until a
-confirmation exists.
+The maintainer decided this sequencing on #2405: 892 builds `jig install`'s confirmation with its
+two lines (each zone, a root-zone ask flagged apart, and "reaches the network (connects out)") and
+one yes. Milestone 910 (a package declares a service) adds its service line to the same
+confirmation. "The network at install, ruled" placed both lines in 910's confirmation, and 910 is
+NOT-STARTED behind 849, so 892 could not finish behind it.
 
 ## BUGS
+
+- An installed program cannot hold the network at all yet: no grant of it is recorded or read.
+- The shell hashes a file whose note asks for the network before each run, to name the missing
+  grant, so such a run reads the file twice.
 
 - Item 3 is built for `jig` only; "Item 3, ruled" says what is left.
 - No program at the prompt resolves a name yet. `jig` holds the badge and fetches by a fixed
@@ -233,7 +253,7 @@ confirmation exists.
 
 - **Outstanding.** Item 3 for installed programs: the four pieces under "Item 3, ruled".
 - **Outstanding.** The network at install: the three pieces under "The network at install, ruled".
-  Both outstanding items wait on Q1 to Q4.
+  Both outstanding items wait on Q1 to Q3.
 - **Milestone 911.** Its approval file's "the network's socket budget" is this grant, and now cites
   this block.
 - **Milestone 809.** `jig` resolves the index's host through this badge at item 6.

@@ -252,6 +252,35 @@ pub(in crate::swish_check) const SWISH_CHECK_AFTER_REBOOT: &[Line] = &[
         &["alto: one of two programs in the package duet"],
     ),
     line(1, "jig remove solo", &["removed; generation 10 is live"]),
+    // **Installing does not grant the network** (milestone 892 (a std program at the prompt holds
+    // the network and a resolver), "The network at install, ruled"). `dialer`'s note asks for it;
+    // the owner grants the network apart, and no grant is recorded, so the installed program is
+    // refused, by name of the grant, both when run and in `caps`. Nothing is spawned.
+    line(0, "cd downloads", &[]),
+    line(
+        1,
+        "jig install ./dialer.nifepkg",
+        &["installed; generation 11 is live"],
+    ),
+    line(0, "cd /", &[]),
+    line(
+        0,
+        "dialer",
+        &[
+            "refused: its manifest asks for the network, and no owner's grant of the network is \
+           recorded for it among the installed programs",
+        ],
+    ),
+    line(
+        0,
+        "caps dialer",
+        &[
+            "dialer would not run here:",
+            "refused: its manifest asks for the network",
+            "its manifest note asks for: ",
+        ],
+    ),
+    line(1, "jig remove dialer", &["removed; generation 12 is live"]),
     // **`ripgrep`, built and published by basalt** (milestone 810 (`ripgrep` is packaged in
     // basalt and installed with `jig`)): the package basalt published, fetched by its pinned
     // digest (`cargo xtask basalt-fetch`), or the repository basalt's own gate just built
@@ -264,7 +293,7 @@ pub(in crate::swish_check) const SWISH_CHECK_AFTER_REBOOT: &[Line] = &[
         &[
             "fetched ripgrep-",
             "from basalt.test over TLS",
-            "fetched and installed; generation 11 is live",
+            "fetched and installed; generation 13 is live",
         ],
     ),
     line(1, "rg --version", &["ripgrep "]),
@@ -284,7 +313,7 @@ pub(in crate::swish_check) const SWISH_CHECK_AFTER_REBOOT: &[Line] = &[
         &[
             "fetched ioping-",
             "from basalt.test over TLS",
-            "fetched and installed; generation 12 is live",
+            "fetched and installed; generation 14 is live",
         ],
     ),
     line(1, "ioping -v", &["ioping 1.3"]),
@@ -336,7 +365,7 @@ pub(in crate::swish_check) const SWISH_CHECK_AFTER_REBOOT: &[Line] = &[
         &[
             "fetched hackbench-",
             "from basalt.test over TLS",
-            "fetched and installed; generation 13 is live",
+            "fetched and installed; generation 15 is live",
         ],
     ),
     line(
@@ -358,7 +387,7 @@ pub(in crate::swish_check) const SWISH_CHECK_AFTER_REBOOT: &[Line] = &[
         &[
             "fetched sqlite-",
             "from basalt.test over TLS",
-            "fetched and installed; generation 14 is live",
+            "fetched and installed; generation 16 is live",
         ],
     ),
     line(
@@ -380,7 +409,7 @@ pub(in crate::swish_check) const SWISH_CHECK_AFTER_REBOOT: &[Line] = &[
         &[
             "fetched rmle-",
             "from basalt.test over TLS",
-            "fetched and installed; generation 15 is live",
+            "fetched and installed; generation 17 is live",
         ],
     ),
     // **The demos, the second first-party package** (milestone 922 (the demos are packaged in
@@ -396,7 +425,7 @@ pub(in crate::swish_check) const SWISH_CHECK_AFTER_REBOOT: &[Line] = &[
             "fetched demos-",
             "from basalt.test over TLS",
             "refused: the image carries the program least_authority_demo; a new base updates it, not \
-             install; generation 15 is live",
+             install; generation 17 is live",
         ],
     ),
 ];

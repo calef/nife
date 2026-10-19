@@ -399,6 +399,20 @@ fn plan_image(nav: &mut Nav, spec: ParsedInvocation) -> Option<PlannedImage> {
         ));
         return None;
     }
+    // **A note that asks for the network is judged on the vouch before anything is sent** (milestone
+    // 892): vouched bytes are refused it, which the progenitor would answer only as
+    // `SPAWN_REFUSED_BY_MANIFEST`, so the shell hashes the file as `caps` does and says which grant
+    // is missing. Only such notes pay for the hash; the progenitor still judges its own copy.
+    if m.network {
+        let vouched = super::capabilities::file_digest(t, handle, size)
+            .is_some_and(|d| super::capabilities::live_generation_listing(nav, &d).is_some());
+        if let Err(r) = grant_plan::image_manifest(declared, vouched) {
+            nav.close(handle);
+            refused();
+            print(swish::image_refusal_sentence(r));
+            return None;
+        }
+    }
     // **Expanded, or designated, once the note says which** (milestone 205): bytes that hear words
     // have their words designated rather than their patterns expanded, and only the note says
     // whether these do.

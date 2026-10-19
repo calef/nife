@@ -58,7 +58,11 @@ const INSTALLED_BY_THE_SCRIPT: [&str; 9] = [
 /// 919), on every leg: the disk carries both everywhere, and no leg fetches them.
 #[test]
 fn the_several_program_install_lines_name_the_seeded_files() {
-    for file in [crate::disk::DOWNLOADED_DUET, crate::disk::DOWNLOADED_SOLO] {
+    for file in [
+        crate::disk::DOWNLOADED_DUET,
+        crate::disk::DOWNLOADED_SOLO,
+        crate::disk::DOWNLOADED_DIALER,
+    ] {
         let file = file.strip_prefix("downloads/").expect("a seeded download");
         let line = format!("jig install ./{file}");
         assert!(SWISH_CHECK_AFTER_REBOOT.iter().any(|l| l.typed == line));

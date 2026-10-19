@@ -82,9 +82,13 @@ fn an_image_is_endowed_from_its_note_only_when_vouched() {
         clock: true,
         ..NO_NOTE_MANIFEST
     };
+    let asks_all_but_the_network = Manifest {
+        network: false,
+        ..asks_everything
+    };
     assert_eq!(
-        image_manifest(Some(asks_everything), true),
-        Ok(asks_everything)
+        image_manifest(Some(asks_all_but_the_network), true),
+        Ok(asks_all_but_the_network)
     );
     assert_eq!(
         image_manifest(Some(asks_everything), false),
@@ -246,8 +250,28 @@ fn a_std_image_is_refused_for_each_thing_its_layout_cannot_hold() {
         ..ok
     }));
     assert!(!image_can_carry(&Manifest { domain: true, ..ok }));
-    assert!(!image_can_carry(&Manifest {
+}
+
+/// **Installing does not grant the network** (milestone 892, "The network at install, ruled"):
+/// the owner grants it apart, and no grant is read yet, so vouched bytes that ask are refused,
+/// native or `std`. Unvouched bytes that ask still run, granted nothing, since §219 already says
+/// their note is not asked.
+#[test]
+fn vouched_bytes_asking_for_the_network_are_refused_and_unvouched_ones_get_nothing() {
+    let std = Manifest {
+        output: OutputDeclaration::Bytes,
         network: true,
-        ..ok
-    }));
+        ..UNVOUCHED_STD_MANIFEST
+    };
+    let native = Manifest {
+        network: true,
+        ..NO_NOTE_MANIFEST
+    };
+    for asks in [std, native] {
+        assert_eq!(
+            image_manifest(Some(asks), true),
+            Err(ImageRefusal::NetworkNotGranted)
+        );
+        assert!(!image_manifest(Some(asks), false).unwrap().network);
+    }
 }
