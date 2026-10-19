@@ -44,7 +44,7 @@ pub const ROWS: u32 = 24;
 ///   this is the byte stream a real program's output actually becomes;
 /// - **the faces and a styled underline** (milestone 142 increment five): a bold italic word,
 ///   drawn in `glyph_atlas::BOLD_OBLIQUE`, and a curly underline in SGR 58's red, so a terminal
-///   that drew the regular face, a straight line, or the line in the text's colour fails;
+///   that drew the regular face, a straight line, or the line in the text's color fails;
 /// - **descenders and an underscore** (`y`, `_`), which are the glyph rows a font table truncated to
 ///   seven rows would lose.
 pub const GREETING: &[u8] =

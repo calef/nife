@@ -352,7 +352,7 @@ impl Vt {
         // patterned underlines read the screen's `x`, not the cell's, so a wave or a run of dots
         // carries on across cells rather than restarting in each.
         if underline_ink(attr.underline(), x, gy) {
-            return attr.underline_colour(fg);
+            return attr.underline_color(fg);
         }
         if attr.is_struck_through() && gy == STRIKETHROUGH_ROW {
             return fg;
@@ -1003,19 +1003,19 @@ impl Vt {
                 },
                 38 | 48 | 58 => {
                     let found = if subs > 0 {
-                        self.colon_colour(i, subs)
+                        self.colon_color(i, subs)
                     } else {
                         self.extended_colour(i, n)
                     };
-                    let Some((colour, used)) = found else {
+                    let Some((color, used)) = found else {
                         return;
                     };
                     i += used;
                     match p {
-                        38 => Attr { fg: colour, ..a },
-                        48 => Attr { bg: colour, ..a },
+                        38 => Attr { fg: color, ..a },
+                        48 => Attr { bg: color, ..a },
                         _ => Attr {
-                            ul: Some(colour),
+                            ul: Some(color),
                             ..a
                         },
                     }
@@ -1052,15 +1052,15 @@ impl Vt {
     /// The colon form of [`Vt::extended_colour`]: the `subs` sub-parameters at `i`, all of which
     /// it uses. `2:r:g:b`, or `2:cs:r:g:b` with the color-space slot (usually empty) ignored, or
     /// `5:n`.
-    fn colon_colour(&self, i: usize, subs: usize) -> Option<(Colour, usize)> {
+    fn colon_color(&self, i: usize, subs: usize) -> Option<(Colour, usize)> {
         let at = |k: usize| u8::try_from(self.params[i + k]).ok();
-        let colour = match (self.params[i], subs) {
+        let color = match (self.params[i], subs) {
             (5, 2) => Colour::Indexed(at(1)?),
             (2, 4) => Colour::Rgb(at(1)?, at(2)?, at(3)?),
             (2, 5) => Colour::Rgb(at(2)?, at(3)?, at(4)?),
             _ => return None,
         };
-        Some((colour, subs))
+        Some((color, subs))
     }
 
     /// `ESC c`: back to power-on. Clears the grid in the *default* rendition rather than the current

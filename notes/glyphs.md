@@ -28,11 +28,10 @@ Everything above the surface is text; everything below it is rung one's contract
 ## The terminal's font: DejaVu Sans Mono, rasterised at build time
 
 `crates/glyph_atlas` is DejaVu Sans Mono (§104 (the rich-text font is DejaVu Sans Mono, and the
-palette is Solarized)) at a 14x26 cell, one byte of coverage a pixel. Its four faces are what §166
+palette is Solarized)) at a 14x26 cell. Its four faces are what §166
 (the rasteriser dependency, and whether the glyph atlas ships one face or four) ruled. `tools/glyph_atlas_generator`
-rasterises it on the host, and its test fails unless the checked-in tables are exactly what it makes
-from `vendor/dejavu`. A glyph is a lookup and a blend, so the three witnesses below need no font
-engine. The [determinism appendix](../design/roadmap/0142-a-text-display-worth-living-in/determinism.md)
+rasterises it on the host; its test fails unless the checked-in tables are exactly what it makes
+from `vendor/dejavu`. A glyph is a lookup and a blend; no witness below needs a font engine. The [determinism appendix](../design/roadmap/0142-a-text-display-worth-living-in/determinism.md)
 of milestone 142 (a text display good enough that people use it instead of a GUI) says why.
 
 ## The boot console's font: ours, drawn in the Kaypro II's style

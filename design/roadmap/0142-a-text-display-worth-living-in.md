@@ -35,9 +35,9 @@ terminal"), and need nothing from milestone 177 (wire the graphical terminal sta
 interactive boot). The scanout is 1120x624, sized to the atlas's 14x26 cell for an 80x24 grid.
 
 All six increments are built. The terminal is DejaVu Sans Mono from a checked-in atlas, blended in
-linear light, on an 80x24 scanout, in four faces with five underline styles and truecolor, and the
-navigation cluster is in the keymap (home, end, insert, delete, page up and down, with xterm's shift
-forms). Scrollback from the keyboard needs a new opcode, because `line_editor` sits in front of
+linear light, on an 80x24 scanout, in four faces with five underline styles and truecolor. The
+navigation cluster is in the keymap: home, end, insert, delete, page up and down, with xterm's shift
+forms. Scrollback from the keyboard needs a new opcode, because `line_editor` sits in front of
 `display_terminal`; [milestone 668 (scrollback from the keyboard)](0668-scrollback-from-the-keyboard.md)
 holds it. [Sequencing](#sequencing) has each increment's state.
 
@@ -157,9 +157,9 @@ the larger half of "would use it outside a GUI".
 4. Blending, in linear light, with the sRGB tables. BUILT. `glyph_atlas::blend` takes each channel
    through `SRGB_TO_LINEAR`, a 256-entry `u16` table the generator writes and its gate checks, and
    back by the nearest code in that same table. Integer only at runtime.
-5. Rich attributes. BUILT. Truecolor and the 256-color table; bold, italic and bold italic drawn in
-   their own faces, so bold no longer brightens; underline in five styles (`4:0` to `4:5`, `21`)
-   with its own color (SGR 58 and 59); the colon forms of every extended color. A cell is twenty
+5. Rich attributes. BUILT. Truecolor and the 256-color table. Bold, italic and bold italic draw
+   their own faces, so bold no longer brightens. Underline comes in five styles (`4:0` to `4:5`,
+   `21`) with its own color (SGR 58 and 59), and every extended color has its colon form too. A cell is twenty
    bytes, the handoff blob is layout 2 (a layout-1 reader is kept), and `MAX_CELLS` and
    `SCROLLBACK_CELLS` are sized so both stay inside the pages they had.
 6. The palette. Built: milestone 141's gate exists and the Solarized Dark table passes it.
@@ -253,8 +253,7 @@ so good that people would use it outside of a GUI."* Four axes, and the font is 
 surface, the terminal, the type and the color. The finding that makes the expensive axis cheap is
 that a monospace grid puts every glyph on an integer cell boundary. So the rasteriser belongs at
 build time and the runtime keeps a coverage table exactly as `bitfont` keeps a bit table, which is
-what preserves the three-party pixel-exact proof. Increments one and two (the scanout, grown via
-DECISIONS §102, and a real terminal: scrollback, UTF-8, arrow keys) are built, and so are the rest:
-DejaVu Sans Mono from a checked-in atlas on an 80x24 scanout, blended in linear light, in four faces
-with underline styles and truecolor, on milestone 141 (a palette worth looking at)'s palette.
+what preserves the three-party pixel-exact proof. All six increments are built. The terminal is
+DejaVu Sans Mono from a checked-in atlas on an 80x24 scanout, blended in linear light. It draws four
+faces, underline styles and truecolor, on milestone 141 (a palette worth looking at)'s palette.
 Scrollback from the keyboard is milestone 668's, because its route needs a new opcode.

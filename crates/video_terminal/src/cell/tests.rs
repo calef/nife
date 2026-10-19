@@ -32,7 +32,7 @@ fn each_flag_reads_back_through_its_own_predicate() {
     assert!(plain.with(BOLD, true).with(BOLD, true).is_bold());
 }
 
-/// **Bold is a face and leaves the colour as it was set**, the eight normal colours included: the
+/// **Bold is a face and leaves the color as it was set**, the eight normal colors included: the
 /// terminal draws `glyph_atlas::BOLD` instead of brightening, so a bold `7` is still `7`.
 #[test]
 fn bold_does_not_change_the_colour() {

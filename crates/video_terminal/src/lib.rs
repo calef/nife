@@ -17,7 +17,7 @@
 //! - `CSI J` erase in display, `CSI K` erase in line, both with all three modes.
 //! - `CSI m` (SGR): reset; bold and italic (drawn in their own faces), dim, reverse, concealed and
 //!   crossed-out, each with its off switch; underline in five styles (`4`, `21`, `4:0` to `4:5`)
-//!   and its own colour (`58`, `59`); the eight colours and their bright forms; and the 256-colour
+//!   and its own color (`58`, `59`); the eight colors and their bright forms; and the 256-color
 //!   and 24-bit forms, in both the `;` and the `:` spelling, for foreground and background. Blink
 //!   is parsed and dropped: there is no clock.
 //! - `ESC c` (RIS), a full reset.

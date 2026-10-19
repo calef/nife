@@ -29,7 +29,7 @@ fn sgr_2_is_dim() {
 }
 
 /// An underline is drawn on the font's underline row, which is a pixel a blank cell otherwise
-/// leaves in the background colour.
+/// leaves in the background color.
 #[test]
 fn an_underline_is_drawn_on_the_underline_row() {
     let mut vt = Vt::new(10, 3);
@@ -463,7 +463,7 @@ fn erasing_keeps_the_current_background() {
 }
 
 /// SGR: the colours, the reverse flag, and the two rules a terminal actually needs. Bold is a
-/// face rather than a brighter foreground, and setting a colour afterwards keeps it bold.
+/// face rather than a brighter foreground, and setting a color afterwards keeps it bold.
 #[test]
 fn sgr_sets_colour_bold_and_reverse() {
     let mut t = vt(8, 1);
@@ -473,7 +473,7 @@ fn sgr_sets_colour_bold_and_reverse() {
     assert_eq!(
         ink(&t, 1, 0),
         PALETTE[1],
-        "bold must not brighten the colour"
+        "bold must not brighten the color"
     );
     assert!(t.cell(1, 0).attr.is_bold());
     t.feed(b"\x1b[32mc");
@@ -517,7 +517,7 @@ fn sgr_takes_24_bit_and_256_colour_foregrounds_and_backgrounds() {
         c.underline() == UNDERLINE_SINGLE,
         "the rendition after two extended colours was lost"
     );
-    // Bold does not change the colour, here a 256-colour one.
+    // Bold does not change the color, here a 256-color one.
     t.feed(b"\x1b[1md");
     assert_eq!(ink(&t, 3, 0), Colour::Indexed(196).resolve());
     // The bright backgrounds, which the one-byte rendition had no room for.
@@ -875,7 +875,7 @@ fn the_demo_script_produces_a_picture_worth_checking() {
         attrs
             .iter()
             .any(|a| a.underline() == UNDERLINE_CURLY && a.ul.is_some()),
-        "the script has no styled, coloured underline: increment five is untested on the machine",
+        "the script has no styled, colored underline: increment five is untested on the machine",
     );
     assert!(
         (0..t.rows()).any(|r| (0..t.cols()).any(|c| t.cell(c, r).ch != ' ')),
@@ -1348,7 +1348,7 @@ fn an_empty_first_parameter_is_its_default() {
     assert_eq!(t.cursor(), (4, 0));
 }
 
-/// **Bold and italic draw their faces**, and the colour stays as set: every pixel of a bold, an
+/// **Bold and italic draw their faces**, and the color stays as set: every pixel of a bold, an
 /// italic and a bold-italic `R` is that face's own blend, and the four faces differ, so a cell
 /// drawn in the wrong face shows.
 #[test]
@@ -1387,9 +1387,9 @@ fn bold_and_italic_draw_the_atlas_faces() {
     }
 }
 
-/// **Each underline style inks its own pixels, in the underline's colour**: single and double on
+/// **Each underline style inks its own pixels, in the underline's color**: single and double on
 /// their rows, curly as a wave, dotted and dashed as runs that carry across the cell boundary,
-/// and SGR 58's colour where it is set. Read from a blank cell, so every inked pixel is the line's.
+/// and SGR 58's color where it is set. Read from a blank cell, so every inked pixel is the line's.
 #[test]
 fn each_underline_style_draws_its_own_line_in_its_own_colour() {
     let ink_rows = |seq: &[u8]| -> Vec<(u32, u32)> {
@@ -1415,7 +1415,7 @@ fn each_underline_style_draws_its_own_line_in_its_own_colour() {
     assert_eq!(dotted.len(), 14);
     let dashed = ink_rows(b"\x1b[4:5m  ");
     assert!(dashed.len() > dotted.len() && dashed.len() < 28);
-    // The colour.
+    // The color.
     let mut t = vt(1, 1);
     t.set_cursor_visible(false);
     t.feed(b"\x1b[4;58;2;250;0;0m ");

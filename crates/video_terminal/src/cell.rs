@@ -55,21 +55,21 @@ impl Colour {
     }
 }
 
-/// **How a cell is painted**: its colours, its face, and the lines drawn through and under it.
+/// **How a cell is painted**: its colors, its face, and the lines drawn through and under it.
 ///
 /// Fourteen bytes: three [`Colour`]s (the underline's is optional and follows the foreground when
 /// absent), a byte of flags and a byte of underline style. A [`Cell`] is twenty bytes with a
 /// `char` beside it; the cost is priced where it lands, in [`MAX_CELLS`]'s doc.
 ///
-/// **Bold is a face, not a brightness.** SGR 1 draws `glyph_atlas::BOLD` and leaves the colour as
+/// **Bold is a face, not a brightness.** SGR 1 draws `glyph_atlas::BOLD` and leaves the color as
 /// it was set, and SGR 3 draws `glyph_atlas::OBLIQUE`; both together draw `BOLD_OBLIQUE`. A
 /// terminal with an eight-pixel cell had to brighten instead, because a bold bitmap at that size is
-/// a smudge; at the atlas's 14x26 cell the weight shows, so the colour no longer has to carry it.
+/// a smudge; at the atlas's 14x26 cell the weight shows, so the color no longer has to carry it.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Attr {
     pub(super) fg: Colour,
     pub(super) bg: Colour,
-    /// SGR 58's colour, or `None` for SGR 59's default: the foreground the cell paints with.
+    /// SGR 58's color, or `None` for SGR 59's default: the foreground the cell paints with.
     pub(super) ul: Option<Colour>,
     pub(super) flags: u8,
     /// One of the `UNDERLINE_*` styles, `UNDERLINE_NONE` when not underlined.
@@ -193,10 +193,10 @@ impl Attr {
         self.underline
     }
 
-    /// **The colour an underline paints with**: SGR 58's, or the cell's own foreground (`fg`, as
+    /// **The color an underline paints with**: SGR 58's, or the cell's own foreground (`fg`, as
     /// [`colours`](Self::colours) resolved it) when none was set. A concealed cell hides its
     /// underline with its text.
-    pub(crate) const fn underline_colour(self, fg: u32) -> u32 {
+    pub(crate) const fn underline_color(self, fg: u32) -> u32 {
         match self.ul {
             Some(c) if !self.has(INVISIBLE) => c.resolve(),
             _ => fg,
