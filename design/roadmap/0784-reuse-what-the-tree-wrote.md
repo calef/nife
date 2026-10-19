@@ -219,8 +219,8 @@ on the customer path.
 ## Proposed milestones, one replacement each
 
 - (a) BUILT: `http_response` parses its head with `httparse`. Gate: existing host tests and fuzz target.
-- (b) Held for milestone 705's engine choice (calef, 2026-10-18 UTC): a full engine has its own
-  parser. Else `video_terminal` parses with `vte`, grid kept; gate: host tests, new fuzz target.
+- (b) Held for milestone 705 (full-screen programs)'s engine choice (calef, 2026-10-18 UTC): a full engine has its own
+  parser. Else `video_terminal` parses with `vte`; gate: host tests, new fuzz target.
 - (c0) Upstream `VIRTIO_F_ACCESS_PLATFORM` to `virtio-drivers`. Then (c1) input, (c2) GPU,
   (c3) block, (c4) net, each with a `script/bench` number before and after, on all three
   architectures.
@@ -246,7 +246,7 @@ It records that two rules of §46 disagree here and only an architect can say wh
 ## Follow-on
 
 - **Done.** Item (a), 2026-10-18 (UTC), nifeos/nife#2289.
-- **Outstanding.** Items (b) to (h), 2026-10-18: none started, each waits on its own §46 ruling, (b) on milestone 705 too. Checked: none of their crates is in `Cargo.lock`.
+- **Outstanding.** Items (b) to (h), 2026-10-18: none started, each waits on its own §46 ruling, (b) on 705 too. Checked: none of their crates is in `Cargo.lock`.
 
 ## Index row
 

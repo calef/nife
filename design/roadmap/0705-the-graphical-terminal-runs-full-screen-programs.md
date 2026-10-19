@@ -149,7 +149,7 @@ graded by Part 1's host harness instead.
 
 F on `alacritty_terminal`, with `video_terminal` kept as the kernel's oracle. Ask upstream for a
 cargo feature that gates the pty and event loop; until it lands, carry the cut as a vendored patch
-under §34's terms.
+under §34 (RedoxFS is the primary filesystem, on three conditions)'s terms.
 
 This is not about effort. F is more plumbing than A: a `std` port, five spawn sites moving their
 slots, a renderer split and a vendored tree. It also costs memory: about 4 MB of heap per terminal

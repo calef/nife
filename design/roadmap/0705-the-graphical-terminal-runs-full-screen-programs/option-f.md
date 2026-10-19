@@ -9,10 +9,10 @@ not committed.
 
 ## What F is
 
-`display_terminal` stops being a `no_std` program with a static `Vt` and becomes a `std` program (§22,
-`std` on the native ABI). Its grid, modes and replies come from a full Rust terminal model taken from
-crates.io. Drawing stays ours: the engine's cells go through the same bitmap font and the same
-cell-to-pixel rule `Vt::pixel` applies today.
+`display_terminal` stops being a `no_std` program with a static `Vt` and becomes a `std` program
+(§22 (Rust `std` on the native ABI, the Hermit way)). Its grid, modes and replies come from a full
+Rust terminal model taken from crates.io. Drawing stays ours: the engine's cells go through the same
+bitmap font and the same cell-to-pixel rule `Vt::pixel` applies today.
 
 ## The probe
 
@@ -132,16 +132,17 @@ No full-screen program ran. None exists on nife (Part 1), so the spike shows the
    only. Within F, `vt100` builds unmodified and is a third the size, and loses on DECAWM (procps `top`
    toggles it, per the census), tab stops, damage and replies. `termwiz` does not build and is not an
    engine.
-2. The tree's analogous cases: `jig`, a `std` program making raw syscalls; 784's rule that needing
-   `std` is not a reason to refuse a crate; and RedoxFS, vendored because it needs a patch (§34).
+2. The tree's analogous cases. `jig` is a `std` program making raw syscalls. Milestone 784 (reuse what the tree wrote) holds that
+   needing `std` is not a reason to refuse a crate. RedoxFS is vendored because it needs a patch
+   (§34 (RedoxFS is the primary filesystem, on three conditions)).
 3. Prior art read: both crates' source at the versions above. That Alacritty itself runs this model
    is *from memory*; its conformance against `vttest` was not checked.
 4. Is the premise true? Partly. "No `std`, no allocator" was this program's inherited choice. A `std`
-   process has a heap (slot 0) and, since milestone 812, threads. What is still true is that the
+   process has a heap (slot 0) and, since milestone 812 (`std::thread::spawn` runs real threads in one address space), threads. What is still true is that the
    kernel's witness is `no_std`, which is why `video_terminal` stays.
 5. Cost: the sizes and graphs above, measured. Lane work is estimated, not measured: the `std` port,
    the slot moves in five spawn sites, the renderer split, the vendored cut and the host harness.
-6. Reversible as code until a program relies on the engine. The dependency is §46's expensive
+6. Reversible as code until a program relies on the engine. The dependency is §46 (thin primitives or whole subsystems)'s expensive
    category, and a vendored cut has to follow upstream. Nobody has acted on it.
 7. Yes. At equal cost I would still choose F on `alacritty_terminal`: conformance is the point, and
    the kernel's oracle stays ours. F has more moving parts than A (a `std` port, slot moves, a
