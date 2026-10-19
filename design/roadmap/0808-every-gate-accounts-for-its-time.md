@@ -243,7 +243,7 @@ Every name below is provisional.
 |---|---|---|
 | 1 | the daily CSV per job, step and test, and the weekly chart | met. Per-item rows start with the first daily pass after merge, when artifacts first carry their job key. Over 2026-10-18's 88 green runs they are 454 rows, 73 kB a day. `ci_job_times.py --selftest` holds the floor and the mapping |
 | 2 | upload or exemption, held by `script/lint` | met. `time_record.py --selftest`; deleting `fmt`'s exemption line fails the lint naming `fmt` |
-| 3 | per-item times from the kernel suite, `cpu-matrix`, `swish-check`, re-falsify and `fuzz` | met in code; the dispatched runs in this block's pull request are the evidence |
+| 3 | per-item times from the kernel suite, `cpu-matrix`, `swish-check`, re-falsify and `fuzz` | met. Run 39292789618 uploaded every record with rows: lines on three architectures, ten fuzz targets, the host pass. Re-falsify wrote rows in a local sweep; its first CI shard runs on a diff that reaches a record |
 | 4 | the 85% warning, its summary, its host test | met |
 | 5 | the issue's three transitions, tested against a recorded fixture | met |
 | 6 | `budget` in the `needs-maintainer` listing, the selftest, the briefs | met |
@@ -263,8 +263,7 @@ Every name below is provisional.
   The record takes medians over runs for that reason.
 - Item rows under 1 s a day are dropped, so one fast test's slow growth is visible only in its
   image's `suite` phase.
-- `script/lint` is a few hundred checks in one job and times none of them. Its exemption line says
-  so.
+- `script/lint` is a few hundred checks in one job and times none of them.
 - `ci.yml` and `verify.yml` both name a job `gate`, so the two share one budget key and one
   tracking issue. Both run in seconds.
 - The fuzz job builds no `xtask`, so it uploads its record without a step summary.
