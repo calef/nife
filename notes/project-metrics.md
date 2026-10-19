@@ -46,10 +46,6 @@ a status existing at all, counted as having none rather than as `DECIDED`.
 
 ![Names by what the tree records about them](project-metrics/names.svg)
 
-<!-- week-notes: script/metrics writes this -->
-- 2026W43: names fell 9,791 to 8,580 and the no-provenance-block band 7,971 to 6,643 because #2353 and #2375 narrowed pub items no package reads to pub(crate), which script/names does not count, taking out 884 and 411; no name was lost. Both merged on 2026-10-18 UTC, in W42, but the W42 bar was measured against main at 7e7327e46 before either, so the drop shows here.
-<!-- /week-notes -->
-
 What each name's own provenance block says, for every name `script/names` tracks: crates,
 programs, packages, scripts, every module (each `.rs` file under a `src/` directory), every
 documentation directory and document, and every `pub` item. An item is a function, method,

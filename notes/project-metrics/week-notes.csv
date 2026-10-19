@@ -16,4 +16,3 @@ week,chart,note
 2026W41,ci-jobs.svg,CI job test ran at 89% of its budget on its newest merge-group run; tracking issue #1930
 2026W42,ci-jobs.svg,"re-falsify replays two records at a time (#1979); full-scope shards fell from 16.5 to 8.8 minutes"
 2026W42,ci-jobs.svg,CI job cpu-matrix-shard ran at 86% of its budget on its newest merge-group run; tracking issue #2055
-2026W43,names.svg,"names fell 9,791 to 8,580 and the no-provenance-block band 7,971 to 6,643 because #2353 and #2375 narrowed pub items no package reads to pub(crate), which script/names does not count, taking out 884 and 411; no name was lost. Both merged on 2026-10-18 UTC, in W42, but the W42 bar was measured against main at 7e7327e46 before either, so the drop shows here."
