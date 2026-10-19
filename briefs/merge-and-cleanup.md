@@ -64,6 +64,15 @@ The local branch in the worktree goes away with the worktree in step 3.
 
 ### 3. Prune the worktree, in the same breath
 
+The hourly launchd job does this for you (its plist kept off-tree by the maintainers):
+
+    python3 helpers/prune_worktrees.py           # dry run: what would go, and why each other stays
+    python3 helpers/prune_worktrees.py --remove
+
+It removes a worktree only when its pull request merged, `git status` is empty, origin holds its
+HEAD and nothing has written there for an hour, and it never passes `--force`. Anything it keeps,
+it names with the reason. For one it keeps that you know is finished, by hand:
+
     git worktree remove <worktree>
     git branch -d <branch>
     git worktree prune
@@ -159,10 +168,10 @@ Three things are outside this brief. Stop and hand them back rather than guessin
 
 ## BUGS
 
-- Nothing here fires on its own. This is rung three of the constitution's ladder, a written
-  record at the thing itself, and it only helps a reader who opens it. The two failures it records
-  both happened to people who knew the rule. The steward's interval check for lane worktrees at risk
-  is the nearest thing to a mechanism, and it watches for uncommitted work rather than for disk.
+- Steps 1 and 4 do not fire on their own: they are rung three of the constitution's ladder, a
+  written record at the thing itself, and help only a reader who opens this. Step 3 runs hourly,
+  so a merged worktree outlives its merge by up to two hours, and one with a reason to be kept
+  stays until someone reads the dry run.
 - There is no gate on disk headroom, so nothing warns before a write fails. `df -h /` is a manual
   step this brief cannot make anyone run, and the failure arrives as an unrelated command dying with
   `No space left on device`.

@@ -15,9 +15,9 @@ still holding their build output; every lane then running failed its builds and 
 and deleting those 32 `target/` directories freed 140 GB. calef asked the same day for the cleanup
 to run on its own once a pull request merges.
 
-It deletes build output only. The worktree, its branch and any uncommitted work stay, because
-`git worktree remove` is the step that can lose work and the brief keeps it a person's. Build output
-is rebuilt by the next `cargo` in that worktree, so a wrong deletion costs one build.
+It deletes build output only, and needs less to be sure: build output is rebuilt by the next
+`cargo` in that worktree, so a wrong deletion costs one build. The worktree itself goes by
+helpers/prune_worktrees.py, which also requires it clean and its HEAD on origin.
 
 What is kept, and so never touched:
 

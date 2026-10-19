@@ -249,6 +249,10 @@ if [ "$(git -C "$repo_root" config --bool nife.fleet 2>/dev/null)" != true ]; th
     echo "==> opting this clone in to the fleet's pre-push checks (git config nife.fleet true)"
     git -C "$repo_root" config nife.fleet true
 fi
+# The same machine shares one stash stack across every lane, so `git stash` is blocked here for all
+# of them (milestone 118's budget rule 3; helpers/stash-block.sh). An existing stash leaves it
+# unblocked and is listed, never dropped: it is some lane's work.
+(cd "$repo_root" && helpers/stash-block.sh) || true
 
 if [ "$make_claim" = no ]; then
     echo "claim: worktree and branch created; --no-claim given, stopping before the §90 claim"

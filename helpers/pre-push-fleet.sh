@@ -32,6 +32,12 @@ refs="$(cat)"
 
 case "${1:-}" in
 queued)
+    # **A push that rewrites a pushed commit is refused**, and the stash block is put back if it
+    # is missing (milestone 118's budget rule 3). Both run here, ahead of the empty-push skip,
+    # because a forced empty commit rewrites history as well as any other. The headers of
+    # helpers/push-rewrite-check.sh and helpers/stash-block.sh have the reasoning.
+    printf '%s\n' "$refs" | "$root/helpers/push-rewrite-check.sh" || exit 1
+    "$root/helpers/stash-block.sh" || true
     # **A push to a branch whose pull request is in the merge queue is refused** (provisional
     # milestone name: refuse a push to a queued branch, 2026-10-05 UTC). It runs before the hook's
     # empty-push skip because an empty push to a queued branch removes it from the queue just as
