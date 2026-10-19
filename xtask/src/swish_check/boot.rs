@@ -534,6 +534,18 @@ fn drive_the_prompt(
         return Driven::PanicProbe;
     }
     let took = type_script(leg, ready, line_secs, console, stdin, failed);
+    // Each line's time into the job's record too (milestone 808 (every gate accounts for its
+    // time)), so the daily record can read `swish-check` by line without a log scrape.
+    crate::time_record::items(
+        &format!(
+            "{}{}",
+            crate::time_record::leg(arch),
+            if leg.kvm { " kvm" } else { "" }
+        ),
+        if leg.fresh { "first boot" } else { "second boot" },
+        "line",
+        &took,
+    );
     report_line_times(arch, leg.kvm, line_secs, took, failed);
     // The launch ends the boot (the shell waits on the session), so it is the last thing typed.
     if failed.is_empty()

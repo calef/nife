@@ -131,8 +131,12 @@ for target in $targets; do
     #
     # $dict is unquoted on purpose: it is either empty (and must vanish rather than become an empty
     # argument) or one whole `-dict=...` token with no spaces in it.
+    #
+    # Each target's wall time, its build included, goes into the job's time record when
+    # NIFE_TIME_RECORD names one (milestone 808 (every gate accounts for its time)); the helper
+    # returns cargo-fuzz's own exit status.
     # shellcheck disable=SC2086
-    cargo fuzz run "$target" "$@" -- \
+    python3 helpers/time_record.py run host fuzz target "$target" -- cargo fuzz run "$target" "$@" -- \
         $dict -max_total_time="$seconds" -timeout=10 -print_final_stats=1
 done
 

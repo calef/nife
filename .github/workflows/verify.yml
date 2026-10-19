@@ -110,7 +110,10 @@ jobs:
     outputs:
       run: ${{ steps.state.outputs.run }}
       prose: ${{ steps.prose.outputs.prose }}
+    timeout-minutes: 10
     steps:
+      - name: Start the job wall-time clock
+        run: echo "JOB_STARTED_AT=$(date +%s)" >> "$GITHUB_ENV"
       - id: state
         env:
           PR_NUMBER: ${{ github.event.pull_request.number }}
@@ -170,6 +173,14 @@ jobs:
           [ -n "$base" ] && [ "$base" != "$(git rev-parse HEAD)" ] || base="$(git rev-parse HEAD~1 2>/dev/null || git rev-parse HEAD)"
           echo "==> classifying $base..HEAD"
           python3 helpers/prose_only.py classify "$base"
+      # A draft or an already-tested push skips the checkout, so there is no helper to run, and
+      # those runs take seconds.
+      - name: Check the job's wall time against its budget
+        if: always()
+        run: |
+          if [ -f helpers/job-budget.py ]; then
+            python3 helpers/job-budget.py check "${{ github.job }}" "$JOB_STARTED_AT"
+          fi
 
   scope:
     name: verify scope
@@ -181,7 +192,10 @@ jobs:
       base: ${{ steps.scope.outputs.base }}
       falsify-shards: ${{ steps.plan.outputs.shards }}
       falsify-count: ${{ steps.plan.outputs.count }}
+    timeout-minutes: 10
     steps:
+      - name: Start the job wall-time clock
+        run: echo "JOB_STARTED_AT=$(date +%s)" >> "$GITHUB_ENV"
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           fetch-depth: 0
@@ -217,6 +231,9 @@ jobs:
           shards="$(echo "$plan" | tail -1)"
           echo "shards=$shards" >> "$GITHUB_OUTPUT"
           echo "count=$(echo "$shards" | python3 -c 'import json,sys; print(len(json.load(sys.stdin)))')" >> "$GITHUB_OUTPUT"
+      - name: Check the job's wall time against its budget
+        if: always()
+        run: python3 helpers/job-budget.py check "${{ github.job }}" "$JOB_STARTED_AT"
 
   prove:
     name: prove (shard ${{ matrix.shard }}/4)
@@ -230,10 +247,11 @@ jobs:
       needs.scope.outputs.needed == 'true' &&
       needs.gate.outputs.run != 'false'
     runs-on: ubuntu-24.04
-    # A quarter of the serial job plus its setup, generously. The serial job's 60 was for ~30
-    # minutes of proving; a shard proves ~12 since 2026-10-12 (48 serial), and the box stays generous
-    # because a hung solver must fail loudly rather than sit on the runner's 6-hour default.
-    timeout-minutes: 45
+    # A shard ran a 12.7-minute median and an 18.4 maximum over 284 pull-request runs, and a 21.1
+    # maximum once in about 600 merge-group runs, to 2026-10-19 (UTC).
+    # 25 minutes is the 20-minute budget plus margin (milestone 721, which this workflow joined
+    # under milestone 808); `helpers/job-budget.py` is the rule and `script/lint` holds it.
+    timeout-minutes: 25
     strategy:
       # **Do not cancel the sibling.** One shard failing is a real result about its own crates, and
       # the other shard's result is still worth having: knowing whether `glob` alone broke or the
@@ -242,6 +260,8 @@ jobs:
       matrix:
         shard: [1, 2, 3, 4]
     steps:
+      - name: Start the job wall-time clock
+        run: echo "JOB_STARTED_AT=$(date +%s)" >> "$GITHUB_ENV"
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
       # `save-if`: no rust-cache entry is saved from a merge group, since no later run can restore
       # it. The measurement is at ci.yml's first rust-cache step and in
@@ -287,6 +307,9 @@ jobs:
         # not, which is exactly the branch-as-filing-cabinet failure AGENTS.md warns about.)
         env:
           VERIFY_JOBS: 2
+      - name: Check the job's wall time against its budget
+        if: always()
+        run: python3 helpers/job-budget.py check "${{ github.job }}" "$JOB_STARTED_AT"
 
   # **The same `kernel` row, on the other host architecture** (milestone 304 (`cargo kani -p kernel`
   # only ever compiled one architecture, and it was the runner's)), and since milestone 587 (most CI
@@ -321,10 +344,13 @@ jobs:
       needs.scope.outputs.needed == 'true' &&
       needs.gate.outputs.run != 'false'
     runs-on: ubuntu-24.04-arm
-    # The whole job is about a minute (above). Generous against growth, tight enough that a hung
-    # solver fails loudly rather than sitting on the runner's 6-hour default.
-    timeout-minutes: 45
+    # The whole job is about a minute (above).
+    # 25 minutes is the 20-minute budget plus margin (milestone 721, which this workflow joined
+    # under milestone 808); `helpers/job-budget.py` is the rule and `script/lint` holds it.
+    timeout-minutes: 25
     steps:
+      - name: Start the job wall-time clock
+        run: echo "JOB_STARTED_AT=$(date +%s)" >> "$GITHUB_ENV"
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
       # No rust-cache in this job (calef, #1814, 2026-10-07 UTC): a hit gained under half a minute,
       # and without it the time the step spent moves into the first cargo build rather than
@@ -334,6 +360,9 @@ jobs:
         run: script/kani-install
       - name: script/verify --only kernel
         run: script/verify --only kernel
+      - name: Check the job's wall time against its budget
+        if: always()
+        run: python3 helpers/job-budget.py check "${{ github.job }}" "$JOB_STARTED_AT"
 
   # **The same `kernel` row for riscv64**, which no hosted runner is (milestone 589, DECISIONS §218).
   # CBMC checks a goto program and does not care what it runs on; stock Kani compiles for its own host
@@ -360,10 +389,13 @@ jobs:
       needs.scope.outputs.needed == 'true' &&
       needs.gate.outputs.run != 'false'
     runs-on: ubuntu-24.04-arm
-    # Cold about 3 minutes, warm under 1 (above). Generous for growth and a slow cold path, tight
-    # enough that a hung solver fails loudly.
-    timeout-minutes: 60
+    # Cold about 3 minutes, warm under 1 (above).
+    # 25 minutes is the 20-minute budget plus margin (milestone 721, which this workflow joined
+    # under milestone 808); `helpers/job-budget.py` is the rule and `script/lint` holds it.
+    timeout-minutes: 25
     steps:
+      - name: Start the job wall-time clock
+        run: echo "JOB_STARTED_AT=$(date +%s)" >> "$GITHUB_ENV"
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
       # No rust-cache in this job (calef, #1814, 2026-10-07 UTC): a hit gained under half a minute,
       # and without it the time the step spent moves into the first cargo build rather than
@@ -382,6 +414,9 @@ jobs:
         run: script/verify-riscv64 --build-only
       - name: script/verify-riscv64
         run: script/verify-riscv64
+      - name: Check the job's wall time against its budget
+        if: always()
+        run: python3 helpers/job-budget.py check "${{ github.job }}" "$JOB_STARTED_AT"
 
   # The per-pull-request half of DECISIONS §134, and the half `script/mutation` has no equivalent
   # for. A lane that touches a harness or the code it covers re-falsifies **that harness only**,
@@ -443,13 +478,16 @@ jobs:
     runs-on: ubuntu-24.04-arm
     # 30 against the 17-minute target (20 until calef's 2026-10-07 ruling on #1802): ample, for a stale weight, a cold Kani install, or one
     # record at its own 15-minute limit. A shard that needs more is a packing input to fix (the
-    # times file, or SHARD_TARGET in script/falsifications), not a limit to raise.
+    # times file, or SHARD_TARGET in script/falsifications), not a limit to raise. The same reason
+    # is this job's 25-minute budget in .github/ci-job-budgets, which allows the 30.
     timeout-minutes: 30
     strategy:
       fail-fast: false
       matrix:
         shard: ${{ fromJSON(needs.scope.outputs.falsify-shards) }}
     steps:
+      - name: Start the job wall-time clock
+        run: echo "JOB_STARTED_AT=$(date +%s)" >> "$GITHUB_ENV"
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           fetch-depth: 0
@@ -472,6 +510,21 @@ jobs:
         # half its plan. script/falsifications, above PARALLEL_KINDS, has the mechanism.
         env:
           FALSIFICATIONS_JOBS: 2
+          # Each record's replay time into the job's record (milestone 808 (every gate accounts
+          # for its time)), which `helpers/ci_job_times.py update` folds into the daily record.
+          NIFE_TIME_RECORD: ${{ github.workspace }}/target/time-record.tsv
+      - name: Summarize where the time went
+        if: always() && hashFiles('target/time-record.tsv') != ''
+        run: cargo xtask time-summary target/time-record.tsv >> "$GITHUB_STEP_SUMMARY"
+      - name: Upload the time record
+        if: always() && hashFiles('target/time-record.tsv') != ''
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
+        with:
+          name: time-record-falsify-shard-${{ matrix.shard }}
+          path: target/time-record.tsv
+      - name: Check the job's wall time against its budget
+        if: always()
+        run: python3 helpers/job-budget.py check "${{ github.job }}" "$JOB_STARTED_AT"
 
   # The name the rest of the tree knows this check by, kept stable over the matrix the way
   # `verify (Kani proofs)` stands over the prove shards. It reads one result and needs no runner
