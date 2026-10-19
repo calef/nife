@@ -16,14 +16,19 @@
 # the network (an advisory-database clone, a crates.io tarball on a cold cache). It gets its own CI
 # job for the same reason.
 #
-# **The tree has five cargo workspaces**, and cargo-deny works one graph at a time, so this runs it
-# once per manifest against the one shared deny.toml. One policy everywhere is the point: a licence
-# we would refuse in the kernel is not acceptable in the host tooling either. One is skipped for a
-# stated reason rather than by omission:
+# **One run per committed lockfile, discovered rather than listed**, because cargo-deny works one
+# graph at a time and the tree keeps growing workspaces of its own. It runs once per manifest
+# against the one shared deny.toml. One policy everywhere is the point: a licence we would refuse in
+# the kernel is not acceptable in the host tooling either. `script/audits` counts the same lockfiles
+# for its external-packages trigger, so the two read one set. Two are skipped for a stated reason,
+# and a lockfile beside no Cargo.toml that is not one of them fails the run:
 #
-#   - **vendor/redoxfs** enters our builds only through the two consumers below, at the feature sets
-#     we actually build. Checking it standalone would evaluate its default features (`fuse`, which
-#     wants macFUSE) and report on code nothing here ever compiles.
+#   - **vendor/** is somebody else's graph. vendor/redoxfs enters our builds only through
+#     redoxfs_server and tools/redoxfs_host, at the feature sets we actually build; checking it
+#     standalone would evaluate its default features (`fuse`, which wants macFUSE) and report on
+#     code nothing here ever compiles.
+#   - **notes/packages/container-format-measurements/fuzz/** is a measuring harness for that note,
+#     kept as `Cargo.toml.in` so no cargo command treats it as a crate. Nothing builds or ships it.
 #
 # See notes/scripts.md.
 #
@@ -57,36 +62,30 @@ if [ "$installed" != "$pinned" ]; then
 fi
 
 # -A unmatched-skip: deny.toml's `[bans] skip` list is written for the workspace that needs each
-# entry, and the same file is applied to all four. A skip that is irrelevant to the workspace being
+# entry, and the same file is applied to every graph. A skip that is irrelevant to the workspace being
 # checked is expected, not a finding. (The mirror-image warning for the licence ALLOW-list is handled
 # in the config itself, via `unused-allowed-license`.)
 #
 # -A license-exception-not-encountered: the third member of that family, and it arrived with the
 # fuzz workspace. `[[licenses.exceptions]]` scopes NCSA to `libfuzzer-sys`, which exists in exactly
-# one of the four graphs, so the other three correctly report that the exception went unused. Scoping
+# one graph, so every other run correctly reports that the exception went unused. Scoping
 # the exception to one crate is the strict choice; this is what it costs.
 #
-# **fuzz/ joined the list in milestone 42's second leg**, and the reason is the same one the header
-# gives: a licence or an advisory we would refuse in the kernel is not acceptable in the tooling
-# either. It adds three crates (libfuzzer-sys, arbitrary, cc) that nothing ships, which is exactly the
-# graph a project stops looking at.
-# **`cryptography_provider` and `cryptography_exerciser` joined here** with
-# milestone 442 (a crypto provider `rustls` can use on all three bare-metal targets), and they are
-# the reason `deny.toml` has its first `ignore` entry. They sit outside the main workspace, so nothing else would look at
-# them, and they hold the only crate in the tree with a live advisory against it. A suppression
-# whose graph no gate scans is a suppression nobody can check: listing the manifests here is what
-# makes the entry mean something, and it is narrower than the alternative, which is trusting that
-# somebody remembers to look before those crates are taken into the workspace.
-#
-# **`pinned_tls_client` and `pinned_tls_exerciser` joined** with milestone 855 (the TLS graph enters
-# the gated build), on the same reasoning: once a gate builds a graph, the gate that audits graphs
-# reads it too. Both were clean against this deny.toml on 2026-10-10 (UTC).
-#
-# **`std_exerciser` joined with milestone 812 (`std::thread::spawn` runs real threads in one address
-# space)**, when `rayon` became its first third-party dependency (#1892, 2026-10-10 UTC).
-for manifest in Cargo.toml redoxfs_server/Cargo.toml tools/redoxfs_host/Cargo.toml fuzz/Cargo.toml \
-    cryptography_provider/Cargo.toml cryptography_exerciser/Cargo.toml \
-    pinned_tls_client/Cargo.toml pinned_tls_exerciser/Cargo.toml std_exerciser/Cargo.toml; do
+manifests=""
+for lock in $(git ls-files '*Cargo.lock'); do
+    dir="$(dirname "$lock")"
+    case "$dir/" in
+        vendor/* | notes/packages/container-format-measurements/fuzz/) continue ;;
+    esac
+    if [ ! -f "$dir/Cargo.toml" ]; then
+        echo "supply-chain: $lock has no Cargo.toml beside it, so cargo-deny cannot read its graph;" >&2
+        echo "  give it one, or skip it above with the reason nothing ships it" >&2
+        exit 1
+    fi
+    manifests="$manifests $dir/Cargo.toml"
+done
+
+for manifest in $manifests; do
     echo "==> cargo-deny: $manifest"
     cargo deny --manifest-path "$manifest" --all-features --config deny.toml \
         check -A unmatched-skip -A license-exception-not-encountered
