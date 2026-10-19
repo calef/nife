@@ -490,6 +490,43 @@ fn append(rows: &[Row]) {
     }
 }
 
+/// **The host pass's wall time**, as one `phase` row under leg `host` (milestone 808 (every gate
+/// accounts for its time)). Milestone 663 (bound the host pass) takes its deadline from this
+/// figure in the daily record. Named `suite` so the step summary's phase table shows it in the
+/// column the kernel images use for the same idea.
+pub(crate) fn host_pass(took: Duration) {
+    append(&[Row {
+        leg: "host".into(),
+        image: "host crates".into(),
+        kind: "phase".into(),
+        name: "suite".into(),
+        milliseconds: ms(took),
+    }]);
+}
+
+/// **A gate's own items, timed by its own framework** (milestone 808): `swish-check`'s lines,
+/// one row each. Unlike the kernel suite, these writers do not own `target/time-record.tsv`: they
+/// append only when `NIFE_TIME_RECORD` names a file, which CI sets, so a person running the check
+/// at a laptop grows no file nobody uploads. `helpers/time_record.py` holds the same rule for the
+/// writers that are not Rust. A tab or newline in a name becomes a space, since either would split
+/// the row.
+pub(crate) fn items(leg: &str, image: &str, kind: &str, took: &[(&str, Duration)]) {
+    if std::env::var_os("NIFE_TIME_RECORD").is_none_or(|p| p.is_empty()) {
+        return;
+    }
+    let rows: Vec<Row> = took
+        .iter()
+        .map(|(name, d)| Row {
+            leg: leg.to_string(),
+            image: image.to_string(),
+            kind: kind.to_string(),
+            name: name.replace(['\t', '\n', '\r'], " "),
+            milliseconds: ms(*d),
+        })
+        .collect();
+    append(&rows);
+}
+
 /// What one image's transcript says, read once and checked.
 #[derive(Debug, Default, PartialEq)]
 pub(crate) struct Reading {
@@ -787,8 +824,8 @@ pub(crate) fn markdown(rows: &[Row]) -> String {
     if rows.is_empty() {
         return out;
     }
-    out.push_str("### Where the kernel suite's time went\n\n");
-    out.push_str("Seconds, host wall time for phases and guest time for tests. The full record is this run's `time-record` artifact (milestone 807).\n\n");
+    out.push_str("### Where this job's time went\n\n");
+    out.push_str("Seconds: guest time for kernel tests, host wall time for everything else. The full record is this run's `time-record` artifact (milestones 807 and 808).\n\n");
 
     // Phases, one row per leg and image, in the order they ran.
     let mut order: Vec<(String, String)> = Vec::new();
@@ -806,7 +843,9 @@ pub(crate) fn markdown(rows: &[Row]) -> String {
     for r in rows.iter().filter(|r| r.kind == "test") {
         *counts.entry((r.leg.clone(), r.image.clone())).or_default() += 1;
     }
-    out.push_str("| leg | image | tests | build | boot | suite | exit |\n|---|---|---:|---:|---:|---:|---:|\n");
+    if !order.is_empty() {
+        out.push_str("| leg | image | tests | build | boot | suite | exit |\n|---|---|---:|---:|---:|---:|---:|\n");
+    }
     for (leg, image) in &order {
         let get = |n: &str| {
             phase
@@ -826,7 +865,11 @@ pub(crate) fn markdown(rows: &[Row]) -> String {
         ));
     }
 
+    out.push_str(&slowest_items(rows));
     let mut tests: Vec<&Row> = rows.iter().filter(|r| r.kind == "test").collect();
+    if tests.is_empty() {
+        return out;
+    }
     tests.sort_by_key(|r| std::cmp::Reverse(r.milliseconds));
     out.push_str("\n#### Slowest tests\n\n| seconds | leg | test |\n|---:|---|---|\n");
     for r in tests.iter().take(SLOWEST) {
@@ -856,6 +899,33 @@ pub(crate) fn markdown(rows: &[Row]) -> String {
         out.push_str(&format!(
             "| {} | {n} | {leg} | `{module}` |\n",
             seconds(*total)
+        ));
+    }
+    out
+}
+
+/// The slowest rows of every kind but `phase` and `test`: a gate's own items (milestone 808), such
+/// as `swish-check`'s lines, fuzz targets and re-falsified records. Empty when there are none.
+fn slowest_items(rows: &[Row]) -> String {
+    let mut items: Vec<&Row> = rows
+        .iter()
+        .filter(|r| r.kind != "phase" && r.kind != "test")
+        .collect();
+    if items.is_empty() {
+        return String::new();
+    }
+    items.sort_by_key(|r| std::cmp::Reverse(r.milliseconds));
+    let mut out = String::from(
+        "\n#### Slowest items\n\n| seconds | kind | leg | image | item |\n|---:|---|---|---|---|\n",
+    );
+    for r in items.iter().take(SLOWEST) {
+        out.push_str(&format!(
+            "| {} | {} | {} | {} | `{}` |\n",
+            seconds(r.milliseconds),
+            r.kind,
+            r.leg,
+            r.image,
+            r.name
         ));
     }
     out
@@ -1124,5 +1194,26 @@ mod tests {
         assert!(md.contains("| riscv64 | system_tests | 1 |"));
         assert!(md.contains("`system_tests::display_tests`"));
         assert!(md.contains("| 9.9 |"));
+        assert!(!md.contains("Slowest items"));
+    }
+
+    /// A job whose record holds only a gate's own items (milestone 808) gets their table and none
+    /// of the kernel suite's, which would otherwise print as empty headings.
+    #[test]
+    fn a_record_of_items_alone_lists_the_items() {
+        let rows = vec![Row {
+            leg: "aarch64".into(),
+            image: "first boot".into(),
+            kind: "line".into(),
+            name: "ls /".into(),
+            milliseconds: 1_250,
+        }];
+        let md = markdown(&rows);
+        assert!(
+            md.contains("| 1.2 | line | aarch64 | first boot | `ls /` |"),
+            "{md}"
+        );
+        assert!(!md.contains("Slowest tests"), "{md}");
+        assert!(!md.contains("| leg | image | tests |"), "{md}");
     }
 }

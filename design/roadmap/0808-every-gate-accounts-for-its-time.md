@@ -211,49 +211,45 @@ considered as the file's format and not taken, because no consumer here reads it
 
 ## What was built
 
-Lane `lane/808-gate-time`, pull request #1825, from 2026-10-07 (UTC), cut from `main` rather than
-stacked on milestone 807 (the kernel suite reports what each test cost), because these pieces do not
-read 807's record. Every name below is provisional.
+Every name below is provisional.
 
-- **The warning line.** `helpers/job-budget.py check` warns at 85% instead of 75%, so there is one
-  line, and writes the job's minutes against its budget to the step summary. Its selftest proves the
-  warning fires at 17 of 20 minutes, is quiet below, and never changes the exit status.
-- **The daily record.** `helpers/ci_job_times.py update` reads every merge-group run of `ci.yml`
-  and `verify.yml` from the jobs API and writes per-job and per-step daily medians to
-  `notes/project-metrics/ci-job-times.csv`, seeded from 2026-10-06. `metrics.yml` runs it daily.
-- **The chart.** `script/metrics` draws `ci-jobs.svg`: `test`, `cpu-matrix`, `fuzz` and
-  `swish-check` side by side, the slowest job as a line, and the 20-minute ceiling.
-- **The tracking issue.** `helpers/ci_job_times.py sync` opens one `near-budget` issue per job,
-  rewrites it daily, closes it, and appends a week-notes row while it is open. It runs in
-  `metrics.yml` as `nife-smelter[bot]`. Its selftest drives the three transitions against a
-  recorded merge-group run (37648588582).
-- **The route to a session.** A thirteenth `needs-maintainer` cause, `budget`, keyed on the issue's
-  number and opening time. The drain finds open budget issues through a search of their own and
-  closed labeled issues through its existing search, which gained an `... on Issue` arm.
-  `briefs/session-start.md` and `briefs/survey-the-queue.md` read the listing through the REST
-  issues endpoint.
+- **The warning line.** `helpers/job-budget.py check` warns at 85% of a job's budget, in `ci.yml`
+  and `verify.yml`, and writes the job's minutes to the step summary.
+- **The record file.** One `time-record.tsv` per job, in milestone 807's format, uploaded as
+  `time-record-<job>` or `time-record-<job>-<matrix value>`. The kernel suite owns
+  `target/time-record.tsv`; every other writer appends only to `NIFE_TIME_RECORD`, which CI sets.
+  `helpers/time_record.py` writes for gates that are not Rust.
+- **Per item, from each framework.** The kernel suite and `cpu-matrix` write `test` and `phase`
+  rows (milestone 807). The host pass writes one `phase` row, leg `host`. `swish-check` writes a
+  `line` row per typed line, `script/fuzz` a `target` row per target, build included, and
+  `script/falsifications` a `falsification` row per replayed record.
+- **Upload or exemption.** `.github/time-record-exemptions` gives each `ci.yml` checkout job that
+  uploads nothing its reason, and `helpers/time_record.py lint` holds it.
+- **The daily record.** `helpers/ci_job_times.py update`, daily in `metrics.yml`, writes per-job
+  and per-step medians of every merge-group run to `notes/project-metrics/ci-job-times.csv`, and
+  from each green run's records every `phase` row and every item with a daily median of 1 s or more
+  (`ITEM_FLOOR_MS`). `script/metrics` draws `ci-jobs.svg` against the 20-minute ceiling.
+- **The tracking issue.** `helpers/ci_job_times.py sync` opens, rewrites and closes one
+  `near-budget` issue per job as `nife-smelter[bot]`, and adds a week-notes row while it is open.
+  One run at or past the line opens it; three under close it (§254's Open section).
+  `needs-maintainer` lists it with cause `budget`.
+- **`verify.yml` under the budget.** `falsify-shard` has a 25-minute line in
+  `.github/ci-job-budgets`: a shard planned at 17 minutes must outlive one record at its own
+  15-minute limit to report it.
 
-### The damping, proposed as an amendment to §254
-
-§254's Open section left it to this lane. **One run at or past the line opens the issue, and three
-runs in a row under it close it.** Opening on one run keeps the warning as early as the ruling
-wants, and it fails nothing. Closing on one would flap, since one job on one commit varies by about
-30% across hosted runners. The maintainer applies the amendment to §254; this lane does not edit
-`design/decisions/`.
-
-## Exit criteria, so far
+## Exit criteria
 
 | | criterion | state |
 |---|---|---|
-| 1 | the daily CSV for `ci.yml` and `verify.yml`, and the weekly chart | met, per job and per step. Per test waits on 807's artifacts |
-| 2 | every checkout job uploads the breakdown file or is exempt, held by `script/lint` | not yet: needs 807's file on `main` |
-| 3 | per-item times from the kernel suite, `cpu-matrix`, `swish-check`, re-falsify and `fuzz` | the kernel suite and `cpu-matrix` by 807; the other three not yet |
+| 1 | the daily CSV per job, step and test, and the weekly chart | met. Per-item rows start with the first daily pass after merge, when artifacts first carry their job key. Over 2026-10-18's 88 green runs they are 454 rows, 73 kB a day. `ci_job_times.py --selftest` holds the floor and the mapping |
+| 2 | upload or exemption, held by `script/lint` | met. `time_record.py --selftest`; deleting `fmt`'s exemption line fails the lint naming `fmt` |
+| 3 | per-item times from the kernel suite, `cpu-matrix`, `swish-check`, re-falsify and `fuzz` | met. Run 39292789618 uploaded every record with rows: lines on three architectures, ten fuzz targets, the host pass. Re-falsify wrote rows in a local sweep; its first CI shard runs on a diff that reaches a record |
 | 4 | the 85% warning, its summary, its host test | met |
 | 5 | the issue's three transitions, tested against a recorded fixture | met |
 | 6 | `budget` in the `needs-maintainer` listing, the selftest, the briefs | met |
 | 7 | a week-notes bullet while an issue is open | met, through `sync` |
-| 8 | `verify.yml` joins the budget | not yet: the record now holds its medians. Over 60 runs to 2026-10-07, `prove` shards ran a 16.4-minute median (max 19.2). Re-falsify shards ran 16.1 (max 21.5) and need a ratchet line |
-| 9 | milestone 663's deadline from the host pass's measured time | not yet: needs the per-phase file |
+| 8 | `verify.yml` joins the budget | met. To 2026-10-19 (UTC), `prove` shards ran 12 to 14 minutes, maximum 21.1 once in about 600 merge-group runs; re-falsify shards 8.5 to 10.8, maximum 18.3 |
+| 9 | milestone 663's deadline from the host pass's measured time | not yet. The record holds the host pass as `test-shard`, `host / host crates`, `phase`, `suite`; taking the deadline is milestone 663's work |
 
 ## BUGS
 
@@ -263,17 +259,19 @@ wants, and it fails nothing. Closing on one would flap, since one job on one com
 - `sync` runs once a day, so an issue opens up to a day after the crossing run.
 - `helpers/nanny.py`, which wakes a running session, still reads pull requests only. A budget issue
   reaches a session at its next `needs-maintainer` read, not mid-session.
-
 - A merge-group run's runner varies, and every number here is wall time on a shared hosted machine.
-  The record takes medians over runs for that reason. One run, as in the table above, is a premise
-  check and not a baseline.
+  The record takes medians over runs for that reason.
+- Item rows under 1 s a day are dropped, so one fast test's slow growth is visible only in its
+  image's `suite` phase.
+- `script/lint` is a few hundred checks in one job and times none of them.
+- `ci.yml` and `verify.yml` both name a job `gate`, so the two share one budget key and one
+  tracking issue. Both run in seconds.
+- The fuzz job builds no `xtask`, so it uploads its record without a step summary.
 
 ## Follow-on
 
-- **Outstanding.** Exit criteria 2, 3, 8 and 9 above, in this lane after milestone 807 merges. That
-  is the per-phase timing of `script/ci-build test`, the upload-or-exempt lint, and per-item times
-  from `swish-check`, re-falsify and `fuzz`. Then the daily CSV's per-test rows, `verify.yml`'s
-  budget, and 663's deadline.
+- **Outstanding.** Exit criterion 9, which needs a week of the host pass's daily rows and then
+  milestone 663's own lane.
 
 ## Index row
 
