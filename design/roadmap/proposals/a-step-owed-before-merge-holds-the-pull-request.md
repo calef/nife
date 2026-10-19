@@ -147,4 +147,4 @@ parser follows `helpers/blocked-by.sh` and `helpers/queue-eligible.jq`. The reru
 
 ## Index row
 
-Ruled, not built: a step a pull request owes before merge is held by a `Before merge:` task-list item in its body (calef, 2026-10-19 UTC): `architect hold` fails while one is unticked, ticking it releases the hold, and a `needs-maintainer` cause names the owed step.
+Ruled, not built: a step a pull request owes before merge is held by a `Before merge:` task-list item in its body (calef, 2026-10-19 UTC). `architect hold` fails while one is unticked, ticking it releases the hold, and a `needs-maintainer` cause names the owed step.
