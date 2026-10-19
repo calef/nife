@@ -48,9 +48,10 @@ impl HaltReason {
     }
 
     /// A test image, after its suite has asked the host to end the run. Exists only in one. The
-    /// aarch64 boot has no halt after its suite (the runner's exit never returns), hence the allow.
+    /// shared boot has no halt after its suite (the runner's exit never returns), so only the
+    /// `x86_64` boot calls this, hence the allow.
     #[cfg(any(test, feature = "system_tests"))]
-    #[cfg_attr(target_arch = "aarch64", allow(dead_code))]
+    #[cfg_attr(not(target_arch = "x86_64"), allow(dead_code))]
     pub(crate) fn test_build() -> Self {
         HaltReason(())
     }
