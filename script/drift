@@ -41,6 +41,8 @@
 # reading rather than the record's, and it is the part worth ruling on. no architect has ratified it.
 
 set -e
+# A heavy job: wait for one of the machine's heavy-job slots first (helpers/heavy_slot.py).
+. "$(dirname "$0")/../helpers/heavy-slot.sh"
 cd "$(dirname "$0")/.."
 
 target_toolchain="$1"
