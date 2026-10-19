@@ -11,7 +11,7 @@ use std::time::Duration;
 use crate::archive::{initial_ramdisk_x86, x86_initial_ramdisk_path};
 use crate::disk::{disk_path, mkdisk, mknvmedisk, nvme_disk_path};
 use crate::host::workspace_root;
-use crate::scanout::screendump;
+use crate::scanout::{ScanoutReferee, screendump};
 use crate::suite::kernel_test_elf;
 use crate::{RELEASE, X86_TARGET, cargo_profiled, profile_dir};
 
@@ -462,6 +462,11 @@ fn start_uefi_screen_boot(sock: &str) -> Option<std::process::Child> {
         // The suite below is where the devices belong.
         .env_remove("NIFE_DISK")
         .env_remove("NIFE_NVME")
+        // The suite's display devices too: with `NIFE_GPU` the runner drops q35's VGA, whose
+        // linear framebuffer is the screen this tour reads back.
+        .env_remove("NIFE_GPU")
+        .env_remove("NIFE_GPU_MON")
+        .env_remove("NIFE_KEYBOARD")
         .stdin(std::process::Stdio::piped())
         .stdout(std::process::Stdio::piped())
         .stderr(std::process::Stdio::piped())
@@ -972,6 +977,20 @@ fn uefi_test_image(package: &str) -> bool {
         // above, so this inherits them; they are named here only for a bare `cargo xtask uefi-test`.
         .env("NIFE_DISK", disk_path())
         .env("NIFE_NVME", nvme_disk_path());
+    // **The GPU and keyboard ride the system image's boot, with the PVH leg's referee beside it**
+    // (milestone 420 (x86_64 has one fixture of five and no NIC, GPU, keyboard or RNG)). The
+    // display, compositor and keyboard tests live in that image; the kernel's own unit tests use
+    // neither device, so its boot leaves them off rather than inherit `test()`'s `NIFE_GPU`. Constructed before the child, because it is what sets `NIFE_GPU_MON`.
+    let mut referee = None;
+    if package == "system_tests" {
+        command.env("NIFE_GPU", "1").env("NIFE_KEYBOARD", "1");
+        referee = Some(ScanoutReferee::for_leg("x86_64", "x86_64-ovmf"));
+    } else {
+        command
+            .env_remove("NIFE_GPU")
+            .env_remove("NIFE_GPU_MON")
+            .env_remove("NIFE_KEYBOARD");
+    }
     // **The bound is a hang detector, so it sits well above an honest run** (2026-10-10 (UTC),
     // lane milestone/855-the-tls-graph-enters-the-gated-build). This boot used to take the
     // runner's 90 s default. In CI the `system_tests` boot had grown to 86 s on main (run
@@ -994,7 +1013,25 @@ fn uefi_test_image(package: &str) -> bool {
             return false;
         }
     };
-    let status = watch.wait(&mut child, &format!("x86_64 ovmf {package}"));
+    let who = format!("x86_64 ovmf {package}");
+    let status = match referee.as_mut() {
+        None => watch.wait(&mut child, &who),
+        Some(referee) => loop {
+            match child.try_wait() {
+                Ok(Some(status)) => break Some(status),
+                Ok(None) => {}
+                Err(e) => {
+                    eprintln!("waiting for the test child failed: {e}");
+                    break None;
+                }
+            }
+            if watch.enforce(&mut child, &who) {
+                break None;
+            }
+            referee.poll();
+            std::thread::sleep(Duration::from_millis(100));
+        },
+    };
     let (lines, exited) = watch.finish();
     let transcript: String = lines.iter().map(|l| l.text.clone() + "\n").collect();
     let code = status.and_then(|s| s.code());
@@ -1030,6 +1067,16 @@ fn uefi_test_image(package: &str) -> bool {
         ok = false;
     }
     if !accounted {
+        ok = false;
+    }
+    // Graded whatever the guest said, as `scanout_check` does: a red suite is the run where the
+    // referee's account of what reached the scanout matters most. Advisory under `--test`, for
+    // `scanout_check`'s reason: a filter may not have selected the tests that paint.
+    let filtered = std::env::var_os("NIFE_TEST_FILTER").is_some_and(|v| !v.is_empty());
+    if let Some(referee) = referee
+        && !referee.report()
+        && !filtered
+    {
         ok = false;
     }
     if ok {
