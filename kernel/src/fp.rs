@@ -250,6 +250,22 @@ mod tests {
 
     use super::*;
 
+    /// **Interrupts are masked and the vector registers are borrowed**, for as long as one of these
+    /// is in reach. [`with_borrowed_registers`] lends one to its body and nothing else builds one,
+    /// which is what lets [`Borrowed::hand_over`] be safe.
+    struct Borrowed(());
+
+    impl Borrowed {
+        /// [`hand_over`] between two of a test's own states, and the one place these tests argue
+        /// its contract.
+        fn hand_over(&self, prev: &mut FpState, next: &FpState) {
+            // SAFETY: `&mut` and `&` make the two states live and distinct for the call. A
+            // `Borrowed` exists only inside `with_borrowed_registers`' body, where interrupts are
+            // masked, and neither state is a thread's, so nothing can switch or reap either.
+            unsafe { hand_over(prev, next) }
+        }
+    }
+
     /// Run `body` with the vector registers borrowed and handed back exactly as found.
     ///
     /// Test order is not fixed, so a test that drives [`hand_over`] by hand cannot assume the
@@ -257,7 +273,7 @@ mod tests {
     /// says otherwise would make the *next* switch call `save` into a trapping unit, from inside
     /// the scheduler, with interrupts masked. Interrupts stay masked for the whole body so no
     /// switch observes the core mid-borrow.
-    fn with_borrowed_registers(body: impl FnOnce()) {
+    fn with_borrowed_registers(body: impl FnOnce(&Borrowed)) {
         let was_enabled_interrupts = crate::arch::interrupts::disable();
         let was_enabled_fp = crate::arch::fp::is_enabled();
         let saved = if was_enabled_fp {
@@ -269,7 +285,7 @@ mod tests {
             None
         };
 
-        body();
+        body(&Borrowed(()));
 
         match saved {
             Some(state) => {
@@ -397,7 +413,7 @@ mod tests {
     /// through the enable trap (that would install `INITIAL` itself and prove nothing).
     #[test_case]
     fn a_thread_with_no_vector_state_finds_the_registers_scrubbed() {
-        with_borrowed_registers(|| {
+        with_borrowed_registers(|registers| {
             let mut departing = FpState::INITIAL;
             departing.set_live();
             departing.set_pattern(0xdead_beef_cafe_f00d);
@@ -405,16 +421,15 @@ mod tests {
             let mut idle = FpState::INITIAL;
 
             // Give the registers to the thread that has state, so they hold something worth
-            // leaking. SAFETY: three locals, distinct, and interrupts are masked.
-            unsafe { hand_over(&mut idle, &departing) };
+            // leaking.
+            registers.hand_over(&mut idle, &departing);
             assert!(
                 peek_registers().has_pattern(0xdead_beef_cafe_f00d),
                 "hand_over did not install the incoming thread's registers",
             );
 
             // And take them away again, to a thread that has never used the unit.
-            // SAFETY: as above.
-            unsafe { hand_over(&mut departing, &arriving) };
+            registers.hand_over(&mut departing, &arriving);
             assert!(
                 peek_registers().is_scrubbed(),
                 "a thread's vector registers survived into a thread that has none",
@@ -435,13 +450,12 @@ mod tests {
     #[test_case]
     fn the_whole_register_file_survives_a_save_and_a_restore() {
         const SEED: u64 = 0x5555_aaaa_5555_aaaa;
-        with_borrowed_registers(|| {
+        with_borrowed_registers(|registers| {
             let mut written = FpState::INITIAL;
             written.set_live();
             written.set_pattern(SEED);
             let mut idle = FpState::INITIAL;
-            // SAFETY: two distinct locals, and interrupts are masked for the whole body.
-            unsafe { hand_over(&mut idle, &written) };
+            registers.hand_over(&mut idle, &written);
 
             let read_back = peek_registers();
             for index in 0..crate::arch::fp::REGISTERS {
@@ -454,8 +468,7 @@ mod tests {
 
             // Put the unit back shut, so `with_borrowed_registers` restores from a known state.
             let arriving = FpState::INITIAL;
-            // SAFETY: as above.
-            unsafe { hand_over(&mut written, &arriving) };
+            registers.hand_over(&mut written, &arriving);
         });
     }
 
@@ -467,13 +480,12 @@ mod tests {
     /// per switch and the only symptom would be a slower benchmark.
     #[test_case]
     fn two_threads_that_never_used_the_unit_leave_it_shut() {
-        with_borrowed_registers(|| {
+        with_borrowed_registers(|registers| {
             crate::arch::fp::disable();
             let mut one = FpState::INITIAL;
             let two = FpState::INITIAL;
             assert!(!one.is_live() && !two.is_live());
-            // SAFETY: two distinct locals, interrupts masked.
-            unsafe { hand_over(&mut one, &two) };
+            registers.hand_over(&mut one, &two);
             assert!(
                 !crate::arch::fp::is_enabled(),
                 "a switch between two soft-float threads opened the floating-point unit",

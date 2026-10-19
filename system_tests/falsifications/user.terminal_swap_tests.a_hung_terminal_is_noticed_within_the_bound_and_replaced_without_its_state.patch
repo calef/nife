@@ -1,0 +1,25 @@
+Falsifies `system_tests::user::terminal_swap_tests::a_hung_terminal_is_noticed_within_the_bound_and_replaced_without_its_state`.
+
+Architecture: aarch64
+
+The patch arms `terminal_supervisor`'s quiesce timer at four times `QUIESCE_BOUND_MS`, so the
+supervisor still notices the hang and still replaces the terminal, only late. Every other assertion
+in the test would pass; the one on how long the supervisor waited is what catches a bound that is
+not the declared one.
+
+Expected to fail: "the supervisor waited 1004 ms, against a bound of 250 ms" in the test's wait
+assertion. Replayed red at exactly that assertion on aarch64 on 2026-10-19 (UTC).
+
+diff --git a/components/src/terminal_supervisor.rs b/components/src/terminal_supervisor.rs
+index 4f0852d2a..ec9fd4d9e 100644
+--- a/components/src/terminal_supervisor.rs
++++ b/components/src/terminal_supervisor.rs
+@@ -369,7 +369,7 @@ impl Supervisor<'_> {
+         let bound = cntfrq() * s::QUIESCE_BOUND_MS / 1000;
+         let started = now();
+         if !supervision_protocol::start_child(child, MODE_STAND_IN, 0, 0)
+-            || timer_arm(d.timer, started + bound, d.wake, DEADLINE) < 0
++            || timer_arm(d.timer, started + 4 * bound, d.wake, DEADLINE) < 0
+         {
+             fail()
+         }
