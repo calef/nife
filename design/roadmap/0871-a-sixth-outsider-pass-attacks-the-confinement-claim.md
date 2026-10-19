@@ -1,6 +1,7 @@
 ---
-status: PARTIAL
+status: BUILT
 raised: 2026-10-10
+built: 2026-10-19
 milestone_dependencies: none
 decision_dependencies: none
 machine_requirements: none
@@ -50,7 +51,7 @@ ground where nothing has been found. The surfaces, newest first:
 
 ## Result
 
-PARTIAL, 2026-10-10 (UTC). The pass booted one escape on its first surface and stopped there. The
+BUILT, 2026-10-19 (UTC). The pass booted one escape on its first surface and stopped there. The
 milestone 801 (packages over the internet) package client checked one resolution of a listed
 location's host, then connected by name, which resolved again. A rebinding name server answered
 the check public and the connect private, and the client reached the private peer Q1 forbids. The
@@ -66,29 +67,13 @@ reaches a private or link-local address, and the address dialed is the one the c
 record is replayable: the patch makes the client connect by name again, and it booted red
 on aarch64, riscv64 and x86_64 on 2026-10-19 (UTC). The weekly sweep replays it.
 
-Not done: the table sweep and the variant work against the fixed escapes. With the count already
-at zero, they could no longer make this pass a clean one. See
+The table sweep and the variant work against the fixed escapes did not run here. With the count
+already at zero, they could no longer make this pass a clean one. calef ruled on #2432 (2026-10-19
+23:18 UTC): "New pass." They belong to the tenth outsider pass, a GLM 5.3 pass under
+`briefs/confinement-outsider-pass.md` that can count toward criterion (c), proposed as
+`design/roadmap/proposals/a-tenth-outsider-pass-attacks-the-confinement-claim.md`. Its floor
+includes row 35, so it covers this pass's variant ground. See
 `notes/confinement-outsider-pass-6.md` for the escape, the fix and the refusal log.
-
-## What the remaining sweep needs
-
-It is a GLM 5.3 pass under `briefs/confinement-outsider-pass.md`, launched by
-`script/launch-pass` from milestone 920 (an outsider pass is launched pinned and floor-checked).
-To run it:
-
-- A commit: `main` at or after this block's merge, so the table has 35 rows and row 35's test.
-- From calef: a GLM 5.3 API key made for the pass and revoked after, in the launcher's
-  environment, and patagonia's podman machine at 6 CPUs and 8 GiB or more. Nothing else needs him.
-- A lane: it mints the pass's block, claims it, runs
-  `script/launch-pass --reviewer glm --commit <sha>`, reproduces each booted row one ISA at a time,
-  and counts with `script/booted-rows`. Below the floor it runs the one completion round.
-- The floor: 28 of 35 rows. Rows 12 to 18 are exempt, 1 to 3 may carry from pass 7, and 27 to 29
-  and 33 boot on x86_64 only. Rows 34 and 35 are this pass's variant ground. They are rows, so the
-  floor covers them and the prompt names neither.
-
-The eighth pass, milestone 913 (an eighth outsider pass attacks the confinement claim), was by
-GLM 5.3. It graded 25 of the 27 bootable rows of the 34-row table `booted` and did not count. No
-pass has attacked row 35.
 
 ## Done means
 
@@ -101,7 +86,9 @@ pass has attacked row 35.
 
 ## Follow-on
 
-- **Outstanding.** The table sweep and the variant work, unrun, scheduled as above.
+- **Proposed.** The table sweep and the variant work go to the tenth outsider pass, by GLM 5.3,
+  in `design/roadmap/proposals/a-tenth-outsider-pass-attacks-the-confinement-claim.md`. It waits
+  on calef's GLM token allowance.
 - **Milestone 198.** A human review, or a public bounty once a stranger can install nife, is the
   stronger form and waits on milestone 198 (a package manager, and the trivial install that makes
   a second customer possible).
