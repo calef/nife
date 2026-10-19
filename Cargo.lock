@@ -1608,6 +1608,7 @@ dependencies = [
  "package_archive",
  "package_index",
  "portable_executable",
+ "screen_console",
  "sealed_pair",
  "test_times",
  "toml",

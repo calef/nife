@@ -260,7 +260,8 @@ fn decode_rows(
 /// For a picture whose glyphs are not monochrome, such as the display terminal's anti-aliased
 /// `glyph_atlas` cells, where [`decode`]'s ink-against-paper threshold has nothing to separate. The
 /// caller passes the drawing function the guest painted with, so a match is the guest's own
-/// pixels, not a resemblance. The grid is drawn 1:1.
+/// pixels, not a resemblance. `scale` is [`decode`]'s: each cell pixel was painted as a
+/// scale-by-scale block, and its top-left screen pixel is the one compared.
 ///
 /// # Errors
 ///
@@ -281,7 +282,7 @@ fn decode_rows(
 ///     let word = draw(if x < 2 { 'b' } else { 'a' }, x % 2, 0);
 ///     ppm.extend_from_slice(&[(word >> 16) as u8, (word >> 8) as u8, word as u8]);
 /// }
-/// assert_eq!(screen::decode_exact(&ppm, 2, 1, b"ab", draw).unwrap().rows, ["ba"]);
+/// assert_eq!(screen::decode_exact(&ppm, 2, 1, 1, b"ab", draw).unwrap().rows, ["ba"]);
 /// ```
 ///
 /// Name: provisional.
@@ -289,13 +290,14 @@ pub fn decode_exact(
     ppm: &[u8],
     cell_w: u32,
     cell_h: u32,
+    scale: u32,
     alphabet: &[u8],
     draw: impl Fn(char, u32, u32) -> u32,
 ) -> Result<Screendump, ReadError> {
     let (width, height, pixels) = parse_pixmap(ppm)?;
-    let (cw, ch) = (cell_w as usize, cell_h as usize);
+    let (cw, ch, k) = (cell_w as usize, cell_h as usize, scale as usize);
     let at = |col: usize, row: usize, x: usize, y: usize| {
-        let i = ((row * ch + y) * width + col * cw + x) * 3;
+        let i = (((row * ch + y) * width + col * cw + x) * k) * 3;
         (pixels[i] as u32) << 16 | (pixels[i + 1] as u32) << 8 | pixels[i + 2] as u32
     };
     let read = |col: usize, row: usize| {
@@ -310,8 +312,8 @@ pub fn decode_exact(
     Ok(Screendump {
         width: u32::try_from(width).unwrap_or(u32::MAX),
         height: u32::try_from(height).unwrap_or(u32::MAX),
-        rows: (0..height / ch)
-            .map(|row| (0..width / cw).map(|col| read(col, row)).collect())
+        rows: (0..height / (ch * k))
+            .map(|row| (0..width / (cw * k)).map(|col| read(col, row)).collect())
             .collect(),
     })
 }

@@ -272,6 +272,7 @@ fn screen_rows(bytes: &[u8], alphabet: &[u8]) -> Result<board_console::screen::S
         bytes,
         video_terminal::CELL_W,
         video_terminal::CELL_H,
+        1,
         alphabet,
         |ch, x, y| glyph_atlas::REGULAR.cell_pixel(ch, x, y, fg, bg),
     )

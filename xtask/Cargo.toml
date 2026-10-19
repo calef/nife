@@ -81,6 +81,9 @@ video_terminal = { version = "0.1.0", path = "../crates/video_terminal" }
 # The font the display terminal draws with, so the graphical swish-check leg reads the screen back
 # by the guest's own pixels (`swish_check::launch::screen_rows`).
 glyph_atlas = { version = "0.1.0", path = "../crates/glyph_atlas" }
+# The firmware screen's scale rule, so the OVMF gate reads the shell's terminal at the scale
+# `display_service::start_screen_terminal` drew it at, from the same function.
+screen_console = { version = "0.1.0", path = "../crates/screen_console" }
 # The programs the shell can spawn (milestone 150): the packer refuses to build an archive missing
 # one, because a `Prog` whose binary is not packed compiles, passes every host test and cannot be
 # spawned. `no_std` with one in-tree dependency (`glob`), so it costs the host build nothing.

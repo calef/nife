@@ -783,6 +783,31 @@ struct ScreenReadings {
 /// Stops early when the monitor stops answering after having answered once (QEMU is gone and no
 /// later dump can be better), and at a deadline that bounds the whole watch. A dump that fails to
 /// decode is never fatal, and the retry is the answer.
+/// **The firmware screen read as the shell's terminal draws it**: `glyph_atlas` cells in
+/// `video_terminal`'s default colors, at the scale `display_service::start_screen_terminal` chose
+/// for the screen's width, one string per row with its trailing blanks trimmed. The tour before
+/// the hand-over is the boot console's 7x8 bitmap, which `board_console::screen::read` reads; this
+/// reads what replaces it.
+fn terminal_text(ppm: &[u8]) -> Option<String> {
+    let width = board_console::screen::decode_exact(ppm, u32::MAX, u32::MAX, 1, b"", |_, _, _| 0)
+        .ok()?
+        .width;
+    let scale = screen_console::ScreenConsole::scale_for_cell(width, video_terminal::CELL_W);
+    let printable: Vec<u8> = (0x20..=0x7e).collect();
+    let (fg, bg) = video_terminal::Attr::DEFAULT.colours();
+    let screen = board_console::screen::decode_exact(
+        ppm,
+        video_terminal::CELL_W,
+        video_terminal::CELL_H,
+        scale,
+        &printable,
+        |ch, x, y| glyph_atlas::REGULAR.cell_pixel(ch, x, y, fg, bg),
+    )
+    .ok()?;
+    let rows: Vec<&str> = screen.rows.iter().map(|r| r.trim_end()).collect();
+    Some(rows.join("\n"))
+}
+
 fn screen_watch(
     sock: &str,
     shot: &Path,
@@ -833,9 +858,21 @@ fn screen_watch(
         // A screen that decodes but does not hold what the stage wants is deliberately NOT stored:
         // an incomplete picture must not read as a pass. The dump file itself is the artefact,
         // and the caller prints its path on failure.
-        let text = std::fs::read(shot)
-            .ok()
-            .and_then(|bytes| board_console::screen::read(&bytes).ok());
+        let bytes = std::fs::read(shot).ok();
+        let text = bytes
+            .as_ref()
+            .and_then(|bytes| board_console::screen::read(bytes).ok());
+        // The shell's half is drawn by `display_terminal`, in its own font, not the tour's.
+        let shell = bytes.as_ref().and_then(|bytes| terminal_text(bytes));
+        if let Some(shell) = &shell {
+            if seen.prompt.is_none() && shell.lines().any(|l| l.starts_with("$ ")) {
+                seen.prompt = Some(shell.clone());
+            }
+            if typed && shell.lines().any(|l| l == UEFI_SCREEN_ANSWER) {
+                seen.answer = Some(shell.clone());
+                break;
+            }
+        }
         if let Some(text) = text {
             if seen.held {
                 if seen.tour.is_none() && text.contains(UEFI_SCREEN_MARKER) {
@@ -844,13 +881,6 @@ fn screen_watch(
                 if !text.trim().is_empty() {
                     seen.last_held = Some(text.clone());
                 }
-            }
-            if seen.prompt.is_none() && text.lines().any(|l| l.starts_with("$ ")) {
-                seen.prompt = Some(text.clone());
-            }
-            if typed && text.lines().any(|l| l == UEFI_SCREEN_ANSWER) {
-                seen.answer = Some(text);
-                break;
             }
             // **Release the kernel once the tour has been read off the screen, or once enough
             // dumps taken during the hold have failed to show it.** Any byte does; the kernel
@@ -1251,6 +1281,34 @@ mod exit_verdict_tests {
         assert!(
             lines.iter().any(|l| l.contains("HOST WATCHDOG")),
             "{lines:?}"
+        );
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    /// **The OVMF gate reads the shell where the terminal draws it.** A `Vt` laid out over QEMU's
+    /// 1280x800 OVMF screen, as `display_service::start_screen_terminal` lays it out, is painted
+    /// into a screendump; [`super::terminal_text`] must find the prompt and the answer rows the
+    /// gate waits for. A reader of the boot console's 7x8 bitmap finds neither.
+    #[test]
+    fn the_shell_on_the_ovmf_screen_reads_back() {
+        let (w, h) = (1280u32, 800u32);
+        let mut vt =
+            video_terminal::Vt::new(w / video_terminal::CELL_W, h / video_terminal::CELL_H);
+        vt.feed(format!("$ echo x\r\n{}\r\n$ ", super::UEFI_SCREEN_ANSWER).as_bytes());
+        let mut ppm = format!("P6\n{w} {h}\n255\n").into_bytes();
+        for y in 0..h {
+            for x in 0..w {
+                let p = vt.pixel(x, y);
+                ppm.extend_from_slice(&[(p >> 16) as u8, (p >> 8) as u8, p as u8]);
+            }
+        }
+        let text = super::terminal_text(&ppm).expect("a readable dump");
+        assert!(text.lines().any(|l| l.starts_with("$ ")), "{text}");
+        assert!(
+            text.lines().any(|l| l == super::UEFI_SCREEN_ANSWER),
+            "{text}"
         );
     }
 }
