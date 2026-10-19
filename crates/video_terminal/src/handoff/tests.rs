@@ -1,4 +1,5 @@
-//! Name: provisional, minted 2026-10-19 (UTC) by the lane for milestone 23.
+//! Name: provisional, minted 2026-10-19 (UTC) by the lane for milestone 23 (a
+//! capability-routed component OS with live replacement).
 
 use super::*;
 use crate::Vt;
