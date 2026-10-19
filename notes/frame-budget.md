@@ -72,3 +72,4 @@ Measured conclusions, undated; each row's number is the reading that established
 | 2026-10-04 | 26,713 | 26,745 | milestone 494 (a driver for the network card a PC actually has): the `e1000e` DMA region |
 | 2026-10-06 | 23,732 / 23,674 | 23,764 | lowered: tests stopped keeping endpoints and scanouts |
 | 2026-10-10 | 22,822 / 22,763 | 23,764, kept | milestone 801 (packages over the internet): every std spawn hands back its clock service, configuration page and stack; x86_64 measured 9,344 (q35) and 5,954 (OVMF) (branch) |
+| 2026-10-19 | 23,765 / 23,685 | 23,797 | milestone 139 (drive the unsafe count down) round 11, +5 from image size: `c_confiner` 14 to 15 loadable pages in a debug build, kept once by each of three spawns; the other two not isolated, with the archive about four frames larger. Base and branch measured at one path (riscv64 is main's; the branch run stopped at aarch64) |

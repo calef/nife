@@ -41,7 +41,7 @@
 #![no_main]
 
 use environment_contract::ConfigPage;
-use user_mode_runtime::{exit, invoke, send};
+use user_mode_runtime::{exit, is_granted, send};
 
 /// Slot 0: where the output goes. An endpoint with `WRITE`, and the same 16-bytes-per-message
 /// framing the std PAL's stdout uses (`w0` = the byte count, `w1`|`w2` = the bytes, little-endian).
@@ -106,20 +106,6 @@ fn push(buf: &mut [u8; 96], n: &mut usize, bytes: &[u8]) {
             *n += 1;
         }
     }
-}
-
-/// Whether a capability is in `slot`, without touching whatever it names.
-///
-/// [`config_page`]'s probe, `date`'s `is_granted()` lifted verbatim: invoke a method number no
-/// object type defines, so the call can only be refused, and read *which* refusal came back. An
-/// empty slot answers `NoSuchSlot`; a real object answers `BadMethod`, which is a refusal from
-/// something that exists.
-fn is_granted(slot: u64) -> bool {
-    /// A method number no object type defines, so the invocation can only ever be refused.
-    const NO_SUCH_METHOD: u64 = 0xffff;
-    // SAFETY: a syscall that cannot succeed; the kernel validates the slot before the method.
-    let r = unsafe { invoke(slot, NO_SUCH_METHOD, 0, 0, 0) };
-    r != abi::Error::NoSuchSlot as i64
 }
 
 /// The config page, or `None` when this process was granted no configuration capability at all.

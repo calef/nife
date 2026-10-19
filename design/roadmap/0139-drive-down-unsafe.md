@@ -28,7 +28,7 @@ The shared primitives this milestone's reductions rest on, each holding one inva
 | Primitive | What it holds |
 |---|---|
 | `user_mode_runtime::mapped_window::MappedWindow` | a mapped page or frame, bounds-checked at every access; `as_slice`/`as_mut_slice` hand the whole window to a parser |
-| the crate-root `invoke` wrappers and `virtio::read_register` and its siblings | one capability method each, safe to call with any slot number |
+| the crate-root `invoke` wrappers and `virtio::read_register` and its siblings | one capability method each, safe to call with any slot naming that method's object type (see BUGS) |
 | `initial_ramdisk::bytes(len)` | the initrd mapping every program starts with |
 | `crate::memory::alloc_zeroed`, `alloc_contiguous_zeroed` | a fresh frame, zeroed, exclusively the caller's |
 | `crate::device_tree` | the firmware's device-tree pointer |
@@ -123,6 +123,18 @@ proofs and the type system are standing aside and a person's comment is the whol
   12, because a whole-slice hand-off has no runtime check that lets the call site drop `unsafe`.
   Do not let the number alone decide which work is worth doing, in either direction: it
   under-credits that collapse and it would over-credit a Kani-proved block that stays where it is.
+- **A wrapper is sound only for a slot naming the object type it was written for.** Method numbers
+  are per object type and overlap: `rendezvous::SEND_CAP` and `address_space::UNMAP` are both 2,
+  `rendezvous::SEND` and `memory_region::MAP` both 0. The kernel dispatches on what the slot names,
+  so `send_capability` on a slot holding the caller's own address space is an `UNMAP`, from safe
+  code, of whatever page the first argument names. Nothing in the tree does this; the tell is a
+  slot number that came from somewhere other than the endowment that typed it. The fix is a typed
+  slot per object type, which is a design question for an architect, proposed as its own
+  milestone.
+- `AddressSpace::UNMAP` has no safe wrapper on purpose. Every caller promises that nothing it
+  still uses lives at that address, which is a fact about the caller's own memory that no wrapper
+  can check, so `supervision_protocol::give_up_own_page`, `socket_table` and
+  `domain_name_resolver` each argue it at the call.
 - `window.rs`'s `ROLE_PROBE_INPUT` calls `invoke` raw, to read the negative `abi::Error` a
   `RECEIVE` on an empty slot returns; `user_rt::receive` discards that code. Its `# Safety` comment
   says why it is the one exception.
@@ -139,6 +151,17 @@ proofs and the type system are standing aside and a person's comment is the whol
   its definition.
 - **Done.** The scheduler's ownership token, `Unqueued<T>`, is in `crates/intrusive_fifo`; its
   placement awaits calef's confirmation under "What is still open".
+- **Done.** Outside `user_mode_runtime`, a shipping crate calls `invoke` raw only where no wrapper
+  covers the method or its arguments. `supervision_protocol`, `virtio`, `system_initializer`,
+  `printenv`, `socket_test_client`, `free`, `slabtop` and `swapper` use the runtime's wrappers, and
+  `system_initializer` imports no `invoke` at all. `memory_region_usage` (name provisional) is the
+  USAGE call three of them had copied.
+- **Done.** The host tests of `current_cpu_contract`, `user_mode_heap` and `redoxfs_server`'s block
+  cache argue each contract once. The first uses a test buffer type. The heap tests use `Lent<'a>`,
+  whose borrow and by-value `free` the compiler checks. The cache tests use one safe `read`/`write`
+  pair over redoxfs's `Disk`, whose `# Safety` asks nothing of a caller.
+- **Recorded.** `environment_contract`, `counter_frequency_contract` and `clock_contract` have the
+  `current_cpu_contract` test shape, three to five blocks each, and are the next candidates.
 - **Recorded.** `crates/inter_process_communication` carries no `unsafe` in production code.
 - **Recorded.** The NS16550 halves of the console and input programs stay hand-written, because
   the register stride is a runtime fact no register-layout macro can express.

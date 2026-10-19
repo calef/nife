@@ -41,7 +41,7 @@
 #![no_main]
 
 use slabtop::Spending;
-use user_mode_runtime::{exit, invoke, is_granted, send};
+use user_mode_runtime::{exit, is_granted, memory_region_usage, send};
 
 const REPORT: u64 = 0;
 const DIAG_SLOT: u64 = grant_plan::DIAGNOSTICS_SLOT;
@@ -90,9 +90,7 @@ fn read() -> Result<Spending, i64> {
 }
 
 fn usage(record: u64) -> Result<u64, i64> {
-    // SAFETY: `invoke` traps to the kernel, which validates the capability, the right and the
-    // record before answering (user_mode_runtime's contract).
-    let r = unsafe { invoke(SHARE_SLOT, abi::memory_region::USAGE, record, 0, 0) };
+    let r = memory_region_usage(SHARE_SLOT, record);
     if r < 0 { Err(r) } else { Ok(r as u64) }
 }
 

@@ -20,8 +20,6 @@ fn fill_entropy(request: u64, out: &mut [u8]) -> bool {
     let mut done = 0;
     while done < out.len() {
         let want = (out.len() - done).min(entropy_contract::MAX_BYTES as usize);
-        // SAFETY: `invoke` traps to the kernel, which validates the capability and the method
-        // before acting.
         let (r0, r1) = call(
             request,
             entropy_contract::req(entropy_contract::GET, want as u64),
@@ -587,22 +585,9 @@ fn start_virtio_entropy(
     // [`BootEndowment::virtio_rng`]'s own doc). `virtio_rng`/`virtio_rng_irq`/`virtio_rng_dma`
     // are granted as one triple or not at all (`kernel::user::boot_virtio_rng_device`), so a
     // negative answer here means all three slots are empty, not just this one.
-    // SAFETY: `invoke` traps to the kernel, which validates the capability and the method
-    // before acting; a probe against an empty slot is exactly what that contract is built to
-    // answer safely.
-    let magic = unsafe { invoke(g.virtio_rng, abi::virtio::READ_REGISTER, 0, 0, 0) };
+    let magic = user_mode_runtime::virtio::read_register(g.virtio_rng, 0);
     if magic >= 0 {
-        // SAFETY: as above.
-        if unsafe {
-            invoke(
-                g.virtio_rng_dma,
-                abi::page_frame::MAP,
-                RNG_DMA_PEEK_VA,
-                1,
-                ut,
-            )
-        } == 0
-        {
+        if map_page_frame(g.virtio_rng_dma, RNG_DMA_PEEK_VA, true, ut) {
             // SAFETY: just mapped read/write, one page, ours alone until entropy is built and
             // holds its own copy of the same frame; `VIRTIO_DMA_PHYS_OFFSET` is inside it and
             // outside entropy's own ring-and-buffer layout (that constant's own doc).
@@ -1001,18 +986,7 @@ pub(super) fn refuse_unvouched(
         // The shell's output page, in our own space, so the refusal can be read. The giveaway below
         // maps it for the same reason and this path never reaches the giveaway; a refusal nobody
         // can see is most of what this milestone was written to fix.
-        // SAFETY: `invoke` traps to the kernel, which validates the capability and the method before
-        // acting (user_mode_runtime's contract).
-        if unsafe {
-            invoke(
-                term.out,
-                abi::page_frame::MAP,
-                PROGENITOR_SHELL_OUTPUT_VIRTUAL_ADDRESS,
-                1,
-                ut,
-            )
-        } == 0
-        {
+        if map_page_frame(term.out, PROGENITOR_SHELL_OUTPUT_VIRTUAL_ADDRESS, true, ut) {
             let mut buf = [0u8; SENTENCE];
             announce(
                 term.ep,
@@ -1518,9 +1492,7 @@ fn provision_identity(
 ) -> bool {
     let ut = w.ut;
     let req_frame = must(retype_page_frame(ut));
-    // SAFETY: `invoke` traps to the kernel, which validates the capability and the
-    // method before acting.
-    if unsafe { invoke(req_frame, abi::page_frame::MAP, PROVISION_SCRATCH_VA, 1, ut) } != 0 {
+    if !map_page_frame(req_frame, PROVISION_SCRATCH_VA, true, ut) {
         cap_delete(req_frame);
         false
     } else {
@@ -1607,16 +1579,8 @@ fn start_identity_provisioner(
     ));
     cap_delete(req_frame);
     let idp_page = must(window_page(g.fs_page, 0).ok_or(()));
-    // SAFETY: the syscall; the kernel validates both capabilities and the address.
-    let mapped = unsafe {
-        invoke(
-            idp_aspace,
-            abi::address_space::MAP_INTO,
-            IDP_FS_VA,
-            idp_page,
-            abi::address_space::MAP_RW,
-        )
-    } == 0;
+    let mapped =
+        address_space_map_into(idp_aspace, IDP_FS_VA, idp_page, abi::address_space::MAP_RW) == 0;
     cap_delete(idp_page);
     must(mapped.then_some(()).ok_or(()));
     must(supervision_protocol::configure_child(
@@ -1820,18 +1784,12 @@ pub(super) fn give_away_budget(w: &Wiring, shell_tcb: u64, run_unvouched: Option
     // The shell's output page, in our own space, so we can say what just happened. Given up with
     // `UNMAP` after the last line, before the shell starts (`PageFrame::REVOKE` would have taken the
     // page from the shell too); see this module's BUGS.
-    // SAFETY: `invoke` traps to the kernel, which validates the capability and the method before
-    // acting (user_mode_runtime's contract).
-    if unsafe {
-        invoke(
-            w.term.out,
-            abi::page_frame::MAP,
-            PROGENITOR_SHELL_OUTPUT_VIRTUAL_ADDRESS,
-            1,
-            ut,
-        )
-    } != 0
-    {
+    if !map_page_frame(
+        w.term.out,
+        PROGENITOR_SHELL_OUTPUT_VIRTUAL_ADDRESS,
+        true,
+        ut,
+    ) {
         fail()
     }
     cap_delete(ut);
@@ -1840,18 +1798,8 @@ pub(super) fn give_away_budget(w: &Wiring, shell_tcb: u64, run_unvouched: Option
     // runs. `NoSuchSlot` (-1) rather than `NotPermitted` (-3) is the whole claim: the capability is
     // *gone*, not narrowed, so there is nothing there to name. This is `root_supervisor`'s proof at
     // the interactive prompt, and `script/swish-check` reads the sentence.
-    // SAFETY: as above: the kernel validates the capability and the method.
-    let frame = unsafe { invoke(ut, abi::memory_region::RETYPE, 0, 0, 0) };
-    // SAFETY: as above: the kernel validates the capability and the method.
-    let object = unsafe {
-        invoke(
-            ut,
-            abi::memory_region::RETYPE_OBJ,
-            abi::objtype::THREAD_CONTROL_BLOCK,
-            0,
-            0,
-        )
-    };
+    let frame = retype_into_page_frame(ut);
+    let object = retype_into_kernel_object(ut, abi::objtype::THREAD_CONTROL_BLOCK);
     announce(
         term_ep,
         if frame == -1 && object == -1 {

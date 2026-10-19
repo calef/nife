@@ -44,13 +44,27 @@ impl Disk for CountingDisk {
     }
 }
 
+/// [`Disk::read_at`], made safe once for these tests. redoxfs's `# Safety` for it asks nothing of
+/// the caller ("Unsafe to discourage use, use filesystem wrappers instead"), so there is no
+/// precondition for a call site to argue; these tests call the method directly on purpose.
+fn read(disk: &mut impl Disk, block: u64, buffer: &mut [u8]) {
+    // SAFETY: the trait's contract has no precondition; see this function's doc.
+    unsafe { disk.read_at(block, buffer) }.unwrap();
+}
+
+/// [`Disk::write_at`], made safe once, for [`read`]'s reason.
+fn write(disk: &mut impl Disk, block: u64, buffer: &[u8]) {
+    // SAFETY: as `read`.
+    unsafe { disk.write_at(block, buffer) }.unwrap();
+}
+
 /// A repeat read of the same block is answered from the cache: the inner disk sees it once.
 #[test]
 fn a_repeated_single_block_read_hits_the_cache() {
     let mut disk = CachedDisk::new(CountingDisk::new(2), 8);
     let mut buf = [0u8; BLOCK];
     for _ in 0..5 {
-        unsafe { disk.read_at(259, &mut buf) }.unwrap();
+        read(&mut disk, 259, &mut buf);
     }
     assert_eq!(
         disk.inner.reads, 1,
@@ -65,14 +79,14 @@ fn a_repeated_single_block_read_hits_the_cache() {
 fn a_write_through_the_cache_is_read_back_fresh() {
     let mut disk = CachedDisk::new(CountingDisk::new(2), 8);
     let mut buf = [0u8; BLOCK];
-    unsafe { disk.read_at(259, &mut buf) }.unwrap(); // populate the cache
+    read(&mut disk, 259, &mut buf); // populate the cache
     assert_eq!(buf, [0u8; BLOCK]);
 
     let new_bytes = [7u8; BLOCK];
-    unsafe { disk.write_at(259, &new_bytes) }.unwrap();
+    write(&mut disk, 259, &new_bytes);
 
     let mut buf2 = [0u8; BLOCK];
-    unsafe { disk.read_at(259, &mut buf2) }.unwrap();
+    read(&mut disk, 259, &mut buf2);
     assert_eq!(buf2, new_bytes, "a stale cache entry would fail this");
     // And the read that mattered was answered from the cache, not the disk: the write updated
     // the entry rather than merely invalidating it.
@@ -88,7 +102,7 @@ fn a_write_through_the_cache_is_read_back_fresh() {
 fn a_short_write_invalidates_rather_than_caching_a_guess() {
     let mut disk = CachedDisk::new(CountingDisk::new(2), 8);
     let mut buf = [0u8; BLOCK];
-    unsafe { disk.read_at(259, &mut buf) }.unwrap(); // populate the cache
+    read(&mut disk, 259, &mut buf); // populate the cache
     // A short write: the inner disk's contract is to report exactly what it wrote, and a real
     // Disk::write_at that read-modify-writes still reports the full chunk length it was asked
     // for (see BlockDisk::write_at), so simulate the case a Disk implementation reporting a
@@ -106,14 +120,14 @@ fn a_short_write_invalidates_rather_than_caching_a_guess() {
         }
     }
     let mut disk = CachedDisk::new(ShortWrite(CountingDisk::new(2)), 8);
-    unsafe { disk.read_at(259, &mut buf) }.unwrap();
+    read(&mut disk, 259, &mut buf);
     let new_bytes = [7u8; BLOCK];
-    unsafe { disk.write_at(259, &new_bytes) }.unwrap();
+    write(&mut disk, 259, &new_bytes);
     // The entry must be gone: a subsequent read has to reach the disk again rather than answer
     // from a cache that only ever saw half the new bytes.
     let reads_before = disk.inner.0.reads;
     let mut buf2 = [0u8; BLOCK];
-    unsafe { disk.read_at(259, &mut buf2) }.unwrap();
+    read(&mut disk, 259, &mut buf2);
     assert_eq!(
         disk.inner.0.reads,
         reads_before + 1,
@@ -129,10 +143,10 @@ fn a_slot_collision_evicts_rather_than_corrupts() {
     let mut disk = CachedDisk::new(CountingDisk::new(2), 4); // capacity 4: blocks 256 and 260 collide
     let mut a = [0u8; BLOCK];
     let mut b = [0u8; BLOCK];
-    unsafe { disk.write_at(256, &[1u8; BLOCK]) }.unwrap();
-    unsafe { disk.write_at(260, &[2u8; BLOCK]) }.unwrap(); // evicts block 256's entry
-    unsafe { disk.read_at(256, &mut a) }.unwrap(); // a miss now: must come from the disk, not block 260's cached bytes
-    unsafe { disk.read_at(260, &mut b) }.unwrap();
+    write(&mut disk, 256, &[1u8; BLOCK]);
+    write(&mut disk, 260, &[2u8; BLOCK]); // evicts block 256's entry
+    read(&mut disk, 256, &mut a); // a miss now: must come from the disk, not block 260's cached bytes
+    read(&mut disk, 260, &mut b);
     assert_eq!(
         a, [1u8; BLOCK],
         "block 256 must read its own bytes, not block 260's"
@@ -148,7 +162,7 @@ fn a_multi_block_read_bypasses_the_cache() {
     let mut disk = CachedDisk::new(CountingDisk::new(2), 8);
     let mut buf = [0u8; BLOCK * 2];
     for _ in 0..3 {
-        unsafe { disk.read_at(0, &mut buf) }.unwrap();
+        read(&mut disk, 0, &mut buf);
     }
     assert_eq!(
         disk.inner.reads, 3,
@@ -197,7 +211,7 @@ fn the_header_ring_is_never_cached() {
     let mut disk = CachedDisk::new(CountingDisk::new(2), 8);
     let mut buf = [0u8; BLOCK];
     for _ in 0..2 {
-        unsafe { disk.read_at(3, &mut buf) }.unwrap();
+        read(&mut disk, 3, &mut buf);
     }
     assert_eq!(
         disk.inner.reads, 2,

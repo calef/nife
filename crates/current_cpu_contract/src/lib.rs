@@ -314,8 +314,36 @@ mod tests {
     /// buffer here is also reached through `as_mut_ptr`, including the read-only tests, because
     /// `cpu` forms an `&AtomicU64` and Miri refuses one over a binding Rust may assume never
     /// changes; the crate's BUGS has what that means for the real read-only mapping.
+    ///
+    /// It is also the one place these tests argue the two functions' safety: every call goes
+    /// through a method that borrows the buffer for exactly that call.
     #[repr(C, align(8))]
     struct Aligned([u8; PAGE_BYTES]);
+
+    impl Aligned {
+        fn va(&mut self) -> u64 {
+            self.0.as_mut_ptr() as u64
+        }
+
+        fn publish(&mut self, cpu: u64) {
+            // SAFETY: `self` is a live, 8-aligned buffer of exactly `PAGE_BYTES`, borrowed
+            // mutably for the call, so this thread is its only writer.
+            unsafe { publish(self.va(), cpu) }
+        }
+
+        /// [`CurrentCpuPage::cpu`] over this buffer. The page value never leaves the call, so it
+        /// cannot outlive the buffer it names.
+        fn cpu(&mut self) -> Option<usize> {
+            // SAFETY: as `publish`; the page is read and dropped while `self` is borrowed.
+            unsafe { CurrentCpuPage::new(self.va()) }.cpu()
+        }
+
+        /// [`CurrentCpuPage::allowance`] over this buffer, under `cpu`'s argument.
+        fn allowance(&mut self) -> Option<core::num::NonZeroUsize> {
+            // SAFETY: as `cpu`.
+            unsafe { CurrentCpuPage::new(self.va()) }.allowance()
+        }
+    }
 
     fn aligned_page() -> Aligned {
         Aligned(build_page())
@@ -326,11 +354,8 @@ mod tests {
     #[test]
     fn a_published_cpu_reads_back() {
         let mut bytes = aligned_page();
-        let va = bytes.0.as_mut_ptr() as u64;
-        // SAFETY: a live, aligned `PAGE_BYTES` buffer this thread alone writes.
-        unsafe { publish(va, 2) };
-        // SAFETY: as above.
-        assert_eq!(unsafe { CurrentCpuPage::new(va) }.cpu(), Some(2));
+        bytes.publish(2);
+        assert_eq!(bytes.cpu(), Some(2));
     }
 
     /// **Zero is an answer, not an absence**, which is the whole reason the unset state is a magic
@@ -338,20 +363,15 @@ mod tests {
     #[test]
     fn cpu_zero_is_a_real_answer() {
         let mut bytes = aligned_page();
-        let va = bytes.0.as_mut_ptr() as u64;
-        // SAFETY: as above.
-        unsafe { publish(va, 0) };
-        // SAFETY: as above.
-        assert_eq!(unsafe { CurrentCpuPage::new(va) }.cpu(), Some(0));
+        bytes.publish(0);
+        assert_eq!(bytes.cpu(), Some(0));
     }
 
     /// A frame nobody prepared reads as unknown, not as CPU 0.
     #[test]
     fn a_zeroed_frame_reads_as_unknown() {
         let mut zeroed = Aligned([0u8; PAGE_BYTES]);
-        // SAFETY: as above.
-        let page = unsafe { CurrentCpuPage::new(zeroed.0.as_mut_ptr() as u64) };
-        assert_eq!(page.cpu(), None);
+        assert_eq!(zeroed.cpu(), None);
     }
 
     /// A prepared page whose thread has never been switched in reads as unknown, and the sentinel
@@ -360,9 +380,7 @@ mod tests {
     fn a_thread_that_never_ran_reads_as_unknown() {
         let mut bytes = aligned_page();
         assert_eq!(&bytes.0[OFF_CPU..OFF_CPU + 8], &UNSCHEDULED.to_le_bytes());
-        // SAFETY: as above.
-        let page = unsafe { CurrentCpuPage::new(bytes.0.as_mut_ptr() as u64) };
-        assert_eq!(page.cpu(), None);
+        assert_eq!(bytes.cpu(), None);
     }
 
     /// An unrecognized magic refuses the answer even when the word after it is a plausible core
@@ -372,12 +390,8 @@ mod tests {
     fn an_unrecognized_magic_reads_as_unknown() {
         let mut bytes = aligned_page();
         bytes.0[OFF_MAGIC] ^= 0xff;
-        let va = bytes.0.as_mut_ptr() as u64;
-        // SAFETY: as above.
-        unsafe { publish(va, 1) };
-        // SAFETY: as above.
-        let page = unsafe { CurrentCpuPage::new(va) };
-        assert_eq!(page.cpu(), None);
+        bytes.publish(1);
+        assert_eq!(bytes.cpu(), None);
     }
 
     /// Publishing twice is what a migration looks like from this page's side: the second write
@@ -385,13 +399,9 @@ mod tests {
     #[test]
     fn a_migration_overwrites_rather_than_accumulates() {
         let mut bytes = aligned_page();
-        let va = bytes.0.as_mut_ptr() as u64;
-        // SAFETY: as above.
-        unsafe { publish(va, 3) };
-        // SAFETY: as above.
-        unsafe { publish(va, 1) };
-        // SAFETY: as above.
-        assert_eq!(unsafe { CurrentCpuPage::new(va) }.cpu(), Some(1));
+        bytes.publish(3);
+        bytes.publish(1);
+        assert_eq!(bytes.cpu(), Some(1));
     }
 
     /// Every CPU id this kernel can hand out survives the round trip, including the top of the
@@ -399,12 +409,9 @@ mod tests {
     #[test]
     fn every_id_in_the_bound_round_trips() {
         let mut bytes = aligned_page();
-        let va = bytes.0.as_mut_ptr() as u64;
         for id in 0..CPU_ID_BOUND {
-            // SAFETY: as above.
-            unsafe { publish(va, id as u64) };
-            // SAFETY: as above.
-            assert_eq!(unsafe { CurrentCpuPage::new(va) }.cpu(), Some(id));
+            bytes.publish(id as u64);
+            assert_eq!(bytes.cpu(), Some(id));
         }
     }
 
@@ -413,17 +420,8 @@ mod tests {
     /// `available_parallelism` from fabricating a count on a page nobody gave one.
     #[test]
     fn the_allowance_reads_back_and_none_is_unknown() {
-        #[repr(align(8))]
-        struct Aligned([u8; PAGE_BYTES]);
         let mut with = Aligned(build_page_allowing(4));
-        let mut without = Aligned(build_page());
-        // SAFETY: live, aligned buffers of exactly `PAGE_BYTES`.
-        let (with, without) = unsafe {
-            (
-                CurrentCpuPage::new(with.0.as_mut_ptr() as u64),
-                CurrentCpuPage::new(without.0.as_mut_ptr() as u64),
-            )
-        };
+        let mut without = aligned_page();
         assert_eq!(with.allowance().map(|n| n.get()), Some(4));
         assert_eq!(without.allowance(), None);
         assert_eq!(with.cpu(), None, "an allowance is not a CPU");

@@ -261,10 +261,7 @@ fn socket_badge_forge() -> ! {
     };
     // A second badge for a capability the stack minted badged. The badge value is arbitrary; the
     // rule is that no value is accepted.
-    //
-    // SAFETY: `svc`/`ecall` traps to the kernel, which validates the named slot before acting.
-    let re_badge =
-        unsafe { user_mode_runtime::invoke(socket, abi::rendezvous::BADGE, 0x7007, 0, 0) };
+    let re_badge = user_mode_runtime::badge(socket, 0x7007);
     if re_badge != abi::Error::NotPermitted as i64 {
         done(0xE0D1);
     }
