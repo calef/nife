@@ -219,6 +219,43 @@ that compiles it, and nife's own half (the platform layer, `malloc`, the start o
   offers it behind its opt-in `math_libm` feature; its default build compiles openlibm instead
   (`USE_RUST_LIBM` empty in its Makefile), which was not seeded.
 
+## DejaVu Sans Mono 2.37 (fonts, not a pin)
+
+The four faces `crates/glyph_atlas` is drawn from (milestone 142, §104, §166): `dejavu/` holds
+`DejaVuSansMono.ttf`, `-Bold`, `-Oblique` and `-BoldOblique` byte for byte as DejaVu 2.37 ships
+them, with the release's `LICENSE`. They are inputs to a build-time tool, not code:
+`tools/glyph_atlas_generator` rasterises them into the coverage tables under
+`crates/glyph_atlas/coverage/`, and its test fails if those tables are not exactly what it makes
+from these files. The tables are what ships, so this entry is what puts a third party's work in
+the shipped image on the record; `script/supply-chain` reads the cargo graph and cannot see it.
+
+- **License:** Bitstream Vera's (the outlines), Arev's (glyphs Tavmjong Bah added), and the public
+  domain (DejaVu's own changes). Permissive, with one condition a reader should know: a modified
+  font may not keep the "Bitstream" or "Vera" names. The tables are a rendering, not a font, and
+  carry neither name.
+- **sha256**, the version string `Version 2.37` in each `name` table:
+
+  | file | sha256 |
+  |---|---|
+  | `DejaVuSansMono.ttf` | `b4a6c3e4faab8773f4ff761d56451646409f29abedd68f05d38c2df667d3c582` |
+  | `DejaVuSansMono-Bold.ttf` | `bce60f1b4421acd9ea51ba6623d7024ecbe6817a953e3654df62a5e6bdf8f769` |
+  | `DejaVuSansMono-Oblique.ttf` | `742097840c541870e8d6dc5c9b37bb1ceeea6c0dedd1d475faf903ef9df734b0` |
+  | `DejaVuSansMono-BoldOblique.ttf` | `91713a71d550bba22c2a6b2bb2a9ad8f9a159e12e4e9f0a5b2677998ba21213e` |
+
+- **Divergence:** none. To change the font, replace the files, run the generator, and commit the
+  tables with the reason.
+
+### BUGS
+
+- **Nothing checks these files against upstream's release.** They were copied from a distribution
+  that bundles DejaVu 2.37, not from the `dejavu-fonts-ttf-2.37` archive, and
+  `script/vendor-verify` speaks crates.io tarballs only. The hashes above are what was committed,
+  not what upstream published. A font is data, so the worst case is a wrong picture that the
+  generator's own gate would still call consistent.
+- **The fonts carry glyphs the atlas never draws** (3,377 in the regular face against the
+  table's 96). They are kept whole rather than subset, because a subset is a modified font with its
+  own provenance question, and 1.2 MB of input is cheaper than that.
+
 ## Bumping a pin
 
 **Nothing here bumps itself, and that is deliberate.** A newer version is not automatically a better
