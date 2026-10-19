@@ -54,8 +54,9 @@ themselves. The last column is this milestone's result.
 | 32 | The boot shell holds no display device | Milestone 715 (provisional) | `script/swish-check`: the `caps` census on the gpu boots | yes, 2026-10-03, swept weekly ([patch](../xtask/falsifications/swish_check.boot.swish_check_leg.patch)) |
 | 33 | No `WRITE`, no x86_64 port I/O | Milestone 768 (provisional) | `kernel::user::x86_port_tests::a_read_only_port_capability_must_not_grant_port_output` | [yes](../system_tests/falsifications/user.x86_port_tests.a_read_only_port_capability_must_not_grant_port_output.patch) |
 | 34 | A program reaches only the sockets it holds; a socket moves only by its capability | §255 (each socket is its own capability) | `kernel::user::net_confinement_tests::a_squatter_at_a_shared_stack_endpoint_cannot_capture_the_clients_traffic`, `a_socket_moves_by_its_capability_and_a_closed_one_reaches_nothing` | yes: [the squatter](../system_tests/falsifications/user.net_confinement_tests.a_squatter_at_a_shared_stack_endpoint_cannot_capture_the_clients_traffic.patch), [the hand-off](../system_tests/falsifications/user.net_confinement_tests.a_socket_moves_by_its_capability_and_a_closed_one_reaches_nothing.patch) |
+| 35 | A listed location never reaches a private or link-local address, and the address dialed is the one the check passed | milestone 801 (packages over the internet), calef's Q1 on #1884; milestone 871 (a sixth outsider pass attacks the confinement claim) | `kernel::user::package_index_tests::a_package_is_fetched_through_the_index_by_name_over_tls_and_judged_by_its_digest` | yes: [connecting by name again](../system_tests/falsifications/user.package_index_tests.a_package_is_fetched_through_the_index_by_name_over_tls_and_judged_by_its_digest.patch), the rebinding escape |
 
-Every row carries a replayable record as of 2026-10-07 (UTC), fatal risk 7's second criterion.
+Every row carries a replayable record, fatal risk 7's second criterion.
 
 The evidence behind each section below is in [`confinement-claims/`](confinement-claims/README.md).
 
