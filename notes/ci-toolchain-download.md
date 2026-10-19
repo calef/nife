@@ -39,7 +39,10 @@ Proved by hand with `RUSTUP_DIST_SERVER=http://127.0.0.1:9` and a scratch `RUSTU
 attempts, then `failed 4 of 4 attempts fetching http://127.0.0.1:9/dist/2026-10-18/channel-rust-nightly.toml.sha256`
 and exit 1. A non-download error (`--no-such-flag`) failed after one attempt.
 
-## 3. Should the toolchain be cached?
+## 3. The toolchain is not cached
+
+CI does not cache the pinned toolchain in the Actions cache. calef ruled it on 2026-10-19 (UTC),
+recorded on #2386: "No". Ruling (b) on #1814 stands. The measurement below is what he ruled on.
 
 Measured against the cache as it stood at 2026-10-19 00:20 UTC: 10.72 GB in 408 entries, against
 GitHub's 10 GB limit, with 10.0 GB of it in pull request rust-cache entries. The eviction horizon (the
@@ -82,5 +85,5 @@ misses (about 38 of the 42 come from bump runs) and the bytes (one live pin inst
 0.65 GB). toolchain-bump.yml opens the bump at 08:00 UTC daily and arms auto-merge.
 
 Caveats: the failure counts rest on two events, and the restore cost is an estimate from a different
-disk. Each of the three options changes calef's ruling (b) on #1814 or the bump cadence, so none is
-built; they wait on his answer.
+disk. A baked image and a slower cadence were weighed only as companions to a cache, so with no
+cache neither was put to calef.
