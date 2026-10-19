@@ -145,6 +145,11 @@ echo "==> the heavy-job slots (a full machine holds a job back; a killed holder 
 # real job: helpers/heavy-slot-selftest.sh lists its four stages and what breaks each.
 helpers/heavy-slot-selftest.sh >/dev/null
 
+echo "==> the rustup retry (a dropped CDN connection retries; a real error does not)"
+# A stub rustup, no network. The retry only runs during a CDN outage, which no green CI run
+# exercises, so this is the only place its classifier and its bound are ever seen to work.
+helpers/rustup-retry-selftest.sh >/dev/null
+
 echo "==> the trunk watcher's cadence stream (a pass that could not ask is a row, never recovery)"
 # Fakes and a scenario table in a scratch tree: no network, no gh, no cargo. The defect it holds is
 # a recovery line printed about a watcher that could not ask, which a green run of everything else
