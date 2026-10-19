@@ -10,7 +10,7 @@ nine workspaces by name and never over `jig/`, the package manager and the one s
 fetches from the network, or over `c_library/`, which failed it. The gate now discovers every
 committed lockfile and refuses one it cannot read. On the target, a vouch is decided by whoever
 writes the index copy, which is `jig`, and on `main` a vouch still endows a native package with the
-network its note asks for. Milestone 892 carries the refusal. Nothing here moves the verdict on fatal
+network its note asks for. Milestone 892 (a std program at the prompt holds the network and a name resolver) carries the refusal. Nothing here moves the verdict on fatal
 risk 7.
 
 ## Why this lens
@@ -33,19 +33,19 @@ Distinct registry packages across every committed lockfile but `vendor/`, diffed
 
 | Package | Lockfile | Enters through | Ruled |
 |---|---|---|---|
-| `httparse` | root, `jig`, `fuzz`, `pinned_tls_client`, `pinned_tls_exerciser` | `crates/http_response`, the head reader `jig` runs on a package source's reply | calef, 2026-10-18 (UTC), milestone 784 item (a) |
-| `rayon`, `rayon-core` | `std_exerciser` | its first third-party dependency (milestone 812) | #1892; `deny.toml` bans it everywhere else |
+| `httparse` | root, `jig`, `fuzz`, `pinned_tls_client`, `pinned_tls_exerciser` | `crates/http_response`, the head reader `jig` runs on a package source's reply | calef, 2026-10-18 (UTC), milestone 784 (reuse what the tree wrote) item (a) |
+| `rayon`, `rayon-core` | `std_exerciser` | its first third-party dependency (milestone 812 (`std::thread::spawn` runs real threads in one address space)) | #1892; `deny.toml` bans it everywhere else |
 | `crossbeam-deque`, `crossbeam-epoch`, `crossbeam-utils`, `either` | `std_exerciser` | `rayon`'s own graph | with `rayon` |
 | `ruzstd`, `tar-no-std` | `notes/packages/container-format-measurements/fuzz` | a harness measuring two candidate package containers | no ruling needed: nothing builds or ships it (finding 3) |
 
 ### The two uncountable triggers, answered
 
-Has a new component taken device or network authority? **Yes, twice.** `jig` (milestone 809, built
+Has a new component taken device or network authority? **Yes, twice.** `jig` (milestone 809 (the package client becomes a program), built
 2026-10-10 UTC) holds the network stack, a resolver of the root zone, the clock and entropy for TLS,
 and the installer endpoint, and it parses a package source's HTTP reply and the index's text before
-any digest is checked. Milestone 892 (a std program at the prompt holds the network and a resolver; #2405, in flight) would grant installed programs the network
+any digest is checked. Milestone 892 (#2405, in flight) would grant installed programs the network
 and resolver zones at install. Both are this lens. The second, device authority, is
-`designware_mobile_storage`, radon's SD/MMC block server (milestone 53, 2026-10-06), which holds a
+`designware_mobile_storage`, radon's SD/MMC block server (milestone 53 (the board's own peripherals: network and storage on real silicon), 2026-10-06), which holds a
 register page and a transfer region and no DMA; it is outside this lens and is the next audit's
 (below).
 
@@ -105,9 +105,9 @@ with no `Cargo.toml` beside it fails the run (falsified with an intent-to-add pr
 ### 2. ACCEPTED: on `main`, the index's host decides which native packages reach the network
 
 `grant_plan::image_manifest` endows vouched bytes with everything their note declares, and for a
-native program that includes `network`. Since milestone 801, the index copy `jig update` writes is a
+native program that includes `network`. Since milestone 801 (packages over the internet), the index copy `jig update` writes is a
 vouch the progenitor accepts (ruling I2, 2026-10-06 UTC). The index is fetched over TLS pinned to
-ISRG Root X1, a public authority, and carries no signature until milestone 858's TUF client. So the
+ISRG Root X1, a public authority, and carries no signature until milestone 858 (lab machines update themselves through packages)'s TUF client. So the
 chain from "the owner installed a package by name" to "that package connects out" runs through the
 index host's certificate and `jig`'s integrity, and the owner is shown nothing about the network at
 install.
@@ -143,7 +143,7 @@ draw.
 
 `SECURITY.md`'s scope named the repository's supply chain and not the target's. A way to get bytes
 installed as vouched, or endowed past their note and the owner's grants, is now in scope. "No network
-security of any kind" was false since milestone 501's pinned TLS client; it now says what there is.
+security of any kind" was false since milestone 501 (a TLS client that speaks to one pinned peer)'s pinned TLS client; it now says what there is.
 The audit count is ten.
 
 ## Is any confinement claim false as stated?

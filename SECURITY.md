@@ -234,7 +234,7 @@ disagreeing.)
   is a gate that read a typed list**: cargo-deny never ran over `jig`, the package manager, or
   `c_library`, which failed it. Fixed by discovering every lockfile. Also: on `main` a vouch still
   endows a native package with the network its note asks for, and the index copy is a vouch, so the
-  index's host decides; milestone 892 refuses it.
+  index's host decides; milestone 892 (a std program at the prompt holds the network and a name resolver) refuses it.
 
 The machine-checked half is `script/verify` (Kani harnesses over the capability model, IPC, the MMU
 invariants, the DMA validator). notes/verification.md states what each proof covers and, more
