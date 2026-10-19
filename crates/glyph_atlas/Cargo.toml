@@ -1,0 +1,21 @@
+[package]
+name = "glyph_atlas"
+version = "0.1.0"
+edition = "2024"
+publish = false     # the default; the allowlist lint holds the exception (crates/publish-allowlist.txt)
+license.workspace = true
+
+# The anti-aliased font (milestone 142 increment 3, §104, §166): DejaVu Sans Mono's four faces as
+# coverage tables, one byte a pixel, and the pure function from a character cell to a color. The
+# rasteriser runs at build time, in tools/glyph_atlas_generator, so nothing here parses a font or
+# touches a float: a glyph is a slice of a `static` and drawing one is a lookup and a blend, which
+# is what lets the terminal, the kernel test and the host scanout check keep computing the same
+# picture independently, exactly as they did over `bitmap_font`.
+#
+# No dependencies. The fonts' license (Bitstream Vera and Arev, DejaVu's changes public domain) is
+# in vendor/dejavu/LICENSE, and vendor/README.md registers the table as third-party data.
+
+[lints]
+workspace = true
+
+[dependencies]

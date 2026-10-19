@@ -11,6 +11,7 @@ members = [
     "crates/address_space_identifier",
     "crates/address_space_map",
     "crates/bitmap_font",
+    "crates/glyph_atlas",
     "crates/board_console",
     "crates/block_roster",
     "crates/boot_ladder",
