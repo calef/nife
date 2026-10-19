@@ -30,14 +30,17 @@ written, so each one has to stand on its own.
   Uncommitted work in a lane worktree is the one thing no part of this system protects.
 - **A pushed commit is never rewritten** (calef, 2026-10-18 UTC). No `git reset`, `git rebase`,
   `git commit --amend` or force-push touches a commit that is on the remote. Bring main in with `git
-  merge origin/main`. A fix to a pushed commit is a new commit whose message names the commit it
+  merge origin/main`. On a fleet clone the pre-push hook refuses a push that would rewrite one
+  (`helpers/push-rewrite-check.sh`). A fix to a pushed commit is a new commit whose message names the commit it
   corrects, and that message is what `git blame` lands on. Before the first push, amend freely.
 - Every commit an agent writes ends with a `Co-Authored-By:` trailer naming its model, such as
   `Co-Authored-By: GLM 5.3 <noreply@z.ai>`, whatever the vendor or tool; `script/metrics` reads it.
 - In a worktree, `origin/*` is not a fixed point. Agent worktrees share one `.git`, so
   `origin/main` moves under a lane while it works; read it when you merge it, never cache it.
 - `git stash` is unsafe in these worktrees, for the same reason one level over: the stash stack is
-  per-`.git`, so it is shared machine-wide across every lane. Use a patch file (`git diff >
+  per-`.git`, so it is shared machine-wide across every lane, and on a fleet clone it fails
+  ("Cannot save the current status") because `helpers/stash-block.sh` holds a ref that blocks it.
+  Use a patch file (`git diff >
   /tmp/<lane>-<what>.patch`, later `git apply`) instead, and name it what no other lane would.
 - Squash-*merging* is impossible (`allow_squash_merge` is `false` on this repository), so two
   purposes in one pull request stay two commits, and a commit whose separateness is itself the

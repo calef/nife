@@ -1,6 +1,7 @@
 ---
-status: PARTIAL
+status: BUILT
 raised: 2026-08-05
+built: 2026-10-19
 milestone_dependencies: none
 decision_dependencies: none
 machine_requirements: none
@@ -14,8 +15,7 @@ noticed the file had gotten huge and asked what that costs. Re-checked against t
 2026-10-03 (UTC): the audit (#309), the cut and the split are done. `AGENTS.md` fell from 942 to
 573 lines (calef's seven cuts of 2026-09-25, #1189's split into imperatives plus appendices): the
 reasons moved to `design/tenets/`, the procedures to `briefs/`, and §212 (a prose budget) caps that
-core. What is left is two budget rules that are still
-prose only, listed under `## Follow-on`. Nothing blocks them: no hardware, no person, no decision.
+core. All four budget rules have a mechanism; `## Follow-on` names each.
 
 The size measurement is no longer hand-entered. Until 2026-08-22 it was `wc -lwc AGENTS.md`,
 run by nobody, which was the milestone's own budget argument for itself: this block carried three
@@ -206,11 +206,20 @@ honestly, which is a culture rather than a mechanism. Say so where the reader me
 - **Done.** Budget rule 1, the watchers nobody starts, has a mechanism: `AGENTS.md` records
   `com.nife.merge-drain` and its sibling running unattended on patagonia under `launchd`, with the
   asleep-or-shut-down gap named as accepted rather than closed.
-- **Outstanding.** Budget rule 2, pruning a lane's worktree at merge, is still prose only, and
-  nothing under `script/` or `helpers/` prunes or counts worktrees. Checked 2026-10-03.
-- **Outstanding.** Budget rule 3, squashing against the recorded base commit, is still prose only
-  and no gate reads it; the `git stash` scar beside it in `AGENTS.md` is the same shape. Checked
-  2026-10-03.
+- **Done.** Budget rule 2, pruning a lane's worktree at merge: `helpers/prune_worktrees.py
+  --remove` (name provisional) runs hourly from launchd, without `--force`. It removes a worktree
+  whose pull request merged, that `git status` calls clean, whose HEAD origin holds and that
+  nothing wrote to for an hour. Its dry run on 2026-10-19 (UTC) found 13 such worktrees on
+  the fleet machine. `script/lint-fleet` runs its selftest.
+- **Done.** Budget rule 3 is "a pushed commit is never rewritten", which replaced squashing against
+  the recorded base, plus never `git stash`. The stash half is unrepresentable on a fleet clone:
+  `helpers/stash-block.sh` holds `refs/stash/no-git-stash-see-worktree-commits-skill`, and git
+  cannot create `refs/stash` beside it, so `git stash` fails in every worktree before touching the
+  tree. `script/claim` and the fleet pre-push install it. The rewrite half is a check that fails
+  loudly: `helpers/push-rewrite-check.sh`, from the fleet pre-push, refuses a push whose remote sha
+  is not an ancestor of the pushed one. Both names provisional; `script/lint-fleet` runs both
+  selftests. A server-side refusal of force-pushes would be the stronger rung and is not taken,
+  because the bot workflows force-push their own branches.
 - **Done.** Budget rule 4 is mechanized: DECISIONS §88 was ratified 2026-08-25
   (`design/decisions/0088-needs-architect-as-a-check.md`) and `.github/workflows/architect-hold.yml`
   is a required check that fails any pull request carrying the `needs-architect` label.
@@ -238,5 +247,6 @@ agents clobbered work with a destructive git operation in one day. All had been 
 full. Audited (#309), and the cut and the split applied (the file is 573 lines, 2026-09-25). A size
 gate (`script/lint`'s `agents-md-lines` ceiling) plus a violation ledger were built (2026-08-22).
 The ledger's first run found the git-clobber rule already four strikes over the three-strike
-threshold, a decision for calef or the integrator. Open: budget rules 2 (pruning at merge) and 3
-(squashing against the recorded base) have no mechanism yet.
+threshold, a decision for calef or the integrator. Budget rules 2 (pruning at merge) and 3 (never
+rewrite a pushed commit, never `git stash`) are mechanized by an hourly worktree prune, a ref that
+blocks `git stash` and a pre-push refusal.

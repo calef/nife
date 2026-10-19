@@ -164,6 +164,14 @@ python3 "$(dirname "$0")/../helpers/smelter-token" --selftest >/dev/null
 #     worktrees' `target/` may go, including a `wip/` worker judged by its parent lane. Fixture
 #     directories and stubbed git, so it reads no real worktree and asks GitHub nothing.
 python3 "$(dirname "$0")/../helpers/prune_build_output.py" --selftest >/dev/null
+#     And the merged-worktree prune beside it (helpers/prune_worktrees.py, name provisional;
+#     milestone 118 (CLAUDE.md has a budget)'s budget rule 2): a worktree goes only when merged, clean, pushed and idle.
+#     Throwaway repositories and a stubbed GitHub answer.
+python3 "$(dirname "$0")/../helpers/prune_worktrees.py" --selftest >/dev/null
+#     Milestone 118's budget rule 3 (both names provisional): `git stash` fails once the block is in,
+#     in every worktree, and a push that rewrites a pushed commit is refused. Throwaway repositories.
+"$(dirname "$0")/../helpers/stash-block.sh" --selftest >/dev/null
+"$(dirname "$0")/../helpers/push-rewrite-check.sh" --selftest >/dev/null
 
 #     The queued-branch push refusal (provisional milestone name: refuse a push to a queued branch;
 #     helpers/push-queued-check.sh, called from .githooks/pre-push): queued refuses, not queued
