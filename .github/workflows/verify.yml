@@ -249,8 +249,8 @@ jobs:
     runs-on: ubuntu-24.04
     # A shard ran a 12.7-minute median and an 18.4 maximum over 284 pull-request runs, and a 21.1
     # maximum once in about 600 merge-group runs, to 2026-10-19 (UTC).
-    # 25 minutes is the 20-minute budget plus margin (milestone 721, which this workflow joined
-    # under milestone 808); `helpers/job-budget.py` is the rule and `script/lint` holds it.
+    # 25 minutes is the 20-minute budget plus margin, from milestone 721 (each merge-group CI job
+    # has a 20-minute budget). `helpers/job-budget.py` is the rule and `script/lint` holds it.
     timeout-minutes: 25
     strategy:
       # **Do not cancel the sibling.** One shard failing is a real result about its own crates, and
@@ -345,8 +345,8 @@ jobs:
       needs.gate.outputs.run != 'false'
     runs-on: ubuntu-24.04-arm
     # The whole job is about a minute (above).
-    # 25 minutes is the 20-minute budget plus margin (milestone 721, which this workflow joined
-    # under milestone 808); `helpers/job-budget.py` is the rule and `script/lint` holds it.
+    # 25 minutes is the 20-minute budget plus margin, from milestone 721 (each merge-group CI job
+    # has a 20-minute budget). `helpers/job-budget.py` is the rule and `script/lint` holds it.
     timeout-minutes: 25
     steps:
       - name: Start the job wall-time clock
@@ -390,8 +390,8 @@ jobs:
       needs.gate.outputs.run != 'false'
     runs-on: ubuntu-24.04-arm
     # Cold about 3 minutes, warm under 1 (above).
-    # 25 minutes is the 20-minute budget plus margin (milestone 721, which this workflow joined
-    # under milestone 808); `helpers/job-budget.py` is the rule and `script/lint` holds it.
+    # 25 minutes is the 20-minute budget plus margin, from milestone 721 (each merge-group CI job
+    # has a 20-minute budget). `helpers/job-budget.py` is the rule and `script/lint` holds it.
     timeout-minutes: 25
     steps:
       - name: Start the job wall-time clock

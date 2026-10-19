@@ -213,55 +213,43 @@ considered as the file's format and not taken, because no consumer here reads it
 
 Every name below is provisional.
 
-- **The warning line.** `helpers/job-budget.py check` warns at 85% of a job's budget and writes
-  its minutes against the budget to the step summary. Its selftest proves the warning fires at 17
-  of 20 minutes, is quiet below, and never changes the exit status. `WORKFLOWS` covers `ci.yml` and
-  `verify.yml`.
+- **The warning line.** `helpers/job-budget.py check` warns at 85% of a job's budget, in `ci.yml`
+  and `verify.yml`, and writes the job's minutes to the step summary.
 - **The record file.** One `time-record.tsv` per job, in milestone 807's format, uploaded as
   `time-record-<job>` or `time-record-<job>-<matrix value>`. The kernel suite owns
   `target/time-record.tsv`; every other writer appends only to `NIFE_TIME_RECORD`, which CI sets.
-  `helpers/time_record.py` is the writer for gates that are not Rust, and its selftest holds its
-  header to `xtask/src/time_record.rs`'s.
+  `helpers/time_record.py` writes for gates that are not Rust.
 - **Per item, from each framework.** The kernel suite and `cpu-matrix` write `test` and `phase`
   rows (milestone 807). The host pass writes one `phase` row, leg `host`. `swish-check` writes a
   `line` row per typed line, `script/fuzz` a `target` row per target, build included, and
-  `script/falsifications` a `falsification` row per replayed record. `cargo xtask time-summary`
-  lists the slowest of any kind it does not otherwise tabulate.
+  `script/falsifications` a `falsification` row per replayed record.
 - **Upload or exemption.** `.github/time-record-exemptions` gives each `ci.yml` checkout job that
-  uploads nothing its reason. `helpers/time_record.py lint`, in `script/lint`, fails a job with
-  neither, an exemption for a job that uploads, and an exemption for no job.
-- **The daily record.** `helpers/ci_job_times.py update` reads every merge-group run of `ci.yml`
-  and `verify.yml` and writes per-job and per-step daily medians to
-  `notes/project-metrics/ci-job-times.csv`. From each green run's record artifacts it adds every
-  `phase` row and every item whose day's median is at least 1 s (`ITEM_FLOOR_MS`). `metrics.yml`
-  runs it daily.
-- **The chart.** `script/metrics` draws `ci-jobs.svg` from `ci-builds.csv`: each merge-group job
-  against the 20-minute ceiling.
-- **The tracking issue.** `helpers/ci_job_times.py sync` opens one `near-budget` issue per job,
-  rewrites it daily, closes it, and appends a week-notes row while it is open. It runs in
-  `metrics.yml` as `nife-smelter[bot]`. Its selftest drives the three transitions against a
-  recorded merge-group run (37648588582). One run at or past the line opens the issue, and three
-  in a row under it close it (§254's Open section).
-- **The route to a session.** `needs-maintainer` has a `budget` cause, keyed on the issue's
-  number and opening time. `briefs/session-start.md` and `briefs/survey-the-queue.md` read the
-  listing through the REST issues endpoint.
-- **`verify.yml` under the budget.** Its checkout jobs carry the clock and check steps and a
-  25-minute timeout. `falsify-shard` has a 25-minute line in `.github/ci-job-budgets`, because a
-  shard planned at 17 minutes must outlive one record at its own 15-minute limit to report it.
+  uploads nothing its reason, and `helpers/time_record.py lint` holds it.
+- **The daily record.** `helpers/ci_job_times.py update`, daily in `metrics.yml`, writes per-job
+  and per-step medians of every merge-group run to `notes/project-metrics/ci-job-times.csv`, and
+  from each green run's records every `phase` row and every item with a daily median of 1 s or more
+  (`ITEM_FLOOR_MS`). `script/metrics` draws `ci-jobs.svg` against the 20-minute ceiling.
+- **The tracking issue.** `helpers/ci_job_times.py sync` opens, rewrites and closes one
+  `near-budget` issue per job as `nife-smelter[bot]`, and adds a week-notes row while it is open.
+  One run at or past the line opens it; three under close it (§254's Open section).
+  `needs-maintainer` lists it with cause `budget`.
+- **`verify.yml` under the budget.** `falsify-shard` has a 25-minute line in
+  `.github/ci-job-budgets`: a shard planned at 17 minutes must outlive one record at its own
+  15-minute limit to report it.
 
 ## Exit criteria
 
 | | criterion | state |
 |---|---|---|
-| 1 | the daily CSV for `ci.yml` and `verify.yml`, per job, step and test, and the weekly chart | met. Per job and step since 2026-08-15. Per-item rows start with the first daily pass after merge, since only then do artifacts carry their job key. Read live over the 88 green runs of 2026-10-18, they are 454 rows (84 phases, 370 tests at 1 s and over), 73 kB a day. `ci_job_times.py --selftest` holds the floor and the artifact mapping |
-| 2 | every checkout job uploads the breakdown file or is exempt, held by `script/lint` | met. `time_record.py --selftest` has the four cases. Falsified on the tree: deleting `fmt`'s exemption line fails `time_record.py lint` naming `fmt` |
+| 1 | the daily CSV per job, step and test, and the weekly chart | met. Per-item rows start with the first daily pass after merge, when artifacts first carry their job key. Over 2026-10-18's 88 green runs they are 454 rows, 73 kB a day. `ci_job_times.py --selftest` holds the floor and the mapping |
+| 2 | upload or exemption, held by `script/lint` | met. `time_record.py --selftest`; deleting `fmt`'s exemption line fails the lint naming `fmt` |
 | 3 | per-item times from the kernel suite, `cpu-matrix`, `swish-check`, re-falsify and `fuzz` | met in code; the dispatched runs in this block's pull request are the evidence |
 | 4 | the 85% warning, its summary, its host test | met |
 | 5 | the issue's three transitions, tested against a recorded fixture | met |
 | 6 | `budget` in the `needs-maintainer` listing, the selftest, the briefs | met |
 | 7 | a week-notes bullet while an issue is open | met, through `sync` |
-| 8 | `verify.yml` joins the budget | met. The record's medians to 2026-10-19 (UTC): `prove` shards 12 to 14 minutes, maximum 21.1 once in about 600 merge-group runs and 18.4 over 284 pull-request runs; re-falsify shards 8.5 to 10.8, maximum 18.3 |
-| 9 | milestone 663's deadline from the host pass's measured time | not yet. The record holds the host pass's time as `test-shard`, `host / host crates`, `phase`, `suite`. Milestone 663 is NOT-STARTED, and taking the deadline is its work |
+| 8 | `verify.yml` joins the budget | met. To 2026-10-19 (UTC), `prove` shards ran 12 to 14 minutes, maximum 21.1 once in about 600 merge-group runs; re-falsify shards 8.5 to 10.8, maximum 18.3 |
+| 9 | milestone 663's deadline from the host pass's measured time | not yet. The record holds the host pass as `test-shard`, `host / host crates`, `phase`, `suite`; taking the deadline is milestone 663's work |
 
 ## BUGS
 
