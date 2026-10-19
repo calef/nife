@@ -407,7 +407,9 @@ fn a_bitmap_font_and_a_vt_engine_put_readable_text_on_the_scanout() {
     // The scrolled comparison needs its own teeth: one digit of one scroller line off must fail
     // it, or it proves nothing about scrolls specifically (a checker keyed on "the bottom rows
     // hold text" would pass a picture scrolled by the wrong number of rows).
-    video_terminal::script::feed_scroller(typo, Some(20));
+    // A tail line, which is still on the screen once the scroller is done; line 20 was, on the
+    // 43-row grid, and has scrolled off the 24-row one.
+    video_terminal::script::feed_scroller(typo, Some(video_terminal::script::SCROLL_LINES + 1));
     assert!(
         (0..gfx::HEIGHT).any(|y| (0..gfx::WIDTH).any(|x| typo.pixel(x, y) != expect.pixel(x, y))),
         "the one-digit scroller typo produces an identical scrolled picture: the negative \
