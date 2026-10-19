@@ -61,6 +61,14 @@ impl CellRect {
         }
     }
 
+    /// [`CellRect::union`] with a box that may not exist.
+    pub(super) const fn union_with(self, o: Option<CellRect>) -> CellRect {
+        match o {
+            Some(o) => self.union(o),
+            None => self,
+        }
+    }
+
     /// This rectangle in **pixels**, as `(x, y, w, h)`. What a `FLUSH` or a compositor damage
     /// rectangle wants.
     pub const fn to_pixels(self) -> (u32, u32, u32, u32) {

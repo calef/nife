@@ -1215,3 +1215,51 @@ fn moving_pixels_with_k<const K: usize>() {
         }
     }
 }
+
+/// **A painter that keeps [`Damage`]'s promise ends with the engine's picture**: move the picture up
+/// `scrolled` rows, render `rect`, and every pixel is [`Vt::pixel`]'s. Checked after each feed of
+/// writes that scroll several rows between takes, which is what one `OPERATION_WRITE` of several
+/// lines is. Two shapes broke it before 2026-10-19: a row wider than the rows that replaced it in
+/// one move (its tail stayed on the screen), and a change made above the bottom row and then
+/// scrolled in the same take (its box stayed where the change was made, not where it went).
+#[test]
+fn a_painter_that_moves_and_renders_what_damage_says_ends_with_the_engines_picture() {
+    for cursor in [true, false] {
+        let mut t = vt(20, 6);
+        t.set_cursor_visible(cursor);
+        let (w, h) = (t.width() as usize, t.height() as usize);
+        let mut screen: Vec<u32> = (0..w * h)
+            .map(|i| t.pixel((i % w) as u32, (i / w) as u32))
+            .collect();
+        for feed in [
+            &b"\r\n\r\n\r\n\r\n\r\n\x1b[1;4mwider than the rest\x1b[0m\r\n"[..],
+            b"one\r\ntwo\r\nthree\r\nfour\r\n",
+            b"\x1b[2;3Hmid\x1b[6;1H\r\n\r\n\r\n",
+            b"x\r\ny\r\nzzzzzzzzzzzzzzzzzzz\r\n\r\n",
+            b"a\r\nb\r\nc\r\nd\r\ne\r\nf\r\ng\r\n",
+        ] {
+            t.feed(feed);
+            if let Some(d) = t.take_damage() {
+                let px = (d.scrolled * bitmap_font::GLYPH_H) as usize;
+                screen.copy_within(px * w.., 0);
+                let (x0, y0, dw, dh) = d.rect.to_pixels();
+                for y in y0..y0 + dh {
+                    for x in x0..x0 + dw {
+                        screen[y as usize * w + x as usize] = t.pixel(x, y);
+                    }
+                }
+            }
+            for (i, &p) in screen.iter().enumerate() {
+                let (x, y) = ((i % w) as u32, (i / w) as u32);
+                assert_eq!(
+                    p,
+                    t.pixel(x, y),
+                    "cursor {cursor}, after {:?}: pixel ({x}, {y}), cell ({}, {})",
+                    std::string::String::from_utf8_lossy(feed),
+                    x / bitmap_font::GLYPH_W,
+                    y / bitmap_font::GLYPH_H,
+                );
+            }
+        }
+    }
+}

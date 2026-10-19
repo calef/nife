@@ -416,6 +416,24 @@ impl Vt {
             self.drawn = drawn_now;
         }
         let scrolled = core::mem::take(&mut self.scrolled);
+        // **The rows a move of more than one row exposes are rendered whole.** A painter moves its
+        // picture up `scrolled` rows at once, so the bottom `scrolled` rows keep the pixels the old
+        // picture had there. The cell model behind `put`'s comparison is a move of one row at a
+        // time, which leaves a copy of the bottom row behind, and the two agree only when
+        // `scrolled` is one. Past that, a row that was wider than what replaced it left glyphs on
+        // the screen (found 2026-10-19 by milestone 23's display swap test, one long line and then
+        // thirty short ones in one write).
+        if scrolled > 1 {
+            self.dirty = Some(
+                CellRect {
+                    col: 0,
+                    row: self.rows - scrolled,
+                    cols: self.cols,
+                    rows: scrolled,
+                }
+                .union_with(self.dirty),
+            );
+        }
         let rect = match self.dirty.take() {
             Some(rect) => rect,
             // A scroll with nothing to render (a bare LF over an already-blank bottom row, cursor
@@ -691,6 +709,19 @@ impl Vt {
         self.push_scrollback_row(0);
         let used = cols * self.rows as usize;
         self.cells.copy_within(cols..used, 0);
+        // What changed since the last take moved up with the cells it changed, so its box moves
+        // too, before the bottom row's own changes are added at the bottom.
+        self.dirty = self.dirty.and_then(|d| match d.row {
+            0 if d.rows <= 1 => None,
+            0 => Some(CellRect {
+                rows: d.rows - 1,
+                ..d
+            }),
+            _ => Some(CellRect {
+                row: d.row - 1,
+                ..d
+            }),
+        });
         for c in 0..self.cols {
             self.put(c, self.rows - 1, Cell::blank(self.attr));
         }
