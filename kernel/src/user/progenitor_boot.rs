@@ -8,7 +8,7 @@
 //! splits into child modules of `user`)).
 
 use super::*;
-use crate::cap::Rights;
+use crate::cap::{Rights, page_frame_cap, page_frame_run_cap, page_frame_run_len, rendezvous_cap};
 
 /// **The archive entry the kernel enters as the first process**, on every architecture.
 ///
@@ -322,7 +322,7 @@ fn grant_boot_slots(tid: crate::thread::ThreadId, build_region: u64, uart_irq: u
     // nothing that could set the time. See [`boot_clock_page`].
     let s3 = crate::sched::thread_control_block_insert_cap(
         tid,
-        crate::cap::page_frame_cap(boot_clock_page(), Rights::READ.union(Rights::GRANT)),
+        page_frame_cap(boot_clock_page(), Rights::READ.union(Rights::GRANT)),
         Some(3),
     )
     .expect("insert the clock page");
@@ -332,7 +332,7 @@ fn grant_boot_slots(tid: crate::thread::ThreadId, build_region: u64, uart_irq: u
     // was attached. See [`boot_config_page`].
     let s4 = crate::sched::thread_control_block_insert_cap(
         tid,
-        crate::cap::page_frame_cap(boot_config_page(), Rights::READ.union(Rights::GRANT)),
+        page_frame_cap(boot_config_page(), Rights::READ.union(Rights::GRANT)),
         Some(4),
     )
     .expect("insert the config page");
@@ -354,7 +354,7 @@ fn grant_file_service(tid: crate::thread::ThreadId) -> (u64, Option<u64>) {
         Some((file_ep, file_shared)) => {
             let s5 = crate::sched::thread_control_block_insert_cap(
                 tid,
-                crate::cap::rendezvous_cap(file_ep, Rights::WRITE.union(Rights::GRANT)),
+                rendezvous_cap(file_ep, Rights::WRITE.union(Rights::GRANT)),
                 Some(5),
             )
             .expect("insert the file service");
@@ -366,9 +366,9 @@ fn grant_file_service(tid: crate::thread::ThreadId) -> (u64, Option<u64>) {
                 // slot that held window 0's page. The progenitor never maps it into a client; it
                 // slices one window per client with `abi::page_frame::SLICE` and deletes the slice
                 // once the client is built.
-                crate::cap::page_frame_run_cap(
+                page_frame_run_cap(
                     file_shared,
-                    crate::cap::page_frame_run_len(fs_service::FILE_POOL_PAGES),
+                    page_frame_run_len(fs_service::FILE_POOL_PAGES),
                     Rights::WRITE.union(Rights::GRANT),
                 ),
                 Some(6),
@@ -417,7 +417,7 @@ fn grant_entropy_source(tid: crate::thread::ThreadId) -> Option<VirtioBootGrant>
         assert_eq!(s8, 8);
         let s9 = crate::sched::thread_control_block_insert_cap(
             tid,
-            crate::cap::page_frame_cap(
+            page_frame_cap(
                 g.dma,
                 Rights::READ.union(Rights::WRITE).union(Rights::GRANT),
             ),
@@ -440,7 +440,7 @@ fn grant_entropy_source(tid: crate::thread::ThreadId) -> Option<VirtioBootGrant>
     {
         let s16 = crate::sched::thread_control_block_insert_cap(
             tid,
-            crate::cap::rendezvous_cap(request, Rights::WRITE.union(Rights::GRANT)),
+            rendezvous_cap(request, Rights::WRITE.union(Rights::GRANT)),
             Some(16),
         )
         .expect("insert the instruction entropy service");
@@ -517,7 +517,7 @@ fn grant_machine_slots(tid: crate::thread::ThreadId, aspace_name: u64) {
     // `crate::machine_statistics`.
     let s23 = crate::sched::thread_control_block_insert_cap(
         tid,
-        crate::cap::page_frame_cap(
+        page_frame_cap(
             crate::machine_statistics::page_phys(),
             Rights::READ.union(Rights::GRANT),
         ),
@@ -574,16 +574,16 @@ fn grant_disk_tree(tid: crate::thread::ThreadId, fs_pool: Option<u64>) {
     };
     let s32 = crate::sched::thread_control_block_insert_cap(
         tid,
-        crate::cap::rendezvous_cap(tree.request, Rights::WRITE.union(Rights::GRANT)),
+        rendezvous_cap(tree.request, Rights::WRITE.union(Rights::GRANT)),
         Some(32),
     )
     .expect("insert the disk tree");
     assert_eq!(s32, 32);
     let s33 = crate::sched::thread_control_block_insert_cap(
         tid,
-        crate::cap::page_frame_run_cap(
+        page_frame_run_cap(
             tree.pool,
-            crate::cap::page_frame_run_len(super::disk_tree_service::POOL_PAGES as u64),
+            page_frame_run_len(super::disk_tree_service::POOL_PAGES as u64),
             Rights::WRITE.union(Rights::GRANT),
         ),
         Some(33),
@@ -605,7 +605,7 @@ fn grant_kernel_log(tid: crate::thread::ThreadId) {
     if let Some((ring, cursor, notification)) = crate::kernel_log::grants() {
         for (capability, slot, what) in [
             (
-                crate::cap::page_frame_run_cap(
+                page_frame_run_cap(
                     ring,
                     core::num::NonZeroU64::new(system_log_contract::kernel_ring::PAGES as u64)
                         .expect("the ring has pages"),
@@ -615,7 +615,7 @@ fn grant_kernel_log(tid: crate::thread::ThreadId) {
                 "the kernel's ring",
             ),
             (
-                crate::cap::page_frame_cap(
+                page_frame_cap(
                     cursor,
                     Rights::READ.union(Rights::WRITE).union(Rights::GRANT),
                 ),
@@ -651,7 +651,7 @@ fn grant_usb_keyboard(tid: crate::thread::ThreadId) {
     if let Some(k) = &usb_keyboard {
         let s27 = crate::sched::thread_control_block_insert_cap(
             tid,
-            crate::cap::rendezvous_cap(k.attach, Rights::WRITE.union(Rights::GRANT)),
+            rendezvous_cap(k.attach, Rights::WRITE.union(Rights::GRANT)),
             Some(27),
         )
         .expect("insert the USB keyboard's attach endpoint");
@@ -671,14 +671,14 @@ fn grant_screen_terminal(tid: crate::thread::ThreadId, no_gpu: bool) {
     if let Some(t) = &screen {
         let s10 = crate::sched::thread_control_block_insert_cap(
             tid,
-            crate::cap::rendezvous_cap(t.term, Rights::WRITE.union(Rights::GRANT)),
+            rendezvous_cap(t.term, Rights::WRITE.union(Rights::GRANT)),
             Some(10),
         )
         .expect("insert the screen terminal's endpoint");
         assert_eq!(s10, 10);
         let s11 = crate::sched::thread_control_block_insert_cap(
             tid,
-            crate::cap::page_frame_cap(
+            page_frame_cap(
                 t.out,
                 Rights::READ.union(Rights::WRITE).union(Rights::GRANT),
             ),
@@ -703,7 +703,7 @@ fn grant_graphics(
     };
     if let Some(g) = gpu {
         insert(
-            crate::cap::page_frame_run_cap(
+            page_frame_run_cap(
                 g.surface,
                 display_service::GPU_SURFACE_RUN,
                 Rights::READ.union(Rights::WRITE).union(Rights::GRANT),
@@ -722,7 +722,7 @@ fn grant_graphics(
             "the gpu interrupt",
         );
         insert(
-            crate::cap::page_frame_run_cap(
+            page_frame_run_cap(
                 g.dma,
                 display_service::GPU_DMA_RUN,
                 Rights::READ.union(Rights::WRITE).union(Rights::GRANT),
@@ -743,7 +743,7 @@ fn grant_graphics(
             "the keyboard interrupt",
         );
         insert(
-            crate::cap::page_frame_cap(
+            page_frame_cap(
                 k.dma,
                 Rights::READ.union(Rights::WRITE).union(Rights::GRANT),
             ),
@@ -782,7 +782,7 @@ fn grant_virtio_net(tid: crate::thread::ThreadId) -> Option<VirtioBootGrant> {
         assert_eq!(s14, 14);
         let s15 = crate::sched::thread_control_block_insert_cap(
             tid,
-            crate::cap::page_frame_cap(
+            page_frame_cap(
                 g.dma,
                 Rights::READ.union(Rights::WRITE).union(Rights::GRANT),
             ),
@@ -822,14 +822,14 @@ fn grant_kernel_network_stack(tid: crate::thread::ThreadId, no_virtio_net: bool)
     if let Some((stack, report)) = kernel_stack {
         let s29 = crate::sched::thread_control_block_insert_cap(
             tid,
-            crate::cap::rendezvous_cap(stack, Rights::ALL),
+            rendezvous_cap(stack, Rights::ALL),
             Some(29),
         )
         .expect("insert the kernel-built stack's endpoint");
         assert_eq!(s29, 29);
         let s30 = crate::sched::thread_control_block_insert_cap(
             tid,
-            crate::cap::rendezvous_cap(report, Rights::READ),
+            rendezvous_cap(report, Rights::READ),
             Some(30),
         )
         .expect("insert the kernel-built stack's lease endpoint");

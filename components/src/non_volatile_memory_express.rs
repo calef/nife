@@ -310,7 +310,7 @@ fn serve(mut plane: Plane) -> ! {
     loop {
         let req = receive_request(REQ);
         let (w0, block) = (req.w0, req.w1);
-        let Some(reply_cap) = req.delivered.into_reply() else {
+        let Some(reply_to) = req.delivered.into_reply() else {
             // A plain SEND or a SEND_CAP on a CALL-only contract: nothing to answer, and a
             // delegation is deleted rather than answered into (milestone 706 (a `CALL` server can
             // tell a Reply from a delegation)).
@@ -322,12 +322,12 @@ fn serve(mut plane: Plane) -> ! {
         // allows a larger number to be spelled.
         let count = blk::req_blocks(w0).min(TRANSFER_BLOCKS);
         let Some(window) = client_window(req.badge) else {
-            reply(reply_cap, filesystem_contract::reply_err(22) as u64, 0); // EINVAL
+            reply(reply_to, filesystem_contract::reply_err(22) as u64, 0); // EINVAL
             continue;
         };
         let op = filesystem_contract::operation(w0);
         if (op == blk::WRITE || op == blk::FLUSH) && !can_write(req.badge) {
-            reply(reply_cap, filesystem_contract::reply_err(30) as u64, 0); // EROFS
+            reply(reply_to, filesystem_contract::reply_err(30) as u64, 0); // EROFS
             continue;
         }
         let r0: i64 = match op {
@@ -351,7 +351,7 @@ fn serve(mut plane: Plane) -> ! {
             }
             _ => filesystem_contract::reply_err(22), // EINVAL: an opcode this server has no verb for
         };
-        reply(reply_cap, r0 as u64, 0);
+        reply(reply_to, r0 as u64, 0);
     }
 }
 

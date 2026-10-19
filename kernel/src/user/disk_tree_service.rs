@@ -59,7 +59,7 @@ pub(crate) fn start(fs_window_zero: u64) -> Option<DiskTree> {
     disk.wait_for_ready();
 
     let window = ::non_volatile_memory_express::DISK_TREE_WINDOW;
-    let blk = disk.client_cap(window);
+    let blk = disk.client_capability(window);
     let staged = disk.window_phys(window);
     let pool = crate::memory::alloc_contiguous_zeroed(POOL_PAGES)?.addr();
     let request = crate::sched::create_rendezvous();

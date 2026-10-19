@@ -19,7 +19,7 @@
 //! - mapped: **the data plane's run of its DMA region**, read/write: the I/O submission and
 //!   completion rings and one window of [`crate::non_volatile_memory_express::TRANSFER_PAGES`]
 //!   pages of buffer per client. A client is granted the request endpoint badged with its window
-//!   ([`Wiring::client_cap`]) and is mapped that window alone ([`Wiring::window_phys`]), so two
+//!   ([`Wiring::client_capability`]) and is mapped that window alone ([`Wiring::window_phys`]), so two
 //!   clients staging at once cannot reach each other's pages.
 //!
 //! Denied:
@@ -432,7 +432,7 @@ pub fn start_dma_escape(image: &'static [u8]) -> Option<DmaEscape> {
 
 impl Wiring {
     /// The physical base of client window `window`'s transfer buffer: the pages a client granted
-    /// [`Wiring::client_cap`]`(window)` must be mapped, and no others.
+    /// [`Wiring::client_capability`]`(window)` must be mapped, and no others.
     ///
     /// Name: provisional, minted 2026-10-18 (UTC) by lane/ioping-direct-io.
     pub fn window_phys(&self, window: u64) -> u64 {
@@ -449,7 +449,7 @@ impl Wiring {
     /// Window 0 is unbadged, as the filesystem server has always held it.
     ///
     /// Name: provisional, minted 2026-10-18 (UTC) by lane/ioping-direct-io.
-    pub fn client_cap(&self, window: u64) -> crate::cap::Cap {
+    pub fn client_capability(&self, window: u64) -> crate::cap::Cap {
         assert!(::non_volatile_memory_express::client_window(window).is_some());
         crate::cap::rendezvous_cap_badged(self.request, Rights::WRITE, window)
     }

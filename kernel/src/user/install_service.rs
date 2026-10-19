@@ -331,7 +331,7 @@ fn spawn_system_installer(
         .expect("no budget for system_installer");
     // The installer's own window (milestone 834 (ioping on nife and Linux)), so a confirm beside a live filesystem server
     // stages in pages that server never reads.
-    let blk_cap = disk.client_cap(::non_volatile_memory_express::INSTALLER_WINDOW);
+    let blk_capability = disk.client_capability(::non_volatile_memory_express::INSTALLER_WINDOW);
     let blk_shared = disk.window_phys(::non_volatile_memory_express::INSTALLER_WINDOW);
     // Read only when `entropy` is `Some`; copied out here so the closure captures a plain `u64`,
     // the same shape `disk_service::start_partitioner` uses for the same reason.
@@ -341,7 +341,8 @@ fn spawn_system_installer(
         let maps = system_installer_maps(boot_file_len);
         crate::sched::grant_at(SLOT_REPORT, rendezvous_cap(report, Rights::WRITE))
             .expect("system_installer slot 0 was occupied");
-        crate::sched::grant_at(SLOT_BLK, blk_cap).expect("system_installer slot 1 was occupied");
+        crate::sched::grant_at(SLOT_BLK, blk_capability)
+            .expect("system_installer slot 1 was occupied");
         // **Slot 2 is the difference between the two roles and nothing else is.** A survey holds
         // the same disk, writable; without entropy it cannot draw the unique ids a *new* table
         // carries, which narrows what the program would write and not what it can (module docs,
