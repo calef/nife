@@ -99,7 +99,7 @@ jobs:
       # installation token, minted fresh each run (milestone 128 (the automation gets its own
       # identity)). The personal access token this job used before was retired 2026-10-03 UTC
       # and then deleted, secret and token both.
-      - uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3
+      - uses: actions/create-github-app-token@64ab729a6294000f5aa4a4bc0b73d1f32bc45510 # v3
         id: app-token
         with:
           app-id: ${{ secrets.AUTOMATION_APP_ID }}
@@ -140,7 +140,7 @@ jobs:
         id: covtool
         if: steps.day.outputs.coverage == 'true'
         continue-on-error: true  # outcome: re-raised
-        uses: taiki-e/install-action@83ac0ad63c0167e6f06796fab0fce28db1bf3db0 # cargo-llvm-cov
+        uses: taiki-e/install-action@8cca0918f8471c33515202b73f56ab27f2bed283 # cargo-llvm-cov
 
       - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2
         if: steps.day.outputs.coverage == 'true' && steps.covtool.outcome == 'success'
