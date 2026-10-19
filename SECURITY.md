@@ -96,6 +96,11 @@ reach past the boundaries the kernel enforces. Anything that breaks one of these
 - **The supply chain of this repository.** A dependency or vendored tree that is not what the
   manifest says it is. `script/supply-chain` is supposed to make that checkable; a way around it is
   a finding.
+- **The install path.** A package becomes authority on the target only when the image's catalog or
+  the index copy `jig update` writes vouches for its digest, and it is then endowed with what its
+  note asks (notes/packages.md, notes/packages/jig.md). A way to get bytes
+  installed as vouched, or endowed past that, is a finding. Until the index is signed, `jig` is
+  inside the trusted base for installs, which its `BUGS` says.
 
 ## Not in scope
 
@@ -103,7 +108,8 @@ None of these are dismissals of the underlying concern. They are things already 
 down, which makes them roadmap items rather than reports.
 
 - **"It is not production-ready."** Correct. There is no user authentication, no ASLR, no secure
-  boot chain to firmware, no network security of any kind, and the shell is a demo. See
+  boot chain to firmware, no network security beyond a TLS client that trusts one pinned root
+  (notes/packages/over-the-internet.md), and the shell is a demo. See
   notes/why-not-general-purpose.md.
 - **A hardening feature that is on the roadmap.** design/roadmap/ is what is missing and in what
   order, one file per milestone (`script/roadmap` reads it). A missing feature that has a block
@@ -156,7 +162,7 @@ took, its findings by disposition, and a link to the report. `script/audits` say
 is due, from the triggers `design/decisions/0074-audit-cadence.md` decided, and a weekly workflow asks
 the same question so that auditing does not depend on anyone remembering to.
 
-**Nine** <!--count:security-audits--> security audits are on the record, and reading them first will
+**Ten** <!--count:security-audits--> security audits are on the record, and reading them first will
 save you time. Each took a lens the previous one did not, deliberately, because the value of an audit
 is the lens the last one lacked. (Documentation audits are in the same index and are not listed here;
 they read the tree for claims that had gone false, which is worth knowing if you find prose and code
@@ -222,6 +228,13 @@ disagreeing.)
   knowing: the boot shell keeps the seven display capabilities with `GRANT` for its whole life,
   and a real capability delegated to a `CALL` server passes the `NO_CAP` guard, so any client can
   park `net_stack` or the compositor in `SEND` forever (recorded, proposed, calef's call).
+- **design/audit-reports/2026-10-19-supply-chain-read-from-the-package-inward.md**: the nine
+  external packages the window added, the gate that should see every graph they enter, and the path
+  by which bytes this tree did not build become authority on the target. **The finding to carry off
+  is a gate that read a typed list**: cargo-deny never ran over `jig`, the package manager, or
+  `c_library`, which failed it. Fixed by discovering every lockfile. Also: on `main` a vouch still
+  endows a native package with the network its note asks for, and the index copy is a vouch, so the
+  index's host decides; milestone 892 refuses it.
 
 The machine-checked half is `script/verify` (Kani harnesses over the capability model, IPC, the MMU
 invariants, the DMA validator). notes/verification.md states what each proof covers and, more
