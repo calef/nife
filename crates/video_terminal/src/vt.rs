@@ -1089,8 +1089,8 @@ const fn word_state(w: u32) -> Option<State> {
 impl Vt {
     /// How many bytes [`Vt::write_handoff`] writes for this terminal as it stands.
     ///
-    /// Name: provisional, minted 2026-10-19 (UTC) by the lane for milestone 23 (a capability-routed component OS with live
-    /// replacement).
+    /// Name: provisional, minted 2026-10-19 (UTC) by the lane for milestone 23 (a capability-routed
+    /// component OS with live replacement).
     pub fn handoff_len(&self) -> usize {
         let cells = (self.cols * self.rows + self.sb_len * self.cols) as usize;
         4 * (HEADER_WORDS + CELL_WORDS * cells)
