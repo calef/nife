@@ -22,35 +22,34 @@ Where this card and a procedure page disagree, the machine decides and the page 
 
 ## Status
 
-Not ready to run: step 4's nife row needs #2371 (below) in the image. Every image below was built
-from main at `805620590` and booted under OVMF, and all of them are rebuilt once #2371 merges.
+Ready to run. Every image below was built from main at `ca9be2ca5` and booted under OVMF. The
+evening's date is not set.
 
 | image | build | under OVMF | SHA-256 |
 |---|---|---|---|
-| I219 boot, house-LAN peer | `cargo xtask network-bench --stage-only --peer <patagonia's LAN address>:9494` | `release build`, `82574L ... link up`, `preflight dmar scope : PASS`, `dhcp : leased 10.0.2.15`; gate `verdict LEASED-AND-MEASURED` | `36a35b926d78c25fd8e376c597b8ff75b7b788b82aaa40b941e52d72372431a3` |
-| I219 boot, Internet Sharing peer | `... --peer 192.168.2.1:9494` | the same lines | `15b1d0ad206f4a0170ebfcf559d8876edc6ef003a1b2afdd31697381084c6062` |
-| installer, basalt's sources, flag unflipped (rehearsal only) | `cargo xtask std-exerciser`, then `NIFE_INDEX_SOURCES=basalt cargo xtask install-boot` | `install-boot: PASS`, three boots; packs `repository basalt.nifeos.org 443 rolling` | `052b23ec58b256840ef1d67786c5170233fea288cb22dc147109c434f2c3016c` |
-| soak, debug | `cargo xtask uefi-image --features soak_test` | 4 cores online, 24 user threads; at 56 s `crossings=6021`, `wakerate=341/s`, `refused=0 mismatch=0 stalled=0` | `d8f64631ba9447beef0d40c4f6564ffb8daab50549961a0520127ae3e47fe085` |
+| I219 boot, house-LAN peer | `cargo xtask network-bench --stage-only --peer <patagonia's LAN address>:9494` | `release build`, `82574L ... link up`, `preflight dmar scope : PASS`, `dhcp : leased 10.0.2.15`; gate `verdict LEASED-AND-MEASURED` | `5d3b261e0aebbd6f3cefdf1b5ed536d68bc22df0033aff30931c1e19af8f70b4` |
+| I219 boot, Internet Sharing peer | `... --peer 192.168.2.1:9494` | the same lines | `3ed24e29bb43b4503b4b9bcad683d13ce6f504dc3d43ede4fac59e51271c5520` |
+| installer, basalt's sources, flag unflipped (rehearsal only) | `cargo xtask std-exerciser`, then `NIFE_INDEX_SOURCES=basalt cargo xtask install-boot` | `install-boot: PASS`, three boots; steps 3 and 4 below | `91adb2e60680be4a2671b38cbf262b334b5d64bd92fb173012143e29d6c9a7dc` |
+| soak, debug | `cargo xtask uefi-image --features soak_test` | 4 cores online, 24 user threads; at 65 s `crossings=7080`, `wakerate=402/s`, `refused=0 mismatch=0 stalled=0` | `7be0aef659d4e888700b3dee371a356b989be071da09e8d0b588d0e466668fef` |
 
-The I219 image's peer address is compiled in, so there is one image per network arrangement. The
-installer that goes to xenon is built at the bench in step 2, so its hash is recorded then. Copies
-are kept off-tree by the maintainers.
+The I219 image's peer address is compiled in, so there is one image per network arrangement. Under
+OVMF the staged images lease and then end `verdict FAILED: the transfer did not complete`, because
+no peer listens there; the gate's own peer gives `LEASED-AND-MEASURED`. The installer that goes to
+xenon is built at the bench in step 2, so its hash is recorded then. Copies are kept off-tree by
+the maintainers.
 
-## What stands between this card and the evening
+## What the rehearsal shows
 
-Step 3 passes under QEMU on main at `5e6c40c96`, from an installed disk: `index updated: 6
-packages for x86_64, from basalt.nifeos.org over TLS`, then `fetched ioping-1.3-x86_64 from
+From the installer's disk under QEMU, step 3 prints `index updated: 6 packages for x86_64, from
+basalt.nifeos.org over TLS`, then `fetched ioping-1.3-x86_64 from
 release-assets.githubusercontent.com via github.com over TLS` and `fetched and installed;
-generation 1 is live`. The table's `805620590` images predate that and are rebuilt with the rest.
+generation 1 is live`.
 
-- Step 4's nife row reads the NVMe through the disk tree, which #2371 builds. On main, ioping's
-  only target is its own installed file, which it sees as `0 B` and reads from cache at 41 to
-  42 us, so that row could not explain or correct the 2.16x. Milestone 834 (ioping on nife and
-  Linux) says what follows: "If the file path goes through a cache, the run uses the block window
-  instead, and the row says so." calef ruled on 2026-10-18 (UTC) that the shell gets a read-only,
-  uncached view of the NVMe at the prompt. That is engineering, not an open ruling.
-- `-D` on nife also needs basalt's ioping rebuilt with `-DHAVE_DIRECT_IO` at a nife pin that
-  includes #2371. If that has not landed by the evening, step 4 drops `-D` on nife (below).
+Step 4's nife line, `ioping -D ... n1`, stops at `direct I/O not supported by this platform`.
+basalt's ioping is built without `-DHAVE_DIRECT_IO`, and needs a rebuild at a nife pin that
+includes #2371. Until then the evening runs the line without `-D`, as step 4 says. That line
+completes 999 requests at `min/avg/max/mdev = 80 us / 2.43 ms / 30.8 ms / 7.30 ms` on QEMU's
+NVMe, against 41 to 42 us for a cached read, so it reaches the device.
 
 ## What calef needs at the bench
 
@@ -221,7 +220,8 @@ Boot the soak image. Before walking away, the first beat must show `on 4 online 
 Under `bench/xenon-<date>/`, each log whole, stripped with `LC_ALL=C tr -cd '\11\12\15\40-\176'`
 and nothing else (`notes/bench-runbook.md`'s BUGS):
 
-- `i219.log`, with `notes/e1000e.md`'s Results row; it lands with step 2's commit.
+- `i219.log`, with `notes/e1000e.md`'s Results row; it lands with step 2's commit. Read off its
+  `iommu` line for each VT-d unit, which ends `dmar INTR_REMAP set` or `clear`.
 - `install-and-fetch.log` and `ioping-nife.log` from `screenlog.0`, and the line for milestone 801's
   block.
 - `ioping-linux.log`, and risk 6's comparison, every pass, through whoever holds `design/`.
@@ -234,8 +234,9 @@ and nothing else (`notes/bench-runbook.md`'s BUGS):
   the same path. nife's request crosses the disk tree's server to the NVMe driver, and Linux's goes
   through its block layer. That difference is what risk 6 measures, so the row states it rather
   than hiding it.
-- The nife line is rehearsed only on aarch64 QEMU (0.6 to 1.6 ms per 4 KiB). It is rehearsed on
-  x86_64 under OVMF with the rebuild after #2371 merges.
+- ioping prints `n1 (  0 B)` on x86_64: it sees the disk tree's file size as zero. The latencies
+  show device reads, but which offsets ioping chose inside the 64 MiB window has not been checked.
+  It is reported to the lane that built `/disk` (#2371).
 - Step 2 builds the evening's installer from a branch that has not merged, because the flag may
   flip only after silicon proves it. The branch's pull request follows the evening.
 - The soak image is a debug build, as radon's were.
