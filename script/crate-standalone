@@ -65,6 +65,8 @@
 #   rather than install one behind your back.
 # - Only default features are built and tested.
 set -eu
+# A heavy job: wait for one of the machine's heavy-job slots first (helpers/heavy_slot.py).
+. "$(dirname "$0")/../helpers/heavy-slot.sh"
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 exec python3 - "$ROOT" "$@" <<'PY'
 import os, re, shutil, subprocess, sys, tempfile, tomllib
