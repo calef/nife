@@ -1,6 +1,7 @@
 ---
-status: PARTIAL
+status: BUILT
 raised: 2026-08-31
+built: 2026-10-19
 milestone_dependencies: none
 decision_dependencies: none
 machine_requirements: none
@@ -10,9 +11,8 @@ needs_person: no
 # 207. The four things GitHub asks for, and which of them this project actually wants
 
 This answers GitHub's Community Standards checklist. The pull request template, the issue
-templates, the code of conduct and the content-reports setting are delivered (see `## Follow-on`).
-One item is left, and it needs nobody: nothing verifies the issue forms render, which is a gate to
-write rather than a decision to take.
+templates, the code of conduct and the content-reports setting are delivered (see `## Follow-on`),
+and `script/lint` check 12d (`helpers/issue_forms.py`) fails when an issue form would not render.
 
 GitHub's checklist (`repos/nifeos/nife/community/profile`) asks for `README`, `CONTRIBUTING`,
 `LICENSE`, `CODE_OF_CONDUCT`, an issue template and a pull request template, and offers a fourth
@@ -111,9 +111,9 @@ project has no third-party contributors.
   and that is a cost rather than a free win. A stranger with a small good idea may not write four
   paragraphs about reversibility, and this project will never hear it. The alternative was hearing
   it and having nowhere to put it, which is worse, but the trade is real and unmeasured.
-- Nothing verifies the forms render. GitHub validates issue-form YAML when it lands on the
-  default branch, so a schema mistake surfaces as a broken chooser rather than as a red check. They
-  parse as YAML locally and follow the documented schema, which is not the same claim.
+- The form gate's rules are transcribed from GitHub's documentation, and GitHub's own validator
+  is closed. A form check 12d passes and GitHub rejects is possible; the helper's own `BUGS` lists
+  where the transcription is known to guess.
 - Three of the four are checklist items and one is a mechanism. The pull request template earns
   its place on its own; the rest are worth doing because a stranger meets them, which is a weaker
   reason and should be said out loud rather than dressed up.
@@ -122,6 +122,12 @@ project has no third-party contributors.
 - **This block does not write any of the text.** Choosing the Contributor Covenant version, the
   template fields and the routing language is the work, and it is all reversible except the
   enforcement promise.
+
+Reuse: written, not taken. SchemaStore's `github-issue-forms` schema under `check-jsonschema`
+misses eight of GitHub's 21 documented form errors (the uniqueness rules JSON Schema cannot
+express among them) and rejects the documented `min_length`, so a written check was needed in any
+case, and the validator would be the tree's first Python package dependency.
+
 ## Follow-on
 
 - **Done.** The code of conduct shipped the same week it was named: `CODE_OF_CONDUCT.md`,
@@ -137,10 +143,11 @@ project has no third-party contributors.
 - **Done.** Choosing the Covenant version was the work this block said it was, and it was done in
   the same commit: 2.1, three routing forms and a chooser config under `.github/ISSUE_TEMPLATE/`,
   and `.github/pull_request_template.md`.
-- **Outstanding.** Nothing verifies the issue forms render, and nothing blocks writing the gate (no
-  decision, person or hardware): it is a lane's work. None of the workflows under
-  `.github/workflows/` reads `.github/ISSUE_TEMPLATE/` and no gate under `script/` parses the YAML,
-  so a schema mistake surfaces as a broken chooser rather than as a red check. Checked 2026-09-03.
+- **Done.** `script/lint` check 12d runs `helpers/issue_forms.py` (name provisional) over
+  `.github/ISSUE_TEMPLATE/`. It parses with `ruby -ryaml`, YAML 1.1 as GitHub's parser is, and
+  checks GitHub's documented form schema, `config.yml`'s shape, and the 21 errors on GitHub's
+  "Common validation errors when creating issue forms" page, two of them in part (the helper's
+  `BUGS` names which). Its selftest plants broken forms and asserts the rule each one trips.
 - **Recorded.** The three routing forms are more work to fill in than an issue elsewhere would be,
   on purpose, so a stranger with a small good idea may not write four paragraphs. The trade is
   stated in this block's own `BUGS` and in `CONTRIBUTING.md`.
@@ -153,5 +160,4 @@ request template and three routing issue forms. They are a bug report asking for
 and how it was run, a feature request whose outcome is a roadmap block, and a design argument whose
 outcome is a decisions file. Also shipped: a vulnerability contact link, blank issues off,
 `CODE_OF_CONDUCT.md` with a named enforcement contact, and the content-reports setting. Issues are
-enabled. Open: nothing checks that the issue forms render, a gate that needs no decision, no person
-and no hardware.
+enabled, and `script/lint` check 12d fails on an issue form GitHub would not render.

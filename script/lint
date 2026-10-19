@@ -3169,6 +3169,17 @@ echo "==> every workflow file parses"
 python3 "$(dirname "$0")/../helpers/workflow_parses.py" --selftest
 python3 "$(dirname "$0")/../helpers/workflow_parses.py"
 
+# 12d. **Every issue form under .github/ISSUE_TEMPLATE/ is one GitHub will render** (milestone
+#     207 (community documentation); helpers/issue_forms.py, name provisional). GitHub validates
+#     a form only once it is on the default branch, and a form it rejects leaves the issue chooser
+#     with no red check anywhere; blank issues are off, so a broken bug-report form is a stranger
+#     with no way to file a bug. The rules are GitHub's documented form schema and its list of
+#     validation errors, parsed with `ruby -ryaml` as 12c is. Fixtures first, each one asserting
+#     the rule it names, because a green run looks the same as a check that cannot fire.
+echo "==> every issue form renders"
+python3 "$(dirname "$0")/../helpers/issue_forms.py" --selftest
+python3 "$(dirname "$0")/../helpers/issue_forms.py"
+
 # 13. **The kernel links no crate only its tests use, and no fixture unless a feature asks**
 #     (milestone 609 (the system tests leave the kernel crate)). The kernel crate used to link
 #     `ps`, `pgrep`, `pmap` and `network_time_protocol` as ordinary dependencies, for nothing but
