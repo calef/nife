@@ -37,6 +37,10 @@ pub(in crate::swish_check) struct Line {
     pub(crate) echoed: &'static str,
     pub(crate) jobs: u8,
     pub(crate) answer: &'static [&'static str],
+    /// **A question the running line asks, and what the gate types back**: the cue it waits for
+    /// after the echo, then the reply and Enter (milestone 892 (a std program at the prompt holds
+    /// the network and a resolver): `jig install`'s yes). `None` for every line that asks nothing.
+    pub(crate) asks: Option<(&'static str, &'static str)>,
 }
 
 /// **What the shell prints when a job it asked for never answered**, either half:
@@ -59,6 +63,25 @@ pub(in crate::swish_check) const fn line(
         echoed: typed,
         jobs,
         answer,
+        asks: None,
+    }
+}
+
+/// **A line that asks a question while it runs**, and the reply the gate types once the `cue`
+/// appears (milestone 892): `jig install` of a package that asks the owner for grants. The name
+/// is provisional.
+pub(in crate::swish_check) const fn asked(
+    jobs: u8,
+    typed: &'static str,
+    (cue, reply): (&'static str, &'static str),
+    answer: &'static [&'static str],
+) -> Line {
+    Line {
+        typed,
+        echoed: typed,
+        jobs,
+        answer,
+        asks: Some((cue, reply)),
     }
 }
 
@@ -77,6 +100,7 @@ pub(in crate::swish_check) const fn keys(
         echoed,
         jobs,
         answer,
+        asks: None,
     }
 }
 

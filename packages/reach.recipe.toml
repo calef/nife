@@ -1,0 +1,17 @@
+# reach, as a package: `std_reach` from the `std_exerciser` workspace, as `bin/reach` (milestone 892
+# (a std program at the prompt holds the network and a resolver)). Its note asks for the network
+# and the zone `nife.test`; `script/swish-check` installs it answering `jig install`'s question `y`,
+# and runs it holding both. Packed only when `cargo xtask std-exerciser` built it. Name:
+# provisional 2026-10-19 (UTC).
+
+name = "reach"
+version = "0.1.0"
+architecture = "aarch64"
+
+[[member]]
+std_program = "std_reach"
+as = "bin/reach"
+
+[[member]]
+name = "reach.license"
+file = "LICENSE-MIT"

@@ -17,6 +17,8 @@ pub struct Vouched {
     pub generation: u32,
     /// The entry names the owner rather than a package.
     pub by_owner: bool,
+    /// A `grant` line gives these bytes the network (`installed_programs::network_granted`).
+    pub network_granted: bool,
 }
 
 /// **`caps <path>`: what running a file's bytes would grant, and on whose word**
@@ -66,7 +68,12 @@ pub fn write_image_capabilities(
     out: &mut dyn FnMut(&[u8]),
 ) {
     let vouched = vouched_by.is_some();
-    let verdict = (vouched || holds).then(|| grant_plan::image_manifest(declared, vouched));
+    let vouch = vouched_by.map_or(grant_plan::Vouch::Unvouched, |v| {
+        grant_plan::Vouch::Vouched {
+            network: v.network_granted,
+        }
+    });
+    let verdict = (vouched || holds).then(|| grant_plan::image_manifest(declared, vouch));
     out(b"  ");
     out(path);
     match verdict {

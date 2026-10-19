@@ -281,3 +281,45 @@ fn every_reject_has_its_own_code() {
     assert_eq!(codes.len(), all.len());
     assert!(!codes.contains(&0));
 }
+
+/// **A zone has one spelling** (milestone 892 (a std program at the prompt holds the network and a
+/// resolver)): each boundary of `is_canonical_zone` on both sides. The root zone is empty; a label
+/// is 1 to 63 bytes of lowercase letters, digits and hyphens; dots join labels and never end or
+/// double; the whole is at most 253 bytes.
+#[test]
+fn a_zone_is_spelled_one_way() {
+    let label = |n: usize| "a".repeat(n);
+    let accepted: Vec<std::string::String> = std::vec![
+        std::string::String::new(),
+        "a".into(),
+        "nife.test".into(),
+        "x-1.example-2.net".into(),
+        label(63),
+        std::format!("{}.{}", label(63), label(63)),
+        // 253 bytes exactly: three labels of 63, one of 61, and three dots.
+        std::format!("{}.{}.{}.{}", label(63), label(63), label(63), label(61)),
+    ];
+    for zone in &accepted {
+        assert!(is_canonical_zone(zone.as_bytes()), "{zone:?} is canonical");
+    }
+    assert_eq!(accepted[6].len(), NAME_TEXT_MAX);
+    let refused: Vec<std::string::String> = std::vec![
+        label(64),
+        std::format!("{}.a", label(64)),
+        std::format!("{}a", accepted[6]),
+        ".".into(),
+        ".nife.test".into(),
+        "nife.test.".into(),
+        "nife..test".into(),
+        "Nife.test".into(),
+        "nife_test".into(),
+        "nife test".into(),
+        "nife.tést".into(),
+    ];
+    for zone in &refused {
+        assert!(
+            !is_canonical_zone(zone.as_bytes()),
+            "{zone:?} is not canonical"
+        );
+    }
+}
