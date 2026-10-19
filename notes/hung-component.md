@@ -100,7 +100,9 @@ At a swap, a quiesce unanswered within the supervisor's bound. `swapper`'s opera
 drain with a deadline (milestone 106 (a wait that ends on either the interrupt or the deadline)'s
 timed wait) and treats no answer as a hang. A `CALL` takes no deadline, so a stand-in makes the call
 and the deadline is on its forwarded answer. The bound is `QUIESCE_BOUND_MS`, 250 ms, about forty
-times the slowest healthy answer measured on three ISAs.
+times the slowest healthy answer measured on three ISAs. `terminal_supervisor` does the same for
+`line_editor`, with a stand-in built from its own image and its own `QUIESCE_BOUND_MS`, measured
+against `line_editor`'s answer (`line_editor::component::supervisor`).
 
 The bound belongs to the supervisor, not to the manifest and not to the client. A contract cannot
 know the machine, and a client that is parked inside its `CALL` cannot act. It is denominated in
@@ -208,9 +210,7 @@ service under a hung component: the Rust for each, with `ps`'s precedent quoted 
 ## BUGS
 
 **Detection exists only at a swap.** The operator notices a hang when its own quiesce goes
-unanswered within `QUIESCE_BOUND_MS`. Nothing watches a component between swaps, and
-`terminal_supervisor`'s quiesce of `line_editor` has no bound (milestone 23 (a capability-routed
-component OS with live replacement)'s block records why).
+unanswered within `QUIESCE_BOUND_MS`. Nothing watches a component between swaps.
 
 **`SURVEY` does not say what a thread is blocked *on*, so no wait-for graph is possible.** It is
 the extension that would turn detection from a heuristic into a decision procedure. A cycle in
