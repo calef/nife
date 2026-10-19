@@ -139,8 +139,8 @@ step reads its part of it where the device-tree machines re-read the tree:
 | RAM, reservations | `memory::init` | `memory::init` -> `machine::bring_up_memory` (shared consumer) |
 | Core roster | `smp::read_cpu_list`, from the tree | `smp::read_cpu_list`, from the kept MADT |
 | Interrupt controller | `memory::init` -> `GIC_REGIONS`/`PLIC_REGION` | the kept MADT: `irq::init_contexts` brings up the local APIC before `mmu::init`, `irq::init` the IO APIC after it, and `mmu::claims` maps both from the same table |
-| PCIe ECAM window | `memory::init` -> `PCI_REGIONS` | MCFG -> `memory::record_pci_regions` inside `memory::init`. The BAR half has no ACPI or AML source and is derived from the machine (`arch::mmu::memory_mapped_io_window`, milestone 256). |
-| Console UART interrupt | `memory::init` -> `UART_IRQ` | `memory::record_uart_irq` inside `memory::init`: legacy IRQ 4, resolved through the MADT's overrides when it is armed (milestone 176) |
+| PCIe ECAM window | `memory::init` -> `PCI_REGIONS` | MCFG -> `memory::record_pci_regions` inside `memory::init`. The BAR half has no ACPI or AML source and is derived from the machine (`arch::mmu::memory_mapped_io_window`, milestone 256 (x86_64 places PCI BARs in a hardcoded window)). |
+| Console UART interrupt | `memory::init` -> `UART_IRQ` | `memory::record_uart_irq` inside `memory::init`: legacy IRQ 4, resolved through the MADT's overrides when it is armed (milestone 176 (the x86_64 discovery seam's wide half)) |
 | IOMMU | `memory::init` -> `SMMU_REGION` | DMAR or IVRS: windows recorded in `memory::init`, units brought up by `discovery::bring_up_iommus` after `mmu::init` |
 
 The type at the seam is another loose end worth naming. `Region` is `device_tree_blob::Region`, which is a plain

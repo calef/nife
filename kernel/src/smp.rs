@@ -292,7 +292,7 @@ pub(crate) fn read_cpu_list() {
     seat_cpus_from_acpi(&cpus[..count]);
 }
 
-/// **Seat the cores the ACPI MADT lists** (milestone 161's SMP item), the device-tree walk's seating
+/// **Seat the cores the ACPI MADT lists** (milestone 161 (the `x86_64` kernel port)'s SMP item), the device-tree walk's seating
 /// done over the MADT's `LocalApic` entries, which are x86's own per-core list.
 ///
 /// Called once, by `x86_64`'s [`read_cpu_list`] on the boot core, before [`bring_up_secondaries`]

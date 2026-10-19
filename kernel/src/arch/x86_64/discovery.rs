@@ -153,7 +153,7 @@ fn bring_up_pci(ecam: Option<(u64, u8, u8)>) {
                     " alone (this host bridge reports no TOLUD)"
                 }
             );
-            // **The topology, read from the bridges** (milestone 320), while the boot map still
+            // **The topology, read from the bridges** (milestone 320 (every PCI bus the machine has, not just bus zero)), while the boot map still
             // covers the low 4 GiB indiscriminately: every bus the MCFG describes is readable
             // without a mapping, and `mmu::init` then maps exactly the buses this found. Run after
             // it, this would read its way off the end of the window it is trying to size. Only
@@ -174,7 +174,7 @@ fn bring_up_pci(ecam: Option<(u64, u8, u8)>) {
         // The ports see only the first 256 bytes of a function's configuration space, so a machine
         // that fell back would enumerate a different set of capabilities from one that did not,
         // with every extended capability absent, and a driver that then failed would fail
-        // somewhere else entirely (milestone 215 refused the same shape one level down).
+        // somewhere else entirely (milestone 215 (a PCI function's interrupt reaches nothing on `x86_64`) refused the same shape one level down).
         None => {
             println!("  pci         : skipped, no MCFG: no PCI at all (no legacy fallback)");
         }

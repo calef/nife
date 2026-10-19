@@ -96,7 +96,7 @@ fn x86_64_image_and_entropy() {
         arch::mmu::stack_top(),
     );
 
-    // Milestone 162: RDSEED needs no ring 3, no capability, and nothing this port has not already
+    // Milestone 162 (real hardware entropy on x86_64 and aarch64): RDSEED needs no ring 3, no capability, and nothing this port has not already
     // built, so it is provable here even though the entropy service itself runs in userspace.
     // `draw_random_seed` checks CPUID leaf 7 EBX.18 before ever executing the instruction.
     match arch::isa::draw_random_seed() {
