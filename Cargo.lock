@@ -1525,7 +1525,6 @@ dependencies = [
 name = "virtio"
 version = "0.1.0"
 dependencies = [
- "abi",
  "address_space_map",
  "filesystem_contract",
  "nifefs",
