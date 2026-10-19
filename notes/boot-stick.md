@@ -161,6 +161,7 @@ wrong archive: radon's boot 12 and xenon's 2026-09-17 refusal have no way to hap
 | Claim | How | Result, 2026-09-19 |
 |---|---|---|
 | One directory boots on all three firmwares | `cargo xtask stick-boot`: `target/stick` as a USB stick under OVMF, EDK2 aarch64 and EDK2 riscv64 | All three to the progenitor |
+| The aarch64 stick boots from ACPI alone, as a cloud machine offers it | `cargo xtask acpi-boot`: `BOOTAA64.EFI` under EDK2 with `acpi=on`, a CI gate in the `boot-check` job (2026-10-19) | To the progenitor, with the loader's "describing this machine from ACPI" line |
 | The program writes a stick that boots on all three | `helpers/stick-maker-proof.sh`: a blank file erased, a FAT32 file copied onto, each booted under all three | Six of six to the progenitor; a file already on the FAT32 stick survived |
 | Nothing is erased without `--erase` or the disk's name typed back; a refused disk stays refused when named; a host that cannot erase says so before asking | `crates/stick_maker/src/cli.rs`'s tests, which run the whole conversation against a fake host | All pass |
 | A backup disk is never offered | `crates/stick_maker` host tests on the captured `diskutil` documents, and `--list --all` on the machine itself | Both USB hard disks refused |

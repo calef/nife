@@ -902,6 +902,12 @@ jobs:
       # fatal at release. In this job because it is a required check and already has QEMU and OVMF;
       # the row's comment in script/ci-build has its price.
       - run: script/ci-build release-uefi-boot
+      # **And the release aarch64 stick under EDK2 with `acpi=on`** (milestone 578 (an ACPI
+      # discovery path for aarch64)): no device tree, only the tables, which is what every aarch64
+      # cloud machine hands a kernel. The loader writes the tree from them (§278 (an ACPI machine
+      # reaches the aarch64 kernel as a device tree the loader writes)), and nothing else on a pull
+      # request boots that path.
+      - run: script/ci-build acpi-boot
       - name: Check the job's wall time against its budget
         if: always()
         run: python3 helpers/job-budget.py check "${{ github.job }}" "$JOB_STARTED_AT"
