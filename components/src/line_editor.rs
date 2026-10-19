@@ -125,7 +125,6 @@ const QUEUE: usize = 4;
 static mut DISC: LineDisc = LineDisc::new();
 static mut LINE_QUEUE: LineQueue = LineQueue::new();
 static mut RAW_QUEUE: RawQueue = RawQueue::new();
-static mut STDIN_LINE: StdinLine = StdinLine::new();
 
 #[unsafe(no_mangle)]
 pub extern "C" fn _start(mode: u64, control: u64, start: u64) -> ! {
@@ -143,14 +142,10 @@ pub extern "C" fn _start(mode: u64, control: u64, start: u64) -> ! {
     let raw_queue_p = &raw mut RAW_QUEUE;
     // SAFETY: see above.
     let raw_queue = unsafe { &mut *raw_queue_p };
-    let stdin_p = &raw mut STDIN_LINE;
-    // SAFETY: see above.
-    let stdin = unsafe { &mut *stdin_p };
     let mut term = Terminal {
         disc,
         queue,
         raw_queue,
-        stdin,
         pending_stdin: None,
         con: Con { used: 0, mode },
         pending: None,
@@ -215,8 +210,6 @@ struct Terminal {
     disc: &'static mut LineDisc,
     queue: &'static mut LineQueue,
     raw_queue: &'static mut RawQueue,
-    /// The line a [`proto::STDIN_BADGE`] reader is draining, `\n` included.
-    stdin: &'static mut StdinLine,
     /// A parked `OPERATION_READ_LINE_BYTES`, answered when a line is complete.
     pending_stdin: Option<Reply>,
     con: Con,
@@ -507,17 +500,17 @@ impl Terminal {
         if self.pending_stdin.is_none() {
             return;
         }
-        if self.stdin.is_drained() {
+        if self.queue.stdin.is_drained() {
             if self.pending.is_some() || self.queue.count == 0 {
                 return;
             }
-            let flags = self.queue.pop_front_with(|line| self.stdin.fill(line));
+            let flags = self.queue.pop_front_into_stdin();
             if flags & proto::FLAG_EOF != 0 {
                 self.end_stdin();
                 return;
             }
         }
-        let (n, packed) = self.stdin.take8();
+        let (n, packed) = self.queue.stdin.take8();
         if let Some(p) = self.pending_stdin.take() {
             reply(p, n as u64, packed);
         }
@@ -525,7 +518,7 @@ impl Terminal {
 
     /// End a stdin reader's input: answer a parked read with count 0, and drop the rest of the line.
     fn end_stdin(&mut self) {
-        *self.stdin = StdinLine::new();
+        self.queue.stdin = StdinLine::new();
         if let Some(p) = self.pending_stdin.take() {
             reply(p, 0, 0);
         }
@@ -668,6 +661,9 @@ struct LineQueue {
     lines: [([u8; LINE_MAX], usize, u64); QUEUE],
     head: usize,
     count: usize,
+    /// The line a [`proto::STDIN_BADGE`] reader is draining, `\n` included: taken from the front of
+    /// `lines`, so it lives beside them, in the same static.
+    stdin: StdinLine,
 }
 
 impl LineQueue {
@@ -676,6 +672,7 @@ impl LineQueue {
             lines: [([0; LINE_MAX], 0, 0); QUEUE],
             head: 0,
             count: 0,
+            stdin: StdinLine::new(),
         }
     }
 
@@ -696,17 +693,17 @@ impl LineQueue {
         self.count = 0;
     }
 
-    /// Pop the oldest line into the page at `base`; returns (length, flags).
-    /// The front line handed to `f`, then dropped from the queue; its flags.
-    fn pop_front_with(&mut self, f: impl FnOnce(&[u8])) -> u64 {
+    /// The front line moved to the stdin reader's line, then dropped from the queue; its flags.
+    fn pop_front_into_stdin(&mut self) -> u64 {
         let (line, len, flags) = &self.lines[self.head];
-        f(&line[..*len]);
+        self.stdin.fill(&line[..*len]);
         let flags = *flags;
         self.head = (self.head + 1) % QUEUE;
         self.count -= 1;
         flags
     }
 
+    /// Pop the oldest line into the page at `base`; returns (length, flags).
     fn pop_front_into(&mut self, base: u64) -> (usize, u64) {
         let (line, len, flags) = &self.lines[self.head];
         for (i, &b) in line[..*len].iter().enumerate() {

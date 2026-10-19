@@ -3,7 +3,8 @@ Falsifies `system_tests::user::raw_mode_tests::a_copy_badged_as_stdin_reads_the_
 Architecture: aarch64
 
 The defect: the terminal serves a `STDIN_BADGE` copy its whole surface, as it served every badged
-copy before milestone 709 narrowed the raw reader's. `jig`'s standard input could then type a line
+copy before milestone 709 (a graphical terminal session on the no-keyboard arm holds only the raw
+half of the boot discipline) narrowed the raw reader's. `jig`'s standard input could then type a line
 the shell runs, print, or switch the terminal's mode.
 
 Expected to fail: the assertion that a stdin holder's `OPERATION_BYTES` is refused.

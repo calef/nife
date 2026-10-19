@@ -95,7 +95,7 @@ enum Source {
     /// **A `std` program `cargo xtask std-exerciser` built** for the recipe's architecture,
     /// resolved from `std_exerciser/target/<arch>-unknown-nife/release/` (milestone 892 (a std
     /// program at the prompt holds the network and a resolver)). Optional where the exerciser is:
-    /// [`image_catalogue`] leaves out a recipe whose `std` program was not built, so its package is
+    /// the image's catalog leaves out a recipe whose `std` program was not built, so its package is
     /// in the image exactly when the gate's lines for it can run. Key name provisional.
     StdProgram(String),
     /// A path relative to the repository root.

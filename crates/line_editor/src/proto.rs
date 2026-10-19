@@ -105,9 +105,9 @@ pub const OPERATION_READRAW: u64 = 7;
 /// Name: provisional (the lane for milestone 709, 2026-10-03).
 pub const RAW_ONLY_BADGE: u64 = 1;
 
-/// **The badge on a copy of the terminal endpoint that is a program's standard input** (milestone
-/// 892 (a std program at the prompt holds the network and a resolver); calef, 2026-10-19 (UTC), on
-/// #2405: "a"). The terminal serves [`OPERATION_READ_LINE_BYTES`] on it and refuses everything else
+/// **The badge on a copy of the terminal endpoint that is a program's standard input**
+/// (milestone 892 (a std program at the prompt holds the network and a resolver); calef,
+/// 2026-10-19 (UTC), on #2405: "a"). The terminal serves [`OPERATION_READ_LINE_BYTES`] on it and refuses everything else
 /// with [`BAD_REQUEST`], so its holder reads the lines the owner types and can neither type one,
 /// print, nor switch modes. The spawn service mints it for a program whose manifest sets
 /// `grant_plan::Manifest::console_input`, which only `grant_plan`'s table can, and std reads it at

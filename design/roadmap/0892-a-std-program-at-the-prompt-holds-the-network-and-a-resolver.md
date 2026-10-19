@@ -1,6 +1,7 @@
 ---
 status: BUILT
 raised: 2026-10-09
+built: 2026-10-19
 promoted_from: a-std-program-at-the-prompt-holds-the-network-and-a-resolver
 milestone_dependencies: 384, 595
 decision_dependencies: none
@@ -224,8 +225,8 @@ calef took the recommendation each time.
 
 - **Milestone 911.** Its approval file's "the network's socket budget" is this grant, and its grant
   record is this block's `grant` lines.
-- **Milestone 910 (a package declares a service).** Adds its service line to `jig install`'s
-  confirmation.
+- **Milestone 910.** Milestone 910 (a package declares a service) adds its service line to
+  `jig install`'s confirmation.
 - **Milestone 809.** `jig` resolves the index's host through its badge at item 6.
 
 ## Index row

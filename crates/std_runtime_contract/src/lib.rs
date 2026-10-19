@@ -31,7 +31,7 @@
 //!
 //! Slots 13 to 21 are not this contract's: `grant_plan` places the installer, its reply, the
 //! catalog and the index sources at 15 to 18 for `jig`, and the shell's configuration at 21.
-//!
+
 //! What each slot means to std, and what std does when it is empty, is `rt.rs`'s documentation.
 //! This crate is the numbers, so the PAL, the progenitor and the kernel test harness cannot disagree.
 //!
