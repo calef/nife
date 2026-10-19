@@ -275,13 +275,16 @@ impl Window {
 ///   (The other edges are covered by the host tests with synthetic windows, so the live scene does
 ///   not have to carry every case.)
 ///
-/// Each window holds a terminal grid of a few `video_terminal` cells (14x26): 4x2, 3x2 and 2x3,
-/// each with a strip no cell covers. Each surface is at most three page frames, because the kernel
-/// maps a client's control page and surface one `Spawn::maps` entry a page, four a client
-/// (`kernel/src/user/compositor_service.rs` asserts it at build time).
+/// Each window holds a terminal grid of a few `video_terminal` cells (14x26): 5x2, 5x2 and 2x3,
+/// each with a strip no cell covers. The two terminal windows are five columns because their
+/// scroller lines (`video_terminal::script::window_scroll_line`, `wN-MM`) are five characters: a
+/// narrower window wraps them and scrolls the window's own digit out of sight, and the two
+/// terminals then show the same picture. Each surface is at most four page frames, because the
+/// kernel maps a client's surface one `Spawn::maps` entry a page
+/// (`kernel/src/user/compositor_service.rs`'s `MAX_SURFACE_PAGES`, asserted at build time).
 pub const SCENE: &[Window] = &[
-    Window::new(16, 26, 58, 52),
-    Window::new(40, 50, 44, 60),
+    Window::new(16, 26, 72, 52),
+    Window::new(40, 50, 71, 56),
     Window::new(-8, 60, 30, 80),
 ];
 

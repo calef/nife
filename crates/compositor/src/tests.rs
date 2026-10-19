@@ -633,8 +633,8 @@ fn stride_and_max_surface_bytes_are_exact() {
         4,
         "one pixel is four bytes"
     );
-    // 58*52*4 = 12,064, 44*60*4 = 10,560, 30*80*4 = 9,600: the first window is the largest.
-    assert_eq!(MAX_SURFACE_BYTES, 12_064);
+    // 72*52*4 = 14,976, 71*56*4 = 15,904, 30*80*4 = 9,600: the second window is the largest.
+    assert_eq!(MAX_SURFACE_BYTES, 15_904);
     assert_eq!(
         MAX_SURFACE_BYTES,
         SCENE.iter().map(|w| w.w * w.h * 4).max().unwrap(),
