@@ -19,7 +19,7 @@ This file splits fork 5 into seven questions, one decision each. A "no" to any o
 5 held, and milestone 809 (the package client becomes a program) goes on installing without a
 version check, as it does today.
 
-Reuse: `package_index::version` (dpkg's ordering, already in the tree), milestone 614's side-by-side
+Reuse: `package_index::version` (dpkg's ordering, already in the tree), milestone 614 (two installed versions of one program, each runnable)'s side-by-side
 versions, `installed_programs::with_entries`, and `capability_manifest_note`. No outside resolver
 fits, because none of them reads a capability manifest.
 
@@ -37,12 +37,12 @@ fits, because none of them reads a capability manifest.
 - The manifest note checks its own format version at decode
   (`capability_manifest_note::VERSION`, refused as `UnknownVersion`). That is the note's encoding,
   not any contract's.
-- §235's ABI revision field is ruled into the note and not built. No crate names it.
+- §235 (the OS is built and updated from packages)'s ABI revision field is ruled into the note and not built. No crate names it.
 - `component_plan::Requirements::contract` is "not matched against anything: what makes a build
   substitutable is that it speaks the protocol, and a string it carries cannot prove that", in its
   own documentation. No contract has a version handshake on the wire.
 - `component_plan::dependents` does not order a swap. It names the direct dependents to warn before
-  one contract is swapped, and §231 makes that warning advisory.
+  one contract is swapped, and §231 (a swap's warning to a dependent is advisory) makes that warning advisory.
 - One install is one package. `jig` takes one name per verb (`main` in `jig/src/main.rs`), and the
   progenitor's activation stages one package and commits one generation
   (`install` in `crates/system_initializer/src/activation.rs`).
@@ -51,7 +51,7 @@ fits, because none of them reads a capability manifest.
   (`installed_programs::with_entries`).
 - Two versions of one program install side by side, and a project's version set selects among them
   (milestone 614; `crates/swish/src/jig_versions.rs`).
-- Only `line_editor` swaps live (§308, milestone 694). Every other member of an install takes effect
+- Only `line_editor` swaps live (§308 (the installer asks the terminal to swap), milestone 694 (the installer asks the terminal to swap)). Every other member of an install takes effect
   at its next spawn or the next boot. Service providers are base programs built by
   `system_initializer`, and base is updated through the boot slot (§235), a full copy per slot.
 
@@ -129,7 +129,7 @@ script still needs is refused.
   programs in it. `jig` runs the same function earlier, from the index copy, to refuse before
   downloading and to order a plan. The function lives in one crate both link (rule 7).
 
-A puts the decision in the client, and §270 gave the client the right to ask, not to grant. Under B
+A puts the decision in the client, and §270 (a package manager holds an installer endpoint, not the spawn endpoint) gave the client the right to ask, not to grant. Under B
 the decision sits with the installer that already checks every package against its catalog. The
 progenitor already reads the members it places, so the levels come from the notes, and the package
 header needs no new field. The check covers the whole generation, so remove and rollback run it
@@ -174,9 +174,9 @@ unrepresentable instead of handling it.
 | System | Read | Taken | Refused |
 |---|---|---|---|
 | Fuchsia API levels | [api_levels](https://fuchsia.dev/fuchsia-src/concepts/versioning/api_levels): one target level per component; supported, sunset and retired phases; ABI revision stamped at packaging; Component Manager refuses a retired level at start | the level on the contract, the provider's range, the build-time stamp, the sunset overlap | nothing material |
-| Debian | [policy ch. 7](https://www.debian.org/doc/debian-policy/ch-relationships.html): §7.5 versioned `Provides` takes only `=`; §7.3 `Breaks`; §7.2 unpack together for mutual exact versions | `verrevcmp`, already in the tree, for runner versions | the range on the consumer for contracts; unpack-together |
+| Debian | [policy ch. 7](https://www.debian.org/doc/debian-policy/ch-relationships.html): section 7.5: versioned `Provides` takes only `=`; section 7.3: `Breaks`; section 7.2: unpack together for mutual exact versions | `verrevcmp`, already in the tree, for runner versions | the range on the consumer for contracts; unpack-together |
 | OSGi | [core 8, module layer](https://docs.osgi.org/specification/osgi.core/8.0.0/framework.module.html): importer range, exporter single version, resolved before any code runs | resolution before run, which question 5 is | the importer's range, for question 2's reason |
-| Nix | [`nix-env --upgrade`](https://nix.dev/manual/nix/2.24/command-ref/nix-env/upgrade): an upgrade of several packages is one new generation | generations, which §208 already has | the set as the only unit; question 7 keeps one package per generation |
+| Nix | [`nix-env --upgrade`](https://nix.dev/manual/nix/2.24/command-ref/nix-env/upgrade): an upgrade of several packages is one new generation | generations, which §208 (installing a package is granting it) already has | the set as the only unit; question 7 keeps one package per generation |
 | PEP 723 | [script metadata](https://peps.python.org/pep-0723/): `requires-python` | the consumer's range for a runner | none |
 
 ## Stated, not asked
