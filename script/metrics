@@ -2670,7 +2670,8 @@ CHARTS = [
      [('falsification on record', 'harnesses_falsified'),
       ('unfalsifiable, with the reason written', 'harnesses_unfalsifiable'),
       ('unfalsified', 'harnesses_unfalsified')], 1.0, None, None),
-    # The ceiling moves every milestone 139 round, so it is the week's own, a stored column.
+    # The ceiling moves every round of milestone 139 (drive the unsafe count down), so it is the
+    # week's own, a stored column.
     ('unsafe.svg', 'unsafe blocks per 10,000 lines outside kernel/src/arch/',
      'script/lint\'s own census; the direction is down, and the line is the week\'s own ceiling',
      [('blocks per 10,000 lines', 'unsafe_density')], 1.0, 'unsafe_density_ceiling', None),
