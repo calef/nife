@@ -66,7 +66,7 @@ which way two ticks happened to fall.
 
 | commit | what it adds | `ipc_rtt` | also | meant? |
 |---|---|---:|---|---|
-| `4eeb67dc3` (#1892) | `TPIDR_EL0` saved and installed at every switch | +6,000 (+0.54%) | `yield_switch` +1.08%, `ctx_switch` +1.00% | yes, §269 fork 4. About 48 instructions a switch, because `TPIDR_EL0.get()` and `.set()` are out-of-line calls at opt-level 0 |
+| `4eeb67dc3` (#1892) | `TPIDR_EL0` saved and installed at every switch | +6,000 (+0.54%) | `yield_switch` +1.08%, `ctx_switch` +1.00% | yes, §269 (how threads share a process) fork 4. About 48 instructions a switch, because `TPIDR_EL0.get()` and `.set()` are out-of-line calls at opt-level 0 |
 | `3d0f1543d` (#1892) | the futex | +750 (+0.07%) | | yes |
 | `4a8adf510` (#1892) | threads join a process | +750 (+0.07%) | `spawn_el0` +4.11%, `null_syscall` +1.40%, `spawn_reap` +0.88% | yes: spawn does more, and `syscall::dispatch` has new arms, which cost every syscall at opt-level 0 |
 | `44e1e0b59` (#2025) | `schedule` split into `choose_next` and `switch_operands` | +2,500 (+0.22%) | `yield_switch` +0.45%, `ctx_switch` +0.45% | a refactor; its commit records the debug-build cost and inlined both helpers to hold it there |

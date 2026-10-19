@@ -13,8 +13,9 @@ Raised by the lane `bench/aarch64-drift-since-1010`, while attributing the aarch
 2026-10-10 floor ([the attribution](../../../notes/benchmarks/drift-since-the-2026-10-10-floor.md)).
 Name: provisional.
 
-Reuse: milestone 541's reasoning and its tests for a window that excludes preemption; the existing
-`TICK_HZ` constant. Nothing new is written beyond a `bench`-feature value and the floors it moves.
+Reuse: the reasoning and tests of milestone 541 (a timed window that excludes preemption); the
+existing `TICK_HZ` constant. Nothing new is written beyond a `bench`-feature value and the floors it
+moves.
 
 ## The failure
 
