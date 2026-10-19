@@ -8,6 +8,11 @@ use super::cell::{
     BOLD, DIM, INVISIBLE, REVERSE, STRIKETHROUGH, STRIKETHROUGH_ROW, UNDERLINE, UNDERLINE_ROW,
 };
 use super::*;
+use crate::handoff::{
+    CELL_WORDS, FLAG_CURSOR_VISIBLE, FLAG_IGNORE, FLAG_WRAP_PENDING, HEADER_WORDS,
+    KNOWN_ATTR_FLAGS, LAYOUT, MAGIC, Refusal, cell_words, color_word, put_word, word_at,
+    word_color, words_cell,
+};
 
 /// The parser's state. Deliberately few: a VT's full state machine has a dozen states, and most of
 /// the extra ones exist to distinguish sequences this engine swallows anyway.
@@ -31,11 +36,11 @@ enum State {
 }
 
 /// How many numeric parameters a CSI sequence may carry. **Sixteen since milestone 142's truecolour
-/// pass**, up from four: one 24-bit colour is five parameters (`38;2;r;g;b`), a foreground and a
+/// pass**, up from four: one 24-bit color is five parameters (`38;2;r;g;b`), a foreground and a
 /// background together are ten, and a highlighter commonly adds a reset and a rendition or two in
 /// the same sequence. A seventeenth is swallowed rather than growing the array, because a parameter
 /// list that long belongs to a sequence this engine does not implement.
-const MAX_PARAMS: usize = 16;
+pub(crate) const MAX_PARAMS: usize = 16;
 
 /// **A terminal's live grid, plus its off-screen history.**
 ///
@@ -305,7 +310,7 @@ impl Vt {
     /// **The pixel at `(x, y)` of the terminal's surface.** The whole of rendering, as a pure
     /// function of the grid (and, since milestone 142 increment 2, of the scroll position).
     ///
-    /// The cursor is a **block**, drawn by swapping the cell's own two colours. Drawing it here
+    /// The cursor is a **block**, drawn by swapping the cell's own two colors. Drawing it here
     /// rather than as a separate overlay is what keeps the picture a function of the state: a test
     /// that predicts the screen predicts the cursor too, and a cursor left in the wrong place is a
     /// failure rather than a cosmetic difference nobody notices.
@@ -416,6 +421,23 @@ impl Vt {
             self.drawn = drawn_now;
         }
         let scrolled = core::mem::take(&mut self.scrolled);
+        // **The rows a move of more than one row exposes are rendered whole.** A painter moves its
+        // picture up `scrolled` rows at once, so the bottom `scrolled` rows keep the pixels the old
+        // picture had there. The cell model behind `put`'s comparison is a move of one row at a
+        // time, which leaves a copy of the bottom row behind, and the two agree only when
+        // `scrolled` is one. Past that, a row wider than the rows that replaced it would leave its
+        // tail on the screen.
+        if scrolled > 1 {
+            self.dirty = Some(
+                CellRect {
+                    col: 0,
+                    row: self.rows - scrolled,
+                    cols: self.cols,
+                    rows: scrolled,
+                }
+                .union_with(self.dirty),
+            );
+        }
         let rect = match self.dirty.take() {
             Some(rect) => rect,
             // A scroll with nothing to render (a bare LF over an already-blank bottom row, cursor
@@ -691,6 +713,19 @@ impl Vt {
         self.push_scrollback_row(0);
         let used = cols * self.rows as usize;
         self.cells.copy_within(cols..used, 0);
+        // What changed since the last take moved up with the cells it changed, so its box moves
+        // too, before the bottom row's own changes are added at the bottom.
+        self.dirty = self.dirty.and_then(|d| match d.row {
+            0 if d.rows <= 1 => None,
+            0 => Some(CellRect {
+                rows: d.rows - 1,
+                ..d
+            }),
+            _ => Some(CellRect {
+                row: d.row - 1,
+                ..d
+            }),
+        });
         for c in 0..self.cols {
             self.put(c, self.rows - 1, Cell::blank(self.attr));
         }
@@ -875,11 +910,11 @@ impl Vt {
     /// `CSI ... m`: the rendition. An empty parameter list is `CSI 0 m`, a reset, which is the one
     /// place the "absent means zero" default differs from the cursor sequences' "absent means one".
     ///
-    /// The extended colours (`38`/`48` followed by `5;n` or `2;r;g;b`) consume the parameters they
+    /// The extended colors (`38`/`48` followed by `5;n` or `2;r;g;b`) consume the parameters they
     /// name, so the loop walks an index rather than iterating. A malformed one (a missing or
-    /// out-of-range component, or a colour space other than 2 or 5) ends the sequence's effect
-    /// there, which is xterm's behaviour: the parameters after it cannot be told apart from the
-    /// broken colour's own.
+    /// out-of-range component, or a color space other than 2 or 5) ends the sequence's effect
+    /// there, which is xterm's behavior: the parameters after it cannot be told apart from the
+    /// broken color's own.
     fn sgr(&mut self) {
         let n = self.nparams.max(1);
         let mut i = 0;
@@ -935,7 +970,7 @@ impl Vt {
                         Attr { bg: colour, ..a }
                     }
                 }
-                // Everything else (italic, blink, overline, the underline colour) is dropped. Italic
+                // Everything else (italic, blink, overline, the underline color) is dropped. Italic
                 // needs a face this font does not have (increment 3), and blink needs a clock this
                 // engine deliberately does not read; drawing the *text* in the wrong style is better
                 // than not drawing it.
@@ -944,7 +979,7 @@ impl Vt {
         }
     }
 
-    /// The colour named by the parameters from `i` onward, after a `38` or `48`, and how many
+    /// The color named by the parameters from `i` onward, after a `38` or `48`, and how many
     /// parameters it used. `None` for a malformed one; see [`Vt::sgr`].
     fn extended_colour(&self, i: usize, n: usize) -> Option<(Colour, usize)> {
         let component = |k: usize| -> Option<u8> {
@@ -1026,6 +1061,186 @@ impl Vt {
             // clean off), so the move conveys nothing: report the whole grid as content instead.
             self.damage_all();
         }
+    }
+}
+
+const fn state_word(s: State) -> u32 {
+    match s {
+        State::Ground => 0,
+        State::Esc => 1,
+        State::Csi => 2,
+        State::Str => 3,
+        State::StrEsc => 4,
+    }
+}
+
+const fn word_state(w: u32) -> Option<State> {
+    match w {
+        0 => Some(State::Ground),
+        1 => Some(State::Esc),
+        2 => Some(State::Csi),
+        3 => Some(State::Str),
+        4 => Some(State::StrEsc),
+        _ => None,
+    }
+}
+
+/// **The state handoff** (`crate::handoff` has the layout and why it is one).
+impl Vt {
+    /// How many bytes [`Vt::write_handoff`] writes for this terminal as it stands.
+    ///
+    /// Name: provisional, minted 2026-10-19 (UTC) by the lane for milestone 23 (a capability-routed
+    /// component OS with live replacement).
+    pub fn handoff_len(&self) -> usize {
+        let cells = (self.cols * self.rows + self.sb_len * self.cols) as usize;
+        4 * (HEADER_WORDS + CELL_WORDS * cells)
+    }
+
+    /// **Write this terminal's whole state into `out`**, and return how many bytes that took, or
+    /// `None` when `out` is shorter than [`Vt::handoff_len`]. A blob that does not fit is not
+    /// truncated, because a truncated blob that read back would be state silently lost.
+    ///
+    /// Name: provisional, minted 2026-10-19 (UTC) by the lane for milestone 23.
+    pub fn write_handoff(&self, out: &mut [u8]) -> Option<usize> {
+        let len = self.handoff_len();
+        if out.len() < len {
+            return None;
+        }
+        let mut flags = 0;
+        for (on, bit) in [
+            (self.wrap_pending, FLAG_WRAP_PENDING),
+            (self.cursor_visible, FLAG_CURSOR_VISIBLE),
+            (self.ignore, FLAG_IGNORE),
+        ] {
+            if on {
+                flags |= bit;
+            }
+        }
+        let header = [
+            MAGIC,
+            LAYOUT,
+            self.cols,
+            self.rows,
+            self.col,
+            self.row,
+            self.sb_len,
+            self.view_offset,
+            flags,
+            state_word(self.state),
+            self.nparams as u32,
+            u32::from(self.utf8_need),
+            self.utf8_code,
+            0,
+            color_word(self.attr.fg),
+            color_word(self.attr.bg),
+            self.attr.flags as u32,
+        ];
+        for (i, w) in header.iter().enumerate() {
+            put_word(out, i, *w);
+        }
+        for (i, p) in self.params.iter().enumerate() {
+            put_word(out, header.len() + i, u32::from(*p));
+        }
+        let mut at = HEADER_WORDS;
+        let live = (self.cols * self.rows) as usize;
+        for c in &self.cells[..live] {
+            for w in cell_words(*c) {
+                put_word(out, at, w);
+                at += 1;
+            }
+        }
+        // Oldest first, so the reader rebuilds the ring from slot zero whatever `sb_tail` was.
+        for age in (0..self.sb_len).rev() {
+            for col in 0..self.cols {
+                for w in cell_words(self.scrollback_cell(col, age)) {
+                    put_word(out, at, w);
+                    at += 1;
+                }
+            }
+        }
+        Some(len)
+    }
+
+    /// **Become the terminal a blob describes.** The blob's grid must be this terminal's own
+    /// shape, the one it negotiated with its screen before absorbing. The whole blob is checked
+    /// first, so on any [`Refusal`] this terminal is as it was.
+    ///
+    /// Everything is marked as damage: the caller repaints its whole surface from what it
+    /// absorbed.
+    ///
+    /// Name: provisional, minted 2026-10-19 (UTC) by the lane for milestone 23.
+    pub fn absorb_handoff(&mut self, blob: &[u8]) -> Result<(), Refusal> {
+        let w = |i| word_at(blob, i).ok_or(Refusal::Malformed);
+        if w(0).ok() != Some(MAGIC) {
+            return Err(Refusal::NoBlob);
+        }
+        match w(1)? {
+            LAYOUT => {}
+            other => return Err(Refusal::Layout(other)),
+        }
+        if (w(2)?, w(3)?) != (self.cols, self.rows) {
+            return Err(Refusal::Geometry);
+        }
+        let (col, row, sb_len, view_offset) = (w(4)?, w(5)?, w(6)?, w(7)?);
+        let flags = w(8)?;
+        let state = word_state(w(9)?).ok_or(Refusal::Malformed)?;
+        let nparams = w(10)? as usize;
+        let utf8_need = w(11)?;
+        let utf8_code = w(12)?;
+        let attr = Attr {
+            fg: word_color(w(14)?).ok_or(Refusal::Malformed)?,
+            bg: word_color(w(15)?).ok_or(Refusal::Malformed)?,
+            flags: u8::try_from(w(16)?).map_err(|_| Refusal::Malformed)?,
+        };
+        let mut params = [0u16; MAX_PARAMS];
+        for (i, p) in params.iter_mut().enumerate() {
+            *p = u16::try_from(w(17 + i)?).map_err(|_| Refusal::Malformed)?;
+        }
+        if col >= self.cols
+            || row >= self.rows
+            || sb_len > self.scrollback_depth()
+            || view_offset > sb_len
+            || flags & !(FLAG_WRAP_PENDING | FLAG_CURSOR_VISIBLE | FLAG_IGNORE) != 0
+            || nparams > MAX_PARAMS
+            || utf8_need > 3
+            || u32::from(attr.flags) & !KNOWN_ATTR_FLAGS != 0
+        {
+            return Err(Refusal::Malformed);
+        }
+        let live = (self.cols * self.rows) as usize;
+        let history = (sb_len * self.cols) as usize;
+        let cell = |k: usize| -> Result<Cell, Refusal> {
+            let at = HEADER_WORDS + CELL_WORDS * k;
+            words_cell([w(at)?, w(at + 1)?, w(at + 2)?]).ok_or(Refusal::Malformed)
+        };
+        // Every cell is checked before any is written, so a refusal leaves the terminal whole.
+        for k in 0..live + history {
+            cell(k)?;
+        }
+        for (k, c) in self.cells[..live].iter_mut().enumerate() {
+            *c = cell(k)?;
+        }
+        for (k, c) in self.scrollback[..history].iter_mut().enumerate() {
+            *c = cell(live + k)?;
+        }
+        self.sb_len = sb_len;
+        self.sb_tail = sb_len % self.scrollback_depth();
+        self.view_offset = view_offset;
+        self.col = col;
+        self.row = row;
+        self.attr = attr;
+        self.wrap_pending = flags & FLAG_WRAP_PENDING != 0;
+        self.cursor_visible = flags & FLAG_CURSOR_VISIBLE != 0;
+        self.ignore = flags & FLAG_IGNORE != 0;
+        self.state = state;
+        self.params = params;
+        self.nparams = nparams;
+        self.utf8_need = utf8_need as u8;
+        self.utf8_code = utf8_code;
+        self.scrolled = 0;
+        self.drawn = None;
+        self.damage_all();
+        Ok(())
     }
 }
 
