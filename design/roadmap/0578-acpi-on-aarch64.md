@@ -253,10 +253,9 @@ Each ships independently and none needs hardware. The QEMU A/B above tests all o
   QEMU's own `APIC.msi_gicv2m` bytes. Nothing reads it: an aarch64 PCI function interrupts through
   INTx (`irq::alloc_msi_vector` answers `None`), so no `v2m` node is written.
 - **Done.** MADT type 0x0F (GIC ITS) decodes to `MadtEntry::GicIts`, tested against the entry
-  QEMU 11.1.2 wrote for `virt,acpi=on,gic-version=3`, read out of guest RAM because none of QEMU's
-  checked-in tables holds one. The loader prints it and writes no ITS node: the kernel drives no
-  ITS, which milestone 317 (the interrupt-remapping flags) still owes, as
-  `device_tree_from_acpi`'s BUGS says.
+  QEMU 11.1.2 wrote for `virt,acpi=on,gic-version=3`, read out of guest RAM. The loader prints it
+  and writes no ITS node: the kernel drives no ITS, which milestone 317 (the interrupt-remapping
+  flags) still owes, as `device_tree_from_acpi`'s BUGS says.
 - **Done.** `script/ci-build acpi-boot` (`cargo xtask acpi-boot`, in CI's `boot-check` job) boots
   the release `BOOTAA64.EFI` under EDK2 with `acpi=on` and requires the loader's "describing this
   machine from ACPI" line. It boots QEMU's default GICv2 and then `gic-version=3`, where it also
