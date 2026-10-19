@@ -3593,6 +3593,10 @@ python3 helpers/verify_times.py --selftest >/dev/null
 # daily rows against a recorded run, and the near-budget issue's three transitions (open, update,
 # close after three runs under), with no network. The fetch and the sync run only in metrics.yml.
 python3 helpers/ci_job_times.py --selftest >/dev/null
+# The time record's writer for gates outside cargo xtask (milestone 808): its header against the
+# Rust one, the row sanitizing, and that `run` keeps the command's exit status.
+python3 helpers/time_record.py --selftest >/dev/null
+python3 helpers/time_record.py lint
 python3 helpers/packages.py --check
 
 # The region claim protocol has ONE decision path (milestone 136).

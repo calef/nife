@@ -105,7 +105,17 @@ pub fn start_crash(
         },
     );
 
-    let driver_report = spawn_fs_client(client_image, file_ep, file_shared, 3, 0, 0, 0);
+    let driver_report = crate::sched::create_rendezvous();
+    spawn_fs_client(
+        client_image,
+        file_ep,
+        file_shared,
+        3,
+        0,
+        0,
+        0,
+        driver_report,
+    );
     Some(CrashRun {
         blk_ready,
         fs_ready,
@@ -145,6 +155,7 @@ pub fn recover_crash(
             extra_windows: 0, // single-client crash service (milestone 599)
         },
     );
-    let report = spawn_fs_client(client_image, file_ep, file_shared, 4, 0, 0, 0);
+    let report = crate::sched::create_rendezvous();
+    spawn_fs_client(client_image, file_ep, file_shared, 4, 0, 0, 0, report);
     (ready, report)
 }

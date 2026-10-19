@@ -145,8 +145,10 @@ fn one_reader_two_sources_and_the_same_answer() {
 
     // Arm one: a pipe. The kernel is the producer, which is the same position the shell is in
     // when a builtin leads a pipeline (`kernel::user::pipeline_tests`).
-    // Four pages: the pipe, both `wc` answers and the writer's report.
-    let endpoints = crate::memory_region::create(4).expect("no endpoint region");
+    // The pipe, both `wc` answers and the writer's report, then the file sink's and the file
+    // source's endpoints.
+    let endpoints = crate::memory_region::create(4 + 2 * fs_service::FILE_SINK_PAGES)
+        .expect("no endpoint region");
     let pipe = crate::sched::create_rendezvous_from(endpoints).expect("no pipe rendezvous");
     let out = spawn_wc(pipe, endpoints);
     let mut off = 0usize;
@@ -172,7 +174,9 @@ fn one_reader_two_sources_and_the_same_answer() {
     );
 
     // Arm two: the same bytes, through a real filesystem. Write them first.
-    let Some(file_sink) = fs_service::start_file_sink(blk, redoxfs_server, file_sink_image) else {
+    let Some(file_sink) =
+        fs_service::start_file_sink(blk, redoxfs_server, file_sink_image, endpoints)
+    else {
         // **The pipe arm above ran and asserted; the file arm is what is missing.** This is
         // reported as a skip rather than as a pass because the claim in this test's *name* is that
         // two sources agree, and one source cannot agree with anything. The reason says which half
@@ -207,7 +211,7 @@ fn one_reader_two_sources_and_the_same_answer() {
 
     // Then read them back into `wc`, which is `<`.
     let Some((source, verify_report)) =
-        fs_service::start_file_source(blk, redoxfs_server, file_source_image)
+        fs_service::start_file_source(blk, redoxfs_server, file_source_image, endpoints)
     else {
         panic!("the FS service vanished between the file sink and its source");
     };
@@ -298,7 +302,13 @@ fn a_program_cannot_tell_what_its_output_slot_holds() {
     // architectures attaches one to a leg that reaches here; `fs_service::blk_server_image()` is
     // the one place that disagreement is written down, and now this goes through it.
     let blk = fs_service::blk_server_image();
-    let Some(file_sink) = fs_service::start_file_sink(blk, redoxfs_server, file_sink_image) else {
+    // The sink's endpoints and the verifier's, reclaimed at the end once both have exited.
+    let endpoints =
+        crate::memory_region::create(2 * fs_service::FILE_SINK_PAGES).expect("no endpoint region");
+    let Some(file_sink) =
+        fs_service::start_file_sink(blk, redoxfs_server, file_sink_image, endpoints)
+    else {
+        crate::sched::reclaim_region(endpoints).expect("the endpoint region did not come back");
         crate::testing::skip!("no RedoxFS disk attached");
     };
     let (sink_ep, sink_report) = (file_sink.sink, file_sink.report);
@@ -326,7 +336,7 @@ fn a_program_cannot_tell_what_its_output_slot_holds() {
     // The read-back, in a third process with its own FS session, and only now that the sink has
     // closed the file: the two share the FS server's one file page.
     let Some((out, verify_report)) =
-        fs_service::start_file_source(blk, redoxfs_server, file_source_image)
+        fs_service::start_file_source(blk, redoxfs_server, file_source_image, endpoints)
     else {
         panic!("the FS service vanished between the file sink and its verifier");
     };
@@ -350,6 +360,7 @@ fn a_program_cannot_tell_what_its_output_slot_holds() {
          output destination is something it can tell apart",
     );
     crate::println!("    ({n1} bytes, identical through an endpoint and through RedoxFS)");
+    crate::sched::reclaim_region(endpoints).expect("the endpoint region did not come back");
 }
 
 /// **A dead reader ends the writer, and a missing one does not.** Milestone 50's one behaviour

@@ -38,14 +38,17 @@
 #     numbers outlive the transcripts they came from. Nothing in it touches the tree, so it is safe
 #     to run unattended from `launchd` beside `merge-drain.sh` and `trunk-health.sh` (the plist is in
 #     notes/project-metrics.md). A month of nobody committing then costs nothing.
-#   - **`--check` is rung two as well, pointed at the other failure.** It fails when a completed week
-#     has no committed row, and `script/cadence-check` calls it, so patagonia's existing watcher says
-#     so out loud. It is a report and not a gate, for the same reason `script/metrics --check` is not
-#     in `script/lint`.
+#   - **`--check` is rung two as well, pointed at the other failure.** It fails when the newest
+#     closed week has no committed row, or when its row was captured before the week ended (the
+#     `captured_at` section below). `helpers/trunk-health.sh` relays it, so the existing watcher
+#     says so out loud. It is a report and not a gate, for the same reason `script/metrics --check`
+#     is not in `script/lint`.
 #
-# What is left for a person is one command, `script/effort --update`, and a commit. That is rung
-# four, it is said to be rung four, and the two mechanisms above exist so that missing it is a delay
-# rather than a loss.
+# What is left for a person is one command, `script/effort --update`, and a commit, at least once
+# after each week closes. That is rung four, it is said to be rung four, and the two mechanisms
+# above exist so that missing it is a delay rather than a loss. A scheduled job that runs it and
+# opens the pull request is proposed in
+# design/roadmap/proposals/a-closed-week-is-captured-after-it-closes.md and not built.
 #
 # # What is counted
 #
@@ -125,6 +128,24 @@
 # A gap is attributed to the model of the response that ENDS it, so the per-model hours sum to the
 # per-week total without double counting.
 #
+# ## `captured_at`, and what makes a closed week's row whole
+#
+# A row captured mid-week looks exactly like a whole week, and the counted columns cannot say which
+# one they are. `captured_at` is the UTC time, as `2026-10-19T19:15:59Z`, of the last `--update`
+# that read the row in full (calef ruled the column on 2026-10-19 UTC). `--update` stamps a row
+# when its read found at least what the file holds in every counted column, and either raised the
+# row or found it stamped before its week ended. So a closed week's stamp moves once, on the first
+# read after it closes, and then stays. A week that went quiet before it ended is stamped by that
+# first read too, rather than failing `--check` forever with nothing left to raise it.
+#
+# A read that saw less than the file holds (a pruned transcript) stamps nothing. That is why the
+# oldest rows carry an empty cell: no read since the column began has seen their whole week. It is
+# not a merged column: the snapshot cache writes it empty, and a merge keeps the latest stamp.
+#
+# `--check` asks only about the newest closed week, and fails if any of its rows was stamped before
+# the week's last instant or never. `script/metrics` reads `effort.csv` by header name and does not
+# read this column.
+#
 # # Every vendor, not only Claude Code (milestone 725 (machine effort and commit attribution count
 # every vendor))
 #
@@ -179,7 +200,7 @@
 #     script/effort --csv            # the same merged rows as CSV on stdout
 #     script/effort --snapshot       # write the machine-local cache; touches no file in the tree
 #     script/effort --update         # merge cache and records into notes/project-metrics/effort.csv
-#     script/effort --check          # non-zero if a completed week has no committed row
+#     script/effort --check          # non-zero if the newest closed week was not read after it closed
 #     script/effort --attribute      # merge opencode-proven commits into commit-models.csv
 #     script/effort --selftest       # fixtures for the opencode reader and the commit matcher
 #
@@ -224,7 +245,14 @@
 #   The mean per turn is the column to read for the trend.
 # - **The current week is always partial.** It is captured up to the moment of the run, so its row
 #   rises all week and any ratio built on it is understated until the week closes. Nothing marks it,
-#   because the row's week being the current one is the mark.
+#   because the row's week being the current one is the mark. Once the week closes, a
+#   `captured_at` before its end is the mark.
+# - **`--check` looks at one week.** Any `--update` after a week closes stamps it, so an older
+#   week stays partial only when its transcripts were pruned before anybody re-read it. Once a newer
+#   week closes, `--check` no longer reports that one; its empty or early `captured_at` still says
+#   so to anyone who reads the file.
+# - **A week in which no lane ran has no row, and `--check` reports it as uncaptured.** The records
+#   cannot tell "nothing happened" from "nothing was read", so this errs toward saying so.
 # - **It reads the harness's records, whose shape is not a contract.** The field names here
 #   (`requestId`, `message.usage.cache_creation.ephemeral_1h_input_tokens`) are an observation of one
 #   version of one tool, not a documented interface. A rename upstream makes this quietly count zero
@@ -274,17 +302,18 @@ import re
 import sqlite3
 import subprocess
 import sys
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 CSV_PATH = pathlib.Path('notes/project-metrics/effort.csv')
 
-FIELDS = ['week', 'model', 'requests', 'input_tokens', 'cache_write_5m_tokens',
-          'cache_write_1h_tokens', 'cache_read_tokens', 'output_tokens', 'machine_hours',
-          'peak_context_tokens']
-
 # The columns a merge compares, which is every measured one. `machine_hours` is a float and the rest
 # are counts; both are monotone for the same reason, so both are guarded the same way.
-COUNTED = FIELDS[2:]
+COUNTED = ['requests', 'input_tokens', 'cache_write_5m_tokens', 'cache_write_1h_tokens',
+           'cache_read_tokens', 'output_tokens', 'machine_hours', 'peak_context_tokens']
+
+# `captured_at` is not a measurement and is not merged as one: `--update` sets it, and only there.
+# The header's "`captured_at`" section says when.
+FIELDS = ['week', 'model'] + COUNTED + ['captured_at']
 
 # The columns that are a maximum over requests rather than a sum over them. Everything else here is
 # a flow and adds; a peak does not, and adding two peaks would invent a request that never happened.
@@ -375,7 +404,7 @@ def week_of(stamp):
 
 
 def _blank(week, model):
-    row = {'week': week, 'model': model, 'machine_hours': 0.0}
+    row = {'week': week, 'model': model, 'machine_hours': 0.0, 'captured_at': ''}
     for field in COUNTED:
         row.setdefault(field, 0)
     return row
@@ -546,6 +575,7 @@ def read_csv_rows(path):
             for field in COUNTED:
                 value = raw.get(field) or '0'
                 row[field] = float(value) if field == 'machine_hours' else int(value)
+            row['captured_at'] = raw.get('captured_at') or ''
             rows[(row['week'], row['model'])] = row
     return rows
 
@@ -581,6 +611,7 @@ def merge(*sources):
             held = out.setdefault(key, _blank(*key))
             for field in COUNTED:
                 held[field] = max(held[field], row[field])
+            held['captured_at'] = max(held['captured_at'], row.get('captured_at', ''))
     return out
 
 
@@ -592,6 +623,7 @@ def write_csv(rows, path):
         for field in COUNTED:
             value = row[field]
             cells.append('%.1f' % value if field == 'machine_hours' else str(int(value)))
+        cells.append(row.get('captured_at', ''))
         lines.append(','.join(cells))
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text('\n'.join(lines) + '\n')
@@ -609,10 +641,66 @@ def by_week(rows):
     return out
 
 
-def current_week():
-    now = datetime.now(timezone.utc)
+def current_week(now=None):
+    now = now or datetime.now(timezone.utc)
     year, week, _day = now.isocalendar()
     return '%04dW%02d' % (year, week)
+
+
+def utc_stamp(when):
+    """The one spelling `captured_at` uses. Fixed width, so comparing two as strings orders them."""
+    return when.astimezone(timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ')
+
+
+def week_end(week):
+    """The instant an ISO week closes: 00:00 UTC on the Monday after it, as a `utc_stamp`."""
+    year, number = int(week[:4]), int(week[5:])
+    start = datetime.fromisocalendar(year, number, 1).replace(tzinfo=timezone.utc)
+    return utc_stamp(start + timedelta(days=7))
+
+
+def stamp_captures(committed, fresh, final, now, restate=False):
+    """Set `captured_at` on the rows of `final` that this `--update` has read in full.
+
+    A row is stamped when the read found at least what the file holds in every column, and either
+    raised it or holds a stamp from before its week closed. The first condition keeps a pruned
+    week's old stamp, because a read that saw less of a week did not capture it. The second is why
+    a closed week's stamp stops moving, and why a week that went quiet before it ended is not
+    stuck failing `--check` with nothing left to raise it.
+    """
+    stamp = utc_stamp(now)
+    for key, row in final.items():
+        seen = fresh.get(key)
+        held = committed.get(key)
+        if seen is None:
+            continue
+        if held is None or restate:
+            row['captured_at'] = stamp
+            continue
+        if any(seen[field] < held[field] for field in COUNTED):
+            continue
+        raised = any(seen[field] > held[field] for field in COUNTED)
+        if raised or held['captured_at'] < week_end(key[0]):
+            row['captured_at'] = stamp
+
+
+def check_capture(committed, now):
+    """(exit status, message) for `--check`: was the newest closed week read after it closed?"""
+    if not committed:
+        return 1, 'effort: %s has no rows; nothing has ever been captured' % CSV_PATH
+    closed = current_week(now - timedelta(days=7))
+    rows = [row for (week, _model), row in committed.items() if week == closed]
+    if not rows:
+        return 1, ('effort: %s, the newest closed week, has no row; run script/effort --update on '
+                   'the machine that ran the lanes' % closed)
+    end = week_end(closed)
+    early = sorted(row['captured_at'] for row in rows if row['captured_at'] < end)
+    if early:
+        return 1, ('effort: %s was last captured at %s, before it closed at %s, so its row is '
+                   'partial; run script/effort --update on the machine that ran the lanes'
+                   % (closed, early[0] or 'no recorded time', end))
+    return 0, ('effort: %s holds %s whole, captured at %s'
+               % (CSV_PATH, closed, min(row['captured_at'] for row in rows)))
 
 
 def print_table(rows, streams, dirs):
@@ -916,6 +1004,26 @@ def selftest():
         [(None, 'quiet one', 'glm-5.3', day / 1000.0),
          (None, 'quiet one', 'glm-5.3-flash', day / 1000.0)], commits)
 
+    # The 2026W42 case that made `captured_at`: one row, last read on the Tuesday, checked the
+    # Monday after. `week_end('2026W42')` is that Monday's midnight.
+    monday = datetime(2026, 10, 19, 14, 0, tzinfo=timezone.utc)
+
+    def effort_row(stamp, requests=18562):
+        row = _blank('2026W42', 'claude-opus-5-5')
+        row.update(requests=requests, captured_at=stamp)
+        return row
+
+    key = ('2026W42', 'claude-opus-5-5')
+    partial_check = check_capture({key: effort_row('2026-10-13T18:28:16Z')}, monday)
+    whole_check = check_capture({key: effort_row('2026-10-19T02:05:00Z')}, monday)
+    quiet = {key: effort_row('2026-10-13T18:28:16Z')}
+    stamp_captures({key: effort_row('2026-10-13T18:28:16Z')}, {key: effort_row('')}, quiet, monday)
+    quiet = quiet[key]
+    pruned = {key: effort_row('2026-10-13T18:28:16Z')}
+    stamp_captures({key: effort_row('2026-10-13T18:28:16Z')}, {key: effort_row('', requests=9)},
+                   pruned, monday)
+    pruned = pruned[key]
+
     cases = [
         ('only this project\'s sessions are read', sessions, 2),
         ('requests skip an error with nothing spent and a user row', glm['requests'], 3),
@@ -957,6 +1065,12 @@ def selftest():
         ('a commit older than the call that claims it is refused', 'f' * 40 in found, False),
         ('two models naming one subject is not guessed at', 'c' * 40 in disagree, False),
         ('evidence for no commit adds nothing', len(found), 2),
+        ('a closed week read before it ended fails the check', partial_check[0], 1),
+        ('a closed week read after it ended passes', whole_check[0], 0),
+        ('a quiet tail is restamped when read again after the week ends',
+         quiet['captured_at'], utc_stamp(monday)),
+        ('a read that saw less of a week keeps its old stamp',
+         pruned['captured_at'], '2026-10-13T18:28:16Z'),
     ]
     failed = [(name, got, want) for name, got, want in cases if got != want]
     for name, got, want in failed:
@@ -982,27 +1096,13 @@ def main(argv):
         return attribute_main()
 
     if mode == '--check':
-        # The question is not "is the file current" but "has a week that is over been recorded at
-        # all". A week still running is not late, and the current week's row moves every day, so
-        # gating on its exact value would fire constantly and be muted, which is the failure
+        # The question is not "is the file current" but "was the week that just ended read after
+        # it ended". A week still running is not late, and the current week's row moves every day,
+        # so gating on its exact value would fire constantly and be muted, which is the failure
         # `script/cadence-check`'s own header spends four paragraphs on.
-        committed = read_csv_rows(CSV_PATH)
-        have = {week for week, _model in committed}
-        if not have:
-            print('effort: %s has no rows; nothing has ever been captured' % CSV_PATH,
-                  file=sys.stderr)
-            return 1
-        newest = max(have)
-        now = current_week()
-        if newest < now:
-            # One completed week uncaptured is the normal state between Monday and whenever somebody
-            # runs `--update`; it is still worth saying, because nothing else says it.
-            print('effort: last captured week is %s and the current week is %s; '
-                  'run script/effort --update on the machine that ran the lanes' % (newest, now),
-                  file=sys.stderr)
-            return 1
-        print('effort: %s holds the current week (%s)' % (CSV_PATH, now))
-        return 0
+        status, message = check_capture(read_csv_rows(CSV_PATH), datetime.now(timezone.utc))
+        print(message, file=sys.stderr if status else sys.stdout)
+        return status
 
     rows, streams, dirs = read_records()
     if mode == '--snapshot':
@@ -1028,7 +1128,7 @@ def main(argv):
             row = merged[key]
             lines.append(','.join([row['week'], row['model']]
                                   + ['%.1f' % row[f] if f == 'machine_hours' else str(int(row[f]))
-                                     for f in COUNTED]))
+                                     for f in COUNTED] + [row['captured_at']]))
         print('\n'.join(lines))
         return 0
 
@@ -1052,6 +1152,7 @@ def main(argv):
               % len(lowered), file=sys.stderr)
 
     final = merge(committed, merged) if not restate else merge(merged)
+    stamp_captures(committed, merged, final, datetime.now(timezone.utc), restate)
     write_csv(final, CSV_PATH)
     weeks = sorted({week for week, _model in final})
     print('effort: %d row(s) over %d week(s) in %s (%s-%s); read %d stream(s)'

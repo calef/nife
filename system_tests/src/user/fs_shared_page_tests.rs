@@ -42,7 +42,7 @@ const ROLE_SHARE_ATTACKER: u64 = 14;
 /// A helper returns `None` rather than calling `skip!`, because `skip!` returns from the function
 /// it is written in and only the `#[test_case]` can honestly skip.
 fn witness(shared: bool) -> Option<u64> {
-    let (_readiness, report) = fs_service::start_shared_frame_witness(
+    let (_readiness, report, held) = fs_service::start_shared_frame_witness(
         fs_service::blk_server_image(),
         program("redoxfs_server").expect("no redoxfs_server program in the initial ramdisk"),
         program("fs_test_client").expect("no fs_test_client program in the initial ramdisk"),
@@ -51,6 +51,7 @@ fn witness(shared: bool) -> Option<u64> {
         shared,
     )?;
     let [verdict, w1, ..] = sched::ipc_receive(report);
+    held.release_or_fail("the shared-frame witness's two clients");
     assert_ne!(
         verdict,
         fixture::SHARED_UNEXPECTED,

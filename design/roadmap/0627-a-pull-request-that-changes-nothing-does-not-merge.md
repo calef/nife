@@ -1,12 +1,8 @@
 ---
-status: PARTIAL
+status: BUILT
 raised: 2026-10-02
+built: 2026-10-19
 promoted_from: a-pull-request-that-changes-nothing-does-not-merge
-milestone_dependencies: none
-decision_dependencies: none
-machine_requirements: none
-specific_machine: none
-needs_person: no
 ---
 # 627. A pull request that changes nothing does not merge
 
@@ -115,9 +111,13 @@ How it is falsified. Two observations, both left beside the check, per
    `blocked-by-selftest.sh`. Cases that must fail: the #1460 shape (one empty `claim:` commit),
    claim plus a merge from `main`, claim plus a commit and its revert. One case must pass: claim
    plus one real file change. An unresolvable revision must exit 2.
-2. A live run: a throwaway draft pull request of one empty commit, based on this branch so the
-   workflow file is in its merge. Its run id is recorded on #1482. The `merge_group` half, in
-   particular the first-parent claim for a batch of two, is asserted here and not yet observed.
+2. Live runs, cited in `.github/workflows/empty-diff.yml`'s `Observed failing:` record. Run
+   39310089020 went red on #2420, a throwaway draft of one empty commit with no `claim:` subject,
+   and printed the generic message. Run 37228506894 went red on #1623's claim commit with the
+   claim hint. The first-parent claim for a batch is observed: run 39285597747, #2391's entry built
+   in the same second as #2394's, took BASE from #2394's queue commit `85c51eb0e`, not from `main`.
+   The `merge_group` red half is not observed, and the workflow header says why it cannot be staged
+   without merging something.
 
 ## The exception surface
 
@@ -137,7 +137,9 @@ both options cost the same? Yes; D alone is cheaper and is not a substitute.
 
 ## What is blocked
 
-Nothing. The ruleset change is calef's. The workflow can land first as a reporting check.
+Nothing. `empty diff (a merge must change at least one file)` is a required context in the `main`
+ruleset, read from the ruleset's history on 2026-10-19: version 51771000, 2026-10-03 05:23 UTC,
+is the first that lists it.
 
 ## Prior art in the tree
 
@@ -147,11 +149,13 @@ Nothing. The ruleset change is calef's. The workflow can land first as a reporti
 
 ## Follow-on
 
-- **Outstanding.** Adding the check's job name to the `main` ruleset's required checks, which only
-  calef can do; checked 2026-10-02 by reading the ruleset's required contexts through the API, where
-  it is absent. Until then the check reports and does not gate.
-- **Outstanding.** The live falsification: a throwaway draft pull request whose red run is linked
-  in `.github/workflows/empty-diff.yml`'s header. Not yet linked there.
+- **Done.** The required context, added to the `main` ruleset by calef (ruleset version 51771000,
+  2026-10-03 05:23 UTC).
+- **Done.** The live falsification, #2420, whose red run 39310089020 is cited in
+  `.github/workflows/empty-diff.yml`'s header.
+- **Recorded.** The `merge_group` red half is unobserved, because an empty pull request fails on
+  `pull_request` first and never reaches the queue. `.github/workflows/empty-diff.yml`'s header
+  says what would stage it.
 - **Milestone 703.** Milestone 703 (a claim with its work on another branch is reported). `design/roadmap/0703-a-claim-with-work-on-another-branch-is-reported.md` is the
   `lane-claim-check.sh` companion (option D above). It is written here so it has a home.
 

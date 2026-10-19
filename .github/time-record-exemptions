@@ -1,0 +1,25 @@
+# A ci.yml job that checks out the tree uploads its time record as a `time-record-<job>` artifact,
+# or has a line here saying why it does not (milestone 808 (every gate accounts for its time), §254
+# (a gate prints what each item cost)). `helpers/time_record.py lint`, run by script/lint, holds it:
+#
+#     <job> <reason, in words>
+#
+# A line with no reason is refused, and so is one for a job that uploads a record or is not in
+# ci.yml. A job here still has its per-step times in notes/project-metrics/ci-job-times.csv, read
+# from the jobs API, so "one command" below means that record is already the whole breakdown.
+gate one shell step that classifies the diff; seconds
+main-caches builds caches for other jobs and runs no gate; its per-step record covers it
+rg-threads one command per matrix leg, a single threaded rg run; nothing inside it is an item
+boot-check two boots, each its own step, so the per-step record is the breakdown
+watchdog one boot that must hang and be killed; its time is the bound by construction
+fmt one rustfmt command
+lint script/lint is a few hundred checks and none is timed yet; a per-check record is follow-on work in milestone 808's block
+fastpath-footprint one build and one count
+boot-file-size-check one build and one size check
+interleavings one command, script/interleaving-check
+build-is-reproducible two builds and a compare
+image-permissions one build and one check
+stack-frame-check two commands, each its own step
+bench script/ci-build bench and icount are their own steps, and the benchmarks report counts, not wall time
+supply-chain one cargo-deny command
+coverage one instrumented host pass; the host pass's own time is in test-shard's record

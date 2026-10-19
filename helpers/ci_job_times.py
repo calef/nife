@@ -37,8 +37,16 @@ had to change to provide them. One row per day, workflow, job and step, appended
 
 `job` is the workflow's job key, the name `.github/ci-job-budgets` uses. `variant` is what a matrix
 filled into the display name (`rv64 sifive-u54 rva22s64`), empty otherwise. `kind` is `job` (the
-whole job; `name` is empty) or `step` (`name` is the step's). Milestone 807 (the kernel suite reports
-what each test cost)'s per-test record is an artifact per run; folding it in here is a later kind.
+whole job; `name` is empty) or `step` (`name` is the step's).
+
+The per-item rows come from each green run's `time-record-<job>` artifacts (milestone 807 (the
+kernel suite reports what each test cost) wrote the format; `helpers/time_record.py` maps an
+artifact to its job). Their `kind` is the record's own (`phase`, `test`, `line`, `target`,
+`falsification`), `variant` is `<leg> / <image>`, `name` is the phase or item, and the seconds
+carry one decimal. Every `phase` row is kept. An item is kept only when its day's median is at
+least `ITEM_FLOOR_MS`: one run records about 5,300 kernel tests, and a row for each a day would
+add about 650 kB a day to this file, where the 1 s floor keeps about 380. A drift spread over
+many fast tests, the shape PR #1775 found, still shows in the `suite` phase of its image.
 `script/metrics` read the `job` rows into `ci-jobs.svg` until 2026-10-11 (UTC); the record stays as
 the per-step history a budget issue's reader digs into.
 
@@ -106,12 +114,16 @@ import statistics
 import subprocess
 import sys
 import time
+import zipfile
 
 REPO = "nifeos/nife"
 CSV = "notes/project-metrics/ci-job-times.csv"
 COLUMNS = ["date", "workflow", "job", "variant", "kind", "name", "runs", "median_seconds", "max_seconds"]
 WEEK_NOTES = "notes/project-metrics/week-notes.csv"
 CHART = "ci-jobs.svg"
+# The smallest daily median an item row is kept at (see the docstring's per-item rows).
+ITEM_FLOOR_MS = 1000
+KIND_ORDER = {"job": 0, "step": 1}
 # The issue's label. helpers/needs-maintainer.jq's `nm_budget_label` and helpers/merge-drain.sh's
 # `NM_BUDGET_LABEL` hold the same string; helpers/needs-maintainer-selftest.sh checks all three.
 # The check sits there and not in this file's selftest (milestone 889 (the tree's gates stop
@@ -148,6 +160,8 @@ def _load_budget_module():
 
 
 jb = _load_budget_module()
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import time_record  # noqa: E402  the record's parser and the artifact rule, from one place
 WARN_FRACTION = jb.WARN_FRACTION
 
 
@@ -266,10 +280,68 @@ def day_rows(date, workflow, per_run):
     return rows
 
 
-def _row(date, workflow, key, variant, kind, name, values):
+def _row(date, workflow, key, variant, kind, name, values, fmt="%.0f"):
     return {"date": date, "workflow": workflow, "job": key, "variant": variant, "kind": kind,
-            "name": name, "runs": len(values), "median_seconds": "%.0f" % statistics.median(values),
-            "max_seconds": "%.0f" % max(values)}
+            "name": name, "runs": len(values), "median_seconds": fmt % statistics.median(values),
+            "max_seconds": fmt % max(values)}
+
+
+def record_job(artifact, uploaders):
+    """The job key an artifact named `time-record-<job>[-<matrix value>]` came from, or None. The
+    longest uploading job wins, so `swish-check-x86_64` is not read as `swish-check`. Only jobs
+    that upload today count, so an artifact from before a rename maps to nothing rather than to
+    the wrong job."""
+    if not artifact.startswith(time_record.ARTIFACT):
+        return None
+    rest = artifact[len(time_record.ARTIFACT):]
+    fits = [j for j in uploaders if rest == j or rest.startswith(j + "-")]
+    return max(fits, key=len) if fits else None
+
+
+def uploaders_of(workflow_text):
+    """The jobs of a workflow that upload their time record (helpers/time_record.py's rule)."""
+    return {job for job, body in jb.jobs_of(workflow_text).items()
+            if time_record.uploads_record(job, jb.steps_of(body) or [])}
+
+
+def record_day_rows(date, workflow, per_run, uploaders):
+    """The per-item rows for one day. `per_run` holds, for each green run, a list of
+    `(artifact name, record rows)`."""
+    values = {}
+    for artifacts in per_run:
+        for artifact, rows in artifacts:
+            key = record_job(artifact, uploaders)
+            if key is None:
+                continue
+            for r in rows:
+                k = (key, "%s / %s" % (r["leg"], r["image"]), r["kind"], r["name"])
+                values.setdefault(k, []).append(r["milliseconds"] / 1000.0)
+    out = []
+    for (key, variant, kind, name), v in sorted(values.items()):
+        if kind != "phase" and statistics.median(v) * 1000 < ITEM_FLOOR_MS:
+            continue
+        out.append(_row(date, workflow, key, variant, kind, name, v, fmt="%.1f"))
+    return out
+
+
+def records_of(run_id):
+    """`[(artifact name, record rows)]` for one run's unexpired `time-record-*` artifacts."""
+    data = gh_json("repos/%s/actions/runs/%d/artifacts?per_page=100" % (REPO, run_id))
+    out = []
+    for a in data.get("artifacts", []):
+        if a.get("expired") or not a["name"].startswith(time_record.ARTIFACT):
+            continue
+        done = subprocess.run(["gh", "api", "repos/%s/actions/artifacts/%d/zip" % (REPO, a["id"])],
+                              capture_output=True)
+        if done.returncode:
+            print("ci_job_times: artifact %s of run %d: %s" % (a["name"], run_id, done.stderr.decode().strip()),
+                  file=sys.stderr)
+            continue
+        with zipfile.ZipFile(io.BytesIO(done.stdout)) as z:
+            for member in z.namelist():
+                if member.endswith(".tsv"):
+                    out.append((a["name"], time_record.parse(z.read(member).decode())))
+    return out
 
 
 def to_csv(rows):
@@ -290,7 +362,7 @@ def merge_days(existing, fresh):
     days = {(r["date"], r["workflow"]) for r in fresh}
     kept = [r for r in existing if (r["date"], r["workflow"]) not in days]
     return sorted(kept + list(fresh), key=lambda r: (r["date"], r["workflow"], r["job"], r["variant"],
-                                                     r["kind"] != "job", r["name"]))
+                                                     KIND_ORDER.get(r["kind"], 2), r["kind"], r["name"]))
 
 
 # ---------------------------------------------------------------------------------------------
@@ -580,6 +652,11 @@ def update(argv):
             with concurrent.futures.ThreadPoolExecutor(max_workers=8) as pool:
                 runs[name] = list(zip(listed, pool.map(lambda r: jobs_of(r["id"]), listed)))
             fresh = day_rows(day.isoformat(), name, [run_durations(j, patterns[name]) for _r, j in runs[name]])
+            if BUILDS_CSV:
+                green = [r["id"] for r, _j in runs[name] if r.get("conclusion") == "success"]
+                with concurrent.futures.ThreadPoolExecutor(max_workers=8) as pool:
+                    records = list(pool.map(records_of, green))
+                fresh += record_day_rows(day.isoformat(), name, records, uploaders_of(open(workflow).read()))
             existing = from_csv(open(CSV).read()) if os.path.exists(CSV) else []
             # Written a day at a time, so a failure part way keeps every day before it.
             with open(CSV, "w") as f:
@@ -721,6 +798,31 @@ def selftest():
     merged = merge_days(from_csv(to_csv(rows)), [dict(rows[0], date="2026-10-08")])
     expect("a new day is added, an old one kept", sorted({r["date"] for r in merged}),
            ["2026-10-07", "2026-10-08"])
+
+    # Per-item rows (exit criterion 1's per-test times), from two runs' records.
+    up = {"test-shard", "swish-check", "swish-check-x86_64"}
+    expect("an artifact maps to its job", record_job("time-record-test-shard-test-x86_64", up), "test-shard")
+    expect("the longest job wins", record_job("time-record-swish-check-x86_64", up), "swish-check-x86_64")
+    expect("a name from before the rename maps to nothing", record_job("time-record-test-x86_64", up), None)
+    rec = lambda suite, slow, fast: [
+        {"leg": "riscv64", "image": "system_tests", "kind": "phase", "name": "suite", "milliseconds": suite},
+        {"leg": "riscv64", "image": "system_tests", "kind": "test", "name": "a::slow", "milliseconds": slow},
+        {"leg": "riscv64", "image": "system_tests", "kind": "test", "name": "a::fast", "milliseconds": fast}]
+    per_run = [[("time-record-test-shard-test-aarch64-riscv64", rec(120000, 9000, 40))],
+               [("time-record-test-shard-test-aarch64-riscv64", rec(124000, 10000, 60)),
+                ("time-record-test-x86_64", rec(1, 99999, 1))]]
+    items = record_day_rows("2026-10-19", "ci.yml", per_run, up)
+    expect("a phase and a slow test are kept, a fast test and an old artifact are not",
+           [(r["job"], r["variant"], r["kind"], r["name"], r["runs"], r["median_seconds"]) for r in items],
+           [("test-shard", "riscv64 / system_tests", "phase", "suite", 2, "122.0"),
+            ("test-shard", "riscv64 / system_tests", "test", "a::slow", 2, "9.5")])
+    expect("item rows sort after the job's steps",
+           [r["kind"] for r in merge_days([], items + [dict(items[0], kind="step", name="Set up job"),
+                                                       dict(items[0], kind="job", name="")])],
+           ["job", "step", "phase", "test"])
+    wf = ("jobs:\n  quick:\n    steps:\n      - uses: actions/checkout@v5\n"
+          "      - uses: actions/upload-artifact@v7\n        with:\n          name: time-record-quick\n")
+    expect("uploaders are read from the workflow", uploaders_of(wf), {"quick"})
 
     # The three transitions (exit criterion 5), driven by the recorded run with its test job's
     # duration rewritten. The budget is 20 minutes, the line 17.
