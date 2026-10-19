@@ -16,5 +16,5 @@ The files here are what it was computed from, and the proposal it leads to.
 
 Name: provisional, for the directory and every stem in it, minted 2026-10-19 (UTC) by lane
 maintainer/dependency-standards-census. The directory follows the `notes/<stem>/` appendix
-convention of §212 (a prose budget for every document), so its name is the parent's stem. calef
+convention of §212 (a prose budget), so its name is the parent's stem. calef
 names directories and files, and `script/names --unratified` lists each stem.
