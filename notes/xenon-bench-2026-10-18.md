@@ -22,8 +22,8 @@ Where this card and a procedure page disagree, the machine decides and the page 
 
 ## Status
 
-Not ready to run: step 4's nife row waits on #2371 (below). Every image below was built from main
-at `805620590` and booted under OVMF, and all of them are rebuilt once #2371 merges.
+Not ready to run: step 4's nife row needs #2371 (below) in the image. Every image below was built
+from main at `805620590` and booted under OVMF, and all of them are rebuilt once #2371 merges.
 
 | image | build | under OVMF | SHA-256 |
 |---|---|---|---|
@@ -43,16 +43,14 @@ packages for x86_64, from basalt.nifeos.org over TLS`, then `fetched ioping-1.3-
 release-assets.githubusercontent.com via github.com over TLS` and `fetched and installed;
 generation 1 is live`. The table's `805620590` images predate that and are rebuilt with the rest.
 
-- Step 4's nife row does not yet measure the device. In the same rehearsal, `ioping -c 20 -i 0 -s
-  4k ioping/1.3/ioping` runs but prints `non-cached I/O not supported by this platform`. It sees
-  the file as `0 B`, so every request reads offset 0, and steady reads take 41 to 42 us. That is a
-  cached read of one 4 KiB block, not the NVMe, so it cannot explain or correct the 2.16x.
-  Milestone 834 (ioping on nife and Linux) already says what follows: "If the file path goes
-  through a cache, the run uses the block window instead, and the row says so", and Linux makes
-  the same choice. So the nife row waits on engineering, not a ruling: why nife reports the file
-  as 0 B, why ioping cannot do non-cached I/O there, and a direct-I/O target in the block window.
-  calef ruled on 2026-10-18 (UTC) that the shell gets a read-only, uncached view of the NVMe at
-  the prompt, built in #2371. The step 4 commands below change when it lands.
+- Step 4's nife row reads the NVMe through the disk tree, which #2371 builds. On main, ioping's
+  only target is its own installed file, which it sees as `0 B` and reads from cache at 41 to
+  42 us, so that row could not explain or correct the 2.16x. Milestone 834 (ioping on nife and
+  Linux) says what follows: "If the file path goes through a cache, the run uses the block window
+  instead, and the row says so." calef ruled on 2026-10-18 (UTC) that the shell gets a read-only,
+  uncached view of the NVMe at the prompt. That is engineering, not an open ruling.
+- `-D` on nife also needs basalt's ioping rebuilt with `-DHAVE_DIRECT_IO` at a nife pin that
+  includes #2371. If that has not landed by the evening, step 4 drops `-D` on nife (below).
 
 ## What calef needs at the bench
 
@@ -162,18 +160,18 @@ read: unmodified, on nife and on Linux on xenon, with real logs and repeated pas
 
 ### nife, three boots
 
-ioping holds only its own installed file, read-only, so that file is the target. In `screen`, after
-each boot from the disk:
+The target is `n1` in the disk tree: the whole NVMe namespace as one read-only file, served with no
+cache, so every request is a device read. In `screen`, after each boot from the disk:
 
 ```text
-cd packages
-wc ioping/1.3/ioping
-ioping -c 1000 -i 0 -s 4k ioping/1.3/ioping
+cd /disk/nvme0
+ioping -D -c 1000 -i 0 -s 4k -S 64m -o 1m n1
 ```
 
-Type the `ioping` line five times. The `wc` line's third number is the file's size in bytes, `F`
-(208440 in the rehearsal), which the Linux run uses. Power off fully between boots. ioping's first
-line, `non-cached I/O not supported by this platform`, is expected and goes in the log.
+Type the `ioping` line five times. Power off fully between boots. If basalt's ioping was not
+rebuilt for direct I/O, the line runs without `-D`: ioping prints `non-cached I/O not supported`
+and still measures the device, since the disk tree has no cache. The log and the Results row say
+which line ran. `/disk`, `nvme0` and `n1` are provisional names.
 
 ### Linux, three boots
 
@@ -185,24 +183,23 @@ sudo dnf install -y ioping nvme-cli || sudo rpm -i /run/media/liveuser/NIFE/iopi
 sudo stty -F /dev/ttyS0 115200 cs8 -cstopb -parenb -crtscts onlcr
 ```
 
-With `screen` capturing on patagonia, one command per boot, `B` the boot and `F` from nife's `wc`:
+With `screen` capturing on patagonia, one command per boot, `B` the boot:
 
 ```sh
-B=1 F=<bytes>; {
+B=1; {
   date -u +%FT%TZ; uname -r; ioping -v
   cat /sys/block/nvme0n1/queue/scheduler /sys/module/nvme/parameters/poll_queues
   sudo nvme smart-log /dev/nvme0n1 | grep -i temp
-  for p in 1 2 3 4 5; do echo "=== boot $B pass $p as-nife"; sudo ioping -c 1000 -i 0 -s 4k -S $F -o 1m /dev/nvme0n1; done
-  for p in 1 2 3 4 5; do echo "=== boot $B pass $p direct"; sudo ioping -D -c 1000 -i 0 -s 4k -S $F -o 1m /dev/nvme0n1; done
-  for p in 1 2 3 4 5; do echo "=== boot $B pass $p risk6-window"; sudo ioping -c 1000 -i 0 -s 4k -S 64m -o 1m /dev/nvme0n1; done
+  for p in 1 2 3 4 5; do echo "=== boot $B pass $p direct"; sudo ioping -D -c 1000 -i 0 -s 4k -S 64m -o 1m /dev/nvme0n1; done
+  for p in 1 2 3 4 5; do echo "=== boot $B pass $p page-cache"; sudo ioping -c 1000 -i 0 -s 4k -S 64m -o 1m /dev/nvme0n1; done
 } 2>&1 | sudo tee /dev/ttyS0
 ```
 
 `-c 1000 -i 0 -s 4k` is the same on both systems: 1000 requests of 4 KiB, no pause, one at a time,
-each line a latency. The `as-nife` set reads a working set of nife's size. Without `-D`, ioping
-drops the page cache before each read, the mode nife can match. The `direct` set adds `O_DIRECT` as
-Linux's reference. The `risk6-window` set reads the 64 MiB at 1 MiB that risk 6's figure and the
-Oct 4 `fio` run used.
+each line a latency. `-S 64m -o 1m` is the 64 MiB window at 1 MiB that risk 6's figure and the
+Oct 4 `fio` run used. The `direct` set is nife's line run on Linux, with `O_DIRECT`. The
+`page-cache` set leaves out `-D`, so ioping drops the page cache before each read; it is the twin
+of nife's line when nife runs without `-D`.
 
 ## Step 5: the soak, boot 1 of three
 
@@ -233,9 +230,12 @@ and nothing else (`notes/bench-runbook.md`'s BUGS):
 
 ## BUGS
 
-- The nife and Linux ioping rows are not apples-to-apples. nife reads a file through RedoxFS and the
-  file server, and Linux reads the raw device. What direct I/O means on nife is milestone 834
-  (ioping on nife and Linux)'s open question.
+- The nife and Linux ioping rows read the same device window with the same flags, but not through
+  the same path. nife's request crosses the disk tree's server to the NVMe driver, and Linux's goes
+  through its block layer. That difference is what risk 6 measures, so the row states it rather
+  than hiding it.
+- The nife line is rehearsed only on aarch64 QEMU (0.6 to 1.6 ms per 4 KiB). It is rehearsed on
+  x86_64 under OVMF with the rebuild after #2371 merges.
 - Step 2 builds the evening's installer from a branch that has not merged, because the flag may
   flip only after silicon proves it. The branch's pull request follows the evening.
 - The soak image is a debug build, as radon's were.
