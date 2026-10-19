@@ -363,6 +363,15 @@ impl ConfigPage {
 mod tests {
     use super::*;
 
+    /// `buffer` read as a mapped [`ConfigPage`] for the length of `f`, and the one place these tests
+    /// argue `ConfigPage::new`'s contract. The page is lent to `f` by reference; a test that copied it
+    /// out would break the argument, and none does.
+    fn with_page<R>(buffer: &[u8; PAGE_BYTES], f: impl FnOnce(&ConfigPage) -> R) -> R {
+        // SAFETY: `buffer` is live, sized and aligned for the page by its type, and borrowed for
+        // the whole call, so it outlives every use of the page inside `f`.
+        f(&unsafe { ConfigPage::new(buffer.as_ptr() as u64) })
+    }
+
     /// Every curated domain member fits under its field's cap. This is what makes
     /// [`write_field`]'s truncation path dead in practice: a domain grown past its cap fails
     /// here rather than silently truncating a real value at assembly time.
@@ -438,11 +447,11 @@ mod tests {
             .term("screen-256color")
             .unwrap()
             .build();
-        // SAFETY: `bytes` is a live, aligned buffer of exactly PAGE_BYTES for this call's scope.
-        let page = unsafe { ConfigPage::new(bytes.as_ptr() as u64) };
-        assert_eq!(page.tz(), Some("Europe/Berlin"));
-        assert_eq!(page.lang(), Some("de_DE.UTF-8"));
-        assert_eq!(page.term(), Some("screen-256color"));
+        with_page(&bytes, |page| {
+            assert_eq!(page.tz(), Some("Europe/Berlin"));
+            assert_eq!(page.lang(), Some("de_DE.UTF-8"));
+            assert_eq!(page.term(), Some("screen-256color"));
+        });
     }
 
     /// A key never declared reads back absent, distinct from an empty string: this is the
@@ -451,11 +460,11 @@ mod tests {
     #[test]
     fn an_undeclared_key_reads_as_absent_not_empty() {
         let bytes = PageBuilder::new().tz("UTC").unwrap().build();
-        // SAFETY: as above.
-        let page = unsafe { ConfigPage::new(bytes.as_ptr() as u64) };
-        assert_eq!(page.tz(), Some("UTC"));
-        assert_eq!(page.lang(), None);
-        assert_eq!(page.term(), None);
+        with_page(&bytes, |page| {
+            assert_eq!(page.tz(), Some("UTC"));
+            assert_eq!(page.lang(), None);
+            assert_eq!(page.term(), None);
+        });
     }
 
     /// A page nobody has ever built into (a zeroed frame, the state a fresh page starts in
@@ -465,11 +474,11 @@ mod tests {
     #[test]
     fn a_zeroed_frame_carries_no_configuration() {
         let zeroed = [0u8; PAGE_BYTES];
-        // SAFETY: as above.
-        let page = unsafe { ConfigPage::new(zeroed.as_ptr() as u64) };
-        assert_eq!(page.tz(), None);
-        assert_eq!(page.lang(), None);
-        assert_eq!(page.term(), None);
+        with_page(&zeroed, |page| {
+            assert_eq!(page.tz(), None);
+            assert_eq!(page.lang(), None);
+            assert_eq!(page.term(), None);
+        });
     }
 
     /// A page with a recognized magic but garbage in a field's length byte must not read out of
@@ -485,9 +494,9 @@ mod tests {
         // Corrupt the length byte to zero after building, simulating an assembler that wrote
         // the magic but never declared TZ.
         bytes[OFF_TZ_LEN] = 0;
-        // SAFETY: as above.
-        let page = unsafe { ConfigPage::new(bytes.as_ptr() as u64) };
-        assert_eq!(page.tz(), None);
+        with_page(&bytes, |page| {
+            assert_eq!(page.tz(), None);
+        });
     }
 
     /// An unrecognized magic refuses every field, even one whose bytes look plausible: the magic
@@ -504,11 +513,11 @@ mod tests {
             .unwrap()
             .build();
         bytes[OFF_MAGIC] ^= 0xff; // flip one byte of the magic
-        // SAFETY: as above.
-        let page = unsafe { ConfigPage::new(bytes.as_ptr() as u64) };
-        assert_eq!(page.tz(), None);
-        assert_eq!(page.lang(), None);
-        assert_eq!(page.term(), None);
+        with_page(&bytes, |page| {
+            assert_eq!(page.tz(), None);
+            assert_eq!(page.lang(), None);
+            assert_eq!(page.term(), None);
+        });
     }
 
     /// The layout constants are self-consistent (no overlap, no gap that would misalign a field
