@@ -539,9 +539,7 @@ pub(super) fn stage_frames(
             let ours = IMAGE_STAGING_VA + i * spawnproto::IMAGE_PAGE;
             ok = match retype_page_frame(st) {
                 Ok(page) => {
-                    // SAFETY: the page is ours, fresh, and mapped read/write at `ours`.
-                    let mapped =
-                        unsafe { invoke(page, abi::page_frame::MAP, ours, 1, own_ut) } == 0;
+                    let mapped = map_page_frame(page, ours, true, own_ut);
                     cap_delete(page);
                     mapped
                 }

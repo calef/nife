@@ -208,10 +208,6 @@ pub(super) fn reclaim(region: u64) {
 /// number: this wants the same clock-bounded wait and a way to notice when it expires.
 const RECLAIM_ATTEMPTS: usize = 64;
 
-/// Carve `pages` off `ut` into a new child untyped we can delegate (milestone 31). The SPLIT grants
-/// full rights on the child, including GRANT, so a memory budget can be handed on. The error code
-/// `supervision_protocol` returns is for the dropped-authority proof, which this crate takes from the
-/// raw `invoke` instead, so it is dropped here.
 /// **Build `net_stack` from the NIC trio and wait for its DHCP lease** (milestone 590
 /// (provisional)). Returns `(stack, lease, name server)`: the full-rights endpoint its clients
 /// `CALL`, which this process keeps, the IPv4 address `net_stack` reported, big-endian in the low
@@ -227,16 +223,7 @@ const RECLAIM_ATTEMPTS: usize = 64;
 /// process's own budget, and one failing means the boot's arithmetic is wrong, which is a defect to
 /// see rather than a feature to go without.
 pub(super) fn build_net_stack(ut: u64, program: &elf::Elf, g: &BootEndowment) -> (u64, u64, u64) {
-    // SAFETY: `invoke` traps to the kernel, which validates the capability and the method.
-    let mapped = unsafe {
-        invoke(
-            g.virtio_net_dma,
-            abi::page_frame::MAP,
-            NET_DMA_PEEK_VA,
-            1,
-            ut,
-        )
-    } == 0;
+    let mapped = map_page_frame(g.virtio_net_dma, NET_DMA_PEEK_VA, true, ut);
     must_ok(mapped);
     // SAFETY: just mapped read/write, one page; the offset is inside it and outside
     // `virtio_net_transport`'s rings and buffers (see `kernel::user::VIRTIO_DMA_PHYS_OFFSET`).
@@ -660,17 +647,7 @@ fn graphical_terminal_session_children(
         // Minted per launch and deleted below once the session holds its narrowed copy; one slot
         // for the length of the build, under arm 0's peak (its discipline, pages and report).
         None => {
-            // SAFETY: the syscall; the kernel checks `GRANT` on `boot_terminal` and that it is
-            // unbadged, and refuses a zero badge.
-            let raw = unsafe {
-                invoke(
-                    boot_terminal,
-                    abi::rendezvous::BADGE,
-                    proto::RAW_ONLY_BADGE,
-                    0,
-                    0,
-                )
-            };
+            let raw = user_mode_runtime::badge(boot_terminal, proto::RAW_ONLY_BADGE);
             let Ok(raw) = u64::try_from(raw) else {
                 drop_caps(&[term, out]);
                 return Err(());

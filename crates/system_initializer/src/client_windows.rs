@@ -21,8 +21,7 @@ use super::*;
 /// one page (`filesystem_contract::fs::TRANSFER_PAGES` says a client maps what it uses).
 pub(super) fn window_page(pool: u64, w: u64) -> Option<u64> {
     let first = w * fs_operation::TRANSFER_PAGES as u64;
-    // SAFETY: the syscall; the kernel validates the capability, the range and the right.
-    let slot = unsafe { invoke(pool, abi::page_frame::SLICE, first, 1, 0) };
+    let slot = slice_page_frame(pool, first, 1);
     (slot >= 0).then_some(slot as u64)
 }
 
@@ -30,16 +29,14 @@ pub(super) fn window_page(pool: u64, w: u64) -> Option<u64> {
 /// endpoint capabilities)). `Err` if the kernel refused: `ep` lacks `GRANT`, is already badged, or
 /// the table is full.
 pub(super) fn badged(ep: u64, badge: u64) -> Result<u64, ()> {
-    // SAFETY: the syscall; the kernel validates the capability, the right and the badge.
-    let slot = unsafe { invoke(ep, abi::rendezvous::BADGE, badge, 0, 0) };
+    let slot = user_mode_runtime::badge(ep, badge);
     if slot >= 0 { Ok(slot as u64) } else { Err(()) }
 }
 
 /// **The file service's endpoint badged with `w`**, which is how the server knows which window
 /// a request's bytes are in (§230 (badged endpoint capabilities)). `None` if the kernel refused.
 fn window_endpoint(ep: u64, w: u64) -> Option<u64> {
-    // SAFETY: as [`window_page`].
-    let slot = unsafe { invoke(ep, abi::rendezvous::BADGE, w, 0, 0) };
+    let slot = user_mode_runtime::badge(ep, w);
     (slot >= 0).then_some(slot as u64)
 }
 
@@ -107,16 +104,7 @@ pub(super) fn mounted_grant((lo, hi, spec): (u64, u64, u64)) -> Option<(u64, u64
 /// window's first page between jobs, so nothing one job staged there reaches the next.
 pub(super) fn mounted_job_channel(tree: Fs, w: u64, own_ut: u64, mapped: &mut bool) -> Option<Fs> {
     if !*mapped {
-        // SAFETY: the syscall; read/write, to zero.
-        *mapped = unsafe {
-            invoke(
-                tree.page,
-                abi::page_frame::MAP,
-                MOUNTED_TREE_POOL_VA,
-                1,
-                own_ut,
-            )
-        } == 0;
+        *mapped = map_page_frame(tree.page, MOUNTED_TREE_POOL_VA, true, own_ut);
     }
     if !*mapped {
         return None;
@@ -359,9 +347,7 @@ impl FsCalls {
     pub(super) fn map(fs: Option<Fs>, own_ut: u64, mapped: &mut bool) -> Option<Self> {
         let fs = fs?;
         if !*mapped {
-            // SAFETY: the syscall; read/write because names and data are written into this page.
-            *mapped =
-                unsafe { invoke(fs.page, abi::page_frame::MAP, ACTIVATION_FS_VA, 1, own_ut) } == 0;
+            *mapped = map_page_frame(fs.page, ACTIVATION_FS_VA, true, own_ut);
         }
         mapped.then_some(Self { ep: fs.ep })
     }
