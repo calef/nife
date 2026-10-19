@@ -11,7 +11,7 @@ needs_person: no
 
 *(Title, slug and every name below provisional.)*
 
-Raised 2026-10-19 (UTC) by `lane/before-merge-hold`, after #2393 (milestone 118) merged ahead of
+Raised 2026-10-19 (UTC) by `lane/before-merge-hold`, after #2393 (milestone 118, CLAUDE.md has a budget) merged ahead of
 the step its own body said had to come first. The design is calef's call: this proposal sets out
 the options and recommends one, and nothing here is built.
 
