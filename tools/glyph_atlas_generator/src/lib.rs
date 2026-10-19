@@ -185,18 +185,9 @@ pub const LINEAR_PATH: &str = "crates/glyph_atlas/src/linear.rs";
 ///
 /// Name: provisional.
 pub fn linear_source() -> String {
-    let mut out = String::from(
-        "//! **sRGB to linear light**, one `u16` per sRGB code, written by \
-         `tools/glyph_atlas_generator`\n\
-         //! (`linear_source`) and checked by its regenerate gate. Do not edit; regenerate.\n\
-         //!\n\
-         //! Name: provisional.\n\n\
-         /// Linear light for each sRGB code, `0` black and `u16::MAX` white.\n\
-         ///\n\
-         /// Name: provisional.\n\
-         #[rustfmt::skip] // the generator's layout, so the regenerate gate compares bytes\n\
-         pub const SRGB_TO_LINEAR: [u16; 256] = [\n",
-    );
+    // The header is a template file, not a string here, because `script/names` and the
+    // module-block ratchet would read its doc-comment and `pub` lines as this file's own.
+    let mut out = String::from(include_str!("linear_header.txt"));
     for row in 0..32 {
         out.push_str("   ");
         for code in row * 8..row * 8 + 8 {
