@@ -174,7 +174,7 @@ lines.
 ## Q7. What makes a dependency maintained enough?
 
 §198 (the glue is ours, the primitives are not) refused `rustls-rustcrypto` on maintenance: an alpha release, 17 months stale, two of three
-versions yanked, and pinned superseded majors. cargo-deny's `unmaintained = "all"` fires only when
+versions yanked, and dependencies pinned to older major versions. cargo-deny's `unmaintained = "all"` fires only when
 RustSec has published an advisory.
 
 - Measured: three repositories are archived (`cfg-if`, `lazy_static`, and `spin` 0.9.9's old home),
