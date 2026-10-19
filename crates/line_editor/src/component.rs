@@ -224,3 +224,15 @@ const _: () = assert!(
 // so a changed operator in the sum is a build error. Mutation survivor triage, milestone 326
 // (turn a mutation score upward), batch 3.
 const _: () = assert!(supervisor::BUDGET_PAGES == 112);
+// A stand-in more than that, and no more, written out for the same reason: a graphical session's
+// pool has few pages to spare, so a spawner that passes a swap endpoint pays for exactly what the
+// bounded quiesce builds.
+const _: () = assert!(supervisor::SWAPPING_BUDGET_PAGES == 160);
+// Both lengths come back from the packed start argument, at sizes past a 16-bit half so a shift or
+// mask of the wrong width shows. A build error under any changed operator but one: `|` becoming `^`
+// is the same function for two lengths under 4 GiB, whose bits never overlap.
+const _: () = {
+    let (editor, own) =
+        supervisor::unpack_image_lengths(supervisor::image_lengths(160_872, 155_600));
+    assert!(editor == 160_872 && own == 155_600);
+};
