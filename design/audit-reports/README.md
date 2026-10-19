@@ -136,6 +136,7 @@ malformed it.
 | 2026-09-29 | security | The syscall surface as a whole, read as a confined process trying to widen: the two object types, the rendezvous method and the wake tag the window added, line by line, beside the older seams | fixed 0, minted 0, accepted 3 | [The syscall surface as a whole](2026-09-29-syscall-surface-whole.md) |
 | 2026-10-03 | security | The window's delta, read as a confined process trying to widen: the eight ABI constants `MemoryRegion::USAGE` added, the capability table's growth to 32, the plain-`SEND` badge, and the thirteen components, each for what it holds against what it uses | fixed 5, minted 4, accepted 6 | [Eight constants and thirteen components](2026-10-03-eight-constants-and-thirteen-components.md) |
 | 2026-10-15 | documentation | The staleness worklist's top six, read for what a reader would act on: a path to type, a count to trust, a tense that names the present, and a named lane that already built the thing a note still argues for | fixed 9, minted 0, accepted 0 | [The worklist's top six](2026-10-15-the-worklists-top-six.md) |
+| 2026-10-19 | security | The supply chain, read from the package inward: the nine external packages the window added and the gate that should see every graph they enter, then the path by which bytes this tree did not build become authority on the target | fixed 3, minted 0, accepted 2 | [The supply chain, read from the package inward](2026-10-19-supply-chain-read-from-the-package-inward.md) |
 
 ## What the tree looked like when each ran
 
@@ -175,6 +176,7 @@ must not err in. So the count spans both, and it stays continuous across the spl
 | 2026-09-29 | security | 276 | 184 | 68 | 181 |
 | 2026-10-03 | security | 288 | 197 | 76 | 181 |
 | 2026-10-15 | documentation | 418 | 222 | 95 | 187 |
+| 2026-10-19 | security | 454 | 234 | 97 | 190 |
 
 The two `-` cells are honest rather than lazy: the roadmap was a single file with no status column
 until milestone 76 (split the roadmap: `design/roadmap/README.md` as index, one file per milestone) split it into `design/roadmap/` on 2026-08-03, and milestones 1 to 11 were
@@ -213,10 +215,11 @@ index that took every file called an audit would report a coverage it does not h
 ## Running one
 
 1. **Pick the lens the last audit lacked.** That is milestone 43's insight and it is the whole
-   reason the `Lens` column exists: read the rows above and ask what they did not look at. The
-   rotation so far is the whole kernel, then the assembly, then the shared pages, then untrusted
-   counterparty input. Candidates not yet taken: supply chain, userspace confinement, the syscall
-   surface itself.
+   reason the `Lens` column exists: read the rows above and ask what they did not look at.
+   Candidates not yet taken: the compiler (the nightly pin, `patches/std-nife` under
+   `-Zbuild-std`, and the workflow that bumps the pin), the graphical drivers' parsers (milestone
+   600 (the graphical terminal stack is built in userspace)), and the device authority radon's
+   peripherals took.
 
    **For a `documentation` sweep the lens question has a starting answer rather than a blank**, and
    it is `script/audits --worklist`: it ranks every document by how many of the files it cites have
