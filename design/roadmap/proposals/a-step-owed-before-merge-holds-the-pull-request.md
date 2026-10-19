@@ -100,13 +100,16 @@ It cannot see a precondition written in prose outside the form, because no check
 intention from an observation in prose (`notes/skills/developer-lane/SKILL.md`). The skill text is
 the floor for that residue, and the skill says so where a reader meets it.
 
-## The skill rule: do the step first where it can go first
+## Recommended, not ruled: do the step first where it can go first
 
-Where the code can be made harmless until the step lands, the step goes before the pull request is
-marked ready, and nothing is owed at merge. Pull request #2393 had that shape: the job line was behind an
-`[ -f ]` guard, so wiring it first was safe. This is a rule in the developer-lane skill, rung four.
-A step that can only follow merge (a pin bump, a ruleset change that names a new check) takes the
-`Before merge:` item.
+calef's ruling covers the hold and says nothing on this, so it is a recommendation and the build
+lane does not write it into a skill without his ruling.
+
+Where the code can be made harmless until the step lands, the step would go before the pull request
+is marked ready, and nothing would be owed at merge. Pull request #2393 had that shape: the job line
+was behind an `[ -f ]` guard, so wiring it first was safe. As a skill rule it would be rung four,
+and it complements the hold rather than replacing it. A step that can only follow merge (a pin
+bump, a ruleset change that names a new check) takes the `Before merge:` item either way.
 
 ## Not taken
 
@@ -127,7 +130,7 @@ A step that can only follow merge (a pin bump, a ruleset change that names a new
 - `architect-hold.yml`'s second step and the `edited` trigger; `architect-ruled-clears-hold.yml`'s
   rerun on a body release; `dequeue_held`; the `owed-step` cause in `helpers/needs-maintainer.jq`
   with fixtures in `helpers/needs-maintainer-selftest.sh`.
-- The developer-lane skill and the maintainer skill: the form, the do-it-first rule, and who ticks.
+- The developer-lane skill and the maintainer skill: the form and who ticks.
 
 ## Falsification
 
