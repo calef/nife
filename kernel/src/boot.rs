@@ -290,7 +290,8 @@ fn x86_64_banner(boot_info_pointer: usize) {
     // high half.
     let pc = kernel_main as *const () as usize;
 
-    // **The screen, before the first word** (milestone 243). A commodity machine has no serial
+    // **The screen, before the first word** (milestone 243 (a machine with no serial port has no
+    // way to say anything)). A commodity machine has no serial
     // port, so everything printed before this is on no device a person can see. It needs nothing
     // brought up first: the screen's address arrives in the boot handoff, the boot page tables
     // `boot.s` installed already cover the low 4 GiB where a framebuffer aperture is, and
@@ -309,7 +310,7 @@ fn x86_64_banner(boot_info_pointer: usize) {
     // Said here rather than where it happens, because the line has to be printed by a console that
     // already exists in order to be on the screen it is describing. A machine with no framebuffer
     // says so and is not otherwise different, which is xenon: it has a serial port, which is why
-    // milestone 87 chose it.
+    // milestone 87 (the `x86_64` bare-metal machine) chose it.
     match screen {
         Some((found, cols, rows)) => println!(
             "  screen      : {}x{} {} at {:#x}, {cols}x{rows} cells (boot cmdline)",
@@ -428,7 +429,7 @@ fn bring_up_machine(boot_info_pointer: usize) {
         arch::iommu::init(smmu_base);
     }
     // `x86_64`'s, for the same reason and at the same point: every VT-d unit the DMAR names, each
-    // translating the devices it owns (milestone 594), or every AMD-Vi unit the IVRS names. Each
+    // translating the devices it owns (milestone 594 (every VT-d unit translates its own devices)), or every AMD-Vi unit the IVRS names. Each
     // takes its unit list from the tables rather than one base, so it reads them from the walk
     // `memory::init` kept, and a machine with neither says so loudly.
     #[cfg(target_arch = "x86_64")]

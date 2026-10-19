@@ -173,7 +173,7 @@ fn x86_64_handoff_report() {
 /// the prompt: `script/swish-check`'s `x86_64` leg (`xtask/src/swish_check/verdict.rs`) and the
 /// install, rollback and confirm boots. Changing what it prints changes what they wait for.
 ///
-/// Name: provisional (milestone 890's lane, 2026-10-19 UTC).
+/// Name: provisional (milestone 890 (riscv64 and `x86_64` join the shared boot path)'s lane, 2026-10-19 UTC).
 #[cfg_attr(
     any(test, feature = "system_tests", feature = "bench"),
     allow(dead_code)

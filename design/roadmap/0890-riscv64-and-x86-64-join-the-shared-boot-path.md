@@ -126,9 +126,9 @@ exactly that reason (riscv64_boot.rs, before this milestone), and the mask is go
   the PVH handoff, the ACPI walk, COM1's interrupt line and the IOMMU windows, the PCIe window and
   topology while the boot map still reaches every bus, then the frame allocator. The walk is kept,
   because the tables are reachable only through the boot map `mmu::init` replaces.
-- The steps after it read the kept walk: `smp::read_cpu_list` seats the cores from the MADT,
+- The steps after it read the kept walk. `smp::read_cpu_list` seats the cores from the MADT.
   `arch::irq::init_contexts` brings up the boot CPU's local APIC in the window riscv64 fills with
-  its PLIC contexts, and the fine map and the BAR window take both APICs' addresses from it.
+  its PLIC contexts. The fine map and the BAR window take both APICs' addresses from it.
 - `arch::irq::init` brings up the IO APIC and proves the PIT's line through it before the tick is
   armed, so the `device irq` line `uefi-boot` reads is unchanged. `discovery::bring_up_iommus`
   brings up VT-d or AMD-Vi beside the SMMUv3.
