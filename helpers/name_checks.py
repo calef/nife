@@ -47,6 +47,7 @@ import sys
 sys.dont_write_bytecode = True
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import cap_abbreviation  # noqa: E402
+import moved_rows  # noqa: E402
 import name_census  # noqa: E402
 import name_crossings  # noqa: E402
 import name_provenance  # noqa: E402
@@ -343,9 +344,12 @@ def _git(root, *args):
     return r.stdout if r.returncode == 0 else None
 
 
-def ratchet_problems(judged, tree, rows, rules, base=None, renames=(), kept=()):
+def ratchet_problems(judged, tree, rows, rules, base=None, renames=(), kept=(), before=None,
+                     after=None):
     """Every failure of the gate. `judged` is the `path::name` of every name the gate judged, and
-    `base` is `(rules, rows)` at the merge base, or None."""
+    `base` is `(rules, rows)` at the merge base, or None. `before` and `after` read a file at the
+    merge base and now: a row that moved with its item in a split (`helpers/moved_rows.py`) is not
+    an addition, and without them no row moves."""
     if not judged:
         return ["the check judged no name at all. A selector that matches nothing passes by "
                 "checking nothing (design/roadmap/0401-a-gate-that-selects-the-set-it-judges.md)"]
@@ -369,22 +373,48 @@ def ratchet_problems(judged, tree, rows, rules, base=None, renames=(), kept=()):
             why = "no longer breaks its rule"
         else:
             why = ("names something the gate no longer judges (narrowed to `pub(crate)`, deleted, "
-                   "moved without a rename git sees, or ratified)")
+                   "moved to another file, or ratified)")
         bad.append(f"{BASELINE}: {row} {why}. Run `python3 helpers/name_checks.py --bank` in this "
                    f"change to drop it; the list cannot go stale")
     if base is not None and base[0] == RULES:
         was = {new: old for old, new in renames}
 
-        def before(row):
+        def as_it_was(row):
             path = row.split("::", 1)[0]
             return row if path not in was else was[path] + row[len(path):]
         moved = collections.Counter()
         for row, n in rows.items():
-            moved[before(row)] += n
-        for row in sorted(moved - base[1]):
+            moved[as_it_was(row)] += n
+        added = moved - base[1]
+        if added and before is not None:
+            added -= moved_rows.arrivals(moved_rows.moves(added, base[1] - moved, before, after))
+        for row in sorted(added):
             bad.append(f"{BASELINE}: {row} was added. The list only shrinks, except in the change "
                        f"that bumps RULES because it adds or revises a check")
     return bad
+
+
+def _reader(root, ref=None):
+    """A function from a path to its text: at `ref` when given, else in the working tree."""
+    if ref is not None:
+        return lambda path: _git(root, "show", f"{ref}:{path}")
+
+    def read(path):
+        try:
+            return open(os.path.join(root, path), errors="replace").read()
+        except OSError:
+            return None
+    return read
+
+
+def _renames(root, ref):
+    """[(old, new)] for every file git itself calls renamed between `ref` and the tree."""
+    pairs = ()
+    for line in (_git(root, "diff", "--name-status", "-M", ref) or "").splitlines():
+        cells = line.split("\t")
+        if cells[0].startswith("R") and len(cells) == 3:
+            pairs += ((cells[1], cells[2]),)
+    return pairs
 
 
 def run_check(root, rows_now, judged):
@@ -401,11 +431,11 @@ def run_check(root, rows_now, judged):
         old = _git(root, "show", f"{merge}:{BASELINE}")
         if old is not None:
             base = read_baseline(old)
-        for line in (_git(root, "diff", "--name-status", "-M", merge) or "").splitlines():
-            cells = line.split("\t")
-            if cells[0].startswith("R") and len(cells) == 3:
-                renames += ((cells[1], cells[2]),)
-    bad = ratchet_problems(judged, rows_now, rows, rules, base, renames, KEPT)
+        renames = _renames(root, merge)
+    else:
+        merge = None
+    bad = ratchet_problems(judged, rows_now, rows, rules, base, renames, KEPT,
+                           _reader(root, merge) if merge else None, _reader(root))
     if bad:
         print("names: unratified names must meet the current naming rules:", file=sys.stderr)
         for b in bad:
@@ -414,6 +444,21 @@ def run_check(root, rows_now, judged):
     print(f"names: {len(judged)} unratified names judged against rules revision {RULES}; "
           f"{sum(rows.values())} known breaks held to the baseline, none new")
     return 0
+
+
+def _banked(root, old, now):
+    """The rows `--bank` keeps: those the tree still breaks, re-keyed where git calls a file renamed
+    or where an item moved to another file of its crate."""
+    merge = (_git(root, "merge-base", "HEAD", "origin/main") or "").strip()
+    head = (_git(root, "rev-parse", "HEAD") or "").strip()
+    ref = merge if merge and merge != head else "HEAD"
+    called = dict(_renames(root, ref))
+    renamed = collections.Counter()
+    for row, n in old.items():
+        path = row.split("::", 1)[0]
+        renamed[called.get(path, path) + row[len(path):]] += n
+    pairs = moved_rows.moves(now - renamed, renamed - now, _reader(root, ref), _reader(root))
+    return moved_rows.banked(renamed, now, pairs)
 
 
 def _selftest():
@@ -502,7 +547,52 @@ def _selftest():
     stale_kept = ratchet_problems(judged, cases, cases, RULES, kept={"x/src/gone.rs::f": None})
     assert len(stale_kept) == 1 and "KEPT names x/src/gone.rs::f" in stale_kept[0]
     assert "judged no name" in ratchet_problems(set(), cases, cases, RULES)[0]
+    _selftest_split()
     print("name_checks: selftest ok")
+
+
+def _selftest_split():
+    """A split git calls no rename: the parent stays, and its items move to a sibling file."""
+    lib, part = "s/src/lib.rs", "s/src/part.rs"
+    was = {lib: "pub fn mem_size() {}\npub fn arg_count() {}\n"
+                "pub fn dma_new() {}\npub fn dma_new() {}\n"}
+    now = {lib: "mod part;\npub fn arg_count() {}\npub fn dma_new() {}\n",
+           part: "pub fn mem_size() {}\npub fn dma_new() {}\n"}
+    base = collections.Counter([f"{lib}::mem_size spelled-out", f"{lib}::arg_count spelled-out",
+                                f"{lib}::dma_new spelled-out", f"{lib}::dma_new spelled-out"])
+    tree = collections.Counter([f"{part}::mem_size spelled-out", f"{lib}::arg_count spelled-out",
+                                f"{lib}::dma_new spelled-out", f"{part}::dma_new spelled-out"])
+    judged = {f"{lib}::arg_count", f"{lib}::dma_new", f"{part}::mem_size", f"{part}::dma_new"}
+    rows = moved_rows.banked(base, tree, moved_rows.moves(tree - base, base - tree, was.get,
+                                                          now.get))
+    assert rows == tree and sum(rows.values()) == sum(base.values()), \
+        f"--bank re-keys the rows a split moved, and keeps their count: {rows}"
+    assert ratchet_problems(judged, tree, rows, RULES, (RULES, base), (), (), was.get,
+                            now.get) == [], "the gate takes a split's moved rows"
+    assert ratchet_problems(judged, tree, rows, RULES, (RULES, base)) != [], \
+        "without the sources no row moves"
+    grown = dict(now, **{part: now[part] + "pub fn dir_len() {}\n"})
+    new = tree + collections.Counter([f"{part}::dir_len spelled-out"])
+    kept = moved_rows.banked(base, new, moved_rows.moves(new - base, base - new, was.get,
+                                                         grown.get))
+    assert kept == tree, "--bank never admits a new name that arrived with a split"
+    bad = ratchet_problems(judged | {f"{part}::dir_len"}, new, new, RULES, (RULES, base), (), (),
+                           was.get, grown.get)
+    assert len(bad) == 1 and "dir_len spelled-out was added" in bad[0], bad
+    copied = dict(now, **{lib: was[lib]})
+    copies = ratchet_problems(judged | {f"{lib}::mem_size"}, tree, tree, RULES, (RULES, base), (),
+                              (), was.get, copied.get)
+    assert [b.split(" was added")[0] for b in copies] == [
+        f"{BASELINE}: {part}::dma_new spelled-out", f"{BASELINE}: {part}::mem_size spelled-out"], \
+        f"a copy that leaves the original behind moves nothing: {copies}"
+    other = {"t/src/part.rs": now[part], lib: now[lib]}
+    moved = collections.Counter(r.replace(part, "t/src/part.rs") for r in tree.elements())
+    across = ratchet_problems({r.rsplit(" ", 1)[0] for r in moved}, moved, moved, RULES,
+                              (RULES, base), (), (), was.get, other.get)
+    assert [b.split(" was added")[0] for b in across] == [
+        f"{BASELINE}: t/src/part.rs::dma_new spelled-out",
+        f"{BASELINE}: t/src/part.rs::mem_size spelled-out"], \
+        f"a name that crossed into another crate is not a move: {across}"
 
 
 def _report(rows, ratified_rows):
@@ -553,7 +643,8 @@ def main(argv):
         now = rows_of(rows)
         if mode == "--bank":
             rules, old = read_baseline(open(path).read())
-            now = now if rules != RULES else old & now
+            if rules == RULES:
+                now = _banked(root, old, now)
         write_baseline(root, now)
         print(f"name_checks: {sum(now.values())} rows written to {BASELINE} (rules {RULES})")
         return 0
