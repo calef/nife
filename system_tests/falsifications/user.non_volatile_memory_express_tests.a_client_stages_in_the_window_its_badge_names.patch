@@ -1,4 +1,4 @@
-Falsifies `system_tests::user::non_volatile_memory_express_tests::each_client_stages_in_the_window_its_badge_names`.
+Falsifies `system_tests::user::non_volatile_memory_express_tests::a_client_stages_in_the_window_its_badge_names`.
 
 Architecture: aarch64
 

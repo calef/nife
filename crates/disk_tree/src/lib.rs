@@ -178,7 +178,7 @@ impl Tree {
         match code {
             fs::OPENDIR => self.open_directory(node, rights, name, w1),
             fs::OPEN => self.open_file(node, rights, name, w1),
-            fs::READ => self.read(node, rights, n.min(page.len()), w1),
+            fs::READ => self.read(node, n.min(page.len()), w1),
             fs::FSTAT => match node {
                 Node::Namespace => Answer::Reply(self.size as i64, 0),
                 _ => Answer::Reply(0, 0),
@@ -241,27 +241,24 @@ impl Tree {
             Ok(found) => found,
             Err(errno) => return err(errno),
         };
-        if rights.denies_all(dir::READ | dir::WRITE) {
+        // The contract asks for `READ` or `WRITE`; no handle here carries `WRITE`
+        // ([`ROOT_RIGHTS`]), so `READ` is the whole test, and every file handle can read.
+        if !rights.allows(dir::READ) {
             return err(ENOENT);
         }
         match parent.child(last) {
             None => err(ENOENT),
-            Some(Node::Namespace) => {
-                let file = rights.attenuate(rights.bits() & (dir::READ | dir::WRITE));
-                match self.install((Node::Namespace, file)) {
-                    Answer::Reply(h, _) if h >= 0 => Answer::Reply(h, self.size),
-                    refused => refused,
-                }
-            }
+            Some(Node::Namespace) => match self.install((Node::Namespace, rights)) {
+                Answer::Reply(h, _) if h >= 0 => Answer::Reply(h, self.size),
+                refused => refused,
+            },
             Some(_) => err(dir::EISDIR),
         }
     }
 
-    fn read(&self, node: Node, rights: dir::Rights, asked: usize, offset: u64) -> Answer {
-        match node {
-            Node::Namespace if rights.allows(dir::READ) => {}
-            Node::Namespace => return err(EBADF),
-            _ => return err(dir::EISDIR),
+    fn read(&self, node: Node, asked: usize, offset: u64) -> Answer {
+        if node != Node::Namespace {
+            return err(dir::EISDIR);
         }
         if offset >= self.size || asked == 0 {
             return Answer::Reply(0, 0);

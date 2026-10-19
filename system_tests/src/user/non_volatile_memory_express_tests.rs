@@ -189,11 +189,14 @@ fn a_confined_el0_process_serves_the_block_interface_end_to_end() {
 /// the installer's window lands the installer's bytes and leaves window 0's staging untouched, and
 /// a read through the disk tree's window comes back in that window and nowhere else.
 ///
-/// Runs after the end-to-end case, whose wiring it reuses (`ensure` wires once per boot).
+/// **Named to run before `a_confined_el0_server_cannot_dma_outside_its_region`**, which the suite
+/// runs in name order: that test's attacker leaves the controller answering nothing, and a request
+/// after it times out and comes back `EIO` (CI, 2026-10-19 UTC). `ensure` wires the server once per
+/// boot, so this needs no other case to have run first.
 ///
-/// Falsification: replayable `system_tests/falsifications/user.non_volatile_memory_express_tests.each_client_stages_in_the_window_its_badge_names.patch`
+/// Falsification: replayable `system_tests/falsifications/user.non_volatile_memory_express_tests.a_client_stages_in_the_window_its_badge_names.patch`
 #[test_case]
-fn each_client_stages_in_the_window_its_badge_names() {
+fn a_client_stages_in_the_window_its_badge_names() {
     use filesystem_contract::blk;
 
     use crate::non_volatile_memory_express::{

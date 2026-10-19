@@ -177,3 +177,128 @@ fn the_reachability_probe_is_refused_as_a_bad_handle() {
     assert_eq!(call(&mut t, fs::FSTAT, fs::MAX_HANDLE, b"", 0), err(EBADF));
     assert_eq!(call(&mut t, fs::CLOSE, fs::ROOT, b"", 0), err(dir::EINVAL));
 }
+
+/// Names that are not in the tree are not there, at either level, and the two levels are not
+/// interchangeable.
+#[test]
+fn only_the_two_names_resolve() {
+    let mut t = Tree::new(SIZE);
+    assert_eq!(
+        call(&mut t, fs::OPENDIR, fs::ROOT, b"nope", dir::READ),
+        err(ENOENT)
+    );
+    assert_eq!(
+        call(&mut t, fs::OPEN, fs::ROOT, b"n1", dir::READ),
+        err(ENOENT)
+    );
+    let d = handle_of(call(&mut t, fs::OPENDIR, fs::ROOT, DIRECTORY, dir::READ));
+    assert_eq!(call(&mut t, fs::OPEN, d, b"nope", 0), err(ENOENT));
+    assert_eq!(
+        call(&mut t, fs::OPEN, fs::ROOT, DIRECTORY, dir::READ),
+        err(dir::EISDIR)
+    );
+    // A descent from `nvme0` needs `DESCEND` on it: without, `n1` is not there; with, it is a file.
+    assert_eq!(call(&mut t, fs::OPENDIR, d, FILE, dir::READ), err(ENOENT));
+    let walkable = dir::READ | dir::DESCEND;
+    let d = handle_of(call(&mut t, fs::OPENDIR, fs::ROOT, DIRECTORY, walkable));
+    assert_eq!(
+        call(&mut t, fs::OPENDIR, d, FILE, dir::READ),
+        err(dir::ENOTDIR)
+    );
+}
+
+/// A path's every step is checked: an empty, `.` or `..` component is `EINVAL` wherever it is,
+/// and a descent through the path asks for `DESCEND` beside what the caller asked.
+#[test]
+fn a_path_is_checked_at_every_step() {
+    let mut t = Tree::new(SIZE);
+    for name in [&b"."[..], b"..", b"nvme0/", b"../n1", b"./n1", b"/n1"] {
+        assert_eq!(
+            call(&mut t, fs::OPEN, fs::ROOT, name, dir::READ),
+            err(dir::EINVAL),
+            "{name:?}"
+        );
+    }
+    // Through `nvme0` asking `READ | DESCEND`, the last step needs `DESCEND` on `nvme0`, so the
+    // answer is about `n1` being a file rather than about a right the walk dropped.
+    let both = dir::READ | dir::DESCEND;
+    assert_eq!(
+        call(&mut t, fs::OPENDIR, fs::ROOT, b"nvme0/n1", both),
+        err(dir::ENOTDIR)
+    );
+}
+
+/// The name rides in the page, at most 256 bytes and never more than the page holds.
+#[test]
+fn a_name_longer_than_the_buffer_or_the_page_is_refused() {
+    let mut t = Tree::new(SIZE);
+    let long = [b'x'; 256];
+    assert_eq!(
+        call(&mut t, fs::OPEN, fs::ROOT, &long, dir::READ),
+        err(ENOENT)
+    );
+    let longer = [b'x'; 257];
+    assert_eq!(
+        call(&mut t, fs::OPEN, fs::ROOT, &longer, dir::READ),
+        err(dir::EINVAL)
+    );
+    let mut page = *b"nvme0";
+    let w0 = fs::req(fs::OPENDIR, fs::ROOT, 5);
+    assert!(matches!(t.handle(w0, dir::READ, &mut page), Answer::Reply(h, _) if h > 0));
+    let w0 = fs::req(fs::OPENDIR, fs::ROOT, 6);
+    assert_eq!(t.handle(w0, dir::READ, &mut page), err(dir::EINVAL));
+}
+
+/// What the verbs that are neither a read nor a write answer.
+#[test]
+fn the_other_verbs_answer_what_a_read_only_disk_can_say() {
+    let mut t = Tree::new(SIZE);
+    let f = opened(&mut t);
+    assert_eq!(call(&mut t, fs::SYNC, f, b"", 0), Answer::Reply(0, 0));
+    assert_eq!(call(&mut t, fs::LISTXATTR, f, b"", 0), Answer::Reply(0, 0));
+    assert_eq!(
+        call(&mut t, fs::GETXATTR, f, b"user.x", 0),
+        err(xattr::ENODATA)
+    );
+    assert_eq!(
+        call(&mut t, fs::GETMTIME, fs::ROOT, DIRECTORY, 0),
+        err(EOPNOTSUPP)
+    );
+    assert_eq!(
+        call(&mut t, fs::FSTAT, fs::ROOT, b"", 0),
+        Answer::Reply(0, 0)
+    );
+    assert_eq!(call(&mut t, 0xfe, fs::ROOT, b"", 0), err(dir::EINVAL));
+    assert_eq!(read(&mut t, fs::ROOT, BS as u64, 0), err(dir::EISDIR));
+    assert_eq!(read(&mut t, f, 0, 0), Answer::Reply(0, 0));
+    let mut page = [0u8; 64];
+    assert_eq!(
+        t.handle(fs::req(fs::READDIR, f, 0), 0, &mut page),
+        err(dir::ENOTDIR)
+    );
+}
+
+/// A listing needs `ENUMERATE`, and its absence is a refusal rather than an empty directory.
+#[test]
+fn a_listing_without_enumerate_is_refused() {
+    let mut t = Tree::new(SIZE);
+    let d = handle_of(call(&mut t, fs::OPENDIR, fs::ROOT, DIRECTORY, dir::READ));
+    let mut page = [0u8; 64];
+    assert_eq!(
+        t.handle(fs::req(fs::READDIR, d, 0), 0, &mut page),
+        err(dir::EPERM)
+    );
+}
+
+/// A closed handle is gone, the root cannot be closed, and a full table says so on `OPEN`
+/// without a size.
+#[test]
+fn handles_close_and_run_out() {
+    let mut t = Tree::new(SIZE);
+    let f = opened(&mut t);
+    assert_eq!(call(&mut t, fs::CLOSE, f, b"", 0), Answer::Reply(0, 0));
+    assert_eq!(call(&mut t, fs::FSTAT, f, b"", 0), err(EBADF));
+    let d = handle_of(call(&mut t, fs::OPENDIR, fs::ROOT, DIRECTORY, dir::READ));
+    while matches!(call(&mut t, fs::OPEN, d, FILE, 0), Answer::Reply(h, _) if h >= 0) {}
+    assert_eq!(call(&mut t, fs::OPEN, d, FILE, 0), err(EMFILE));
+}
