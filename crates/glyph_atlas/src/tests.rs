@@ -93,7 +93,10 @@ fn each_face_is_the_one_its_name_says() {
 #[test]
 fn the_linear_table_rises_and_round_trips() {
     for c in 1..256 {
-        assert!(SRGB_TO_LINEAR[c] > SRGB_TO_LINEAR[c - 1], "code {c} does not rise");
+        assert!(
+            SRGB_TO_LINEAR[c] > SRGB_TO_LINEAR[c - 1],
+            "code {c} does not rise"
+        );
     }
     for c in 0..=255u8 {
         assert_eq!(to_srgb(SRGB_TO_LINEAR[c as usize] as u32), c);
