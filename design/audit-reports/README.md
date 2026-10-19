@@ -176,7 +176,7 @@ must not err in. So the count spans both, and it stays continuous across the spl
 | 2026-09-29 | security | 276 | 184 | 68 | 181 |
 | 2026-10-03 | security | 288 | 197 | 76 | 181 |
 | 2026-10-15 | documentation | 418 | 222 | 95 | 187 |
-| 2026-10-19 | security | 454 | 234 | 97 | 190 |
+| 2026-10-19 | security | 455 | 234 | 97 | 190 |
 
 The two `-` cells are honest rather than lazy: the roadmap was a single file with no status column
 until milestone 76 (split the roadmap: `design/roadmap/README.md` as index, one file per milestone) split it into `design/roadmap/` on 2026-08-03, and milestones 1 to 11 were
