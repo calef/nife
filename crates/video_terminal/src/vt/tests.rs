@@ -1215,3 +1215,79 @@ fn moving_pixels_with_k<const K: usize>() {
         }
     }
 }
+
+/// **A painter that keeps [`Damage`]'s promise ends with the engine's picture**: move the picture up
+/// `scrolled` rows, render `rect`, and every pixel is [`Vt::pixel`]'s. Checked after each feed of
+/// writes that scroll several rows between takes, which is what one `OPERATION_WRITE` of several
+/// lines is. Two shapes are the ones that can break it: a row wider than the rows that replace it
+/// in one move (its tail must not stay on the screen), and a change made above the bottom row and
+/// then scrolled in the same take (its box must go where the change went).
+#[test]
+fn a_painter_that_moves_and_renders_what_damage_says_ends_with_the_engines_picture() {
+    for cursor in [true, false] {
+        let mut t = vt(20, 6);
+        t.set_cursor_visible(cursor);
+        let (w, h) = (t.width() as usize, t.height() as usize);
+        let mut screen: Vec<u32> = (0..w * h)
+            .map(|i| t.pixel((i % w) as u32, (i / w) as u32))
+            .collect();
+        for feed in [
+            &b"\r\n\r\n\r\n\r\n\r\n\x1b[1;4mwider than the rest\x1b[0m\r\n"[..],
+            b"one\r\ntwo\r\nthree\r\nfour\r\n",
+            b"\x1b[2;3Hmid\x1b[6;1H\r\n\r\n\r\n",
+            b"x\r\ny\r\nzzzzzzzzzzzzzzzzzzz\r\n\r\n",
+            b"a\r\nb\r\nc\r\nd\r\ne\r\nf\r\ng\r\n",
+            // Two full rows, then two feeds with nothing written: the move exposes the bottom row,
+            // whose old pixels are the second full row.
+            b"AAAAAAAAAAAAAAAAAAA\r\nBBBBBBBBBBBBBBBBBBB",
+            b"\r\n\r\n",
+        ] {
+            t.feed(feed);
+            if let Some(d) = t.take_damage() {
+                let px = (d.scrolled * bitmap_font::GLYPH_H) as usize;
+                screen.copy_within(px * w.., 0);
+                let (x0, y0, dw, dh) = d.rect.to_pixels();
+                for y in y0..y0 + dh {
+                    for x in x0..x0 + dw {
+                        screen[y as usize * w + x as usize] = t.pixel(x, y);
+                    }
+                }
+            }
+            for (i, &p) in screen.iter().enumerate() {
+                let (x, y) = ((i % w) as u32, (i / w) as u32);
+                assert_eq!(
+                    p,
+                    t.pixel(x, y),
+                    "cursor {cursor}, after {:?}: pixel ({x}, {y}), cell ({}, {})",
+                    std::string::String::from_utf8_lossy(feed),
+                    x / bitmap_font::GLYPH_W,
+                    y / bitmap_font::GLYPH_H,
+                );
+            }
+        }
+    }
+}
+
+/// **A change's box moves up with the change, and a box at the top shrinks by the row that left.**
+/// Two marks on the top two rows, then one scroll over a blank bottom row: what is left to render
+/// is the one row the second mark moved to, not two.
+#[test]
+fn a_scroll_carries_the_box_of_what_changed_up_with_it() {
+    let mut t = vt(4, 3);
+    t.set_cursor_visible(false);
+    t.feed(b"ab\r\ncd\r\n");
+    t.take_damage();
+    t.feed(b"\x1b[1;1HX\x1b[2;1HY\x1b[3;1H\n");
+    let d = t.take_damage().expect("a scroll is a report");
+    assert_eq!(d.scrolled, 1);
+    assert_eq!(
+        d.rect,
+        CellRect {
+            col: 0,
+            row: 0,
+            cols: 1,
+            rows: 1
+        },
+        "the X scrolled off; only the Y, now on row 0, is left to render"
+    );
+}

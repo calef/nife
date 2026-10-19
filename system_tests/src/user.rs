@@ -1070,6 +1070,12 @@ mod system_log_tests;
 /// echo-suppression check is proven both ways rather than only the direction that matters.
 #[cfg(all(test, initial_ramdisk))]
 mod raw_mode_tests;
+/// `terminal_supervisor` replaces a live `display_terminal` through the machine's swap reserve,
+/// and the screen, the scrollback and the parser's state survive it (milestone 23 (a
+/// capability-routed component OS with live replacement)). After `display_tests`, so the host's
+/// scanout check has seen its pictures before this one draws.
+#[cfg(all(test, initial_ramdisk))]
+mod terminal_display_swap_tests;
 /// `OPERATION_QUIESCE` and `FLAG_RETRY` (milestone 23 (a capability-routed component OS with live
 /// replacement)): a terminal quiesced for replacement hands its parked reader back rather than
 /// stranding it, and resumes a half-typed line without repainting it.

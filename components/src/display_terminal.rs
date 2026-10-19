@@ -27,6 +27,14 @@
 //! it serves** (slot 2), a page an application writes text into, and its own pixels. No device, no
 //! interrupt, no DMA authority, no physical address, and no way to name another client's anything.
 //!
+//! # Under a supervisor, it can be replaced live
+//!
+//! Started with a control endpoint (`video_terminal::component::CONTROL`), it answers
+//! `OPERATION_QUIESCE`, writes its whole `Vt` into the handoff run its supervisor sends, and quits
+//! or resumes on the supervisor's word. Started with `START_ABSORB`, it reads such a blob before
+//! its first paint. `video_terminal::component` has the exchange, and milestone 23 (a
+//! capability-routed component OS with live replacement) the rulings behind it.
+//!
 
 //! # One endpoint, because this process has one wait point
 //!
@@ -71,20 +79,20 @@ use compositor::proto::ctl;
 use graphics_contract as gfx;
 use line_editor::proto;
 use user_mode_runtime::mapped_window::MappedWindow;
-use user_mode_runtime::{call, receive_request, reply, send};
+use user_mode_runtime::{Delivered, call, receive_request, reply, send};
 use video_terminal::status::{MODE_DISPLAY, MODE_WINDOW};
+use video_terminal::{component, handoff};
 
-/// Capability slots, by convention with `kernel/src/user/display_service.rs` and
-/// `compositor_service`.
-const REPORT: u64 = 0;
+/// Capability slots, from `video_terminal::component`, which every builder reads too.
+const REPORT: u64 = component::REPORT;
 /// The endpoint this terminal presents through: the display driver in [`MODE_DISPLAY`], the
 /// compositor's doorbell in [`MODE_WINDOW`].
-const PRESENT: u64 = 1;
+const PRESENT: u64 = component::PRESENT;
 /// The endpoint it serves. **One**, for both classes of sender; see the module note.
-const TERM: u64 = 2;
+const TERM: u64 = component::TERM;
 /// The untyped it spends on the page tables its own mappings need. [`MODE_DISPLAY`] only; see the
 /// note on [`SURFACE_FRAME`].
-const BUDGET: u64 = 3;
+const BUDGET: u64 = component::BUDGET;
 /// The whole scanout, one `PageFrame` capability naming the run the surface lives in (on
 /// virtio-gpu the `gfx::SURFACE_PAGE_FRAMES`-page run; on a firmware screen whatever covers it)
 /// (DECISIONS §102), then one more slot for [`OUT_VA`]'s page. **[`MODE_DISPLAY`] only**
@@ -95,8 +103,9 @@ const BUDGET: u64 = 3;
 /// one of them. In [`MODE_WINDOW`] the surface, the output page and the control page still arrive as
 /// spawn-time mappings from `compositor_service`, which is why the `MAP` calls below are inside the
 /// `MODE_DISPLAY` arm.
-const SURFACE_FRAME: u64 = 4;
-const OUT_PAGE_FRAME: u64 = SURFACE_FRAME + 1;
+const SURFACE_FRAME: u64 = component::SURFACE;
+const OUT_PAGE_FRAME: u64 = component::OUT;
+const _: () = assert!(OUT_PAGE_FRAME == SURFACE_FRAME + 1);
 
 /// Where the scanout goes. In [`MODE_DISPLAY`] this process holds the frames and picks the address;
 /// in [`MODE_WINDOW`] the compositor's wiring maps it here.
@@ -125,9 +134,11 @@ const E_MODE: u64 = 0x06;
 /// A frame this process holds would not map. [`MODE_DISPLAY`] only.
 const E_SURFACE: u64 = 0x07;
 
-/// **The grid lives in `.bss`, not on the stack.** A user process here gets one 4 KiB page of stack
-/// (`kernel/src/user.rs`, `USER_STACK_VA`), and a `Vt` is a kilobyte before the temporary a move
-/// would make. `video_terminal::Vt::new` is `const` precisely so this can be a `static`.
+/// **The grid lives in a `static`, not on the stack.** A user process here gets one 4 KiB page of
+/// stack (`kernel/src/user.rs`, `USER_STACK_VA`), and a `Vt` is hundreds of KiB.
+/// `video_terminal::Vt::new` is `const` precisely so this can be a `static`. It is `.data`, not
+/// `.bss`: a blank cell is not zero bytes, so the grid's 177 pages are in the image file
+/// (measured 2026-10-19 (UTC): a 900 KB image).
 static mut TERMINAL: video_terminal::Vt = video_terminal::Vt::new(1, 1);
 
 /// The one terminal this process owns.
@@ -383,13 +394,116 @@ impl Wiring {
     }
 }
 
-#[unsafe(no_mangle)]
-pub extern "C" fn _start(mode: u64, _arg1: u64, _arg2: u64) -> ! {
+/// **The handoff run, as this instance holds it** (milestone 23's `display_terminal` swap). It
+/// comes from the machine's swap reserve, so it is never mapped at build: a supervisor sends it
+/// with `CTL_HANDOFF` (`video_terminal::component`'s module note has the exchange).
+struct HandoffRun {
+    /// A run is mapped at `HANDOFF_ADDRESS`. True from the message that brought it until the reserve it
+    /// came from is destroyed, which unmaps it from under this flag: the supervisor sends a plain
+    /// `CTL_HANDOFF` only within the swap that sent the run, so the flag is never read stale.
+    mapped: bool,
+}
+
+impl HandoffRun {
+    /// The run, read or written whole.
+    fn bytes(&mut self) -> &mut [u8] {
+        // SAFETY: called only while `mapped`, which means a run of `HANDOFF_PAGES` frames is
+        // mapped read/write at `HANDOFF_ADDRESS` in this address space, mapped by `take` below from a
+        // capability the supervisor sent. This process has one thread, and `&mut self` makes this
+        // the only reference.
+        unsafe {
+            core::slice::from_raw_parts_mut(
+                component::HANDOFF_ADDRESS as *mut u8,
+                video_terminal::handoff::HANDOFF_BYTES,
+            )
+        }
+    }
+
+    /// Map the run a `CTL_HANDOFF` carried, or keep the one already mapped. `false` when no run
+    /// came and none is mapped, or it would not map.
+    fn take(&mut self, delivered: Delivered) -> bool {
+        match delivered {
+            Delivered::Delegation(run) => {
+                // The capability stays in its slot: an instance is handed at most two runs in its
+                // life, the one it absorbs and the one it writes, and each goes stale when its
+                // reserve is destroyed.
+                self.mapped = user_mode_runtime::map_page_frame(
+                    run,
+                    component::HANDOFF_ADDRESS,
+                    true,
+                    BUDGET,
+                );
+                self.mapped
+            }
+            Delivered::Nothing => self.mapped,
+            Delivered::Reply(_) => false,
+        }
+    }
+
+    /// **Started with `START_ABSORB`: become the incumbent.** Before the first paint, so nothing
+    /// of the blank grid ever reaches the screen. A refusal is said and this instance leaves; the
+    /// supervisor collects it and resumes the incumbent.
+    fn absorb(&mut self) {
+        let req = receive_request(component::CONTROL);
+        let verdict = if req.w0 == proto::CTL_HANDOFF && self.take(req.delivered) {
+            term().absorb_handoff(self.bytes())
+        } else {
+            Err(handoff::Refusal::NoBlob)
+        };
+        match verdict {
+            Ok(()) => {
+                send(component::SUPERVISOR, proto::NOTE_ABSORBED, 0, 0);
+            }
+            Err(refusal) => {
+                // `line_editor::proto::NOTE_NOT_ABSORBED`'s codes: 0 no blob, 1 malformed (a grid
+                // of another shape is one: its cells would land on the wrong rows), otherwise the
+                // layout found.
+                let code = match refusal {
+                    handoff::Refusal::NoBlob => 0,
+                    handoff::Refusal::Geometry | handoff::Refusal::Malformed => 1,
+                    handoff::Refusal::Layout(l) => u64::from(l),
+                };
+                send(component::SUPERVISOR, proto::NOTE_NOT_ABSORBED, code, 0);
+                user_mode_runtime::exit();
+            }
+        }
+    }
+
+    /// **Quiesced: wait for the supervisor's word.** Write the blob when the run comes, go back to
+    /// serving on `CTL_RESUME`, leave on `CTL_QUIT`. Anything else on the control endpoint is
+    /// ignored: only the supervisor holds it.
+    fn quiesced(&mut self) {
+        loop {
+            let req = receive_request(component::CONTROL);
+            match req.w0 {
+                proto::CTL_HANDOFF => {
+                    let written = if self.take(req.delivered) {
+                        term().write_handoff(self.bytes())
+                    } else {
+                        None
+                    };
+                    let (note, len) = match written {
+                        Some(len) => (proto::NOTE_WRITTEN, len as u64),
+                        None => (proto::NOTE_NOT_WRITTEN, 0),
+                    };
+                    send(component::SUPERVISOR, note, len, 0);
+                }
+                proto::CTL_RESUME => return,
+                proto::CTL_QUIT => user_mode_runtime::exit(),
+                _ => {}
+            }
+        }
+    }
+}
+
+/// Map the surface (in [`MODE_DISPLAY`]) and learn its size from whoever owns the screen:
+/// `(width, height, stride)` in pixels and bytes.
+fn negotiate_geometry(mode: u64) -> (u32, u32, u32) {
     // **The geometry is asked for, never assumed**, in both wirings. Rung one added `INFO` for this
     // and rung two publishes a control page for it, and the reason is the same in both: the process
     // that owns the screen decides how big a surface is, and a client that guessed would paint the
     // wrong shape the first time anything changed.
-    let (w, h, stride) = match mode {
+    match mode {
         MODE_DISPLAY => {
             // The scanout and the application's output page are `PageFrame`s this process holds, and it
             // maps them itself out of its own budget (milestone 108). Before the `INFO` call,
@@ -433,7 +547,19 @@ pub extern "C" fn _start(mode: u64, _arg1: u64, _arg2: u64) -> ! {
             )
         }
         _ => die(E_MODE),
+    }
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn _start(mode: u64, control: u64, start: u64) -> ! {
+    // Under a supervisor it names the control endpoint's slot, which is fixed; a spawner that
+    // supervises nothing passes `0`.
+    let supervised = match control {
+        0 => false,
+        component::CONTROL => true,
+        _ => die(E_MODE),
     };
+    let (w, h, stride) = negotiate_geometry(mode);
 
     // A surface too small for one character has nothing to show and is refused. It does **not**
     // have to be a whole number of cells: the font is 7 wide and the scanout is 128, so the normal
@@ -457,6 +583,12 @@ pub extern "C" fn _start(mode: u64, _arg1: u64, _arg2: u64) -> ! {
     // This process gets one 4 KiB page of stack; `reset_to` mutates the existing `static` in place
     // instead, so no `Vt`-sized value is ever a stack local or a return value here.
     term().reset_to(cols, rows);
+    // A replacement becomes its incumbent before it paints, so its first picture is the
+    // incumbent's screen rendered from the absorbed state, not a blank one.
+    let mut handoff = HandoffRun { mapped: false };
+    if supervised && start & proto::START_ABSORB != 0 {
+        handoff.absorb();
+    }
 
     // SAFETY: in MODE_DISPLAY this process mapped the whole surface run it was granted at
     // SURFACE_VA itself, above, and the kernel sized that run from the same geometry the driver
@@ -529,6 +661,16 @@ pub extern "C" fn _start(mode: u64, _arg1: u64, _arg2: u64) -> ! {
                 // module note. In MODE_DISPLAY there is no such caller, so a flush is safe and
                 // necessary.
                 wiring.present(wiring.mode == MODE_DISPLAY);
+            }
+            // A supervisor's quiesce (milestone 23). Every request queued ahead of it has been
+            // served, and nothing is parked here to hand back, so the answer is immediate. From
+            // here until `CTL_RESUME` this instance reads only its control endpoint.
+            proto::OPERATION_QUIESCE if supervised => {
+                if let Some(to) = reply_slot {
+                    reply(to, proto::QUIESCED, 0);
+                }
+                handoff.quiesced();
+                continue;
             }
             // `OPERATION_READLINE` and `OPERATION_INTRCOUNT` are the line discipline's, and this component is not
             // one: it renders a stream and echoes keystrokes. A client that wants edited lines puts
