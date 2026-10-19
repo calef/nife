@@ -457,6 +457,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "installed_programs"
+version = "0.1.0"
+dependencies = [
+ "measured_boot",
+]
+
+[[package]]
 name = "jig"
 version = "0.1.0"
 dependencies = [
@@ -467,6 +474,7 @@ dependencies = [
  "filesystem_contract",
  "grant_plan",
  "http_response",
+ "installed_programs",
  "package_archive",
  "package_index",
  "pinned_tls_client",

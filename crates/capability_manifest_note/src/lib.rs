@@ -206,6 +206,11 @@ pub const fn encode(m: &Manifest) -> [u8; DESCRIPTOR_LEN] {
         matches!(m.indexes, IndexStoreDeclaration::Forbidden),
         "a manifest note cannot carry `indexes`: only the owner's console grants the index store"
     );
+    // Milestone 809: and the activation directory.
+    assert!(
+        !m.activation_directory,
+        "a manifest note cannot carry `activation_directory`: only the owner's console grants it"
+    );
     let mut out = [0u8; DESCRIPTOR_LEN];
     let v = VERSION.to_le_bytes();
     out[0] = v[0];
@@ -383,6 +388,7 @@ pub fn decode(d: &[u8]) -> Result<Manifest, Error> {
         installer: false,
         catalog: false,
         indexes: IndexStoreDeclaration::Forbidden,
+        activation_directory: false,
         startup,
     })
 }
@@ -1098,6 +1104,7 @@ mod tests {
                 || m.installer
                 || m.catalog
                 || m.indexes != IndexStoreDeclaration::Forbidden
+                || m.activation_directory
             {
                 continue;
             }

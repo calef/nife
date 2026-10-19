@@ -309,6 +309,7 @@ fn write_preview_rows(
     write_resolver_row(e, m, std, out);
     write_machine_rows(m, out);
     write_index_rows(e, m, out);
+    write_activation_rows(e, m, out);
     write_stream_rows(e, out);
     out(b"    arg    ");
     // **Read the manifest, do not keep a second list of which programs take an argument.** This
@@ -712,6 +713,25 @@ fn write_index_rows(e: &Endowment, m: &grant_plan::Manifest, out: &mut dyn FnMut
     );
     out(
         b"                              must chain to; knowledge, and no authority
+",
+    );
+}
+
+/// **The activation directory, read only** (milestone 809 (the package client becomes a program),
+/// `jig list -u`), at the `std` layout's one directory slot in place of the index store
+/// (`grant_plan::Manifest::activation_directory`). Printed only when the line designated no
+/// directory of its own, as the store's row is.
+fn write_activation_rows(e: &Endowment, m: &grant_plan::Manifest, out: &mut dyn FnMut(&[u8])) {
+    if !m.activation_directory || e.directory.is_some() {
+        return;
+    }
+    write_slot(std_runtime_contract::FS_DIR_SLOT, out);
+    out(
+        b"endpoint  dir      /activation  read-only. what is installed, and the index copy
+",
+    );
+    out(
+        b"                              beneath it; only the owner's console grants it
 ",
     );
 }
