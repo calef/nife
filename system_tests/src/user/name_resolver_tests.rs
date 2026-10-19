@@ -539,6 +539,8 @@ const ELSEWHERE_THEN_ZONE: &[u32] = &[0x802, 0x803];
 /// `std_resolve`'s names, so every lookup is the resolver's local `DENIED` there; the transcript can
 /// match the one-badge test's only if the PAL then lent its page to the badge at slot 22 and asked
 /// again. `example.com` is outside both zones and still reads `PermissionDenied`.
+///
+/// Falsification: replayable `system_tests/falsifications/user.name_resolver_tests.a_std_program_asks_each_badge_in_order_until_one_holds_the_name.patch`
 #[test_case]
 fn a_std_program_asks_each_badge_in_order_until_one_holds_the_name() {
     let Some(std_resolve) = program("std_resolve") else {

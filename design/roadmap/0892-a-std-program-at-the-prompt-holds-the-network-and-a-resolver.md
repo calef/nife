@@ -18,9 +18,9 @@ day ("yes, record c"). Then he ruled that a manifest declares the network beside
 the owner grants both at install ("a", the same day). What is left is building both for installed
 programs, under "Item 3, ruled" and "The network at install, ruled" below. The refusal half is
 built: an installed program is refused the network, by name, until its grant is recorded. A
-manifest note carries its zones, `jig install` lists the asks, the table's grant lines are read,
-and each granted zone is a badge the PAL asks in order, so a granted program would hold the network
-and its zones. "Rulings of 2026-10-19" has calef's four rulings. What is left is writing a grant at
+manifest note carries its zones, and `jig install` lists the asks. The table's grant lines are
+read, and each granted zone is a badge the PAL asks in order, so a granted program would hold the
+network and its zones. "Rulings of 2026-10-19" has calef's four rulings. What is left is writing a grant at
 install, which waits on the stdin contract proposed below.
 
 *(The title and slug are provisional.)*
@@ -228,8 +228,8 @@ not ask for. Host tests: `grant_lines_are_read_strictly_and_follow_their_rows` a
 Writing a grant is not built, and nothing writes one: it needs the owner's yes, which needs the
 stdin contract below.
 
-**Several zones, built.** A `std` job holding the network gets one resolver badge per zone: the
-table's one zone for a program in `grant_plan`'s table, or, for an installed image, each zone its
+**Several zones, built.** A `std` job holding the network gets one resolver badge per zone. A
+program in `grant_plan`'s table gets the table's one zone; an installed image gets each zone its
 `grant` lines give and its note asks for. The badges sit at `std_runtime_contract::RESOLVER_SLOTS`
 (9, then 22 to 28) in the table's order, and all are forgotten at the reap. The PAL's
 `lookup_host` asks them in slot order, lending its one page to each the first time, and moves on

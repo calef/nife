@@ -1,0 +1,27 @@
+Falsifies `system_tests::user::name_resolver_tests::a_std_program_asks_each_badge_in_order_until_one_holds_the_name`.
+
+Architecture: aarch64
+
+The defect: std's `lookup_host` asks only the first resolver badge it holds and takes its answer
+as the last word. A program granted several zones could then resolve only names in the zone at
+slot 9, and the badges at 22 to 28 would be held for nothing.
+
+Expected to fail: the line `lookup packages.nife.test: 10.0.2.9:7777`, read as `PermissionDenied`
+from the badge at slot 9, whose zone is `elsewhere.test`. Replayed 2026-10-19 (UTC) on aarch64:
+red with exactly that assertion.
+
+diff --git a/patches/std-nife/overlay/std/src/sys/net/connection/nife.rs b/patches/std-nife/overlay/std/src/sys/net/connection/nife.rs
+index 5ca413156..9a0687aaf 100644
+--- a/patches/std-nife/overlay/std/src/sys/net/connection/nife.rs
++++ b/patches/std-nife/overlay/std/src/sys/net/connection/nife.rs
+@@ -1182,9 +1182,7 @@ pub fn lookup_host(host: &str, port: u16) -> io::Result<LookupHost> {
+             return Err(io::Error::UNSUPPORTED_PLATFORM);
+         };
+         outcome = Some(answer);
+-        if answer.status != resolve::status::DENIED {
+-            break;
+-        }
++        break;
+     }
+     let Some(outcome) = outcome else {
+         return Err(io::Error::UNSUPPORTED_PLATFORM);
