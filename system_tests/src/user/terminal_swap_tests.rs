@@ -203,7 +203,7 @@ impl Terminal {
 
     /// Retire the terminal so every instance's region, and every stand-in's, comes home to the
     /// budget.
-    fn stop(mut self) {
+    fn stop(self) {
         let stopped = sched::ipc_call(self.swap, [s::STOP, 0]);
         assert_eq!(stopped[0], s::STOPPED);
         settle();
