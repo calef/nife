@@ -28,6 +28,7 @@ Every move of this ceiling came behind a measured reduction. The rule each move 
 | 10 | 2026-10-08 | 72 to 66 | 59.7 | the scheduler queue ownership token, `Unqueued<T>` |
 | none | 2026-10-12 | 66 to 61 | 61.09 | nothing; the ceiling caught up to the tree |
 | 891 | 2026-10-12 | 61 to 60 | 60.83 | `static mut` buffers into atomics and a firmware allocation |
+| 11 | 2026-10-19 | 60 to 52 | 52.74 | raw `invoke` calls onto the runtime's wrappers; four test suites' repeated contracts into one type or helper each |
 
 ## Round 1 chose the headroom
 
