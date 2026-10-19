@@ -136,8 +136,7 @@ the same `kilo` `rmle` is modeled on) needs `libc` termios and raw stdin, which 
 bind. GNU `nano` is the GPL-as-package path (milestone 170). `rmle` is `optional`, so either can
 replace it without touching base.
 
-9a. Adapt `mdr` to `pulldown-cmark`, as a std program. The first draft refused this as
-std-only, the wrong test (see the next section). `mdr` is a userspace reader of shipped
+9a. Adapt `mdr` to `pulldown-cmark`, as a std program. `mdr` is a userspace reader of shipped
 documentation; it holds a terminal and a directory, so it can be built against `nife-dev`. Read in
 0.13.4: no `std::thread`, no runtime, three small dependencies, and the `html` and `getopts` defaults
 can be turned off. Take the parser, keep our terminal renderer as its event consumer, and keep
@@ -220,8 +219,8 @@ on the customer path.
 ## Proposed milestones, one replacement each
 
 - (a) BUILT: `http_response` parses its head with `httparse`. Gate: existing host tests and fuzz target.
-- (b) `video_terminal` parses with `vte`; the grid stays. Gate: existing host tests, plus a fuzz
-  target the crate does not have.
+- (b) Held for milestone 705's engine choice (calef, 2026-10-18 UTC): a full engine has its own
+  parser. Else `video_terminal` parses with `vte`, grid kept; gate: host tests, new fuzz target.
 - (c0) Upstream `VIRTIO_F_ACCESS_PLATFORM` to `virtio-drivers`. Then (c1) input, (c2) GPU,
   (c3) block, (c4) net, each with a `script/bench` number before and after, on all three
   architectures.
@@ -247,7 +246,7 @@ It records that two rules of §46 disagree here and only an architect can say wh
 ## Follow-on
 
 - **Done.** Item (a), 2026-10-18 (UTC), nifeos/nife#2289.
-- **Outstanding.** Items (b) to (h), 2026-10-18: none started, each waits on its own §46 ruling. Checked: none of their crates is in `Cargo.lock`.
+- **Outstanding.** Items (b) to (h), 2026-10-18: none started, each waits on its own §46 ruling, (b) on milestone 705 too. Checked: none of their crates is in `Cargo.lock`.
 
 ## Index row
 
