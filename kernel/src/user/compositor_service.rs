@@ -5,9 +5,10 @@ use crate::cap::{Rights, memory_region_cap, page_frame_run_cap, rendezvous_cap};
 use crate::sched::RendezvousId;
 
 /// **The budget the compositor, and a capture client, draw their own screen mapping's page tables
-/// from** (DECISIONS §102, milestone 142). Same reasoning as `display_service::MAP_BUDGET_PAGES`:
-/// at 1120x624 ([`SCREEN_PAGE_FRAMES`], 683 pages) the screen alone spans two 2 MiB windows, and
-/// this budget also carried the 900-page 1280x720 screen the path once booted with.
+/// from** (DECISIONS §102 (a Frame names a run of pages), milestone 142 (a text display good enough
+/// that people use it instead of a GUI)). Same reasoning as `display_service::MAP_BUDGET_PAGES`: at
+/// 1120x624 ([`SCREEN_PAGE_FRAMES`], 683 pages) the screen alone spans two 2 MiB windows, and this
+/// budget also carried the 900-page 1280x720 screen the path once booted with.
 const MAP_BUDGET_PAGES: u64 = 24;
 
 // The compositor's address space. Must match components/src/compositor.rs. `SCREEN_VA` is not here: the

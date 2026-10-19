@@ -211,11 +211,12 @@ spin = { version = "0.12", default-features = false, features = ["spin_mutex"] }
 # `inter_process_communication` and `direct_memory_access_validator` made for Kani. See
 # notes/interleaving.md.
 work_steal_slot = { version = "0.1.0", path = "../crates/work_steal_slot" }
-# The VT engine, and through it the font (milestone 29's text increment, milestone 142's atlas).
-# The kernel does not draw anything; it *predicts*. Its display-terminal tests run the same engine
-# over the same script the terminal was sent and compare the framebuffer pixel for pixel, so no
-# process grades its own homework and the picture is a value rather than a screenshot somebody
-# eyeballed once.
+# The VT engine, and through it the font (milestone 29 (a display terminal: framebuffer, virtio-gpu,
+# and a foreign component)'s text increment, milestone 142 (a text display good enough that people
+# use it instead of a GUI)'s atlas). The kernel does not draw anything; it *predicts*. Its
+# display-terminal tests run the same engine over the same script the terminal was sent and compare
+# the framebuffer pixel for pixel, so no process grades its own homework and the picture is a value
+# rather than a screenshot somebody eyeballed once.
 video_terminal = { version = "0.1.0", path = "../crates/video_terminal" }
 # The scheduler's block/wake handshake, so the kernel calls the loom-searched transitions rather
 # than keeping a copy of them: the second retrofit of work_steal_slot's move, asked for by the

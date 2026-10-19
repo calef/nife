@@ -1,6 +1,8 @@
 //! **An anti-aliased monospace font, and the arithmetic that turns a character into pixels**:
-//! DejaVu Sans Mono (§104) at a 14x26 cell, its four faces (§166) as coverage tables, and a pure
-//! function from `(character, x, y, fg, bg)` to a color.
+//! DejaVu Sans Mono (§104 (the rich-text font is DejaVu Sans Mono, and the palette is Solarized))
+//! at a 14x26 cell, its four faces (§166 (the rasteriser dependency, and whether the glyph atlas
+//! ships one face or four)) as coverage tables, and a pure function from `(character, x, y, fg,
+//! bg)` to a color.
 //!
 //! The rasteriser is not here. It ran once, on the host, in `tools/glyph_atlas_generator`, and its
 //! output is the four files under `coverage/`, one byte of coverage a pixel. So drawing a glyph is a
@@ -32,7 +34,8 @@
 //! - A glyph is clipped to its cell. The oblique faces lean up to 1.2 pixels past either side
 //!   (`X`, `W`), which a terminal that overdraws its neighbors would show and this one cuts off.
 //! - The blend is in sRGB, not linear light, so light text on a dark ground looks thinner than the
-//!   font intends. Increment 4 of milestone 142 replaces [`blend`].
+//!   font intends. Increment 4 of milestone 142 (a text display good enough that people use it
+//!   instead of a GUI) replaces [`blend`].
 //!
 //! Name: provisional, for the crate and every item in it. calef names things.
 
@@ -41,29 +44,49 @@
 /// A cell's width in pixels: Menlo Regular 11 at 2x, whose outlines are DejaVu's. 14 is the
 /// 13.24-pixel advance rounded up, so every glyph has its own column of pixels and the grid stays
 /// `x / CELL_W`.
+///
+/// Name: provisional.
 pub const CELL_W: u32 = 14;
 /// A cell's height in pixels: ascender to descender, 25.6 pixels at [`PIXELS_PER_EM`], rounded up.
+///
+/// Name: provisional.
 pub const CELL_H: u32 = 26;
 /// The size the outlines are drawn at, in pixels per em.
+///
+/// Name: provisional.
 pub const PIXELS_PER_EM: u32 = 22;
 /// Rows from the cell's top to the baseline. The font's ascender is 20.4 pixels; rounding down puts
 /// the baseline on a pixel boundary, so a flat-bottomed letter ends on a whole row instead of half
 /// a row of gray, and leaves 6 rows for the deepest descender (`_`, 5.2).
+///
+/// Name: provisional.
 pub const ASCENT: u32 = 20;
 /// The underline's row: the font's underline sits 1.4 pixels under the baseline and is one pixel
 /// thick (`post` table, -130 and 90 units of 2048).
+///
+/// Name: provisional.
 pub const UNDERLINE_ROW: u32 = ASCENT + 1;
 /// The strikeout's row: the font's strikeout is centered 5.1 pixels above the baseline (`OS/2`
 /// table, 530 and 102 units of 2048).
+///
+/// Name: provisional.
 pub const STRIKETHROUGH_ROW: u32 = ASCENT - 6;
 
 /// The first character in the table, the space.
+///
+/// Name: provisional.
 pub const FIRST: u32 = 0x20;
 /// The last character in the table, the tilde.
+///
+/// Name: provisional.
 pub const LAST: u32 = 0x7e;
 /// Glyphs in a face: `FIRST..=LAST`, then the missing-glyph box (the font's `.notdef`).
+///
+/// Name: provisional.
 pub const GLYPHS: usize = (LAST - FIRST + 1) as usize + 1;
 /// One face's table in bytes.
+///
+/// Name: provisional.
 pub const FACE_BYTES: usize = GLYPHS * (CELL_W * CELL_H) as usize;
 
 /// One face: [`GLYPHS`] cells of coverage, top row first, 0 for background and 255 for ink.
@@ -73,20 +96,32 @@ pub const FACE_BYTES: usize = GLYPHS * (CELL_W * CELL_H) as usize;
 /// geometry from this crate, so a change to [`CELL_W`] would then stop the one tool that can make
 /// the new tables from building. The size is held instead by the generator's regenerate gate and by
 /// this crate's `the_tables_are_the_size_the_geometry_says`.
+///
+/// Name: provisional.
 pub struct Face(&'static [u8]);
 
 /// The regular face, the one the terminal draws with.
+///
+/// Name: provisional.
 pub static REGULAR: Face = Face(include_bytes!("../coverage/regular.coverage"));
 /// The bold face. Drawn nowhere yet: until milestone 142 increment 5 lands, bold is bright.
+///
+/// Name: provisional.
 pub static BOLD: Face = Face(include_bytes!("../coverage/bold.coverage"));
 /// The italic face, DejaVu's Oblique (§166). Drawn nowhere yet, for [`BOLD`]'s reason.
+///
+/// Name: provisional.
 pub static OBLIQUE: Face = Face(include_bytes!("../coverage/oblique.coverage"));
 /// The bold italic face. Drawn nowhere yet, for [`BOLD`]'s reason.
+///
+/// Name: provisional.
 pub static BOLD_OBLIQUE: Face = Face(include_bytes!("../coverage/bold_oblique.coverage"));
 
 impl Face {
     /// **How much of the pixel at `(x, y)` in `ch`'s cell is ink**, 0 to 255. Out-of-cell
     /// coordinates are 0 rather than a panic: the callers are pixel loops.
+    ///
+    /// Name: provisional.
     pub fn coverage(&self, ch: char, x: u32, y: u32) -> u8 {
         if x >= CELL_W || y >= CELL_H {
             return 0;
@@ -102,6 +137,8 @@ impl Face {
 
     /// **The color `ch`'s cell shows at `(x, y)`**: `fg` over `bg` by the glyph's coverage there.
     /// The terminal paints with this, the kernel test predicts with it and the host grades with it.
+    ///
+    /// Name: provisional.
     pub fn cell_pixel(&self, ch: char, x: u32, y: u32, fg: u32, bg: u32) -> u32 {
         blend(fg, bg, self.coverage(ch, x, y))
     }
@@ -117,6 +154,8 @@ impl Face {
 /// assert_eq!(blend(0x00ff_ffff, 0x0000_0000, 255), 0x00ff_ffff);
 /// assert_eq!(blend(0x00ff_0000, 0x0000_00ff, 128), 0x0080_007f);
 /// ```
+///
+/// Name: provisional.
 pub const fn blend(fg: u32, bg: u32, coverage: u8) -> u32 {
     // Most of a screen is background or solid ink, and the kernel test runs this for every pixel
     // of the scanout; the two ends are also the two values the arithmetic below must return exactly.

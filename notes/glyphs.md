@@ -27,14 +27,13 @@ Everything above the surface is text; everything below it is rung one's contract
 
 ## The terminal's font: DejaVu Sans Mono, rasterised at build time
 
-`crates/glyph_atlas` is DejaVu Sans Mono (§104) at a 14x26 cell, Menlo Regular 11 at 2x, in four
-faces (§166), as coverage tables of one byte a pixel. The rasteriser (`ttf-parser` and
-`ab_glyph_rasterizer` 0.1.10) runs on the host in `tools/glyph_atlas_generator`, and its test fails
-unless the checked-in tables are exactly what it makes from `vendor/dejavu`. So a glyph is still a
-lookup in a `static`, now followed by a blend, and the three witnesses below still compute the same
-picture without a font engine among them. Milestone 142's block, and its
-[determinism appendix](../design/roadmap/0142-a-text-display-worth-living-in/determinism.md), say
-why the rasteriser belongs at build time and why each pin is what it is.
+`crates/glyph_atlas` is DejaVu Sans Mono (§104 (the rich-text font is DejaVu Sans Mono, and the
+palette is Solarized)) at a 14x26 cell, one byte of coverage a pixel. Its four faces are what §166
+(the rasteriser dependency, and whether the glyph atlas ships one face or four) ruled. `tools/glyph_atlas_generator`
+rasterises it on the host, and its test fails unless the checked-in tables are exactly what it makes
+from `vendor/dejavu`. A glyph is a lookup and a blend, so the three witnesses below need no font
+engine. The [determinism appendix](../design/roadmap/0142-a-text-display-worth-living-in/determinism.md)
+of milestone 142 (a text display good enough that people use it instead of a GUI) says why.
 
 ## The boot console's font: ours, drawn in the Kaypro II's style
 
@@ -128,9 +127,9 @@ Three decisions inside it worth reading:
   the *next* printable does the wrap. Without it, a line that exactly fills the width scrolls the
   screen before anything asked it to, and a `CR` arriving right after the last character finds the
   cursor a row too low. That is the difference between a grid and a terminal.
-- Bold is bright. Every terminal since the DEC VT has answered SGR 1 by brightening, and this one
-  does until milestone 142 increment 5 draws `glyph_atlas::BOLD`, which is generated and unused. It
-  is a flag resolved when painting, so it brightens only the eight normal colors.
+- Bold is bright, as every terminal since the DEC VT has done, until the engine draws
+  `glyph_atlas::BOLD`. It is a flag resolved when painting, so it brightens only the eight normal
+  colors.
 - The cursor is part of the picture, drawn by inverting its cell rather than overlaid. That keeps
   the screen a pure function of the state: a test that predicts the screen predicts the cursor too,
   and a cursor left in the wrong place is a failure rather than a cosmetic difference nobody notices.
@@ -228,14 +227,9 @@ Stated plainly, because a demonstrator's caveats are part of the deliverable.
   discipline's echo through `OPERATION_WRITE`, which needs no new protocol at all, because `line_editor`'s echo
   is exactly a byte stream this engine parses. That is not a hope: the `video_terminal` crate proves it on the
   host by running both.
-- An 80x24 grid on the virtio-gpu scanout, with no pixels left over: 1120x624 is exactly 80 cells
-  of 14 by 24 of 26. `MAX_COLS`/`MAX_ROWS`/`MAX_CELLS` are constants sized for the largest
-  firmware screen this tree drives, not for the scanout. (The surface,
-  [`graphics_contract::SURFACE_BYTES`], carries 2 KiB of padding past the last pixel, for frame
-  alignment; see `graphics_contract::WIDTH`'s doc comment.)
-- The atlas's own limits: glyphs are clipped to their cell, so the oblique faces lose up to 1.2
-  pixels where they lean, and the blend is in sRGB rather than linear light until milestone 142
-  increment 4. `crates/glyph_atlas`'s BUGS has both.
+- An 80x24 grid on the virtio-gpu scanout: 1120x624 is exactly 80 cells of 14 by 24 of 26.
+  `MAX_COLS`/`MAX_ROWS`/`MAX_CELLS` are sized for the largest firmware screen, not the scanout.
+- The atlas clips a glyph to its cell and blends in sRGB; `crates/glyph_atlas`'s BUGS has both.
 - The boot console's 7x8 font has weak glyphs, named where a reader meets them. `M` and `W` are near vertical
   mirrors, because five ink columns leaves one way to draw each. `&` is the busiest glyph in the set
   and reads as a knot at a glance. `%` fills its corners heavily enough to look bolder than its

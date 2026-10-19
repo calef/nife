@@ -667,12 +667,13 @@ impl ScanoutReferee {
     /// One pass: press a key, take a screendump, and see whether it is the picture we are waiting
     /// for. Call it on a cadence for as long as the suite is running.
     ///
-    /// **Costs more per poll than it used to, and that is a considered, recorded choice rather
-    /// than an oversight** (milestone 142). The scanout is 1120x624 (698,880 pixels), 85 times the
-    /// 128x64 it grew from, moved through `screendump` on the same 100 ms cadence. calef chose to
-    /// keep the cadence rather than widen it preemptively, since nothing was slow enough to
-    /// measure a real problem against; revisit if a resolution increase (or a slower CI runner)
-    /// makes this cadence cost something observable.
+    /// **Costs more per poll than it used to, and that is a considered, recorded choice rather than
+    /// an oversight** (milestone 142 (a text display good enough that people use it instead of a
+    /// GUI)). The scanout is 1120x624 (698,880 pixels), 85 times the 128x64 it grew from, moved
+    /// through `screendump` on the same 100 ms cadence. calef chose to keep the cadence rather than
+    /// widen it preemptively, since nothing was slow enough to measure a real problem against;
+    /// revisit if a resolution increase (or a slower CI runner) makes this cadence cost something
+    /// observable.
     pub(crate) fn poll(&mut self) {
         // Press a key every poll. Harmless before the keyboard driver exists (QEMU drops the event)
         // and harmless after its test has passed (the driver ends up parked in a `CALL` nobody

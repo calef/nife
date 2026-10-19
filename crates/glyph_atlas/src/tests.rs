@@ -1,3 +1,7 @@
+//! The atlas's own tests: the tables' shape, and that each face is the one its name says.
+//!
+//! Name: provisional.
+
 use super::*;
 extern crate std;
 use std::vec::Vec;

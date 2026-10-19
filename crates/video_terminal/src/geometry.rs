@@ -11,8 +11,12 @@ use super::*;
 /// A cell's width in pixels: `glyph_atlas`'s, since every pixel this engine draws comes from that
 /// atlas. A consumer laying a `Vt` out over a surface divides by this, never by a font's own
 /// constant, so the grid and the picture cannot disagree about where a cell ends.
+///
+/// Name: provisional.
 pub const CELL_W: u32 = glyph_atlas::CELL_W;
 /// A cell's height in pixels. See [`CELL_W`].
+///
+/// Name: provisional.
 pub const CELL_H: u32 = glyph_atlas::CELL_H;
 
 /// The widest grid this engine can hold, in cells.

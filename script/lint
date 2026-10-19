@@ -179,7 +179,8 @@ echo "==> clippy: redoxfs_host (its own workspace)"
 cargo clippy --manifest-path tools/redoxfs_host/Cargo.toml --all-targets -- -D warnings
 
 # The atlas generator is its own workspace so the font parser and the rasteriser stay out of the
-# graph any shipped program is built from (milestone 142); lint it on its own for the same reason.
+# graph any shipped program is built from (milestone 142 (a text display good enough that people use
+# it instead of a GUI)); lint it on its own for the same reason.
 echo "==> clippy: glyph_atlas_generator (its own workspace)"
 cargo clippy --manifest-path tools/glyph_atlas_generator/Cargo.toml --all-targets -- -D warnings
 

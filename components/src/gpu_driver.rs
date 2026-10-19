@@ -89,9 +89,10 @@ const DMA_PAGE_FRAMES: u64 = 1 + gfx::SURFACE_PAGE_FRAMES as u64;
 /// maps them (milestone 108). The *physical* base still arrives in `a1`, and has to: descriptors
 /// speak physical, and a process only knows virtual addresses.
 ///
-/// **2 MiB-aligned** (milestone 142, DECISIONS §102): at the 1120x624 scanout [`DMA_PAGE_FRAMES`]
-/// is 684 and the region 2.7 MiB, which an aligned base keeps to two 2 MiB page-table windows and an
-/// unaligned one could spread over three.
+/// **2 MiB-aligned** (milestone 142 (a text display good enough that people use it instead of a
+/// GUI), DECISIONS §102 (a Frame names a run of pages)): at the 1120x624 scanout
+/// [`DMA_PAGE_FRAMES`] is 684 and the region 2.7 MiB, which an aligned base keeps to two 2 MiB
+/// page-table windows and an unaligned one could spread over three.
 const DMA_VA: u64 = address_space_map::pair_page(0x0000_0000_0100_0000);
 
 // --- virtio-mmio v2 register offsets. The PCI transport answers this same vocabulary

@@ -50,13 +50,13 @@ const ONE_PAGE_RUN: NonZeroU64 = NonZeroU64::MIN;
 /// The driver binary's escape-attempt role; must match `components/src/gpu_driver.rs` `ROLE_BACKING_ESCAPE`.
 const ROLE_BACKING_ESCAPE: u64 = 1;
 
-/// **The budget every program on this path draws its page tables from** (milestone 108). At
-/// 1120x624 the 683-page surface ([`graphics_contract::SURFACE_PAGE_FRAMES`]) spans two 2 MiB
-/// windows (two L3 tables), and the terminal's separate output page a third, so more than one L3 is
-/// the ordinary case here rather than the edge case notes/frames.md recorded at 800x608. Twenty-four
-/// pages also carried the 900-page 1280x720 surface this path booted with before, so it is headroom
-/// already exercised rather than a number nobody has booted against, and still under one percent of
-/// the free pool.
+/// **The budget every program on this path draws its page tables from** (milestone 108 (the drivers
+/// move onto frame capabilities)). At 1120x624 the 683-page surface
+/// ([`graphics_contract::SURFACE_PAGE_FRAMES`]) spans two 2 MiB windows (two L3 tables), and the
+/// terminal's separate output page a third, so more than one L3 is the ordinary case here rather
+/// than the edge case notes/frames.md recorded at 800x608. Twenty-four pages also carried the
+/// 900-page 1280x720 surface this path booted with before, so it is headroom already exercised
+/// rather than a number nobody has booted against, and still under one percent of the free pool.
 const MAP_BUDGET_PAGES: u64 = 24;
 
 // The driver's capability table. Must match components/src/gpu_driver.rs.

@@ -586,6 +586,8 @@ impl ScreenConsole {
     /// both consoles draw by, so the shell's terminal (14-pixel cells from `glyph_atlas`) and this
     /// console's 7-pixel bitmap give a screen of the same width the same columns at most: a
     /// 1920-wide screen is 137 columns of either, at scale one for the terminal and two here.
+    ///
+    /// Name: provisional.
     #[must_use]
     pub const fn scale_for_cell(width: u32, cell_w: u32) -> u32 {
         let s = width / (cell_w * MIN_COLUMNS);

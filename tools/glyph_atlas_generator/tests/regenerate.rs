@@ -1,4 +1,5 @@
-//! **The regenerate-and-compare gate** (milestone 142 increment 3).
+//! **The regenerate-and-compare gate** (milestone 142 (a text display good enough that people use
+//! it instead of a GUI) increment 3).
 //!
 //! Neither `ttf-parser` nor `ab_glyph_rasterizer` documents its output as stable, and the
 //! rasteriser's raw output has already moved in a patch release. Two investigations measured it

@@ -1,5 +1,6 @@
 //! **The atlas generator**: DejaVu Sans Mono's outlines in, `crates/glyph_atlas`'s coverage tables
-//! out (milestone 142 increment 3).
+//! out (milestone 142 (a text display good enough that people use it instead of a GUI) increment
+//! 3).
 //!
 //! The rasteriser runs here, on the host, once, and its output is checked in. That split is what
 //! keeps the three-party proof of on-screen text (the terminal draws, the kernel predicts, the host
@@ -7,9 +8,10 @@
 //! the verification path; the table is, and `tests/regenerate.rs` holds the table to exactly what
 //! this tool makes from the vendored fonts, byte for byte.
 //!
-//! Three choices are §166's and the determinism appendix's, not this file's, and are not to be
-//! re-litigated here: `ttf-parser` plus `ab_glyph_rasterizer` 0.1.10; grayscale coverage, never
-//! subpixel; and coverage quantized to `u8` at the boundary ([`quantize`]), never stored as `f32`.
+//! Three choices are §166 (the rasteriser dependency, and whether the glyph atlas ships one face or
+//! four)'s and the determinism appendix's, not this file's, and are not to be re-litigated here:
+//! `ttf-parser` plus `ab_glyph_rasterizer` 0.1.10; grayscale coverage, never subpixel; and coverage
+//! quantized to `u8` at the boundary ([`quantize`]), never stored as `f32`.
 //!
 //! Name: provisional, for the crate and every item in it. calef names things.
 
@@ -20,6 +22,8 @@ use ttf_parser::{Face, GlyphId, OutlineBuilder};
 /// Each face: the vendored font it is drawn from, and the table it becomes. Paths are relative to
 /// the repository root. `crates/glyph_atlas/src/lib.rs` names the same four tables in its
 /// `include_bytes!`, and [`check`] fails on a table that is missing.
+///
+/// Name: provisional.
 pub const FACES: [(&str, &str); 4] = [
     (
         "vendor/dejavu/DejaVuSansMono.ttf",
@@ -48,6 +52,8 @@ pub const FACES: [(&str, &str); 4] = [
 /// On a font that does not parse, lacks a glyph in the repertoire, or is not monospaced at the
 /// advance the cell was sized for. Each is a wrong input, and a table drawn from one would be wrong
 /// in a way nothing downstream could see.
+///
+/// Name: provisional.
 pub fn table(font: &[u8]) -> Vec<u8> {
     let face = Face::parse(font, 0).expect("the vendored font parses");
     let scale = PIXELS_PER_EM as f32 / face.units_per_em() as f32;
@@ -88,6 +94,8 @@ pub fn table(font: &[u8]) -> Vec<u8> {
 /// **The `u8` boundary.** `ab_glyph_rasterizer`'s raw `f32` output has changed in a patch release,
 /// and its accumulated error leaves coverage a hair above zero outside a glyph or a hair above one
 /// inside it. Rounding to 256 levels here absorbs both, and nothing past this function sees a float.
+///
+/// Name: provisional.
 pub fn quantize(a: f32) -> u8 {
     (a.clamp(0.0, 1.0) * 255.0).round() as u8
 }
@@ -143,11 +151,15 @@ impl OutlineBuilder for Pen {
 }
 
 /// The repository root, from this crate's own manifest directory.
+///
+/// Name: provisional.
 pub fn root() -> std::path::PathBuf {
     std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../..")
 }
 
 /// Every face's table as this tool makes it, beside its path.
+///
+/// Name: provisional.
 pub fn tables() -> Vec<(&'static str, Vec<u8>)> {
     FACES
         .iter()
@@ -161,6 +173,8 @@ pub fn tables() -> Vec<(&'static str, Vec<u8>)> {
 
 /// The first difference between the checked-in tables and what this tool makes now, described in
 /// glyphs and pixels, or `None` when every table is byte-identical.
+///
+/// Name: provisional.
 pub fn check() -> Option<String> {
     for (path, want) in tables() {
         let got = match std::fs::read(root().join(path)) {

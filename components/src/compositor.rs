@@ -68,11 +68,12 @@ const INPUT: u64 = 5;
 
 /// Where the kernel maps what this process is given. Must match `compositor_service`.
 ///
-/// **`SCREEN_VA` claims a real span** (milestone 142, DECISIONS §102): 683 page frames at the
+/// **`SCREEN_VA` claims a real span** (milestone 142 (a text display good enough that people use it
+/// instead of a GUI), DECISIONS §102 (a Frame names a run of pages)): 683 page frames at the
 /// 1120x624 scanout, up to 2.7 MiB from `SCREEN_VA`. Every other address here is clear of it:
-/// `WLIST_VA`, `RING_VA` and `CLIENT_BASE` sit far past the 4 MiB the largest scanout this path
-/// has booted with (1280x720) needed. `SCREEN_VA` itself stays 2 MiB-aligned, so the run spans
-/// exactly two page-table windows (`compositor_service`'s own `MAP_BUDGET_PAGES` comment has the
+/// `WLIST_VA`, `RING_VA` and `CLIENT_BASE` sit far past the 4 MiB the largest scanout this path has
+/// booted with (1280x720) needed. `SCREEN_VA` itself stays 2 MiB-aligned, so the run spans exactly
+/// two page-table windows (`compositor_service`'s own `MAP_BUDGET_PAGES` comment has the
 /// arithmetic).
 const SCREEN_VA: u64 = address_space_map::pair_page(0x0000_0000_0080_0000);
 const WLIST_VA: u64 = address_space_map::pair_page(0x0000_0000_0c00_0000);

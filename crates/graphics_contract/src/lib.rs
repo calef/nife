@@ -38,9 +38,10 @@
 /// mismatch. The lower bound is the device's: QEMU refuses a scanout smaller than 16 in either
 /// dimension.
 ///
-/// **Sized against the terminal's cell**: 80 columns by 24 rows, the floor milestone 142 sets for a
-/// terminal somebody would live in, at `glyph_atlas`'s 14x26 cell (1120 = 80 * 14, 624 = 24 * 26,
-/// both exact, so no strip of the surface is outside the grid). It is 1.79:1.
+/// **Sized against the terminal's cell**: 80 columns by 24 rows, the floor milestone 142 (a text
+/// display good enough that people use it instead of a GUI) sets for a terminal somebody would live
+/// in, at `glyph_atlas`'s 14x26 cell (1120 = 80 * 14, 624 = 24 * 26, both exact, so no strip of the
+/// surface is outside the grid). It is 1.79:1.
 ///
 /// [`SURFACE_BYTES`] is not a whole number of 4 KiB frames (2,795,520 bytes, 682.5 frames).
 /// [`SURFACE_PAGE_FRAMES`] rounds up, so the last frame carries 2 KiB of mapped-but-unused
