@@ -267,6 +267,7 @@ fn the_terminal_is_replaced_under_a_person_typing_and_nothing_they_typed_is_lost
     t.stop();
 }
 
+/// Falsification: replayable `system_tests/falsifications/user.terminal_swap_tests.a_hung_terminal_is_noticed_within_the_bound_and_replaced_without_its_state.patch`
 #[test_case]
 fn a_hung_terminal_is_noticed_within_the_bound_and_replaced_without_its_state() {
     let t = Terminal::start();

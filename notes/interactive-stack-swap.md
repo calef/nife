@@ -104,21 +104,21 @@ the harness.
 
 `terminal_supervisor`'s, which its module doc lists:
 
-- **Nothing on a real boot asks it to swap.** `system_initializer` passes no swap endpoint, so the
+- Nothing on a real boot asks it to swap. `system_initializer` passes no swap endpoint, so the
   supervisor builds the terminal and waits; only the kernel's test swaps. Milestone 694 (the
   installer asks the terminal to swap) builds the trigger, and §308's frame run, sent with `SWAP`,
   is how a new image arrives. Until then a replacement is the same image.
-- **A hung `line_editor`'s state is lost, and its callers are told `Gone`.** Only the incumbent can
+- A hung `line_editor`'s state is lost, and its callers are told `Gone`. Only the incumbent can
   write the blob, so the half-typed line, the history and any queued lines are gone. `swish` and
   `rmle` handle `FLAG_RETRY` but not `Gone`, and the terminal contract does not say which of its
   requests may be repeated, so on a real boot the shell would read a hang as a failed read. That is
   a contract question for an architect; only the kernel's test typist asks again today.
-- **A hang caused by the sink can answer the replacement late.** In console mode a `line_editor`
+- A hang caused by the sink can answer the replacement late. In console mode a `line_editor`
   blocked in its sink's reply is hung by the console. If the console recovers, its ack for the dead
   incumbent's flush reaches the replacement's first `RECEIVE`, one flush early.
-- **A slow `line_editor` is convicted as a hung one.** Nothing distinguishes an answer that arrives
+- A slow `line_editor` is convicted as a hung one. Nothing distinguishes an answer that arrives
   after the bound from none. The bound is about thirty times the slowest healthy answer measured.
-- **A `line_editor` that faults is not restarted.** Its death is collected at the next swap, and
+- A `line_editor` that faults is not restarted. Its death is collected at the next swap, and
   until then the terminal is gone. Restarting it fresh is the hung path without the quiesce, and is
   not built because nothing has asked for it.
 

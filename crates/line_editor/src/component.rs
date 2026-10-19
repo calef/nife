@@ -139,7 +139,8 @@ pub mod supervisor {
     /// never quiesces, so a boot pays nothing for the bound. A swap endpoint without the image
     /// traps at start; one without the budget traps at the first swap.
     ///
-    /// Name: provisional, minted 2026-10-19 (UTC) by the lane for milestone 23.
+    /// Name: provisional, minted 2026-10-19 (UTC) by the lane for milestone 23 (a capability-routed
+    /// component OS with live replacement).
     pub const OWN_IMAGE_ADDRESS: u64 = 0x0c00_0000;
     /// Pages a stand-in is built out of: its image, a four-page stack, its page tables and
     /// revocation log. Measured with `MemoryRegion::USAGE`'s committed count on 2026-10-19 (UTC),
