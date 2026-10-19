@@ -66,7 +66,8 @@ usage: script/claim <branch-name> (--debt-paydown | --new-work) [--worktree <dir
 
   <branch-name>     e.g. milestone/238-a-thing or maintainer/some-fix. Checked against the same
                      shape rule script/lint-fleet's check 4 enforces, before anything is created.
-  --worktree <dir>  where to put the worktree. Default: <worktree root>/<slug>, where
+  --worktree <dir>  where to put the worktree; a relative <dir> is read from the current
+                     directory. Default: <worktree root>/<slug>, where
                      <slug> is the branch's last /-separated segment (the canonical location per
                      notes on this project's worktree convention). The worktree root is
                      `nife-worktrees` beside the main checkout; $NIFE_WORKTREES replaces it.
@@ -96,7 +97,16 @@ while [ $# -gt 0 ]; do
     case "$1" in
         --worktree)
             [ $# -ge 2 ] || { echo "claim: --worktree needs a path" >&2; exit 2; }
-            worktree="$2"; shift 2 ;;
+            # Anchored to the caller's directory now, because three later uses disagree about a
+            # relative path: `[ -e ]` and the claim's `cd` read it from here, while `git -C
+            # "$repo_root" worktree add` reads it from the tree this script lives in. Run from the
+            # main checkout as a lane worktree's script/claim, `../nife-worktrees/x` would land at
+            # `nife-worktrees/nife-worktrees/x`. helpers/claim-selftest.sh holds it to that.
+            case "$2" in
+                /*) worktree="$2" ;;
+                *) worktree="$PWD/$2" ;;
+            esac
+            shift 2 ;;
         --title)
             [ $# -ge 2 ] || { echo "claim: --title needs text" >&2; exit 2; }
             title="$2"; shift 2 ;;
