@@ -18,6 +18,8 @@
 # which puts it in §134's verb half where its form already sits. no architect has ratified it.
 
 set -e
+# A heavy job: wait for one of the machine's heavy-job slots first (helpers/heavy_slot.py).
+. "$(dirname "$0")/../helpers/heavy-slot.sh"
 cd "$(dirname "$0")/.."
 
 # The checks call python3 helpers that import tomllib, stdlib since 3.11. Fail here, with the fix,
@@ -136,6 +138,12 @@ helpers/commit-msg-selftest.sh >/dev/null
 
 # The partition `--no-cargo` relies on, proved against fixtures (no tree, no cargo).
 helpers/lint-no-cargo-selftest.sh >/dev/null
+
+echo "==> the heavy-job slots (a full machine holds a job back; a killed holder frees its slot)"
+# helpers/heavy_slot.py caps how many heavy jobs run on the machine at once, and this file is one of
+# them. Proved in a scratch tree with a private slot directory and one slot, so it never waits on a
+# real job: helpers/heavy-slot-selftest.sh lists its four stages and what breaks each.
+helpers/heavy-slot-selftest.sh >/dev/null
 
 echo "==> the rustup retry (a dropped CDN connection retries; a real error does not)"
 # A stub rustup, no network. The retry only runs during a CDN outage, which no green CI run

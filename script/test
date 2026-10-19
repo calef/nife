@@ -8,6 +8,8 @@
 # command is the same in every repository that follows the pattern (design/naming.md).
 
 set -e
+# A heavy job: wait for one of the machine's heavy-job slots first (helpers/heavy_slot.py).
+. "$(dirname "$0")/../helpers/heavy-slot.sh"
 cd "$(dirname "$0")/.."
 
 # This project's own QEMU, if `script/ci-qemu` has built one (helpers/qemu-path.sh says why

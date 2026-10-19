@@ -54,6 +54,8 @@
 # Extra args go to `cargo test`, so `script/interleaving-check a_relaxed_pairing` runs one harness.
 
 set -e
+# A heavy job: wait for one of the machine's heavy-job slots first (helpers/heavy_slot.py).
+. "$(dirname "$0")/../helpers/heavy-slot.sh"
 cd "$(dirname "$0")/.."
 
 # --cfg loom is what swaps the crate's atomics for loom's instrumented ones AND what activates the

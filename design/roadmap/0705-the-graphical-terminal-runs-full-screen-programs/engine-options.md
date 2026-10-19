@@ -1,6 +1,30 @@
-# Options B and C, in full
+# Options A to E, in full
 
-This appendix belongs to [milestone 705 (the graphical terminal runs full-screen programs)](../0705-the-graphical-terminal-runs-full-screen-programs.md); it holds the full seven-question entries for options B (libghostty-vt as a second engine) and C (the `vte` crate).
+This appendix belongs to [milestone 705 (the graphical terminal runs full-screen programs)](../0705-the-graphical-terminal-runs-full-screen-programs.md).
+It holds the full seven-question entries for options A to E. Option F has [its own appendix](option-f.md).
+The shared answers to questions 2 and 4 are in the main document's Part 4.
+
+## A. Extend `video_terminal`
+
+The list in Part 2. Estimate: 500 to 900 lines of engine code plus about as many of tests. This
+is an estimate by analogy, not a measurement. On 2026-10-18 the engine is 1,738 lines across six
+files (`vt.rs` 1,033), plus `keymap.rs` (572) and `script.rs` (352), and `display_terminal.rs` is
+547. A second grid and a region-aware scroll touch `line_feed`, the damage record and the scrollback
+ring, which is where the risk is, not the sequence count.
+
+1. Considered instead: B, C, F and G, each under its own entry, and D for the ordering.
+2. See the shared answer in the main document.
+3. Prior art: xterm's control-sequence document and `vttest` define the behavior (not read here; named
+   from memory). Every real engine in section C or B is an existence proof.
+4. See the shared answer in the main document.
+5. Cost: lines above, no new dependency, no new toolchain, host-testable in milliseconds. The release
+   `display_terminal` is 18 KB of code and 717 KB of `.data` (the static grid) on aarch64, measured
+   2026-10-18; A adds to the code and, with a second grid, to the data.
+6. Fully reversible. No wire format changes, and the engine is behind `display_terminal`.
+7. Against B to E, yes at equal cost: it keeps the three-witness proof (`pixel(x, y)`) with no
+   rebuild, and it is the only option with no dependency in the shipping graph. Against F and G, no:
+   at equal cost an engine that passes 22 or 23 of vttest's 24 screens owns every program's output
+   better than ours at 7. A's remaining argument is fewer moving parts.
 
 ## B. libghostty-vt as a second engine behind the C seam
 
@@ -29,7 +53,8 @@ Everything below was read from `ghostty-org/ghostty` `main` on 2026-10-02, excep
   demonstration the existing note argues for.
 
 1. Considered instead: A, which avoids the dependency and loses on completeness and on the milestone 23
-   demonstration; and C, which is a parser only (below).
+   demonstration; C, which is a parser only (below); and F, which reaches the same completeness in
+   Rust without a toolchain.
 2. See the shared answer.
 3. Prior art read: the headers above. Ghostty's conformance history against `vttest` is claimed in
    `notes/glyphs/libghostty-vt.md`; I did not verify it.
@@ -54,7 +79,7 @@ Read from the 0.15.0 source (crates.io, `Apache-2.0 OR MIT`, 57 KB).
   that already names `set_scrolling_region`, `device_status`, `identify_terminal` and a
   `PrivateMode` enum including `SwapScreenAndSetRestoreCursor` (1049). It is still stateless: the
   grid, the regions, the second screen and the replies stay ours. It also pulls `alloc`, `log`,
-  `bitflags` and `cursor-icon`, and `display_terminal` has no allocator.
+  `bitflags` and `cursor-icon`, and `display_terminal`, being `no_std`, has no allocator.
 - *What it would save.* The sequence-recognition half of `csi` (`lib.rs:1393-1442`): the parameter and
   intermediate-byte handling that this engine already has and tests. It saves none of the state the
   Part 2 list needs. The roadmap's phrase "much less complete" (milestone 29) understates this: it
@@ -70,3 +95,54 @@ Read from the 0.15.0 source (crates.io, `Apache-2.0 OR MIT`, 57 KB).
 6. Reversible before use; a dependency in the shipping graph once used.
 7. No. At equal cost A wins over C, since C adds a dependency to save a parser that is already written
    and tested here. C is listed so that a refusal, if it comes, has its reason on record.
+
+## D. A then B, or B then A
+
+The two are not exclusive: B behind the seam does not remove A, and `notes/glyphs.md` already
+recommends keeping `video_terminal` as the reference the foreign engine is checked against.
+
+- **A then B.** The full-screen goal is met without a toolchain, and B arrives later for its own
+  reason (milestone 23). The cost is that the expected-picture check is not rebuilt until B, and A's
+  region and alternate-screen code becomes the reference B is graded against, which is a useful
+  property and not an accident.
+- **B then A.** Full-screen programs come from B's completeness first. The cost is that the goal waits
+  on the Zig toolchain and the cells-based check, and A is then written afterwards as a second engine
+  for no customer reason. I see no argument for this order other than the milestone 23 claim.
+
+1. Considered instead: A alone, B alone. Already above.
+2. to 4. See the shared answers in the main document.
+5. Cost: the sum, spread over two lanes; the first delivers the goal.
+6. As reversible as each half.
+7. For A then B, yes at equal cost, because the first step delivers the measure. For B then A, the
+   ordering is effort-neutral and I would not choose it.
+
+## E. Replace `video_terminal` with libghostty-vt
+
+B without keeping A's engine: libghostty-vt becomes the only VT engine behind `display_terminal`, and
+`video_terminal` is retired (or kept only as a host-side test fixture). Facts about the library are
+those in B; this entry is about what losing the second engine costs and buys.
+
+- *Against.*
+  - `video_terminal`'s `pixel(x, y)` carries the three-witness check: the component draws, the kernel
+    test predicts, and xtask grades the scanout. libghostty-vt gives cells, so the check has to be
+    rebuilt on cells with a small renderer we own.
+  - Losing the second engine loses differential testing. §37 (text as a value) and `notes/glyphs.md`
+    call that comparison the stronger milestone 23 (a capability-routed component OS with live
+    replacement) demonstration.
+  - As the only engine, every upstream API break ("definitely going to change") breaks the display
+    path. That path then needs the Zig toolchain and a supplied allocator just to work.
+- *For.*
+  - No 500 to 900 lines of our own engine code to keep up.
+  - No double maintenance, and no triage of disagreements between two engines.
+  - Immediate completeness: DEC modes, resize, grapheme clustering, mouse, and a `vttest` history
+    (claimed in `notes/glyphs.md`, not verified here).
+- *What would make E more attractive.* An upstream API declared stable.
+
+1. Considered instead: A (keeps the second engine, costs the lines), B and D (keep both engines).
+2. to 4. See the shared answers in the main document.
+5. Cost: B's toolchain, vendoring and allocator costs, plus the cell-based check, minus the engine
+   lines of A. Not measured beyond what B records.
+6. Harder to reverse than B: once `video_terminal` is gone, bringing it back is a rewrite, and the
+   display path depends on a library whose API is declared unstable.
+7. Not decided here. At equal cost I would still keep two engines, because the differential check is
+   the claim; E wins only if that claim is not worth the second engine's upkeep.
