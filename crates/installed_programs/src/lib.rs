@@ -1794,14 +1794,18 @@ mod tests {
         let b = [2u8; 32];
         let text = |d: &Digest| String::from_utf8(measured_boot::digest_text(d).to_vec()).unwrap();
         let (ta, tb) = (text(&a), text(&b));
+        // A comment and a blank line are skipped, as in every generation; `alto` is granted a zone
+        // and not the network, so the network is never read off another grant of its digest.
         let table = format!(
-            "{ta} dialer 0.1.0 dialer jig\n{tb} alto 0.1.0 duet jig\ndefault dialer {ta}\ndefault alto {tb}\n\
-             grant {ta} network\ngrant {ta} zone .\ngrant {ta} zone nife.test\n"
+            "# generation 1\n{ta} dialer 0.1.0 dialer jig\n{tb} alto 0.1.0 duet jig\n\n\
+             default dialer {ta}\ndefault alto {tb}\ngrant {ta} network\ngrant {ta} zone .\n\
+             grant {ta} zone nife.test\ngrant {tb} zone nife.test\n"
         );
         assert_eq!(network_granted(&table, &a), Ok(true));
         assert_eq!(network_granted(&table, &b), Ok(false));
         let zones: vec::Vec<_> = grants(&table)
             .map(|g| g.unwrap())
+            .filter(|g| g.digest == a)
             .filter_map(|g| match g.what {
                 Granted::Zone(z) => Some(z),
                 Granted::Network => None,
@@ -1845,9 +1849,13 @@ mod tests {
         let n = without_package(&next, "dialer", None, &mut out).unwrap();
         let after = core::str::from_utf8(&out[..n]).unwrap();
         assert!(
-            !after.contains("grant "),
+            !after.contains(&format!("grant {ta}")),
             "a removal takes its rows' grants: {after}"
         );
         assert_eq!(network_granted(after, &a), Ok(false));
+        assert!(
+            after.contains(&format!("grant {tb} zone nife.test")),
+            "and only its rows'"
+        );
     }
 }

@@ -1650,9 +1650,27 @@ mod tests {
             z.iter().collect::<Vec<_>>(),
             [b"".as_slice(), b"basalt.nifeos.org", b"example.net"]
         );
+        assert!(!z.is_empty());
         assert!(
             zones(&encode(&M)).unwrap().is_empty(),
             "version 1 asks none"
+        );
+        const NO_ROOT: &[&str] = &["nife.test"];
+        const D2: [u8; zoned_len(NO_ROOT)] = encode_zoned(&M, NO_ROOT);
+        assert!(!zones(&D2).unwrap().has_root());
+        const EIGHT: &[&str] = &["a", "b", "c", "d", "e", "f", "g", "h"];
+        const D8: [u8; zoned_len(EIGHT)] = encode_zoned(&M, EIGHT);
+        assert_eq!(
+            zones(&D8).unwrap().iter().count(),
+            MAX_ZONES,
+            "eight is the most, and allowed"
+        );
+        let unsorted = std::panic::catch_unwind(|| {
+            encode_zoned::<{ zoned_len(&["b", "a"]) }>(&M, &["b", "a"])
+        });
+        assert!(
+            unsorted.is_err(),
+            "encode refuses unsorted zones, as decode does"
         );
 
         let respell = |zones: &[&[u8]]| {
@@ -1694,8 +1712,15 @@ mod tests {
         const NOTE: ZonedNote<{ zoned_note_len(ZONES) }> =
             ZonedNote::of::<{ zoned_len(ZONES) }>(&grant_plan::NO_NOTE_MANIFEST, ZONES);
         let n = &NOTE.0;
-        assert_eq!(n.len() % 4, 0);
+        // 56 + 1 + 1 + 9 = 67 bytes of descriptor after a 20-byte header and owner, rounded to 88.
+        assert_eq!(n.len(), 88);
+        assert_eq!(
+            u32::from_le_bytes([n[0], n[1], n[2], n[3]]),
+            5,
+            "namesz: `nife` and its NUL"
+        );
         let descsz = u32::from_le_bytes([n[4], n[5], n[6], n[7]]) as usize;
+        assert_eq!(descsz, 67);
         assert_eq!(descsz, zoned_len(ZONES));
         let d = &n[HEADER_LEN + NAME_FIELD..HEADER_LEN + NAME_FIELD + descsz];
         assert_eq!(
