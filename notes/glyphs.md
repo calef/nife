@@ -5,7 +5,7 @@ read. Rung one put pixels on a screen ([framebuffer-contract.md](framebuffer-con
 two multiplexed the screen among mutually distrusting clients ([compositor.md](compositor.md)).
 Neither could show a letter.
 
-The code halves are `crates/bitmap_font` (the font), `crates/video_terminal` (the grid engine, the keymap, and the
+The code halves are `crates/glyph_atlas` (the terminal's font), `crates/video_terminal` (the grid engine, the keymap, and the
 test script), `components/src/display_terminal.rs` (the terminal component), and `components/src/keyboard_driver.rs` (the keyboard
 driver). This is the prose half.
 The survey behind the font, the input path's design and the proof of text on the screen are in
@@ -25,10 +25,22 @@ The survey behind the font, the input path's design and the proof of text on the
 
 Everything above the surface is text; everything below it is rung one's contract, unchanged.
 
-## The font: ours, drawn in the Kaypro II's style
+## The terminal's font: DejaVu Sans Mono, rasterised at build time
+
+`crates/glyph_atlas` is DejaVu Sans Mono (§104) at a 14x26 cell, Menlo Regular 11 at 2x, in four
+faces (§166), as coverage tables of one byte a pixel. The rasteriser (`ttf-parser` and
+`ab_glyph_rasterizer` 0.1.10) runs on the host in `tools/glyph_atlas_generator`, and its test fails
+unless the checked-in tables are exactly what it makes from `vendor/dejavu`. So a glyph is still a
+lookup in a `static`, now followed by a blend, and the three witnesses below still compute the same
+picture without a font engine among them. Milestone 142's block, and its
+[determinism appendix](../design/roadmap/0142-a-text-display-worth-living-in/determinism.md), say
+why the rasteriser belongs at build time and why each pin is what it is.
+
+## The boot console's font: ours, drawn in the Kaypro II's style
 
 `crates/bitmap_font` is a 7x8 monochrome bitmap font and a pure function from `(byte, x, y)` to a
-color.
+color. The kernel's boot console (`crates/screen_console`) and `board_console` draw with it; the
+terminal does not.
 
 It is an original drawing, made for this tree in `crates/bitmap_font/kaypro-style-7x8.art`. Nobody
 holds a license over it and no obligation travels with it. It replaced `font8x8` (public domain, by
@@ -116,9 +128,9 @@ Three decisions inside it worth reading:
   the *next* printable does the wrap. Without it, a line that exactly fills the width scrolls the
   screen before anything asked it to, and a `CR` arriving right after the last character finds the
   cursor a row too low. That is the difference between a grid and a terminal.
-- Bold is bright. A bold weight needs a second font and in a five-column cell a bold face is a
-  smudge. Every terminal since the DEC VT has answered SGR 1 by brightening. It is a flag resolved
-  when painting, so it brightens only the eight normal colors.
+- Bold is bright. Every terminal since the DEC VT has answered SGR 1 by brightening, and this one
+  does until milestone 142 increment 5 draws `glyph_atlas::BOLD`, which is generated and unused. It
+  is a flag resolved when painting, so it brightens only the eight normal colors.
 - The cursor is part of the picture, drawn by inverting its cell rather than overlaid. That keeps
   the screen a pure function of the state: a test that predicts the screen predicts the cursor too,
   and a cursor left in the wrong place is a failure rather than a cosmetic difference nobody notices.
@@ -209,28 +221,22 @@ Stated plainly, because a demonstrator's caveats are part of the deliverable.
   opcode, proposed in `design/roadmap/0668-scrollback-from-the-keyboard.md`.
 - **UTF-8: BUILT 2026-08-26** (milestone 142 increment 2). The VT engine decodes UTF-8 in its ground
   state (a running `utf8_need`/`utf8_code` accumulator, invalid or truncated sequences drawing
-  U+FFFD), and `bitmap_font::glyph`'s signature is `char`. The font's repertoire did not grow: a
-  decoded non-ASCII `char` still draws the missing-glyph box, same as an unmapped byte always did.
-  What changed is that a multi-byte sequence now occupies one cell (one box) instead of one wrong
-  picture per encoded byte.
+  U+FFFD). The atlas covers printable ASCII, so a decoded non-ASCII `char` draws the font's
+  missing-glyph box, one box for one character rather than one wrong picture per encoded byte.
 - No line editing in the display terminal. It renders a stream and echoes keystrokes; it does not
   serve `OPERATION_READLINE`. A client that wants edited lines puts `line_editor` in front of it and prints the
   discipline's echo through `OPERATION_WRITE`, which needs no new protocol at all, because `line_editor`'s echo
   is exactly a byte stream this engine parses. That is not a hope: the `video_terminal` crate proves it on the
   host by running both.
-- A 132x43 grid, with no pixels left over. It grew on 2026-08-26 from 18x8 to 182x90, at milestone
-  142 (a text display good enough that people use it instead of a GUI) increment 1, with the scanout
-  at 1280x720 (DECISIONS §102 (a Frame names a run of pages)). It was retargeted on 2026-08-27 to
-  132x43 at a 924x344 scanout, on review with calef. 182x90 was arithmetic against a *future*
-  14-pixel cell that never shipped in this increment, applied by mistake to the 7x8 cell that did,
-  producing a grid nearly double any terminal anyone runs. 132 cells of 7 use all 924 columns, and 43
-  cells of 8 use all 344 rows. So unlike the 1280x720 scanout's six leftover columns, there is no
-  strip left for the terminal to paint background into, and no cell to own it. `MAX_COLS`/`MAX_ROWS`
-  shrank with the retargeted scanout, and are still constants, still exactly sized to the current
-  font and screen. (The surface itself, [`graphics_contract::SURFACE_BYTES`], does carry about 2 KiB
-  of unrelated padding past the last pixel, for frame-alignment reasons that have nothing to do with
-  the character grid; see `graphics_contract::WIDTH`'s doc comment.)
-- The font's own weak glyphs, named where a reader meets them. `M` and `W` are near vertical
+- An 80x24 grid on the virtio-gpu scanout, with no pixels left over: 1120x624 is exactly 80 cells
+  of 14 by 24 of 26. `MAX_COLS`/`MAX_ROWS`/`MAX_CELLS` are constants sized for the largest
+  firmware screen this tree drives, not for the scanout. (The surface,
+  [`graphics_contract::SURFACE_BYTES`], carries 2 KiB of padding past the last pixel, for frame
+  alignment; see `graphics_contract::WIDTH`'s doc comment.)
+- The atlas's own limits: glyphs are clipped to their cell, so the oblique faces lose up to 1.2
+  pixels where they lean, and the blend is in sRGB rather than linear light until milestone 142
+  increment 4. `crates/glyph_atlas`'s BUGS has both.
+- The boot console's 7x8 font has weak glyphs, named where a reader meets them. `M` and `W` are near vertical
   mirrors, because five ink columns leaves one way to draw each. `&` is the busiest glyph in the set
   and reads as a knot at a glance. `%` fills its corners heavily enough to look bolder than its
   neighbors. And `_` does not join across cells, so a rule drawn out of underscores is dashed. The
@@ -266,8 +272,10 @@ either alone. [`glyphs/libghostty-vt.md`](glyphs/libghostty-vt.md) has the prici
 
 | piece | file |
 |---|---|
-| the font as pictures, which is what to edit | `crates/bitmap_font/kaypro-style-7x8.art` |
-| the font and its provenance | `crates/bitmap_font/src/lib.rs`, `crates/bitmap_font/src/glyphs.rs` |
+| the terminal's font, and how it is drawn | `crates/glyph_atlas/src/lib.rs`, `tools/glyph_atlas_generator` |
+| the outlines it is drawn from, and their license | `vendor/dejavu/`, `vendor/README.md` |
+| the boot console's font as pictures, which is what to edit | `crates/bitmap_font/kaypro-style-7x8.art` |
+| the boot console's font and its provenance | `crates/bitmap_font/src/lib.rs`, `crates/bitmap_font/src/glyphs.rs` |
 | the VT engine | `crates/video_terminal/src/vt.rs`, and the cells, damage and palette beside it |
 | the keymap | `crates/video_terminal/src/keymap.rs` |
 | the test script, shared by three witnesses | `crates/video_terminal/src/script.rs` |

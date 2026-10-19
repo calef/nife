@@ -16,8 +16,8 @@ instead of it:
 
 - `framebuffer_driver` serves the same framebuffer contract `gpu_driver` does, over the screen
   the firmware left running. A flush is a CPU copy from the surface into the aperture
-  (`screen_console::Aperture`, host-tested). It holds only the aperture rows its 924x344 surface can
-  reach, as a spawn-time mapping.
+  (`screen_console::Aperture`, host-tested). It holds only the aperture rows its surface can reach,
+  as a spawn-time mapping.
 - The console server tees. Every byte it writes to COM1 it then hands `display_terminal`. Both
   surfaces say the same thing, and every serial gate is unchanged.
 - The kernel hands the screen over once (`console::yield_screen`). It clears it under the console

@@ -467,7 +467,7 @@ fn parse_load_average(uptime_output: &str) -> Option<f64> {
 /// 1. rung two's **composed screen** (milestone 33): three clients' surfaces, composited by `compositor`.
 ///    The compositor test holds it up for a few seconds precisely so this poll cannot miss it;
 /// 2. the display terminal's **text** (milestone 29's remaining increment): real glyphs from the
-///    `bitmap_font` table, laid out by the `video_terminal` engine. Held up the same way, for the same reason;
+///    `glyph_atlas` tables, laid out by the `video_terminal` engine. Held up the same way, for the same reason;
 /// 3. rung one's **test pattern** (milestone 29), which then stays on the scanout until QEMU exits.
 ///
 /// All three must be seen or the run fails, and the order is part of the check: this looks for each
@@ -668,13 +668,11 @@ impl ScanoutReferee {
     /// for. Call it on a cadence for as long as the suite is running.
     ///
     /// **Costs more per poll than it used to, and that is a considered, recorded choice rather
-    /// than an oversight** (milestone 142, 2026-08-27). The scanout grew from 128x64 (8,192
-    /// pixels) to 924x344 (317,856 pixels), roughly 39x more data moved through `screendump` on
-    /// the same 100 ms cadence. Measured, not assumed: both architectures' full test suites still
-    /// completed in normal time with no timeout pressure at the new size. calef confirmed leaving
-    /// the cadence unchanged rather than widening it preemptively, since nothing is currently
-    /// slow enough to measure a real problem against; revisit if a future resolution increase
-    /// (or a slower CI runner) actually makes this cadence cost something observable.
+    /// than an oversight** (milestone 142). The scanout is 1120x624 (698,880 pixels), 85 times the
+    /// 128x64 it grew from, moved through `screendump` on the same 100 ms cadence. calef chose to
+    /// keep the cadence rather than widen it preemptively, since nothing was slow enough to
+    /// measure a real problem against; revisit if a resolution increase (or a slower CI runner)
+    /// makes this cadence cost something observable.
     pub(crate) fn poll(&mut self) {
         // Press a key every poll. Harmless before the keyboard driver exists (QEMU drops the event)
         // and harmless after its test has passed (the driver ends up parked in a `CALL` nobody
@@ -1161,7 +1159,7 @@ mod tests {
 
     fn text_rgb(x: u32, y: u32) -> (u8, u8, u8) {
         // Built once and cached rather than once per pixel: `ppm` below calls this per pixel of a
-        // 924x344 image (317,856 times), and reconstructing and re-feeding a `Vt` that many times
+        // 1120x624 image (698,880 times), and reconstructing and re-feeding a `Vt` that many times
         // would dominate this test's runtime the moment the grid grew past a few dozen cells.
         static SCREEN: std::sync::OnceLock<video_terminal::Vt> = std::sync::OnceLock::new();
         let screen = SCREEN.get_or_init(|| {

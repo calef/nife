@@ -32,16 +32,15 @@ nobody wrote down)'s lane wrote it up, and calef ruled on 2026-10-05 (UTC).
 Increments one and two are built (`milestone/142-terminal-size`). They are also [journey
 1](../journeys/01-login-to-kilo.md)'s step 6 (calef, 2026-08-27: "I want a full size usable
 terminal"), and need nothing from milestone 177 (wire the graphical terminal stack into the real
-interactive boot). The scanout was first grown to 1280x720, giving 182x90 at the shipping 7x8 cell,
-double any terminal anyone runs. On 2026-08-27 it was retargeted to 924x344 for a 132x43 grid, the
-VT100 "wide mode" size. When the atlas widens the cell, the grid shrinks with it.
+interactive boot). The scanout is 1120x624, sized to the atlas's 14x26 cell for an 80x24 grid.
 
 On 2026-09-26 lane `milestone/142-text-display` built increment five's widening and the navigation
 cluster (home, end, insert, delete, page up and down, with xterm's shift forms). Scrollback from the
 keyboard needs a new opcode, because `line_editor` sits in front of `display_terminal`;
 [milestone 668 (scrollback from the keyboard)](0668-scrollback-from-the-keyboard.md) holds it. Increment six
-is built (checked 2026-10-03, UTC). Increments three and four have not started, and nothing blocks
-them. [Sequencing](#sequencing) has each increment's state.
+is built (checked 2026-10-03, UTC). Increment three is built: the atlas, its generator and gate,
+and an 80x24 scanout at the atlas's cell. Increment four has not started, and nothing blocks it.
+[Sequencing](#sequencing) has each increment's state.
 
 The working behind each section below is in [its appendices](0142-a-text-display-worth-living-in/README.md),
 each linked where it applies. This page is complete without them.
@@ -148,20 +147,21 @@ out of the shipped graph. §166 ruled this pair. The test, the table and the pri
 Six increments. The first two needed no decision from calef and no dependency at all, and they were
 the larger half of "would use it outside a GUI".
 
-1. Grow the surface. BUILT. §102 built, the scanout grown to 1280x720 and then retargeted on
-   2026-08-27 to 924x344. The harness cost was paid, not dodged.
-2. Make the grid a terminal. BUILT. Scrollback, UTF-8 in the VT engine, and the arrow keys, on a
-   132x43 grid at today's 7x8 bitmap font.
-3. The atlas and the host-side generator. NOT-STARTED. A tool that turns an outline font into a coverage table, a
-   checked-in table, and a gate that regenerating reproduces it byte for byte. The crate pair, the
-   `u8` boundary and grayscale coverage are decided and should not be re-litigated in the lane. It
-   must also regrow the scanout (see Follow-on).
+1. Grow the surface. BUILT. §102 built and the scanout grown; increment three sized it to
+   1120x624. The harness cost was paid, not dodged.
+2. Make the grid a terminal. BUILT. Scrollback, UTF-8 in the VT engine, and the arrow keys.
+3. The atlas and the host-side generator. BUILT. `tools/glyph_atlas_generator` turns
+   `vendor/dejavu`'s four faces into `crates/glyph_atlas`'s coverage tables (14x26, 96 glyphs, one
+   byte a pixel), and its test, run by `cargo xtask test`, fails unless regenerating reproduces them
+   byte for byte. The terminal draws from the regular face, blended in sRGB, and the scanout is
+   1120x624, exactly 80x24 cells.
 4. Blending, in linear light, with the sRGB tables. NOT-STARTED on purpose, since it has no consumer
    until the atlas exists. Small, and it is what makes the atlas look like type rather than gray
    mush.
 5. Rich attributes. PARTIAL. Widen `Attr` and `Cell` for truecolor, real weights and underline
-   styles, and ship the bold, italic and bold-italic faces. The widening is built; the faces wait
-   on the atlas, and *bold is bright* stands until they land.
+   styles, and ship the bold, italic and bold-italic faces. The widening is built, and the faces are
+   in the atlas (`glyph_atlas::BOLD`, `OBLIQUE`, `BOLD_OBLIQUE`) but drawn nowhere, so *bold is
+   bright* stands until the engine selects them.
 6. The palette. Built: milestone 141's gate exists and the Solarized Dark table passes it.
 
 A seventh, listed and not recommended: a glyph service, a component serving rendered glyphs so a
@@ -172,22 +172,19 @@ it as its own milestone when rung three is live.
 
 ## What is an architect's
 
-Nothing blocks increment three now. The family was §104's (2026-08-20) and the face count §166's
+Nothing blocks increment four. The family was §104's (2026-08-20) and the face count §166's
 (2026-10-05). Still calef's, and blocking nothing:
 
-- Names. The generator tool, the atlas crate and any glyph service are all provisional.
+- Names. `glyph_atlas`, `glyph_atlas_generator` and any glyph service are all provisional.
 - Whether the terminal ever gains a configurable palette. Milestone 141 flags that as larger than it
   sounds, because the palette is a `const` three parties agree on.
 - Whether a nudged palette is still called Solarized (141's block).
 
 ## BUGS
 
-- The 14x26 cell was measured from Menlo, and DejaVu Sans Mono was re-measured against it only at
-  version 2.35 (matplotlib's copy on patagonia), not the 2.37 this block priced.
-- Nothing here has been measured on the machine. The harness cost, the table sizes and the cell
-  arithmetic are all computed from constants in the tree. The soft-float claim is read from two
-  target JSONs and from what `compiler_builtins` provides. No rasteriser has been run on either
-  target, which is the measurement §46's rule 1 would want before a dependency were taken.
+- No rasteriser runs on either target, by design: the generator runs on the host, and the
+  regenerate gate checks its output on every host that runs `cargo xtask test`. The soft-float
+  claim is read from two target JSONs and from what `compiler_builtins` provides, never exercised.
 - The atlas assumes the repertoire stays small. Full Unicode coverage is not a bigger table; it is
   a different design, back to a runtime rasteriser or a glyph service. The block says "a terminal
   does not need that", and a person running `cat` on a file of Devanagari would disagree.
@@ -206,11 +203,10 @@ Nothing blocks increment three now. The family was §104's (2026-08-20) and the 
   silicon. Neither limit touches the two bare-metal targets: the minimal crate set built clean for
   `aarch64-unknown-none-softfloat` and `riscv64imac-unknown-none-elf` on 2026-08-20, though the
   determinism runs were on the x86_64 and aarch64 hosts, not on either target (see above).
-- This milestone enlarges the supply-chain gap §100 (the terminal font) recorded.
-  `script/supply-chain` reads the cargo graph, so a font transcribed into a Rust table is invisible
-  to it. Today that is a kilobyte of public-domain bitmap; the atlas would be hundreds of kilobytes
-  under a third party's license. The register in `vendor/README.md` is where it belongs, written at
-  the same time as the table.
+- `script/supply-chain` reads the cargo graph, so the atlas (140 KB of tables drawn from fonts under
+  Bitstream Vera's license) is invisible to it. `vendor/README.md` registers the fonts and the
+  tables, by hand. Nothing checks the vendored fonts against upstream's release archive; that
+  entry's BUGS says why.
 - "Rich text" is read here as terminal attributes, not as a document model. If calef meant
   proportional type, embedded images, or anything a terminal is not, the right answer is rung three.
 
@@ -223,20 +219,19 @@ Nothing blocks increment three now. The family was §104's (2026-08-20) and the 
   Contrast" is a different palette rather than a contrast adjustment.
 - **Done.** §102 is built and consumed: the page-frame object in `kernel/src/cap.rs` carries a
   count that is the run's length in pages, and `crates/graphics_contract` sizes the scanout at
-  924x344 over 311 frames.
+  1120x624 over 683 frames.
 - **Done.** The screendump cost was measured and settled: the referee poll in `xtask/src/main.rs`
-  records the 39x growth, that both suites still finish in normal time, and calef's call to leave
+  records the growth, that the suites still finish in normal time, and calef's call to leave
   the 100 ms cadence alone until something is measurably slow.
 - **Milestone 668.** Scrollback is still not reachable from a keyboard, and it needs an architect:
   the route has a new opcode in it. `design/roadmap/0668-scrollback-from-the-keyboard.md` has the
   work, the four options and the recommendation. The keys (`CSI 5;2~`, `CSI 6;2~`) are sent since
   2026-09-26.
-- **Outstanding.** Increment three has not started: nothing in `Cargo.lock` mentions a TrueType
-  parser or a glyph rasteriser, there is no generator under `tools/` or `xtask`, and no checked-in
-  coverage table or regenerate-and-compare gate exists. Checked 2026-09-03.
+- **Done.** Increment three: `crates/glyph_atlas`, `tools/glyph_atlas_generator` and its
+  `tests/regenerate.rs` gate, and `vendor/dejavu`.
 - **Outstanding.** Increment five is partial: its widening is built (truecolor, the 256-color
-  table, underline, strikethrough, dim, concealed; 2026-09-26). Real weights and italic need faces
-  and wait on the atlas, so "bold is bright" stands. Underline styles beyond one line (SGR `4:3`
+  table, underline, strikethrough, dim, concealed; 2026-09-26). The faces are in the atlas and the
+  engine does not select them yet, so "bold is bright" stands. Underline styles beyond one line (SGR `4:3`
   and the rest of the colon forms) and the underline color (SGR 58) are not built: the parser
   swallows `:` whole, recorded in notes/glyphs.md.
 - **Done.** Whether the atlas ships one face or four: four, with italic as DejaVu's Oblique
@@ -244,15 +239,14 @@ Nothing blocks increment three now. The family was §104's (2026-08-20) and the 
 - **Done.** The palette increment: milestone 141 is BUILT 2026-09-29, and the one-unit nudge §104
   flagged is in `crates/video_terminal/src/lib.rs` (entry 14, `0x93a1a0`). Whether a nudged
   palette is still called Solarized is calef's (141's block).
-- **Done.** The chosen face is re-measured (2026-09-26, `fontTools`, DejaVu Sans Mono 2.35): 2048
-  units per em, every advance 1233, ascender 1901, descender -483, no line gap. Those are Menlo's
-  numbers exactly, so the 14x26 cell stands.
-- **Outstanding.** At 14x26 the 924x344 scanout is a 66x13 grid, under the 80x24 floor. Increment
-  3 must regrow the scanout: 1120x624 (683 page frames) for 80x24, or 1848x1118 (2,018) to keep
-  132x43.
-- **Recorded.** A font transcribed into a Rust table stays invisible to `script/supply-chain`,
-  which reads the cargo graph, and `vendor/README.md` still carries no entry for the current font
-  or a future atlas.
+- **Done.** The chosen face is measured at the vendored 2.37 by the generator's own parser: 2048
+  units per em, every advance 1233, ascender 1901, descender -483. Those are Menlo's numbers
+  exactly, so the 14x26 cell stands.
+- **Done.** The scanout is 1120x624 (683 page frames), 80x24 at 14x26. A firmware screen's
+  terminal draws the 14-pixel cell at half the boot console's scale, so it keeps the boot console's
+  column count: 137x41 on a 1920x1080 screen.
+- **Recorded.** The atlas stays invisible to `script/supply-chain`, which reads the cargo graph;
+  `vendor/README.md` registers it by hand.
 
 ## Index row
 
@@ -262,11 +256,10 @@ so good that people would use it outside of a GUI."* Four axes, and the font is 
 surface, the terminal, the type and the color. The finding that makes the expensive axis cheap is
 that a monospace grid puts every glyph on an integer cell boundary. So the rasteriser belongs at
 build time and the runtime keeps a coverage table exactly as `bitfont` keeps a bit table, which is
-what preserves the three-party pixel-exact proof. Increments one and two (the scanout, first grown
-to 1280x720 via DECISIONS §102 then retargeted 2026-08-27 to 924x344 for a 132x43 grid at the
-shipping 7x8 cell, and a real terminal: scrollback, UTF-8, arrow keys) are built. Increment five
-is partial (truecolour and the line renditions built 2026-09-26; the faces are ruled and wait on the
-atlas). The navigation cluster is in the keymap, and scrollback from the keyboard is a proposal because its
+what preserves the three-party pixel-exact proof. Increments one and two (the scanout, grown via
+DECISIONS §102, and a real terminal: scrollback, UTF-8, arrow keys) are built. Increment five
+is partial (truecolour and the line renditions built 2026-09-26; the faces are generated and wait to
+be drawn). The navigation cluster is in the keymap, and scrollback from the keyboard is a proposal because its
 route needs a new opcode. Six, the palette, is built (the gate of milestone 141, a palette worth
-looking at). Three and four remain NOT-STARTED; the ruling of 2026-10-05 UTC and milestone 141 is
-built, so nothing blocks them.
+looking at). Three is built: DejaVu Sans Mono from a checked-in atlas on an 80x24 scanout. Four
+remains NOT-STARTED, and nothing blocks it.
