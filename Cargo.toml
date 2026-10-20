@@ -316,10 +316,12 @@ opt-level = 2
 opt-level = 2
 
 # The terminal's per-pixel path, optimised even in a debug build, for the screen console's reason
-# above. The kernel's display tests run `Vt::pixel` for every one of the 1120x624 scanout's 698,880
-# pixels per comparison, and unoptimised that took CI's riscv64 CPU-matrix shard from about 16
-# minutes past its 20-minute budget (milestone 142 (a text display good enough that people use it
-# instead of a GUI), 2026-10-19). `glyph_atlas` is the lookup and the blend inside the loop.
+# above and one of its own. The kernel's display tests run `Vt::pixel` for every one of the
+# 1120x624 scanout's 698,880 pixels per comparison, and unoptimised that took CI's riscv64
+# CPU-matrix shard past its 20-minute budget. And the display terminal in a compositor window runs
+# on one 4 KiB stack page, which the unoptimised `Vt::pixel` -> `glyph_atlas::blend` -> `to_srgb`
+# frames overflowed while a window scrolled (milestone 142 (a text display good enough that people
+# use it instead of a GUI), 2026-10-19).
 [profile.dev.package.glyph_atlas]
 opt-level = 2
 [profile.dev.package.video_terminal]

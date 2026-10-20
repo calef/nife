@@ -31,7 +31,7 @@ fn main() -> ExitCode {
             }
         };
     }
-    for (path, table) in glyph_atlas_generator::tables() {
+    for (path, table) in glyph_atlas_generator::outputs() {
         let at = glyph_atlas_generator::root().join(path);
         if let Err(e) = std::fs::write(&at, &table) {
             eprintln!("writing {path}: {e}");

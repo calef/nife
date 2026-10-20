@@ -229,7 +229,8 @@ Stated plainly, because a demonstrator's caveats are part of the deliverable.
   host by running both.
 - An 80x24 grid on the virtio-gpu scanout: 1120x624 is exactly 80 cells of 14 by 24 of 26.
   `MAX_COLS`/`MAX_ROWS`/`MAX_CELLS` are sized for the largest firmware screen, not the scanout.
-- The atlas clips a glyph to its cell and blends in sRGB; `crates/glyph_atlas`'s BUGS has both.
+- The atlas clips a glyph to its cell, so an oblique glyph loses what leans past it;
+  `crates/glyph_atlas`'s BUGS has the measure.
 - The boot console's 7x8 font has weak glyphs, named where a reader meets them. `M` and `W` are near vertical
   mirrors, because five ink columns leaves one way to draw each. `&` is the busiest glyph in the set
   and reads as a knot at a glance. `%` fills its corners heavily enough to look bolder than its

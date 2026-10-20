@@ -98,15 +98,13 @@ Loss: none proved; two widely used crates (`arrayvec`, `memchr`) in the base gra
 
 3. Adapt the virtio drivers to `virtio-drivers`, one device per milestone. About 1,500 lines of
 device-facing code, with no proofs, driven by bytes a device or a hostile hypervisor writes.
-`virtio-drivers` covers block, net, GPU and input over MMIO and PCI ECAM, is active (last push
-2026-09-25), and its leading contributor by commits is `qwandor` (488 commits) *(from memory: of
-Google's Android virtualization work)*. Read, and the reason this is third rather than first:
-its README and source do not negotiate `VIRTIO_F_ACCESS_PLATFORM`, which `virtio_net_transport.rs`
-and `keyboard_driver.rs` accept today because they sit behind the IOMMU. So the first milestone is
-an upstream patch, and the plan fails if upstream refuses it, leaving a fork. Its `Hal` trait is
-static methods, so the DMA capability has to sit in a global. The kernel's DMA validation is
-untouched. New base-graph crates: `zerocopy`, `safe-mmio`, `thiserror`, `enumn`, `log`, `bitflags`.
-Measure throughput with `script/bench` before and after each device.
+`virtio-drivers` covers block, net, GPU and input over MMIO and PCI ECAM and is active (last push
+2026-09-25). It is third because release 0.13.0 (2026-03-03) does not negotiate `VIRTIO_F_ACCESS_PLATFORM`, which our net and
+input drivers accept because they sit behind the IOMMU. rcore-os/virtio-drivers#232 added it on
+2026-03-17 "for some device", so net and input are unverified, and no release carries it yet. Its
+`Hal` trait is static methods, so the DMA capability has to sit in a global. The kernel's DMA
+validation is untouched. New base-graph crates: `zerocopy`, `safe-mmio`, `thiserror`, `enumn`,
+`log`, `bitflags`.
 
 4. Measure `user_mode_heap` against `talc`, then decide. 272 lines of first-fit free list in every
 process. `talc` is maintained (2026-09) and `no_std`. The prior art cuts both ways:
@@ -198,26 +196,26 @@ on the customer path.
    license (MPL-2.0, not in `deny.toml`). `goblin` and `xmas-elf` lost to our Kani-proved `elf`
    (`xmas-elf` has RUSTSEC-2025-0018, an out-of-bounds read on a malformed ELF).
 2. What the tree already does. `smoltcp` is taken whole and unpatched, and argon2 and RustCrypto
-   are ordinary dependencies; `httparse`, `vte` and `r-efi` fit that shape. `virtio-drivers` needs a
-   patch, which is RedoxFS's shape (§34).
+   are ordinary dependencies; `httparse`, `vte` and `r-efi` fit that shape. `virtio-drivers` will
+   too, once a release carries #232.
 3. Prior art. In the tables above.
-4. Is the premise true? Mostly. The kernel uses only `video_terminal`'s and `line_editor`'s
-   constants (the surprise above), so its exemption does not cover their engines.
+4. Is the premise true? Mostly; the kernel's exemption does not cover the two engines (above).
 5. Cost. Lines retired are measured above; lane time is estimated. Throughput and heap numbers are
    owed by candidates 3 and 4 before any ruling.
 6. Reversibility. Each replacement is reversible code; adding a crate to the base graph is §46's
    expensive category, and nobody has acted yet.
-7. Same cost? Yes for 1, 2, 5 and 6: at equal effort the exposed library wins on trust. 3 is
-   closer, because the fork risk is real. Nothing here is recommended because it is less work.
+7. Same cost? Yes for 1, 2, 3, 5 and 6: at equal effort the exposed library wins on trust. Nothing
+   here is recommended because it is less work.
 
 ## Proposed milestones, one replacement each
 
 - (a) BUILT: `http_response` parses its head with `httparse`. Gate: existing host tests and fuzz target.
 - (b) Held for milestone 705 (full-screen programs)'s engine choice (calef, 2026-10-18 UTC): a full engine has its own
   parser. Else `video_terminal` parses with `vte`; gate: host tests, new fuzz target.
-- (c0) Upstream `VIRTIO_F_ACCESS_PLATFORM` to `virtio-drivers`. Then (c1) input, (c2) GPU,
-  (c3) block, (c4) net, each with a `script/bench` number before and after, on all three
-  architectures.
+- (c0) A crates.io release containing #232, with no git pin and no fork (calef, 2026-10-20 UTC:
+  *"a′ but no releases since March isn't promising as a dependency"*; *"Treat the wait as part of
+  the gate."*). Only then (c1) input, (c2) GPU, (c3) block, (c4) net, one device per milestone,
+  each with a `script/bench` number before and after on all three architectures.
 - (d) Measure `user_mode_heap` against `talc`; the ruling follows the data.
 - (e) BUILT: `uefi_loader` binds UEFI through `r-efi`.
 - (f) REFUSED: `stick_maker` reads `diskutil` with its own `plist.rs`, which stays.
@@ -248,6 +246,7 @@ It records that two rules of §46 disagree here and only an architect can say wh
   program. `plist.rs` carries the `Reuse:` line, and so do the recorded reasons.
 - **Outstanding.** Items (b), (c), (d), (f2), (g) and (h): none started, each waits on its own §46
   ruling, (b) on 705 too. Checked 2026-10-20 (UTC): none of their crates is in `Cargo.lock`.
+- **Outstanding.** (c0) is a wait: the latest release is 0.13.0 (checked 2026-10-20 UTC).
 
 ## Index row
 
