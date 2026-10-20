@@ -134,11 +134,8 @@ Exit checks, as run on 2026-10-19 (UTC) against `42836328b` plus this block's co
 |---|---|---|
 | `vendor-watch` | 39364813031 | Green. Upstream had moved, but the report was unchanged, so the job exited before `gh pr create`. The pull request path did not run. |
 | `verify-shard-refresh` | 39364815886 | Red at its last step. The branch `metrics/verify-shards` pushed on `github.token`, then `gh pr create` was refused: "GitHub Actions is not permitted to create or approve pull requests". |
-| `mutation` | 39364805264 | Still running at 04:57 UTC. Its eight shards have 330 minutes, so it ends by 09:02 UTC. |
-| `falsifications` | 39364802502 | Still running at 04:57 UTC. The seeded syscall driver and the arm64 replay passed. The confined fuzzer failed on its own finding (BUGS). The replay job reaches its two-hour limit at 05:32 UTC. |
-
-Predicted, not yet measured: `mutation` and `falsifications` reach `gh pr create` only if their
-earlier jobs pass, and there it is refused the same way.
+| `mutation` | 39364805264 | Red at its last step. All eight shards, the baseline report and the inflow check passed. The record job pushed `mutation/census` on `github.token`, then `gh pr create` was refused the same way. |
+| `falsifications` | 39364802502 | Red. The seeded syscall driver and the arm64 replay passed. The confined fuzzer failed on its own finding (BUGS). The replay job was cancelled at its two-hour limit (05:32 UTC), so the record job was skipped and never reached `gh pr create`. |
 
 ## BUGS
 
@@ -147,8 +144,9 @@ earlier jobs pass, and there it is refused the same way.
   catches it.
 - The fallback fails at its last step. With the App absent, each workflow's `gh pr create` runs on
   `github.token`, and GitHub refuses it unless the repository allows Actions to create pull
-  requests. That setting is off on nife, and off on the fork. Measured on `verify-shard-refresh`:
-  the branch pushed, and the pull request was refused (run 39364815886). The comment in each
+  requests. That setting is off on nife, and off on the fork. Measured on `verify-shard-refresh` and
+  `mutation`: each branch pushed, and each pull request was refused (runs 39364815886 and
+  39364805264). The comment in each
   workflow says the ephemeral token "still pushes and opens the pull request". Only the first half
   is true.
 - The confined fuzzer's long sweep fails on seed `0x2f2e76cb02` at step 34. Fuzzer 0's slot 2 is
@@ -172,7 +170,6 @@ earlier jobs pass, and there it is refused the same way.
 
 ## Follow-on
 
-- **Outstanding.** Record `mutation`'s and `falsifications`' exits from the fork dispatch above.
 - **Outstanding.** The exit says each workflow "runs to completion" with the App absent. As
   measured, none that has something to record can, because `github.token` may not open a pull
   request on nife or on a fork. Whether the fallback, the repository setting or the criterion
