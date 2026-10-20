@@ -19,7 +19,8 @@ commit only), so the `Reuse:` lines below use the ruling's terms and should be c
 landed wording. Title and slug are drafts.
 
 This is a proposal, not a decision: every replacement below adds a dependency, an architect's call
-under §46. Item (a) is built, on calef's 2026-10-18 (UTC) approval of `httparse`.
+under §46. Items (a) and (e) are built, on calef's approvals of `httparse` (2026-10-18 UTC) and
+`r-efi` (2026-10-20 UTC). Item (f) is refused: `plist.rs` stays.
 
 ## Method, and what the numbers mean
 
@@ -111,16 +112,9 @@ process. `talc` is maintained (2026-09) and `no_std`. The prior art cuts both wa
 which is the class of bug a hand-written heap carries. Measure allocation latency and
 fragmentation on `job_mix` first, then rule. Retires little code; the case is exposure.
 
-5. Replace `uefi_loader/src/efi.rs` with `r-efi`. 307 lines of hand-transcribed UEFI tables, whose
-own header names the foot gun: "`BootServices`'s field order is the ABI ... getting the count of
-unused ones wrong silently re-points every call after it." `r-efi` has no dependencies and is the
-binding Rust's own UEFI targets use *(from memory; consistent with its 382M downloads and its
-`rustc-dep-of-std` feature, which was read)*. The header's recorded reason was that `uefi` is "in
-between"; `r-efi` is a thin primitive, which the old §46 already allowed. Cost: small.
+5. BUILT: `uefi_loader` binds UEFI through `r-efi` 7.1.0, item (e); see Follow-on.
 
-6. Replace `stick_maker`'s `plist.rs` with `plist`. 335 lines retire from a host program people
-run on macOS. The input is `diskutil` output, so the gain is modest. Adds `quick_xml`, `time`,
-`base64`, `indexmap` and `serde` to that program, none in a nife image.
+6. REFUSED: `stick_maker`'s `plist.rs` stays, item (f); see Follow-on.
 
 7. Survey `portable_executable` against `object` 0.40.0's `write::pe::Writer`. Host-only, no
 untrusted input; up to 778 lines retire, unless the ELF-to-PE logic is ours by necessity.
@@ -223,8 +217,8 @@ on the customer path.
   the gate."*). Only then (c1) input, (c2) GPU, (c3) block, (c4) net, one device per milestone,
   each with a `script/bench` number before and after on all three architectures.
 - (d) Measure `user_mode_heap` against `talc`; the ruling follows the data.
-- (e) `uefi_loader` binds UEFI through `r-efi`.
-- (f) `stick_maker` reads `diskutil` through `plist`.
+- (e) BUILT: `uefi_loader` binds UEFI through `r-efi`.
+- (f) REFUSED: `stick_maker` reads `diskutil` with its own `plist.rs`, which stays.
 - (f2) `mdr` becomes a std program and parses with `pulldown-cmark`; the renderer and index stay.
 - Surveys: (g) `portable_executable` and `object`; (h) uutils for `coreutils`.
 
@@ -244,7 +238,14 @@ It records that two rules of §46 disagree here and only an architect can say wh
 ## Follow-on
 
 - **Done.** Item (a), 2026-10-18 (UTC), nifeos/nife#2289.
-- **Outstanding.** Items (b) to (h), 2026-10-18: none started, each waits on its own §46 ruling, (b) on 705 too. Checked: none of their crates is in `Cargo.lock`.
+- **Done.** Item (e). calef, 2026-10-20 (UTC): "Yes", taking `r-efi` 7.1.0 under MIT (§46). Two
+  gaps stay local, said at their call sites: RISC-V's boot protocol, which `r-efi` lacks, and
+  `block_io::Media`'s flags, declared `bool` there and read as bytes.
+- **Done.** Item (f), refused. calef, 2026-10-20 (UTC): "Keep ours." `plist` would bring nine crates
+  new to the tree, `serde` among them, to read trusted local `diskutil` output in a host-only
+  program. `plist.rs` carries the `Reuse:` line, and so do the recorded reasons.
+- **Outstanding.** Items (b), (c), (d), (f2), (g) and (h): none started, each waits on its own §46
+  ruling, (b) on 705 too. Checked 2026-10-20 (UTC): none of their crates is in `Cargo.lock`.
 - **Outstanding.** (c0) is a wait: the latest release is 0.13.0 (checked 2026-10-20 UTC).
 
 ## Index row

@@ -10,16 +10,17 @@
 use core::ptr;
 
 use machine_discovery::framebuffer::{Framebuffer, PixelOrder};
-use uefi_loader::efi::{
-    self, ALLOCATE_ADDRESS, ALLOCATE_MAX_ADDRESS, BootServices, Handle, SUCCESS, SystemTable,
-    memory_type,
-};
+use r_efi::efi::{self, ALLOCATE_ADDRESS, ALLOCATE_MAX_ADDRESS, BootServices, Handle, SystemTable};
+use r_efi::protocols::graphics_output;
 use uefi_loader::handoff::{
     CMDLINE_LEN, MEMMAP_ENTRY_LEN, MODULE_ENTRY_LEN, START_INFO_LEN, StartInfo, e820_kind,
     encode_memmap_entry, encode_module,
 };
 
-use crate::{MAP_SLACK_DESCRIPTORS, PAGE, Placed, say, say_conflict, say_decimal, say_span};
+use crate::{
+    MAP_SLACK_DESCRIPTORS, PAGE, Placed, SUCCESS, boot_services, say, say_conflict, say_decimal,
+    say_span,
+};
 
 // The mode-switch trampoline. See leave_long_mode.s, which is where the interesting half of this
 // file's job actually happens.
@@ -149,18 +150,21 @@ pub fn hand_over(
     // NOTHING may allocate between these two calls. `ExitBootServices` compares the key against the
     // map's current generation and refuses if anything has changed, which is the specification
     // protecting the kernel from being handed a map that no longer describes the machine.
-    let mut final_bytes = handoff.map_capacity;
-    if (services.get_memory_map)(
-        &mut final_bytes,
-        handoff.raw_map_at as *mut u8,
-        &mut handoff.map_key,
-        &mut handoff.descriptor_size,
-        &mut handoff.descriptor_version,
-    ) != SUCCESS
-    {
-        return Err("the firmware's memory map grew between the two GetMemoryMap calls");
+    // SAFETY: `raw_map_at` is `map_capacity` bytes of the handoff block `allocate_handoff` was
+    // granted, reserved for this map and nothing else.
+    let map = unsafe {
+        boot_services::memory_map(
+            services,
+            handoff.raw_map_at as *mut core::ffi::c_void,
+            handoff.map_capacity,
+        )
     }
-    if (services.exit_boot_services)(handle, handoff.map_key) != SUCCESS {
+    .ok_or("the firmware's memory map grew between the two GetMemoryMap calls")?;
+    let final_bytes = map.bytes;
+    handoff.descriptor_size = map.descriptor_size;
+    // SAFETY: `handle` is this image's, and `map.key` is from the `GetMemoryMap` just above with
+    // nothing allocated since, which is the specification's condition for this call.
+    if unsafe { (services.exit_boot_services)(handle, map.key) } != SUCCESS {
         return Err("ExitBootServices refused the map key");
     }
 
@@ -197,10 +201,14 @@ fn reserve_ap_page(table: &SystemTable, services: &BootServices) {
     // up secondaries only when it is asked to. So this says what it found and carries on; the
     // person at the bench gets the one line that explains why `smp: 1 core(s) online` on a machine
     // with eight.
-    let mut ap_page = AP_TRAMPOLINE_PHYS;
-    if (services.allocate_pages)(ALLOCATE_ADDRESS, memory_type::LOADER_DATA, 1, &mut ap_page)
-        != SUCCESS
-    {
+    let granted = boot_services::allocate_pages(
+        services,
+        ALLOCATE_ADDRESS,
+        efi::LOADER_DATA,
+        1,
+        AP_TRAMPOLINE_PHYS,
+    );
+    if granted.is_none() {
         say_span(
             table,
             "uefi_loader: WARNING no AP trampoline page at ",
@@ -224,9 +232,7 @@ fn reserve_ap_page(table: &SystemTable, services: &BootServices) {
 struct Handoff {
     map_capacity: usize,
     entry_capacity: usize,
-    map_key: usize,
     descriptor_size: usize,
-    descriptor_version: u32,
     start_info_at: u64,
     module_list_at: u64,
     cmdline_at: u64,
@@ -236,23 +242,9 @@ struct Handoff {
 
 /// Size the memory map, then allocate everything the handoff needs in one block below 4 GiB.
 fn allocate_handoff(services: &BootServices) -> Result<Handoff, &'static str> {
-    // The sizing call is expected to fail with EFI_BUFFER_TOO_SMALL and to report the size it
-    // wanted; a firmware that returned success for a zero-length buffer would be reporting an empty
-    // machine, which is why the size is checked rather than the status.
-    let mut map_bytes = 0usize;
-    let mut map_key = 0usize;
-    let mut descriptor_size = 0usize;
-    let mut descriptor_version = 0u32;
-    (services.get_memory_map)(
-        &mut map_bytes,
-        ptr::null_mut(),
-        &mut map_key,
-        &mut descriptor_size,
-        &mut descriptor_version,
-    );
-    if map_bytes == 0 || descriptor_size < size_of::<efi::MemoryDescriptor>() {
-        return Err("the firmware reported no memory map");
-    }
+    // `write_memory_map` strides by the firmware's own `descriptor_size`; see `memory_map_size`.
+    let (map_bytes, descriptor_size) =
+        boot_services::memory_map_size(services).ok_or("the firmware reported no memory map")?;
 
     let map_capacity = map_bytes + MAP_SLACK_DESCRIPTORS * descriptor_size;
     let entry_capacity = map_capacity / descriptor_size;
@@ -266,16 +258,14 @@ fn allocate_handoff(services: &BootServices) -> Result<Handoff, &'static str> {
         + entries_bytes.next_multiple_of(PAGE)
         + (map_capacity as u64).next_multiple_of(PAGE))
         / PAGE;
-    let mut handoff_base = ALLOCATION_CEILING;
-    if (services.allocate_pages)(
+    let handoff_base = boot_services::allocate_pages(
+        services,
         ALLOCATE_MAX_ADDRESS,
-        memory_type::LOADER_DATA,
+        efi::LOADER_DATA,
         handoff_pages as usize,
-        &mut handoff_base,
-    ) != SUCCESS
-    {
-        return Err("no memory below 4 GiB for the boot handoff");
-    }
+        ALLOCATION_CEILING,
+    )
+    .ok_or("no memory below 4 GiB for the boot handoff")?;
     let start_info_at = handoff_base;
     let module_list_at = handoff_base + START_INFO_LEN as u64;
     // **The boot command line lives in the same page**, after the 56-byte structure and the 32-byte
@@ -289,9 +279,7 @@ fn allocate_handoff(services: &BootServices) -> Result<Handoff, &'static str> {
     Ok(Handoff {
         map_capacity,
         entry_capacity,
-        map_key,
         descriptor_size,
-        descriptor_version,
         start_info_at,
         module_list_at,
         cmdline_at,
@@ -309,16 +297,14 @@ fn place_trampoline(services: &BootServices) -> Result<Trampoline, &'static str>
     //
     // Below 4 GiB for the same reason everything else is: the second half of this blob executes
     // with paging off, where a linear address is a physical one.
-    let mut trampoline_base = ALLOCATION_CEILING;
-    if (services.allocate_pages)(
+    let trampoline_base = boot_services::allocate_pages(
+        services,
         ALLOCATE_MAX_ADDRESS,
-        memory_type::LOADER_CODE,
+        efi::LOADER_CODE,
         1,
-        &mut trampoline_base,
-    ) != SUCCESS
-    {
-        return Err("no executable page below 4 GiB for the mode-switch trampoline");
-    }
+        ALLOCATION_CEILING,
+    )
+    .ok_or("no executable page below 4 GiB for the mode-switch trampoline")?;
     copy_trampoline(trampoline_base)
 }
 
@@ -339,8 +325,8 @@ fn write_memory_map(handoff: &Handoff, final_bytes: usize) -> usize {
         };
         let bytes = encode_memmap_entry(
             descriptor.physical_start,
-            descriptor.page_count * PAGE,
-            e820_kind(descriptor.kind),
+            descriptor.number_of_pages * PAGE,
+            e820_kind(descriptor.r#type),
         );
         // SAFETY: `written <= entry_capacity`, which is what the region was sized for.
         unsafe {
@@ -549,18 +535,18 @@ fn find_rsdp(table: &SystemTable) -> Option<u64> {
 /// not an error.
 fn find_screen(services: &BootServices) -> Option<Framebuffer> {
     let mut interface: *mut core::ffi::c_void = ptr::null_mut();
-    if (services.locate_protocol)(
-        &efi::GRAPHICS_OUTPUT_PROTOCOL_GUID,
-        ptr::null_mut(),
-        &mut interface,
-    ) != SUCCESS
-        || interface.is_null()
-    {
+    let mut guid = graphics_output::PROTOCOL_GUID;
+    // SAFETY: a boot service, before `ExitBootServices`. A null registration asks for the first
+    // handle carrying the protocol; the firmware reads the GUID and writes only `interface`. On a
+    // machine with two display adapters that is the firmware's choice of console rather than ours,
+    // and this loader has no basis for a better one.
+    let found = unsafe { (services.locate_protocol)(&mut guid, ptr::null_mut(), &mut interface) };
+    if found != SUCCESS || interface.is_null() {
         return None;
     }
     // SAFETY: `LocateProtocol` returned success, so the firmware asserts this is an
     // `EFI_GRAPHICS_OUTPUT_PROTOCOL` and that it outlives boot services.
-    let gop = unsafe { &*interface.cast::<efi::GraphicsOutput>() };
+    let gop = unsafe { &*interface.cast::<graphics_output::Protocol>() };
     if gop.mode.is_null() {
         return None;
     }
@@ -572,13 +558,17 @@ fn find_screen(services: &BootServices) -> Option<Framebuffer> {
     // SAFETY: as above. Read unaligned is not needed: the firmware allocates this structure and the
     // specification gives it natural alignment.
     let info = unsafe { &*mode.info };
+    // **`pixels_per_scan_line` is the stride, not `horizontal_resolution`.** Firmware may pad each
+    // row, and a writer that multiplies by the width paints a picture that shears down the screen.
     let order = match info.pixel_format {
-        efi::pixel_format::BGRX => PixelOrder::Bgrx,
-        efi::pixel_format::RGBX => PixelOrder::Rgbx,
+        graphics_output::PIXEL_BLUE_GREEN_RED_RESERVED_8_BIT_PER_COLOR => PixelOrder::Bgrx,
+        graphics_output::PIXEL_RED_GREEN_BLUE_RESERVED_8_BIT_PER_COLOR => PixelOrder::Rgbx,
         _ => return None,
     };
     let found = Framebuffer {
-        base: mode.framebuffer_base,
+        // **This address survives `ExitBootServices`**: it is a BAR aperture on the display
+        // adapter, not firmware memory. What ends is the firmware's console, not the display.
+        base: mode.frame_buffer_base,
         width: info.horizontal_resolution,
         height: info.vertical_resolution,
         // The firmware reports the stride in PIXELS and every consumer of it wants bytes. This is
@@ -592,7 +582,7 @@ fn find_screen(services: &BootServices) -> Option<Framebuffer> {
     // And the aperture the firmware reports has to actually hold what the geometry claims. A
     // firmware that reported a stride larger than its own framebuffer would have this loader
     // handing the kernel a licence to write past the end of a BAR.
-    if found.span()? > mode.framebuffer_size {
+    if found.span()? > mode.frame_buffer_size {
         return None;
     }
     Some(found)

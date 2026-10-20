@@ -35,12 +35,12 @@ use core::ptr;
 use device_tree_blob::Region;
 use machine_discovery::acpi;
 use machine_discovery::gic::Gic;
-use uefi_loader::efi::{self, BootServices, Handle, SUCCESS, SystemTable, memory_type};
+use r_efi::efi::{self, BootServices, Handle, SystemTable};
 use uefi_loader::{device_tree_from_acpi, device_tree_patch};
 
 use crate::{
-    MAP_SLACK_DESCRIPTORS, PAGE, Placed, allocate_below, configuration_table, copy_device_tree,
-    exit_boot_services, say, say_decimal, say_hex,
+    MAP_SLACK_DESCRIPTORS, PAGE, Placed, allocate_below, boot_services, configuration_table,
+    copy_device_tree, exit_boot_services, say, say_decimal, say_hex,
 };
 
 core::arch::global_asm!(include_str!("leave_uefi.s"));
@@ -78,7 +78,7 @@ pub struct Found {
 pub fn discover(table: &SystemTable, services: &BootServices) -> Result<Found, &'static str> {
     if let Some(entry) = configuration_table(table)
         .iter()
-        .find(|entry| entry.vendor_guid == efi::DEVICE_TREE_GUID)
+        .find(|entry| entry.vendor_guid == efi::DTB_TABLE_GUID)
     {
         return Ok(Found {
             device_tree: entry.vendor_table.cast(),
@@ -259,39 +259,19 @@ fn read_ram(
     services: &BootServices,
     out: &mut [device_tree_from_acpi::Ram; device_tree_from_acpi::MAX_RAM],
 ) -> Result<usize, &'static str> {
-    let mut bytes = 0usize;
-    let mut key = 0usize;
-    let mut descriptor_size = 0usize;
-    let mut version = 0u32;
-    (services.get_memory_map)(
-        &mut bytes,
-        ptr::null_mut(),
-        &mut key,
-        &mut descriptor_size,
-        &mut version,
-    );
-    if bytes == 0 || descriptor_size < size_of::<efi::MemoryDescriptor>() {
-        return Err("the firmware reported no memory map");
-    }
+    // The walk below strides by the firmware's own `descriptor_size`; see `memory_map_size`.
+    let (bytes, descriptor_size) =
+        boot_services::memory_map_size(services).ok_or("the firmware reported no memory map")?;
     let capacity = bytes + MAP_SLACK_DESCRIPTORS * descriptor_size;
-    let mut buffer: *mut u8 = ptr::null_mut();
-    if (services.allocate_pool)(memory_type::LOADER_DATA, capacity, &mut buffer) != SUCCESS
-        || buffer.is_null()
-    {
-        return Err("no memory for the firmware's memory map");
-    }
-    let mut got = capacity;
-    if (services.get_memory_map)(
-        &mut got,
-        buffer,
-        &mut key,
-        &mut descriptor_size,
-        &mut version,
-    ) != SUCCESS
-    {
-        (services.free_pool)(buffer);
+    let buffer = boot_services::allocate_pool(services, capacity)
+        .ok_or("no memory for the firmware's memory map")?;
+    // SAFETY: `buffer` is `capacity` bytes from the firmware's pool, used for nothing else.
+    let Some(map) = (unsafe { boot_services::memory_map(services, buffer, capacity) }) else {
+        // SAFETY: `buffer` came from `allocate_pool` above and nothing holds it.
+        unsafe { boot_services::free_pool(services, buffer) };
         return Err("the firmware's memory map would not fit the buffer it asked for");
-    }
+    };
+    let (got, descriptor_size) = (map.bytes, map.descriptor_size);
 
     let mut count = 0usize;
     for i in 0..got / descriptor_size {
@@ -310,18 +290,18 @@ fn read_ram(
         // tables this tree was written from live there, and handing them to the frame allocator
         // would be handing out the description of the machine.
         let usable = matches!(
-            d.kind,
-            memory_type::CONVENTIONAL
-                | memory_type::BOOT_SERVICES_CODE
-                | memory_type::BOOT_SERVICES_DATA
-                | memory_type::LOADER_CODE
-                | memory_type::LOADER_DATA
+            d.r#type,
+            efi::CONVENTIONAL_MEMORY
+                | efi::BOOT_SERVICES_CODE
+                | efi::BOOT_SERVICES_DATA
+                | efi::LOADER_CODE
+                | efi::LOADER_DATA
         );
-        if !usable || d.page_count == 0 {
+        if !usable || d.number_of_pages == 0 {
             continue;
         }
         let start = d.physical_start;
-        let len = d.page_count * PAGE;
+        let len = d.number_of_pages * PAGE;
         // The map is sorted by address, so a descriptor that begins where the previous run ended
         // extends it. That is what turns a firmware's several dozen entries into the one or two
         // runs a device tree would have stated.
@@ -335,7 +315,8 @@ fn read_ram(
         out[count] = device_tree_from_acpi::Ram { start, len };
         count += 1;
     }
-    (services.free_pool)(buffer);
+    // SAFETY: `buffer` came from `allocate_pool` above, and the walk that read it is done.
+    unsafe { boot_services::free_pool(services, buffer) };
     if count == 0 {
         return Err("the firmware's memory map describes no usable RAM");
     }
@@ -559,7 +540,7 @@ fn write_tree(
     machine: &device_tree_from_acpi::Machine,
 ) -> Result<u64, &'static str> {
     let pages = (device_tree_from_acpi::output_len() as u64).div_ceil(PAGE) as usize;
-    let base = allocate_below(services, pages, memory_type::LOADER_DATA)
+    let base = allocate_below(services, pages, efi::LOADER_DATA)
         .ok_or("no memory below the kernel's reach for a device tree written from ACPI")?;
     // SAFETY: `pages` pages at `base` were just granted exclusively.
     let out = unsafe { core::slice::from_raw_parts_mut(base as *mut u8, pages * PAGE as usize) };

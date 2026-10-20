@@ -16,7 +16,6 @@
 pub mod device_path;
 pub mod device_tree_from_acpi;
 pub mod device_tree_patch;
-pub mod efi;
 pub mod handoff;
 pub mod image;
 /// The one line this loader leaves on the screen across the handoff, milestone 243 (a machine with no serial port).
