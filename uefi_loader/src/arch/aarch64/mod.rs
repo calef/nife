@@ -39,7 +39,7 @@ use r_efi::efi::{self, BootServices, Handle, SystemTable};
 use uefi_loader::{device_tree_from_acpi, device_tree_patch};
 
 use crate::{
-    MAP_SLACK_DESCRIPTORS, PAGE, Placed, SUCCESS, allocate_below, configuration_table,
+    MAP_SLACK_DESCRIPTORS, PAGE, Placed, allocate_below, boot_services, configuration_table,
     copy_device_tree, exit_boot_services, say, say_decimal, say_hex,
 };
 
@@ -259,49 +259,19 @@ fn read_ram(
     services: &BootServices,
     out: &mut [device_tree_from_acpi::Ram; device_tree_from_acpi::MAX_RAM],
 ) -> Result<usize, &'static str> {
-    let mut bytes = 0usize;
-    let mut key = 0usize;
-    let mut descriptor_size = 0usize;
-    let mut version = 0u32;
-    // SAFETY: a boot service, before `ExitBootServices`. A null buffer asks only for the size.
-    unsafe {
-        (services.get_memory_map)(
-            &mut bytes,
-            ptr::null_mut(),
-            &mut key,
-            &mut descriptor_size,
-            &mut version,
-        )
-    };
-    // **Never stride the map by `size_of::<MemoryDescriptor>()`**: the walk below strides by the
-    // firmware's own `descriptor_size`, which the specification lets be larger than the structure
-    // and real firmware makes larger. A smaller one is a firmware this loader cannot read.
-    if bytes == 0 || descriptor_size < size_of::<efi::MemoryDescriptor>() {
-        return Err("the firmware reported no memory map");
-    }
+    // The walk below strides by the firmware's own `descriptor_size`; see `memory_map_size`.
+    let (bytes, descriptor_size) =
+        boot_services::memory_map_size(services).ok_or("the firmware reported no memory map")?;
     let capacity = bytes + MAP_SLACK_DESCRIPTORS * descriptor_size;
-    let mut buffer: *mut core::ffi::c_void = ptr::null_mut();
-    // SAFETY: a boot service, before `ExitBootServices`; it writes only `buffer`.
-    let pooled = unsafe { (services.allocate_pool)(efi::LOADER_DATA, capacity, &mut buffer) };
-    if pooled != SUCCESS || buffer.is_null() {
-        return Err("no memory for the firmware's memory map");
-    }
-    let mut got = capacity;
-    // SAFETY: `buffer` holds `capacity` bytes from the firmware's pool, and `got` says so.
-    let mapped = unsafe {
-        (services.get_memory_map)(
-            &mut got,
-            buffer.cast(),
-            &mut key,
-            &mut descriptor_size,
-            &mut version,
-        )
-    };
-    if mapped != SUCCESS {
-        // SAFETY: `buffer` came from `AllocatePool` above and nothing holds it.
-        unsafe { (services.free_pool)(buffer) };
+    let buffer = boot_services::allocate_pool(services, capacity)
+        .ok_or("no memory for the firmware's memory map")?;
+    // SAFETY: `buffer` is `capacity` bytes from the firmware's pool, used for nothing else.
+    let Some(map) = (unsafe { boot_services::memory_map(services, buffer, capacity) }) else {
+        // SAFETY: `buffer` came from `allocate_pool` above and nothing holds it.
+        unsafe { boot_services::free_pool(services, buffer) };
         return Err("the firmware's memory map would not fit the buffer it asked for");
-    }
+    };
+    let (got, descriptor_size) = (map.bytes, map.descriptor_size);
 
     let mut count = 0usize;
     for i in 0..got / descriptor_size {
@@ -345,8 +315,8 @@ fn read_ram(
         out[count] = device_tree_from_acpi::Ram { start, len };
         count += 1;
     }
-    // SAFETY: `buffer` came from `AllocatePool` above, and the walk that read it is done.
-    unsafe { (services.free_pool)(buffer) };
+    // SAFETY: `buffer` came from `allocate_pool` above, and the walk that read it is done.
+    unsafe { boot_services::free_pool(services, buffer) };
     if count == 0 {
         return Err("the firmware's memory map describes no usable RAM");
     }

@@ -58,15 +58,16 @@
 
 use core::ptr;
 
+// **UEFI through `r-efi`** (milestone 784 (reuse what the tree wrote), item (e), ruled by calef on
+// 2026-10-20 UTC under §46 (thin primitives or whole subsystems)). Its tables are complete and in
+// specification order, so no field here is found by counting. Every function pointer in them is an
+// `unsafe extern "efiapi" fn`. `boot_services` wraps the calls made more than once; every other
+// call site states why its arguments are what the specification asks for. All of them run before
+// `ExitBootServices`, through the table the firmware handed to `efi_main`.
 use r_efi::efi::{
     self, ALLOCATE_ADDRESS, ALLOCATE_MAX_ADDRESS, BootServices, ConfigurationTable, Handle, Status,
     SystemTable,
 };
-// **UEFI through `r-efi`** (milestone 784 (reuse what the tree wrote), item (e); §46 ruling by
-// calef, 2026-10-20 UTC). Its tables are complete and in specification order, so no field here is
-// found by counting. Every function pointer in them is an `unsafe extern "efiapi" fn`: each call
-// site states why its arguments are what the specification asks for, and all of them run before
-// `ExitBootServices`, through the table the firmware handed to `efi_main`.
 #[cfg(target_arch = "x86_64")]
 use r_efi::protocols::{file, loaded_image, simple_file_system};
 #[cfg(not(target_arch = "x86_64"))]
@@ -74,6 +75,7 @@ use uefi_loader::device_tree_patch;
 use uefi_loader::image;
 
 mod arch;
+mod boot_services;
 /// **Which of the two boot images on the disk to start**, so a bad upgrade cannot brick the machine (milestone 198's rung 2b).
 #[cfg(target_arch = "x86_64")]
 mod chooser;

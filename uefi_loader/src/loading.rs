@@ -164,50 +164,18 @@ pub(crate) fn exit_boot_services(
     handle: Handle,
     services: &BootServices,
 ) -> Result<(), &'static str> {
-    let mut bytes = 0usize;
-    let mut key = 0usize;
-    let mut descriptor_size = 0usize;
-    let mut version = 0u32;
-    // SAFETY: a boot service, before `ExitBootServices`. A null buffer asks only for the size.
-    unsafe {
-        (services.get_memory_map)(
-            &mut bytes,
-            ptr::null_mut(),
-            &mut key,
-            &mut descriptor_size,
-            &mut version,
-        )
-    };
-    // The map is never walked here, but a descriptor smaller than the structure is a firmware whose
-    // map no part of this loader can read, so it is refused before it is relied on.
-    if bytes == 0 || descriptor_size < size_of::<efi::MemoryDescriptor>() {
-        return Err("the firmware reported no memory map");
-    }
+    let (bytes, descriptor_size) =
+        boot_services::memory_map_size(services).ok_or("the firmware reported no memory map")?;
     let capacity = bytes + MAP_SLACK_DESCRIPTORS * descriptor_size;
-    let mut buffer: *mut core::ffi::c_void = ptr::null_mut();
-    // SAFETY: a boot service, before `ExitBootServices`; it writes only `buffer`.
-    let pooled = unsafe { (services.allocate_pool)(efi::LOADER_DATA, capacity, &mut buffer) };
-    if pooled != SUCCESS || buffer.is_null() {
-        return Err("no memory for the firmware's memory map");
-    }
+    let buffer = boot_services::allocate_pool(services, capacity)
+        .ok_or("no memory for the firmware's memory map")?;
     for _ in 0..2 {
-        let mut got = capacity;
-        // SAFETY: `buffer` holds `capacity` bytes from the firmware's pool, and `got` says so.
-        let mapped = unsafe {
-            (services.get_memory_map)(
-                &mut got,
-                buffer.cast(),
-                &mut key,
-                &mut descriptor_size,
-                &mut version,
-            )
-        };
-        if mapped != SUCCESS {
-            return Err("the firmware's memory map grew between the two GetMemoryMap calls");
-        }
-        // SAFETY: `handle` is this image's, and `key` is from the `GetMemoryMap` just above with
-        // nothing allocated since, which is the specification's condition for this call.
-        if unsafe { (services.exit_boot_services)(handle, key) } == SUCCESS {
+        // SAFETY: `buffer` is `capacity` bytes from the firmware's pool, used for nothing else.
+        let map = unsafe { boot_services::memory_map(services, buffer, capacity) }
+            .ok_or("the firmware's memory map grew between the two GetMemoryMap calls")?;
+        // SAFETY: `handle` is this image's, and `map.key` is from the `GetMemoryMap` just above
+        // with nothing allocated since, which is the specification's condition for this call.
+        if unsafe { (services.exit_boot_services)(handle, map.key) } == SUCCESS {
             return Ok(());
         }
     }

@@ -49,7 +49,7 @@ use r_efi::protocols::loaded_image;
 use uefi_loader::device_path;
 use universally_unique_identifier::Uuid;
 
-use crate::{BOOT_FILE_MAX, PAGE, SUCCESS, allocate_below, say, say_decimal};
+use crate::{BOOT_FILE_MAX, PAGE, SUCCESS, allocate_below, boot_services, say, say_decimal};
 
 /// **The marker the chooser puts in a chain-loaded image's `LoadOptions`**, followed by one ASCII
 /// digit naming the slot.
@@ -314,14 +314,11 @@ fn path_of(handle: Handle, services: &BootServices) -> Option<&'static [u8]> {
     if handle.is_null() {
         return None;
     }
-    let mut interface: *mut c_void = ptr::null_mut();
-    let mut guid = r_efi::protocols::device_path::PROTOCOL_GUID;
-    // SAFETY: a boot service, before `ExitBootServices`, for a non-null handle the firmware gave
-    // out; it reads the GUID and writes only `interface`.
-    let found = unsafe { (services.handle_protocol)(handle, &mut guid, &mut interface) };
-    if found != SUCCESS || interface.is_null() {
-        return None;
-    }
+    let interface = boot_services::handle_protocol(
+        services,
+        handle,
+        r_efi::protocols::device_path::PROTOCOL_GUID,
+    )?;
     let base = interface.cast::<u8>().cast_const();
     let len = device_path::length(|at| {
         // SAFETY: `length` asks only for the header at the start of a node it has reached by
@@ -336,13 +333,7 @@ fn path_of(handle: Handle, services: &BootServices) -> Option<&'static [u8]> {
 
 /// Read one handle's table, and answer `Some` only if it is a whole disk carrying boot slots.
 fn read_table(handle: Handle, services: &BootServices, scratch: &mut Scratch) -> Option<Disk> {
-    let mut interface: *mut c_void = ptr::null_mut();
-    let mut guid = block_io::PROTOCOL_GUID;
-    // SAFETY: as in `path_of`, for a handle `LocateHandleBuffer` returned.
-    let found = unsafe { (services.handle_protocol)(handle, &mut guid, &mut interface) };
-    if found != SUCCESS || interface.is_null() {
-        return None;
-    }
+    let interface = boot_services::handle_protocol(services, handle, block_io::PROTOCOL_GUID)?;
     let block_io = interface.cast::<BlockIo>();
     // SAFETY: the firmware answered with its own `EFI_BLOCK_IO_PROTOCOL` for this handle, and the
     // `media` pointer inside it is the firmware's and outlives boot services.
@@ -636,13 +627,7 @@ fn loaded_image_pointer(
     handle: Handle,
     services: &BootServices,
 ) -> Option<NonNull<loaded_image::Protocol>> {
-    let mut interface: *mut c_void = ptr::null_mut();
-    let mut guid = loaded_image::PROTOCOL_GUID;
-    // SAFETY: a boot service, before `ExitBootServices`, for an image handle the firmware gave
-    // out; it reads the GUID and writes only `interface`.
-    if unsafe { (services.handle_protocol)(handle, &mut guid, &mut interface) } != SUCCESS {
-        return None;
-    }
+    let interface = boot_services::handle_protocol(services, handle, loaded_image::PROTOCOL_GUID)?;
     NonNull::new(interface.cast::<loaded_image::Protocol>())
 }
 

@@ -33,18 +33,10 @@ pub(crate) fn place_kernel(
     // (`kernel/link-<arch>.ld`'s `PHYS_START`) and there is nowhere else to put it. A firmware that
     // has something of its own there fails HERE, with the range and the offending descriptors
     // printed, rather than by silently overwriting whatever it was.
-    let mut base = start;
-    // SAFETY: a boot service, before `ExitBootServices`. With `ALLOCATE_ADDRESS` the firmware reads
-    // `base` as the exact address wanted and writes nothing else.
-    let allocated = unsafe {
-        (services.allocate_pages)(
-            ALLOCATE_ADDRESS,
-            efi::LOADER_DATA,
-            ((end - start) / PAGE) as usize,
-            &mut base,
-        )
-    };
-    if allocated != SUCCESS {
+    let pages = ((end - start) / PAGE) as usize;
+    let granted =
+        boot_services::allocate_pages(services, ALLOCATE_ADDRESS, efi::LOADER_DATA, pages, start);
+    if granted.is_none() {
         // **Name what is in the way before giving up** (milestone 195). "The firmware said no" is
         // the least actionable sentence a person standing at a machine can be handed.
         say_span(table, "uefi_loader: wanted ", start, end);
@@ -158,18 +150,15 @@ pub(crate) fn place_boot_file(
     table: &SystemTable,
     services: &BootServices,
 ) -> Option<(u64, u64)> {
-    let mut interface: *mut core::ffi::c_void = ptr::null_mut();
-    let mut guid = loaded_image::PROTOCOL_GUID;
-    // SAFETY: a boot service; `handle` is this image's own, as the firmware passed it to
-    // `efi_main`. The firmware reads the GUID and writes only `interface`.
-    let found = unsafe { (services.handle_protocol)(handle, &mut guid, &mut interface) };
-    if found != SUCCESS || interface.is_null() {
+    let Some(interface) =
+        boot_services::handle_protocol(services, handle, loaded_image::PROTOCOL_GUID)
+    else {
         say(
             table,
             "uefi_loader: no loaded-image protocol; cannot install\r\n",
         );
         return None;
-    }
+    };
     // SAFETY: the firmware answered `HandleProtocol` with a pointer to its own
     // `EFI_LOADED_IMAGE_PROTOCOL` for this image handle, which outlives boot services.
     let loaded = unsafe { &*interface.cast::<loaded_image::Protocol>() };
@@ -178,18 +167,17 @@ pub(crate) fn place_boot_file(
     // section alignment between them. Writing those bytes to a disk would produce something that is
     // not this file and that no firmware promises to start.
 
-    let mut interface: *mut core::ffi::c_void = ptr::null_mut();
-    let mut guid = simple_file_system::PROTOCOL_GUID;
-    // SAFETY: as above, for the handle the firmware's own loaded-image protocol named.
-    let found =
-        unsafe { (services.handle_protocol)(loaded.device_handle, &mut guid, &mut interface) };
-    if found != SUCCESS || interface.is_null() {
+    let Some(interface) = boot_services::handle_protocol(
+        services,
+        loaded.device_handle,
+        simple_file_system::PROTOCOL_GUID,
+    ) else {
         say(
             table,
             "uefi_loader: the boot volume has no filesystem protocol; cannot install\r\n",
         );
         return None;
-    }
+    };
     // SAFETY: as above, now for the volume this image came from.
     let filesystem = interface.cast::<simple_file_system::Protocol>();
 
@@ -288,10 +276,11 @@ pub(crate) fn place_boot_file(
 /// `AllocatePages(AllocateMaxAddress)` under [`arch::ALLOCATION_CEILING`], which is the highest
 /// physical address the kernel can reach before its own page tables are up.
 pub(crate) fn allocate_below(services: &BootServices, pages: usize, kind: u32) -> Option<u64> {
-    let mut base = arch::ALLOCATION_CEILING;
-    // SAFETY: a boot service, before `ExitBootServices`. With `ALLOCATE_MAX_ADDRESS`, `base` carries
-    // the ceiling in and the allocated base out.
-    let allocated =
-        unsafe { (services.allocate_pages)(ALLOCATE_MAX_ADDRESS, kind, pages, &mut base) };
-    (allocated == SUCCESS).then_some(base)
+    boot_services::allocate_pages(
+        services,
+        ALLOCATE_MAX_ADDRESS,
+        kind,
+        pages,
+        arch::ALLOCATION_CEILING,
+    )
 }

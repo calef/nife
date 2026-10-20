@@ -85,47 +85,18 @@ pub(crate) fn say_hex(table: &SystemTable, value: u64) {
 ///   sentence is then all the reader gets. That is the honest floor: there is no second source for
 ///   this information.
 pub(crate) fn say_conflict(table: &SystemTable, services: &BootServices, start: u64, end: u64) {
-    let mut bytes = 0usize;
-    let mut key = 0usize;
-    let mut descriptor_size = 0usize;
-    let mut version = 0u32;
-    // SAFETY: a boot service, before `ExitBootServices`. A null buffer asks only for the size, which
-    // the firmware writes with the key and the descriptor size into these locals.
-    unsafe {
-        (services.get_memory_map)(
-            &mut bytes,
-            ptr::null_mut(),
-            &mut key,
-            &mut descriptor_size,
-            &mut version,
-        )
-    };
-    // **Never stride the map by `size_of::<MemoryDescriptor>()`.** `GetMemoryMap` reports its own
-    // `descriptor_size`, which the specification lets be larger than the structure and real
-    // firmware makes larger; a smaller one is a firmware this loader cannot read.
-    if bytes == 0 || descriptor_size < size_of::<efi::MemoryDescriptor>() {
+    let Some((bytes, descriptor_size)) = boot_services::memory_map_size(services) else {
         return;
-    }
+    };
     // Slack for the pool allocation itself, the same reason `MAP_SLACK_DESCRIPTORS` exists.
     let capacity = bytes + MAP_SLACK_DESCRIPTORS * descriptor_size;
-    let mut buffer: *mut core::ffi::c_void = ptr::null_mut();
-    // SAFETY: a boot service, before `ExitBootServices`; it writes only `buffer`.
-    let pooled = unsafe { (services.allocate_pool)(efi::LOADER_DATA, capacity, &mut buffer) };
-    if pooled != SUCCESS || buffer.is_null() {
+    let Some(buffer) = boot_services::allocate_pool(services, capacity) else {
         return;
-    }
-    let mut got = capacity;
-    // SAFETY: `buffer` holds `capacity` bytes from the firmware's pool, and `got` says so.
-    let mapped = unsafe {
-        (services.get_memory_map)(
-            &mut got,
-            buffer.cast(),
-            &mut key,
-            &mut descriptor_size,
-            &mut version,
-        )
     };
-    if mapped == SUCCESS {
+    // SAFETY: `buffer` is `capacity` bytes from the firmware's pool, used for nothing else.
+    if let Some(map) = unsafe { boot_services::memory_map(services, buffer, capacity) } {
+        let descriptor_size = map.descriptor_size;
+        let got = map.bytes;
         for i in 0..got / descriptor_size {
             // SAFETY: `buffer` holds `got` bytes of descriptors and `i` is inside that count. Read
             // unaligned because the firmware chooses `descriptor_size` and nothing promises the
@@ -146,8 +117,8 @@ pub(crate) fn say_conflict(table: &SystemTable, services: &BootServices, start: 
             say(table, "\r\n");
         }
     }
-    // SAFETY: `buffer` came from `AllocatePool` above and nothing holds it.
-    unsafe { (services.free_pool)(buffer) };
+    // SAFETY: `buffer` came from `allocate_pool` above, and the walk that read it is done.
+    unsafe { boot_services::free_pool(services, buffer) };
 }
 
 /// Print one ASCII line on the firmware console, if there is one.
