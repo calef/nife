@@ -59,6 +59,29 @@ compile_error!(
      of design/roadmap/0593-a-wedged-kernel-resets-itself.md."
 );
 
+// **Every x86_64 soak arms the watchdog unless it opts out**, calef's ruling of 2026-09-26 (UTC):
+// "A soak should reset itself when it freezes." `build.rs` decides the `soak_watchdog` cfg, and
+// this restates the rule it must implement, so a build-script edit that drops the default fails
+// the x86_64 `soak_test` build rather than shipping xenon a soak that waits for a person.
+#[cfg(all(
+    feature = "soak_test",
+    target_arch = "x86_64",
+    not(feature = "unwatched_soak_test"),
+    not(soak_watchdog)
+))]
+compile_error!(
+    "an x86_64 soak_test build must arm the watchdog unless it names unwatched_soak_test \
+     (calef, 2026-09-26 UTC); kernel/build.rs no longer sets the soak_watchdog cfg for it"
+);
+
+// The opt-out and the insistence cannot both be meant. `wedge_soak_test` implies
+// `watchdog_soak_test`, so a wedge with no watchdog to reset it is refused here too.
+#[cfg(all(feature = "unwatched_soak_test", feature = "watchdog_soak_test"))]
+compile_error!(
+    "--features unwatched_soak_test and watchdog_soak_test (or wedge_soak_test) contradict each \
+     other: one opts out of the watchdog and the other insists on it"
+);
+
 use core::sync::atomic::{AtomicU64, AtomicUsize, Ordering};
 
 use paging::Flags;
@@ -561,7 +584,7 @@ fn draw_again(elapsed: u64) {
 /// **The prefix every line about the watchdog carries** (milestone 593, provisional number). One
 /// grep finds how the watchdog was found, armed, petted, disarmed or deliberately starved, and
 /// `script/soak-test --watchdog` and `--wedge` read these lines. Name provisional.
-#[cfg(feature = "watchdog_soak_test")]
+#[cfg(soak_watchdog)]
 const WATCHDOG_MARKER: &str = "soak-test-watchdog:";
 
 /// **Seconds from the last pet to the reset** (milestone 593).
@@ -570,12 +593,12 @@ const WATCHDOG_MARKER: &str = "soak-test-watchdog:";
 /// delayed by a loaded machine cannot trip it, and short enough that a wedged board is back before a
 /// person would have walked to it. The TCO counts twice before it resets, so this is two counts of
 /// 30 s, 50 ticks each.
-#[cfg(feature = "watchdog_soak_test")]
+#[cfg(soak_watchdog)]
 const WATCHDOG_RESET_AFTER_SECONDS: u64 = 60;
 
 /// Print a pet once every this many beats, and at the first. Every beat would double the log; the
 /// first line is the one that proves the counter moves, and the rest say it still does.
-#[cfg(feature = "watchdog_soak_test")]
+#[cfg(soak_watchdog)]
 const WATCHDOG_REPORT_EVERY_BEATS: u64 = 6;
 
 /// **When the test-only wedge happens** (milestone 593): six beats in, so the log shows the watchdog
@@ -590,7 +613,7 @@ const WEDGE_AFTER_SECONDS: u64 = 30;
 ///
 /// The banner is milestone 249's rule applied again: a build that will reset the machine it runs on
 /// says so on the only channel it has, with how to stop it, before it can happen.
-#[cfg(feature = "watchdog_soak_test")]
+#[cfg(soak_watchdog)]
 fn arm_watchdog() -> Option<arch::tco::Tco> {
     // A stale byte must not halt the watchdog at the first beat; see `arm_reboot`.
     crate::console::discard_rx();
@@ -821,7 +844,7 @@ fn watch(shared: u64, workers: usize, tids: &[u64; MAX_WORKERS], placed: &[u8; M
     let mut armed = true;
     // **The watchdog, armed as the beat begins** (milestone 593): from here on, a beat that does not
     // come is a reset about a minute later.
-    #[cfg(feature = "watchdog_soak_test")]
+    #[cfg(soak_watchdog)]
     let mut watchdog = arm_watchdog();
 
     loop {
@@ -904,7 +927,7 @@ fn watch(shared: u64, workers: usize, tids: &[u64; MAX_WORKERS], placed: &[u8; M
         // a failed beat panics above and never gets here, so the watchdog resets a failed soak only
         // once its dump is on the console. The escape is the same sticky console byte the reboot
         // loop reads, asked first, so a keypress halts the watchdog rather than racing it.
-        #[cfg(feature = "watchdog_soak_test")]
+        #[cfg(soak_watchdog)]
         tend_watchdog(&mut watchdog, elapsed, beat);
         #[cfg(feature = "wedge_soak_test")]
         if elapsed >= WEDGE_AFTER_SECONDS {
@@ -1076,7 +1099,7 @@ fn ask_reboot_questions(armed: &mut bool, elapsed: u64) {
 }
 
 /// Pet the watchdog for this beat, or halt it if a byte arrived on the console.
-#[cfg(feature = "watchdog_soak_test")]
+#[cfg(soak_watchdog)]
 fn tend_watchdog(watchdog: &mut Option<arch::tco::Tco>, elapsed: u64, beat: u64) {
     if let Some(tco) = watchdog.take() {
         if crate::console::is_byte_waiting() {
