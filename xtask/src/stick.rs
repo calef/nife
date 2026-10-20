@@ -406,6 +406,11 @@ const BOOTED: [&str; 3] = [
 /// asserts the loader's own ACPI line, so a firmware that went back to offering a device tree
 /// cannot pass it by booting the other path.
 ///
+/// It boots twice, once per GIC. QEMU's default is the GICv2 with a `GICv2m` frame; the second is
+/// `gic-version=3`, the GIC every aarch64 cloud machine has and the only `virt` with an ITS under
+/// TCG, where it asserts the loader's GICv3 and ITS lines (the MADT's types 0x0E and 0x0F read
+/// out of the tables QEMU wrote).
+///
 /// Name: provisional (milestone 578's lane, 2026-10-19 UTC), in the family of `stick-boot` and
 /// `uefi-boot`, naming the description it boots from.
 pub(super) fn acpi_boot() -> bool {
@@ -414,15 +419,29 @@ pub(super) fn acpi_boot() -> bool {
         eprintln!("acpi-boot: cannot create {}: {e}", boot_dir().display());
         return false;
     }
+    // `&` rather than `&&` between the boots, so one GIC's failure does not hide the other's.
     payload_aarch64()
         && boot_and_check(
             "acpi-boot",
             "aarch64",
             "BOOTAA64.EFI",
             &[("NIFE_ACPI", "on")],
-            &["uefi_loader: no device tree; describing this machine from ACPI"],
+            &[ACPI_LINE],
+        ) & boot_and_check(
+            "acpi-boot",
+            "aarch64",
+            "BOOTAA64.EFI",
+            &[("NIFE_ACPI", "on"), ("NIFE_GIC", "3")],
+            &[
+                ACPI_LINE,
+                " core(s), GICv3 at 0x0000000008000000",
+                "uefi_loader:   GIC ITS at 0x0000000008080000;",
+            ],
         )
 }
+
+/// The loader's line for a machine it describes from ACPI, which an `acpi=off` boot never prints.
+const ACPI_LINE: &str = "uefi_loader: no device tree; describing this machine from ACPI";
 
 /// Boot the staged stick for `arch` and check the transcript holds [`BOOTED`] and `also`, with no
 /// panic. `who` prefixes every line, so a failure names the gate that saw it.
