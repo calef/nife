@@ -536,6 +536,62 @@ const SCREEN_SLOT_BUDGET: u64 = 2;
 const SCREEN_SLOT_SURFACE: u64 = 3;
 const _: () = assert!(SCREEN_SLOT_SURFACE < abi::fault::FAULT_EP_SLOT);
 
+/// **The part of `screen` the terminal covers, and the pages of it the driver maps**:
+/// [`start_screen_terminal`]'s first step. `None` when the screen cannot show a surface or its
+/// covered rows would need more than [`MAX_APERTURE_PAGES`].
+fn screen_terminal_aperture(
+    screen: &machine_discovery::framebuffer::Framebuffer,
+) -> Option<(screen_console::Aperture, u64)> {
+    // **The whole screen, at the boot console's rule for the terminal's cell.** The surface is
+    // the screen divided by `screen_console::ScreenConsole::scale_for_cell`'s scale (one rule, one
+    // function, both consoles), capped at what one terminal grid can lay out over, and
+    // `framebuffer_driver` draws each surface pixel as a scale-by-scale block. The terminal's
+    // cell is twice the boot console's width, so a screen draws it at half the boot console's
+    // scale and the two show the same columns: 137 on xenon's 1920x1080, at scale one.
+    let mut aperture = screen_console::Aperture::new(
+        screen,
+        video_terminal::CELL_W,
+        video_terminal::MAX_COLS as u32 * video_terminal::CELL_W,
+        u32::MAX,
+    )?;
+    // The rows one `Vt` can hold at that width (`video_terminal::MAX_CELLS` is a cell budget, not
+    // a rectangle): the whole screen on xenon and OVMF, the top rows on a taller one.
+    let cols = (aperture.size().0 / video_terminal::CELL_W).max(1) as usize;
+    let rows = (video_terminal::MAX_CELLS / cols).min(video_terminal::MAX_ROWS) as u32;
+    aperture = screen_console::Aperture::new(
+        screen,
+        video_terminal::CELL_W,
+        aperture.size().0,
+        rows * video_terminal::CELL_H,
+    )?;
+    // The aperture need not start on a page: the run is mapped from the page that holds pixel
+    // (0, 0), and the driver is told how far into it that pixel is.
+    let offset = screen.base % FRAME_SIZE;
+    let mut pages = (offset + aperture.span() as u64).div_ceil(FRAME_SIZE);
+    if pages > MAX_APERTURE_PAGES {
+        // A screen too large to map whole (past 8 MiB, so a 2560x1440 or a 4K panel) gets the
+        // shell over the rows that fit rather than no shell at all. Each surface row is `scale`
+        // screen rows of `stride` bytes.
+        let row_bytes = screen.stride as u64 * aperture.scale() as u64;
+        let fit = (MAX_APERTURE_PAGES * FRAME_SIZE - offset) / row_bytes;
+        aperture = screen_console::Aperture::new(
+            screen,
+            video_terminal::CELL_W,
+            aperture.size().0,
+            fit as u32,
+        )?;
+        pages = (offset + aperture.span() as u64).div_ceil(FRAME_SIZE);
+        crate::println!(
+            "  screen    : too large to map whole; the terminal covers its top {} rows",
+            aperture.size().1 * aperture.scale()
+        );
+    }
+    if pages > MAX_APERTURE_PAGES {
+        return None;
+    }
+    Some((aperture, pages))
+}
+
 /// **The terminal on a screen the firmware already set up** (the shell on the firmware screen,
 /// milestone 198's rung 1b): `framebuffer_driver` serving the framebuffer contract over `screen`,
 /// and `display_terminal` on it exactly as [`start_terminal`] wires it over virtio-gpu. `None`, with
@@ -555,53 +611,9 @@ pub fn start_screen_terminal(
     term_image: &'static [u8],
     screen: machine_discovery::framebuffer::Framebuffer,
 ) -> Option<TerminalWiring> {
-    // **The whole screen, at the boot console's rule for the terminal's cell.** The surface is
-    // the screen divided by `screen_console::ScreenConsole::scale_for_cell`'s scale (one rule, one
-    // function, both consoles), capped at what one terminal grid can lay out over, and
-    // `framebuffer_driver` draws each surface pixel as a scale-by-scale block. The terminal's
-    // cell is twice the boot console's width, so a screen draws it at half the boot console's
-    // scale and the two show the same columns: 137 on xenon's 1920x1080, at scale one.
-    let mut aperture = screen_console::Aperture::new(
-        &screen,
-        video_terminal::CELL_W,
-        video_terminal::MAX_COLS as u32 * video_terminal::CELL_W,
-        u32::MAX,
-    )?;
-    // The rows one `Vt` can hold at that width (`video_terminal::MAX_CELLS` is a cell budget, not
-    // a rectangle): the whole screen on xenon and OVMF, the top rows on a taller one.
-    let cols = (aperture.size().0 / video_terminal::CELL_W).max(1) as usize;
-    let rows = (video_terminal::MAX_CELLS / cols).min(video_terminal::MAX_ROWS) as u32;
-    aperture = screen_console::Aperture::new(
-        &screen,
-        video_terminal::CELL_W,
-        aperture.size().0,
-        rows * video_terminal::CELL_H,
-    )?;
-    // The aperture need not start on a page: the run is mapped from the page that holds pixel
-    // (0, 0), and the driver is told how far into it that pixel is.
+    let (aperture, pages) = screen_terminal_aperture(&screen)?;
+    // Where pixel (0, 0) is in the first mapped page (see `screen_terminal_aperture`).
     let offset = screen.base % FRAME_SIZE;
-    let mut pages = (offset + aperture.span() as u64).div_ceil(FRAME_SIZE);
-    if pages > MAX_APERTURE_PAGES {
-        // A screen too large to map whole (past 8 MiB, so a 2560x1440 or a 4K panel) gets the
-        // shell over the rows that fit rather than no shell at all. Each surface row is `scale`
-        // screen rows of `stride` bytes.
-        let row_bytes = screen.stride as u64 * aperture.scale() as u64;
-        let fit = (MAX_APERTURE_PAGES * FRAME_SIZE - offset) / row_bytes;
-        aperture = screen_console::Aperture::new(
-            &screen,
-            video_terminal::CELL_W,
-            aperture.size().0,
-            fit as u32,
-        )?;
-        pages = (offset + aperture.span() as u64).div_ceil(FRAME_SIZE);
-        crate::println!(
-            "  screen    : too large to map whole; the terminal covers its top {} rows",
-            aperture.size().1 * aperture.scale()
-        );
-    }
-    if pages > MAX_APERTURE_PAGES {
-        return None;
-    }
 
     // The surface: RAM, exactly the covered part's size at four bytes a pixel and no padding,
     // shared by the driver and the terminal. Contiguous, the same allocation `wire_driver` makes,
