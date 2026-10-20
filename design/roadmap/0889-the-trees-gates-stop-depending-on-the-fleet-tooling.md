@@ -161,8 +161,9 @@ to the branch carrying that change and two were dispatched again:
 - The confined fuzzer's long sweep fails on seed `0x2f2e76cb02` at step 34: fuzzer 0's slot 2 is
   filled with a page frame after a syscall on a held page frame, which the fuzzer's oracle says
   "grants nothing" (replay `NIFE_CONFINED_FUZZ_SEEDS=202643000066:1`). It fails identically on
-  nife's scheduled run of 2026-10-19 (39243857792). The oracle is wrong: milestone 779's
-  `justify_fill` has no `PageFrame::SLICE` arm. Fixed by milestone/779-slice-oracle.
+  nife's scheduled run of 2026-10-19 (39243857792). The oracle is wrong: the `justify_fill` of
+  milestone 779 (fuzz the surface a confined process can reach) has no `PageFrame::SLICE` arm.
+  Fixed by milestone/779-slice-oracle.
 - `falsifications` has not reached its record job on `main` since at least 2026-10-12: the replay
   job hits its two-hour limit and is cancelled (run 39243857792). A dispatch with the App absent
   stops at the same place.
