@@ -12,11 +12,8 @@ needs_person: no
 
 **PARTIAL, 2026-10-18 (UTC).** Items 1 to 6 and item 8's digest check are built, and pass
 `script/swish-check` on aarch64, riscv64 and x86_64 under QEMU; `update` and the index copy are
-milestone 801 (packages over the internet)'s. It stays PARTIAL with items 7 and 8 open (calef,
-2026-10-20 UTC: "A"). Item 7 (`add-repository`) waits on a milestone for the web's authority list
-(§306 (the web's authority list is a package and a capability) rule 5), not yet proposed, and on the
-added index's TUF root. Item 8's index half waits on milestone 849 (a package declares what it needs
-at run time)'s items 1 to 4, and 849 is held. The program is
+milestone 801 (packages over the internet)'s. It stays PARTIAL (calef, 2026-10-20 UTC: "A"). Items
+7 and 8 wait, under Follow-on. The program is
 [notes/packages/jig.md](../../notes/packages/jig.md).
 
 *(calef, 2026-10-07 (UTC): "Promote jig to a milestone." `jig` is ratified; the title, slug and
@@ -179,10 +176,8 @@ meets a program, not a builtin.
 5. `list`, reading the image's catalog until an index exists, and saying so.
 6. `update` and `list -u` over the LAN fixture source, plain HTTP, as rung 3a, with
    `jig` writing the index copy through `package_index`.
-7. `add-repository`, with the many-indexes details above. Waits on two things: a milestone for the
-   web's authority list, which §306 rule 5 checks an added index against and nobody has proposed;
-   and the added index's TUF root, which §195's 2026-10-10 amendment makes an owner trust line that
-   a URL-only verb has no step to supply.
+7. `add-repository`, with the many-indexes details above. Waits on an unproposed milestone for the
+   web's authority list and on the added index's TUF root (Follow-on).
 8. Before installing, `jig` checks three things. The archive's digest matches the index (§250 (an
    image names its distribution's package index)). The index's needs match the archive's metadata
    (§197 (a package is one archive file)). The metadata matches the manifests in its ELF notes,
@@ -191,8 +186,7 @@ meets a program, not a builtin.
    written only in program manifests, computed by the build into metadata and index. These checks
    keep resolution correct and records honest; they are not the security boundary, which stays at
    spawn, where a program gets only what its manifest names and the grant plan approves (§208).
-   The digest check is built. The other two wait on milestone 849's items 1 to 4 (849 is held),
-   since neither the index nor a package's metadata carries needs yet.
+   The digest check is built. The other two wait on milestone 849's items 1 to 4 (849 is held).
 9. Levels: [849's versioning rules](0849-a-package-declares-what-it-needs-at-run-time/versioning.md)
    5 to 7. Waits on 849's item 5.
 
@@ -222,14 +216,15 @@ measured.
 
 ## Follow-on
 
-- **Outstanding.** Item 7, `add-repository`. All four many-indexes details are ruled, but §306 rule
-  5 checks an added index against the web's authority list, and the list's package, the manifest
-  field naming it and its verifier are a milestone nobody has proposed yet. Checked 2026-10-18.
+- **Outstanding.** Item 7, `add-repository`. §306 (the web's authority list is a package and a
+  capability) rule 5 checks an added index against the web's authority list. The list's package,
+  the manifest field naming it and its verifier are a milestone nobody has proposed yet. Checked
+  2026-10-20.
   The added index's TUF root is also unsettled: §195's 2026-10-10 amendment, clause 3, makes it an
   owner trust line, and a verb that takes only a URL has no step that supplies one.
 - **Outstanding.** Item 8's index half, the needs against metadata and manifests. Neither
-  `package_index::Entry` nor a package's metadata carries needs; milestone 849's items 1 to 4 add
-  them, and 849 is held. Checked 2026-10-20.
+  `package_index::Entry` nor a package's metadata carries needs; milestone 849 (a package declares
+  what it needs at run time)'s items 1 to 4 add them, and 849 is held. Checked 2026-10-20.
 - **Milestone 892.** Milestone 892 (a std program at the prompt holds the network):
   `design/roadmap/0892-a-std-program-at-the-prompt-holds-the-network-and-a-resolver.md`. Item 2 is
   built here for `jig`; 1, 3 and 4 remain, and `jig` needs them to resolve `basalt.nifeos.org` for
@@ -249,7 +244,7 @@ measured.
 | A row records its manager (plan fork 3) | ruled 2026-10-06: yes; `jig` alone holds the endpoint by default. Built before item 1 | nothing |
 | Who fetches | ruled 2026-10-07, #1796 fork 4: `jig` | nothing |
 | Install-time checks | ruled 2026-10-07: item 8's three | nothing |
-| Items 7 and 8 | ruled 2026-10-20, calef: "A"; 809 stays PARTIAL and both wait as written | nothing |
+| Items 7 and 8 | ruled 2026-10-20, calef: "A"; both wait, 809 stays PARTIAL | nothing |
 | Needs against what is installed | open, #1797 fork 3 | nothing yet |
 | The installer endpoint (plan fork 1) | ruled 2026-10-10, calef: "Yes"; §270 | nothing |
 | The verb table's encoding (plan fork 2) | the lane's, approved 2026-10-10 on #1903 with calef's change: sorted (verb, grants) pairs, variable length, at most 256 | nothing |
