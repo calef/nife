@@ -102,7 +102,7 @@ else
 		tail="Every open ask above is answered, so this carries \`architect-ruled\`."
 	fi
 fi
-body="**Lane:** $lane, relaying an architect ruling, written by an agent; calef's account is the author GitHub shows.
+body="**Lane:** $lane, relaying an architect ruling, written by an agent; the author GitHub shows is the person running it.
 
 $heading
 "
