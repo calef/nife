@@ -87,6 +87,23 @@ fn each_face_is_the_one_its_name_says() {
     }
 }
 
+/// **The way back is exact.** [`to_srgb`] searches [`SRGB_TO_LINEAR`] for the nearest code, which
+/// is only sound if the table rises strictly; and every code must come back as itself, or a cell
+/// at full coverage of an exotic color and one at 254 would disagree by more than the coverage.
+#[test]
+fn the_linear_table_rises_and_round_trips() {
+    for c in 1..256 {
+        assert!(
+            SRGB_TO_LINEAR[c] > SRGB_TO_LINEAR[c - 1],
+            "code {c} does not rise"
+        );
+    }
+    for c in 0..=255u8 {
+        assert_eq!(to_srgb(SRGB_TO_LINEAR[c as usize] as u32), c);
+    }
+    assert_eq!((SRGB_TO_LINEAR[0], SRGB_TO_LINEAR[255]), (0, u16::MAX));
+}
+
 /// **The rows the line renditions use are the font's**: the underline sits one row under the
 /// baseline (`post`: -130 units, 90 thick) and the strikeout six rows above it (`OS/2`: 530
 /// units, 102 thick), at 22 pixels per em. Pinned as numbers because nothing else in this crate
@@ -117,6 +134,20 @@ fn a_pixel_is_its_coverage_blended_channel_by_channel() {
         let a = REGULAR.coverage('L', x, y);
         assert_eq!(REGULAR.cell_pixel('L', x, y, fg, bg), blend(fg, bg, a));
     }
-    // 128 of 255 of each channel: (200, 100, 50) over (16, 32, 48).
-    assert_eq!(blend(fg, bg, 128), 0x006c_4231);
+    // 128 of 255 of each channel, in linear light: (200, 100, 50) over (16, 32, 48).
+    assert_eq!(blend(fg, bg, 128), 0x0093_4b31);
+}
+
+/// **A value exactly between two codes rounds to the lower**, as [`to_srgb`]'s doc says, and a
+/// value nearer either code rounds to that one. Ties are rare in a blend but deterministic, and the
+/// three witnesses must agree on them too.
+#[test]
+fn a_tie_rounds_to_the_lower_code() {
+    let tie = (1..255)
+        .find(|&c| (SRGB_TO_LINEAR[c] + SRGB_TO_LINEAR[c + 1]) % 2 == 0)
+        .expect("some pair of codes has an even sum");
+    let mid = (SRGB_TO_LINEAR[tie] as u32 + SRGB_TO_LINEAR[tie + 1] as u32) / 2;
+    assert_eq!(to_srgb(mid), tie as u8);
+    assert_eq!(to_srgb(mid + 1), tie as u8 + 1);
+    assert_eq!(to_srgb(mid - 1), tie as u8);
 }

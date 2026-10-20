@@ -116,6 +116,7 @@ Queue began 2026-08-15; W31 and W32 predate it.
 - 2026W41: CI job test ran at 89% of its budget on its newest merge-group run; tracking issue #1930
 - 2026W42: re-falsify replays two records at a time (#1979); full-scope shards fell from 16.5 to 8.8 minutes
 - 2026W42: CI job cpu-matrix-shard ran at 86% of its budget on its newest merge-group run; tracking issue #2055
+- 2026W43: CI job cpu-matrix-shard ran at 90% of its budget on its newest merge-group run; tracking issue #2451
 <!-- /week-notes -->
 
 ![Where a merge-group build's time goes](project-metrics/ci-critical-path.svg)
@@ -227,7 +228,7 @@ and wire-format value changes. [definitions](interface-stability.md),
 [per crate](project-metrics/interface-stability.md).
 
 <!-- interface-stability: script/metrics writes this -->
-interface, 2026W40 to 2026W43: 10 breaking changes (40 additions); 5 syscall numbers changed, 0 format bumps; 72% co-change.
+interface, 2026W40 to 2026W43: 10 breaking changes (40 additions); 5 syscall numbers changed, 0 format bumps; 71% co-change.
 <!-- /interface-stability -->
 
 ## The crates 857 releases

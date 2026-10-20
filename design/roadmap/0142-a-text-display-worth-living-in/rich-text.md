@@ -73,6 +73,6 @@ the keyboard)](../0668-scrollback-from-the-keyboard.md) weighs four. It edits th
 milestone 23 (a capability-routed component OS with live replacement) is building live replacement
 for, so it should follow that lane. The keys (`CSI 5;2~`, `CSI 6;2~`) are sent since 2026-09-26.
 
-Increment four stays NOT-STARTED on purpose. Blending in linear light has no consumer until the
-atlas produces coverage values. Dim is not one: the linear-light midpoint of white and black is
-sRGB 188, which reads as barely dimmed, so dim stays an sRGB midpoint.
+Increment four blends the atlas's coverage in linear light. Dim is not a coverage value and does not
+use it: the linear-light midpoint of white and black is sRGB 188, which reads as barely dimmed, so
+dim stays an sRGB midpoint.
