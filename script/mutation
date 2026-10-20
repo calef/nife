@@ -13,10 +13,10 @@
 #   script/mutation -p calendar -p network_time_protocol    just those packages
 #   script/mutation --list                 enumerate the mutants without running anything
 #   script/mutation --report [DIR...]      per-crate table from finished run output, vs the baseline
-#   script/mutation --save-baseline [DIR...]  rewrite .cargo/mutants-baseline.txt from run output
 #
-# "vs the baseline" is always vs. 2026-08-03, never vs. the previous census: see the TRAP comment
-# in report() before treating that column as a recent delta.
+# "vs the baseline" is vs. the census `.cargo/mutants-baseline.txt` names on its second line, never
+# vs. the previous census: see the TRAP comment in report() before treating that column as a recent
+# delta. `script/mutation-census --save-baseline CENSUS` rewrites the file from a recorded census.
 #
 # Each mutant's test binary runs under a memory ceiling (milestone 277), because cargo-mutants
 # bounds a mutant on time and the failure that kills this sweep is an allocation.
@@ -50,10 +50,9 @@ baseline_file=".cargo/mutants-baseline.txt"
 
 usage() {
     cat <<'EOF'
-usage: script/mutation [--report [DIR...]] [--save-baseline [DIR...]] [cargo-mutants args...]
+usage: script/mutation [--report [DIR...]] [cargo-mutants args...]
 
   --report         summarize finished run output (default mutants.out) against the baseline
-  --save-baseline  rewrite .cargo/mutants-baseline.txt from finished run output
   anything else    forwarded to `cargo mutants --workspace` (e.g. --shard 2/4, -p calendar, --list)
 EOF
 }
@@ -95,15 +94,16 @@ report() {
     done
     # TRAP, recorded 2026-09-23 by milestone 512 (the census blamed one pull request for 55
     # survivors it did not write): this column is always .cargo/mutants-baseline.txt, a SINGLE
-    # fixed run from 2026-08-03 (see $baseline_file above), never the previous census. A
+    # fixed census named on its second line (see $baseline_file above), never the previous one. A
     # crate's own history has no other record in the tree, so "missed 77, baseline missed 22" reads
     # exactly like two days of regression when it can just as easily be six weeks of untriaged
     # growth. That misreading shipped once, in design/fatal-risks.md's risk 3, blaming a pull
     # request for 55 survivors it did not write: 73 of machine_discovery's 77 predated the pull
     # request and the baseline column could not say so. Diff two runs' own missed.txt (or
     # script/mutation-census --compare) for a real between-census delta; this column only ever
-    # answers "since 2026-08-03".
-    echo "crate                    caught  missed  timeout  unviable  (baseline missed)"
+    # answers "since the baseline's census", which the header line below names.
+    base_census="$(sed -n 's/^# census=\([0-9-]*\) .*/\1/p' "$baseline_file" 2>/dev/null)"
+    echo "crate                    caught  missed  timeout  unviable  (baseline missed, ${base_census:-no baseline})"
     counts "$@" | while read -r crate caught missed timeout unviable; do
         base="-"
         if [ -f "$baseline_file" ]; then
@@ -128,14 +128,11 @@ report() {
 case "$1" in
     --report) shift; report "$@"; exit 0 ;;
     --save-baseline)
-        shift
-        [ $# -gt 0 ] || set -- mutants.out
-        { echo "# Written by script/mutation --save-baseline: crate caught missed timeout unviable."
-          echo "# The prose baseline, and what each survivor means, is notes/mutation-testing.md."
-          counts "$@"
-        } > "$baseline_file"
-        echo "==> baseline written to $baseline_file"
-        exit 0
+        # Run directories can be any subset of a census, and eight per-crate runs written here would
+        # replace the corpus with eight rows. The baseline comes only from a recorded whole census.
+        echo "script/mutation: the baseline is written from a recorded census:" >&2
+        echo "  script/mutation-census --save-baseline CENSUS" >&2
+        exit 2
         ;;
     -h|--help) usage; exit 0 ;;
 esac

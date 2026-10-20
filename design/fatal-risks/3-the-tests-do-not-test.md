@@ -30,6 +30,13 @@ is roughly 500 runner-hours against 52 minutes today. And one convention is load
 unchecked: whether a timeout counts as a kill moves this entry two points. That rule rests on a
 hand-check of 96 timeouts in August; 303 stood on 2026-10-12.
 
+Fact, 2026-10-20: milestone 326 is BUILT. Every survivor of the 2026-10-19 census (run
+[39238962856](https://github.com/nifeos/nife/actions/runs/39238962856)) has a triage row, and
+`.cargo/mutants-baseline.txt` is that census (101 crates), so the weekly report diffs against a
+triaged corpus rather than the August run. It does not move this entry's status, which is a ruled
+condition and calef's: from here the weekly inflow check and the per-pull-request diff gate
+(milestone 924 (a survivor on a pull request's own lines cannot merge untriaged)) keep new survivors triaged.
+
 Fact, 2026-10-04: milestone 745 (count the error paths no test reaches), a provisional number, found that no test executes 586 of the host crates' 1,150 Result-family error paths (51%). 490 of them are a `?` whose error side never ran. A further 1,159 are in the kernel and services, where no coverage run reaches ([untested error paths](../../notes/untested-error-paths.md)).
 
 Fact, 2026-10-03: scheduled-workflow run
