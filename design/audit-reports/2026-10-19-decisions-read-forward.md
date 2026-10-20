@@ -146,8 +146,8 @@ design choice and not a sweep's. Proposed:
 A lane does not edit `design/decisions/`. §303 says `Retention` has two variants and the TCB is
 inert after `START` (§309 and §300 changed both). §308 sizes against a capability peak of 34 (it is
 37). §307 cites the deleted `xtask/basalt-pins.index` and two crates by their pre-rename names. §306
-points at an "open question 1" that milestone 809 does not have. §304 quotes "neighbor" from a crate
-that spells it "neighbour". §303's and §304's frontmatter dates disagree with the blocks that cite
+points at an "open question 1" that milestone 809 does not have. §304 quotes a word from a crate
+with the crate in British spelling and the quote in American. §303's and §304's frontmatter dates disagree with the blocks that cite
 them by a day. None changes a ruling. Proposed for the integrator:
 [decision text the window's own rulings overtook](../roadmap/proposals/decision-text-the-window-overtook.md).
 
@@ -194,3 +194,35 @@ section would fire on every block that explains what a ruling closed. The tree's
 `script/roadmap`'s decision-dependency status, already catches a block gated on an undecided
 section; nothing catches prose in a block whose gate cleared. That is a limit of the mechanism,
 and the reason this lens is worth taking again after every batch of rulings.
+
+## The records this report cites
+
+- §24 (interrupting the foreground process: two-tier, shell-held, no new kernel surface)
+- §26 (the fault endpoint: thread death becomes a message a supervisor holds)
+- §170 (how a foreign program is told what to do)
+- §197 (a package is one archive file, named and vouched for by its recipe)
+- §300 (`ThreadControlBlock::SUSPEND` and `ThreadControlBlock::RESUME`: the paused state, a TCB verb, silent)
+- §301 (how a spawned child's exit status and output reach the program that spawned it)
+- §302 (the screen fact and one line of input: the spawn protocol's other two thirds)
+- §303 (the retention declaration says nothing about the region)
+- §304 (who may turn a device off, and what the unit of reclamation is)
+- §305 (git dependencies are allowed on `nifeos/*` only, pinned to a landed commit)
+- §306 (the web's authority list is a package and a capability, and `jig`'s own channel never depends on it)
+- §307 (how long a name may be: one bound for programs, packages and the files they travel in)
+- §308 (the installer asks the terminal to swap: who holds the swap endpoint, and how a new image travels)
+- §309 (a supervised job's `ThreadControlBlock` goes to the shell that asked for it)
+- milestone 40 (documentation as a system service: searchable, rendered, and installed by packages)
+- milestone 48 (job control: `jobs`, `wait`, `kill`, `fg`, `bg`, and a stopped state)
+- milestone 64 (enough `std` to run somebody else's crate)
+- milestone 67 (`swish` the language: quoting, sequencing, and exit status)
+- milestone 103 (`^C` stops spinning: the shell's interrupt watch, blocking)
+- milestone 170 (`nano`: a real, full-featured screen editor on the primitive milestone 169 builds, compiled unmodified against the C library)
+- milestone 172 (a capability-native subprocess primitive: what `cargo`'s "spawn a helper, wait, collect its output" needs, without fork/exec)
+- milestone 205 (how a foreign program is told what to do)
+- milestone 334 (color and the pager: the spawn protocol's other two thirds)
+- milestone 356 (retention declares the thread capability and says nothing about the region)
+- milestone 376 (nothing turns a device back off)
+- milestone 387 (a TLS stack, and the fork is not "OpenSSL or not" but what we are trying to prove)
+- milestone 809 (the package client becomes a program, `jig`, with the verbs an index needs)
+- milestone 849 (a package declares what it needs at run time, apart from what it links)
+- milestone 857 (crates released on their own, and proofs offered to the projects that already exist)

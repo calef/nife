@@ -18,7 +18,7 @@ moved. None changes a ruling.
 - [§303 (the retention declaration says nothing about the region)](../../decisions/0303-the-retention-declaration-says-nothing-about-the-region.md)
   says `Retention` keeps exactly two variants and that the TCB is inert after `START`. §309 (a
   supervised job's `ThreadControlBlock` goes to the shell that asked for it) added
-  `Retention::Requester`, and §300's `SUSPEND` and `RESUME` act on a started thread.
+  `Retention::Requester`, and the `SUSPEND` and `RESUME` of §300 (the paused state, a TCB verb, silent) act on a started thread.
 - [§308 (the installer asks the terminal to swap)](../../decisions/0308-the-installer-asks-the-terminal-to-swap.md)
   sizes the endpoints against a measured capability peak of 34 and 30 free slots.
   `kernel::cap::CAPABILITY_TABLE_PEAK_MEASURED` is 37, so 27 are free; the conclusion holds.
@@ -30,10 +30,10 @@ moved. None changes a ruling.
   points at milestone 809's "open question 1"; 809 has no such list, and the gap it means is in
   809's follow-on.
 - [§304 (who may turn a device off)](../../decisions/0304-who-may-turn-a-device-off.md) quotes the
-  clock-and-reset crate as "neighbor"; the crate spells it "neighbour". Fixing the crate to the
-  house spelling makes the quote exact.
+  clock-and-reset crate in American spelling; the crate has the British one. Fixing the crate to
+  the house spelling makes the quote exact.
 - §303 and §304 carry `decided: 2026-10-16` in their frontmatter, while milestones 356 and 376 and
-  §40's caveat date the rulings 2026-10-15. Which UTC date is right wants the ruling's timestamp
+  the caveat of §40 (a supervisor's death is its subtree's death) date the rulings 2026-10-15. Which UTC date is right wants the ruling's timestamp
   before anyone edits either side.
 
 Reuse: considered `script/decisions`, which checks citations resolve but not that a section's claims about code are true; an edit to six records needs no code.

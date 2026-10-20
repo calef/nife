@@ -77,8 +77,8 @@ way. That is calef's call, not this block's.
   [§301 (exit status and output)](../decisions/0301-exit-status-and-output.md), 2026-10-15, carries
   the status word on `SYS_EXIT` into the death message, and keeps output grant-routed. The
   primitive is a userspace composition of `build_child` plus the receive on the supervision
-  endpoint. What remains here is §301's one kernel touch on the exit path (`sched::exit` forwards
-  `SYS_EXIT`'s first word, and `user_mode_runtime` passes the code it is given), then the loop:
+  endpoint. What remains here is §301's one kernel touch on the exit path: `sched::exit` forwards
+  `SYS_EXIT`'s first word, and `user_mode_runtime` passes the code it is given. Then the loop:
   spawn, endow, receive, read the code, and return the output the grants carried.
 - Stdin/stdout/stderr as capabilities, not ambient file descriptors: a spawned child's I/O needs
   to be handed explicitly, the same "additive, not ambient" shape §10 already committed to.
