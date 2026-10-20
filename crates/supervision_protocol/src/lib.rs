@@ -506,9 +506,10 @@ pub struct Child {
 /// **`build_ut` must be budget the caller owns** (DECISIONS §303 (the retention declaration says
 /// nothing about the region)): a region it created, a `SPLIT` child of its own region, or a root
 /// handed to it as its whole budget. Building from a retained, delegated region is forbidden,
-/// because the reap of §40 (a supervisor's death is its subtree's death) holds only when a child is built from its supervisor's own region. Nothing
-/// enforces this yet: the kernel check that compares `build_ut`'s recorded parent with a presented
-/// owning region is milestone 356's (retention says nothing about the region).
+/// because the reap of §40 (a supervisor's death is its subtree's death) holds only when a child is
+/// built from its supervisor's own region. Nothing enforces this yet: the kernel check that
+/// compares `build_ut`'s recorded parent with a presented owning region is the work of milestone 356
+/// (retention declares the thread capability and says nothing about the region).
 ///
 /// # Examples
 ///
