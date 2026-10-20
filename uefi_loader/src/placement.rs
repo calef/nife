@@ -33,14 +33,10 @@ pub(crate) fn place_kernel(
     // (`kernel/link-<arch>.ld`'s `PHYS_START`) and there is nowhere else to put it. A firmware that
     // has something of its own there fails HERE, with the range and the offending descriptors
     // printed, rather than by silently overwriting whatever it was.
-    let mut base = start;
-    if (services.allocate_pages)(
-        ALLOCATE_ADDRESS,
-        memory_type::LOADER_DATA,
-        ((end - start) / PAGE) as usize,
-        &mut base,
-    ) != SUCCESS
-    {
+    let pages = ((end - start) / PAGE) as usize;
+    let granted =
+        boot_services::allocate_pages(services, ALLOCATE_ADDRESS, efi::LOADER_DATA, pages, start);
+    if granted.is_none() {
         // **Name what is in the way before giving up** (milestone 195). "The firmware said no" is
         // the least actionable sentence a person standing at a machine can be handed.
         say_span(table, "uefi_loader: wanted ", start, end);
@@ -76,7 +72,7 @@ pub(crate) fn place_archive(services: &BootServices) -> Result<Option<(u64, u64)
         return Ok(None);
     }
     let pages = (embedded::INITIAL_RAMDISK.len() as u64).div_ceil(PAGE) as usize;
-    let base = allocate_below(services, pages, memory_type::LOADER_DATA)
+    let base = allocate_below(services, pages, efi::LOADER_DATA)
         .ok_or("no memory below the kernel's reach for the userspace archive")?;
     // SAFETY: `pages` covers the archive and the range was just granted exclusively.
     unsafe {
@@ -107,6 +103,12 @@ pub(crate) const BOOT_FILE_PATH: &str = "\\EFI\\BOOT\\BOOTX64.EFI";
 #[cfg(target_arch = "x86_64")]
 pub(crate) const BOOT_FILE_MAX: u64 = 64 * 1024 * 1024;
 
+/// **Seek here and the file protocol puts the position at the end**, which is the specification's
+/// own way of asking a file how long it is without decoding an `EFI_FILE_INFO`. `r-efi` names no
+/// constant for it.
+#[cfg(target_arch = "x86_64")]
+const FILE_POSITION_END: u64 = u64::MAX;
+
 /// **Read this loader's own file off the volume it was started from, and place it for the kernel.**
 ///
 /// Milestone 198 (a package manager, and the trivial install that makes a second customer
@@ -129,7 +131,7 @@ pub(crate) const BOOT_FILE_MAX: u64 = 64 * 1024 * 1024;
 ///
 /// # BUGS
 ///
-/// - **The path is a constant**, not the image's own [`LoadedImage::file_path`]. Turning a device
+/// - **The path is a constant**, not the image's own `loaded_image::Protocol::file_path`. Turning a device
 ///   path into text needs `EFI_DEVICE_PATH_TO_TEXT_PROTOCOL` and a parser, and every boot this
 ///   milestone is about is the removable-media fallback path, which is the constant. A loader
 ///   started from some other path on the volume reads the wrong file or none, and says so.
@@ -148,38 +150,38 @@ pub(crate) fn place_boot_file(
     table: &SystemTable,
     services: &BootServices,
 ) -> Option<(u64, u64)> {
-    let mut interface: *mut core::ffi::c_void = ptr::null_mut();
-    if (services.handle_protocol)(handle, &LOADED_IMAGE_PROTOCOL_GUID, &mut interface) != SUCCESS
-        || interface.is_null()
-    {
+    let Some(interface) =
+        boot_services::handle_protocol(services, handle, loaded_image::PROTOCOL_GUID)
+    else {
         say(
             table,
             "uefi_loader: no loaded-image protocol; cannot install\r\n",
         );
         return None;
-    }
+    };
     // SAFETY: the firmware answered `HandleProtocol` with a pointer to its own
     // `EFI_LOADED_IMAGE_PROTOCOL` for this image handle, which outlives boot services.
-    let loaded = unsafe { &*interface.cast::<LoadedImage>() };
+    let loaded = unsafe { &*interface.cast::<loaded_image::Protocol>() };
+    // `device_handle` is read and `image_base`/`image_size` deliberately are not, though they look
+    // like the easy answer. They describe the image as *loaded*: sections placed at their RVAs, with
+    // section alignment between them. Writing those bytes to a disk would produce something that is
+    // not this file and that no firmware promises to start.
 
-    let mut interface: *mut core::ffi::c_void = ptr::null_mut();
-    if (services.handle_protocol)(
+    let Some(interface) = boot_services::handle_protocol(
+        services,
         loaded.device_handle,
-        &SIMPLE_FILE_SYSTEM_PROTOCOL_GUID,
-        &mut interface,
-    ) != SUCCESS
-        || interface.is_null()
-    {
+        simple_file_system::PROTOCOL_GUID,
+    ) else {
         say(
             table,
             "uefi_loader: the boot volume has no filesystem protocol; cannot install\r\n",
         );
         return None;
-    }
+    };
     // SAFETY: as above, now for the volume this image came from.
-    let filesystem = interface.cast::<SimpleFileSystem>();
+    let filesystem = interface.cast::<simple_file_system::Protocol>();
 
-    let mut root: *mut FileProtocol = ptr::null_mut();
+    let mut root: *mut file::Protocol = ptr::null_mut();
     // SAFETY: `filesystem` is the firmware's own protocol interface, and `open_volume` is its
     // first method.
     if unsafe { ((*filesystem).open_volume)(filesystem, &mut root) } != SUCCESS || root.is_null() {
@@ -189,10 +191,18 @@ pub(crate) fn place_boot_file(
 
     let mut path = [0u16; 64];
     let units = utf16(BOOT_FILE_PATH, &mut path);
-    let mut file: *mut FileProtocol = ptr::null_mut();
-    // SAFETY: `root` is the firmware's open volume; `path` is NUL-terminated within its own buffer.
-    let opened =
-        unsafe { ((*root).open)(root, &mut file, path[..units].as_ptr(), FILE_MODE_READ, 0) };
+    let mut file: *mut file::Protocol = ptr::null_mut();
+    // SAFETY: `root` is the firmware's open volume; `path` is NUL-terminated within its own buffer,
+    // and `Open` only reads it though its signature says `*mut`.
+    let opened = unsafe {
+        ((*root).open)(
+            root,
+            &mut file,
+            path[..units].as_mut_ptr(),
+            file::MODE_READ,
+            0,
+        )
+    };
     if opened != SUCCESS || file.is_null() {
         say(table, "uefi_loader: no ");
         say(table, BOOT_FILE_PATH);
@@ -222,7 +232,7 @@ pub(crate) fn place_boot_file(
     }
 
     let pages = length.div_ceil(PAGE) as usize;
-    let Some(base) = allocate_below(services, pages, memory_type::LOADER_DATA) else {
+    let Some(base) = allocate_below(services, pages, efi::LOADER_DATA) else {
         say(table, "uefi_loader: no memory for the boot file\r\n");
         // SAFETY: both handles are open.
         unsafe {
@@ -239,7 +249,8 @@ pub(crate) fn place_boot_file(
         let mut want = (length - done) as usize;
         // SAFETY: `pages` covers `length` bytes at `base`, granted exclusively above, and `done` is
         // below `length`.
-        let status = unsafe { ((*file).read)(file, &mut want, (base + done) as *mut u8) };
+        let status =
+            unsafe { ((*file).read)(file, &mut want, (base + done) as *mut core::ffi::c_void) };
         if status != SUCCESS || want == 0 {
             break;
         }
@@ -265,7 +276,11 @@ pub(crate) fn place_boot_file(
 /// `AllocatePages(AllocateMaxAddress)` under [`arch::ALLOCATION_CEILING`], which is the highest
 /// physical address the kernel can reach before its own page tables are up.
 pub(crate) fn allocate_below(services: &BootServices, pages: usize, kind: u32) -> Option<u64> {
-    let mut base = arch::ALLOCATION_CEILING;
-    ((services.allocate_pages)(ALLOCATE_MAX_ADDRESS, kind, pages, &mut base) == SUCCESS)
-        .then_some(base)
+    boot_services::allocate_pages(
+        services,
+        ALLOCATE_MAX_ADDRESS,
+        kind,
+        pages,
+        arch::ALLOCATION_CEILING,
+    )
 }

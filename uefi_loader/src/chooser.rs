@@ -43,15 +43,13 @@ use boot_slot::{SlotHeader, State, select_excluding};
 use globally_unique_identifier_partition_table as gpt;
 use gpt::guid::types;
 use gpt::{Entry, GloballyUniqueIdentifierPartitionTable as Table};
+use r_efi::efi::{self, BY_PROTOCOL, BootServices, Handle, SystemTable};
+use r_efi::protocols::block_io::{self, Protocol as BlockIo};
+use r_efi::protocols::loaded_image;
 use uefi_loader::device_path;
-use uefi_loader::efi::{
-    BLOCK_IO_PROTOCOL_GUID, BY_PROTOCOL, BlockIo, BlockIoMedia, BootServices,
-    DEVICE_PATH_PROTOCOL_GUID, Handle, LOADED_IMAGE_PROTOCOL_GUID, LoadedImage, SUCCESS,
-    SystemTable, memory_type,
-};
 use universally_unique_identifier::Uuid;
 
-use crate::{BOOT_FILE_MAX, PAGE, allocate_below, say, say_decimal};
+use crate::{BOOT_FILE_MAX, PAGE, SUCCESS, allocate_below, boot_services, say, say_decimal};
 
 /// **The marker the chooser puts in a chain-loaded image's `LoadOptions`**, followed by one ASCII
 /// digit naming the slot.
@@ -108,7 +106,7 @@ impl Scratch {
     /// Ask the firmware for zeroed, page-aligned pages to hold one, or `None` if it has none.
     fn allocate(services: &BootServices) -> Option<&'static mut Self> {
         let pages = size_of::<Self>().div_ceil(PAGE as usize);
-        let base = allocate_below(services, pages, memory_type::LOADER_DATA)?;
+        let base = allocate_below(services, pages, efi::LOADER_DATA)?;
         let scratch = base as *mut Self;
         // SAFETY: the firmware just granted `pages` pages at `base` to this loader alone, which is
         // at least `size_of::<Self>()` bytes and page-aligned, more than `Self`'s alignment. Every
@@ -253,19 +251,24 @@ fn the_disk_with_slots(
 ) -> Option<Disk> {
     let mut count = 0usize;
     let mut handles: *mut Handle = ptr::null_mut();
-    if (services.locate_handle_buffer)(
-        BY_PROTOCOL,
-        &BLOCK_IO_PROTOCOL_GUID,
-        ptr::null_mut(),
-        &mut count,
-        &mut handles,
-    ) != SUCCESS
-        || handles.is_null()
-    {
+    let mut guid = block_io::PROTOCOL_GUID;
+    // SAFETY: a boot service, before `ExitBootServices`. `BY_PROTOCOL` takes no search key; the
+    // firmware reads the GUID and writes the count and its own pool buffer of handles.
+    let located = unsafe {
+        (services.locate_handle_buffer)(
+            BY_PROTOCOL,
+            &mut guid,
+            ptr::null_mut(),
+            &mut count,
+            &mut handles,
+        )
+    };
+    if located != SUCCESS || handles.is_null() {
         return None;
     }
     // SAFETY: the firmware answered with `count` handles in a pool buffer it owns, and it stays
-    // valid until boot services end.
+    // valid until boot services end. It is never freed, which costs a few dozen bytes for the rest
+    // of a boot.
     let handles = unsafe { core::slice::from_raw_parts(handles, count) };
 
     let mut elsewhere = false;
@@ -311,12 +314,11 @@ fn path_of(handle: Handle, services: &BootServices) -> Option<&'static [u8]> {
     if handle.is_null() {
         return None;
     }
-    let mut interface: *mut c_void = ptr::null_mut();
-    if (services.handle_protocol)(handle, &DEVICE_PATH_PROTOCOL_GUID, &mut interface) != SUCCESS
-        || interface.is_null()
-    {
-        return None;
-    }
+    let interface = boot_services::handle_protocol(
+        services,
+        handle,
+        r_efi::protocols::device_path::PROTOCOL_GUID,
+    )?;
     let base = interface.cast::<u8>().cast_const();
     let len = device_path::length(|at| {
         // SAFETY: `length` asks only for the header at the start of a node it has reached by
@@ -331,12 +333,7 @@ fn path_of(handle: Handle, services: &BootServices) -> Option<&'static [u8]> {
 
 /// Read one handle's table, and answer `Some` only if it is a whole disk carrying boot slots.
 fn read_table(handle: Handle, services: &BootServices, scratch: &mut Scratch) -> Option<Disk> {
-    let mut interface: *mut c_void = ptr::null_mut();
-    if (services.handle_protocol)(handle, &BLOCK_IO_PROTOCOL_GUID, &mut interface) != SUCCESS
-        || interface.is_null()
-    {
-        return None;
-    }
+    let interface = boot_services::handle_protocol(services, handle, block_io::PROTOCOL_GUID)?;
     let block_io = interface.cast::<BlockIo>();
     // SAFETY: the firmware answered with its own `EFI_BLOCK_IO_PROTOCOL` for this handle, and the
     // `media` pointer inside it is the firmware's and outlives boot services.
@@ -344,8 +341,7 @@ fn read_table(handle: Handle, services: &BootServices, scratch: &mut Scratch) ->
     let media_id = media.media_id;
     // **Whole disks only.** A GPT lives at LBA 1 of a disk; LBA 1 of a partition is somebody's
     // filesystem, and every partition on this machine also carries a `BlockIo`.
-    if media.logical_partition != 0 || media.media_present == 0 || media.block_size as usize != LBA
-    {
+    if media.logical_partition || !media.media_present || media.block_size as usize != LBA {
         return None;
     }
     if media.last_block < PRIMARY_BLOCKS as u64 {
@@ -356,7 +352,8 @@ fn read_table(handle: Handle, services: &BootServices, scratch: &mut Scratch) ->
     // SAFETY: `block_io` is the firmware's protocol, `head` is page-aligned and exactly
     // `PRIMARY_BLOCKS` blocks long, and the disk has at least that many.
     if unsafe {
-        ((*block_io).read_blocks)(block_io, media_id, 0, head.len(), head.as_mut_ptr()) != SUCCESS
+        ((*block_io).read_blocks)(block_io, media_id, 0, head.len(), head.as_mut_ptr().cast())
+            != SUCCESS
     } {
         return None;
     }
@@ -460,7 +457,8 @@ impl Disk {
                 self.media_id,
                 lba,
                 bytes.len(),
-                bytes.as_ptr(),
+                // `WriteBlocks` takes `*mut` and only reads the buffer.
+                bytes.as_ptr().cast_mut().cast(),
             ) == SUCCESS
         }
     }
@@ -489,7 +487,7 @@ impl Disk {
                 self.media_id,
                 first,
                 LBA,
-                block.as_mut_ptr(),
+                block.as_mut_ptr().cast(),
             ) != SUCCESS
         } {
             say(table, "uefi_loader: boot slot ");
@@ -512,7 +510,7 @@ impl Disk {
 
         let blocks = header.image_len.div_ceil(LBA as u64);
         let pages = (blocks * LBA as u64).div_ceil(PAGE) as usize;
-        let Some(base) = allocate_below(services, pages, memory_type::LOADER_DATA) else {
+        let Some(base) = allocate_below(services, pages, efi::LOADER_DATA) else {
             say(table, "uefi_loader: no memory for a boot slot's image\r\n");
             return Started::Unreadable;
         };
@@ -524,7 +522,7 @@ impl Disk {
                 self.media_id,
                 first + boot_slot::SLOT_IMAGE_OFFSET / LBA as u64,
                 (blocks * LBA as u64) as usize,
-                base as *mut u8,
+                base as *mut c_void,
             ) != SUCCESS
         } {
             say(table, "uefi_loader: boot slot ");
@@ -550,16 +548,21 @@ impl Disk {
         say(table, "\r\n");
 
         let mut child: Handle = ptr::null_mut();
-        if (services.load_image)(
-            0, // BootPolicy FALSE: this is not a boot-manager path, it is a buffer we hold
-            handle,
-            ptr::null(),
-            image.as_ptr(),
-            image.len(),
-            &mut child,
-        ) != SUCCESS
-            || child.is_null()
-        {
+        // SAFETY: a boot service, before `ExitBootServices`. A null device path with a source buffer
+        // is the specification's way to start an image that is not a file; the firmware copies
+        // `image` (it only reads it, though the signature says `*mut`) and writes only `child`.
+        let loaded = unsafe {
+            (services.load_image)(
+                // BootPolicy FALSE: this is not a boot-manager path, it is a buffer we hold.
+                efi::Boolean::FALSE,
+                handle,
+                ptr::null_mut(),
+                image.as_ptr().cast_mut().cast(),
+                image.len(),
+                &mut child,
+            )
+        };
+        if loaded != SUCCESS || child.is_null() {
             say(table, "uefi_loader: the firmware would not load boot slot ");
             say_decimal(table, slot as u32);
             say(table, "\r\n");
@@ -570,7 +573,9 @@ impl Disk {
 
         let mut exit_size = 0usize;
         let mut exit_data: *mut u16 = ptr::null_mut();
-        let _ = (services.start_image)(child, &mut exit_size, &mut exit_data);
+        // SAFETY: a boot service, for the image `LoadImage` just returned; it writes only the exit
+        // size and data, and returns only if the started image does.
+        let _ = unsafe { (services.start_image)(child, &mut exit_size, &mut exit_data) };
         // A nife boot image never returns, so arriving here means it failed and has already said so
         // on this same console.
         say(table, "uefi_loader: boot slot ");
@@ -599,12 +604,15 @@ fn tell_it_which_slot(child: Handle, services: &BootServices, slot: usize, optio
     // nothing else holds a reference to it while the child has not started. `options` is in
     // [`Scratch`]'s pages, which are never freed and so outlive the child.
     let loaded = unsafe { loaded.as_mut() };
-    loaded.load_options = options.as_ptr().cast::<c_void>();
+    loaded.load_options = options.as_mut_ptr().cast::<c_void>();
     loaded.load_options_size = len as u32;
 }
 
 /// `HandleProtocol` for `EFI_LOADED_IMAGE_PROTOCOL`, read-only, which the readers here want.
-fn loaded_image(handle: Handle, services: &BootServices) -> Option<&'static LoadedImage> {
+fn loaded_image(
+    handle: Handle,
+    services: &BootServices,
+) -> Option<&'static loaded_image::Protocol> {
     let pointer = loaded_image_pointer(handle, services)?;
     // SAFETY: `loaded_image_pointer` returns only an interface the firmware answered SUCCESS with,
     // non-null by construction; it is the firmware's own for this image handle, aligned for the
@@ -615,28 +623,60 @@ fn loaded_image(handle: Handle, services: &BootServices) -> Option<&'static Load
 /// `HandleProtocol` for `EFI_LOADED_IMAGE_PROTOCOL` as the firmware's pointer, or `None` unless it
 /// answered SUCCESS with a non-null interface. [`tell_it_which_slot`] writes through it, so it
 /// must not come from a shared reference.
-fn loaded_image_pointer(handle: Handle, services: &BootServices) -> Option<NonNull<LoadedImage>> {
-    let mut interface: *mut c_void = ptr::null_mut();
-    if (services.handle_protocol)(handle, &LOADED_IMAGE_PROTOCOL_GUID, &mut interface) != SUCCESS {
-        return None;
-    }
-    NonNull::new(interface.cast::<LoadedImage>())
+fn loaded_image_pointer(
+    handle: Handle,
+    services: &BootServices,
+) -> Option<NonNull<loaded_image::Protocol>> {
+    let interface = boot_services::handle_protocol(services, handle, loaded_image::PROTOCOL_GUID)?;
+    NonNull::new(interface.cast::<loaded_image::Protocol>())
+}
+
+/// The fields of `EFI_BLOCK_IO_MEDIA` the chooser reads.
+struct Medium {
+    /// Changes when the medium is swapped. Every read and write must carry the current value, which
+    /// is how the firmware refuses a request aimed at a disk that is no longer there.
+    media_id: u32,
+    /// **False on an empty optical drive**, which is the one handle a naive enumeration trips over.
+    media_present: bool,
+    /// **True for a partition, false for the disk it is on.** The chooser wants whole disks: a GPT
+    /// lives at LBA 1 of a disk, and LBA 1 of a partition is somebody's filesystem.
+    logical_partition: bool,
+    /// Bytes per logical block. 512 on everything this has been run on, and not assumed.
+    block_size: u32,
+    /// The last addressable block, so the disk is `last_block + 1` blocks long.
+    last_block: u64,
 }
 
 /// What the firmware says the medium behind a `BlockIo` is, or `None` for a null description.
 ///
-/// A free function rather than a method because [`BlockIo`] belongs to this loader's library half
-/// and this file is the binary: an inherent `impl` here would be an orphan.
+/// **Read field by field, never as a `&block_io::Media`**, for two reasons that are both `r-efi`'s
+/// declaration meeting a real firmware. It declares revision 3's fields after `last_block`, which a
+/// revision-1 firmware does not allocate, so a reference to the whole structure would claim bytes
+/// that may not be there. And it declares the five `BOOLEAN`s as Rust `bool`, which is undefined
+/// behavior to read for any byte but 0 or 1, where UEFI's `BOOLEAN` is a byte the firmware writes.
+/// So the flags are read as the bytes they are, and anything nonzero is true.
 ///
 /// # Safety
 /// `block_io` must be a firmware-owned `EFI_BLOCK_IO_PROTOCOL` whose `media` pointer is the
 /// firmware's own and outlives boot services.
-unsafe fn media(block_io: *mut BlockIo) -> Option<&'static BlockIoMedia> {
+unsafe fn media(block_io: *mut BlockIo) -> Option<Medium> {
     // SAFETY: the caller's contract.
     let pointer = unsafe { (*block_io).media };
     if pointer.is_null() {
         return None;
     }
-    // SAFETY: as above.
-    Some(unsafe { &*pointer })
+    // SAFETY: every field read here is in revision 1 of the structure, which any firmware that
+    // installs the protocol allocates; the flags are read through `u8` pointers, as above.
+    unsafe {
+        Some(Medium {
+            media_id: (&raw const (*pointer).media_id).read(),
+            media_present: (&raw const (*pointer).media_present).cast::<u8>().read() != 0,
+            logical_partition: (&raw const (*pointer).logical_partition)
+                .cast::<u8>()
+                .read()
+                != 0,
+            block_size: (&raw const (*pointer).block_size).read(),
+            last_block: (&raw const (*pointer).last_block).read(),
+        })
+    }
 }

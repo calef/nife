@@ -50,6 +50,7 @@ exclude_globs = [
     # 182 MISSED at the 2026-09-21 census, every one in a file no host build compiles. `script/lint`
     # now walks the target's module tree, so a new `mod` here fails the gate until it is listed.
     "uefi_loader/src/arch/**",
+    "uefi_loader/src/boot_services.rs",
     "uefi_loader/src/chooser.rs",
     "uefi_loader/src/console.rs",
     "uefi_loader/src/loading.rs",
