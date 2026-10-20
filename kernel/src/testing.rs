@@ -244,15 +244,14 @@ const PAGE_FRAME_REPORT_MIN: usize = 16;
 /// +32 covers a measured two-frame local-against-CI divergence; and raising or lowering the
 /// number is a decision, so read the `[that test kept N frames]` lines and be able to say why.
 ///
-/// Current: `24_322`, the +32 over the 24,290 the riscv64 suite keeps (aarch64 24,267; measured
-/// 2026-10-20 UTC in CI, run 39450063569, on milestone 142 (a text display good enough that people
-/// use it instead of a GUI)'s 1120x624 scanout and four-face atlas). Part of that residue is
-/// program image size rather than any test's memory. Each of `c_seam_tests`' three confiner spawns
-/// keeps a space sized by `c_confiner`'s loadable segments, 15 pages in a debug build. Spaces that
-/// map the whole initial ramdisk keep revocation-log pages sized by it, so a larger archive moves
-/// this number too. A change that grows a program can therefore move it by a few frames with no
-/// leak behind it; the `[that test kept N frames]` lines and the programs' segment pages tell the
-/// two apart.
+/// Current: `24_322`, the +32 over the 24,290 the riscv64 suite keeps (aarch64 24,267; CI run
+/// 39450063569, 2026-10-20 UTC, with milestone 142 (a text display good enough that people use it
+/// instead of a GUI)'s four faces). Part of that residue is program image size rather than any
+/// test's memory. Each of `c_seam_tests`' three confiner spawns keeps a space sized by
+/// `c_confiner`'s loadable segments, 15 pages in a debug build. Spaces that map the whole initial
+/// ramdisk keep revocation-log pages sized by it, so a larger archive moves this number too. A
+/// change that grows a program can therefore move it by a few frames with no leak behind it; the
+/// `[that test kept N frames]` lines and the programs' segment pages tell the two apart.
 ///
 /// # BUGS
 ///
