@@ -40,7 +40,7 @@ atlas (#2428):
 | `skrifa` | 0.44.0, pinned `=` | the generator's font parser | calef, 2026-10-20 (UTC), on #2428 |
 | `read-fonts`, `font-types` | 0.41.0, 0.12.7 | `skrifa`'s graph | with `skrifa` |
 | `bytemuck`, `bytemuck_derive` | 1.25.2, 1.12.1 | `font-types` | calef, 2026-10-20 (UTC), "Yes" to `bytemuck_derive` on #2428 |
-| `ab_glyph_rasterizer` | 0.1.10, pinned `=` | the generator's rasterizer | §166 (the rasterizer dependency, 2026-10-05) |
+| `ab_glyph_rasterizer` | 0.1.10, pinned `=` | the generator's rasterizer | §166 (the rasteriser dependency, and whether the glyph atlas ships one face or four), 2026-10-05 |
 
 ### The two uncountable triggers, answered
 
