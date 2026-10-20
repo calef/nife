@@ -93,7 +93,7 @@ writing down rather than filing as networking work:
 | ambient on Unix | a capability here |
 |---|---|
 | `/etc/resolv.conf`: any program resolves any name | a resolver grant that answers for one domain (milestone 384) |
-| `/etc/ssl/certs`: any program verifies against all ~150 authorities | a trust store granted as the roots one peer chains to (milestone 387) |
+| `/etc/ssl/certs`: any program verifies against all 121 authorities | a trust store granted as the roots one peer chains to (milestone 387) |
 | a tailnet: joining puts **every process on the box** on the whole network | a peer grant: a program given a tunnel to one peer cannot reach the rest of the tailnet |
 
 The third row is the one a Tailscale user would feel. Tailscale's own ACLs are enforced at the

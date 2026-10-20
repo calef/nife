@@ -1,6 +1,7 @@
 ---
-status: PARTIAL
+status: BUILT
 raised: 2026-09-19
+built: 2026-10-20
 milestone_dependencies: none
 decision_dependencies: none
 machine_requirements: none
@@ -9,9 +10,9 @@ needs_person: no
 ---
 # 326. Nobody has been assigned to turn a mutation score upward
 
-calef's fatal-risk-3 ruling (2026-09-19) named the gap. Parts 1, 2 and 3 are done: every survivor of
-the 2026-10-19 census (run 39238962856) has a row in `notes/project-metrics/mutation-triage.csv`.
-Part 4 is untouched and must stay last for the reason its own paragraph gives.
+calef's fatal-risk-3 ruling (2026-09-19) named the gap. All four parts are done: every survivor of
+the 2026-10-19 census (run 39238962856) has a row in `notes/project-metrics/mutation-triage.csv`,
+and `.cargo/mutants-baseline.txt` is that census.
 
 Everything this needs exists: `script/mutation -p <crate>` runs one package,
 `.cargo/mutants.toml` is where an exclusion goes with its reason, and milestone 85 (mutation testing over the host crates) already set the
@@ -98,10 +99,9 @@ Detail: `notes/mutation-testing/inflow-2026-10-03.md`.
    Those seven are done ([`part-3-head.md`](0326-turn-a-mutation-score-upward/part-3-head.md)), and the rest is closed (`## Follow-on`). Re-derive
    any census rate before acting on it: it can be a loom model, proof harnesses, or a deleted crate.
 
-4. Rewrite the baseline once the triage lands. `.cargo/mutants-baseline.txt` is still the
-   2026-08-03 run, which is what every weekly report diffs against, so the tree's own comparison
-   point predates the census by six weeks. `script/mutation --save-baseline` is the mechanism.
-   Do this last, because a baseline written before the survivors are triaged would enshrine the
+4. Rewrite the baseline once the triage lands. `.cargo/mutants-baseline.txt` is what every weekly
+   report diffs against, and `script/mutation-census --save-baseline CENSUS` writes it from a
+   recorded whole census. Do this last, because a baseline written before the survivors are triaged would enshrine the
    regressions as the new normal, which is the one way this milestone could make things worse.
 
 ## What "done" means, and it is deliberately not a number
@@ -173,12 +173,13 @@ Parts 1 and 2 only. Each of these was checked against the tree on 2026-09-19, on
   slow test produce the same `TIMEOUT` row and `script/mutation --report` lists both as survivors.
   Every triage so far has had to argue the distinction in prose. What would close it is a rule in
   that report comparing a timeout against the package's own baseline test time.
-- **Outstanding.** Part 4, rewriting `.cargo/mutants-baseline.txt`, is deliberately not done. It
-  must follow the triage, which is what its own paragraph says. It should follow a full census
-  rather than this lane's eight per-crate runs: `--save-baseline` writes what it is given, so
-  feeding it eight crates would replace a 38-crate baseline with eight rows. The 2026-10-19
-  census's eight shard artifacts are a full one. `script/mutation-census` reads that file as the
-  2026-08-03 census by a literal date, so the rewrite has to change that reader in the same commit.
+- **Done.** Part 4, 2026-10-20: `.cargo/mutants-baseline.txt` is the 2026-10-19 census, 101 crates
+  where the 2026-08-03 run had 38. Every one of the 38 is still there (`cred` as `credentialer`),
+  and none of the 63 added existed at the 2026-08-03 commit under any name. Its rows equal both the
+  record's 2026-10-19 rows and a recount of the run's eight shard artifacts. The file's second line
+  names its census, `script/mutation-census` reads the date from there, and `script/lint` fails a
+  baseline that names no census or disagrees with the record. `--save-baseline` takes only a
+  recorded census, so per-crate run output cannot reach it.
 - **Milestone 250.** `An unviable mutant is a hole that reads as a pass` already owns the other
   half of what this lane kept meeting. `filesystem_contract` reports 47 unviable and `elf` 21, and
   no rate here counts them.

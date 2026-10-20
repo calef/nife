@@ -356,7 +356,7 @@ cargo clippy -p kernel --features cycle_counter_grant --target x86_64-unknown-no
 # The five build-mode features that compile clean on x86_64 (see the note above the `bench` line).
 # Each on its own line rather than in the two-ISA loop above, because that loop's `--target` list is
 # aarch64/riscv64 and widening it would also drag `icount` and `fastpath_pad` in, which do not build.
-for feat in shell soak_test job_mix lock_wait board; do
+for feat in shell soak_test unwatched_soak_test job_mix lock_wait board; do
     echo "==> clippy: kernel --features $feat (x86_64, the binary only; see the note above)"
     cargo clippy -p kernel --features "$feat" --target x86_64-unknown-none -- \
         -D warnings -A dead_code -A clippy::reversed_empty_ranges
@@ -3455,6 +3455,10 @@ python3 helpers/mutation_inflow.py --selftest >/dev/null
 # strands its rows, and the weekly check files their survivors as unattributed instead of failing.
 echo "==> every mutation triage row names a package, through the rename table"
 python3 helpers/mutation_inflow.py orphans
+# The baseline every `script/mutation --report` diffs against names the census it holds, and holds
+# it row for row. Without the name, the reader dated the file by a literal that outlived its contents.
+echo "==> the mutation baseline is the recorded census it names"
+script/mutation-census --check-baseline >/dev/null
 # Milestone 924 (provisional): the diff gate (helpers/mutation_diff_gate.py), the rules a
 # per-pull-request survivor must meet to merge: equivalent or gap clears, killed never does (the
 # gate just watched the mutant live), a timeout is untriaged the same as a survivor, an

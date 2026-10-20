@@ -41,7 +41,7 @@ Risk 3 said the gap plainly and this is it closed: *"Which crates caused it is u
 
 | census | source | crates | mutants | viable | survivors | killed |
 |---|---|---|---|---|---|---|
-| 2026-08-03 | `.cargo/mutants-baseline.txt` | 38 | 5,551 | 5,141 | 391 | 92.4% |
+| 2026-08-03 | `.cargo/mutants-baseline.txt` at 3d0ab7f61 | 38 | 5,551 | 5,141 | 391 | 92.4% |
 | 2026-09-14 | [run 34833498873](https://github.com/nifeos/nife/actions/runs/34833498873) | 64 | 10,012 | 9,277 | 771 | 91.7% |
 | 2026-09-16 | [run 35163453633](https://github.com/nifeos/nife/actions/runs/35163453633) | 62 | 9,626 | 8,903 | 687 | 92.3% |
 | 2026-09-19 | [run 35421192143](https://github.com/nifeos/nife/actions/runs/35421192143) | 62 | 9,656 | 8,925 | 563 | 93.7% |
@@ -157,16 +157,11 @@ reason to check them, not a reason to change definitions between two rows of one
   were; this makes it one command not to, which is rung three of AGENTS.md's ladder and honest about
   being rung three. The mechanism would be a step in `mutation.yml`, which has `contents: read`
   today and would need write permission on the tree, a decision rather than a patch.
-- The baseline row's counts are derived, not observed. `.cargo/mutants-baseline.txt` says so
-  itself: the run was resumed twice, `caught` is total-minus-the-rest, and three of 5,551 mutants
+- The 2026-08-03 row's counts are derived, not observed. The file it came from said so: the run was resumed twice, `caught` is total-minus-the-rest, and three of 5,551 mutants
   could not be matched to any pass. A comparison against it is a comparison against a
   reconstruction.
-- The baseline row's crate names are half-swept. That file was rewritten by the rename sweeps
-  that renamed the crates, so it spells `device_tree_blob` for a run that recorded `dtb`. It still
-  spells `cred`, because that rename went to a different word rather than a longer spelling of the
-  same one. The consequence is live: `script/mutation --report` prints `new` in the baseline column
-  for `credentialer` today. The rename table resolves it here. Rewriting that file is milestone 326 (turn a mutation score upward)'s
-  part 4, held until its survivors are triaged.
+- The 2026-08-03 row's crate names are half-swept: it spells `device_tree_blob` for a run that
+  recorded `dtb`, and `cred` for `credentialer`. The rename table resolves both.
 - A deleted crate and a crate renamed to something git could not follow look identical, and both
   print as "only in A". `multicast_dns_protocol` and `multicast_dns_config` are that case between
   2026-09-14 and 2026-09-19.

@@ -6,7 +6,7 @@
 #
 # **A census that cannot be attributed is a number nobody can act on.** `script/mutation --report`
 # prints a per-crate table from a finished run and then the run output is thrown away, so the tree
-# has kept exactly one per-crate record in its life: `.cargo/mutants-baseline.txt`, dated
+# had kept exactly one per-crate record in its life: `.cargo/mutants-baseline.txt`, then dated
 # 2026-08-03. On 2026-09-19 `design/fatal-risks.md`'s third risk recorded that the score had fallen
 # between two whole-corpus censuses five days apart and had to say in the same breath that **which
 # crates caused it is unknown**, because 2026-09-14's per-crate numbers were never written down.
@@ -84,6 +84,12 @@
 # without its own rate moving, by growing or shrinking against the corpus average, and the
 # decomposition says so instead of leaving a reader to guess.
 #
+# Move the fixed point every `script/mutation --report` diffs against to a recorded whole census, once
+# its survivors are triaged (a baseline written before then makes the untriaged ones the norm):
+#
+#     $ script/mutation-census --save-baseline 2026-10-19
+#     ==> wrote 101 crates from the 2026-10-19 census to .cargo/mutants-baseline.txt
+#
 # Name: provisional, coined 2026-09-20 by milestone 518's lane. `census` is the word
 # `design/fatal-risks.md` and `notes/mutation-testing.md` already use for a whole-corpus run ("it is
 # a census rather than a sample"), so this names the function in the tree's own vocabulary, and the
@@ -103,17 +109,16 @@
 #   own `BUGS` section has why. The 2026-09-03 run produced one shard of eight, which is a sample
 #   and not a census, and is deliberately not a row here: a sample cannot tell an absent mutant from
 #   a killed one, so a per-crate row from one would read as a crate that got worse.
-# - **The baseline row's counts are derived, not observed**, and its own file says so: the 2026-08-03
-#   run was resumed twice, so `caught` there is total-minus-the-rest and three of 5,551 mutants could
+# - **The 2026-08-03 row's counts are derived, not observed**, and the file it came from said so: the
+#   2026-08-03 run was resumed twice, so `caught` there is total-minus-the-rest and three of 5,551 mutants could
 #   not be matched to any pass. It is ingested as written. A comparison against it is a comparison
 #   against a reconstruction.
-# - **The baseline row's crate names are half-swept.** `.cargo/mutants-baseline.txt` was rewritten by
-#   the rename sweeps that touched the rest of the tree, so it spells `device_tree_blob` for a run
-#   that recorded `dtb`, but it still spells `cred`, which is `credentialer` now and was missed
-#   because the rename was to a different word rather than a longer spelling of the same one. This
-#   is why `script/mutation --report` prints `new` in the baseline column for `credentialer`
-#   today. The rename table resolves both directions, so the record is right; the file it was
-#   ingested from is not, and rewriting it is milestone 326 (turn a mutation score upward)'s part 4, not this one's.
+# - **The 2026-08-03 row's crate names are half-swept.** Its source file had been rewritten by the
+#   rename sweeps, so the row spells `device_tree_blob` for a run that recorded `dtb` but still
+#   spells `cred` for `credentialer`. The rename table resolves both, so a comparison is right.
+# - **`--save-baseline` trusts the record to hold only whole censuses.** mutation.yml's record job
+#   refuses a partial one, but `--add` and `--add-run` do not check, so a census added by hand from
+#   a lost shard would pass. Its crate check catches a per-crate subset, not a missing shard.
 # - **Nothing gates capture.** A census can still be run and thrown away, exactly as four of them
 #   were; this only makes it one command not to. A gate would have to know a run happened, and the
 #   thing that knows is the workflow, which does not write to the tree.
@@ -130,6 +135,7 @@ import csv
 import json
 import os
 import pathlib
+import re
 import shutil
 import subprocess
 import sys
@@ -145,7 +151,8 @@ def usage():
     print(
         "usage: script/mutation-census --list | --show CENSUS | --compare A B\n"
         "                             | --add DATE RUN DIR... | --add-run RUN\n"
-        "                             | --add-baseline | --renames",
+        "                             | --add-baseline | --check-baseline | --save-baseline CENSUS\n"
+        "                             | --renames",
         file=sys.stderr,
     )
     return 2
@@ -295,21 +302,87 @@ def add_run(run_id):
         return add(census, run_id, counts_from_dirs(dirs))
 
 
-def add_baseline():
-    """Ingest .cargo/mutants-baseline.txt as the 2026-08-03 census. Read-only on that file: rewriting
-    it is milestone 326 (turn a mutation score upward)'s part 4, deliberately held until its survivors are triaged, because a
-    baseline written before then enshrines the regressions as the new normal."""
-    path = pathlib.Path(".cargo/mutants-baseline.txt")
+BASELINE = pathlib.Path(".cargo/mutants-baseline.txt")
+# The second line of BASELINE names the census it was written from. Nothing else says which run the
+# file is: before this line existed the reader assumed a date, and that assumption outlived the file.
+BASELINE_ORIGIN = re.compile(r"^# census=(\d{4}-\d{2}-\d{2}) run=(\S+)$")
+
+
+def read_baseline(require_origin=True):
+    """(census, run, crate -> Counter) from BASELINE. A file whose header does not name its census is
+    refused rather than dated by guess, except to --save-baseline, which only needs its crates."""
+    lines = BASELINE.read_text().splitlines()
+    origin = next((m for m in map(BASELINE_ORIGIN.match, lines) if m), None)
+    if origin is None and require_origin:
+        print(f"mutation-census: {BASELINE} has no '# census=DATE run=RUN' line, so nothing says "
+              "which census it is; rewrite it with --save-baseline CENSUS", file=sys.stderr)
+        sys.exit(2)
     crates = {}
-    for line in path.read_text().splitlines():
+    for line in lines:
         if line.startswith("#") or not line.strip():
             continue
         name, caught, missed, timeout, unviable = line.split()
         crates[name] = collections.Counter(
             caught=int(caught), missed=int(missed), timeout=int(timeout), unviable=int(unviable)
         )
-    # The date is in the file's own header ("Run of 2026-08-03"), not inferred from anything.
-    return add("2026-08-03", "baseline", crates)
+    return (origin.group(1), origin.group(2), crates) if origin else (None, None, crates)
+
+
+def add_baseline(check=False):
+    """Ingest BASELINE as the census its header names, or confirm the record already holds it. With
+    `check` (script/lint), a census the record lacks is a failure rather than something to add."""
+    census, run, crates = read_baseline()
+    record = load_record()
+    if check and census not in record:
+        print(f"mutation-census: {BASELINE} names the {census} census, which {RECORD} lacks", file=sys.stderr)
+        return 1
+    if census in record:
+        held = {name: c for name, (_, c) in record[census].items()}
+        if held != crates:
+            print(f"mutation-census: {BASELINE} disagrees with the record's {census} rows", file=sys.stderr)
+            return 1
+        print(f"==> {BASELINE} is the recorded {census} census, row for row; nothing to add")
+        return 0
+    return add(census, run, crates)
+
+
+def save_baseline(census):
+    """Rewrite BASELINE from a census already in the record, never from run directories.
+
+    The record only holds whole censuses (mutation.yml's record job refuses a partial one), so this
+    cannot be handed eight per-crate runs and replace the corpus with eight rows. As a second check,
+    every crate the current baseline holds must be in the census unless its package is gone."""
+    record = load_record()
+    if census not in record:
+        print(f"mutation-census: no {census} census in {RECORD}", file=sys.stderr)
+        return 2
+    rows = record[census]
+    chain = load_renames()
+    have = {resolve(name, chain) for name in rows}
+    if BASELINE.exists():
+        _, _, current = read_baseline(require_origin=False)
+        lost = sorted(
+            name for name in current
+            if resolve(name, chain) not in have
+            and any(pathlib.Path(d, resolve(name, chain), "src").is_dir() for d in (".", "crates"))
+        )
+        if lost:
+            print(f"mutation-census: the {census} census lacks {', '.join(lost)}, which the current "
+                  "baseline holds and the tree still has; a partial census is not a baseline", file=sys.stderr)
+            return 1
+    runs = {run for run, _ in rows.values()}
+    if len(runs) != 1:
+        print(f"mutation-census: the {census} census has rows from {len(runs)} runs", file=sys.stderr)
+        return 1
+    with BASELINE.open("w") as fh:
+        fh.write("# Written by script/mutation-census --save-baseline: crate caught missed timeout unviable.\n")
+        fh.write(f"# census={census} run={runs.pop()}\n")
+        fh.write("# The prose baseline, and what each survivor means, is notes/mutation-testing.md.\n")
+        for name in sorted(rows):
+            c = rows[name][1]
+            fh.write(f"{name} {c['caught']} {c['missed']} {c['timeout']} {c['unviable']}\n")
+    print(f"==> wrote {len(rows)} crates from the {census} census to {BASELINE}")
+    return 0
 
 
 def renames():
@@ -450,6 +523,10 @@ def main(argv):
         return renames()
     if mode == "--add-baseline":
         return add_baseline()
+    if mode == "--check-baseline":
+        return add_baseline(check=True)
+    if mode == "--save-baseline" and len(rest) == 1:
+        return save_baseline(rest[0])
     if mode == "--show" and len(rest) == 1:
         return show(rest[0])
     if mode == "--compare" and len(rest) == 2:

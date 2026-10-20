@@ -221,7 +221,10 @@ is what `design/fatal-risks/README.md` says about this whole class.
 To confirm a build soaks at all without waiting: `script/board-console --for 3m --until soak`
 returns as soon as the workload announces itself.
 
-xenon takes this procedure (its stick: `cargo xtask uefi-image --features soak_test`).
+xenon takes this procedure (its stick: `cargo xtask uefi-image --features soak_test`). That
+build arms the Intel TCO watchdog, as every x86_64 soak does, so a wedged xenon is reset 60 s after
+its last beat (milestone 593 (a wedged kernel resets itself)). `--features unwatched_soak_test` in
+place of `soak_test` is the opt-out.
 argon cannot yet boot nife; milestone 225's block says why.
 
 ## The rebooting soak on radon, which is milestone 249's experiment

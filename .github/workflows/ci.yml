@@ -1177,7 +1177,7 @@ jobs:
           [ -n "$base" ] || base="$(git merge-base HEAD origin/main 2>/dev/null || true)"
           [ -n "$base" ] && [ "$base" != "$(git rev-parse HEAD)" ] || base="$(git rev-parse HEAD~1 2>/dev/null || git rev-parse HEAD)"
           changed="$(git diff --name-only "$base" HEAD)"
-          if printf '%s\n' "$changed" | grep -qE '^(kernel/src/arch/x86_64/|kernel/src/soak\.rs|kernel/src/console\.rs|kernel/Cargo\.toml|xtask/src/soak\.rs|script/soak-test|helpers/qemu-runner-x86_64\.sh|\.qemu-version|\.github/workflows/ci\.yml)'; then
+          if printf '%s\n' "$changed" | grep -qE '^(kernel/src/arch/x86_64/|kernel/src/soak\.rs|kernel/src/console\.rs|kernel/Cargo\.toml|kernel/build\.rs|xtask/src/soak\.rs|script/soak-test|helpers/qemu-runner-x86_64\.sh|\.qemu-version|\.github/workflows/ci\.yml)'; then
             echo "needed=true" >> "$GITHUB_OUTPUT"
           else
             echo "needed=false" >> "$GITHUB_OUTPUT"

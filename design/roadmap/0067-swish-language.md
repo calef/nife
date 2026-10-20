@@ -66,8 +66,8 @@ the same script on aarch64 and riscv64 rather than by a second implementation.
   that question answerable rather than theoretical.
 - The status is the shell's own reading of the line, not a program's. No program in this system
   reports an exit status. A spawned program answers with a value, with bytes, or through a job frame.
-  A per-program status would be a `spawnproto` bit, a delegation position and an edit to every
-  program. That is a milestone and not a field.
+  A per-program status is the one §301 (exit status and output) rules: `SYS_EXIT`'s first word, forwarded in the
+  `EVENT_EXIT` message the shell already receives. Milestone 172 builds it.
 - `$?` is readable only in `echo`. Substituting a word anywhere else needs the machinery that the
   variables of milestone 47 (navigation and naming) need anyway.
 - There is no grouping, so `a && b || c` is left to right with no precedence. `{ }` and `( )`
@@ -91,11 +91,9 @@ nearly all of it is proven in milliseconds without an emulator.
 - **Recorded.** `notes/swish-language.md` also says scripting is nowhere. `if`, `while`, `for`,
   functions and reading a script file were never in scope. This project has no story yet for
   what a script *is* when a program namespace is an endowment.
-- **Milestone 172.** A per-program exit status. This block says correctly that it needs a
-  `spawnproto` bit, a delegation position and an edit to every program. So it is a milestone and not
-  a field. Milestone 172 (A capability-native subprocess primitive) names exit-status delivery as
-  one of the things a capability-native
-  subprocess primitive owes, distinct from the death-notification path.
+- **Milestone 172.** A per-program exit status. §301 carries it on `SYS_EXIT`'s first word and
+  forwards it in the death message, so it needs no `spawnproto` bit. Milestone 172 (A
+  capability-native subprocess primitive) builds it.
 - **Milestone 47.** `$?` readable anywhere but `echo`. Substituting a word in an arbitrary position
   needs the machinery that the variables of milestone 47 (navigation and naming) need anyway.
   Building half of it here would have been
