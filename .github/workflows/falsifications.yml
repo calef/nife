@@ -124,6 +124,12 @@ jobs:
       - name: Install Kani
         run: script/kani-install
 
+      # A swish-check record boots what `script/ci-build swish-check-*` boots, so it needs that
+      # row's two inputs: the std exerciser and basalt's packages (`rg` among them). Without them
+      # swish-check refuses in CI rather than skip lines, and the record reports `ERROR` in 0.2 s.
+      - name: Build the std exerciser and fetch basalt's packages
+        run: cargo xtask std-exerciser && cargo xtask basalt-fetch
+
       # Not `continue-on-error` any more (milestone 742, provisional): the step fails when the
       # sweep has a survivor, a stale record or no verdict, the report below still publishes
       # (`if: always()`), and the run goes red so the finding reaches someone. It used to be
