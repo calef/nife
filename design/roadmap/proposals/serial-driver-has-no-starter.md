@@ -11,8 +11,10 @@ needs_person: no
 
 *(Title and slug provisional.)*
 
+Reuse: not applicable; this removes or rewires an existing program and writes none.
+
 Raised 2026-10-20 (UTC) by lane `milestone/890-tours-to-self-test`. `components/src/serial_driver.rs`
-is the interrupt-driven NS16550 input driver from milestone 20, and `packages/drivers.package.toml`
+is the interrupt-driven NS16550 input driver from milestone 20 (a portable HAL, proven on a second architecture), and `packages/drivers.package.toml`
 ships it. Its only starter was riscv64's tour, whose UART-driver step the self-test replaced
 (milestone 890 (riscv64 and `x86_64` join the shared boot path)). The hand-over's input driver now
 serves riscv64's UART, so nothing in the kernel or the progenitor starts this program.

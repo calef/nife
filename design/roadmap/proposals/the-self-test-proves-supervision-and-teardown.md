@@ -11,6 +11,9 @@ needs_person: no
 
 *(Title and slug provisional.)*
 
+Reuse: the spawn path `user::run` and the supervision protocol the progenitor already speaks
+(`supervision_protocol`); nothing new is taken.
+
 Raised 2026-10-20 (UTC) by lane `milestone/890-tours-to-self-test`. calef ruled on 2026-10-19
 (UTC), on #2434, that every claim the per-port tours made becomes a check in `self_test::run`.
 Two of `x86_64`'s did not, and milestone 890 (riscv64 and `x86_64` join the shared boot path)
@@ -18,10 +21,10 @@ records them in its BUGS.
 
 ## The two claims
 
-- **A faulting user-level thread's death reaches its supervisor as a message**, naming the thread,
+- A faulting user-level thread's death reaches its supervisor as a message, naming the thread,
   the faulting pc and the address. `x86_64`'s tour built a child by hand from untyped, with a
   supervision endpoint, and received the FAULT event.
-- **Tearing down a process returns every frame it cost.** The same tour built two children, tore
+- Tearing down a process returns every frame it cost. The same tour built two children, tore
   both down, and did it again, printing the second round's frame cost, which was zero.
 
 ## Why they are not checks yet
