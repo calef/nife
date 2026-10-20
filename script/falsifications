@@ -1938,6 +1938,14 @@ def replay_one(h, tree):
         # person to move it should have a whole sweep to read instead.
         elapsed = time.monotonic() - began
         took = "(%.1f s)" % elapsed
+
+        def with_time(detail):
+            # The time goes on the verdict line, before any detail that follows it, because that
+            # line is the one `--record-times` and helpers/verify_times.py read. A kernel test's
+            # detail runs to several lines, and with the time after the last of them no kernel or
+            # swish-check record ever reached TIMES, so the sweep's shards packed them by a guess.
+            head, nl, rest = detail.partition("\n")
+            return "%s %s%s%s" % (head, took, nl, rest)
         # The job's time record too (milestone 808 (every gate accounts for its time)), when
         # NIFE_TIME_RECORD names one, which verify.yml's re-falsify shards set.
         try:
@@ -1947,7 +1955,7 @@ def replay_one(h, tree):
         except Exception as e:  # a record that cannot be written changes no verdict
             print("warning: the time record was not written: %s" % e)
         if verdict == "red":
-            lines.append("    red      %s %s" % (detail, took))
+            lines.append("    red      %s" % with_time(detail))
             outcome = "red"
         elif verdict == "survivor":
             lines.append("    SURVIVOR it stayed green with its own falsification applied %s" % took)
@@ -1955,7 +1963,7 @@ def replay_one(h, tree):
                 lines.append("    " + detail)
             outcome = "survivor"
         else:
-            lines.append("    ERROR    %s %s" % (detail, took))
+            lines.append("    ERROR    %s" % with_time(detail))
             outcome = "hung" if detail.startswith("no verdict within") else "broken"
     finally:
         rev = subprocess.run(["git", "-C", tree, "apply", "-R", patch],
@@ -2319,6 +2327,15 @@ def record_times(logs):
                 cur = m.group(1)
                 continue
             m = re.search(r"\s{4}(?:red|SURVIVOR|ERROR|STALE)\b.*\(([0-9.]+) s\)\s*$", line)
+            if m and cur:
+                times[cur] = float(m.group(1))
+                found += 1
+                cur = None
+                continue
+            # A transcript written before the time moved onto the verdict line has a multi-line
+            # verdict's time at the end of its last detail line, indented six. Read that too, so
+            # an older sweep's artifact still gives its kernel records a weight.
+            m = re.search(r"\s{6}\S.*\(([0-9.]+) s\)\s*$", line)
             if m and cur:
                 times[cur] = float(m.group(1))
                 found += 1
