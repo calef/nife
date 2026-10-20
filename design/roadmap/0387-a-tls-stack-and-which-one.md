@@ -116,7 +116,8 @@ else. That is a small, concrete instance of
 [§145](../decisions/0145-compartmentalization-at-process-cost.md)'s argument, and it is the kind of
 thing that is cheap to do here and impossible to retrofit into Unix.
 
-Recorded rather than minted, because it has no consumer until this proposal does.
+§306 rules its shape: the list is an ordinary basalt package, a program holds it only as a
+capability its manifest names, and it updates through `jig update` over basalt's pinned channel.
 
 ## Why this is a proposal and not a milestone
 
@@ -168,7 +169,6 @@ TLS are different milestones with different consumers. The client half has two (
 `clone`, milestone 174's build service) and is blocked on nothing. The server half has one
 (milestone 66) and waits on 66's own one-deep accept backlog. Milestone 198 was listed as a consumer
 and removed, because Debian fetches over plain HTTP and verifies a signed `Release` file. A
-package manager needs signature verification, which it needs anyway, and a trust store it could only
-update through itself. A certificate trust store is recorded rather than minted here, with the
-observation that it should be a capability rather than the ambient `/etc/ssl/certs` every Unix
-process can read.
+package manager needs signature verification, which it needs anyway. The certificate trust store
+is §306's package and capability, rather than the ambient `/etc/ssl/certs` every Unix process can
+read, and `jig`'s own channel never depends on it.
