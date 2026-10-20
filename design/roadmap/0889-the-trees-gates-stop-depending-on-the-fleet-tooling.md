@@ -77,8 +77,9 @@ Two edges are kept on purpose, and the lane records why where a reader meets eac
 
 PARTIAL. Every cut is made, and four of the five exit checks were run and pass. calef ruled on the
 fifth (below): with the App absent, a workflow completes through its push. Three workflows do or
-are measured doing so; `falsifications` cannot reach its push for reasons the App does not touch.
-Each tie from the inventory, checked against the code
+are measured doing so; `falsifications` cannot reach its push for two reasons the App does not
+touch. calef, 2026-10-20 15:00 (UTC): "Hold 889 until we fix both issues." Both are this
+milestone's remaining items (Follow-on). Each tie from the inventory, checked against the code
 first:
 
 | Tie | What the code did | What happened |
@@ -157,14 +158,14 @@ to the branch carrying that change and two were dispatched again:
   catches it.
 - Without the App, nobody is told a record is waiting. The run is green and the compare link is
   in its summary, so a person has to look at the run to find it.
-- The confined fuzzer's long sweep fails on seed `0x2f2e76cb02` at step 34. Fuzzer 0's slot 2 is
-  filled with a page frame after a syscall on a held page frame "which grants nothing". It fails
-  identically on nife's scheduled run of 2026-10-19 (39243857792), so the fork did not cause it.
-  The replay line is `NIFE_CONFINED_FUZZ_SEEDS=202643000066:1`. Nothing tracks it, and it belongs
-  to the fuzzer's owner rather than to this milestone.
+- The confined fuzzer's long sweep fails on seed `0x2f2e76cb02` at step 34: fuzzer 0's slot 2 is
+  filled with a page frame after a syscall on a held page frame, which the fuzzer's oracle says
+  "grants nothing" (replay `NIFE_CONFINED_FUZZ_SEEDS=202643000066:1`). It fails identically on
+  nife's scheduled run of 2026-10-19 (39243857792). The oracle is wrong: milestone 779's
+  `justify_fill` has no `PageFrame::SLICE` arm. Fixed by milestone/779-slice-oracle.
 - `falsifications` has not reached its record job on `main` since at least 2026-10-12: the replay
   job hits its two-hour limit and is cancelled (run 39243857792). A dispatch with the App absent
-  will stop at the same place until that is fixed.
+  stops at the same place.
 - The opt-in is per clone. A fleet machine that never ran `script/claim` pushes without the queued
   check until `git config nife.fleet true` is set.
 - Four current-tense statements say a fleet check runs in `script/lint`, in files a lane may not
@@ -179,10 +180,11 @@ to the branch carrying that change and two were dispatched again:
 ## Follow-on
 
 - **Outstanding.** Record `mutation`'s exit from run 39442048323.
-- **Outstanding.** `falsifications` cannot complete through its push with or without the App: its
-  replay job reaches its two-hour limit, and its confined fuzzer fails on an untracked finding
-  (both in BUGS). Whether 889 is BUILT with that workflow's App-less path shown only by the shared
-  helper is asked of calef on #2442.
+- **Outstanding.** `falsifications`' replay job fits inside its two-hour limit, so the workflow
+  reaches its push with the App absent (BUGS).
+- **Outstanding.** The confined fuzzer's false failure on seed `0x2f2e76cb02` (BUGS), fixed by
+  milestone/779-slice-oracle. Whichever of that branch and this block's next change merges second
+  marks it done here.
 - **Milestone 902.** Milestone 902 (nife's tooling, sorted by who needs it, before any of it moves).
   Moving class 3 as a unit, with the `Recorded.` paths and the class-3 notes that make the
   stranger clone's two record checks fail, is the inventory's next step:
