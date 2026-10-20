@@ -785,6 +785,32 @@ mod tests {
         assert_eq!(table[0].gsi, 2, "the well-formed override still applied");
     }
 
+    /// **Only a type-2 entry rewires a legacy IRQ.** An IO APIC entry with id 0 has a zero at
+    /// both of the offsets an override keeps its bus and source in, so read as an override it
+    /// would send IRQ 0 to the IO APIC's address. Id 0 is what a single-IO-APIC PC usually has.
+    #[test]
+    fn an_io_apic_entry_is_never_read_as_an_override() {
+        let mut body = [0u8; MADT_FIXED_LEN + 12];
+        body[MADT_FIXED_LEN..].copy_from_slice(&[1, 12, 0, 0, 0x00, 0x00, 0xC0, 0xFE, 0, 0, 0, 0]);
+        let table = isa_irq_table(&body);
+        for (irq, routing) in table.iter().enumerate() {
+            assert_eq!(*routing, IsaIrqRouting::isa_default(irq as u8));
+        }
+    }
+
+    /// **A type-2 entry too short to hold an override's flags is skipped, not read past.** The
+    /// override's last field ends at byte 10; an 8-byte one names a bus and a source but its
+    /// flags would come from whatever follows it in the list.
+    #[test]
+    fn a_short_override_leaves_the_isa_table_alone() {
+        let mut body = [0u8; MADT_FIXED_LEN + 8];
+        body[MADT_FIXED_LEN..].copy_from_slice(&[2, 8, ISA_BUS, 3, 9, 0, 0, 0]);
+        let table = isa_irq_table(&body);
+        for (irq, routing) in table.iter().enumerate() {
+            assert_eq!(*routing, IsaIrqRouting::isa_default(irq as u8));
+        }
+    }
+
     /// **The shortest entry the MADT's list can hold is still read.**
     ///
     /// Two bytes, a type and a length, and the list ends exactly where the body does. Every other
