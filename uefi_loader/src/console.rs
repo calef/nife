@@ -74,7 +74,7 @@ pub(crate) fn say_hex(table: &SystemTable, value: u64) {
 /// distinguish "your kernel is too big for this machine" from "your kernel overlaps a firmware
 /// volume". This walks the map the firmware would have handed over anyway and prints every
 /// descriptor in the way that is not free RAM, with its type number as the UEFI specification
-/// numbers them (`efi::memory_type`).
+/// numbers them (`r_efi::efi::CONVENTIONAL_MEMORY` and its siblings).
 ///
 /// It runs only on the failure path, so the allocation it makes cannot disturb the map key
 /// `ExitBootServices` later checks: there is no later on this path.
@@ -85,37 +85,18 @@ pub(crate) fn say_hex(table: &SystemTable, value: u64) {
 ///   sentence is then all the reader gets. That is the honest floor: there is no second source for
 ///   this information.
 pub(crate) fn say_conflict(table: &SystemTable, services: &BootServices, start: u64, end: u64) {
-    let mut bytes = 0usize;
-    let mut key = 0usize;
-    let mut descriptor_size = 0usize;
-    let mut version = 0u32;
-    (services.get_memory_map)(
-        &mut bytes,
-        ptr::null_mut(),
-        &mut key,
-        &mut descriptor_size,
-        &mut version,
-    );
-    if bytes == 0 || descriptor_size < size_of::<efi::MemoryDescriptor>() {
+    let Some((bytes, descriptor_size)) = boot_services::memory_map_size(services) else {
         return;
-    }
+    };
     // Slack for the pool allocation itself, the same reason `MAP_SLACK_DESCRIPTORS` exists.
     let capacity = bytes + MAP_SLACK_DESCRIPTORS * descriptor_size;
-    let mut buffer: *mut u8 = ptr::null_mut();
-    if (services.allocate_pool)(memory_type::LOADER_DATA, capacity, &mut buffer) != SUCCESS
-        || buffer.is_null()
-    {
+    let Some(buffer) = boot_services::allocate_pool(services, capacity) else {
         return;
-    }
-    let mut got = capacity;
-    if (services.get_memory_map)(
-        &mut got,
-        buffer,
-        &mut key,
-        &mut descriptor_size,
-        &mut version,
-    ) == SUCCESS
-    {
+    };
+    // SAFETY: `buffer` is `capacity` bytes from the firmware's pool, used for nothing else.
+    if let Some(map) = unsafe { boot_services::memory_map(services, buffer, capacity) } {
+        let descriptor_size = map.descriptor_size;
+        let got = map.bytes;
         for i in 0..got / descriptor_size {
             // SAFETY: `buffer` holds `got` bytes of descriptors and `i` is inside that count. Read
             // unaligned because the firmware chooses `descriptor_size` and nothing promises the
@@ -126,17 +107,18 @@ pub(crate) fn say_conflict(table: &SystemTable, services: &BootServices, start: 
                 )
             };
             let first = descriptor.physical_start;
-            let last = first + descriptor.page_count * PAGE;
-            if descriptor.kind == memory_type::CONVENTIONAL || last <= start || first >= end {
+            let last = first + descriptor.number_of_pages * PAGE;
+            if descriptor.r#type == efi::CONVENTIONAL_MEMORY || last <= start || first >= end {
                 continue;
             }
             say_span(table, "uefi_loader:   in the way: ", first, last);
             say(table, "uefi_loader:   memory type ");
-            say_hex(table, u64::from(descriptor.kind));
+            say_hex(table, u64::from(descriptor.r#type));
             say(table, "\r\n");
         }
     }
-    (services.free_pool)(buffer);
+    // SAFETY: `buffer` came from `allocate_pool` above, and the walk that read it is done.
+    unsafe { boot_services::free_pool(services, buffer) };
 }
 
 /// Print one ASCII line on the firmware console, if there is one.
@@ -159,7 +141,8 @@ pub(crate) fn say(table: &SystemTable, text: &str) {
     }
     // SAFETY: `con_out` is non-null and the firmware owns it until `ExitBootServices`; the buffer
     // is NUL-terminated because `n + 1 < len` leaves at least one zero behind.
-    unsafe { ((*table.con_out).output_string)(table.con_out, utf16.as_ptr()) };
+    // `OutputString` takes `*mut` and only reads it.
+    unsafe { ((*table.con_out).output_string)(table.con_out, utf16.as_mut_ptr()) };
 }
 
 /// There is nothing to unwind to, and by the time most failures here can happen there is no console

@@ -37,6 +37,8 @@
 //!   loader whenever the kernel changes. `cargo xtask uefi-image` and `cargo xtask stick` do both
 //!   in one command, and the stick carries a `NIFE.TXT` naming its build, so a stale file is no
 //!   longer silent; it is still stale.
+//! - **Nothing validates the UEFI tables' header CRCs.** The firmware is the trust root at this
+//!   point in boot; there is nothing to check it against that is not also the firmware.
 //! - **Nothing here verifies what it hands over at boot.** The kernel and the archive are bytes this
 //!   binary was compiled with, so the trust boundary is the build. `build.rs` does refuse to embed
 //!   an archive the kernel does not vouch for, which is the one check that matters at build time.
@@ -56,20 +58,24 @@
 
 use core::ptr;
 
-#[cfg(not(target_arch = "x86_64"))]
-use uefi_loader::device_tree_patch;
-use uefi_loader::efi::{
-    self, ALLOCATE_ADDRESS, ALLOCATE_MAX_ADDRESS, BootServices, ConfigurationTable, Handle,
-    SUCCESS, Status, SystemTable, memory_type,
+// **UEFI through `r-efi`** (milestone 784 (reuse what the tree wrote), item (e), ruled by calef on
+// 2026-10-20 UTC under §46 (thin primitives or whole subsystems)). Its tables are complete and in
+// specification order, so no field here is found by counting. Every function pointer in them is an
+// `unsafe extern "efiapi" fn`. `boot_services` wraps the calls made more than once; every other
+// call site states why its arguments are what the specification asks for. All of them run before
+// `ExitBootServices`, through the table the firmware handed to `efi_main`.
+use r_efi::efi::{
+    self, ALLOCATE_ADDRESS, ALLOCATE_MAX_ADDRESS, BootServices, ConfigurationTable, Handle, Status,
+    SystemTable,
 };
 #[cfg(target_arch = "x86_64")]
-use uefi_loader::efi::{
-    FILE_MODE_READ, FILE_POSITION_END, FileProtocol, LOADED_IMAGE_PROTOCOL_GUID, LoadedImage,
-    SIMPLE_FILE_SYSTEM_PROTOCOL_GUID, SimpleFileSystem,
-};
+use r_efi::protocols::{file, loaded_image, simple_file_system};
+#[cfg(not(target_arch = "x86_64"))]
+use uefi_loader::device_tree_patch;
 use uefi_loader::image;
 
 mod arch;
+mod boot_services;
 /// **Which of the two boot images on the disk to start**, so a bad upgrade cannot brick the machine (milestone 198's rung 2b).
 #[cfg(target_arch = "x86_64")]
 mod chooser;
@@ -87,6 +93,9 @@ use placement::*;
 mod embedded {
     include!(concat!(env!("OUT_DIR"), "/embedded.rs"));
 }
+
+/// `EFI_SUCCESS`, spelled once for the comparisons every boot-service call ends in.
+const SUCCESS: Status = Status::SUCCESS;
 
 /// UEFI's page size, and the granularity of every `AllocatePages` call.
 const PAGE: u64 = 4096;

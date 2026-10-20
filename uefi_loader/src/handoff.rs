@@ -66,9 +66,9 @@ pub(crate) const E820_PERSISTENT: u32 = 7;
 /// RAM than exists costs a few megabytes, and claiming more corrupts something.** A UEFI type this
 /// function has never heard of is reserved, not RAM.
 pub const fn e820_kind(efi_type: u32) -> u32 {
-    use crate::efi::memory_type as t;
+    use r_efi::efi as t;
     match efi_type {
-        t::CONVENTIONAL => E820_RAM,
+        t::CONVENTIONAL_MEMORY => E820_RAM,
         // **Boot-services memory is free RAM the moment `ExitBootServices` returns**, and the UEFI
         // specification says so rather than leaving it to be inferred: those two types describe the
         // firmware's own code and data for the boot phase, and the boot phase is over. Linux
@@ -96,10 +96,10 @@ pub const fn e820_kind(efi_type: u32) -> u32 {
         // execute-disable bit on data. So the type that has to survive and the type that does not
         // are already separated, by a choice made for an unrelated reason.
         t::LOADER_CODE => E820_RAM,
-        t::ACPI_RECLAIM => E820_ACPI_RECLAIMABLE,
-        t::ACPI_NVS => E820_ACPI_NVS,
-        t::UNUSABLE => E820_UNUSABLE,
-        t::PERSISTENT => E820_PERSISTENT,
+        t::ACPI_RECLAIM_MEMORY => E820_ACPI_RECLAIMABLE,
+        t::ACPI_MEMORY_NVS => E820_ACPI_NVS,
+        t::UNUSABLE_MEMORY => E820_UNUSABLE,
+        t::PERSISTENT_MEMORY => E820_PERSISTENT,
         // Everything else, this loader's own allocations included. See this module's BUGS section
         // for what that still costs and why the rest of it is not a type question.
         _ => E820_RESERVED,
@@ -594,12 +594,12 @@ mod tests {
     /// specification without reading the `match`.
     #[test]
     fn every_uefi_memory_type_lands_where_it_should() {
-        use crate::efi::memory_type as t;
-        assert_eq!(e820_kind(t::CONVENTIONAL), E820_RAM);
-        assert_eq!(e820_kind(t::ACPI_RECLAIM), E820_ACPI_RECLAIMABLE);
-        assert_eq!(e820_kind(t::ACPI_NVS), E820_ACPI_NVS);
-        assert_eq!(e820_kind(t::UNUSABLE), E820_UNUSABLE);
-        assert_eq!(e820_kind(t::PERSISTENT), E820_PERSISTENT);
+        use r_efi::efi as t;
+        assert_eq!(e820_kind(t::CONVENTIONAL_MEMORY), E820_RAM);
+        assert_eq!(e820_kind(t::ACPI_RECLAIM_MEMORY), E820_ACPI_RECLAIMABLE);
+        assert_eq!(e820_kind(t::ACPI_MEMORY_NVS), E820_ACPI_NVS);
+        assert_eq!(e820_kind(t::UNUSABLE_MEMORY), E820_UNUSABLE);
+        assert_eq!(e820_kind(t::PERSISTENT_MEMORY), E820_PERSISTENT);
 
         // Free the moment `ExitBootServices` returns (milestone 195), and asserted beside the
         // loader's own types below so the pair reads as the one decision it is.
@@ -608,12 +608,12 @@ mod tests {
         assert_eq!(e820_kind(t::LOADER_CODE), E820_RAM);
 
         for reserved in [
-            t::RESERVED,
+            t::RESERVED_MEMORY_TYPE,
             t::LOADER_DATA,
             t::RUNTIME_SERVICES_CODE,
             t::RUNTIME_SERVICES_DATA,
-            t::MMIO,
-            t::MMIO_PORT_SPACE,
+            t::MEMORY_MAPPED_IO,
+            t::MEMORY_MAPPED_IO_PORT_SPACE,
             t::PAL_CODE,
         ] {
             assert_eq!(e820_kind(reserved), E820_RESERVED, "type {reserved}");
