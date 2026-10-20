@@ -80,7 +80,7 @@ pub use layout::{
 use line_editor::proto;
 use measurement::*;
 use spawn_loop::*;
-use std_layout::{StdGrants, StdLayout};
+use std_layout::{NO_RESOLVERS, Resolvers, StdGrants, StdLayout};
 // The loader, and the tree's only one since milestone 96. Named here rather than qualified at every
 // call, because the point of the crate is that there is one of these.
 use supervision_protocol::{

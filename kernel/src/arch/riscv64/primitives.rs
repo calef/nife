@@ -10,6 +10,9 @@ use super::*;
 /// a spin. See notes/skills/qemu-hygiene/SKILL.md, "Never leave QEMU running".
 /// Takes a [`crate::arch::HaltReason`], whose constructors are the list of who may stop a core for good;
 /// a thread whose work is done leaves with `sched::exit` instead (milestone 720 (provisional)).
+// A test image on this architecture never halts: its panics and its suite's end both exit through
+// the SiFive test finisher (`semihosting::exit`), as aarch64's do through semihosting.
+#[cfg_attr(any(test, feature = "system_tests"), allow(dead_code))]
 pub fn halt(_: crate::arch::HaltReason) -> ! {
     loop {
         instructions::wfi();

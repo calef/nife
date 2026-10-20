@@ -1,0 +1,12 @@
+# dialer, as an x86_64 package. The same package as `dialer.recipe`, which says why it exists.
+
+name = "dialer"
+version = "0.1.0"
+architecture = "x86_64"
+
+[[member]]
+program = "dialer"
+
+[[member]]
+name = "dialer.license"
+file = "LICENSE-MIT"

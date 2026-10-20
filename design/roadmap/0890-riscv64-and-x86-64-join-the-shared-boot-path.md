@@ -69,21 +69,23 @@ Checked against `main` at `ee1f946ad` before anything moved.
   self-test, tour, prompt) and failure markers. No live gate reads riscv64's first-phase lines;
   they appear in captured logs under `bench/` and `crates/board_console/tests/fixtures/`, which
   are records of what a kernel printed and stay as they are.
+- **The tail's "different order" is not one in effect.** riscv64's boot printed the machine
+  description and ran the self-test before `icount`, `bench` and the test suite, and `kernel_main`
+  runs them after. Both are compiled out of every test, `bench` and `icount` build (`icount`
+  implies `bench`), so no build ran both, and the shared order changes no transcript.
 
 ## What was built: riscv64 runs the shared bring-up
 
 The first slice, chosen because riscv64 shares the device tree and every portable step with
 aarch64. Which port goes first is reversible and nobody has acted on it.
 
-- `kernel_main` calls `bring_up_machine` on riscv64, then `riscv64_boot` for everything after it.
-  `riscv64_first_light` is gone. Its banner lines are `riscv64_banner`, called where aarch64 prints
-  its own.
+- `kernel_main` calls `bring_up_machine` on riscv64. `riscv64_first_light` is gone.
 - `bring_up_machine` gains riscv64's three calls into `arch/`, each `cfg`-gated beside the
   aarch64-only `check_frequency_against_device_tree` that was already there:
   `timer::init_frequency` and `irq::init_contexts` in the window where the tree is reachable,
   `isa::print_summary` and `pmu::init` after the MMU, and `pci::init_iommu` beside the SMMUv3.
-- riscv64's `arch::irq::init` calls `init_this_cpu`, the unmasking its boot used to do by name
-  before starting the other harts. `interrupts_init` reaches it at the same point.
+- riscv64's `arch::irq::init` calls `init_this_cpu`, the unmasking its boot did by name before
+  starting the other harts. `interrupts_init` reaches it at the same point.
 - Four first-phase lines are retired: `traps`, `timer`, `memory` and `paging`. Milestone 268 put each
   claim in `self_test::run` on all three architectures (`exceptions`, `timer`, `frames`, `mapping`)
   and retired the tour's own copies of two of them the same way, so this follows the tree's
@@ -93,6 +95,40 @@ aarch64. Which port goes first is reversible and nobody has acted on it.
 The order on riscv64 changes in one way that matters: interrupts come on after the scheduler, as on
 aarch64, rather than before memory. The old order needed interrupts masked around `sched::init` for
 exactly that reason (riscv64_boot.rs, before this milestone), and the mask is gone with it.
+
+## What was built: the PLIC, and riscv64's tail
+
+- riscv64's `arch::irq::init` brings the PLIC up: it stores the base from `memory::plic_region`,
+  opens the boot hart's S context, then unmasks the hart. The three `drivers::plic::init` sites in
+  `riscv64_boot.rs` are gone. The boot context's threshold opens before the other harts start; that
+  delivers nothing on its own, because every source stays disabled until `irq::enable` routes it,
+  and it means the base is stored before `sie.SEIE` is set.
+- `kernel_main` runs riscv64's tail: the test suite, `icount`, `bench`, the machine description,
+  the self-test, the tour, the measurement boots and the hand-over, on the same lines as aarch64.
+  `riscv64_boot` and `riscv_hand_over` are gone. The hand-over prints a line when there is no
+  initial ramdisk on both ports, as riscv64's did.
+- riscv64's tour is its `milestone_tour`, in `riscv64_boot.rs`, reached from the line that reaches
+  aarch64's. It keeps every line it printed, `boot_ladder::TOUR` and boot stage 11 included, so
+  `board_console` and the hang watcher read what they read before.
+- riscv64's banner is `riscv64_banner` in `boot.rs`, beside aarch64's.
+
+## The radon boot that remains
+
+The PLIC's bring-up in `arch::irq::init` and riscv64's shared tail hold under QEMU. On the
+JH7110 the PLIC's context layout differs from QEMU's, and the boot context now opens before the
+other harts start, so one board boot from `main` closes the riscv64 half:
+
+1. Run `script/board-image --tftp`, or `script/board-image --card <volume>` to use the card.
+2. Serve it with `script/board-netboot`, then power-cycle radon.
+3. Run `script/board-console --until prompt` and let it reach `Stage::Prompt`.
+4. At the prompt, type `echo hello` and press Enter. The echo proves a keystroke went from the
+   UART through PLIC source 32 and a hart's S context to the userspace input driver.
+5. Record `board_console`'s verdict line, or its log if it stopped short.
+
+What to look for: the machine description's `interrupts` line naming an S-mode context (on the
+JH7110 it is not QEMU's `2*hart + 1`), every tour line through `nife: the capability core runs on
+RISC-V.`, the prompt, and the echo. A boot that stops short names its slice in the log: the PLIC
+commit reverts alone, independent of the tail.
 
 ## Done when
 
@@ -105,40 +141,36 @@ exactly that reason (riscv64_boot.rs, before this milestone), and the mask is go
 
 | criterion | state |
 |---|---|
-| 1 | Not yet. `riscv64_boot.rs` lost its bring-up and keeps the ladder, the test and measurement boots, its tour and its hand-over. `x86_64_boot.rs` is unchanged. |
-| 2 | Not yet. Both branches remain; riscv64's now comes after `bring_up_machine` rather than before it. |
-| 3 | QEMU half for this slice: see the pull request's gate table. The board half needs radon and is not run by a lane. |
+| 1 | riscv64: `riscv64_boot.rs` holds only its milestone tour and the tour's timing helpers, which are demonstrations rather than `arch/` code. Whether the tour merges with aarch64's is open (below). `x86_64_boot.rs` is unchanged. |
+| 2 | riscv64: done, its only `cfg(target_arch)` lines in `kernel_main` are its banner and its console's register shape. `x86_64`: not yet. |
+| 3 | riscv64 under QEMU: see the pull request's gate table. The board half is the radon boot below, which is calef's. `x86_64`: not yet. |
 
 ## BUGS
 
-- The PLIC is still brought up by `drivers::plic::init` in three places in `riscv64_boot.rs`, not
-  by `arch::irq::init`. Moving it opens the boot context's threshold before the other harts start,
-  which is an order change on silicon this lane could not run.
+- The PLIC's bring-up in `arch::irq::init` and riscv64's shared tail are proven under QEMU only.
+  On radon the boot context opens before the other harts start, which no lane can run.
 - `bring_up_machine` carries five `cfg(target_arch)` sites, three of them riscv64's. Each calls
   into `arch/` or `pci`, so rule 1 holds, but a port that needs a step aarch64 does not is still a
   `cfg` here rather than a function every port implements.
 
 ## Follow-on
 
-- **Outstanding.** The PLIC moves into riscv64's `arch::irq::init`, so its three
-  `drivers::plic::init` sites in `kernel/src/riscv64_boot.rs` go (checked: lines in
-  `riscv64_device_interrupt`, the test boot and `riscv_hand_over`). Needs a radon boot.
-- **Outstanding.** riscv64's tail joins `kernel_main`'s: the ladder, the `icount`, `bench`,
-  `shell` and test boots, which run in a different order there than on aarch64 (checked:
-  `riscv64_boot` runs the machine description before `icount`; `kernel_main` runs the test suite
-  first). The open question for that slice is what happens to the riscv64 tour, which has its own
-  `boot_ladder::TOUR` line and stages `board_console` and the hang watcher read, beside aarch64's
-  `milestone_tour`.
+- **Outstanding.** The radon boot below, of the PLIC and tail slices.
+- **Outstanding.** Whether riscv64's tour merges with aarch64's `milestone_tour`. Both run two
+  never-yielding threads and a userspace program. riscv64's also carries the UART driver, block
+  discovery and entropy steps, its own `boot_ladder::TOUR` line and the hang watcher's stages. It
+  is the only proof of the boot's middle stages on silicon.
 - **Outstanding.** `x86_64` reaches `bring_up_machine`, which needs `memory::init` to take a
   PVH and ACPI description as well as a device tree (checked: `x86_64_first_light` and
   `x86_64_memory` in `kernel/src/x86_64_boot.rs`).
-- **Outstanding.** One hand-over for all three, retiring `riscv_hand_over` and `x86_hand_over`
-  (checked: both still in their boot files; `xtask/src/swish_check/verdict.rs` reads
-  `x86_hand_over`'s lines).
+- **Outstanding.** One hand-over for all three, retiring `x86_hand_over` (checked: still in
+  `x86_64_boot.rs`; `xtask/src/swish_check/verdict.rs` reads its lines). aarch64 and riscv64 share
+  `kernel_main`'s.
 
 ## Index row
 
 Two of the three architectures boot through code that only they run, so a fix to the boot's middle
 lands three times or drifts. This brings riscv64 and `x86_64` onto the path aarch64 takes, one slice
-at a time, until the two per-port boot files hold only what `arch/` cannot. The first slice puts
-riscv64's bring-up through `bring_up_machine`.
+at a time, until the two per-port boot files hold only what `arch/` cannot. riscv64 runs the
+shared bring-up and tail under QEMU, with its PLIC in `arch::irq::init`; its board boot and all of
+`x86_64` remain.

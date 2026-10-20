@@ -47,6 +47,7 @@ fn caps_of_an_image_names_its_provenance_the_gate_and_what_the_note_asks() {
         Some(super::Vouched {
             generation,
             by_owner,
+            network_granted: false,
         })
     };
     let vouched = say(by(3, false), false, None, b"bin/x");

@@ -426,7 +426,7 @@ mod tests {
     fn decode_exact_reads_each_cell_at_its_scale() {
         let draw = |ch: char, x: u32, y: u32| -> u32 {
             let k = ch as u32 - b'a' as u32 + 1;
-            (k * 0x10 + x) << 16 | (k * 0x20 + y) << 8 | k * 0x30
+            ((k * 0x10 + x) << 16) | ((k * 0x20 + y) << 8) | (k * 0x30)
         };
         let screen = [['a', 'b'], ['c', 'd']];
         let (w, h) = (2 * 3 * 2, 2 * 2 * 2);

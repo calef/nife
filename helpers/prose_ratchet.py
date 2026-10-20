@@ -37,9 +37,8 @@ and a `Reason:` so that an exception says out loud that it is one (AGENTS.md's l
     <!-- prose-budget: exception. ... Ratified by calef on 2026-09-24 ... Reason: ... -->
     <!-- writing-standards: exception. ... on 2026-09-24 ... Reason: ... -->
 
-`prose-budget` is the syntax `AGENTS.md` and `design/fatal-risks/README.md` already carried, provisionally,
-when this was built, and it is honoured as written. `writing-standards` is its §213 twin and is
-provisional. An exception exempts its decision's measures entirely, which is what both decisions
+`prose-budget` marks a §212 exception and `writing-standards` its §213 twin. Name: ratified
+2026-10-19 (calef, PR #2425), each named for the decision it waives. An exception exempts its decision's measures entirely, which is what both decisions
 say it does ("passes only if it did not get worse, or carries a marked exception").
 
 **The orphan check.** An appendix is a file under `X/` beside a document `X.md` (§212's default

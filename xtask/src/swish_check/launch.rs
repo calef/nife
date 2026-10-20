@@ -429,10 +429,14 @@ pub(super) fn whole_characters(split: &mut Vec<u8>, bytes: &[u8]) -> String {
     text
 }
 
-/// **The line that walks [`crate::disk::RIPGREP_CORPUS`]**, typed in `/search`: `rg`, by its path, looking for
-/// [`crate::disk::RIPGREP_WALK_PATTERN`]. Spelled out because a `Line` wants a `&'static str`; a
-/// test holds it to the two constants the disk is staged from.
-pub(super) const RG_WALK_LINE: &str = "/installed/rg BUGS crates";
+/// **The line that walks [`crate::disk::RIPGREP_CORPUS`]**, typed in `/search` on the second boot:
+/// `rg` by its bare name, the program `jig install ripgrep` installed from basalt's index, looking
+/// for [`crate::disk::RIPGREP_WALK_PATTERN`]. Spelled out because a `Line` wants a `&'static str`;
+/// a test holds it to the two constants the disk is staged from.
+pub(super) const RG_WALK_LINE: &str = "rg BUGS crates";
+
+/// **What [`RG_WALK_LINE`] would grant, asked before it runs**: `caps` previews the same words.
+pub(super) const RG_WALK_PREVIEW: &str = "caps rg BUGS crates";
 
 /// **Where [`RG_WALK_LINE`] is typed**, [`crate::disk::RIPGREP_WALK_HOME`]; skipped with it, since
 /// the directory is on the disk only beside `rg`.
