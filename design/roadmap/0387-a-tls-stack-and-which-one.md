@@ -86,7 +86,7 @@ also answers the question about `ca-certificates` that produced it.
 Debian fetches packages over plain HTTP and verifies signed `Release` files with a project key.
 Authenticity of the content, not confidentiality of the transport. That is a deliberate design and
 not an oversight: it lets any mirror or cache serve the bytes, and it reduces the trust surface from
-roughly 150 certificate authorities to one key the project controls.
+about 120 certificate authorities to one key the project controls.
 
 **So a package manager needs signature verification, which it needs anyway, and does not obviously
 need TLS at all.** Signature verification is a smaller piece of the crypto surface than a TLS stack,
@@ -104,19 +104,20 @@ list of consumers, leaving two.
 
 ## `ca-certificates` is not a milestone here, and there is a nife-shaped reason
 
-It is a data set rather than code, roughly 150 roots from Mozilla's NSS store, and on every Unix
+It is a data set rather than code, 121 roots in Mozilla's list (§306 (the web's authority list is a package and a capability), measured 2026-10-17), and on every Unix
 it is a package. Whatever needs it will need it as data with an update path, which is the paragraph
 above.
 
 **And the interesting part is that a trust store should not be ambient here.** On Unix
 `/etc/ssl/certs` is readable by every process, so a program that only ever talks to one host can
-still verify against all 150 authorities. In a capability system a trust store is a capability,
+still verify against all 121 authorities. In a capability system a trust store is a capability,
 and a client granted exactly the roots its one peer chains to cannot be induced to trust anything
 else. That is a small, concrete instance of
 [§145](../decisions/0145-compartmentalization-at-process-cost.md)'s argument, and it is the kind of
 thing that is cheap to do here and impossible to retrofit into Unix.
 
-Recorded rather than minted, because it has no consumer until this proposal does.
+§306 rules its shape: the list is an ordinary basalt package, a program holds it only as a
+capability its manifest names, and it updates through `jig update` over basalt's pinned channel.
 
 ## Why this is a proposal and not a milestone
 
@@ -168,7 +169,6 @@ TLS are different milestones with different consumers. The client half has two (
 `clone`, milestone 174's build service) and is blocked on nothing. The server half has one
 (milestone 66) and waits on 66's own one-deep accept backlog. Milestone 198 was listed as a consumer
 and removed, because Debian fetches over plain HTTP and verifies a signed `Release` file. A
-package manager needs signature verification, which it needs anyway, and a trust store it could only
-update through itself. A certificate trust store is recorded rather than minted here, with the
-observation that it should be a capability rather than the ambient `/etc/ssl/certs` every Unix
-process can read.
+package manager needs signature verification, which it needs anyway. The certificate trust store
+is §306's package and capability, rather than the ambient `/etc/ssl/certs` every Unix process can
+read, and `jig`'s own channel never depends on it.

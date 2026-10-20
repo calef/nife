@@ -88,10 +88,10 @@ amount of reading would have found it.
 only caller of `sys::exit::exit`, so every std test in this tree ended by the path that worked. A
 clean exit was arriving at its supervisor as `EVENT_FAULT` with a pc and a faulting address.
 
-What that leaves open, and it is a wire format rather than a PAL arm. `sched::exit()` is
-`depart(EVENT_EXIT, 0, 0)`: the §26 message has no field for an exit code, so a supervisor can tell
-exit from crash and cannot tell `exit(0)` from `exit(1)`. That is the expensive category (something
-two programs agree on) and is recorded in notes/std.md rather than guessed at here.
+What that leaves open is a kernel change rather than a PAL arm. `sched::exit()` is
+`depart(EVENT_EXIT, 0, 0)`, so a supervisor can tell exit from crash and cannot tell `exit(0)` from
+`exit(1)`. §301 (exit status and output) rules the wire (the status rides the `EVENT_EXIT` message's zero word) and
+milestone 172 (a capability-native subprocess primitive) builds it; notes/std.md records the gap.
 
 ## What remained after the fourth pass
 

@@ -109,9 +109,9 @@ The records this file cites by number:
   The code is still discarded, and that is the kernel's, not the PAL's. `sched::exit()` is
   `depart(abi::fault::EVENT_EXIT, 0, 0)`: the §26 message carries the event and the tid, and the
   two remaining words are a pc and a fault address that a clean exit has nothing to put in. So a
-  supervisor can tell exit from crash and cannot tell `exit(0)` from `exit(1)`. Widening that is a
-  wire-format change to a message two programs agree on, which is the expensive category rather
-  than the cheap one; it is not something a PAL arm can decide. Until it happens, a nife program
+  supervisor can tell exit from crash and cannot tell `exit(0)` from `exit(1)`. §301 (exit status and output) decided the
+  wire: `SYS_EXIT`'s first word is the status, and the kernel forwards it in the `EVENT_EXIT`
+  message's third word, which a clean exit leaves zero today. Milestone 172 (a capability-native subprocess primitive) builds it. Until it lands, a nife program
   that wants to report *why* it stopped says so on an endpoint it holds, the way every other
   result travels here.
 - `fs` is bound, with the gaps listed in [the fs appendix](fs.md). A program granted no directory
