@@ -70,7 +70,8 @@ on aarch64, riscv64 and x86_64 on 2026-10-19 (UTC). The weekly sweep replays it.
 The table sweep and the variant work against the fixed escapes did not run here. With the count
 already at zero, they could no longer make this pass a clean one. calef ruled on #2432 (2026-10-19
 23:18 UTC): "New pass." They belong to the tenth outsider pass, a GLM 5.3 pass under
-`briefs/confinement-outsider-pass.md` that can count toward criterion (c), milestone 936,
+`briefs/confinement-outsider-pass.md` that can count toward criterion (c): milestone 936 (a tenth
+outsider pass attacks the confinement claim), in
 `design/roadmap/0936-a-tenth-outsider-pass-attacks-the-confinement-claim.md`. Its floor
 includes row 35, so it covers this pass's variant ground. See
 `notes/confinement-outsider-pass-6.md` for the escape, the fix and the refusal log.
