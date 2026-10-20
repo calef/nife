@@ -86,8 +86,8 @@ endgame, and POSIX posture). The entries here remain the detailed source for eac
   meets the precondition there too.
 
 - **`Tcb::SUSPEND`/`RESUME`: pause a thread without killing it.** DECIDED by
-  [§300](decisions/0300-tcb-suspend-resume-the-paused-state.md), which reads this entry's "one
-  surface" as designing the pause in §26's frame, and built for milestone 48 (job control): two
+  [§300 (the paused state, a TCB verb, silent)](decisions/0300-tcb-suspend-resume-the-paused-state.md), which reads this entry's "one
+  surface" as designing the pause in the frame of §26 (the fault endpoint), and built for milestone 48 (job control): two
   silent methods on the TCB capability. Kept for the record of the reasoning that led there. The two-tier interrupt design covers notify and kill; suspend is the third
   verb that would make "interrupt" mean pause-and-inspect. Deferred because it widens the §4
   syscall surface with no consumer yet, and because it should be designed next to milestone 22's

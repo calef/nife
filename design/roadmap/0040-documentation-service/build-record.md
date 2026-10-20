@@ -61,7 +61,7 @@ shell. The tree already had that thing: `terminal_sink_caretaker`, the terminal'
 where a declared second stream goes by default.
 
 Putting it in a tail stage's *output* slot was a spawn-protocol decision, the same kind of decision
-§302 made for the pager and color. notes/pipes.md had been holding it open since milestone 50
+§302 (the screen fact and one line of input) made for the pager and color. notes/pipes.md had been holding it open since milestone 50
 (pipes and redirection): *"a shell that wanted a program to print straight to the screen rather than
 through its own result endpoint could hand it over, and would lose the ability to redirect that
 program at all."* DECISIONS §106 (take the `terminal_sink_caretaker` narrowing) took that fork, and

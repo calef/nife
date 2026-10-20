@@ -66,7 +66,7 @@ the same script on aarch64 and riscv64 rather than by a second implementation.
   that question answerable rather than theoretical.
 - The status is the shell's own reading of the line, not a program's. No program in this system
   reports an exit status. A spawned program answers with a value, with bytes, or through a job frame.
-  A per-program status is §301's: `SYS_EXIT`'s first word, forwarded in the
+  A per-program status is the one §301 (exit status and output) rules: `SYS_EXIT`'s first word, forwarded in the
   `EVENT_EXIT` message the shell already receives. Milestone 172 builds it.
 - `$?` is readable only in `echo`. Substituting a word anywhere else needs the machinery that the
   variables of milestone 47 (navigation and naming) need anyway.

@@ -32,8 +32,8 @@
 /// **No program in this system reports an exit status**, and this value does not pretend one did. A
 /// spawned program answers with a *value* (`least_authority_demo 7` answers 49), with bytes, or through a job
 /// frame, and none of those is a status. So `$?` is the shell's own reading of what happened to the
-/// line, which today is all there is. A per-program status is DECISIONS §301's: `SYS_EXIT`'s first
-/// word, forwarded in the `EVENT_EXIT` message, built by milestone 172 and not yet here.
+/// line, which today is all there is. A per-program status is DECISIONS §301 (exit status and output)'s: `SYS_EXIT`'s first
+/// word, forwarded in the `EVENT_EXIT` message, built by milestone 172 (a capability-native subprocess primitive) and not yet here.
 ///
 /// # And what it cannot carry
 ///

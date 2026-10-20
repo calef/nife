@@ -90,8 +90,8 @@ clean exit was arriving at its supervisor as `EVENT_FAULT` with a pc and a fault
 
 What that leaves open is a kernel change rather than a PAL arm. `sched::exit()` is
 `depart(EVENT_EXIT, 0, 0)`, so a supervisor can tell exit from crash and cannot tell `exit(0)` from
-`exit(1)`. §301 rules the wire (the status rides the `EVENT_EXIT` message's zero word) and
-milestone 172 builds it; notes/std.md records the gap.
+`exit(1)`. §301 (exit status and output) rules the wire (the status rides the `EVENT_EXIT` message's zero word) and
+milestone 172 (a capability-native subprocess primitive) builds it; notes/std.md records the gap.
 
 ## What remained after the fourth pass
 

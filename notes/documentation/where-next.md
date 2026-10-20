@@ -12,9 +12,9 @@ the order it pays off:
    narrowing for a tail stage's *primary* output; it did not extend the same bit to "tell this stage
    it ends at a real screen" (color, the honest replacement for `isatty`) or to granting one line of
    *input* without granting the keyboard (the pager). §106 (take the `terminal_sink_caretaker`
-   narrowing) built the narrowest slice that unblocks `mdr <page>`. §302 rules the other two: the
+   narrowing) built the narrowest slice that unblocks `mdr <page>`. §302 (the screen fact and one line of input) rules the other two: the
    screen fact is holding a `WRITE`-only terminal capability, and one line of input is a one-shot
-   badge served `READLINE` once. Milestone 334 builds both.
+   badge served `READLINE` once. Milestone 334 (color and the pager) builds both.
 2. The store as something a package installs, rather than a table in `xtask`. `DOC_BUNDLES` is
    the shape milestone 40 asked for minus a package manager, and milestone 39 is where the manifest,
    the hash and the version it should hang off already live. Blocked on milestone 39 itself, whose

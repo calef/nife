@@ -28,8 +28,8 @@ it.
 
 **In brief.** §142 gave `ChildEndowment` a `retention` field. One struct literal now states both
 what a child is given and what its spawner keeps. What it states is the disposal of one capability,
-the child's `ThreadControlBlock`, which after `START` authorizes only pausing the thread (§300's
-`SUSPEND` and `RESUME`); its other methods refuse anything but an `Embryo`. The capability that
+the child's `ThreadControlBlock`, which after `START` authorizes only pausing the thread
+(`SUSPEND` and `RESUME`); its other methods refuse anything but an `Embryo`. The capability that
 can *end* the child, and that
 actually decides whether a child can be ended, is the region it was built from, and the endowment
 says nothing about that one.

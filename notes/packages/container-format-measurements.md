@@ -233,7 +233,7 @@ does not carry.
 
 ## What this did not measure
 
-- A real NIFEPKG2 crate, which nothing builds: §307 makes a package §197's tar. Both NIFEPKG2 and tar readers here
+- A real NIFEPKG2 crate, which nothing builds: §307 makes a package the tar of §197 (a package is one archive file). Both NIFEPKG2 and tar readers here
   are unreviewed prototypes, neither fuzzed nor checked by Kani.
 - Code size on riscv64 or x86_64.
 - `ruzstd` on `jig`'s real target, `jig`'s own size (so no "percent of `jig`"), and libzstd at all.

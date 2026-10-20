@@ -104,7 +104,7 @@ list of consumers, leaving two.
 
 ## `ca-certificates` is not a milestone here, and there is a nife-shaped reason
 
-It is a data set rather than code, 121 roots in Mozilla's list (§306, measured 2026-10-17), and on every Unix
+It is a data set rather than code, 121 roots in Mozilla's list (§306 (the web's authority list is a package and a capability), measured 2026-10-17), and on every Unix
 it is a package. Whatever needs it will need it as data with an update path, which is the paragraph
 above.
 
