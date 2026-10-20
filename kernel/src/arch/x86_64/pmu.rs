@@ -126,8 +126,8 @@ static CHECK_TSC: AtomicU64 = AtomicU64::new(0);
 /// **Find the architectural fixed cycle counter, enable it, check it is counting something of its
 /// own, and remember whether to believe it.**
 ///
-/// Called once from `x86_64_memory` (`kernel/src/x86_64_boot.rs`), after the TSC has been
-/// calibrated: the checks below need a clock to spin against, and the clock they spin against is
+/// Called once from `bring_up_machine` (`kernel/src/boot.rs`), after `timer::init_frequency` has
+/// calibrated the TSC: the checks below need a clock to spin against, and the clock they spin against is
 /// the very counter they are checking the answer is not. Silent and harmless on a part with no
 /// performance monitoring: [`cycles`] then answers `None` forever, which is the honest answer and
 /// not an error.

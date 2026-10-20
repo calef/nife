@@ -345,6 +345,31 @@ pub(crate) fn init_frequency(boot_info_pointer: usize) {
 
     TSC_HZ.store(hz, Ordering::Relaxed);
     TSC_HZ_FROM_CPUID.store(from_cpuid, Ordering::Relaxed);
+
+    let calibration = calibration();
+    crate::println!(
+        // The worst window is printed beside the chosen one on purpose. The chosen rate is the
+        // *smallest* of several timed windows, because a window's error is one-sided, so the gap
+        // between them is this boot's own evidence of how much the host was descheduling the vCPU
+        // mid-calibration. A quiet host prints two numbers a megahertz apart; the boot that
+        // measured 4330 MHz would have printed the gap that said so. See CALIBRATION_WINDOWS.
+        "  clocks      : tsc {} MHz ({}, best of {} windows, worst {} MHz), apic timer {} MHz (measured against the PIT)",
+        frequency() / 1_000_000,
+        frequency_source(),
+        calibration.windows().len(),
+        calibration.worst() / 1_000_000,
+        apic_timer_frequency() / 1_000_000,
+    );
+
+    // The TSC-vs-RTC measurement instrument, off unless the `tsc_probe` feature is on. Here
+    // because the rate it checks was measured a line ago and nothing else in the boot matters to
+    // it; it halts when it is done, the same shape `bench` and `icount` take. See
+    // notes/tsc-under-tcg.md.
+    #[cfg(feature = "tsc_probe")]
+    {
+        super::tsc_probe::probe();
+        crate::arch::halt(crate::arch::HaltReason::measurement_boot());
+    }
 }
 
 /// **Start PIT channel 0 pulsing its interrupt line at about `hz`**, and report the rate actually
@@ -387,7 +412,7 @@ pub fn now() -> u64 {
 /// Unlike [`frequency`], does not panic: this is for a caller (the timebase page,
 /// `kernel::user::x86_timebase_page_phys`) that must handle "not measured yet" as a normal,
 /// representable state rather than a bug to crash on. In practice this is never `None` by the
-/// time any process is loaded: `init_frequency` runs early in the boot tour, well before the
+/// time any process is loaded: `init_frequency` runs early in the boot, well before the
 /// first call to `kernel::user::load`.
 pub(crate) fn frequency_checked() -> Option<u64> {
     let hz = TSC_HZ.load(Ordering::Relaxed);

@@ -21,6 +21,8 @@
 
 use core::sync::atomic::{AtomicBool, AtomicU64, AtomicUsize, Ordering};
 
+// The device-tree roster; on `x86_64` only the tests name it.
+#[cfg(any(test, not(target_arch = "x86_64")))]
 use machine_discovery::cpu_list::CpuList;
 
 use crate::cpu::{self, MAX_CPUS};
@@ -200,6 +202,7 @@ static DESCRIBED: AtomicUsize = AtomicUsize::new(0);
 /// If the blob is unreadable. Both callers run after `memory::init` has already parsed the same
 /// pointer, so a failure here means something un-mapped the tree between the two, which is a kernel
 /// bug rather than a machine we should tolerate.
+#[cfg(not(target_arch = "x86_64"))]
 pub(crate) fn read_cpu_list() {
     let dt = crate::device_tree().expect("device tree is unreadable");
     let list = CpuList::from_device_tree(&dt).expect("cannot read /cpus");
@@ -280,13 +283,20 @@ pub(crate) fn read_cpu_list() {
     }
 }
 
-/// **Read the machine's core list out of the ACPI MADT** (milestone 161's SMP item), x86's
-/// counterpart of [`read_cpu_list`]'s device-tree walk: x86 has no device tree, and the MADT's
-/// `LocalApic` entries are its own per-core list.
+/// **Read the machine's core list out of the ACPI MADT**: `x86_64`'s [`read_cpu_list`], the same
+/// step at the same point in `bring_up_machine`, reading the walk `memory::init` kept
+/// (`arch::discovery`) rather than a device tree.
+#[cfg(target_arch = "x86_64")]
+pub(crate) fn read_cpu_list() {
+    let (cpus, count) = arch::discovery::with_acpi(|a| (a.cpus, a.cpu_count));
+    seat_cpus_from_acpi(&cpus[..count]);
+}
+
+/// **Seat the cores the ACPI MADT lists** (milestone 161 (the `x86_64` kernel port)'s SMP item), the device-tree walk's seating
+/// done over the MADT's `LocalApic` entries, which are x86's own per-core list.
 ///
-/// Called once, on the boot core, after `arch::machine::read_acpi` has walked the MADT
-/// (`arch::machine::Acpi::cpus[..cpu_count]` is what a caller passes here) and before
-/// [`bring_up_secondaries`]. It seats each described core at the slot its own local APIC id names,
+/// Called once, by `x86_64`'s [`read_cpu_list`] on the boot core, before [`bring_up_secondaries`]
+/// (`arch::machine::Acpi::cpus[..cpu_count]` is what it passes here). It seats each described core at the slot its own local APIC id names,
 /// mirroring [`read_cpu_list`]'s seating by hardware id: every per-cpu array in this kernel is
 /// indexed by logical id, so the same logical-id-equals-hardware-id invariant has to hold here too.
 /// `arch::boot_cpu_id` reading the boot core's own local APIC id (via `CPUID`, this same milestone)
@@ -302,7 +312,7 @@ pub(crate) fn read_cpu_list() {
 /// x86-only: ACPI is x86's discovery mechanism, not a portable one, the same reason
 /// `arch::machine::Acpi` itself lives under `arch/x86_64/` rather than beside `device_tree_blob`.
 #[cfg(target_arch = "x86_64")]
-pub(crate) fn seat_cpus_from_acpi(cpus: &[(u8, bool)]) {
+fn seat_cpus_from_acpi(cpus: &[(u8, bool)]) {
     let mut startable = 0;
     let mut unseated = 0; // startable cores whose local apic id names no slot
 

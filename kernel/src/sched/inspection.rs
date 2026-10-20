@@ -792,8 +792,16 @@ pub(crate) fn canary_disarm() {
 /// The alternate boot modes (`shell`, `bench`) each compile the tour out and run no tests, so in
 /// those two configurations this genuinely has no caller. That is a property of the boot mode, not
 /// evidence the counter is dead, which is why the allow is conditioned on exactly those features
-/// rather than written unconditionally.
-#[cfg_attr(any(feature = "shell", feature = "bench"), allow(dead_code))]
+/// rather than written unconditionally. `x86_64`'s tour prints no preemption line, so there only
+/// the tests read it.
+#[cfg_attr(
+    any(
+        feature = "shell",
+        feature = "bench",
+        all(target_arch = "x86_64", not(any(test, feature = "system_tests")))
+    ),
+    allow(dead_code)
+)]
 pub fn preemptions() -> u64 {
     PREEMPTIONS.load(Ordering::Relaxed)
 }
