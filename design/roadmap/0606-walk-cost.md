@@ -1,6 +1,7 @@
 ---
-status: PARTIAL
+status: BUILT
 raised: 2026-09-26
+built: 2026-10-19
 milestone_dependencies: 121
 decision_dependencies: 230, 236, 237
 machine_requirements: none
@@ -17,8 +18,8 @@ mints the number at merge, and the title is a draft until an architect names it.
 ## Index row
 
 A recursive `std::fs` walk on nife was about 68x slower than Linux on the same machine. The FS
-server now keeps what it read, so a warm walk never reaches the device and runs at 1.9x Linux.
-The rest waits on a wire change.
+server now keeps what it read, so a warm walk never reaches the device, and a subtree grant the
+server enforces itself brings it to 0.85x Linux.
 
 ## The goal
 
@@ -65,10 +66,11 @@ calef ruled on #1387. Each option was prototyped and measured first; the note ha
 
 ## Follow-on
 
-- **Outstanding.** `UNBIND` at reap rather than at window reuse, and window freeing at reap. Both
-  wait on lane 205's "job reaped" signal from the undertaker to the progenitor. Checked
-  2026-09-27: the progenitor is not told when a job dies (`Windows` in
-  `crates/system_initializer` records it).
+- **Done.** `UNBIND` at reap. The progenitor takes a bound window's grant back when
+  `job_undertaker`'s "reaped" message arrives (milestone 685 (a job is finished when its memory
+  is back)). A window whose job never started is unbound at once. Only then does the window go
+  back to the pool: `Windows::take` in `grant_plan::job_windows` skips a window still bound, and
+  `take_never_hands_out_a_bound_window` fails if the unbind moves back to reuse.
 - **Recorded.** A cold walk on both sides, with Linux on ext4 over virtio rather than tmpfs, is a
   limitation in `notes/walk-cost.md`.
 

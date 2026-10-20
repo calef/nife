@@ -161,22 +161,36 @@ const MSI_FRAME_SPI_SELECT: u32 = 1 << 0;
 /// Walks a MADT's entry list. Each entry is `[type, length, ...]`, so the list is self-describing
 /// and a length of zero would loop forever; that is refused by ending the walk.
 pub struct MadtEntries<'a> {
-    body: &'a [u8],
-    at: usize,
+    walk: EntryWalk<'a>,
 }
 
 /// Iterate the MADT's entries. `body` begins after the SDT header.
 pub fn madt_entries(body: &[u8]) -> MadtEntries<'_> {
     MadtEntries {
+        walk: entry_walk(body),
+    }
+}
+
+/// The walk without the decode: each entry's type byte and its bytes. It is separate so a reader
+/// that wants one kind can skip decoding the others, and that is a proof cost rather than a
+/// runtime one: CBMC encodes every arm of [`MadtEntries`]'s `match` at every unwound step, so a
+/// harness over [`isa_irq_table`] would otherwise pay for each GIC kind added to it.
+struct EntryWalk<'a> {
+    body: &'a [u8],
+    at: usize,
+}
+
+fn entry_walk(body: &[u8]) -> EntryWalk<'_> {
+    EntryWalk {
         body,
         at: MADT_FIXED_LEN,
     }
 }
 
-impl Iterator for MadtEntries<'_> {
-    type Item = MadtEntry;
+impl<'a> Iterator for EntryWalk<'a> {
+    type Item = (u8, &'a [u8]);
 
-    fn next(&mut self) -> Option<MadtEntry> {
+    fn next(&mut self) -> Option<(u8, &'a [u8])> {
         if self.at + 2 > self.body.len() {
             return None;
         }
@@ -190,7 +204,16 @@ impl Iterator for MadtEntries<'_> {
         }
         let e = &self.body[self.at..self.at + len];
         self.at += len;
+        Some((kind, e))
+    }
+}
 
+impl Iterator for MadtEntries<'_> {
+    type Item = MadtEntry;
+
+    fn next(&mut self) -> Option<MadtEntry> {
+        let (kind, e) = self.walk.next()?;
+        let len = e.len();
         Some(match kind {
             0 if len >= 8 => {
                 let flags = u32(e, 4);
@@ -206,12 +229,7 @@ impl Iterator for MadtEntries<'_> {
                 address: u32(e, 4),
                 gsi_base: u32(e, 8),
             },
-            2 if len >= 10 => MadtEntry::InterruptSourceOverride {
-                bus: e[2],
-                source: e[3],
-                gsi: u32(e, 4),
-                flags: u16(e, 8),
-            },
+            2 if len >= 10 => interrupt_source_override(e),
             5 if len >= 12 => MadtEntry::LocalApicAddressOverride(u64(e, 4)),
             // The three aarch64 kinds. Their lengths have grown across ACPI revisions (a GICC
             // entry was 40 bytes in 5.0, 76 in 5.1, 80 in 6.0 and 82 in 6.3), so every field is
@@ -251,6 +269,16 @@ impl Iterator for MadtEntries<'_> {
             },
             other => MadtEntry::Other(other),
         })
+    }
+}
+
+/// Decode a type-2 entry, which the caller has checked is at least 10 bytes.
+fn interrupt_source_override(e: &[u8]) -> MadtEntry {
+    MadtEntry::InterruptSourceOverride {
+        bus: e[2],
+        source: e[3],
+        gsi: u32(e, 4),
+        flags: u16(e, 8),
     }
 }
 
@@ -334,7 +362,13 @@ impl IsaIrqRouting {
 /// are sixteen of those, so a larger one is a malformed table rather than a seventeenth IRQ.
 pub fn isa_irq_table(body: &[u8]) -> [IsaIrqRouting; ISA_IRQ_COUNT] {
     let mut table = core::array::from_fn(|irq| IsaIrqRouting::isa_default(irq as u8));
-    for entry in madt_entries(body) {
+    // A plain loop over the walk, not `filter`: `Filter::next` loops inside each step, which nests a
+    // second loop under the proof's unwind bound and multiplies what CBMC unrolls.
+    for (kind, e) in entry_walk(body) {
+        if kind != 2 || e.len() < 10 {
+            continue;
+        }
+        let entry = interrupt_source_override(e);
         if let MadtEntry::InterruptSourceOverride {
             bus,
             source,
@@ -388,13 +422,13 @@ mod verification {
         let body: [u8; N] = kani::any();
         let mut it = madt_entries(&body);
         let mut seen = 0usize;
-        let mut last = it.at;
+        let mut last = it.walk.at;
         while it.next().is_some() {
             // Every step consumes at least the two bytes of its own header, which is what makes the
             // walk finite; without it this loop would not unroll.
-            assert!(it.at >= last + 2);
-            assert!(it.at <= body.len());
-            last = it.at;
+            assert!(it.walk.at >= last + 2);
+            assert!(it.walk.at <= body.len());
+            last = it.walk.at;
             seen += 1;
         }
         assert!(seen <= N / 2);
@@ -421,8 +455,12 @@ mod verification {
         // store the doc names is the other half, and CBMC's bounds check on `table[source]` catches
         // it on its own.
         let mut named: u32 = 0;
-        for entry in madt_entries(&body) {
-            if let MadtEntry::InterruptSourceOverride { bus, source, .. } = entry
+        for (kind, e) in entry_walk(&body) {
+            if kind != 2 || e.len() < 10 {
+                continue;
+            }
+            if let MadtEntry::InterruptSourceOverride { bus, source, .. } =
+                interrupt_source_override(e)
                 && bus == ISA_BUS
                 && (source as usize) < ISA_IRQ_COUNT
             {
@@ -786,6 +824,32 @@ mod tests {
             assert_eq!(*routing, IsaIrqRouting::isa_default(irq as u8));
         }
         assert_eq!(table[0].gsi, 2, "the well-formed override still applied");
+    }
+
+    /// **Only a type-2 entry rewires a legacy IRQ.** An IO APIC entry with id 0 has a zero at
+    /// both of the offsets an override keeps its bus and source in, so read as an override it
+    /// would send IRQ 0 to the IO APIC's address. Id 0 is what a single-IO-APIC PC usually has.
+    #[test]
+    fn an_io_apic_entry_is_never_read_as_an_override() {
+        let mut body = [0u8; MADT_FIXED_LEN + 12];
+        body[MADT_FIXED_LEN..].copy_from_slice(&[1, 12, 0, 0, 0x00, 0x00, 0xC0, 0xFE, 0, 0, 0, 0]);
+        let table = isa_irq_table(&body);
+        for (irq, routing) in table.iter().enumerate() {
+            assert_eq!(*routing, IsaIrqRouting::isa_default(irq as u8));
+        }
+    }
+
+    /// **A type-2 entry too short to hold an override's flags is skipped, not read past.** The
+    /// override's last field ends at byte 10; an 8-byte one names a bus and a source but its
+    /// flags would come from whatever follows it in the list.
+    #[test]
+    fn a_short_override_leaves_the_isa_table_alone() {
+        let mut body = [0u8; MADT_FIXED_LEN + 8];
+        body[MADT_FIXED_LEN..].copy_from_slice(&[2, 8, ISA_BUS, 3, 9, 0, 0, 0]);
+        let table = isa_irq_table(&body);
+        for (irq, routing) in table.iter().enumerate() {
+            assert_eq!(*routing, IsaIrqRouting::isa_default(irq as u8));
+        }
     }
 
     /// **The shortest entry the MADT's list can hold is still read.**

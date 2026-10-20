@@ -129,7 +129,10 @@ pub(super) fn copy_args(
 ///   refused.
 pub(super) struct SpawnEndpoint {
     ep: u64,
-    /// The file service's client windows, each held until its job is reaped.
+    /// The file service's unbadged endpoint, which a reap's `UNBIND` goes to, or `None` on a boot
+    /// with no disk (and then no window is ever bound).
+    files: Option<u64>,
+    /// The file service's client windows, each held until its job is reaped and unbound.
     pub(super) windows: Windows,
     /// The second mounted tree's client windows (milestone 834), held the same way.
     pub(super) disk_windows: Windows,
@@ -169,9 +172,10 @@ const STASHED: usize = 4;
 const INSTALLER_HOLDERS: usize = 4;
 
 impl SpawnEndpoint {
-    pub(super) fn new(ep: u64, resolver: Option<u64>) -> Self {
+    pub(super) fn new(ep: u64, files: Option<u64>, resolver: Option<u64>) -> Self {
         Self {
             ep,
+            files,
             windows: job_windows(),
             disk_windows: mounted_job_windows(),
             due: ReapsDue::new(),
@@ -297,10 +301,13 @@ impl SpawnEndpoint {
         l
     }
 
-    /// Job `label` is reaped: its memory is back in its pool, and its window is free. An installer
-    /// holder's reply endpoint goes with it, and a request it was in the middle of is abandoned.
+    /// Job `label` is reaped: its memory is back in its pool, and its window's grant is taken back
+    /// and the window is free. An installer holder's reply endpoint goes with it, and a request it
+    /// was in the middle of is abandoned.
     fn reaped(&mut self, label: u64) {
-        self.windows.reaped(label);
+        if let Some(w) = self.windows.reaped(label) {
+            unbind(self.files, &mut self.windows, w);
+        }
         self.disk_windows.reaped(label);
         self.due.reaped(label);
         self.forget_resolver(label);
@@ -393,6 +400,13 @@ impl SpawnEndpoint {
             }
             return (w0, slot, w1);
         }
+    }
+
+    /// **Window `w` of the first tree was taken and no job came to hold it**: its grant, if
+    /// [`bound_channel`] or [`bind_sync_only`] made one, is taken back now, as at a reap.
+    pub(super) fn release(&mut self, w: u64) {
+        self.windows.release(w);
+        unbind(self.files, &mut self.windows, w);
     }
 
     /// **Wait for one reap.** Only between the end of one request and the next, when the shell is

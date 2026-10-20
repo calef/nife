@@ -50,7 +50,8 @@ script/launch-pass --complete <scratch>/launch.json --short-rows short-rows
 
 ## The booted-row floor
 
-**Every row a boot can reach: 27 of the 34** (calef, 2026-10-12 UTC, on #2010: "27 seems right").
+**Every row a boot can reach: 28 of the 35** (calef, 2026-10-12 UTC, on #2010, at 27 of 34:
+"27 seems right").
 Rows 12 to 18 are host proofs of the DMA validator, the VT-d encoder and the wiring plan. No
 confined component drives them at boot, so they are exempt and graded `host`. When the table
 grows, the floor is every row a boot can reach.
@@ -99,7 +100,7 @@ apart, as a re-discovery; only a new finding counts toward the claim.
 
 An attack counts when it boots. Write your own hostile program or system test, aimed at the case
 you think breaks the claim, and boot it. Running a test that already exists is not an attack. Every
-row except 12 to 18 must be booted for the pass to count: 27 of 34. Reading is the weakest grade.
+row except 12 to 18 must be booted for the pass to count: 28 of 35. Reading is the weakest grade.
 Where a claim concerns a userspace server, build a hostile client that drives it. Before you
 report, count your booted rows against the floor with `script/booted-rows` (see Mechanics). If
 you fall short, the maintainers may send you its short-row lines once in this session; boot those
@@ -129,7 +130,7 @@ Read `notes/scripts.md` and `notes/qemu.md`. The two test files above are a work
   time and never in parallel. Keep each leg's whole output as a log under `<logs>`, with the ISA in
   its file name: `script/test ... > <logs>/<module>-aarch64.log 2>&1`.
 - Counting: `script/booted-rows --checkout <worktree> --pinned <commit> --results <results path>
-  --log <logs>/*.log` prints every row's grade and `booted N of 27`. A row counts when a test
+  --log <logs>/*.log` prints every row's grade and `booted N of 28`. A row counts when a test
   written in this pass and naming it ran to `ok` or a panic on an ISA the row applies to.
 
 Never run `script/verify`, a mutation sweep or Kani. Interactive runs go through

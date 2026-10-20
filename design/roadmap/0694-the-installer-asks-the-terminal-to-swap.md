@@ -30,7 +30,8 @@ activation path sends. The new `line_editor` image travels as a frame run sent w
 back on the answer. Every running terminal swaps, the boot terminal first. The activation waits for
 every answer, and the first `ROLLED_BACK` fails it and swaps the others back.
 
-The capability table is 64 slots with a measured peak of 34, so the endpoint each terminal costs
+The capability table is 64 slots with a measured peak of 37
+(`kernel::cap::CAPABILITY_TABLE_PEAK_MEASURED`), so the endpoint each terminal costs
 `system_initializer` fits without freeing another. Members of the `terminal` package other than
 `line_editor` take effect at the next build, not live.
 
@@ -41,4 +42,4 @@ losing nothing: milestone 23's claim on a component a person uses, end to end.
 
 ## Index row
 
-`terminal_supervisor` can replace `line_editor` live but nothing on a real boot asks it to. Proposed: the installer asks it to swap, which fixes a message and a route two programs agree on.
+`terminal_supervisor` can replace `line_editor` live but nothing on a real boot asks it to. §308 rules the shape: `system_initializer` holds one swap endpoint per terminal supervisor, the new image travels as a frame run with `SWAP`, and every terminal swaps.

@@ -255,7 +255,7 @@ One line each. The full entry is in
 - A spawned thread's stack has no guard page, and a timed wait spins on `yield`. See
   [the threads appendix](std/threads.md).
 - `std::process::exit` exits cleanly, but the kernel drops the code. A supervisor can tell exit from
-  crash and cannot tell `exit(0)` from `exit(1)`. Carrying it is a wire-format change.
+  crash and cannot tell `exit(0)` from `exit(1)`. §301 (exit status and output) decided how it travels; milestone 172 (a capability-native subprocess primitive) builds it.
 - `SystemTime::now()` and `std::random` panic when the process holds no clock or entropy grant,
   because neither call has an error channel. `HashMap`'s seed is the one caller that degrades.
 - The environment holds only what a grant seeded (`TZ`, `LANG`, `TERM`) plus what the program sets.

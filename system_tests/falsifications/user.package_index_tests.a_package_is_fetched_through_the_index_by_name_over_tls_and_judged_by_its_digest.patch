@@ -1,0 +1,32 @@
+Falsifies `system_tests::user::package_index_tests::a_package_is_fetched_through_the_index_by_name_over_tls_and_judged_by_its_digest`,
+row 35 of notes/confinement-claims.md (a listed location never reaches a private or link-local
+address).
+
+Architecture: aarch64, riscv64, x86_64
+
+The defect is the rebinding escape milestone 871 (a sixth outsider pass attacks the confinement
+claim) booted: the package client checks one resolution of a listed location's host, then
+connects by name, which resolves again. `helpers/name-server-peer` answers `rebind.basalt.test`
+public on a boot's first query and at the private peer after, so the connect reaches 10.0.2.9.
+
+Expected to fail: `the_rebinding_probe_reached_no_private_peer`'s assertion that the listed
+location's reason carries no `Tls(`, with the private peer's
+`Tls(InvalidCertificate(NotValidForNameContext { expected: DnsName("rebind.basalt.test"), ...`.
+Confirmed red on 2026-10-19 (UTC) at `system_tests/src/user/package_index_tests.rs:206` on
+aarch64, riscv64 and x86_64, with `script/test --arch <a> --test a_package_is_fetched_through`,
+and green on aarch64 with the patch reverted. The hunk is portable code, so one patch serves every
+leg.
+
+diff --git a/pinned_tls_exerciser/src/bin/package_fetch_exerciser.rs b/pinned_tls_exerciser/src/bin/package_fetch_exerciser.rs
+index 272ab0d07..ab5f33fbc 100644
+--- a/pinned_tls_exerciser/src/bin/package_fetch_exerciser.rs
++++ b/pinned_tls_exerciser/src/bin/package_fetch_exerciser.rs
+@@ -67,7 +67,7 @@ const PINNED_ROOT: &[u8] = include_bytes!("../../../pinned_tls_client/fixtures/p
+ /// confinement claim) booted; `TcpStream::connect` on a slice of `SocketAddr` asks no resolver.
+ fn get(server_name: &str, to: &[SocketAddr], path: &str) -> Result<Vec<u8>, String> {
+     let peer = PinnedPeer::new(server_name, PINNED_ROOT).map_err(|e| format!("{e:?}"))?;
+-    let tcp = TcpStream::connect(to).map_err(|e| format!("{:?}", e.kind()))?;
++    let tcp = TcpStream::connect((server_name, to[0].port())).map_err(|e| format!("{:?}", e.kind()))?;
+     let session = Session::handshake(&peer, tcp).map_err(|e| format!("{e:?}"))?;
+     let mut body = Vec::new();
+     match session.get(path, |part| body.extend_from_slice(part)) {

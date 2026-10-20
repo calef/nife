@@ -587,7 +587,11 @@ fn transcript_failures(leg: &Leg, console: &Console, failed: &mut Vec<String>) -
     if failed.is_empty() {
         failed.extend(answer_failures(leg.script, &transcript, &|l| leg.skips(l)));
     }
-    if failed.is_empty() && leg.programs.rg_built && !leg.skips(RG_WALK_LINE) {
+    if failed.is_empty()
+        && leg.script.iter().any(|l| l.typed == RG_WALK_LINE)
+        && leg.programs.rg_built
+        && !leg.skips(RG_WALK_LINE)
+    {
         failed.extend(rg_walk_failure(arch, &transcript));
     }
     failed.extend(kernel_fault_failure(&transcript));
@@ -1382,7 +1386,13 @@ fn one_answer_failures(l: &Line, answer: &str, before_next: &str) -> Vec<String>
 /// enumeration as a capability, and what the walk costs)), which no list of
 /// wanted phrases can say: a phrase list passes an answer that dropped a directory.
 fn rg_walk_failure(arch: &str, transcript: &str) -> Option<String> {
-    let (answer, _) = swish_check_answer(transcript, 0, RG_WALK_LINE)?;
+    // Only a boot whose script types the walk asks, so an answer that cannot be found is a failure:
+    // passing it would let the one check no phrase list can make go quiet.
+    let Some((answer, _)) = swish_check_answer(transcript, 0, RG_WALK_LINE) else {
+        return Some(format!(
+            "`{RG_WALK_LINE}` was typed and its answer is not in the transcript"
+        ));
+    };
     let expected = crate::disk::ripgrep_walk_expected();
     match std::fs::read_to_string(&expected)
         .map_err(|e| format!("{}: {e}", expected.display()))

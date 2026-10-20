@@ -167,21 +167,27 @@ mod user;
 mod virtio;
 
 // The boot itself (milestone 876 (the kernel crate root is split along its seams)): `kernel_main`
-// and the steps all three boots share, each architecture's own boot, the machine description and
-// aarch64's milestone tour. `helpers/lint_arch_parity.py` takes a module's architectures from the
-// `cfg` on its declaration here, so the two per-architecture boots carry theirs on this line.
+// and the steps the boots share, `x86_64`'s own boot, the machine description, and each port's
+// milestone tour (aarch64's in `milestone_tour`, riscv64's in `riscv64_boot`, both reached from the
+// same line of `kernel_main`). `helpers/lint_arch_parity.py` takes a module's architectures from
+// the `cfg` on its declaration here, so the per-architecture modules carry theirs on this line.
 mod boot;
 #[cfg(not(any(test, feature = "system_tests", feature = "bench")))]
 mod machine_description;
-#[cfg(not(any(test, feature = "system_tests", feature = "bench")))]
+#[cfg(not(any(
+    test,
+    feature = "system_tests",
+    feature = "bench",
+    target_arch = "riscv64"
+)))]
 mod milestone_tour;
 #[cfg(target_arch = "riscv64")]
 mod riscv64_boot;
 #[cfg(target_arch = "x86_64")]
 mod x86_64_boot;
 
-// The two steps every boot reaches, for the per-architecture boots; aarch64's are in `boot`.
-#[cfg(any(target_arch = "riscv64", target_arch = "x86_64"))]
+// The two steps every boot reaches, for `x86_64`'s own boot; aarch64 and riscv64 reach them in `boot`.
+#[cfg(target_arch = "x86_64")]
 use boot::*;
 pub use boot::{DTB, device_tree, kernel_main};
 // `print!` expands to `$crate::_print`, and a macro another crate expands can only name what that
@@ -191,9 +197,18 @@ pub use boot::{DTB, device_tree, kernel_main};
 pub use console::_print;
 #[cfg(not(any(test, feature = "system_tests", feature = "bench")))]
 use machine_description::*;
-#[cfg(not(any(test, feature = "system_tests", feature = "bench", feature = "shell")))]
+#[cfg(not(any(
+    test,
+    feature = "system_tests",
+    feature = "bench",
+    feature = "shell",
+    target_arch = "riscv64"
+)))]
 use milestone_tour::*;
-#[cfg(target_arch = "riscv64")]
+#[cfg(all(
+    target_arch = "riscv64",
+    not(any(test, feature = "system_tests", feature = "bench", feature = "shell"))
+))]
 use riscv64_boot::*;
 #[cfg(target_arch = "x86_64")]
 use x86_64_boot::*;
