@@ -114,7 +114,7 @@ fn declare_initial_ramdisk_cfg(arch: &str) {
     // than a feature because cargo features cannot differ by target, and `cargo xtask uefi-image
     // --features soak_test` (xenon's stick) has to get the default too. `kernel/src/soak.rs`
     // restates the rule as a `compile_error!`, so an edit here that drops it fails the x86_64
-    // `soak_test` build `script/lint` already makes.
+    // `soak_test` build `script/lint` already makes. Name provisional.
     println!("cargo::rustc-check-cfg=cfg(soak_watchdog)");
     let feature = |name: &str| std::env::var_os(format!("CARGO_FEATURE_{name}")).is_some();
     if feature("WATCHDOG_SOAK_TEST")
