@@ -11,8 +11,8 @@ needs_person: no
 
 Filed 2026-09-03 as an unnumbered proposal by the milestone 247 sweep,
 from milestone 40's block; numbered 2026-09-19 by milestone 433. **Premise re-checked 2026-09-19 and
-it holds.** DECISIONS §106 is still the only narrowing that shipped, `components/src/mdr.rs` still
-carries "No pager, and the reason is authority rather than effort" in its own module doc, and nothing
+it holds.** DECISIONS §106 is still the only narrowing that shipped, `components/src/mdr.rs`'s
+module doc still says "No pager" for want of one line of input without the keyboard, and nothing
 in the spawn wiring tells a stage it ends at a real screen. No program in this tree colors its
 output.
 

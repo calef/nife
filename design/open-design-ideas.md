@@ -85,8 +85,10 @@ endgame, and POSIX posture). The entries here remain the detailed source for eac
   person who eventually wires it (thinking about untyped accounting, not shared-frame lifetimes)
   meets the precondition there too.
 
-- **`Tcb::SUSPEND`/`RESUME`: pause a thread without killing it** (deferred from the `^C` decision,
-  §24, 2026-07-28). The two-tier interrupt design covers notify and kill; suspend is the third
+- **`Tcb::SUSPEND`/`RESUME`: pause a thread without killing it.** DECIDED by
+  [§300](decisions/0300-tcb-suspend-resume-the-paused-state.md), which reads this entry's "one
+  surface" as designing the pause in §26's frame, and built for milestone 48 (job control): two
+  silent methods on the TCB capability. Kept for the record of the reasoning that led there. The two-tier interrupt design covers notify and kill; suspend is the third
   verb that would make "interrupt" mean pause-and-inspect. Deferred because it widens the §4
   syscall surface with no consumer yet, and because it should be designed next to milestone 22's
   fault endpoints (both are "the kernel turns a thread's state into a message a supervisor

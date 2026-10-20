@@ -262,7 +262,8 @@ what it did, including the kernel's one wait point that made the first one hard,
 - `mdr` emits plain text even at a terminal. The renderer can color, and the shell has no way
   to tell a stage "you end at the terminal", for the same reason the sink contract is a good
   contract: a writer cannot tell what is underneath it. Unix answers this with `isatty`, which is a
-  sniff; the honest answer here is a wiring bit the spawn protocol does not carry yet.
+  sniff; the answer here, ruled by §302, is that a stage ends at the screen when it holds a
+  `WRITE`-only terminal capability. Milestone 334 builds it.
 - A search keeps sixteen results and counts the rest ("16 of 43 pages, strongest first"), because
   one of this system's two terminals is sixteen rows tall.
 - A hyphenated name is not one term, and a path is not searchable. A search is for words, and the
@@ -296,8 +297,8 @@ what it did, including the kernel's one wait point that made the first one hard,
 
 ## Where this goes next
 
-Two things are left, in the order they pay off. Color and the pager are one spawn-protocol decision
-(the wiring bit §106 did not extend, so not this lane's call). The store as something a package
+Two things are left, in the order they pay off. Color and the pager are one spawn-protocol decision,
+ruled by §302 and built by milestone 334. The store as something a package
 installs is blocked on milestone 39 (repository structure for a loosely-coupled OS). A graphical
 viewer waits on milestone 33 (a compositor). Each, with
 its reasoning, and the prior art (`man`, `apropos` and `mandb`, docsets, `cargo doc`) are in

@@ -176,7 +176,8 @@ them publishes proofs beside the crate, which is the part this tree would add.
 | C-c. path, as today | this tree | Only while the crate is in this repository |
 
 Recommendation as raised, and ruled with a `[patch]` rule added: C-c while a crate is here, C-a after. C-b would block exactly the third parties §151
-names as the goal.
+names as the goal. §305 (git dependencies on `nifeos/*` only) takes C-b for the soak before a
+first publish.
 
 ## Fork 3. Versions, and what a release carries (ruled as recommended)
 

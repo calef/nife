@@ -47,8 +47,8 @@ how a shell already holds a child's interrupt endpoint). What is missing, checke
 that crate and against `kernel/src/user.rs`'s spawn path: a synchronous, ergonomic wait-and-collect
 shape. A caller like `cargo` would use it in a loop ("run this, block until it's done, give me
 its output"). The death-notification/supervision-endpoint pattern was built for long-lived
-service supervision. The two may turn out to be the same mechanism used differently, or may need a
-distinct narrow syscall; that sizing is this milestone's own work, not predetermined here.
+service supervision. §301 rules they are the same mechanism used differently: the wait is the §26
+receive, the status rides `SYS_EXIT` into the `EVENT_EXIT` message, and there is no new syscall.
 
 ## How a caller starts the child is decided
 

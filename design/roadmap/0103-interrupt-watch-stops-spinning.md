@@ -67,8 +67,8 @@ Strictly downstream of milestone 106. There is no timed wait anywhere in the ker
 kernel surface of its own. If 106 lands the deadline on `Rendezvous::RECEIVE`/`CALL`, this is a small
 change in one file.
 
-**Not `ThreadControlBlock::SUSPEND`.** Pausing a job resumably is §24's deliberate deferral; milestone 48 (job control)
-owns it in phase two, along with `fg`, `bg` and a stopped state. The two are adjacent
+**Not `ThreadControlBlock::SUSPEND`.** Pausing a job resumably is §300's `SUSPEND` and `RESUME`, which milestone 48
+(job control) uses for `fg`, `bg` and a stopped state. The two are adjacent
 and separate: 48 adds a state a job can be in, this one changes how the shell waits.
 
 **Not the shared-flag design.** §24 chose control by shared memory over control by message, with its

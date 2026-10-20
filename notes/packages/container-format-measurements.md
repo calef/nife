@@ -9,7 +9,7 @@ harnesses out of the tree to build them. Name: provisional (2026-10-17).*
 
 The four candidates:
 
-1. NIFEPKG2, as §307's rule 3 defines it. After the magic come name, version and architecture,
+1. NIFEPKG2, the variable-width layout §307 weighed against tar. After the magic come name, version and architecture,
    each a `u16` length and bytes, then a `u32` count and a `u32` reserved word. One table entry per
    member follows (a `u16` length, the path, `u32` offset, `u32` length, the 32-byte SHA-256), and
    members are 8-byte aligned.
@@ -233,7 +233,7 @@ does not carry.
 
 ## What this did not measure
 
-- The real NIFEPKG2 crate, which §307's step 1 has not built. Both NIFEPKG2 and tar readers here
+- A real NIFEPKG2 crate, which nothing builds: §307 makes a package §197's tar. Both NIFEPKG2 and tar readers here
   are unreviewed prototypes, neither fuzzed nor checked by Kani.
 - Code size on riscv64 or x86_64.
 - `ruzstd` on `jig`'s real target, `jig`'s own size (so no "percent of `jig`"), and libzstd at all.

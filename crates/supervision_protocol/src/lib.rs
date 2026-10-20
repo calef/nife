@@ -429,6 +429,9 @@ impl<'a> ChildEndowment<'a> {
 /// thread. So keeping one, or handing it on, is a claim that someone will pause this thread, and
 /// that is why both variants that keep it carry a reason.
 ///
+/// The region the child was built from is not declared here, by DECISIONS §303: its disposal is the
+/// builder's bookkeeping across the child's whole life, and its rule is on [`build_child`].
+///
 /// # Examples
 ///
 /// ```
@@ -499,6 +502,13 @@ pub struct Child {
 /// page tables freed under it when the child is reaped). `build_ut` is what the child itself is made
 /// of: its address space, frames, stack, and TCB. Passing a per-child region as `build_ut` is what
 /// makes a single `DESTROY` reap the whole instance.
+///
+/// **`build_ut` must be budget the caller owns** (DECISIONS §303 (the retention declaration says
+/// nothing about the region)): a region it created, a `SPLIT` child of its own region, or a root
+/// handed to it as its whole budget. Building from a retained, delegated region is forbidden,
+/// because §40's reap holds only when a child is built from its supervisor's own region. Nothing
+/// enforces this yet: the kernel check that compares `build_ut`'s recorded parent with a presented
+/// owning region is milestone 356's.
 ///
 /// # Examples
 ///
@@ -898,9 +908,10 @@ pub fn memory_region_destroy(ut: u64) -> bool {
 ///
 /// # BUGS
 ///
-/// **The retaining branch has no caller and therefore no test.** Every spawn site in the tree
-/// declares [`Retention::Nothing`] (DECISIONS §142 chose R4 declaring R0), so the arm that keeps
-/// the capability is reached by nothing that runs, and this crate is excluded from `script/test`'s
+/// **[`Retention::ThreadControlBlock`]'s arm has no caller and therefore no test.** Every spawn
+/// site declares [`Retention::Nothing`] (DECISIONS §142 chose R4 declaring R0) except the
+/// supervised-job spawn in `system_initializer`, which declares [`Retention::Requester`] (§309),
+/// so the arm that keeps the capability for the builder is reached by nothing that runs, and this crate is excluded from `script/test`'s
 /// host pass anyway for its unconditional `user_mode_runtime` dependency. The arm is three lines and does
 /// nothing, which is the only reason that is tolerable; the first site that declares
 /// [`Retention::ThreadControlBlock`] is exercising it for the first time and should say so.

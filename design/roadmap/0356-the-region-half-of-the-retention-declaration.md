@@ -28,8 +28,9 @@ it.
 
 **In brief.** §142 gave `ChildEndowment` a `retention` field. One struct literal now states both
 what a child is given and what its spawner keeps. What it states is the disposal of one capability,
-the child's `ThreadControlBlock`, which the tree's own audit showed is inert after `START`: all
-three of its methods refuse anything but an `Embryo`. The capability that is *not* inert, and that
+the child's `ThreadControlBlock`, which after `START` authorizes only pausing the thread (§300's
+`SUSPEND` and `RESUME`); its other methods refuse anything but an `Embryo`. The capability that
+can *end* the child, and that
 actually decides whether a child can be ended, is the region it was built from, and the endowment
 says nothing about that one.
 
@@ -57,10 +58,9 @@ a child from a *delegated* region is forbidden or merely discouraged "is not yet
 should be before someone writes a supervisor that does it." A declared field is the natural place
 for that answer to live. The declaration is per-child and the rule is per-child.
 
-## The fork, so it is not decided by accident
+## The three shapes §303 weighed
 
-There are at least three shapes and they are not equivalent. That is why this is `DECISION` rather
-than a lane:
+They are not equivalent, which is why this was a `DECISION` gate rather than a lane:
 
 - **Widen `Retention`** into an enum over both objects, so one field says what is kept of each. One
   noun to learn, and the two are genuinely one question about one child.
@@ -71,20 +71,19 @@ than a lane:
   a property of the *builder's* bookkeeping rather than of the child. A field which cannot be acted
   on at one moment is a declaration the code cannot enforce.
 
-The third is a real answer and may be the right one. What is not an answer is the present state,
-where the endowment reads as a complete account of the authority in play and is silent about the
-capability that carries most of it.
+§303 chose the third, and forbade building from a retained, delegated region. The rule is in
+`build_child`'s and `Retention`'s docs; the kernel check that enforces it is this milestone's work.
 
 ## Index row
 
 DECISIONS §142 gave `ChildEndowment` a `retention` field so one struct literal states both what a
 child is given and what its spawner keeps. What it states is the disposal of the child's
-`ThreadControlBlock`, which the tree's own audit showed is inert after `START`. The capability that
+`ThreadControlBlock`, which after `START` authorizes only pausing. The capability that
 actually decides whether a child can be ended is the region it was built from, and the endowment
 says nothing about it. `components/src/spawner.rs`, `fixtures/src/c_confiner.rs` and
 `components/src/timetable.rs` drop the region when the child runs, while `crates/system_initializer`
 keeps its across the child's life: both correct for what they do and neither stated where a reader
 of the endowment can see it. §40's first recorded caveat is the same question in other words.
-Whether the declaration widens is an architect's, which is why the gate is DECISION: three shapes
-are written out here and the third, leaving it out and saying so in `Retention`'s own docs, is a
-real answer.
+§303 keeps the declaration the TCB's, states the region's rule in `Retention`'s and
+`build_child`'s docs, and forbids building from a retained, delegated region. What remains is the
+kernel check that refuses such a build.

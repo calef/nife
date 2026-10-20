@@ -24,10 +24,11 @@ against that number. The kernel-reclaim shape (per-job off
 refcounted per shared line, no new surface) is the named candidate. No capability variant
 appears without a driver that needs one.
 
-The mechanism is small; the authority question is ruled. No capability variant in the category
-[§10 (process model: capability-based, microkernel)](../decisions/0010-capability-microkernel.md)
-and [§16 (object revocation)](../decisions/0016-object-revocation.md) keep narrow, and nothing is
-built before the number.
+The mechanism is small; the authority question waits for the number. §304 leaves a driver-asks
+capability undecided, and what counts against it is a cost rather than a refusal: surface in the
+category [§10 (process model: capability-based, microkernel)](../decisions/0010-capability-microkernel.md)
+and [§16 (object revocation)](../decisions/0016-object-revocation.md) keep narrow. Nothing is built
+before the number.
 
 What the work is. `crates/jh7110_clock_and_reset` can enable a clock and release a reset. It cannot gate a
 clock or assert a reset, and `kernel/src/drivers/jh7110_clock_and_reset.rs` offers no teardown at all. So a
