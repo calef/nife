@@ -99,9 +99,9 @@ pub(crate) const PROGENITOR_ROLE: u64 = 27;
 /// Name: ratified 2026-09-15 (calef, this header): `boot` the verb, `progenitor` the noun it acts
 /// on, greppable with [`PROGENITOR_ENTRY`] and [`PROGENITOR_ROLE`]. Refused `boot_via_progenitor`
 /// (its `via` disambiguated a separate aarch64 boot path that no longer exists).
-// Two callers: `kernel_main`'s hand-off, which aarch64 and riscv64 reach, and `x86_hand_over`. The `allow` is kept for the configurations that reach none of
-// them: a `soak` or `job_mix` build replaces the hand-off with its own workload, and `test`/`bench`
-// park before it.
+// One caller, `boot.rs`'s `hand_over`, which all three architectures reach. The `allow` is kept for
+// the configurations that do not: a `soak` or `job_mix` build replaces the hand-off with its own
+// workload, and `test`/`bench` park before it.
 #[cfg_attr(
     any(
         test,

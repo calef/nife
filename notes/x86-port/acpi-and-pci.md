@@ -116,35 +116,32 @@ The MSI path is the one that got built (milestone 215), and the sentence above p
 before there was a device on the bus to need it. See "How a PCI function's interrupt reaches a
 driver" below.
 
-## The discovery seam milestone 20 promised and did not build
+## The discovery seam
 
 Milestone 20's deliverable had two abstraction shapes in it. The first, "a generic level-walk plus a
 per-arch entry codec", was built and holds: `crates/paging` needed no change for a third format.
 The second, "put device discovery behind a 'here is the hardware' interface (device tree today,
-ACPI/PCI later)", was not built, and this port is where that shows.
+ACPI/PCI later)", is not an interface. It is one boot step, `memory::init`, with a front end per
+description, and the shared bring-up (`boot.rs`'s `bring_up_machine`) is the same on all three.
 
-`kernel/src/memory.rs`'s `init` took a device-tree pointer and read `Dtb` directly for the RAM
-regions, the reservations, the interrupt controller, the RTC, the UART's interrupt and the PCIe
-window. Nothing about that is wrong on two architectures that both have a device tree. On x86 there
-is no tree, so the frame allocator could not come up at all.
+The narrow half is split out (`memory::bring_up_page_frames`): it takes a RAM slice and a forbidden
+slice and does not care where they came from. `memory::init` is one step with two front ends that
+feed it. On the device-tree machines it is `init_from_device_tree`. Here it is
+`arch::x86_64::discovery::init`, which reads the PVH handoff, walks ACPI, records the device windows
+and the PCIe topology, and calls `machine::bring_up_memory` with the PVH map.
 
-The narrow half is now split out (`memory::bring_up_page_frames`), because without it nothing below
-the allocator can exist on this architecture and the port would have stopped there. `init` is now
-explicitly a device-tree *front end*: it reads the tree, assembles a RAM slice and a forbidden slice,
-and hands them to a function that does not care where they came from.
-`arch::x86_64::machine::bring_up_memory` is the x86 front end doing the same job from the PVH map.
-
-The wide half is still partly owed. What crosses the seam today is RAM, reservations, and (as of
-milestone 165) the PCIe ECAM window. The interrupt controller and the console UART's interrupt still
-bypass `memory.rs`'s statics or stay unwired. Three facts still have two sources that do not know
-about each other, which is the shape this should not be left in:
+The wide half crosses the same step. The tables are reachable only through the boot map that
+`mmu::init` replaces, so `discovery` walks them once and keeps the walk, and each later bring-up
+step reads its part of it where the device-tree machines re-read the tree:
 
 | Fact | Device-tree machines | x86 |
 |---|---|---|
-| RAM, reservations | `memory::init` | `machine::bring_up_memory` (shared consumer) |
-| Interrupt controller | `memory::init` -> `GIC_REGIONS`/`PLIC_REGION` | ACPI MADT -> `machine::Acpi` -> `irq::init_{local,io}_apic` directly, bypassing the statics |
-| PCIe ECAM window | `memory::init` -> `PCI_REGIONS` | ACPI MCFG -> `machine::Acpi` -> `memory::record_pci_regions` -> `PCI_REGIONS` (shared consumer, milestone 165). The BAR/mem32 half of the same static has no ACPI or AML source and stays a hardcoded constant (`arch::mmu::PCI_BAR_PHYS`); see that milestone for why. |
-| Console UART interrupt | `memory::init` -> `UART_IRQ` | discoverable now (`Acpi::isa_irqs[4]` is COM1's), unwired |
+| RAM, reservations | `memory::init` | `memory::init` -> `machine::bring_up_memory` (shared consumer) |
+| Core roster | `smp::read_cpu_list`, from the tree | `smp::read_cpu_list`, from the kept MADT |
+| Interrupt controller | `memory::init` -> `GIC_REGIONS`/`PLIC_REGION` | the kept MADT: `irq::init_contexts` brings up the local APIC before `mmu::init`, `irq::init` the IO APIC after it, and `mmu::claims` maps both from the same table |
+| PCIe ECAM window | `memory::init` -> `PCI_REGIONS` | MCFG -> `memory::record_pci_regions` inside `memory::init`. The BAR half has no ACPI or AML source and is derived from the machine (`arch::mmu::memory_mapped_io_window`, milestone 256 (x86_64 places PCI BARs in a hardcoded window)). |
+| Console UART interrupt | `memory::init` -> `UART_IRQ` | `memory::record_uart_irq` inside `memory::init`: legacy IRQ 4, resolved through the MADT's overrides when it is armed (milestone 176 (the x86_64 discovery seam's wide half)) |
+| IOMMU | `memory::init` -> `SMMU_REGION` | DMAR or IVRS: windows recorded in `memory::init`, units brought up by `discovery::bring_up_iommus` after `mmu::init` |
 
 The type at the seam is another loose end worth naming. `Region` is `device_tree_blob::Region`, which is a plain
 `{ start, size }` pair and means nothing device-tree-specific. But a machine with no device tree

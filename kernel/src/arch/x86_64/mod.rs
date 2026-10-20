@@ -45,6 +45,9 @@ use core::arch::{asm, global_asm};
 pub mod amd_vi;
 pub mod ap_boot;
 pub mod context;
+// What the loader and ACPI describe, read once inside `memory::init` (milestone 890 (riscv64
+// and `x86_64` join the shared boot path)).
+pub mod discovery;
 pub mod exceptions;
 pub mod fp;
 mod instructions;

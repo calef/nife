@@ -245,8 +245,8 @@ there is nothing for them to be at parity *with*.
 ## Reproducing it
 
 The harness is in the tree, behind the `tsc_probe` cargo feature, which is off by default and in no
-gate. It is `kernel/src/arch/x86_64/tsc_probe.rs`, plus a four-line call site in the x86 arm of
-`kernel_main` that halts the boot when the measurement is done. It is an instrument rather than a
+gate. It is `kernel/src/arch/x86_64/tsc_probe.rs`, plus a call site at the end of `x86_64`'s
+`arch::timer::init_frequency` that halts the boot when the measurement is done. It is an instrument rather than a
 test, the same shape `bench` and `icount` are, because the question it answers takes thirty-five
 seconds of wall clock and has no pass/fail. This note is its owner, and the calibration fix
 proposed above is what it exists to be measured against.
