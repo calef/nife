@@ -20,10 +20,9 @@ crate. The tails carry numbers and are free to improve; a matcher keys on the he
 
 ## Why the ladder exists at all
 
-The boot arms diverge unless something holds them together. A machine description on one
-architecture, a self-test on two, and a checkpoint the bench tooling relies on that only one prints
-all leave the other architectures with no signal on that channel, and a missing marker looks
-exactly like a slow board.
+The boot arms diverge unless something holds them together. A marker printed on one architecture
+leaves the others with no signal on that channel, and a missing marker looks exactly like a slow
+board.
 
 Milestone 268's lane found a fifth case of the same shape one rung lower: `Stage::Banner` matches
 `nife on `, chosen generically so that "a recognizer that only knew the VisionFive 2's would report
@@ -76,11 +75,15 @@ these lines *were* the transcript.
 
 ## The self-test: it reports, it does not gate
 
-`kernel/src/self_test.rs` runs five checks between the description and the hand-off: `exceptions` (a
+`kernel/src/self_test.rs` runs eight checks between the description and the hand-off: `exceptions` (a
 breakpoint is caught and stepped over) and `mapping` (a fresh page is mapped, written, read back and
 unmapped at an address computed from this machine's own RAM). Then `frames` (one frame out of the
 allocator and back, with the accounting agreeing at both ends), `timer` (the counter advances and a
 tick interrupt arrives), `scheduler` (a spawned kernel thread runs and carries its captured state).
+The last three are the claims the per-port tours made: `preemption` (one never-yield thread more
+than there are cores, and none starves), `userspace` (a program at user level reads a kernel
+address, is killed, and the kernel survives) and `budget` (a process spends its untyped and the
+kernel's frame count does not move).
 
 **A failure prints and the boot carries on.** calef, 2026-09-09: *"I could see building tools to
 diagnose what broke but we can only run them if there is a prompt"*. A machine you cannot log into

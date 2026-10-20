@@ -96,7 +96,7 @@ pub const SELF_TEST_CHECKS: &[&str] = &[
 
 /// **The lengths [`SELF_TEST_CHECKS`] had before, for reading a log a kernel of that time
 /// printed.** A captured bench log and a board still running an older image say `5 of 5 passed`,
-/// and that verdict was green against the list its kernel was built with. A recogniser accepts
+/// and that verdict was green against the list its kernel was built with. A recognizer accepts
 /// these totals as well as the current one; the kernel itself always counts against the current
 /// list, so a kernel built from this tree cannot print one of them.
 ///

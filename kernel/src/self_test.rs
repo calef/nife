@@ -222,7 +222,9 @@ const FIRST_STAGE: u32 = 3;
 
 /// **The stage that means the self-test finished and the boot's middle stages ran to their end**,
 /// noted beside `boot_ladder::TOUR` in `kernel_main`. 11 because that is the number every board
-/// log since milestone 159 reads as "finished"; the checks fill 3 to 10.
+/// log since milestone 159 (a real hardware entropy source: the JH7110's TRNG) reads as "finished"; the checks fill 3 to 10.
+///
+/// Name: provisional, minted 2026-10-20 (UTC) by lane `milestone/890-tours-to-self-test`.
 pub const TOUR_STAGE: u32 = 11;
 const _: () = assert!(FIRST_STAGE as usize + CHECKS <= TOUR_STAGE as usize);
 
@@ -572,7 +574,7 @@ fn wait_until(seconds: u64, mut done: impl FnMut() -> bool) -> bool {
 
 /// **Threads that never yield are taken off the CPU anyway, and none of them starves.**
 ///
-/// The property that separates a kernel from a runtime (DECISIONS §5): a thread whose whole body is
+/// The property that separates a kernel from a runtime (DECISIONS §5 (preemptive threads with real stacks)): a thread whose whole body is
 /// a loop, with no yield, no syscall and not even a function call, owns its core under any
 /// cooperative scheduler. These run inside the kernel and are still preempted, which is the stronger
 /// form of the claim; `system_tests`' `a_user_program_that_never_yields_is_preempted_anyway` makes
@@ -701,7 +703,7 @@ fn userspace(tally: &mut Tally) {
 
 /// **A process spends a budget it was handed, and the kernel allocates nothing for it.**
 ///
-/// Milestone 11's claim, and the reason a process cannot exhaust the kernel: every page it maps
+/// Milestone 11 (untyped memory)'s claim, and the reason a process cannot exhaust the kernel: every page it maps
 /// comes out of the untyped region it holds, so the kernel's own used-frame count stands still
 /// while the process maps until the region is spent. `memory_region_depleter` reports once it is
 /// loaded (its ELF and stack are the kernel's, as any process's are) and again with how many pages
