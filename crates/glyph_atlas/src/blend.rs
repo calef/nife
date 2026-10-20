@@ -44,24 +44,30 @@ const fn channel(fg: u32, bg: u32, a: u32, shift: u32) -> u32 {
 }
 
 /// The sRGB code whose linear value in [`SRGB_TO_LINEAR`] is nearest `linear`, the lower on a tie.
-/// A binary search: the table rises strictly, which `the_linear_table_rises_and_round_trips`
-/// holds it to.
+/// A binary search in eight fixed steps rather than a loop, so it ends by construction: the table
+/// rises strictly, which `the_linear_table_rises_and_round_trips` holds it to.
 pub(crate) const fn to_srgb(linear: u32) -> u8 {
-    // The first code whose linear value is at least `linear`.
-    let (mut lo, mut hi) = (0usize, 256usize);
-    while lo < hi {
-        let mid = (lo + hi) / 2;
-        if (SRGB_TO_LINEAR[mid] as u32) < linear {
-            lo = mid + 1;
-        } else {
-            hi = mid;
-        }
+    // The last code whose linear value is at most `linear`; code 0's is 0, so there always is one.
+    let mut at = 0;
+    at = step(at, 128, linear);
+    at = step(at, 64, linear);
+    at = step(at, 32, linear);
+    at = step(at, 16, linear);
+    at = step(at, 8, linear);
+    at = step(at, 4, linear);
+    at = step(at, 2, linear);
+    at = step(at, 1, linear);
+    if at < 255 && (SRGB_TO_LINEAR[at + 1] as u32) - linear < linear - SRGB_TO_LINEAR[at] as u32 {
+        return (at + 1) as u8;
     }
-    if lo == 256 {
-        return u8::MAX;
+    at as u8
+}
+
+/// One step of [`to_srgb`]'s search: `at + by` if that code's linear value is at most `linear`.
+const fn step(at: usize, by: usize, linear: u32) -> usize {
+    if SRGB_TO_LINEAR[at + by] as u32 <= linear {
+        at + by
+    } else {
+        at
     }
-    if lo > 0 && linear - SRGB_TO_LINEAR[lo - 1] as u32 <= SRGB_TO_LINEAR[lo] as u32 - linear {
-        return (lo - 1) as u8;
-    }
-    lo as u8
 }
