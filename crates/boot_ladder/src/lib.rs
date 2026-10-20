@@ -63,11 +63,9 @@ pub const SELF_TEST: &str = "nife self-test: ";
 
 /// **What a red verdict says before it names the checks that failed.**
 ///
-/// Uppercase, and the same token as `FAILED: a spinner did not run, or nothing was preempted.`,
-/// which `kernel/src/milestone_tour.rs`'s preemption check has printed since milestone 267 (the
-/// milestone tour is three things wearing one name), so this is the tree's word rather than a new
-/// one. It appears *inside* a [`SELF_TEST`] line; a matcher wanting a failed verdict must find
-/// both.
+/// Uppercase, the tree's word for a failed check, which other boot lines also use. It appears
+/// *inside* a [`SELF_TEST`] line, after any [`SELF_TEST_ABSENT`] list; a matcher wanting a failed
+/// verdict must find both.
 pub const SELF_TEST_FAILED: &str = "FAILED: ";
 
 /// **What a verdict says before it names the checks this machine had nothing for** (calef's ruling

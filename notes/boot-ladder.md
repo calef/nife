@@ -8,7 +8,7 @@ CI, and they are what a person reads off a photograph of a monitor when there is
 nife on aarch64 (EL1, MMU off: physical addresses until mmu::init)   <- the console works
 ...
 nife machine: aarch64, 4 processor(s), 256 MiB, 100 Hz               <- discovery finished
-nife self-test: 8 of 8 passed                                        <- the kernel works here
+nife self-test: 8 of 13 passed, 5 absent: ...                        <- the kernel works here
 ...
 nife capability shell. naming a resource in a command IS granting it. <- userspace is up
 $
@@ -75,23 +75,36 @@ these lines *were* the transcript.
 
 ## The self-test: it reports, it does not gate
 
-`kernel/src/self_test.rs` runs eight checks between the description and the hand-off: `exceptions` (a
+`kernel/src/self_test.rs` runs thirteen checks between the description and the hand-off: `exceptions` (a
 breakpoint is caught and stepped over) and `mapping` (a fresh page is mapped, written, read back and
 unmapped at an address computed from this machine's own RAM). Then `frames` (one frame out of the
 allocator and back, with the accounting agreeing at both ends), `timer` (the counter advances and a
 tick interrupt arrives), `scheduler` (a spawned kernel thread runs and carries its captured state).
-The last three are the per-port tours' claims. `preemption` runs one never-yield thread more than
+The other eight are the per-port tours' claims. `preemption` runs one never-yield thread more than
 there are cores, and none starves. `userspace` has a program at user level read a kernel address;
 it is killed and the kernel survives. `budget` has a process spend its untyped while the kernel's
-frame count does not move.
+frame count does not move. The last five need a device:
+
+| Check | Its claim | Where it can run |
+|---|---|---|
+| `blockdev` | a user-level driver reads `motd` off a virtio disk, woken by its interrupt | a machine with a virtio disk |
+| `deviceirq` | a device's line reaches the CPU through the interrupt controller | `x86_64`: the PIT through the IO APIC |
+| `clock` | the JH7110's clock controller ungates its TRNG | radon |
+| `trng` | the JH7110 TRNG serves two different draws, timed | radon |
+| `entropy` | the machine's entropy source serves a client | a TRNG or a seed instruction |
+
+A machine without the device reports the check `absent`, with its reason, and the verdict lists
+it: `nife self-test: 10 of 13 passed, 3 absent: blockdev clock trng`. Absent is not a failure on
+its own. Each `board_console` board profile names the checks its board has the device for, and an
+absence of one of those is FAILED: radon may not be without `entropy`, `trng` or `clock`, and
+xenon not without `entropy` or `deviceirq`. The emulator profile `boot-check` uses forbids none.
 
 **A failure prints and the boot carries on.** calef, 2026-09-09: *"I could see building tools to
 diagnose what broke but we can only run them if there is a prompt"*. A machine you cannot log into
 is a machine you cannot fix.
 
-That is exactly why the verdict has to be read by something other than a person. The boot tour's own
-checks have printed `FAILED:` and carried on since they were written, and nothing ever read those
-either; that is how a checkpoint reachable on one of three architectures hid for months.
+That is exactly why the verdict has to be read by something other than a person, and why a check
+that prints `FAILED:` anywhere but the verdict would go unread.
 
 ## EXAMPLES
 
@@ -103,7 +116,7 @@ names it). About 26 seconds against a warm target directory:
 $ script/boot-check
 boot-check (aarch64): reached shell prompt (3867 bytes in 2.9s)
 boot-check (aarch64): nife machine: aarch64, 4 processor(s), 256 MiB, 100 Hz
-boot-check (aarch64): nife self-test: 8 of 8 passed
+boot-check (aarch64): nife self-test: 8 of 13 passed, 5 absent: blockdev deviceirq clock trng entropy
 ...
 boot-check: every architecture climbed the ladder to a shell prompt, and the self-test verdict on
 the way was green
@@ -119,7 +132,7 @@ Prove the gate has teeth, by making one check fail and requiring the run to come
 
 ```
 $ script/boot-check --inject
-boot-check (aarch64): nife self-test: 5 of 8 passed, 3 FAILED: exceptions timer budget
+boot-check (aarch64): nife self-test: 4 of 13 passed, 5 absent: blockdev deviceirq clock trng entropy, 4 FAILED: exceptions timer userspace budget
 ...
 boot-check: every architecture's self-test verdict came back RED, as the injection asked
 ```
@@ -130,8 +143,12 @@ Watch a real board over a serial cable and stop as soon as it has self-tested:
 $ cargo xtask board-console --port /dev/cu.usbserial-0001 --until selftest
 board-console: reached self-test verdict (6862 bytes in 12.4s)
 board-console: machine: nife machine: riscv64, 4 processor(s), 8192 MiB, 100 Hz
-board-console: self-test: nife self-test: 8 of 8 passed
+board-console: self-test: nife self-test: 5 of 5 passed
 ```
+
+That capture is of a kernel with five checks. Today's kernel on radon should report `blockdev` and
+`deviceirq` absent and nothing else, and `board_console` fails it if `entropy`, `trng` or `clock`
+is absent. No board has run it yet.
 
 Replay a capture through the same recognizer, which is how every marker in it is tested:
 

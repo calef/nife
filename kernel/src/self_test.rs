@@ -2,8 +2,9 @@
 //!
 //! Milestone 268 (every architecture boots the same way)'s second rung: say what the machine is
 //! ([`crate::print_machine_description`]), prove the kernel works on it (here), then hand over.
-//! Every check below is portable; the one place an architecture differs is
-//! `arch::exceptions::self_test`.
+//! The checks are the claims the per-port tours made, on every port (calef's ruling of 2026-10-19
+//! (UTC) on #2434). Every check runs on every architecture; where an architecture differs is
+//! `arch::exceptions::self_test`, `arch::irq::device_line_interrupts` and the JH7110 bring-up.
 //!
 //! # It reports, it does not gate
 //!
@@ -14,15 +15,19 @@
 //! and fails on a red one in CI.
 //!
 //! ```text
-//! nife self-test: 8 of 8 passed
-//! nife self-test: 7 of 8 passed, 1 FAILED: exceptions
+//! nife self-test: 10 of 13 passed, 3 absent: blockdev clock trng
+//! nife self-test: 9 of 13 passed, 3 absent: blockdev clock trng, 1 FAILED: exceptions
 //! ```
 //!
 //! - **The prefix is always present and identical on every architecture**: a missing marker looks
 //!   exactly like a slow board.
 //! - **The counts print on success as well as on failure**, so "ran nothing and passed" is
 //!   distinguishable from "ran the set and passed".
-//! - **`FAILED:` is spelled as `main.rs`'s preemption check spells it.**
+//! - **A check whose device this machine lacks is `absent`, with its reason**, neither a pass nor a
+//!   failure (calef's ruling of 2026-10-20 (UTC) on #2447). Which absences a board allows is
+//!   `board_console`'s board profile's to say, and an absence its profile forbids is a failure
+//!   there: radon may not be without `entropy`, `trng` or `clock`, xenon without `entropy` or
+//!   `deviceirq`.
 //!
 //! The wording is **provisional**: a line two programs agree on is an architect's.
 //! `board_console::progress` is tested against this module's own constant.
@@ -34,10 +39,11 @@
 //!   and a check deleted from it takes its own evidence with it; the count is the partial defense,
 //!   and review guards the set.
 //! - **The checks cost time on every boot.** [`fn@timer`] waits about 20 ms for a tick and
-//!   [`preemption`] spends a fifth of a second; [`userspace`] and [`budget`] each spawn a process
-//!   from the archive and wait for it. They are the tours' claims (calef's ruling of 2026-10-19
-//!   (UTC) on #2434), made on every port rather than on one. The deep proofs are still
-//!   `script/test`'s.
+//!   [`preemption`] spends a fifth of a second; [`userspace`], [`budget`] and, where there is a
+//!   disk, [`blockdev`] each spawn a process from the archive and wait for it. The deep proofs are
+//!   still `script/test`'s.
+//! - **[`blockdev`]'s driver is left running**, as it was in the tour it came from: it holds disk 0,
+//!   which nothing after it uses, and `virtio_service::start` returns no thread to end.
 //! - **[`budget`]'s helper thread can be left parked.** A receive has no deadline, so the reports
 //!   are taken on a thread of their own; a process that never reports leaves that thread blocked,
 //!   and the check fails by its own deadline.

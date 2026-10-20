@@ -55,8 +55,8 @@ use user_mode_runtime::{interrupt_acknowledge, interrupt_wait, send};
 const IRQ: u64 = 0;
 const REPORT: u64 = 1;
 
-/// Where the kernel mapped the NS16550's registers, device-typed, in this driver's address space.
-/// Must match the kernel's `riscv_uart_driver_demo`.
+/// Where a starter maps the NS16550's registers, device-typed, in this driver's address space.
+/// Nothing in the kernel starts this program; see milestone 890's BUGS.
 const UART_VA: u64 = address_space_map::pair_page(0x0070_0000);
 /// NS16550 register offsets: the Receive Buffer (byte 0) and the Line Status Register (byte 5).
 const RBR: usize = 0;
