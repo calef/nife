@@ -1461,3 +1461,7 @@ line_editor,supervisor::image_lengths,replace | with ^,equivalent,"an algebraic 
 video_terminal,color_word,replace | with ^,equivalent,"a 24-bit color word's kind bit (24) and its three channels (16..23, 8..15, 0..7) are disjoint, so | and ^ agree"
 video_terminal,cell_words,replace | with ^,equivalent,"a char is under 0x11_0000, below bit 21, and the rendition flags are shifted to bit 24, so the operands are disjoint and | and ^ agree"
 video_terminal,Vt::absorb_handoff,replace | with ^,equivalent,"the three handoff flag constants are distinct single bits, so their union by | or ^ is the same mask"
+board_console,decode_exact,replace | with ^,equivalent,"the three channels are shifted into disjoint bytes (16, 8, 0) before they are combined, so or and xor give the same word"
+glyph_atlas,blend,delete match arm 0,equivalent,"the fast path for coverage 0 returns bg, and the general mix at a = 0 is (b * 255 + 127) / 255 = b for every channel, so deleting the arm changes the work, not the answer"
+glyph_atlas,blend,delete match arm u8::MAX,equivalent,"the fast path for coverage 255 returns fg, and the general mix at a = 255 is (f * 255 + 127) / 255 = f for every channel, so deleting the arm changes the work, not the answer"
+glyph_atlas,blend,replace | with ^,equivalent,"each channel() result is masked to its own byte (16, 8, 0) before the three are combined, so or and xor give the same word"

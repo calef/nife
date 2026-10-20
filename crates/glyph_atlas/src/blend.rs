@@ -33,15 +33,14 @@ pub const fn blend(fg: u32, bg: u32, coverage: u8) -> u32 {
         _ => {}
     }
     let a = coverage as u32;
-    let mut out = 0;
-    let mut shift = 0;
-    while shift < 24 {
-        let f = SRGB_TO_LINEAR[((fg >> shift) & 0xff) as usize] as u32;
-        let b = SRGB_TO_LINEAR[((bg >> shift) & 0xff) as usize] as u32;
-        out |= (to_srgb((f * a + b * (255 - a) + 127) / 255) as u32) << shift;
-        shift += 8;
-    }
-    out
+    channel(fg, bg, a, 16) | channel(fg, bg, a, 8) | channel(fg, bg, a, 0)
+}
+
+/// One channel of [`blend`], at bit `shift`: to linear light, mixed, and back.
+const fn channel(fg: u32, bg: u32, a: u32, shift: u32) -> u32 {
+    let f = SRGB_TO_LINEAR[((fg >> shift) & 0xff) as usize] as u32;
+    let b = SRGB_TO_LINEAR[((bg >> shift) & 0xff) as usize] as u32;
+    (to_srgb((f * a + b * (255 - a) + 127) / 255) as u32) << shift
 }
 
 /// The sRGB code whose linear value in [`SRGB_TO_LINEAR`] is nearest `linear`, the lower on a tie.

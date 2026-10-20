@@ -103,3 +103,37 @@ fn the_linear_table_rises_and_round_trips() {
     }
     assert_eq!((SRGB_TO_LINEAR[0], SRGB_TO_LINEAR[255]), (0, u16::MAX));
 }
+
+/// **The rows the line renditions use are the font's**: the underline sits one row under the
+/// baseline (`post`: -130 units, 90 thick) and the strikeout six rows above it (`OS/2`: 530
+/// units, 102 thick), at 22 pixels per em. Pinned as numbers because nothing else in this crate
+/// would notice them move, and the terminal draws its lines on them.
+#[test]
+fn the_line_rows_are_the_fonts() {
+    assert_eq!((ASCENT, UNDERLINE_ROW, STRIKETHROUGH_ROW), (20, 21, 14));
+    assert_eq!((GLYPHS, FACE_BYTES), (96, 34_944));
+}
+
+/// **A coordinate past the cell is background, in either direction**, never the next row's or
+/// the next glyph's first pixel: the underscore's bottom-left pixel is ink, so reading one column
+/// past its row above it would find ink if the bounds check let `x` through.
+#[test]
+fn a_coordinate_past_the_cell_has_no_coverage() {
+    assert!(REGULAR.coverage('_', 0, ASCENT + 4) > 0);
+    assert_eq!(REGULAR.coverage('_', CELL_W, ASCENT + 3), 0);
+    assert_eq!(REGULAR.coverage('_', 0, CELL_H), 0);
+}
+
+/// **`cell_pixel` is the blend of the cell's coverage**, and the blend mixes every channel on its
+/// own: a partial pixel of a three-channel foreground over a three-channel background lands on
+/// each channel's own mix.
+#[test]
+fn a_pixel_is_its_coverage_blended_channel_by_channel() {
+    let (fg, bg) = (0x00c8_6432, 0x0010_2030);
+    for (x, y) in [(3, 10), (2, 10), (8, 10)] {
+        let a = REGULAR.coverage('L', x, y);
+        assert_eq!(REGULAR.cell_pixel('L', x, y, fg, bg), blend(fg, bg, a));
+    }
+    // 128 of 255 of each channel, in linear light: (200, 100, 50) over (16, 32, 48).
+    assert_eq!(blend(fg, bg, 128), 0x0093_4b31);
+}

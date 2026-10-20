@@ -416,7 +416,32 @@ mod tests {
     use machine_discovery::framebuffer::{Framebuffer, PixelOrder};
     use screen_console::{Cells, PixelSink, ScreenConsole};
 
-    use super::{INK, PAPER, ReadError, decode, read};
+    use super::{INK, PAPER, ReadError, decode, decode_exact, read};
+
+    /// **`decode_exact` reads a grid of cells at a scale, by every channel**: two rows of two
+    /// 3x2 cells drawn at scale two, each cell's own character a different color in each channel,
+    /// so a cell read from the wrong row, the wrong column, the wrong place in a block or with a
+    /// channel lost matches nothing and reads `?`.
+    #[test]
+    fn decode_exact_reads_each_cell_at_its_scale() {
+        let draw = |ch: char, x: u32, y: u32| -> u32 {
+            let k = ch as u32 - b'a' as u32 + 1;
+            (k * 0x10 + x) << 16 | (k * 0x20 + y) << 8 | k * 0x30
+        };
+        let screen = [['a', 'b'], ['c', 'd']];
+        let (w, h) = (2 * 3 * 2, 2 * 2 * 2);
+        let mut ppm = format!("P6\n{w} {h}\n255\n").into_bytes();
+        for sy in 0..h {
+            for sx in 0..w {
+                let (x, y) = (sx / 2, sy / 2);
+                let word = draw(screen[(y / 2) as usize][(x / 3) as usize], x % 3, y % 2);
+                ppm.extend_from_slice(&[(word >> 16) as u8, (word >> 8) as u8, word as u8]);
+            }
+        }
+        let read = decode_exact(&ppm, 3, 2, 2, b"abcd", draw).expect("a readable dump");
+        assert_eq!(read.rows, ["ab", "cd"]);
+        assert_eq!((read.width, read.height), (w, h));
+    }
 
     /// Paint `text` with the **kernel's own console** and hand back the screendump QEMU would have
     /// produced of it.
