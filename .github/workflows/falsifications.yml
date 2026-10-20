@@ -190,8 +190,10 @@ jobs:
   # and never drops a record from them. `main` only, through the `automation` environment.
   record-times:
     name: record the replay times
-    needs: sweep
-    if: always() && needs.sweep.result != 'cancelled' && github.ref == 'refs/heads/main'
+    needs: [sweep, sweep-swish-x86_64]
+    if: >-
+      always() && needs.sweep.result != 'cancelled' && needs.sweep-swish-x86_64.result != 'cancelled'
+      && github.ref == 'refs/heads/main'
     environment: automation
     runs-on: ubuntu-24.04
     timeout-minutes: 10
@@ -279,6 +281,73 @@ jobs:
   # Such a record is `attested`, names its patch in backticks, and is replayed here. This job runs
   # on `ubuntu-24.04` (x86_64) and goes red on a survivor, a stale patch or an empty selection.
   # Dispatchable on its own, so a lane can get a record replayed without waiting for the cron.
+  # **The swish-check records with an x86_64 leg, under KVM**, where ci.yml's swish-check-x86_64
+  # job runs that leg and whose per-line bound they were written against. Under TCG on arm64 the
+  # leg costs seconds a line, and a defect that fails slowly fails on the line after the one it
+  # names, which the sweep rightly calls an error; `wants_kvm` in script/falsifications has the
+  # case. `--plan-sweep` leaves these out of the shards, and this job replays them.
+  sweep-swish-x86_64:
+    name: replay the swish-check records with an x86_64 leg, under KVM
+    runs-on: ubuntu-24.04
+    # ci.yml's swish-check-x86_64 bound, for its reason: setup and build are about ten minutes, a
+    # cold QEMU build adds 10 to 20, and each record is one boot.
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+
+      - name: Install the pinned toolchain
+        run: rustup show active-toolchain || rustup toolchain install
+
+      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2
+
+      - name: Cache QEMU
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6
+        with:
+          path: ~/.cache/nife-qemu
+          key: qemu-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('.qemu-version') }}
+      - name: Build QEMU if the cache missed
+        run: script/ci-qemu
+      - name: Put it on PATH
+        run: echo "$HOME/.cache/nife-qemu/bin" >> "$GITHUB_PATH"
+      - run: script/bootstrap
+
+      # GitHub's documented recipe, as ci.yml's swish-check-x86_64 job takes it.
+      - name: Open /dev/kvm to the runner user
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+          ls -l /dev/kvm
+
+      - name: Build the std exerciser and fetch basalt's packages
+        run: cargo xtask std-exerciser && cargo xtask basalt-fetch
+
+      - name: Sweep
+        shell: bash
+        run: |
+          set -o pipefail
+          script/falsifications --sweep-swish-x86_64 2>&1 | tee "$RUNNER_TEMP/sweep-swish-x86_64.txt"
+
+      - name: Publish the report
+        if: always()
+        run: |
+          {
+            echo '### Swish-check records with an x86_64 leg, under KVM'
+            echo
+            echo '```'
+            cat "$RUNNER_TEMP/sweep-swish-x86_64.txt" || echo '(the sweep produced no output)'
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      # Named into the `falsification-sweep-*` set that record-times reads.
+      - name: Keep the transcript for the times file
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
+        with:
+          name: falsification-sweep-swish-x86_64
+          path: ${{ runner.temp }}/sweep-swish-x86_64.txt
+          if-no-files-found: warn
+
   sweep-x86_64:
     name: replay the attested records an arm64 host cannot
     runs-on: ubuntu-24.04
