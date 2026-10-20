@@ -9,32 +9,32 @@ Sorted by breaking changes in the last four weeks (2026W40 to 2026W43), then by 
 | crate | breaking, 4 weeks | additions, 4 weeks | breaking | additions | commits | crossing another division |
 |---|---:|---:|---:|---:|---:|---:|
 | `filesystem_contract` | 247 | 12 | 284 | 459 | 122 | 111 (91%) |
-| `grant_plan` | 196 | 322 | 271 | 1086 | 183 | 149 (81%) |
+| `grant_plan` | 202 | 343 | 277 | 1107 | 190 | 156 (82%) |
+| `installed_programs` | 77 | 59 | 77 | 94 | 35 | 30 (86%) |
 | `globally_unique_identifier_partition_table` | 63 | 3 | 91 | 281 | 42 | 33 (79%) |
 | `login_contract` | 22 | 66 | 30 | 91 | 38 | 37 (97%) |
 | `package_archive` | 19 | 38 | 19 | 129 | 27 | 20 (74%) |
 | `socket_contract` | 17 | 27 | 20 | 70 | 35 | 33 (94%) |
-| `line_editor` | 14 | 16 | 15 | 119 | 39 | 33 (85%) |
+| `line_editor` | 14 | 37 | 15 | 140 | 47 | 39 (83%) |
 | `component_plan` | 13 | 12 | 16 | 138 | 36 | 30 (83%) |
 | `abi` | 11 | 54 | 41 | 170 | 117 | 110 (94%) |
 | `hot_swap_contract` | 11 | 13 | 19 | 126 | 53 | 52 (98%) |
-| `installed_programs` | 9 | 37 | 9 | 72 | 25 | 23 (92%) |
+| `graphics_contract` | 10 | 2 | 19 | 33 | 33 | 33 (100%) |
+| `compositor` | 9 | 4 | 19 | 99 | 38 | 31 (82%) |
 | `credential_contract` | 8 | 5 | 36 | 70 | 37 | 34 (92%) |
 | `byte_sink_contract` | 5 | 10 | 7 | 48 | 32 | 32 (100%) |
-| `compositor` | 4 | 4 | 14 | 99 | 35 | 28 (80%) |
-| `graphics_contract` | 3 | 2 | 12 | 33 | 31 | 31 (100%) |
-| `clock_contract` | 3 | 2 | 6 | 54 | 31 | 29 (94%) |
+| `capability_manifest_note` | 4 | 56 | 4 | 78 | 30 | 22 (73%) |
+| `clock_contract` | 3 | 2 | 6 | 54 | 32 | 29 (91%) |
 | `entropy_contract` | 3 | 3 | 4 | 18 | 26 | 24 (92%) |
-| `capability_manifest_note` | 3 | 36 | 3 | 58 | 24 | 17 (71%) |
-| `current_cpu_contract` | 3 | 4 | 3 | 17 | 16 | 9 (56%) |
+| `current_cpu_contract` | 3 | 4 | 3 | 17 | 17 | 9 (53%) |
+| `std_runtime_contract` | 3 | 10 | 3 | 27 | 17 | 16 (94%) |
 | `nifefs` | 2 | 0 | 9 | 41 | 44 | 32 (73%) |
 | `measured_boot` | 2 | 24 | 2 | 65 | 26 | 21 (81%) |
-| `std_runtime_contract` | 2 | 7 | 2 | 24 | 14 | 13 (93%) |
-| `counter_frequency_contract` | 1 | 0 | 2 | 15 | 18 | 16 (89%) |
-| `environment_contract` | 1 | 0 | 2 | 44 | 13 | 13 (100%) |
+| `counter_frequency_contract` | 1 | 0 | 2 | 15 | 19 | 16 (84%) |
+| `environment_contract` | 1 | 0 | 2 | 44 | 14 | 13 (93%) |
 | `capability_witness_contract` | 1 | 11 | 1 | 14 | 21 | 18 (86%) |
 | `program_argument_contract` | 1 | 0 | 1 | 29 | 0 | 0 |
-| `supervision_protocol` | 0 | 6 | 22 | 70 | 55 | 50 (91%) |
+| `supervision_protocol` | 0 | 6 | 22 | 70 | 60 | 52 (87%) |
 | `elf` | 0 | 0 | 3 | 82 | 48 | 38 (79%) |
 | `user_mode_heap` | 0 | 0 | 1 | 11 | 0 | 0 |
 | `address_space_map` | 0 | 0 | 0 | 42 | 0 | 0 |
@@ -43,6 +43,93 @@ Sorted by breaking changes in the last four weeks (2026W40 to 2026W43), then by 
 
 ## What broke in 2026W43
 
-Read at `2b8160fbd6e5` against the week before. Each line is one removed or changed public item, quoted as it stood that week; a crate rename is one line for the whole crate.
+Read at `f202d8b01ef6` against the week before. Each line is one removed or changed public item, quoted as it stood that week; a crate rename is one line for the whole crate.
 
-Nothing.
+> - `capability_manifest_note`: changed `carry`
+> - `compositor`: changed `MAX_SURFACE_BYTES`
+> - `compositor`: changed `SCENE`
+> - `compositor`: changed `SCREEN_H`
+> - `compositor`: changed `SCREEN_PIXELS`
+> - `compositor`: changed `SCREEN_W`
+> - `grant_plan`: changed `ImageRefusal`
+> - `grant_plan`: changed `Manifest`
+> - `grant_plan`: changed `UNVOUCHED_MANIFEST`
+> - `grant_plan`: changed `image::ImageRefusal`
+> - `grant_plan`: changed `image::image_manifest`
+> - `grant_plan`: changed `image_manifest`
+> - `graphics_contract`: changed `HEIGHT`
+> - `graphics_contract`: changed `NO_MISMATCH`
+> - `graphics_contract`: changed `PIXELS`
+> - `graphics_contract`: changed `STRIDE`
+> - `graphics_contract`: changed `SURFACE_BYTES`
+> - `graphics_contract`: changed `SURFACE_PAGE_FRAMES`
+> - `graphics_contract`: changed `WIDTH`
+> - `installed_programs`: removed `CURRENT`
+> - `installed_programs`: removed `CURRENT_STAGED`
+> - `installed_programs`: removed `DIRECTORY`
+> - `installed_programs`: removed `Entry`
+> - `installed_programs`: removed `Entry: impl Clone`
+> - `installed_programs`: removed `Entry: impl Copy`
+> - `installed_programs`: removed `Entry: impl Debug`
+> - `installed_programs`: removed `Entry: impl Eq`
+> - `installed_programs`: removed `Entry: impl PartialEq`
+> - `installed_programs`: removed `Entry: impl StructuralPartialEq`
+> - `installed_programs`: removed `Entry::digest`
+> - `installed_programs`: removed `Entry::manager`
+> - `installed_programs`: removed `Entry::package`
+> - `installed_programs`: removed `Entry::program`
+> - `installed_programs`: removed `Entry::version`
+> - `installed_programs`: removed `Error`
+> - `installed_programs`: removed `Error: impl Clone`
+> - `installed_programs`: removed `Error: impl Copy`
+> - `installed_programs`: removed `Error: impl Debug`
+> - `installed_programs`: removed `Error: impl Eq`
+> - `installed_programs`: removed `Error: impl From{"angle_bracketed":{"args":[{"type":{"resolved_path":{"args":null,"path":"Error"}}}],"constraints":[]}}`
+> - `installed_programs`: removed `Error: impl PartialEq`
+> - `installed_programs`: removed `Error: impl StructuralPartialEq`
+> - `installed_programs`: removed `Error::BadName`
+> - `installed_programs`: removed `Error::ImageName`
+> - `installed_programs`: removed `Error::Malformed`
+> - `installed_programs`: removed `Error::NotInstalled`
+> - `installed_programs`: removed `Error::SeveralVersions`
+> - `installed_programs`: removed `Error::Taken`
+> - `installed_programs`: removed `Error::TooSmall`
+> - `installed_programs`: removed `NO_MANAGER`
+> - `installed_programs`: removed `NO_VERSION`
+> - `installed_programs`: removed `OWNER`
+> - `installed_programs`: removed `PACKAGES`
+> - `installed_programs`: removed `Pointer`
+> - `installed_programs`: removed `Pointer: impl Clone`
+> - `installed_programs`: removed `Pointer: impl Copy`
+> - `installed_programs`: removed `Pointer: impl Debug`
+> - `installed_programs`: removed `Pointer: impl Eq`
+> - `installed_programs`: removed `Pointer: impl PartialEq`
+> - `installed_programs`: removed `Pointer: impl StructuralPartialEq`
+> - `installed_programs`: removed `Pointer::digest`
+> - `installed_programs`: removed `Pointer::program`
+> - `installed_programs`: removed `Refused`
+> - `installed_programs`: removed `Refused: impl Clone`
+> - `installed_programs`: removed `Refused: impl Copy`
+> - `installed_programs`: removed `Refused: impl Debug`
+> - `installed_programs`: removed `Refused: impl Eq`
+> - `installed_programs`: removed `Refused: impl From{"angle_bracketed":{"args":[{"type":{"resolved_path":{"args":null,"path":"Error"}}}],"constraints":[]}}`
+> - `installed_programs`: removed `Refused: impl PartialEq`
+> - `installed_programs`: removed `Refused: impl StructuralPartialEq`
+> - `installed_programs`: removed `Refused::error`
+> - `installed_programs`: removed `Refused::holder`
+> - `installed_programs`: removed `Refused::program`
+> - `installed_programs`: removed `defaults`
+> - `installed_programs`: removed `entries`
+> - `installed_programs`: removed `foreign_change`
+> - `installed_programs`: removed `format_current`
+> - `installed_programs`: removed `generation_name`
+> - `installed_programs`: removed `lookup`
+> - `installed_programs`: removed `lookup_digest`
+> - `installed_programs`: removed `lookup_version`
+> - `installed_programs`: removed `may_edit`
+> - `installed_programs`: removed `parse_current`
+> - `installed_programs`: removed `versions_of`
+> - `installed_programs`: removed `with_entries`
+> - `installed_programs`: removed `with_entry`
+> - `installed_programs`: removed `without_package`
+> - `std_runtime_contract`: changed `SLOTS`
