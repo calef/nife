@@ -137,3 +137,17 @@ fn a_pixel_is_its_coverage_blended_channel_by_channel() {
     // 128 of 255 of each channel, in linear light: (200, 100, 50) over (16, 32, 48).
     assert_eq!(blend(fg, bg, 128), 0x0093_4b31);
 }
+
+/// **A value exactly between two codes rounds to the lower**, as [`to_srgb`]'s doc says, and a
+/// value nearer either code rounds to that one. Ties are rare in a blend but deterministic, and the
+/// three witnesses must agree on them too.
+#[test]
+fn a_tie_rounds_to_the_lower_code() {
+    let tie = (1..255)
+        .find(|&c| (SRGB_TO_LINEAR[c] + SRGB_TO_LINEAR[c + 1]) % 2 == 0)
+        .expect("some pair of codes has an even sum");
+    let mid = (SRGB_TO_LINEAR[tie] as u32 + SRGB_TO_LINEAR[tie + 1] as u32) / 2;
+    assert_eq!(to_srgb(mid), tie as u8);
+    assert_eq!(to_srgb(mid + 1), tie as u8 + 1);
+    assert_eq!(to_srgb(mid - 1), tie as u8);
+}
