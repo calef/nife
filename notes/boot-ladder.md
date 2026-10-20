@@ -46,8 +46,8 @@ a shared definition (the crate) plus a gate that reads the channel (`script/boot
 `Tour` is printed by `kernel_main` after the self-test's verdict and any tour, just before the
 hand-over, with the architecture's own name (`nife: the capability core runs on riscv64.`). It
 says every self-test check ran; the verdict says whether they passed. The self-test's checks are
-what the per-port tours used to claim (calef's ruling of 2026-10-19 (UTC) on #2434), which is why
-the rung is every architecture's.
+the per-port tours' claims (calef's ruling of 2026-10-19 (UTC) on #2434), which is why the rung is
+every architecture's.
 
 `Prompt` needs an archive on every architecture, because the shell that prints it is loaded out
 of one. On `x86_64`, DECISIONS §149 (may the kernel answer on an endpoint) settles how `swish` gets
@@ -80,10 +80,10 @@ breakpoint is caught and stepped over) and `mapping` (a fresh page is mapped, wr
 unmapped at an address computed from this machine's own RAM). Then `frames` (one frame out of the
 allocator and back, with the accounting agreeing at both ends), `timer` (the counter advances and a
 tick interrupt arrives), `scheduler` (a spawned kernel thread runs and carries its captured state).
-The last three are the claims the per-port tours made: `preemption` (one never-yield thread more
-than there are cores, and none starves), `userspace` (a program at user level reads a kernel
-address, is killed, and the kernel survives) and `budget` (a process spends its untyped and the
-kernel's frame count does not move).
+The last three are the per-port tours' claims. `preemption` runs one never-yield thread more than
+there are cores, and none starves. `userspace` has a program at user level read a kernel address;
+it is killed and the kernel survives. `budget` has a process spend its untyped while the kernel's
+frame count does not move.
 
 **A failure prints and the boot carries on.** calef, 2026-09-09: *"I could see building tools to
 diagnose what broke but we can only run them if there is a prompt"*. A machine you cannot log into
