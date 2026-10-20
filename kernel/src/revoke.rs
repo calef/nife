@@ -940,13 +940,11 @@ pub fn revoke_port_range(base: u16, count: u16) {
 /// sweep has no capability left to map with. The sweep does not consult the log, so a
 /// retyped-but-never-mapped frame in a destroyed region loses its capability too.
 ///
-/// The unmap pass takes every recorded page in range in one scan, under the registry lock, a space
-/// at a time, and invalidates each space **once, by its tag** ([`mmu::unmap_user_pages`]) rather
-/// than once per page, which on riscv64 and x86_64 is a cross-core shootdown per page: 683 of them
-/// for the scanout's region. Every record it unmaps it tombstones, so a later
-/// pass cannot find it again. A `MAP` cannot add a record in range meanwhile: it would need a
-/// capability (the sweep above is finished) or a retype from a claimed region, which refuses
-/// ([`MappingHold`]).
+/// The unmap pass takes every recorded page in range in one scan per space, under the registry
+/// lock, and invalidates each space **once, by its tag** ([`mmu::unmap_user_pages`]): per page
+/// would be a cross-core shootdown each on riscv64 and x86_64, 683 for the scanout. Each record it
+/// unmaps it tombstones. A `MAP` cannot add a record in range meanwhile: it would need a capability
+/// (the sweep above is finished) or a retype from a claimed region, which refuses ([`MappingHold`]).
 ///
 /// **Then the tables, because page tables are not leaves.** `PageFrame::MAP` and
 /// `MemoryRegion::MAP` build a space's intermediate tables out of a region the caller names, which
