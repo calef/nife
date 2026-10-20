@@ -1020,16 +1020,14 @@ fn uefi_test_image(package: &str) -> bool {
             .env_remove("NIFE_GPU_MON")
             .env_remove("NIFE_KEYBOARD");
     }
-    // **The bound is a hang detector, so it sits well above an honest run** (2026-10-10 (UTC),
-    // lane milestone/855-the-tls-graph-enters-the-gated-build). This boot used to take the
-    // runner's 90 s default. In CI the `system_tests` boot had grown to 86 s on main (run
-    // 38083088598), and milestone 855 (the TLS graph enters the gated build)'s three tests took it
-    // to 89 s in one run and past 90 in the next, where it was killed while printing its timing
-    // table. A passing boot exits through `isa-debug-exit` as soon as the suite ends, so a higher
-    // bound costs nothing until something hangs. 180 s, the deadline `uefi_boot`'s screen watch
-    // already uses. A caller's own `NIFE_UEFI_TIMEOUT` still wins.
+    // **The bound is a hang detector, so it sits well above an honest run.** A passing boot exits
+    // through `isa-debug-exit` as soon as the suite ends, so a higher bound costs nothing until
+    // something hangs. In CI the `system_tests` boot takes about 156 s on main and about 190 s on
+    // the 1120x624 scanout (milestone 142 (a text display good enough that people use it instead
+    // of a GUI)), whose display and compositor tests compare 2.2 times the pixels; 300 s is the
+    // bound `disk_throughput`'s boot already uses. A caller's own `NIFE_UEFI_TIMEOUT` still wins.
     if std::env::var_os("NIFE_UEFI_TIMEOUT").is_none() {
-        command.env("NIFE_UEFI_TIMEOUT", "180");
+        command.env("NIFE_UEFI_TIMEOUT", "300");
     }
     // Timed and recorded (milestone 807 (the kernel suite reports what each test cost)). The
     // transcript used to be collected whole and printed at the end; it now streams as the other
@@ -1171,7 +1169,7 @@ fn exit_verdict_lines(code: Option<i32>, exited: Duration, transcript: &str) -> 
             }
         }
         // Not the device's: whatever ended QEMU, the guest's exit write is not it. The elapsed
-        // time separates a bound that spent its whole 180 s from a boot that stopped early.
+        // time separates a bound that spent its whole 300 s from a boot that stopped early.
         Some(0) => lines.push(format!(
             "0 is not a status isa-debug-exit can produce (its statuses are all odd): the \
              guest's exit write is not what ended this boot, which ran {} s. The \
