@@ -216,7 +216,7 @@ and the reason this lens is worth taking again after every batch of rulings.
 - milestone 64 (enough `std` to run somebody else's crate)
 - milestone 67 (`swish` the language: quoting, sequencing, and exit status)
 - milestone 103 (`^C` stops spinning: the shell's interrupt watch, blocking)
-- milestone 170 (`nano`: a real, full-featured screen editor on the primitive milestone 169 builds, compiled unmodified against the C library)
+- milestone 170 (`nano`: a real, full-featured screen editor)
 - milestone 172 (a capability-native subprocess primitive: what `cargo`'s "spawn a helper, wait, collect its output" needs, without fork/exec)
 - milestone 205 (how a foreign program is told what to do)
 - milestone 334 (color and the pager: the spawn protocol's other two thirds)

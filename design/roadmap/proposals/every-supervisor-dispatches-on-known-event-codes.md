@@ -13,8 +13,9 @@ Raised by the 2026-10-19 documentation sweep
 ([decisions read forward](../../audit-reports/2026-10-19-decisions-read-forward.md), finding 12).
 
 [§300 (the paused state, a TCB verb, silent)](../../decisions/0300-tcb-suspend-resume-the-paused-state.md)
-keeps a stopped event out of the message of §26 (fault endpoint) and rests that on a rule: unknown event codes are never
-acted on, so a later `EVENT_STOPPED` is additive rather than a migration across every supervisor.
+keeps a stopped event out of the message of §26 (fault endpoint). It rests that on a rule:
+unknown event codes are never acted on, so a later `EVENT_STOPPED` is additive rather than a
+migration across every supervisor.
 The section says every consumer already dispatches on `EVENT_FAULT` and `EVENT_EXIT`. Two do not.
 `components/src/job_undertaker.rs` collects the tid on any event it receives, and
 `components/src/sub_server_supervisor.rs` reaps on any event and reads every code that is not

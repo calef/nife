@@ -27,7 +27,8 @@ moved. None changes a ruling.
   `filesystem_protocol` and `system_log_protocol`, now `filesystem_contract` and
   `system_log_contract`, with the constants it quotes unchanged.
 - [§306 (the web's authority list is a package and a capability)](../../decisions/0306-the-web-authority-list-is-a-package-and-a-capability.md)
-  points at milestone 809's "open question 1"; 809 has no such list, and the gap it means is in
+  points at an "open question 1" of milestone 809 (the package client becomes a program); 809 has
+  no such list, and the gap it means is in
   809's follow-on.
 - [§304 (who may turn a device off)](../../decisions/0304-who-may-turn-a-device-off.md) quotes the
   clock-and-reset crate in American spelling; the crate has the British one. Fixing the crate to
