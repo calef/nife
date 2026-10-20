@@ -141,31 +141,12 @@ fn caps_image(nav: &mut Nav, spec: ParsedInvocation) {
             return swish::write_refusal(&spec, r, &mut print);
         }
     };
-    let mut hash = measured_boot::Sha256::new();
-    let mut chunk = [0u8; 256];
-    let mut at = 0u64;
-    let mut read_ok = true;
-    while at < size {
-        let n = call(t.slot, fs::req(fs::READ, handle, PAGE), at).0 as i64;
-        if n <= 0 {
-            read_ok = false;
-            break;
-        }
-        let mut done = 0usize;
-        while done < n as usize {
-            let take = (n as usize - done).min(chunk.len());
-            get_page_at(done, &mut chunk[..take]);
-            hash.update(&chunk[..take]);
-            done += take;
-        }
-        at += n as u64;
-    }
+    let digest = file_digest(t, handle, size);
     nav.close_in(t, handle);
-    if !read_ok {
+    let Some(digest) = digest else {
         failed();
         return print(b"  this shell could not read the whole file, so it cannot say what it is\n");
-    }
-    let digest = hash.finalize();
+    };
     let text = measured_boot::digest_text(&digest);
     let vouched_by = live_generation_listing(nav, &digest);
     swish::write_image_capabilities(
@@ -178,6 +159,29 @@ fn caps_image(nav: &mut Nav, spec: ParsedInvocation) {
         &nav.holds,
         &mut print,
     );
+}
+
+/// **The SHA-256 of an open file's bytes**, as the progenitor will hash its own copy, or `None`
+/// when a read comes back short. The handle stays open.
+pub(super) fn file_digest(t: Tree, handle: u64, size: u64) -> Option<measured_boot::Digest> {
+    let mut hash = measured_boot::Sha256::new();
+    let mut chunk = [0u8; 256];
+    let mut at = 0u64;
+    while at < size {
+        let n = call(t.slot, fs::req(fs::READ, handle, PAGE), at).0 as i64;
+        if n <= 0 {
+            return None;
+        }
+        let mut done = 0usize;
+        while done < n as usize {
+            let take = (n as usize - done).min(chunk.len());
+            get_page_at(done, &mut chunk[..take]);
+            hash.update(&chunk[..take]);
+            done += take;
+        }
+        at += n as u64;
+    }
+    Some(hash.finalize())
 }
 
 /// One page of a generation table, read by [`live_generation_listing`]. A static rather than a
@@ -221,13 +225,18 @@ fn nearest_version_set(nav: &Nav) -> Option<&'static str> {
 
 /// **The live generation, if it lists `digest`, and whether the owner vouched for it**, looked up
 /// with the progenitor's own `installed_programs::lookup_digest` in [`with_live_table`]'s read.
-fn live_generation_listing(nav: &Nav, digest: &measured_boot::Digest) -> Option<swish::Vouched> {
+pub(super) fn live_generation_listing(
+    nav: &Nav,
+    digest: &measured_boot::Digest,
+) -> Option<swish::Vouched> {
     with_live_table(
         nav,
         |text, number| match installed_programs::lookup_digest(text, digest) {
             Ok(Some(entry)) => Some(swish::Vouched {
                 generation: number,
                 by_owner: entry.package == installed_programs::OWNER,
+                // A table whose grants cannot be read grants nothing, as the progenitor reads it.
+                network_granted: installed_programs::network_granted(text, digest).unwrap_or(false),
             }),
             _ => None,
         },

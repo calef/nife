@@ -1,0 +1,13 @@
+# reach, as an riscv64 package. The same package as `reach.recipe`, which says why it exists.
+
+name = "reach"
+version = "0.1.0"
+architecture = "riscv64"
+
+[[member]]
+std_program = "std_reach"
+as = "bin/reach"
+
+[[member]]
+name = "reach.license"
+file = "LICENSE-MIT"

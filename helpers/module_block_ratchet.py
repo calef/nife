@@ -29,7 +29,9 @@ record. `module_block` for what it holds each module to, `ratchet` for the famil
 - A row with no unblocked name behind it (the name gained a block, or is gone) fails until it is
   removed, so dead rows cannot accumulate. `--bank` removes them.
 - Against the merge base a row may not be added. A rename moves its rows in the same change: a file
-  git calls renamed may take its old rows' place, so moving a file does not oblige a block.
+  git calls renamed may take its old rows' place, so moving a file does not oblige a block. So does
+  a split, which git calls no rename: an item that leaves one file for another in the same crate,
+  keeping its name and kind, takes its row along (`helpers/moved_rows.py`), and `--bank` re-keys it.
 - A selection that matches no module fails, because a gate that judges nothing passes.
 
 **What it does not hold.** Status: a `provisional` block passes, as `script/names --check` does.
@@ -42,6 +44,7 @@ import subprocess
 import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import moved_rows  # noqa: E402
 import name_census  # noqa: E402
 
 BASELINE = 'design/module-block-baseline.txt'
@@ -127,8 +130,11 @@ def tree_modules():
 
 # --- the rules, pure so the selftest can drive them ------------------------------------------------
 
-def problems(modules, unblocked, rows, base_rows=None, renames=()):
-    """Every failure in one tree. `base_rows` is None where the merge base holds no baseline."""
+def problems(modules, unblocked, rows, base_rows=None, renames=(), before=None, after=None):
+    """Every failure in one tree. `base_rows` is None where the merge base holds no baseline.
+
+    `before` and `after` read a file at the merge base and now; without them no row moves.
+    """
     if not modules:
         return ['the check judged no file at all. A selector that matches nothing passes by '
                 'checking nothing (design/roadmap/0401-a-gate-that-selects-the-set-it-judges.md)']
@@ -144,15 +150,18 @@ def problems(modules, unblocked, rows, base_rows=None, renames=()):
     if base_rows is not None:
         was_called = {new: old for old, new in renames}
 
-        def before(row):
+        def as_it_was(row):
             path = path_of(row)
             old = was_called.get(path)
             return row if old is None else old + row[len(path):]
 
         moved = collections.Counter()
         for row, n in rows.items():
-            moved[before(row)] += n
-        for row, n in sorted((moved - base_rows).items()):
+            moved[as_it_was(row)] += n
+        added = moved - base_rows
+        if added and before is not None:
+            added -= moved_rows.arrivals(moved_rows.moves(added, base_rows - moved, before, after))
+        for row, n in sorted(added.items()):
             bad.append(f'{BASELINE}: {row} was added. The list only shrinks; {remedy(row)}')
     return bad
 
@@ -167,12 +176,15 @@ def run_check():
     modules, unblocked = tree_modules()
     rows = read_baseline(open(BASELINE).read())
     base, base_rows, renames = merge_base(), None, ()
+    before = None
     if base:
+        def before(path):
+            return git('show', f'{base}:{path}')
         renames = renamed_rust(base)
         old = git('show', f'{base}:{BASELINE}')
         if old is not None and FORMAT in old.splitlines():
             base_rows = read_baseline(old)
-    bad = problems(modules, unblocked, rows, base_rows, renames)
+    bad = problems(modules, unblocked, rows, base_rows, renames, before, read_now)
     if bad:
         print('module-block ratchet: the tree breaks its baseline:', file=sys.stderr)
         for b in bad:
@@ -183,13 +195,31 @@ def run_check():
     return 0
 
 
+def read_now(path):
+    try:
+        return open(path, encoding='utf-8', errors='replace').read()
+    except OSError:
+        return None
+
+
 def bank():
     if not os.path.exists(BASELINE):
         print(f'module-block ratchet: {BASELINE} does not exist; there is nothing to bank',
               file=sys.stderr)
         return 2
     _modules, unblocked = tree_modules()
-    rows = read_baseline(open(BASELINE).read()) & unblocked
+    base = merge_base() or 'HEAD'
+    renames = renamed_rust(base)
+    was_called = {old: new for old, new in renames}
+    old = collections.Counter()
+    for row, n in read_baseline(open(BASELINE).read()).items():
+        path = path_of(row)
+        old[was_called.get(path, path) + row[len(path):]] += n
+
+    def before(path):
+        return git('show', f'{base}:{path}')
+    pairs = moved_rows.moves(unblocked - old, old - unblocked, before, read_now)
+    rows = moved_rows.banked(old, unblocked, pairs)
     write_baseline(rows)
     print(f'module-block ratchet: {sum(rows.values())} rows written to {BASELINE}')
     return 0
@@ -245,6 +275,35 @@ def selftest():
         ('a README is not', not name_census.is_top_document('notes/README.md')),
         ('a nested document is not (its directory gates it)',
          not name_census.is_top_document('notes/a/b.md')),
+    ]
+    # A split git calls no rename: a.rs stays as the index, and two of its items move to b.rs.
+    files = {'x/src/a.rs', 'x/src/b.rs'}
+    was = {'x/src/a.rs': 'pub fn f() {}\npub fn new() {}\npub fn new() {}\npub struct S;\n'}
+    now = {'x/src/a.rs': 'mod b;\npub fn new() {}\npub struct S;\n',
+           'x/src/b.rs': '//! Name: provisional.\npub fn f() {}\npub fn new() {}\n'}
+    base = i('f', 'new', 'new', 'S')
+    tree = collections.Counter(['x/src/b.rs::f', 'x/src/a.rs::new', 'x/src/b.rs::new',
+                                'x/src/a.rs::S'])
+    rows = moved_rows.banked(base, tree, moved_rows.moves(tree - base, base - tree, was.get, now.get))
+    grown = dict(now, **{'x/src/b.rs': now['x/src/b.rs'] + 'pub fn g() {}\n'})
+    new = tree + collections.Counter(['x/src/b.rs::g'])
+    retyped = dict(now, **{'x/src/b.rs': now['x/src/b.rs'].replace('fn f()', 'static f: u8 = 0;')})
+    cases += [
+        ('--bank re-keys the rows a split moved, and keeps their count',
+         rows == tree and sum(rows.values()) == sum(base.values())),
+        ('a split that moves items with their rows passes',
+         not problems(files, tree, rows, base, (), was.get, now.get)),
+        ('a split without the sources to prove it moves nothing',
+         bool(problems(files, tree, rows, base))),
+        ('--bank never admits a new name that arrived with a split',
+         moved_rows.banked(base, new, moved_rows.moves(new - base, base - new, was.get,
+                                                       grown.get)) == tree),
+        ('a new name in a split fails',
+         [b.split(' was added')[0] for b in problems(files, new, new, base, (), was.get, grown.get)]
+         == [f'{BASELINE}: x/src/b.rs::g']),
+        ('an item whose kind changed as it moved is not a move',
+         [b.split(' was added')[0] for b in problems(files, tree, tree, base, (), was.get, retyped.get)]
+         == [f'{BASELINE}: x/src/b.rs::f']),
     ]
     msg = problems(set(m('a', 'new')), m('new'), collections.Counter())[0]
     cases.append(('the failure names the file and the block to write',

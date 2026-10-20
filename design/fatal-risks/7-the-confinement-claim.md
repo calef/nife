@@ -126,6 +126,8 @@ Dated 2026-10-17 (§216 (fatal-risk facts are correctable, and verdicts are the 
 
 Dated 2026-10-17 (§216 (fatal-risk facts are correctable, and verdicts are the architect's), milestone 768 (a read-only port range grants nothing)): milestone 768 is BUILT. calef's ruling of 2026-10-05, that a port range grants nothing without `WRITE`, is recorded in §121 (what a device capability is when the device has no page: x86 port I/O). Claim 33 is unchanged. This does not support green.
 
+Dated 2026-10-19 (§216 (fatal-risk facts are correctable, and verdicts are the architect's), milestone 871 (a sixth outsider pass attacks the confinement claim)): milestone 871 is BUILT. The claims table gains row 35, the package fetch path: a listed location never reaches a private or link-local address, and the address dialed is the one the check passed. Its record is replayable and booted red on aarch64, riscv64 and x86_64, so criterion (b) holds on every row. The pass's table sweep was not run; calef ruled on #2432 (2026-10-19 UTC) that it runs as a new GLM 5.3 pass, proposed as the tenth, which can count toward criterion (c). Criterion (c) stays at zero. This does not support green.
+
 The caveat that keeps the gate closed: it was us attacking our own system. A hole we closed ourselves
 is the same category of evidence as the audit that found it. The outsider trying to escape is gated
 behind milestone 198 (a package manager, and the trivial install that makes a second customer

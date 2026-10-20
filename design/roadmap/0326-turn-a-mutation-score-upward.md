@@ -9,9 +9,9 @@ needs_person: no
 ---
 # 326. Nobody has been assigned to turn a mutation score upward
 
-calef's fatal-risk-3 ruling (2026-09-19) named the gap. Parts 1 and 2 are done. Part 3's seven named
-crates are done, and the 2026-09-21 census is classified with 89 survivors left (`## The 2026-09-21
-census` below). Part 4 is untouched and must stay last for the reason its own paragraph gives.
+calef's fatal-risk-3 ruling (2026-09-19) named the gap. Parts 1, 2 and 3 are done: every survivor of
+the 2026-10-19 census (run 39238962856) has a row in `notes/project-metrics/mutation-triage.csv`.
+Part 4 is untouched and must stay last for the reason its own paragraph gives.
 
 Everything this needs exists: `script/mutation -p <crate>` runs one package,
 `.cargo/mutants.toml` is where an exclusion goes with its reason, and milestone 85 (mutation testing over the host crates) already set the
@@ -49,8 +49,8 @@ triaged, and 89 are not.
 
 One wrong-accept was fixed: `portable_executable` bounded a relocation by `memsz`, not `filesz`.
 Projected, not measured: corpus 92.4% to 95.9%, like-for-like 96.1% to 96.3%. The 89, and
-`device_tree_from_acpi.rs`'s 14 since, are
-`design/roadmap/proposals/triage-the-crates-the-2026-09-21-census-measured-first.md`.
+`device_tree_from_acpi.rs`'s 14 since, were milestone 637 (triage the crates the 2026-09-21 mutation
+census measured for the first time)'s work, and it closed them.
 
 ## The 2026-10-03 inflow, 2026-10-05
 
@@ -95,7 +95,7 @@ Detail: `notes/mutation-testing/inflow-2026-10-03.md`.
    lanes should be expected to produce. This part is a worklist and should be taken as one; a
    milestone that tried to close all of it would be a milestone that never finishes.
 
-   Those seven are done ([`part-3-head.md`](0326-turn-a-mutation-score-upward/part-3-head.md)), and the rest is in `## The 2026-09-21 census`. Re-derive
+   Those seven are done ([`part-3-head.md`](0326-turn-a-mutation-score-upward/part-3-head.md)), and the rest is closed (`## Follow-on`). Re-derive
    any census rate before acting on it: it can be a loom model, proof harnesses, or a deleted crate.
 
 4. Rewrite the baseline once the triage lands. `.cargo/mutants-baseline.txt` is still the
@@ -144,12 +144,13 @@ Parts 1 and 2 only. Each of these was checked against the tree on 2026-09-19, on
 - **Done.** *2026-09-20: part 3's seven named crates, 56 survivors to 16,* on
   `milestone/326-new-crate-backlog`. The per-crate table and the argument are in
   [`part-3-head.md`](0326-turn-a-mutation-score-upward/part-3-head.md) and in `notes/mutation-testing/new-crate-backlog.md`'s `## 2026-09-20` section.
-- **Outstanding.** The rest of part 3, which is the other seventeen crates that did not exist at
-  the August baseline. Nobody has measured one of them per crate, and the census rates they would be
-  picked by are the 2026-09-14 ones. A lane taking this should re-derive before it triages.
-  It should first read `notes/mutation-testing.md` and the crate's recent history. Three
-  crates chosen off the census have now turned out to be already triaged, retired, or measuring
-  a loom model. The ledger said so in every case.
+- **Done.** The rest of part 3, the crates that did not exist at the August baseline. Milestone
+  637 and the inflow lanes gave every survivor of the 2026-10-03 census a triage row, and the weekly
+  inflow check holds each census after it. Of the 2026-10-19 census's 676 survivors, 89 had no
+  row. 75 were rows stranded by the 2026-10-18 `_contract` rename and two other renames that day,
+  which never reached `notes/project-metrics/mutation-census-renames.csv`; the table now carries
+  them, and `helpers/mutation_inflow.py orphans` fails `script/lint` when a triage row names no
+  package. The other 14 are `filesystem_fixture`'s witness bits, both keys equivalent.
 
   Two of the nineteen closed on 2026-09-20, and they were the first work this project routed to a
   cheaper model under DECISIONS §202 (mechanical work goes to a cheaper model). Both reproduce on
@@ -175,7 +176,9 @@ Parts 1 and 2 only. Each of these was checked against the tree on 2026-09-19, on
 - **Outstanding.** Part 4, rewriting `.cargo/mutants-baseline.txt`, is deliberately not done. It
   must follow the triage, which is what its own paragraph says. It should follow a full census
   rather than this lane's eight per-crate runs: `--save-baseline` writes what it is given, so
-  feeding it eight crates would replace a 38-crate baseline with eight rows.
+  feeding it eight crates would replace a 38-crate baseline with eight rows. The 2026-10-19
+  census's eight shard artifacts are a full one. `script/mutation-census` reads that file as the
+  2026-08-03 census by a literal date, so the rewrite has to change that reader in the same commit.
 - **Milestone 250.** `An unviable mutant is a hole that reads as a pass` already owns the other
   half of what this lane kept meeting. `filesystem_contract` reports 47 unviable and `elf` 21, and
   no rate here counts them.

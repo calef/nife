@@ -52,6 +52,32 @@ pub enum ImageRefusal {
     /// unvouched bytes hold only what [`UNVOUCHED_MANIFEST`] names, so the line that bound those is
     /// refused rather than run with the designation silently dropped.
     ExceedsVouch,
+    /// **Vouched bytes whose manifest asks for the network, and no owner's grant of it is recorded**
+    /// (milestone 892 (a std program at the prompt holds the network and a resolver), "The network
+    /// at install, ruled"). Installing a package does not grant the network on its own: the owner
+    /// grants it at install, and the installed-programs table records the grant. Until that record
+    /// is read here, no installed program holds the network, native or `std`.
+    ///
+    /// Name: provisional, milestone 892, 2026-10-19 (UTC).
+    NetworkNotGranted,
+}
+
+/// **What the installed-programs table says about a file's bytes**: that it does not list their
+/// digest, or that it does, and whether a `grant` line there gives them the network
+/// (`installed_programs::network_granted`). A required argument of [`image_manifest`], so a caller
+/// cannot vouch for bytes without saying what the owner granted them.
+///
+/// Name: provisional, milestone 892 (a std program at the prompt holds the network and a
+/// resolver), 2026-10-19 (UTC).
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+pub enum Vouch {
+    /// No row of the live generation has the bytes' digest.
+    Unvouched,
+    /// A row has it.
+    Vouched {
+        /// The owner granted these bytes the network.
+        network: bool,
+    },
 }
 
 /// **Whether an image request can deliver what `m` declares**, today.
@@ -68,7 +94,11 @@ pub enum ImageRefusal {
 /// The progenitor sizes an image's region before its frames arrive, so before it can read the note,
 /// and the one thing the request tells it is whether an argv follows (`spawnproto::PROGRAM_ARGUMENTS_BIT`). Tying
 /// the two makes that bit the region's size: [`image_hears_words`]. A `std` image also declares no
-/// memory grant, domain or network, which is what the `std` layout can hold.
+/// memory grant or domain, which is what the `std` layout can hold.
+///
+/// **The network is carried and then judged by the vouch** ([`image_manifest`]): unvouched bytes'
+/// ask grants nothing, as every unvouched ask does, and vouched bytes' ask is refused
+/// ([`ImageRefusal::NetworkNotGranted`]) because no owner's grant of it is recorded.
 pub fn image_can_carry(m: &Manifest) -> bool {
     let std = m.startup == StartupContract::Std;
     matches!(m.output, OutputDeclaration::Bytes | OutputDeclaration::Words)
@@ -91,12 +121,13 @@ pub fn image_can_carry(m: &Manifest) -> bool {
         && m.indexes == IndexStoreDeclaration::Forbidden
         // Milestone 809: and the activation directory, which shows what is installed.
         && !m.activation_directory
+        // Milestone 892: and the console's input, which only the owner's console hands out.
+        && !m.console_input
         && std == (m.program_argument.hears_words())
         && (!std
             || (m.output == OutputDeclaration::Bytes
                 && m.memory_grant == MemoryGrantDeclaration::Forbidden
-                && !m.domain
-                && !m.network))
+                && !m.domain))
 }
 
 /// **Whether an image is sent its line as an argv**, which for an image is also whether it is built
@@ -108,21 +139,28 @@ pub const fn image_hears_words(m: &Manifest) -> bool {
 }
 
 /// **The manifest a file's bytes are bound and endowed with** (milestone 597, provisional), given
-/// what their note declared (`None` for no note) and whether the installed-programs table vouches for them.
+/// what their note declared (`None` for no note) and what the installed-programs table says of
+/// them ([`Vouch`]).
 ///
 /// Vouched bytes get what they declare, because the digest that vouched covers the note: a person
-/// who installed the package installed its manifest. Unvouched bytes get [`UNVOUCHED_MANIFEST`]
+/// who installed the package installed its manifest. The network is the exception: the owner
+/// grants it apart, so vouched bytes asking for it are refused
+/// ([`ImageRefusal::NetworkNotGranted`]) unless a `grant` line gives it them. A grant gives
+/// nothing the note did not ask for. Unvouched bytes get [`UNVOUCHED_MANIFEST`]
 /// whatever they declare (§219: a note from bytes nobody vouched for grants nothing), and are
 /// refused if the declaration asks for anything a command line would have designated, since the
 /// shell has already bound the line against it.
 ///
 /// The shell calls this to preview (`caps`) and the progenitor to decide, so the two cannot differ.
-pub fn image_manifest(declared: Option<Manifest>, vouched: bool) -> Result<Manifest, ImageRefusal> {
+pub fn image_manifest(declared: Option<Manifest>, vouch: Vouch) -> Result<Manifest, ImageRefusal> {
     let declared = declared.unwrap_or(NO_NOTE_MANIFEST);
     if !image_can_carry(&declared) {
         return Err(ImageRefusal::NotCarried);
     }
-    if vouched {
+    if let Vouch::Vouched { network } = vouch {
+        if declared.network && !network {
+            return Err(ImageRefusal::NetworkNotGranted);
+        }
         return Ok(declared);
     }
     // **An unvouched `std` program still hears its words** (§170 (how a foreign program is told

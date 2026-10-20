@@ -417,7 +417,7 @@ fn remove(
         e.package == package
             && e.package != installed_programs::OWNER
             && version.is_none_or(|v| e.version == v)
-            && !installed_programs::may_edit(e.manager, manager)
+            && !installed_programs::can_edit(e.manager, manager)
     });
     if foreign {
         return (S::NotYours, live);
@@ -548,7 +548,12 @@ fn install(
     // image refusal blocks no update. The prompt still refuses a name that is both, because a
     // later base can add a name a package already holds.
     let image = |program: &str| Program::from_name(program.as_bytes()).is_some();
-    let n = match installed_programs::with_entries(table, rows, image, new) {
+    // **And the owner's grants** (milestone 892 (a std program at the prompt holds the network and
+    // a resolver)): exactly what each program's note asks of the network and of resolver zones,
+    // all or nothing. The owner's yes was given before the package was sent: `jig install` lists
+    // these asks and sends nothing without it, and only the owner's console holds an installer.
+    let granted = || got.programs().flat_map(asked_grants);
+    let n = match installed_programs::with_entries_granting(table, rows, image, granted, new) {
         Ok(n) => n,
         Err(refused) => return Answer::refused(&refused, &got, live),
     };
@@ -557,6 +562,43 @@ fn install(
         return Answer::from((S::StoreFailed, live));
     }
     Answer::from((S::Done, m))
+}
+
+/// **What one program's note asks the owner for**: the network, if it asks, then each resolver zone,
+/// keyed on the program's digest. Nothing for a program whose bytes or note cannot be read, which
+/// runs with none of them either (`endowed_image` refuses it).
+fn asked_grants<'b>(
+    p: package_archive::Program<'b>,
+) -> impl Iterator<Item = installed_programs::Grant<'b>> + use<'b> {
+    use installed_programs::{Grant, Granted};
+    let digest = p.digest;
+    let note = elf::Elf::parse(p.bytes).ok().and_then(|elf| {
+        elf.note(
+            capability_manifest_note::OWNER,
+            capability_manifest_note::MANIFEST,
+        )
+        .ok()
+        .flatten()
+    });
+    let decoded = note.and_then(|d| {
+        Some((
+            capability_manifest_note::decode(d).ok()?,
+            capability_manifest_note::zones(d).ok()?,
+        ))
+    });
+    let network = decoded.is_some_and(|(m, _)| m.network).then_some(Grant {
+        digest,
+        what: Granted::Network,
+    });
+    let zones = decoded.into_iter().flat_map(move |(_, zones)| {
+        zones.iter().filter_map(move |z| {
+            Some(Grant {
+                digest,
+                what: Granted::Zone(core::str::from_utf8(z).ok()?),
+            })
+        })
+    });
+    network.into_iter().chain(zones)
 }
 
 /// **Whether the copy of the image's index vouches for these bytes** (milestone 801 (packages

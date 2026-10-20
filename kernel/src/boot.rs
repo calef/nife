@@ -2,13 +2,11 @@
 //!
 //! `kernel_main` is the function `_start` calls on every architecture. On `x86_64` it hands off
 //! to that architecture's own boot (`x86_64_boot.rs`) before anything is brought up. aarch64 and
-//! riscv64 both go through [`bring_up_machine`] here; riscv64 then leaves for the rest of its own
-//! boot (`riscv64_boot.rs`), and aarch64 goes on below. The boot pointer it stashes ([`DTB`]), the
-//! test suite and the measurement boots are here because all three boots reach them.
-//!
-//! riscv64 joined [`bring_up_machine`] in milestone 890 (riscv64 and `x86_64` join the shared boot
-//! path), the first slice of retiring the two per-architecture boot files (§284 (the kernel crate
-//! root splits into child modules, one per boot)).
+//! riscv64 both go through [`bring_up_machine`] and everything after it here: the test suite, the
+//! measurement boots, the ladder, each port's milestone tour and the hand-over. The boot pointer it
+//! stashes ([`DTB`]) is here because all three boots reach it. Milestone 890 (riscv64 and `x86_64`
+//! join the shared boot path) tracks retiring the per-architecture boot files (§284 (the kernel
+//! crate root splits into child modules, one per boot)).
 //!
 //! Moved out of the crate root by milestone 876 (the kernel crate root is split along its seams),
 //! with the bodies unchanged. `kernel_main` had been split by boot phase first, calef's ruling of
@@ -61,12 +59,14 @@ pub fn device_tree() -> Result<device_tree_blob::DeviceTreeBlob<'static>, device
 /// where arguments live. `boot_info_pointer` arrives in `x0`. See notes/registers.md.
 ///
 /// `-> !` means this never returns, which is true: there is nowhere to return *to*.
-// On riscv64 and `x86_64`, each port's own boot below diverges, so the rest of `kernel_main` is
-// deliberately unreachable there. Scoped to those two so aarch64 keeps the lint.
+// On `x86_64`, that port's own boot below diverges, so the rest of `kernel_main` is deliberately
+// unreachable there. Scoped to it so aarch64 and riscv64 keep the lint.
 // And the icount boot parks before the bench boot it implies, so `bench::run()` and everything after
 // it is deliberately unreachable in that one configuration (milestone 78).
+// And riscv64's `storage_bench` boot diverges in `run_measurement_boot`, leaving the hand-over after
+// it unreachable but compiled, which is what keeps the hand-over's callees linted in that build.
 #[cfg_attr(
-    any(target_arch = "riscv64", target_arch = "x86_64", feature = "icount"),
+    any(target_arch = "x86_64", feature = "icount", feature = "storage_bench"),
     allow(unreachable_code)
 )]
 #[unsafe(no_mangle)]
@@ -150,13 +150,6 @@ pub extern "C" fn kernel_main(boot_info_pointer: usize) -> ! {
 
     bring_up_machine(boot_info_pointer);
 
-    // **riscv64 leaves here, after the shared bring-up** (milestone 890). What follows in its own
-    // boot is the ladder, the measurement and test boots, its tour and its hand-over, in the order
-    // that boot has always run them. Converging those with the aarch64 path below is the rest of
-    // milestone 890. See notes/riscv-port.md.
-    #[cfg(target_arch = "riscv64")]
-    riscv64_boot(boot_info_pointer);
-
     #[cfg(any(test, feature = "system_tests"))]
     run_test_suite();
 
@@ -192,16 +185,18 @@ pub extern "C" fn kernel_main(boot_info_pointer: usize) -> ! {
         // wiring services itself. It hands off to the progenitor, which brings up the console server, the line
         // discipline (`line_editor`, milestone 28), the input driver, and the shell out of its own budget
         // through the granular verbs. This is the line that retires the kernel as the system's
-        // builder. Every aarch64 interactive build reaches it: `--features shell` and the milestone
-        // tour hand off straight away (the tour after running its demos), and the same way
-        // RISC-V's `--features shell` hands off to `system_initializer`. The
+        // builder. Every interactive build on aarch64 and riscv64 reaches it: `--features shell`
+        // hands off straight away and the milestone tour after running its demos. On a board the
+        // prompt that follows is the signal that the boot finished (milestone 268 (every architecture boots the same way)), and a machine
+        // that reaches one can be logged into and diagnosed rather than only power-cycled. The
         // legacy kernel-wired `user::shell_service` is retired as a boot path (it cannot host the
         // milestone-28 shell, which speaks the terminal contract, not the raw console protocol) and
         // is kept only as dead code for reference.
-        // **The tour ends and the soak begins** (milestone 219), and on this architecture it takes
-        // the place of the progenitor handoff rather than of the halt below it. A soak boot that also
-        // brought up a console, a line discipline and a shell would be soaking those too, and the
-        // point of this workload is that what it stresses is decided rather than incidental.
+        // **The tour ends and the soak begins** (milestone 219 (the boot tour ends and the kernel
+        // halts, so there is nothing to soak)), and it takes the place of the progenitor handoff
+        // rather than of the halt below it. A soak boot that also brought up a console, a line
+        // discipline and a shell would be soaking those too, and the point of this workload is
+        // that what it stresses is decided rather than incidental.
         run_measurement_boot();
 
         #[cfg(not(any(
@@ -213,10 +208,16 @@ pub extern "C" fn kernel_main(boot_info_pointer: usize) -> ! {
         if let Some(image) = user::initial_ramdisk() {
             println!();
             println!("nife: handing the system to the userspace progenitor.");
+            // `boot_progenitor` discovers the UART's interrupt line itself and prints it with its
+            // source (10 on QEMU virt, 32 on the JH7110; notes/visionfive2.md, BUGS), so a bench
+            // transcript names which source won.
             if let Err(e) = user::boot_progenitor(image) {
                 println!("  handoff FAILED: {e:?}");
             }
             // The boot thread's work is done; the progenitor and the services it builds run until halt.
+        } else {
+            println!();
+            println!("nife: no archive to hand the system to (no initial ramdisk was loaded).");
         }
     }
 
@@ -234,6 +235,30 @@ pub extern "C" fn kernel_main(boot_info_pointer: usize) -> ! {
         feature = "network_bench"
     )))]
     sched::exit()
+}
+
+/// riscv64's opening lines: the banner, where the kernel is running, and the screen. aarch64's
+/// are inline in [`kernel_main`]; these are a function because they say more, since this port has
+/// Sv39 on and is running in the high half by the time it prints.
+///
+/// The bring-up's own demonstration lines (`traps`, `timer`, `memory`, `paging`) are not printed
+/// here: `self_test::run` makes each of those claims on all three architectures as its
+/// `exceptions`, `timer`, `frames` and `mapping` checks, and `board_console` reads the ladder.
+#[cfg(target_arch = "riscv64")]
+fn riscv64_banner(
+    boot_info_pointer: usize,
+    screen: &Result<(machine_discovery::framebuffer::Framebuffer, u32, u32), screen::Why>,
+) {
+    // A live code address proves we jumped to the high-half alias in boot.s and are executing
+    // there, not merely reaching the UART through the identity map (both are mapped by the boot
+    // table). If this reads 0xffffffc0_8020_xxxx, Sv39 is on and the kernel is in the high half.
+    let pc = kernel_main as *const () as usize;
+    println!();
+    println!("{}RISC-V (rv64, S-mode, Sv39)", boot_ladder::BANNER);
+    println!("  hart 0 booted: high-half kernel, .bss, and the NS16550 console are up.");
+    println!("  running at  : {pc:#018x}  (high half: Sv39 paging is on)");
+    println!("  device tree : {boot_info_pointer:#018x}");
+    screen::print_summary(screen);
 }
 
 /// The shared bring-up, which aarch64 and riscv64 reach: arch, memory, paging, IOMMU, interrupts,
@@ -367,9 +392,9 @@ fn interrupts_init(_dtb: usize) {
 
     // Bring up the interrupt controller (the GIC on aarch64), reading its location from the device
     // tree. Portable code names `arch::irq`, never a specific controller, which is what lets a
-    // second architecture be a new `arch/` directory rather than a diff here. On RISC-V this
-    // unmasks the boot hart's software and external interrupt sources, as each secondary does for
-    // itself; the PLIC's own base is still stored later, by that boot's device paths.
+    // second architecture be a new `arch/` directory rather than a diff here. On RISC-V this is the
+    // PLIC, then the boot hart's software and external interrupt sources, which each secondary
+    // unmasks for itself as it comes online.
     irq::init();
 
     timer::init();
@@ -422,7 +447,7 @@ pub(super) fn run_test_suite() {
 /// function, it can see that only if the function is `-> !` too, which is true only of a build
 /// that has a measurement boot. So this one is built with a measurement feature and the no-op below
 /// without, and that is what lets `kernel_main` end without its `sched::exit()` in a measurement
-/// build, and `x86_64_boot` and `riscv64_boot` say `-> !`.
+/// build, and `x86_64_boot` says `-> !`.
 #[cfg(any(
     feature = "job_mix",
     feature = "soak_test",

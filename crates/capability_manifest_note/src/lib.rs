@@ -61,7 +61,24 @@
 //! | 54 | 1 | `share` | 0 or 1 (milestone 126, a view of the job budget) |
 //! | 55 | 1 | zero | |
 //!
-//! Byte 55 is the last zero, so the next field is likely version 2.
+//! Byte 55 is the last zero.
+
+//! # The descriptor, version 2: a manifest and the resolver zones it asks for
+//!
+//! calef, 2026-10-19 (UTC), on #2405 (milestone 892 (a std program at the prompt holds the network
+//! and a resolver)'s Q1, "approve version 2?"): "Yes". Version 1's 56 bytes at the same offsets,
+//! with `2` in the version word, then:
+//!
+//! | offset | size | field | values |
+//! |---|---|---|---|
+//! | 56 | 1 | zone count | 1 to [`MAX_ZONES`] |
+//! | 57 | 1 + *n* | each zone: its length *n*, then *n* bytes of dotted ASCII | *n* at most [`ZONE_MAX`]; 0 is the root zone |
+//!
+//! The descriptor ends with the last zone, so `descsz` need not be a multiple of four; [`ZonedNote`]
+//! pads after it. **One request is still one encoding**: a manifest that asks for no zone is
+//! version 1, so a version 2 count of 0 is refused, and the zones are canonical ([`zones`] says
+//! how). Zones are what the program asks for; the owner grants them at install, and nothing here
+//! grants anything (§252 (a resolver grant is one zone per client badge)).
 //!
 //! Name: ratified 2026-10-18 (calef, "`capability_manifest_note`"). The descriptor is the capabilities
 //! a program requests ("manifest" in the Android sense), and "note" separates the ELF-note encoding
@@ -96,6 +113,25 @@ pub const VERSION: u32 = 1;
 
 /// How long a version 1 descriptor is, exactly; the module documentation has the layout.
 pub const DESCRIPTOR_LEN: usize = 56;
+
+/// **The descriptor version that carries resolver zones** after version 1's fields (the module's
+/// version 2 table). Provisional name; the number and layout are calef's 2026-10-19 (UTC) ruling.
+///
+/// Name: provisional, minted 2026-10-19 (UTC) by milestone/892-installed-programs-hold-the-network-and-zones.
+pub const ZONED_VERSION: u32 = 2;
+
+/// **The most zones a manifest may ask for**: 8, the resolver's
+/// `domain_name_resolution_contract::GRANTS_MAX`, since each granted zone is its own badge and a
+/// program asking for more could never be granted them all at once.
+///
+/// Name: provisional, minted 2026-10-19 (UTC) by milestone/892-installed-programs-hold-the-network-and-zones.
+pub const MAX_ZONES: usize = domain_name_resolution_contract::GRANTS_MAX;
+
+/// **The longest zone**, in bytes of dotted text: 253, a host name's limit and the resolver's
+/// `domain_name_resolution_contract::NAME_TEXT_MAX`.
+///
+/// Name: provisional, minted 2026-10-19 (UTC) by milestone/892-installed-programs-hold-the-network-and-zones.
+pub const ZONE_MAX: usize = domain_name_resolution_contract::NAME_TEXT_MAX;
 
 /// `OWNER` with its NUL, padded to the note's 4-byte alignment.
 const NAME_FIELD: usize = 8;
@@ -170,24 +206,9 @@ const fn put8(out: &mut [u8; DESCRIPTOR_LEN], at: usize, v: u64) {
     }
 }
 
-/// **`m` as a version 1 descriptor.**
-///
-/// A `const fn`, so a program's note is computed by the compiler from the same constant its source
-/// declares ([`carry!`]). It panics on the manifests the layout has no spelling for, and in
-/// a constant that panic is a compile error rather than a note nobody can read: a declared second
-/// stream at a slot other than `grant_plan::DIAGNOSTICS_SLOT`, a subtree option that is not one of
-/// the declared letters (or is declared without a directory grant),
-/// `grant_plan::Manifest::reboot` or `grant_plan::Manifest::sync`, and since milestone 809 (the
-/// package client becomes a program) `installer` and `catalog`, for the same reason: no image may
-/// be endowed them, and `jig` is endowed from the table.
-///
-/// **`reboot` and `sync` have no byte on purpose** (milestone 805 (`reboot` at the prompt), DECISIONS §251
-/// (restarting the machine is a kernel object the progenitor hands out)). A note is how installed
-/// bytes ask for authority, and `grant_plan::image_can_carry` refuses both to every image, so a
-/// byte for either would spell a request no reader may grant. Leaving it out keeps the
-/// layout's last zero byte for version 2 and keeps this wire format unamended; the one program that
-/// declares them is endowed from `grant_plan`'s table, which carries no note.
-pub const fn encode(m: &Manifest) -> [u8; DESCRIPTOR_LEN] {
+/// **The grants a note has no spelling for**, refused at compile time in a constant: each is the
+/// owner's console's to grant, or no image's at all, so no installed bytes may ask for it.
+const fn refuse_what_no_note_carries(m: &Manifest) {
     assert!(
         !m.reboot,
         "a manifest note cannot carry `reboot`: no image may be endowed the reboot object"
@@ -211,6 +232,32 @@ pub const fn encode(m: &Manifest) -> [u8; DESCRIPTOR_LEN] {
         !m.activation_directory,
         "a manifest note cannot carry `activation_directory`: only the owner's console grants it"
     );
+    // Milestone 892: and standard input from the console.
+    assert!(
+        !m.console_input,
+        "a manifest note cannot carry `console_input`: only the owner's console grants it"
+    );
+}
+
+/// **`m` as a version 1 descriptor.**
+///
+/// A `const fn`, so a program's note is computed by the compiler from the same constant its source
+/// declares ([`carry!`]). It panics on the manifests the layout has no spelling for, and in
+/// a constant that panic is a compile error rather than a note nobody can read: a declared second
+/// stream at a slot other than `grant_plan::DIAGNOSTICS_SLOT`, a subtree option that is not one of
+/// the declared letters (or is declared without a directory grant),
+/// `grant_plan::Manifest::reboot` or `grant_plan::Manifest::sync`, and since milestone 809 (the
+/// package client becomes a program) `installer` and `catalog`, for the same reason: no image may
+/// be endowed them, and `jig` is endowed from the table.
+///
+/// **`reboot` and `sync` have no byte on purpose** (milestone 805 (`reboot` at the prompt), DECISIONS §251
+/// (restarting the machine is a kernel object the progenitor hands out)). A note is how installed
+/// bytes ask for authority, and `grant_plan::image_can_carry` refuses both to every image, so a
+/// byte for either would spell a request no reader may grant. Leaving it out keeps the
+/// layout's last zero byte for version 2 and keeps this wire format unamended; the one program that
+/// declares them is endowed from `grant_plan`'s table, which carries no note.
+pub const fn encode(m: &Manifest) -> [u8; DESCRIPTOR_LEN] {
+    refuse_what_no_note_carries(m);
     let mut out = [0u8; DESCRIPTOR_LEN];
     let v = VERSION.to_le_bytes();
     out[0] = v[0];
@@ -331,7 +378,7 @@ fn zero(d: &[u8], at: usize, len: usize) -> Result<(), Error> {
 /// assert_eq!(capability_manifest_note::decode(&bytes), Ok(m));
 ///
 /// let mut later = bytes;
-/// later[0] = 2;
+/// later[0] = 3;
 /// assert_eq!(capability_manifest_note::decode(&later), Err(capability_manifest_note::Error::UnknownVersion));
 /// ```
 ///
@@ -340,16 +387,22 @@ fn zero(d: &[u8], at: usize, len: usize) -> Result<(), Error> {
 /// ```ignore
 /// capability_manifest_note::carry!(grant_plan::Program::Uptime.manifest());
 /// ```
+///
+/// A version 2 descriptor decodes to the same manifest its first 56 bytes would; its zones are
+/// checked here too, and read with [`zones`].
 pub fn decode(d: &[u8]) -> Result<Manifest, Error> {
     if d.len() < 4 {
         return Err(Error::NoVersion);
     }
-    if u32::from_le_bytes([d[0], d[1], d[2], d[3]]) != VERSION {
-        return Err(Error::UnknownVersion);
+    match u32::from_le_bytes([d[0], d[1], d[2], d[3]]) {
+        VERSION if d.len() != DESCRIPTOR_LEN => return Err(Error::WrongLength),
+        VERSION => {}
+        ZONED_VERSION => {
+            check_zones(d)?;
+        }
+        _ => return Err(Error::UnknownVersion),
     }
-    if d.len() != DESCRIPTOR_LEN {
-        return Err(Error::WrongLength);
-    }
+    let d = d.get(..DESCRIPTOR_LEN).ok_or(Error::WrongLength)?;
     let arg = decode_arg(d)?;
     let mem = decode_mem(d)?;
     let file = decode_file(d)?;
@@ -389,6 +442,7 @@ pub fn decode(d: &[u8]) -> Result<Manifest, Error> {
         catalog: false,
         indexes: IndexStoreDeclaration::Forbidden,
         activation_directory: false,
+        console_input: false,
         startup,
     })
 }
@@ -517,11 +571,213 @@ impl Note {
     }
 }
 
+/// **A version 2 descriptor's length** for these zones: version 1's 56 bytes, the count, and each
+/// zone's length byte and text.
+///
+/// Name: provisional, minted 2026-10-19 (UTC) by milestone/892-installed-programs-hold-the-network-and-zones.
+pub const fn zoned_len(zones: &[&str]) -> usize {
+    let mut len = DESCRIPTOR_LEN + 1;
+    let mut i = 0;
+    while i < zones.len() {
+        len += 1 + zones[i].len();
+        i += 1;
+    }
+    len
+}
+
+/// **`m` and the zones it asks for, as a version 2 descriptor.** `LEN` is [`zoned_len`] of
+/// `zones`, named by the caller's type, as [`encode_verbs`] does:
+///
+/// ```
+/// const ZONES: &[&str] = &["", "basalt.nifeos.org"];
+/// const M: grant_plan::Manifest = grant_plan::NO_NOTE_MANIFEST;
+/// const D: [u8; capability_manifest_note::zoned_len(ZONES)] = capability_manifest_note::encode_zoned(&M, ZONES);
+/// assert_eq!(capability_manifest_note::decode(&D), Ok(M));
+/// let zones = capability_manifest_note::zones(&D).unwrap();
+/// assert_eq!(zones.iter().collect::<Vec<_>>(), [b"".as_slice(), b"basalt.nifeos.org"]);
+/// ```
+///
+/// It panics, a compile error in a constant, on everything [`zones`] refuses, and on no zones at
+/// all: a manifest that asks for none is [`encode`]'s version 1.
+///
+/// Name: provisional, minted 2026-10-19 (UTC) by milestone/892-installed-programs-hold-the-network-and-zones.
+pub const fn encode_zoned<const LEN: usize>(m: &Manifest, zones: &[&str]) -> [u8; LEN] {
+    assert!(
+        !zones.is_empty() && zones.len() <= MAX_ZONES,
+        "a version 2 manifest asks for one to eight zones; none is version 1"
+    );
+    assert!(LEN == zoned_len(zones), "LEN must be zoned_len(zones)");
+    let mut out = [0u8; LEN];
+    let fixed = encode(m);
+    let mut i = 0;
+    while i < DESCRIPTOR_LEN {
+        out[i] = fixed[i];
+        i += 1;
+    }
+    put4(&mut out, 0, ZONED_VERSION.to_le_bytes());
+    out[DESCRIPTOR_LEN] = zones.len() as u8;
+    let mut at = DESCRIPTOR_LEN + 1;
+    let mut z = 0;
+    while z < zones.len() {
+        let zone = zones[z].as_bytes();
+        assert!(
+            domain_name_resolution_contract::is_canonical_zone(zone),
+            "a zone is lowercase dotted ASCII, at most 253 bytes, with no empty label"
+        );
+        if z > 0 {
+            assert!(
+                before(zones[z - 1].as_bytes(), zone),
+                "zones are sorted ascending, each once"
+            );
+        }
+        out[at] = zone.len() as u8;
+        let mut b = 0;
+        while b < zone.len() {
+            out[at + 1 + b] = zone[b];
+            b += 1;
+        }
+        at += 1 + zone.len();
+        z += 1;
+    }
+    out
+}
+
+/// Every zone of a version 2 descriptor, checked: a count of one to [`MAX_ZONES`], each zone
+/// canonical (`domain_name_resolution_contract::is_canonical_zone`) and sorted strictly after the one before, and nothing after the
+/// last. The offset in a refusal is the first byte at fault.
+fn check_zones(d: &[u8]) -> Result<&[u8], Error> {
+    let count = *d.get(DESCRIPTOR_LEN).ok_or(Error::WrongLength)? as usize;
+    if count == 0 || count > MAX_ZONES {
+        return Err(Error::BadField(DESCRIPTOR_LEN));
+    }
+    let mut at = DESCRIPTOR_LEN + 1;
+    let mut previous: Option<&[u8]> = None;
+    for _ in 0..count {
+        let len = *d.get(at).ok_or(Error::WrongLength)? as usize;
+        let zone = d.get(at + 1..at + 1 + len).ok_or(Error::WrongLength)?;
+        if !domain_name_resolution_contract::is_canonical_zone(zone)
+            || previous.is_some_and(|p| !before(p, zone))
+        {
+            return Err(Error::BadField(at));
+        }
+        previous = Some(zone);
+        at += 1 + len;
+    }
+    if at != d.len() {
+        return Err(Error::WrongLength);
+    }
+    Ok(&d[DESCRIPTOR_LEN..])
+}
+
+/// **The resolver zones a manifest asks for**, as a view of the descriptor, checked whole. Empty for
+/// version 1, which asks for none. Refused as [`decode`] refuses the descriptor.
+///
+/// A zone is dotted text, the resolver's own spelling (`domain_name_resolution_contract`): `b""` is
+/// the root zone, any name at all, which the install confirmation flags apart from the others.
+///
+/// Name: provisional, minted 2026-10-19 (UTC) by milestone/892-installed-programs-hold-the-network-and-zones.
+pub fn zones(d: &[u8]) -> Result<Zones<'_>, Error> {
+    decode(d)?;
+    match u32::from_le_bytes([d[0], d[1], d[2], d[3]]) {
+        ZONED_VERSION => Ok(Zones {
+            records: &d[DESCRIPTOR_LEN + 1..],
+        }),
+        _ => Ok(Zones { records: &[] }),
+    }
+}
+
+/// **The zones a manifest asks for**: [`zones`]'s view, which allocates nothing.
+///
+/// Name: provisional, minted 2026-10-19 (UTC) by milestone/892-installed-programs-hold-the-network-and-zones.
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+pub struct Zones<'a> {
+    records: &'a [u8],
+}
+
+impl<'a> Zones<'a> {
+    /// The zones in their sorted order, each as dotted text; the root zone is empty.
+    ///
+    /// Name: provisional, minted 2026-10-19 (UTC) by milestone/892-installed-programs-hold-the-network-and-zones.
+    pub fn iter(&self) -> impl Iterator<Item = &'a [u8]> + use<'a> {
+        let mut rest = self.records;
+        core::iter::from_fn(move || {
+            let (&len, tail) = rest.split_first()?;
+            let (zone, after) = tail.split_at(len as usize);
+            rest = after;
+            Some(zone)
+        })
+    }
+
+    /// Whether the manifest asks for no zone.
+    ///
+    /// Name: provisional, minted 2026-10-19 (UTC) by milestone/892-installed-programs-hold-the-network-and-zones.
+    pub fn is_empty(&self) -> bool {
+        self.records.is_empty()
+    }
+
+    /// Whether one of the zones is the root zone: any name at all.
+    ///
+    /// Name: provisional, minted 2026-10-19 (UTC) by milestone/892-installed-programs-hold-the-network-and-zones.
+    pub fn has_root(&self) -> bool {
+        self.records.first() == Some(&0)
+    }
+}
+
+/// **A whole version 2 manifest note**, padded after its descriptor to the note's 4-byte
+/// alignment. `N` is [`zoned_note_len`] of the zones. What [`carry!`]'s `zones =` form places.
+///
+/// Name: provisional, minted 2026-10-19 (UTC) by milestone/892-installed-programs-hold-the-network-and-zones.
+#[repr(C, align(4))]
+pub struct ZonedNote<const N: usize>(pub [u8; N]);
+
+/// How long a whole version 2 note is for these zones: header, owner, the descriptor, and the
+/// zero bytes that round it up to four.
+///
+/// Name: provisional, minted 2026-10-19 (UTC) by milestone/892-installed-programs-hold-the-network-and-zones.
+pub const fn zoned_note_len(zones: &[&str]) -> usize {
+    (HEADER_LEN + NAME_FIELD + zoned_len(zones)).next_multiple_of(4)
+}
+
+impl<const N: usize> ZonedNote<N> {
+    /// The note carrying `m` and the zones it asks for.
+    ///
+    /// Name: provisional, minted 2026-10-19 (UTC) by milestone/892-installed-programs-hold-the-network-and-zones.
+    pub const fn of<const LEN: usize>(m: &Manifest, zones: &[&str]) -> Self {
+        assert!(
+            N == zoned_note_len(zones),
+            "N must be zoned_note_len(zones)"
+        );
+        let mut out = [0u8; N];
+        put4(&mut out, 0, ((OWNER.len() + 1) as u32).to_le_bytes());
+        put4(&mut out, 4, (LEN as u32).to_le_bytes());
+        put4(&mut out, 8, MANIFEST.to_le_bytes());
+        put4(
+            &mut out,
+            HEADER_LEN,
+            [OWNER[0], OWNER[1], OWNER[2], OWNER[3]],
+        );
+        let d: [u8; LEN] = encode_zoned(m, zones);
+        let mut i = 0;
+        while i < LEN {
+            out[HEADER_LEN + NAME_FIELD + i] = d[i];
+            i += 1;
+        }
+        Self(out)
+    }
+}
+
 // The owner and its NUL fit the name field, which keeps the descriptor 4-aligned.
 const _: () = assert!(OWNER.len() < NAME_FIELD && NAME_FIELD.is_multiple_of(4));
 
 /// **Carry this manifest in the program's own bytes.** One line at module scope in a program's
 /// root; the argument is any constant expression of type `grant_plan::Manifest`.
+///
+/// A program that asks for resolver zones names them after the manifest, sorted, with `""` for the
+/// root zone, and carries a version 2 note ([`ZonedNote`]):
+///
+/// ```ignore
+/// capability_manifest_note::carry!(MANIFEST, zones = &["basalt.nifeos.org"]);
+/// ```
 ///
 /// It places one [`Note`] in `.note.nife.manifest`, which `crates/user_mode_runtime/link.ld` keeps
 /// in a `PT_NOTE` inside the read-only load segment. Used twice in one program it is a duplicate
@@ -535,6 +791,12 @@ macro_rules! carry {
         #[used]
         #[unsafe(link_section = ".note.nife.manifest")]
         static NIFE_MANIFEST_NOTE: $crate::Note = $crate::Note::of(&$manifest);
+    };
+    ($manifest:expr, zones = $zones:expr) => {
+        #[used]
+        #[unsafe(link_section = ".note.nife.manifest")]
+        static NIFE_MANIFEST_NOTE: $crate::ZonedNote<{ $crate::zoned_note_len($zones) }> =
+            $crate::ZonedNote::of::<{ $crate::zoned_len($zones) }>(&$manifest, $zones);
     };
 }
 
@@ -1125,7 +1387,7 @@ mod tests {
     #[test]
     fn a_later_version_is_refused_rather_than_guessed_at() {
         let mut d = encode(&Program::Uptime.manifest());
-        d[0] = 2;
+        d[0] = 3;
         assert_eq!(decode(&d), Err(Error::UnknownVersion));
         assert_eq!(decode(&d[..3]), Err(Error::NoVersion));
     }
@@ -1334,7 +1596,7 @@ mod tests {
     fn the_layout_accepts_its_largest_values_and_checks_its_last_byte() {
         assert_eq!(decode(&[1, 2, 3]), Err(Error::NoVersion));
         assert_eq!(decode(&VERSION.to_le_bytes()), Err(Error::WrongLength));
-        assert_eq!(decode(&2u32.to_le_bytes()), Err(Error::UnknownVersion));
+        assert_eq!(decode(&3u32.to_le_bytes()), Err(Error::UnknownVersion));
 
         let letters: [u8; MAX_DECLARED_SHORT_OPTIONS] = core::array::from_fn(|i| b'a' + i as u8);
         let m = Manifest {
@@ -1376,5 +1638,111 @@ mod tests {
         let mut out = [0u8; 12];
         put4(&mut out, 4, [1, 2, 3, 4]);
         assert_eq!(out, [0, 0, 0, 0, 1, 2, 3, 4, 0, 0, 0, 0]);
+    }
+
+    /// **A version 2 descriptor has one reading** (calef's 2026-10-19 (UTC) ruling on #2405): it
+    /// decodes to the manifest its first 56 bytes spell, its zones come back in order, and each way
+    /// a second spelling of the same ask could arise is refused: no zones (that is version 1),
+    /// unsorted or repeated zones, uppercase, an end or doubled dot, more than eight, or a byte past
+    /// the last zone.
+    #[test]
+    fn a_zoned_descriptor_has_one_encoding() {
+        extern crate std;
+        use std::vec::Vec;
+        const ZONES: &[&str] = &["", "basalt.nifeos.org", "example.net"];
+        const M: Manifest = Manifest {
+            network: true,
+            ..grant_plan::NO_NOTE_MANIFEST
+        };
+        const D: [u8; zoned_len(ZONES)] = encode_zoned(&M, ZONES);
+        assert_eq!(decode(&D), Ok(M));
+        let z = zones(&D).unwrap();
+        assert!(z.has_root());
+        assert_eq!(
+            z.iter().collect::<Vec<_>>(),
+            [b"".as_slice(), b"basalt.nifeos.org", b"example.net"]
+        );
+        assert!(!z.is_empty());
+        assert!(
+            zones(&encode(&M)).unwrap().is_empty(),
+            "version 1 asks none"
+        );
+        const NO_ROOT: &[&str] = &["nife.test"];
+        const D2: [u8; zoned_len(NO_ROOT)] = encode_zoned(&M, NO_ROOT);
+        assert!(!zones(&D2).unwrap().has_root());
+        const EIGHT: &[&str] = &["a", "b", "c", "d", "e", "f", "g", "h"];
+        const D8: [u8; zoned_len(EIGHT)] = encode_zoned(&M, EIGHT);
+        assert_eq!(
+            zones(&D8).unwrap().iter().count(),
+            MAX_ZONES,
+            "eight is the most, and allowed"
+        );
+        let unsorted = std::panic::catch_unwind(|| {
+            encode_zoned::<{ zoned_len(&["b", "a"]) }>(&M, &["b", "a"])
+        });
+        assert!(
+            unsorted.is_err(),
+            "encode refuses unsorted zones, as decode does"
+        );
+
+        let respell = |zones: &[&[u8]]| {
+            let mut d: Vec<u8> = D[..DESCRIPTOR_LEN].to_vec();
+            d.push(zones.len() as u8);
+            for z in zones {
+                d.push(z.len() as u8);
+                d.extend_from_slice(z);
+            }
+            decode(&d)
+        };
+        assert_eq!(respell(&[b"", b"basalt.nifeos.org", b"example.net"]), Ok(M));
+        for bad in [
+            &[][..],
+            &[b"example.net".as_slice(), b"basalt.nifeos.org"],
+            &[b"example.net".as_slice(), b"example.net"],
+            &[b"Example.net".as_slice()],
+            &[b"example.net.".as_slice()],
+            &[b".example.net".as_slice()],
+            &[b"example..net".as_slice()],
+            &[b"a", b"b", b"c", b"d", b"e", b"f", b"g", b"h", b"i"],
+        ] {
+            assert!(
+                matches!(respell(bad), Err(Error::BadField(_))),
+                "{bad:?} must be refused"
+            );
+        }
+        let mut long = D.to_vec();
+        long.push(0);
+        assert_eq!(decode(&long), Err(Error::WrongLength));
+        assert_eq!(decode(&D[..D.len() - 1]), Err(Error::WrongLength));
+    }
+
+    /// **The note around a version 2 descriptor is what `elf` finds**: its `descsz` is the
+    /// descriptor's exact length, and the padding after it is zero.
+    #[test]
+    fn a_zoned_note_names_its_exact_length_and_pads_to_four() {
+        const ZONES: &[&str] = &["nife.test"];
+        const NOTE: ZonedNote<{ zoned_note_len(ZONES) }> =
+            ZonedNote::of::<{ zoned_len(ZONES) }>(&grant_plan::NO_NOTE_MANIFEST, ZONES);
+        let n = &NOTE.0;
+        // 56 + 1 + 1 + 9 = 67 bytes of descriptor after a 20-byte header and owner, rounded to 88.
+        assert_eq!(n.len(), 88);
+        assert_eq!(
+            u32::from_le_bytes([n[0], n[1], n[2], n[3]]),
+            5,
+            "namesz: `nife` and its NUL"
+        );
+        let descsz = u32::from_le_bytes([n[4], n[5], n[6], n[7]]) as usize;
+        assert_eq!(descsz, 67);
+        assert_eq!(descsz, zoned_len(ZONES));
+        let d = &n[HEADER_LEN + NAME_FIELD..HEADER_LEN + NAME_FIELD + descsz];
+        assert_eq!(
+            zones(d).unwrap().iter().next(),
+            Some(b"nife.test".as_slice())
+        );
+        assert!(
+            n[HEADER_LEN + NAME_FIELD + descsz..]
+                .iter()
+                .all(|&b| b == 0)
+        );
     }
 }

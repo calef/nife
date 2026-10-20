@@ -105,15 +105,5 @@ pub(super) const LINES: &[Line] = &[
         "/installed/rg needle",
         &["rg: failed to get current working directory: operation not supported on this platform"],
     ),
-    line(0, RG_WALK_CD, &[]),
-    // **Unmodified `ripgrep` walks a real tree from the prompt** (milestone 121 (`ripgrep`:
-    // enumeration as a capability), calef's 2026-10-07 ruling on fatal risk 1). `/search/crates` is
-    // a copy of this repository's `crates/` (`crate::disk::RIPGREP_CORPUS`), hundreds of files in nested
-    // directories, granted read-only because the word named it. No flag narrows the walk: `rg`
-    // lists every directory it meets, opens every file, skips the binary ones itself, and prints
-    // every matching line. The answer is wanted whole, so this line lists nothing here and
-    // [`rg_walk_verdict`] compares it line for line with what the host's `rg` printed over the same
-    // copy. Typed only when `cargo xtask basalt-fetch` has run, like the lines above.
-    line(1, RG_WALK_LINE, &[]),
     line(0, "cd /", &[]),
 ];

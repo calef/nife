@@ -375,6 +375,7 @@ pub const UNVOUCHED_MANIFEST: Manifest = Manifest {
     catalog: false,
     indexes: IndexStoreDeclaration::Forbidden,
     activation_directory: false,
+    console_input: false,
     startup: StartupContract::Native,
 };
 
@@ -791,6 +792,16 @@ pub struct Manifest {
     /// Name: provisional, minted 2026-10-18 (UTC) by lane `milestone/809-jig-list-u`. Not
     /// `activation`, which was the draft spelling of [`installer`](Manifest::installer).
     pub activation_directory: bool,
+    /// **Whether the program's standard input is the owner's console** (milestone 892 (a std
+    /// program at the prompt holds the network and a resolver); calef, 2026-10-19 (UTC), on #2405:
+    /// "a"). The spawn service places the terminal endpoint, badged
+    /// `line_editor::proto::STDIN_BADGE`, at `std_runtime_contract::STDIN_SLOT`, and the program reads
+    /// the lines typed while it runs: what `jig install` asks the owner's yes through. Only a
+    /// program in this table may hold it, as only the owner's console grants the installer: no
+    /// image may declare it ([`image_can_carry`](crate::image_can_carry)) and no note may carry it.
+    ///
+    /// Name: provisional, minted 2026-10-19 (UTC) by milestone/892-installed-programs-hold-the-network-and-zones.
+    pub console_input: bool,
     /// **Which runtime contract the program was built against**, and so where it expects each
     /// capability to be (milestone 595 (provisional)). See [`StartupContract`].
     ///

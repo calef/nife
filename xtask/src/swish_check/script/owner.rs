@@ -26,13 +26,12 @@ pub(super) const LINES: &[Line] = &[
     // **The owner vouches for a local build** (DECISIONS §221 (the boot prompt is the owner's
     // console), ruling 1). `installed/unvouched` is the fresh build the D2 lines above ran on the
     // ruling's endowment (slots 0, 1 and 2). Vouching writes a generation that lists its digest,
-    // so the same bytes now run vouched, endowed from the manifest note they carry (milestone 597
-    // (a program carries its manifest in an ELF note)). The witness's note asks for the process
-    // domain, entropy and the network and no clock, so the census moves from D2's `0 1 2` to
-    // `0 7 9 10` (10 is the network stack's endpoint): the grant changed with the
-    // vouch, and nothing else on the line did. The probe lines then read as reached, which their
-    // wording ("declared no ...") was not written for. A rollback takes the vouch away and the
-    // census is D2's again.
+    // so the same bytes are now judged vouched, on the manifest note they carry (milestone 597
+    // (a program carries its manifest in an ELF note)). The witness's note asks for the network,
+    // and a vouch records no owner's grant of it (milestone 892 (a std program at the prompt holds
+    // the network and a resolver), "The network at install, ruled"), so vouched they are refused
+    // by name of that grant and nothing is spawned. A rollback takes the vouch away and the
+    // census is D2's again: unvouched, the note's asks grant nothing and the bytes run.
     line(
         0,
         "vouch installed/unvouched",
@@ -46,7 +45,14 @@ pub(super) const LINES: &[Line] = &[
     // **A vouch claims no name** (§229 B2): the entry is found by the bytes' digest and never by
     // the name it was recorded under, so the bare word reaches nothing.
     line(0, "unvouched", &["no such program"]),
-    line(1, crate::disk::INSTALLED_UNVOUCHED, &["slots held: 0 7 9"]),
+    line(
+        0,
+        crate::disk::INSTALLED_UNVOUCHED,
+        &[
+            "refused: its manifest asks for the network, and no owner's grant of the network is \
+           recorded for it among the installed programs",
+        ],
+    ),
     line(1, "jig rollback", &["rolled back; generation 3 is live"]),
     line(
         0,

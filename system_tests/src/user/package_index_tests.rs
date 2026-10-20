@@ -28,9 +28,7 @@ const NO_PROGRAM: &str = "no package_fetch_exerciser in this archive: `cargo xta
 /// The refusal is what gives the fetch its meaning: the altered copy is a complete, correct HTTPS
 /// exchange of a well-formed package, so only the digest the index carried can refuse it.
 ///
-/// Falsification: attested 2026-10-10. Not replayable then, since no sweep built the TLS graph;
-/// the suite builds it since milestone 855, and the patch that would make this replayable is that
-/// block's `BUGS`. With
+/// Attested by hand 2026-10-10, besides the replayable record below: with
 /// `package_index::public_address` admitting every address (on aarch64), the client connected to
 /// the listed location at 10.0.2.9 and the test went red on the private-address line. Earlier, with
 /// `accept` hashing the fetched bytes instead of reading the entry's digest, `uptime` was refused
@@ -50,13 +48,13 @@ const NO_PROGRAM: &str = "no package_fetch_exerciser in this archive: `cargo xta
 /// The fixed client dials only the address its check passed (`package_index::Location::check`),
 /// slirp has nothing at 192.0.2.1, and the reason is `ConnectionRefused`.
 ///
-/// Falsification: attested 2026-10-10. On patagonia, with the fix in, `get` in
-/// `pinned_tls_exerciser/src/bin/package_fetch_exerciser.rs` patched to connect by name again
-/// (`TcpStream::connect((server_name, to[0].port()))`), the exerciser rebuilt, and this test booted
-/// on aarch64, riscv64 and x86_64: red on all three with the certificate error above, green on all
-/// three with the patch reverted. The x86_64 leg under OVMF, re-booted once its runner exported
-/// the boot tag, went the same way: green, and red under the patch. A replay needs `package_fetch_exerciser` in the archive, which
-/// no gate builds until milestone 855 (the TLS graph enters the gated build).
+/// The record's patch, `get` in `pinned_tls_exerciser/src/bin/package_fetch_exerciser.rs` connecting
+/// by name again (`TcpStream::connect((server_name, to[0].port()))`), went red on aarch64, riscv64
+/// and x86_64 (OVMF included) on patagonia, 2026-10-10, and green with it reverted. Row 35 of
+/// `notes/confinement-claims.md` cites this test.
+///
+/// Falsification: replayable `system_tests/falsifications/user.package_index_tests.a_package_is_fetched_through_the_index_by_name_over_tls_and_judged_by_its_digest.patch`
+///
 /// Redirects (C2, #2048): six probes through a second test authority, one fetched, five refused.
 /// Their falsification is recorded in `notes/packages/the-index-format.md`, question C.
 #[test_case]
@@ -92,7 +90,7 @@ fn a_package_is_fetched_through_the_index_by_name_over_tls_and_judged_by_its_dig
         image("clock"),
         image("entropy"),
         w.stack,
-        Some((service, GRANTED)),
+        Some((service, &[GRANTED])),
     );
     let run = &spawned.run;
     let mut got = [0u8; 4096];

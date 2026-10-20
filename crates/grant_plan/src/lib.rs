@@ -81,8 +81,8 @@ pub use command::{
 };
 pub use escalation::{Action, COOP_GRACE_TICKS, Escalation};
 pub use image::{
-    IMAGE_ROW, ImageRefusal, NO_NOTE_MANIFEST, image_can_carry, image_hears_words, image_manifest,
-    image_request_fits,
+    IMAGE_ROW, ImageRefusal, NO_NOTE_MANIFEST, Vouch, image_can_carry, image_hears_words,
+    image_manifest, image_request_fits,
 };
 pub use manifest::{
     CATALOG_SLOT, DIAGNOSTICS_SLOT, DOMAIN_SLOT, DirectoryGrantDeclaration, ENTROPY_SLOT,

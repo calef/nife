@@ -44,8 +44,9 @@
 //! - **Non-blocking mode and read/write timeouts.** The contract is blocking-only, with no poll
 //!   verb. `set_nonblocking(true)` and `set_*_timeout(Some(..))` return `Unsupported`;
 //!   `set_nonblocking(false)` and the `None` timeouts succeed.
-//! - **DNS without a resolver grant.** `lookup_host` asks the resolver at `rt::RESOLVER_SLOT` (see
-//!   the end of this file); a program granted none resolves only numeric addresses.
+//! - **DNS without a resolver grant.** `lookup_host` asks the resolver through the badges at
+//!   `rt::RESOLVER_SLOTS` (see the end of this file); a program granted none resolves only numeric
+//!   addresses.
 //! - **IPv6.** net_stack is IPv4-only (smoltcp built with `proto-ipv4`).
 //! - **`peek`, `duplicate`, multicast join/leave.** No contract verb backs them.
 //!
@@ -59,7 +60,7 @@ use crate::cell::UnsafeCell;
 use crate::fmt;
 use crate::io::{self, BorrowedCursor, IoSlice, IoSliceMut};
 use crate::net::{Ipv4Addr, Ipv6Addr, Shutdown, SocketAddr, SocketAddrV4, ToSocketAddrs};
-use crate::sync::atomic::{AtomicBool, Ordering};
+use crate::sync::atomic::{AtomicBool, AtomicU64, AtomicU8, Ordering};
 use crate::sys::pal::nife::netproto::*;
 use crate::sys::pal::nife::{abi, rt};
 use crate::sys::unsupported;
@@ -1050,22 +1051,28 @@ impl fmt::Debug for UdpSocket {
 // --- DNS: the resolver this program was granted, if it was granted one -------------------------
 //
 // Milestone 801 (packages over the internet). A name is resolved by the name resolver of milestone
-// 384 (in a capability system the resolver is a grant), through the badged endpoint at
-// `rt::RESOLVER_SLOT`. The badge carries the zone the spawner granted (§252 (a resolver grant is
-// one zone per client badge)), so `ToSocketAddrs` resolves that zone and nothing else, and a
-// program with the slot empty resolves nothing: numeric addresses still work, because std parses
-// those before it ever calls here. The page the resolver writes answers into is this program's,
-// minted from the socket frames' budget once and kept, which is why a resolver is only usable
-// beside the network.
+// 384 (in a capability system the resolver is a grant), through the badged endpoints at
+// `rt::RESOLVER_SLOTS`. Each badge carries one zone the spawner granted (§252 (a resolver grant is
+// one zone per client badge)), so `ToSocketAddrs` resolves those zones and nothing else, and a
+// program with slot 9 empty resolves nothing: numeric addresses still work, because std parses
+// those before it ever calls here. The badges are asked in slot order, and the next only when the
+// resolver answers that the name is outside this one's zone (milestone 892 (a std program at the
+// prompt holds the network and a resolver); calef, 2026-10-19 (UTC): "probed in order"). That
+// refusal is the resolver's own, before it sends anything, so a miss costs one round trip and no
+// packet. The page the resolver writes answers into is this program's, minted from the socket
+// frames' budget once and kept, and lent to each badge the first time that badge is asked; that is
+// why a resolver is only usable beside the network.
 
 use crate::sys::pal::nife::resolveproto as resolve;
 
 /// A method no object type defines: the probe `sys/args` makes, so an empty slot costs no page.
 const NO_SUCH_METHOD: u64 = 0xffff;
 
-/// Whether the resolver page is minted, mapped and attached. Guarded by `RESOLVER_LOCK`, which
-/// is also held across each resolve, because the page is one buffer for the whole program.
-static RESOLVER_READY: AtomicBool = AtomicBool::new(false);
+/// The resolver page's frame once it is minted and mapped, 0 before. Guarded by `RESOLVER_LOCK`,
+/// which is also held across each resolve, because the page is one buffer for the whole program.
+static RESOLVER_FRAME: AtomicU64 = AtomicU64::new(0);
+/// One bit per entry of `rt::RESOLVER_SLOTS`: that badge has been lent the page.
+static RESOLVER_ATTACHED: AtomicU8 = AtomicU8::new(0);
 static RESOLVER_LOCK: AtomicBool = AtomicBool::new(false);
 
 struct ResolverGuard;
@@ -1086,31 +1093,38 @@ fn resolver_lock() -> ResolverGuard {
     ResolverGuard
 }
 
-/// Mint, map and attach the resolver page, once. `Unsupported` when no resolver was granted, or
-/// no network budget to pay for the page.
-fn ensure_resolver_page(_held: &ResolverGuard) -> io::Result<()> {
-    if RESOLVER_READY.load(Ordering::Relaxed) {
-        return Ok(());
-    }
+/// Whether `slot` holds a capability: an empty one answers -1 to a method nothing defines.
+fn granted(slot: u64) -> bool {
     // SAFETY: a plain syscall that cannot succeed; -1 is "the slot is empty".
-    if unsafe { rt::invoke(rt::RESOLVER_SLOT, NO_SUCH_METHOD, 0, 0, 0) } == -1 {
-        return Err(io::Error::UNSUPPORTED_PLATFORM);
+    unsafe { rt::invoke(slot, NO_SUCH_METHOD, 0, 0, 0) != -1 }
+}
+
+/// Mint and map the resolver page once, and lend it to the badge at `rt::RESOLVER_SLOTS[i]` the
+/// first time that badge is asked. `Unsupported` with no network budget to pay for the page.
+fn ensure_resolver_page(_held: &ResolverGuard, i: usize) -> io::Result<()> {
+    let mut frame = RESOLVER_FRAME.load(Ordering::Relaxed);
+    if frame == 0 {
+        // SAFETY: plain syscall; the kernel validates the slot and the budget.
+        let minted = unsafe { rt::invoke(NET_MEMORY_REGION, abi::memory_region::RETYPE, 0, 0, 0) };
+        if minted < 0 {
+            return Err(io::Error::UNSUPPORTED_PLATFORM);
+        }
+        frame = minted as u64;
+        // SAFETY: plain syscall; the frame was just minted and is ours to map.
+        if unsafe { rt::invoke(frame, abi::page_frame::MAP, rt::RESOLVER_PAGE, 1, NET_MEMORY_REGION) } < 0 {
+            return Err(io::const_error!(io::ErrorKind::Other, "mapping the resolver page failed"));
+        }
+        RESOLVER_FRAME.store(frame, Ordering::Relaxed);
     }
-    // SAFETY: plain syscall; the kernel validates the slot and the budget.
-    let frame = unsafe { rt::invoke(NET_MEMORY_REGION, abi::memory_region::RETYPE, 0, 0, 0) };
-    if frame < 0 {
-        return Err(io::Error::UNSUPPORTED_PLATFORM);
-    }
-    let frame = frame as u64;
-    // SAFETY: plain syscall; the frame was just minted and is ours to map.
-    if unsafe { rt::invoke(frame, abi::page_frame::MAP, rt::RESOLVER_PAGE, 1, NET_MEMORY_REGION) } < 0 {
-        return Err(io::const_error!(io::ErrorKind::Other, "mapping the resolver page failed"));
+    let bit = 1u8 << i;
+    if RESOLVER_ATTACHED.load(Ordering::Relaxed) & bit != 0 {
+        return Ok(());
     }
     // SAFETY: plain syscall; the frame carries its budget's GRANT (slot 3's, milestone 824 (a
     // retype mints no right its budget lacks)), narrowed here.
     let sent = unsafe {
         rt::invoke(
-            rt::RESOLVER_SLOT,
+            rt::RESOLVER_SLOTS[i],
             abi::rendezvous::SEND_CAP,
             frame,
             abi::rights::READ | abi::rights::WRITE,
@@ -1120,7 +1134,7 @@ fn ensure_resolver_page(_held: &ResolverGuard) -> io::Result<()> {
     if sent < 0 {
         return Err(io::Error::UNSUPPORTED_PLATFORM);
     }
-    RESOLVER_READY.store(true, Ordering::Relaxed);
+    RESOLVER_ATTACHED.fetch_or(bit, Ordering::Relaxed);
     Ok(())
 }
 
@@ -1140,23 +1154,39 @@ impl Iterator for LookupHost {
     }
 }
 
-/// Resolve `host` through the granted resolver. Each refusal keeps its reason: `PermissionDenied`
-/// for a name outside the grant (nothing was asked), `NotFound` for a name the server says does not
-/// exist, `Unsupported` for a program granted no resolver.
+/// Resolve `host` through the granted resolver badges, in slot order. Each refusal keeps its
+/// reason: `PermissionDenied` for a name outside every granted zone (nothing was asked),
+/// `NotFound` for a name the server says does not exist, `Unsupported` for a program granted no
+/// resolver.
 pub fn lookup_host(host: &str, port: u16) -> io::Result<LookupHost> {
     let name = host.as_bytes();
     if name.is_empty() || name.len() > resolve::NAME_TEXT_MAX {
         return Err(io::const_error!(io::ErrorKind::InvalidInput, "not a host name"));
     }
     let held = resolver_lock();
-    ensure_resolver_page(&held)?;
     let page = rt::RESOLVER_PAGE;
-    for (i, &b) in name.iter().enumerate() {
-        fw8(page + (resolve::OFF_NAME + i) as u64, b);
+    let mut outcome = None;
+    // The badges are filled from slot 9 onward, so the first empty slot ends the list.
+    for i in (0..rt::RESOLVER_SLOTS.len()).take_while(|&i| granted(rt::RESOLVER_SLOTS[i])) {
+        ensure_resolver_page(&held, i)?;
+        // The resolver may have written answers over the name, so it goes in again each time.
+        for (k, &b) in name.iter().enumerate() {
+            fw8(page + (resolve::OFF_NAME + k) as u64, b);
+        }
+        let (word, _ttl) = rt::call(
+            rt::RESOLVER_SLOTS[i],
+            resolve::request(resolve::OPERATION_RESOLVE),
+            name.len() as u64,
+        );
+        let Some(answer) = resolve::Outcome::from_word(word) else {
+            return Err(io::Error::UNSUPPORTED_PLATFORM);
+        };
+        outcome = Some(answer);
+        if answer.status != resolve::status::DENIED {
+            break;
+        }
     }
-    let (word, _ttl) =
-        rt::call(rt::RESOLVER_SLOT, resolve::request(resolve::OPERATION_RESOLVE), name.len() as u64);
-    let Some(outcome) = resolve::Outcome::from_word(word) else {
+    let Some(outcome) = outcome else {
         return Err(io::Error::UNSUPPORTED_PLATFORM);
     };
     let kind = match outcome.status {

@@ -1,6 +1,7 @@
 ---
-status: PARTIAL
+status: BUILT
 raised: 2026-10-10
+built: 2026-10-19
 milestone_dependencies: none
 decision_dependencies: none
 machine_requirements: none
@@ -50,7 +51,7 @@ ground where nothing has been found. The surfaces, newest first:
 
 ## Result
 
-PARTIAL, 2026-10-10 (UTC). The pass booted one escape on its first surface and stopped there. The
+BUILT, 2026-10-19 (UTC). The pass booted one escape on its first surface and stopped there. The
 milestone 801 (packages over the internet) package client checked one resolution of a listed
 location's host, then connected by name, which resolved again. A rebinding name server answered
 the check public and the connect private, and the client reached the private peer Q1 forbids. The
@@ -61,8 +62,17 @@ path. It was literally just shipped, but counts." Criterion (c)'s count restarte
 test is green on aarch64, riscv64 and x86_64, and red on all three when connect-by-name is patched
 back.
 
-Not done: the 34-row sweep and the variant work against the fixed escapes. With the count already
-at zero, they could no longer make this pass a clean one. See
+Row 35 of `notes/confinement-claims.md` holds the fetch path's claim: a listed location never
+reaches a private or link-local address, and the address dialed is the one the check passed. Its
+record is replayable: the patch makes the client connect by name again, and it booted red
+on aarch64, riscv64 and x86_64 on 2026-10-19 (UTC). The weekly sweep replays it.
+
+The table sweep and the variant work against the fixed escapes did not run here. With the count
+already at zero, they could no longer make this pass a clean one. calef ruled on #2432 (2026-10-19
+23:18 UTC): "New pass." They belong to the tenth outsider pass, a GLM 5.3 pass under
+`briefs/confinement-outsider-pass.md` that can count toward criterion (c), proposed as
+`design/roadmap/proposals/a-tenth-outsider-pass-attacks-the-confinement-claim.md`. Its floor
+includes row 35, so it covers this pass's variant ground. See
 `notes/confinement-outsider-pass-6.md` for the escape, the fix and the refusal log.
 
 ## Done means
@@ -76,14 +86,9 @@ at zero, they could no longer make this pass a clean one. See
 
 ## Follow-on
 
-- **Outstanding.** The rest of this pass: the 34-row sweep and the variant work, unrun. A seventh
-  pass starts criterion (c)'s count afresh and would cover the same rows, so this remainder is
-  likely covered by it rather than run on its own; that is the maintainer's call when it is
-  minted.
-- **Milestone 855.** A claims-table row for the package fetch: "A listed location never reaches a
-  private or link-local address" has no row in `notes/confinement-claims.md`. Criterion (b) wants
-  every row replayable, and this test's falsification can only be `attested` until milestone 855
-  (the TLS graph enters the gated build) puts the exerciser in a gate, so the row waits on 855.
+- **Proposed.** The table sweep and the variant work go to the tenth outsider pass, by GLM 5.3,
+  in `design/roadmap/proposals/a-tenth-outsider-pass-attacks-the-confinement-claim.md`. It waits
+  on calef's GLM token allowance.
 - **Milestone 198.** A human review, or a public bounty once a stranger can install nife, is the
   stronger form and waits on milestone 198 (a package manager, and the trivial install that makes
   a second customer possible).
