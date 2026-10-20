@@ -73,10 +73,11 @@ Two edges are kept on purpose, and the lane records why where a reader meets eac
 - Each of the four workflows runs to completion on a dispatch with the App secrets unset.
 - `fleet-metrics.yml` writes byte-identical CSV rows to `metrics.yml`'s last run for the same week.
 
-## Where it stands, 2026-10-19 (UTC)
+## Where it stands, 2026-10-20 (UTC)
 
-PARTIAL. Every cut is made, and four of the five exit checks were run and pass. The fifth needs a
-dispatch from a fork, which no lane has made. Each tie from the inventory, checked against the code
+PARTIAL. Every cut is made, and four of the five exit checks were run and pass. The fifth was run
+from a fork and does not pass as written: `github.token` may not open the pull request each
+workflow ends with. Each tie from the inventory, checked against the code
 first:
 
 | Tie | What the code did | What happened |
@@ -122,22 +123,39 @@ Exit checks, as run on 2026-10-19 (UTC) against `42836328b` plus this block's co
   `metrics.yml`'s last run before the split (2026-10-11 12:25 UTC) for every finished day.
   `fleet-metrics.yml` is now the only writer of both files and has run green daily through
   2026-10-19 (run 39241978532).
-- **Not run.** The four workflows have not been dispatched with the App absent. On nife the secrets
-  sit in the `automation` environment, whose deployment branches are `main` only, and three of the
-  four workflows name that environment on the job that pushes. A dispatch on a lane branch is
-  refused, and one on `main` mints the App's token. A fork has neither the secrets nor the
-  environment, so a dispatch there is the test.
+- **App absent, dispatched on a fork.** On nife the secrets sit in the `automation` environment,
+  whose deployment branches are `main` only, so a dispatch on a branch is refused and one on `main`
+  mints the App's token. The fork `calef/nife` has no secrets and no environments. Its `main` was
+  fast-forwarded to nife's `01be10059`, which registered its workflows, and all four were
+  dispatched there on 2026-10-20 at 03:32 UTC. Referencing `automation` created an empty
+  environment with no protection rules. On every job that has the token step, the step was skipped.
+
+| Workflow | Run on `calef/nife` | Exit, measured |
+|---|---|---|
+| `vendor-watch` | 39364813031 | Green. Upstream had moved, but the report was unchanged, so the job exited before `gh pr create`. The pull request path did not run. |
+| `verify-shard-refresh` | 39364815886 | Red at its last step. The branch `metrics/verify-shards` pushed on `github.token`, then `gh pr create` was refused: "GitHub Actions is not permitted to create or approve pull requests". |
+| `mutation` | 39364805264 | Still running at 04:57 UTC. Its eight shards have 330 minutes, so it ends by 09:02 UTC. |
+| `falsifications` | 39364802502 | Still running at 04:57 UTC. The seeded syscall driver and the arm64 replay passed. The confined fuzzer failed on its own finding (BUGS). The replay job reaches its two-hour limit at 05:32 UTC. |
+
+Predicted, not yet measured: `mutation` and `falsifications` reach `gh pr create` only if their
+earlier jobs pass, and there it is refused the same way.
 
 ## BUGS
 
 - A gate split in two can lose a check in the gap. A new selftest of a class-3 file that is added
   to `script/lint` makes a stranger's lint read the fleet, and only rerunning the stranger clone
   catches it.
-- The fallback is predicted to fail at its last step. With the App absent, each workflow's
-  `gh pr create` runs on `github.token`, and GitHub refuses that unless the repository allows
-  Actions to create pull requests. That setting is off on nife and off by default on a fork. The
-  comment in each workflow says the ephemeral token "still pushes and opens the pull request".
-  Nothing has run this path yet; the fork dispatch below is what settles it.
+- The fallback fails at its last step. With the App absent, each workflow's `gh pr create` runs on
+  `github.token`, and GitHub refuses it unless the repository allows Actions to create pull
+  requests. That setting is off on nife, and off on the fork. Measured on `verify-shard-refresh`:
+  the branch pushed, and the pull request was refused (run 39364815886). The comment in each
+  workflow says the ephemeral token "still pushes and opens the pull request". Only the first half
+  is true.
+- The confined fuzzer's long sweep fails on seed `0x2f2e76cb02` at step 34. Fuzzer 0's slot 2 is
+  filled with a page frame after a syscall on a held page frame "which grants nothing". It fails
+  identically on nife's scheduled run of 2026-10-19 (39243857792), so the fork did not cause it.
+  The replay line is `NIFE_CONFINED_FUZZ_SEEDS=202643000066:1`. Nothing tracks it, and it belongs
+  to the fuzzer's owner rather than to this milestone.
 - `falsifications` has not reached its record job on `main` since at least 2026-10-12: the replay
   job hits its two-hour limit and is cancelled (run 39243857792). A dispatch with the App absent
   will stop at the same place until that is fixed.
@@ -154,10 +172,11 @@ Exit checks, as run on 2026-10-19 (UTC) against `42836328b` plus this block's co
 
 ## Follow-on
 
-- **Outstanding.** Dispatch `falsifications`, `mutation`, `vendor-watch` and
-  `verify-shard-refresh` on a fork's `main` and record each run's exit. A new fork registers no
-  workflows until something is pushed to it or Actions is enabled on its Actions tab. Each workflow
-  skips its token step when `AUTOMATION_APP_ID` is empty, as `toolchain-bump.yml` does.
+- **Outstanding.** Record `mutation`'s and `falsifications`' exits from the fork dispatch above.
+- **Outstanding.** The exit says each workflow "runs to completion" with the App absent. As
+  measured, none that has something to record can, because `github.token` may not open a pull
+  request on nife or on a fork. Whether the fallback, the repository setting or the criterion
+  changes is calef's ruling.
 - **Milestone 902.** Milestone 902 (nife's tooling, sorted by who needs it, before any of it moves).
   Moving class 3 as a unit, with the `Recorded.` paths and the class-3 notes that make the
   stranger clone's two record checks fail, is the inventory's next step:
