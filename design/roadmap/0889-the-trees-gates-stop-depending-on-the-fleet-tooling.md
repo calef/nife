@@ -75,9 +75,10 @@ Two edges are kept on purpose, and the lane records why where a reader meets eac
 
 ## Where it stands, 2026-10-20 (UTC)
 
-PARTIAL. Every cut is made, and four of the five exit checks were run and pass. The fifth was run
-from a fork and does not pass as written: `github.token` may not open the pull request each
-workflow ends with. Each tie from the inventory, checked against the code
+PARTIAL. Every cut is made, and four of the five exit checks were run and pass. calef ruled on the
+fifth (below): with the App absent, a workflow completes through its push. Three workflows do or
+are measured doing so; `falsifications` cannot reach its push for reasons the App does not touch.
+Each tie from the inventory, checked against the code
 first:
 
 | Tie | What the code did | What happened |
@@ -137,18 +138,25 @@ Exit checks, as run on 2026-10-19 (UTC) against `42836328b` plus this block's co
 | `mutation` | 39364805264 | Red at its last step. All eight shards, the baseline report and the inflow check passed. The record job pushed `mutation/census` on `github.token`, then `gh pr create` was refused the same way. |
 | `falsifications` | 39364802502 | Red. The seeded syscall driver and the arm64 replay passed. The confined fuzzer failed on its own finding (BUGS). The replay job was cancelled at its two-hour limit (05:32 UTC), so the record job was skipped and never reached `gh pr create`. |
 
+calef, 2026-10-20 14:30 (UTC), on the fallback: "a". With the App absent, a workflow that has
+something to record measures, writes and pushes, ends green, and puts the compare link in its run
+summary; no repository is asked to let Actions open pull requests, and the exit is read as "the run
+completes through the push". All four workflows now call `helpers/pull-request-by-hand.sh`
+(provisional) after their push when no App token was minted. The fork's `main` was fast-forwarded
+to the branch carrying that change and two were dispatched again:
+
+| Workflow | Run on `calef/nife` | Exit, measured |
+|---|---|---|
+| `verify-shard-refresh` | 39441127380 | Green. It pushed `metrics/verify-shards`, opened no pull request, and wrote the compare link to its summary. |
+| `mutation` | 39442048323 | Dispatched 2026-10-20; its shards take about two hours. |
+
 ## BUGS
 
 - A gate split in two can lose a check in the gap. A new selftest of a class-3 file that is added
   to `script/lint` makes a stranger's lint read the fleet, and only rerunning the stranger clone
   catches it.
-- The fallback fails at its last step. With the App absent, each workflow's `gh pr create` runs on
-  `github.token`, and GitHub refuses it unless the repository allows Actions to create pull
-  requests. That setting is off on nife, and off on the fork. Measured on `verify-shard-refresh` and
-  `mutation`: each branch pushed, and each pull request was refused (runs 39364815886 and
-  39364805264). The comment in each
-  workflow says the ephemeral token "still pushes and opens the pull request". Only the first half
-  is true.
+- Without the App, nobody is told a record is waiting. The run is green and the compare link is
+  in its summary, so a person has to look at the run to find it.
 - The confined fuzzer's long sweep fails on seed `0x2f2e76cb02` at step 34. Fuzzer 0's slot 2 is
   filled with a page frame after a syscall on a held page frame "which grants nothing". It fails
   identically on nife's scheduled run of 2026-10-19 (39243857792), so the fork did not cause it.
@@ -170,10 +178,11 @@ Exit checks, as run on 2026-10-19 (UTC) against `42836328b` plus this block's co
 
 ## Follow-on
 
-- **Outstanding.** The exit says each workflow "runs to completion" with the App absent. As
-  measured, none that has something to record can, because `github.token` may not open a pull
-  request on nife or on a fork. Whether the fallback, the repository setting or the criterion
-  changes is calef's ruling.
+- **Outstanding.** Record `mutation`'s exit from run 39442048323.
+- **Outstanding.** `falsifications` cannot complete through its push with or without the App: its
+  replay job reaches its two-hour limit, and its confined fuzzer fails on an untracked finding
+  (both in BUGS). Whether 889 is BUILT with that workflow's App-less path shown only by the shared
+  helper is asked of calef on #2442.
 - **Milestone 902.** Milestone 902 (nife's tooling, sorted by who needs it, before any of it moves).
   Moving class 3 as a unit, with the `Recorded.` paths and the class-3 notes that make the
   stranger clone's two record checks fail, is the inventory's next step:
