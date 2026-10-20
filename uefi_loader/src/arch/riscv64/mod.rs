@@ -5,7 +5,7 @@
 //! physical address of the device tree. UEFI runs this loader in S-mode too, possibly with paging
 //! on (an identity map), and it is the only one of the three architectures where the kernel needs
 //! a number the firmware must be asked for: which hart it is running on. UEFI answers that with
-//! `RISCV_EFI_BOOT_PROTOCOL` (read from EDK2's header, `efi::RiscvBootProtocol`); a firmware
+//! `RISCV_EFI_BOOT_PROTOCOL` (read from EDK2's header, [`RiscvBootProtocol`]); a firmware
 //! without it is asked through the device tree's `/chosen/boot-hartid`, which U-Boot writes.
 //!
 //! **There is no `riscv64` UEFI target in rustc** (`rustc --print target-list`, 2026-09-19, lists
@@ -21,9 +21,36 @@
 //! - **Everything the kernel reads early must be below 3 GiB** ([`ALLOCATION_CEILING`]): the boot
 //!   table maps the first three gigapages and nothing above.
 
-use uefi_loader::efi::{self, BootServices, Handle, SUCCESS, SystemTable};
+use r_efi::efi::{self, BootServices, Handle, Status, SystemTable};
 
-use crate::{Placed, configuration_table, copy_device_tree, exit_boot_services, say, say_decimal};
+use crate::{
+    Placed, SUCCESS, configuration_table, copy_device_tree, exit_boot_services, say, say_decimal,
+};
+
+/// **`RISCV_EFI_BOOT_PROTOCOL`** (`gRiscVEfiBootProtocolGuid`, read from EDK2's
+/// `UefiCpuPkg/UefiCpuPkg.dec`, 2026-09-19), which answers the one question RISC-V has that the
+/// other two architectures do not: which hart is this. The kernel's entry contract wants it in
+/// `a0`, and nothing a UEFI application runs in tells it otherwise.
+///
+/// Written here because `r-efi` 7.1.0 does not define it: it is RISC-V's own protocol, not in the
+/// UEFI specification proper.
+const RISCV_BOOT_PROTOCOL_GUID: efi::Guid = efi::Guid::from_fields(
+    0xccd1_5fec,
+    0x6f73,
+    0x4eec,
+    0x83,
+    0x95,
+    &[0x3e, 0x69, 0xe4, 0xb9, 0x40, 0xbf],
+);
+
+/// The protocol's interface: a revision and one function (`RiscVBootProtocol.h` in EDK2).
+#[repr(C)]
+struct RiscvBootProtocol {
+    /// `RISCV_EFI_BOOT_PROTOCOL_REVISION`, 0x00010000 for the first.
+    revision: u64,
+    /// `GetBootHartId(this, &mut hart)`.
+    get_boot_hart_id: unsafe extern "efiapi" fn(*mut RiscvBootProtocol, *mut usize) -> Status,
+}
 
 core::arch::global_asm!(include_str!("leave_uefi.s"));
 
@@ -47,7 +74,7 @@ pub struct Found {
 pub fn discover(table: &SystemTable, services: &BootServices) -> Result<Found, &'static str> {
     let device_tree: *const u8 = configuration_table(table)
         .iter()
-        .find(|entry| entry.vendor_guid == efi::DEVICE_TREE_GUID)
+        .find(|entry| entry.vendor_guid == efi::DTB_TABLE_GUID)
         .map(|entry| entry.vendor_table.cast())
         .ok_or("the firmware offers no device tree")?;
 
@@ -75,16 +102,15 @@ pub fn discover(table: &SystemTable, services: &BootServices) -> Result<Found, &
 
 fn boot_hart_from_protocol(services: &BootServices) -> Option<u64> {
     let mut interface: *mut core::ffi::c_void = core::ptr::null_mut();
-    if (services.locate_protocol)(
-        &efi::RISCV_BOOT_PROTOCOL_GUID,
-        core::ptr::null_mut(),
-        &mut interface,
-    ) != SUCCESS
-        || interface.is_null()
-    {
+    let mut guid = RISCV_BOOT_PROTOCOL_GUID;
+    // SAFETY: a boot service, before `ExitBootServices`. A null registration asks for the first
+    // handle carrying the protocol; the firmware reads the GUID and writes only `interface`.
+    let found =
+        unsafe { (services.locate_protocol)(&mut guid, core::ptr::null_mut(), &mut interface) };
+    if found != SUCCESS || interface.is_null() {
         return None;
     }
-    let protocol = interface.cast::<efi::RiscvBootProtocol>();
+    let protocol = interface.cast::<RiscvBootProtocol>();
     let mut hart = 0usize;
     // SAFETY: `LocateProtocol` succeeded, so the firmware asserts `protocol` is this interface.
     let status = unsafe { ((*protocol).get_boot_hart_id)(protocol, &mut hart) };

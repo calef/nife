@@ -19,9 +19,9 @@ pub(crate) extern "efiapi" fn efi_main(handle: Handle, system_table: *mut System
 
     say(table, "nife uefi_loader: milestone 87\r\n");
 
-    // A UEFI error status (the high bit is what makes it one), so the firmware reports the failure
-    // and moves to the next boot option rather than presenting a blank screen.
-    const LOAD_ERROR: Status = (1 << (usize::BITS - 1)) | 1;
+    // A UEFI error status, so the firmware reports the failure and moves to the next boot option
+    // rather than presenting a blank screen.
+    const LOAD_ERROR: Status = Status::LOAD_ERROR;
 
     let Err(reason) = load(handle, table, services) else {
         // `load` hands the machine to the kernel and never comes back, so this cannot run.
@@ -138,7 +138,7 @@ pub(crate) fn copy_device_tree(
     let src = unsafe { core::slice::from_raw_parts(source, total) };
     let capacity = device_tree_patch::output_len(src).map_err(device_tree_patch::Error::reason)?;
     let pages = (capacity as u64).div_ceil(PAGE) as usize;
-    let base = allocate_below(services, pages, memory_type::LOADER_DATA)
+    let base = allocate_below(services, pages, efi::LOADER_DATA)
         .ok_or("no memory below the kernel's reach for the device tree")?;
     // SAFETY: `pages` pages at `base` were just granted exclusively.
     let out = unsafe { core::slice::from_raw_parts_mut(base as *mut u8, pages * PAGE as usize) };
@@ -168,36 +168,46 @@ pub(crate) fn exit_boot_services(
     let mut key = 0usize;
     let mut descriptor_size = 0usize;
     let mut version = 0u32;
-    (services.get_memory_map)(
-        &mut bytes,
-        ptr::null_mut(),
-        &mut key,
-        &mut descriptor_size,
-        &mut version,
-    );
+    // SAFETY: a boot service, before `ExitBootServices`. A null buffer asks only for the size.
+    unsafe {
+        (services.get_memory_map)(
+            &mut bytes,
+            ptr::null_mut(),
+            &mut key,
+            &mut descriptor_size,
+            &mut version,
+        )
+    };
+    // The map is never walked here, but a descriptor smaller than the structure is a firmware whose
+    // map no part of this loader can read, so it is refused before it is relied on.
     if bytes == 0 || descriptor_size < size_of::<efi::MemoryDescriptor>() {
         return Err("the firmware reported no memory map");
     }
     let capacity = bytes + MAP_SLACK_DESCRIPTORS * descriptor_size;
-    let mut buffer: *mut u8 = ptr::null_mut();
-    if (services.allocate_pool)(memory_type::LOADER_DATA, capacity, &mut buffer) != SUCCESS
-        || buffer.is_null()
-    {
+    let mut buffer: *mut core::ffi::c_void = ptr::null_mut();
+    // SAFETY: a boot service, before `ExitBootServices`; it writes only `buffer`.
+    let pooled = unsafe { (services.allocate_pool)(efi::LOADER_DATA, capacity, &mut buffer) };
+    if pooled != SUCCESS || buffer.is_null() {
         return Err("no memory for the firmware's memory map");
     }
     for _ in 0..2 {
         let mut got = capacity;
-        if (services.get_memory_map)(
-            &mut got,
-            buffer,
-            &mut key,
-            &mut descriptor_size,
-            &mut version,
-        ) != SUCCESS
-        {
+        // SAFETY: `buffer` holds `capacity` bytes from the firmware's pool, and `got` says so.
+        let mapped = unsafe {
+            (services.get_memory_map)(
+                &mut got,
+                buffer.cast(),
+                &mut key,
+                &mut descriptor_size,
+                &mut version,
+            )
+        };
+        if mapped != SUCCESS {
             return Err("the firmware's memory map grew between the two GetMemoryMap calls");
         }
-        if (services.exit_boot_services)(handle, key) == SUCCESS {
+        // SAFETY: `handle` is this image's, and `key` is from the `GetMemoryMap` just above with
+        // nothing allocated since, which is the specification's condition for this call.
+        if unsafe { (services.exit_boot_services)(handle, key) } == SUCCESS {
             return Ok(());
         }
     }

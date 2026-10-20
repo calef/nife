@@ -74,7 +74,7 @@ pub(crate) fn say_hex(table: &SystemTable, value: u64) {
 /// distinguish "your kernel is too big for this machine" from "your kernel overlaps a firmware
 /// volume". This walks the map the firmware would have handed over anyway and prints every
 /// descriptor in the way that is not free RAM, with its type number as the UEFI specification
-/// numbers them (`efi::memory_type`).
+/// numbers them (`r_efi::efi::CONVENTIONAL_MEMORY` and its siblings).
 ///
 /// It runs only on the failure path, so the allocation it makes cannot disturb the map key
 /// `ExitBootServices` later checks: there is no later on this path.
@@ -89,33 +89,43 @@ pub(crate) fn say_conflict(table: &SystemTable, services: &BootServices, start: 
     let mut key = 0usize;
     let mut descriptor_size = 0usize;
     let mut version = 0u32;
-    (services.get_memory_map)(
-        &mut bytes,
-        ptr::null_mut(),
-        &mut key,
-        &mut descriptor_size,
-        &mut version,
-    );
+    // SAFETY: a boot service, before `ExitBootServices`. A null buffer asks only for the size, which
+    // the firmware writes with the key and the descriptor size into these locals.
+    unsafe {
+        (services.get_memory_map)(
+            &mut bytes,
+            ptr::null_mut(),
+            &mut key,
+            &mut descriptor_size,
+            &mut version,
+        )
+    };
+    // **Never stride the map by `size_of::<MemoryDescriptor>()`.** `GetMemoryMap` reports its own
+    // `descriptor_size`, which the specification lets be larger than the structure and real
+    // firmware makes larger; a smaller one is a firmware this loader cannot read.
     if bytes == 0 || descriptor_size < size_of::<efi::MemoryDescriptor>() {
         return;
     }
     // Slack for the pool allocation itself, the same reason `MAP_SLACK_DESCRIPTORS` exists.
     let capacity = bytes + MAP_SLACK_DESCRIPTORS * descriptor_size;
-    let mut buffer: *mut u8 = ptr::null_mut();
-    if (services.allocate_pool)(memory_type::LOADER_DATA, capacity, &mut buffer) != SUCCESS
-        || buffer.is_null()
-    {
+    let mut buffer: *mut core::ffi::c_void = ptr::null_mut();
+    // SAFETY: a boot service, before `ExitBootServices`; it writes only `buffer`.
+    let pooled = unsafe { (services.allocate_pool)(efi::LOADER_DATA, capacity, &mut buffer) };
+    if pooled != SUCCESS || buffer.is_null() {
         return;
     }
     let mut got = capacity;
-    if (services.get_memory_map)(
-        &mut got,
-        buffer,
-        &mut key,
-        &mut descriptor_size,
-        &mut version,
-    ) == SUCCESS
-    {
+    // SAFETY: `buffer` holds `capacity` bytes from the firmware's pool, and `got` says so.
+    let mapped = unsafe {
+        (services.get_memory_map)(
+            &mut got,
+            buffer.cast(),
+            &mut key,
+            &mut descriptor_size,
+            &mut version,
+        )
+    };
+    if mapped == SUCCESS {
         for i in 0..got / descriptor_size {
             // SAFETY: `buffer` holds `got` bytes of descriptors and `i` is inside that count. Read
             // unaligned because the firmware chooses `descriptor_size` and nothing promises the
@@ -126,17 +136,18 @@ pub(crate) fn say_conflict(table: &SystemTable, services: &BootServices, start: 
                 )
             };
             let first = descriptor.physical_start;
-            let last = first + descriptor.page_count * PAGE;
-            if descriptor.kind == memory_type::CONVENTIONAL || last <= start || first >= end {
+            let last = first + descriptor.number_of_pages * PAGE;
+            if descriptor.r#type == efi::CONVENTIONAL_MEMORY || last <= start || first >= end {
                 continue;
             }
             say_span(table, "uefi_loader:   in the way: ", first, last);
             say(table, "uefi_loader:   memory type ");
-            say_hex(table, u64::from(descriptor.kind));
+            say_hex(table, u64::from(descriptor.r#type));
             say(table, "\r\n");
         }
     }
-    (services.free_pool)(buffer);
+    // SAFETY: `buffer` came from `AllocatePool` above and nothing holds it.
+    unsafe { (services.free_pool)(buffer) };
 }
 
 /// Print one ASCII line on the firmware console, if there is one.
@@ -159,7 +170,8 @@ pub(crate) fn say(table: &SystemTable, text: &str) {
     }
     // SAFETY: `con_out` is non-null and the firmware owns it until `ExitBootServices`; the buffer
     // is NUL-terminated because `n + 1 < len` leaves at least one zero behind.
-    unsafe { ((*table.con_out).output_string)(table.con_out, utf16.as_ptr()) };
+    // `OutputString` takes `*mut` and only reads it.
+    unsafe { ((*table.con_out).output_string)(table.con_out, utf16.as_mut_ptr()) };
 }
 
 /// There is nothing to unwind to, and by the time most failures here can happen there is no console
