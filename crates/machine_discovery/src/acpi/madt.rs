@@ -38,7 +38,7 @@ pub fn parse_madt(body: &[u8]) -> Result<Madt, AcpiError> {
 }
 
 /// One entry of the MADT's list. Only the kinds this tree acts on are decoded, four for x86 and
-/// four for aarch64; the rest keep their type byte so a boot print can say what it skipped rather
+/// five for aarch64; the rest keep their type byte so a boot print can say what it skipped rather
 /// than pretending the list was shorter than it is.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum MadtEntry {
@@ -126,6 +126,19 @@ pub enum MadtEntry {
         /// fields are then not meaningful, so they are not offered.
         spis: Option<MsiSpis>,
     },
+    /// **A GICv3 Interrupt Translation Service** (type 15, "GIC ITS"): the device that turns a
+    /// message-signaled write, tagged with the writer's device ID, into an LPI through tables the
+    /// kernel owns. It is where MSI confinement lives on aarch64 (milestone 317 (the
+    /// interrupt-remapping flags, and where MSI confinement actually lives)). A device tree states it
+    /// as an `arm,gic-v3-its` child of the GIC node. QEMU `virt` offers one with `gic-version=3`
+    /// under TCG, and none under HVF or on a GICv2.
+    GicIts {
+        /// The ITS's ID, which IORT uses to route a device's MSIs to this ITS.
+        id: u32,
+        /// `GITS_CTLR`'s frame, physical. Its length (two 64 KiB frames) is architectural and the
+        /// entry does not state it.
+        address: u64,
+    },
     /// A kind this decoder does not act on, with its type byte.
     Other(u8),
 }
@@ -148,22 +161,36 @@ const MSI_FRAME_SPI_SELECT: u32 = 1 << 0;
 /// Walks a MADT's entry list. Each entry is `[type, length, ...]`, so the list is self-describing
 /// and a length of zero would loop forever; that is refused by ending the walk.
 pub struct MadtEntries<'a> {
-    body: &'a [u8],
-    at: usize,
+    walk: EntryWalk<'a>,
 }
 
 /// Iterate the MADT's entries. `body` begins after the SDT header.
 pub fn madt_entries(body: &[u8]) -> MadtEntries<'_> {
     MadtEntries {
+        walk: entry_walk(body),
+    }
+}
+
+/// The walk without the decode: each entry's type byte and its bytes. It is separate so a reader
+/// that wants one kind can skip decoding the others, and that is a proof cost rather than a
+/// runtime one: CBMC encodes every arm of [`MadtEntries`]'s `match` at every unwound step, so a
+/// harness over [`isa_irq_table`] would otherwise pay for each GIC kind added to it.
+struct EntryWalk<'a> {
+    body: &'a [u8],
+    at: usize,
+}
+
+fn entry_walk(body: &[u8]) -> EntryWalk<'_> {
+    EntryWalk {
         body,
         at: MADT_FIXED_LEN,
     }
 }
 
-impl Iterator for MadtEntries<'_> {
-    type Item = MadtEntry;
+impl<'a> Iterator for EntryWalk<'a> {
+    type Item = (u8, &'a [u8]);
 
-    fn next(&mut self) -> Option<MadtEntry> {
+    fn next(&mut self) -> Option<(u8, &'a [u8])> {
         if self.at + 2 > self.body.len() {
             return None;
         }
@@ -177,7 +204,16 @@ impl Iterator for MadtEntries<'_> {
         }
         let e = &self.body[self.at..self.at + len];
         self.at += len;
+        Some((kind, e))
+    }
+}
 
+impl Iterator for MadtEntries<'_> {
+    type Item = MadtEntry;
+
+    fn next(&mut self) -> Option<MadtEntry> {
+        let (kind, e) = self.walk.next()?;
+        let len = e.len();
         Some(match kind {
             0 if len >= 8 => {
                 let flags = u32(e, 4);
@@ -193,12 +229,7 @@ impl Iterator for MadtEntries<'_> {
                 address: u32(e, 4),
                 gsi_base: u32(e, 8),
             },
-            2 if len >= 10 => MadtEntry::InterruptSourceOverride {
-                bus: e[2],
-                source: e[3],
-                gsi: u32(e, 4),
-                flags: u16(e, 8),
-            },
+            2 if len >= 10 => interrupt_source_override(e),
             5 if len >= 12 => MadtEntry::LocalApicAddressOverride(u64(e, 4)),
             // The three aarch64 kinds. Their lengths have grown across ACPI revisions (a GICC
             // entry was 40 bytes in 5.0, 76 in 5.1, 80 in 6.0 and 82 in 6.3), so every field is
@@ -230,8 +261,24 @@ impl Iterator for MadtEntries<'_> {
                     base: u16(e, 22),
                 }),
             },
+            // 20 bytes. ACPI 6.0 printed a wrong length for this structure and its Errata A corrected
+            // it, which is the revision QEMU cites beside the 20 it writes.
+            15 if len >= 20 => MadtEntry::GicIts {
+                id: u32(e, 4),
+                address: u64(e, 8),
+            },
             other => MadtEntry::Other(other),
         })
+    }
+}
+
+/// Decode a type-2 entry, which the caller has checked is at least 10 bytes.
+fn interrupt_source_override(e: &[u8]) -> MadtEntry {
+    MadtEntry::InterruptSourceOverride {
+        bus: e[2],
+        source: e[3],
+        gsi: u32(e, 4),
+        flags: u16(e, 8),
     }
 }
 
@@ -315,7 +362,13 @@ impl IsaIrqRouting {
 /// are sixteen of those, so a larger one is a malformed table rather than a seventeenth IRQ.
 pub fn isa_irq_table(body: &[u8]) -> [IsaIrqRouting; ISA_IRQ_COUNT] {
     let mut table = core::array::from_fn(|irq| IsaIrqRouting::isa_default(irq as u8));
-    for entry in madt_entries(body) {
+    // A plain loop over the walk, not `filter`: `Filter::next` loops inside each step, which nests a
+    // second loop under the proof's unwind bound and multiplies what CBMC unrolls.
+    for (kind, e) in entry_walk(body) {
+        if kind != 2 || e.len() < 10 {
+            continue;
+        }
+        let entry = interrupt_source_override(e);
         if let MadtEntry::InterruptSourceOverride {
             bus,
             source,
@@ -369,13 +422,13 @@ mod verification {
         let body: [u8; N] = kani::any();
         let mut it = madt_entries(&body);
         let mut seen = 0usize;
-        let mut last = it.at;
+        let mut last = it.walk.at;
         while it.next().is_some() {
             // Every step consumes at least the two bytes of its own header, which is what makes the
             // walk finite; without it this loop would not unroll.
-            assert!(it.at >= last + 2);
-            assert!(it.at <= body.len());
-            last = it.at;
+            assert!(it.walk.at >= last + 2);
+            assert!(it.walk.at <= body.len());
+            last = it.walk.at;
             seen += 1;
         }
         assert!(seen <= N / 2);
@@ -402,8 +455,12 @@ mod verification {
         // store the doc names is the other half, and CBMC's bounds check on `table[source]` catches
         // it on its own.
         let mut named: u32 = 0;
-        for entry in madt_entries(&body) {
-            if let MadtEntry::InterruptSourceOverride { bus, source, .. } = entry
+        for (kind, e) in entry_walk(&body) {
+            if kind != 2 || e.len() < 10 {
+                continue;
+            }
+            if let MadtEntry::InterruptSourceOverride { bus, source, .. } =
+                interrupt_source_override(e)
                 && bus == ISA_BUS
                 && (source as usize) < ISA_IRQ_COUNT
             {
@@ -517,6 +574,28 @@ mod tests {
                     base: 80,
                     count: 64
                 }),
+            }]
+        );
+    }
+
+    /// **QEMU's own ITS entry, byte for byte**, as `virt` writes it with `acpi=on,gic-version=3`
+    /// under TCG. None of QEMU's checked-in `tests/data/acpi/aarch64/virt/APIC*` tables holds one,
+    /// so this is the MADT that QEMU 11.1.2 installed under its EDK2, read out of guest RAM with
+    /// `pmemsave` (2026-10-19 UTC): ITS 0 at `VIRT_GIC_ITS`. The address sits at offset 8, past four
+    /// bytes of ID and two reserved, so a decoder that read it at 4 (as the redistributor's is)
+    /// would see the ID's zeros and half the address.
+    #[test]
+    fn qemus_its_entry_decodes_to_its_id_and_frame() {
+        let mut body = std::vec![0u8; MADT_FIXED_LEN];
+        body.extend_from_slice(&[
+            0x0f, 0x14, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x08, 0x08, 0x00, 0x00,
+            0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+        ]);
+        assert_eq!(
+            madt_entries(&body).collect::<std::vec::Vec<_>>(),
+            std::vec![MadtEntry::GicIts {
+                id: 0,
+                address: 0x0808_0000,
             }]
         );
     }
@@ -747,6 +826,32 @@ mod tests {
         assert_eq!(table[0].gsi, 2, "the well-formed override still applied");
     }
 
+    /// **Only a type-2 entry rewires a legacy IRQ.** An IO APIC entry with id 0 has a zero at
+    /// both of the offsets an override keeps its bus and source in, so read as an override it
+    /// would send IRQ 0 to the IO APIC's address. Id 0 is what a single-IO-APIC PC usually has.
+    #[test]
+    fn an_io_apic_entry_is_never_read_as_an_override() {
+        let mut body = [0u8; MADT_FIXED_LEN + 12];
+        body[MADT_FIXED_LEN..].copy_from_slice(&[1, 12, 0, 0, 0x00, 0x00, 0xC0, 0xFE, 0, 0, 0, 0]);
+        let table = isa_irq_table(&body);
+        for (irq, routing) in table.iter().enumerate() {
+            assert_eq!(*routing, IsaIrqRouting::isa_default(irq as u8));
+        }
+    }
+
+    /// **A type-2 entry too short to hold an override's flags is skipped, not read past.** The
+    /// override's last field ends at byte 10; an 8-byte one names a bus and a source but its
+    /// flags would come from whatever follows it in the list.
+    #[test]
+    fn a_short_override_leaves_the_isa_table_alone() {
+        let mut body = [0u8; MADT_FIXED_LEN + 8];
+        body[MADT_FIXED_LEN..].copy_from_slice(&[2, 8, ISA_BUS, 3, 9, 0, 0, 0]);
+        let table = isa_irq_table(&body);
+        for (irq, routing) in table.iter().enumerate() {
+            assert_eq!(*routing, IsaIrqRouting::isa_default(irq as u8));
+        }
+    }
+
     /// **The shortest entry the MADT's list can hold is still read.**
     ///
     /// Two bytes, a type and a length, and the list ends exactly where the body does. Every other
@@ -823,11 +928,11 @@ mod tests {
 
     // ---- survivor triage of the 2026-10-03 census ---------------------------------------------
 
-    /// The same for the MADT's four ARM kinds: a GICC, a distributor, an MSI frame and a
-    /// redistributor that stop after their header come back as `Other`.
+    /// The same for the MADT's five ARM kinds: a GICC, a distributor, an MSI frame, a
+    /// redistributor and an ITS that stop after their header come back as `Other`.
     #[test]
     fn a_short_arm_madt_entry_is_other_and_not_read() {
-        for kind in [11u8, 12, 13, 14] {
+        for kind in [11u8, 12, 13, 14, 15] {
             let mut body = std::vec![0u8; MADT_FIXED_LEN];
             body.extend_from_slice(&[kind, 4, 0, 0]);
             let got: std::vec::Vec<_> = madt_entries(&body).collect();

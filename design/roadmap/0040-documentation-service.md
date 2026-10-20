@@ -173,9 +173,8 @@ later. Effort: 1 lane estimated per phase, three phases, landed separately.
 - **Milestone 334.** The other two thirds of
   §106's spawn-protocol narrowing: a bit telling a tail stage
   it ends at a real screen (color, the honest `isatty` replacement), and a way to grant one line of
-  input without granting the keyboard (the pager). Both widen a protocol two programs agree on, so
-  both are an architect's call; `notes/documentation.md`'s "where this goes next" is the only
-  record either has.
+  input without granting the keyboard (the pager). §302 (the screen fact and one line of input) rules both: a `WRITE`-only terminal
+  capability is the screen fact, and a one-shot `READLINE` badge is the line.
 
 ## Index row
 

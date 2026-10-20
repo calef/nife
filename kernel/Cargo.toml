@@ -358,11 +358,18 @@ reboot_soak_test = ["soak_test"]
 # The watchdog soak (milestone 593 (a wedged kernel resets itself), provisional number): the soak
 # arms the chipset's watchdog when it starts and pets it from its beat, so a kernel that wedges is
 # reset by the hardware instead of waiting for a person. x86_64 only, the Intel TCO, and
-# `kernel/src/soak.rs` says so with a `compile_error!`. **Off unless this feature is named**:
-# whether a soak should reset itself over its own wedge at all is calef's call, so the mechanism is
-# a build choice an operator makes, not a default. Name provisional, and it follows
-# `reboot_soak_test`'s shape on purpose: the hazard word first.
+# `kernel/src/soak.rs` says so with a `compile_error!`. **On x86_64 every `soak_test` build has it
+# without naming this feature**, on calef's ruling of 2026-09-26 (UTC), "A soak should reset itself
+# when it freezes": `build.rs` sets the `soak_watchdog` cfg the code reads, and cargo features
+# cannot differ by target. Naming it is still how a build insists on it. Name provisional, and it
+# follows `reboot_soak_test`'s shape on purpose: the hazard word first.
 watchdog_soak_test = ["soak_test"]
+# **The opt-out**: an x86_64 soak that does not arm the watchdog, so a wedge stays a wedge on the
+# console instead of becoming a reset. `script/soak-test --no-watchdog` builds it. On aarch64 and
+# riscv64 it changes nothing, since no soak there arms a watchdog. It refuses to combine with
+# `watchdog_soak_test` (`kernel/src/soak.rs`). Name provisional: the hazard word first, like its
+# siblings, and the hazard is that nothing recovers the machine.
+unwatched_soak_test = ["soak_test"]
 # **Test only**: the watchdog soak with a deliberate wedge. Thirty seconds in, the supervisor masks
 # interrupts on its core and spins, so the beat stops and nothing pets the watchdog. Its only use is
 # `script/soak-test --wedge`, the QEMU proof that the watchdog resets a wedged kernel. Never put it

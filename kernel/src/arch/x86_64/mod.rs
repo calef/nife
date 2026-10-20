@@ -70,7 +70,7 @@ pub mod rtc;
 // the watchdog soak drives it, so only that build compiles it; see its own header.
 pub mod segments;
 pub mod semihosting;
-#[cfg(feature = "watchdog_soak_test")]
+#[cfg(soak_watchdog)]
 pub mod tco;
 pub mod thread_pointer;
 pub mod timer;
