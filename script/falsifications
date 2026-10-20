@@ -126,6 +126,8 @@
 #   script/falsifications --sweep [package] apply every recorded patch, require red, revert
 #                                           (the weekly job, falsifications.yml, goes red on a finding,
 #                                           and on a selection that replays nothing)
+#   script/falsifications --plan-sweep      how many shards the whole sweep needs, as a JSON list last
+#   script/falsifications --sweep --shard k/n   replay one of those shards (the weekly job's matrix)
 #   script/falsifications --sweep-attested [package]   replay the `attested` records that carry a
 #                                           patch, on a host whose architecture compiles them
 #   script/falsifications --affected-since <base>   sweep only what a diff can reach (the per-PR half)
@@ -1278,6 +1280,17 @@ def selftest():
         ("no worker count goes under the heaviest record",
          makespan([recs[0], recs[10]], times, 4) == 400),
     ]
+    # The weekly plan: a record that boots QEMU never shares a shard with one that need not, or
+    # that whole shard loses its workers.
+    for i, h in enumerate(recs):
+        h.kind = "kernel test" if h.package == "mid" else "kani"
+    wk, _ = sweep_plan(recs, times)
+    wflat = [record_key(h) for sh in wk for h in sh]
+    packing += [
+        ("the weekly plan places every record once", sorted(wflat) == sorted(record_key(h) for h in recs)),
+        ("no weekly shard mixes QEMU records with others",
+         all(len({h.kind in PARALLEL_KINDS for h in sh}) == 1 for sh in wk)),
+    ]
     for what, ok in packing:
         if not ok:
             print("falsifications --selftest: packing: %s (loads %s)" % (what, loads))
@@ -2309,6 +2322,29 @@ def pack(records, times, n=None, target=SHARD_TARGET):
     return [b[1] for b in bins], [b[0] for b in bins]
 
 
+# **The weekly sweep is sharded by the same packer, at its own target** (milestone 889 (the tree's
+# gates stop depending on the fleet tooling), provisional). Replayed one record at a time, the whole
+# set took about two hours of a 120-minute job on 2026-10-20 (UTC) and grew every week, mostly in
+# kernel tests at about 45 s each, so the job was cancelled before `record-times` ran.
+# `--plan-sweep` packs every replayable record and `--sweep --shard k/n` replays one shard.
+#
+# Records that boot QEMU and records that do not are packed apart, because one QEMU record in a
+# shard makes the whole shard replay serially (PARALLEL_KINDS); kept apart, the Kani and host-test
+# shards replay on FALSIFICATIONS_JOBS workers. 40 minutes is a third of the job's 120, so a shard
+# that runs 1.1 times its plan, as verify's do, is far inside its limit, and SHARD_MAX shards hold
+# five hours of serial replay before the target has to move.
+SWEEP_TARGET = 40 * 60
+
+
+def sweep_plan(records, times):
+    """Every replayable record in exactly one shard, QEMU records never beside the others.
+    Returns (shards, loads); deterministic, because the plan job and every shard recompute it."""
+    boots = [h for h in records if h.kind not in PARALLEL_KINDS]
+    rest = [h for h in records if h.kind in PARALLEL_KINDS]
+    a, b = pack(boots, times, target=SWEEP_TARGET), pack(rest, times, target=SWEEP_TARGET)
+    return a[0] + b[0], a[1] + b[1]
+
+
 def reachable_records(base, cheap):
     names = affected_packages(base, cheap)
     return names, [h for h in cheap if h.state == "replayable" and h.package in names]
@@ -2422,6 +2458,22 @@ elif mode == "--count":
                         sum(1 for h in hs if h.state == "unfalsifiable")))
 elif mode == "--unfalsified":
     unfalsified(hs)
+elif mode == "--plan-sweep":
+    # falsifications.yml's plan job reads the last line, a JSON list of shard indices for the matrix.
+    shards, loads = sweep_plan([h for h in hs + kts if h.state == "replayable"], read_times())
+    for i, (sh, load) in enumerate(zip(shards, loads), 1):
+        print("shard %d: %d record(s), estimated %.0f s (%s)" % (
+            i, len(sh), load, ", ".join(sorted({h.package for h in sh}))))
+    print(json.dumps(list(range(1, len(shards) + 1))))
+elif mode == "--sweep" and len(args) >= 3 and args[1] == "--shard":
+    k, n = (int(x) for x in args[2].split("/"))
+    shards, loads = sweep_plan([h for h in hs + kts if h.state == "replayable"], read_times())
+    # The plan job and this shard read one commit, so a count that differs is a broken matrix, not
+    # a reason to replay some other split.
+    if n != len(shards) or not 1 <= k <= n:
+        sys.exit("--sweep --shard %d/%d: this tree's sweep packs into %d shard(s)" % (k, n, len(shards)))
+    print("shard %d/%d: %d record(s), estimated %.0f s" % (k, n, len(shards[k - 1]), loads[k - 1]))
+    sys.exit(sweep(shards[k - 1]))
 elif mode == "--sweep":
     # Kernel records join the sweep rather than getting a verb of their own, because a second verb
     # would make the honest ratio the one nobody runs. The cost is stated in BUGS: about a minute
