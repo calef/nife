@@ -16,24 +16,15 @@ use super::*;
 // third thing, and every entry is here because it needs a privilege a program does not
 // have. The list is short on purpose, and it is the whole list:
 //
-//   - **Two threads that never yield**, spawned with `sched::spawn`, counted against
-//     `sched::preemptions()`, timed with `timer::spin_for`. No syscall, no function call,
-//     no cooperation. A program at EL0 cannot make this claim about the scheduler because
-//     an EL0 spinner proves only that EL0 was preempted; these run *inside* the kernel and
-//     are still taken off the CPU, which is the stronger statement and the thesis in
-//     miniature.
 //   - **The virtio and PCIe block demos.** The kernel enumerates the bus, mints the
 //     device's registers, a DMA page and an interrupt into a driver's world, and receives
 //     the driver's report with `sched::ipc_receive`. Every one of those is an authority whose
 //     whole point is that the driver did not have it until the kernel granted it, so the
 //     granter cannot be the grantee.
-//   - **The outlaw.** `&raw const USER_FAULTS` is the address of a kernel static, handed to
-//     a program that then faults reading it and increments the very counter it reached for.
-//     A program cannot name that address, which is the demonstration.
-//   - **The memory-region demo.** It prints `memory::stats().used` before and after a
-//     process spends its own budget, and the claim is that the number did not move. The
-//     number is the kernel's own frame accounting and is not exposed to EL0 (see the
-//     preemption-counter note in design/roadmap/0267-*.md: an ambient fact nobody needs yet).
+//
+// The never-yield threads, the outlaw and the memory-region demo are `self_test::run`'s
+// `preemption`, `userspace` and `budget` checks, on all three architectures (calef's ruling of
+// 2026-10-19 (UTC) on #2434). What is left needs a virtio disk the machine may not have.
 //
 // The console server is started at the top of this block rather than being on that list.
 // It is not a survivor either, and since the narrator was deleted it is not the move
@@ -70,71 +61,12 @@ pub(super) fn milestone_tour() {
     // is history rather than a live claim about this line.
     let _console = user::initial_ramdisk().map(|_| user::console_service::start());
 
-    tour_preemption();
     tour_el0();
-}
-
-/// The whole argument, executable.
-#[cfg(not(any(test, feature = "system_tests", feature = "bench", feature = "shell")))]
-fn tour_preemption() {
-    use core::sync::atomic::{AtomicBool, AtomicU64, Ordering};
-
-    use crate::arch::timer;
-
-    static HOSTILE: AtomicU64 = AtomicU64::new(0);
-    static POLITE: AtomicU64 = AtomicU64::new(0);
-    static STOP: AtomicBool = AtomicBool::new(false);
-
-    // A thread whose entire body is a tight loop. No yield. No syscall. Not even a
-    // function call. Under ANY cooperative scheduler this owns the CPU forever and the
-    // machine is gone. This is the arbitrary ELF binary, in miniature.
-    sched::spawn(|| {
-        while !STOP.load(Ordering::Relaxed) {
-            HOSTILE.fetch_add(1, Ordering::Relaxed);
-        }
-    });
-
-    // A thread that also never yields, but would like a turn.
-    sched::spawn(|| {
-        while !STOP.load(Ordering::Relaxed) {
-            POLITE.fetch_add(1, Ordering::Relaxed);
-        }
-    });
-
-    let p0 = sched::preemptions();
-    timer::spin_for(timer::frequency() / 2); // half a second, doing nothing
-    STOP.store(true, Ordering::Relaxed);
-
-    let (hostile, polite, preempted) = (
-        HOSTILE.load(Ordering::Relaxed),
-        POLITE.load(Ordering::Relaxed),
-        sched::preemptions() - p0,
-    );
-    println!("  half a second later, having spawned two threads that NEVER yield:");
-    println!();
-    println!("    thread 1 (hostile) : {hostile:>10} iterations");
-    println!("    thread 2 (polite)  : {polite:>10} iterations");
-    println!("    preemptions        : {preempted:>10}");
-    println!();
-    // The closing claim only prints when the numbers above back it. The RISC-V tour's
-    // scheduler smoke line earned this the hard way: an unconditional success claim
-    // over a raced count read "0 of 2 ... works" on the VisionFive 2
-    // (notes/visionfive2.md, boots 12 and 13). The window here is wall-clock, not a
-    // yield count, so timing is sound; only the wording was unconditional.
-    if hostile > 0 && polite > 0 && preempted > 0 {
-        println!("  neither asked to be interrupted. both were.");
-    } else {
-        println!("  FAILED: a spinner did not run, or nothing was preempted.");
-    }
 }
 
 /// 7a. EL0.
 #[cfg(not(any(test, feature = "system_tests", feature = "bench", feature = "shell")))]
 fn tour_el0() {
-    use core::sync::atomic::Ordering;
-
-    use crate::arch::timer;
-
     println!();
     println!("  and now the other side of the boundary:");
     println!();
@@ -187,34 +119,6 @@ fn tour_el0() {
         }
     }
 
-    // The privilege boundary, still real: a program that reaches for a kernel address is
-    // killed, and the kernel is not. The address is the kernel's own fault counter, so
-    // it is certainly mapped and certainly not the process's; the demo hands it to the
-    // program rather than baking a constant in, which is what makes it the same demo on
-    // either ISA. It used to run `user::outlaw()`, a hand-written aarch64 blob.
-    if let Some(image) = user::program("outlaw") {
-        use crate::arch::exceptions::USER_FAULTS;
-        let kernel_addr = &raw const USER_FAULTS as u64;
-        let faults0 = USER_FAULTS.load(Ordering::Relaxed);
-        sched::spawn(move || {
-            user::run(
-                image,
-                user::Spawn {
-                    arg0: user::OUTLAW_READ_KERNEL,
-                    arg1: kernel_addr,
-                    arg2: 0,
-                    grants: &[],
-                    maps: &[],
-                },
-            )
-        });
-        timer::spin_for(timer::frequency() / 20);
-        println!(
-            "    outlaw : reached {kernel_addr:#018x}, was killed, kernel survived ({} fault)",
-            USER_FAULTS.load(Ordering::Relaxed) - faults0,
-        );
-    }
-
     // Milestone 8. The console driver is no longer in the kernel.
     match user::initial_ramdisk() {
         None => println!("    initial ramdisk : none (no -initrd passed to QEMU)"),
@@ -229,22 +133,6 @@ fn tour_el0() {
             // says where their images came from, which is the milestone-8 claim, and
             // no longer starts a second server to restate it.
         }
-    }
-
-    // Milestone 11: a process spends its own memory; the kernel allocates nothing.
-    if let Some(image) = user::program("memory_region_depleter")
-        && let Some((_region, report, _demo)) = user::memory_region_service::start(image, 24)
-    {
-        sched::ipc_receive(report); // the process signals it is loaded and ready
-        let before = memory::stats().unwrap().used;
-        let mapped = sched::ipc_receive(report)[0]; // it maps until its untyped is spent
-        let after = memory::stats().unwrap().used;
-        println!();
-        println!(
-            "  milestone 11: a process mapped {mapped} pages out of an untyped it was handed,"
-        );
-        println!("  and the kernel's used-frame count went {before} -> {after} (it did not move).");
-        println!("  a process cannot make the kernel allocate, so it cannot exhaust it.");
     }
 }
 

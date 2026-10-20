@@ -11,217 +11,6 @@
 
 use super::*;
 
-/// riscv64 phase 2: a process address space, a U-mode program, and a user ELF.
-#[cfg(target_arch = "riscv64")]
-fn riscv64_user_programs() {
-    // User address spaces (the single-satp model): build a process address space, switch satp
-    // to it, and keep running. That only survives if share_kernel_half copied the kernel high
-    // half into the process root (otherwise this kernel code, at a high VA, unmaps itself on the
-    // csrw satp). Then map and translate a user page in the live process space.
-    {
-        use paging::Flags;
-        let aspace = user::AddressSpace::new(1).expect("no process aspace");
-        let user_va = 0x40_0000u64;
-        // Uninstalled again before the space drops: `while_installed` holds both halves.
-        let mapped = aspace.while_installed(|| {
-            let frame = memory::alloc().expect("no user frame").addr();
-            arch::mmu::map_current_user_page_frame(user_va, frame, Flags::user_data(), || {
-                memory::alloc().map(|f| f.addr())
-            })
-            .expect("user map failed");
-            arch::mmu::translate_user(user_va)
-        });
-        println!(
-            "  user address space : process satp activated (kernel half shared), user {user_va:#x} -> {mapped:x?}",
-        );
-    }
-
-    // The capstone: run a real program at U-mode. The loader builds an address space from the
-    // `outlaw` ELF's segments and drops to U-mode via enter_user's sret. The program yields
-    // (round-tripping U-mode -> trap -> dispatch -> yield -> sret -> U-mode) twice, then exits.
-    //
-    // **This line used to print a syscall count, and the count proved nothing.** It read a
-    // global counter before and after four yields of its own, but the program is placed on
-    // whichever core the scheduler picks and had not run yet when the second read happened:
-    // every captured riscv64 boot, under QEMU and on radon, printed "made 0 syscalls". The
-    // counter itself was a `fetch_add` on one cache line from every syscall on every core,
-    // which is what made the cheapest syscall cost more when more cores were busy
-    // (notes/job-mix/null-syscall-under-load.md, 2026-10-04). It is gone rather than
-    // per-core because this was its only reader. Proving the path for real means waiting for
-    // the program's exit, which is a tour change and not this one.
-    //
-    // This step used to run a hand-assembled RISC-V blob through a one-page raw loader. It runs
-    // a compiled ELF out of the initial ramdisk now (milestone 19 (run a real workload)'s user-test
-    // port), so it needs one, and says so rather than quietly proving nothing when there is none.
-    {
-        match user::program("outlaw") {
-            Some(image) => {
-                sched::spawn(move || {
-                    user::run(
-                        image,
-                        user::Spawn {
-                            arg0: user::OUTLAW_ROUND_TRIP,
-                            arg1: 0,
-                            arg2: 0,
-                            grants: &[],
-                            maps: &[],
-                        },
-                    )
-                });
-                for _ in 0..4 {
-                    sched::yield_now();
-                }
-                println!(
-                    "  userspace   : a program was started at U-mode (yield/yield/exit via ecall)",
-                );
-            }
-            None => {
-                println!("  userspace   : skipped (no 'outlaw' program in the initial ramdisk)");
-            }
-        }
-    }
-
-    // The tour-stage breadcrumb (first-silicon diagnostics, 2026-08-15): every dump_threads
-    // header prints the last stage reached, so a bench log whose serial lines went missing
-    // (boots 7 through 9, notes/visionfive2.md fifth stop) still says how far the boot
-    // thread got, re-stated every dump. The table, so a stage number reads without the code:
-    //
-    //   3 = the outlaw step finished        7 = the UART-driver step finished
-    //   4 = the user-ELF step was entered   8 = the virtio probe finished
-    //   5 = the user-ELF step returned      9 = the PCIe probe finished
-    //   6 = the preemption step finished   10 = the hardware-entropy step finished
-    //                                      11 = the banner printed; the tour is over
-    //
-    // **10 is not the end, and reading it as one is the mistake this table used to invite.**
-    // It said `10 = the final banner printed; halting` and stopped there, which was true until
-    // milestone 159 put the hardware-entropy step after what had been the last one and moved
-    // the meaning down a row. 11 is the number that means finished, and it is the one the hang
-    // watcher keys on (`user.rs`, `boot_stage() >= 11`), so a board log reporting 10 is a boot
-    // that got as far as the entropy step and then stopped, not a boot that completed.
-    sched::note_boot_stage(3);
-
-    // Running a real compiled ELF at U-mode, on the boots that carry one to run.
-    if let Some(initial_ramdisk) = user::initial_ramdisk() {
-        // Entered for either shape of initial ramdisk, which it was not before milestone 295
-        // (retire `components/src/builder.rs`): the breadcrumb used to fire only on the archive
-        // arm, so a bare-ELF boot that died here reported the stage before it and read as having
-        // died one step earlier than it did.
-        sched::note_boot_stage(4);
-
-        // **An archive initial ramdisk has no demonstration of its own here any more** (milestone
-        // 295, calef's ruling of 2026-09-14). It used to have the best one on this architecture:
-        // the kernel loaded `builder` out of the archive, granted it a budget and a report
-        // endpoint and nothing else, and `builder` parsed `least_authority_demo` out of the
-        // same archive **in userspace**, built it as a child from its own budget and started
-        // it. The kernel never touched the child's bytes. That was milestone 20's proof that
-        // userspace, not the kernel, composes a process, and the `init/build` line was it
-        // announcing itself.
-        //
-        // **Milestone 268's item 4 is why it could go.** Nothing halts by default any more:
-        // this same boot now ends in `kernel_main`'s hand-over, where the progenitor composes the
-        // console server, the line discipline, the input driver and `swish` out of its own
-        // budget through the same granular verbs. That is the identical claim at a larger
-        // scale, on the build `script/board-image` writes to a card, so the step below it was
-        // making it twice.
-        //
-        // **What the retirement drops is the minimality half, and it is dropped knowingly.**
-        // `builder` composed a process from **exactly two** capabilities; the progenitor is
-        // granted the NS16550 and the UART's interrupt line as well, because it is building a
-        // system rather than demonstrating a floor. See
-        // design/roadmap/0295-retire-the-builder-program.md for where that claim went.
-        //
-        // **And the measured-boot refusal moved rather than went.** The archive used to be
-        // checked against this kernel's trust root here (`trust::require("builder", ...)` and
-        // the measurement table with it); it is now checked in `boot_progenitor` at the
-        // handoff, which every default boot reaches. A card with the wrong archive still halts
-        // with `MEASURED BOOT REFUSED`, later in the transcript than it used to.
-        //
-        // **A board reader who knew the `init/build` line wants `boot_ladder::PROMPT` now.**
-        // That was the marker `crates/board_console`'s `Progress::userspace_ran` matched, and
-        // no kernel prints it after this milestone. The live rung is `Stage::Prompt`, which
-        // cannot appear unless userspace built the whole console stack, so it says more than
-        // the line it replaces. `userspace_ran` itself stays, for the captured VisionFive 2
-        // transcript that carries the old line and cannot be re-taken; its doc says so.
-        let is_archive = nifefs::Fs::parse(initial_ramdisk)
-            .map(|fs| fs.read(user::PROGENITOR_ENTRY).is_some())
-            .unwrap_or(false);
-        if is_archive {
-            println!(
-                "  user ELF    : an archive; the progenitor composes this machine's userspace at the handoff below"
-            );
-        } else {
-            const N: u64 = 7;
-            match user::riscv_least_authority_demo(initial_ramdisk, N) {
-                Ok(sq) => println!(
-                    "  user ELF    : loaded a {}-byte riscv ELF, ran least_authority_demo({N}) at U-mode, it sent {sq} (expected {})",
-                    initial_ramdisk.len(),
-                    N * N,
-                ),
-                Err(e) => println!("  user ELF    : load failed: {e:?}"),
-            }
-        }
-    } else {
-        println!("  user ELF    : skipped (no -initrd passed to QEMU)");
-    }
-    sched::note_boot_stage(5);
-}
-
-/// riscv64 phase 3: two threads that never yield are preempted anyway.
-#[cfg(target_arch = "riscv64")]
-fn riscv64_preemption() {
-    // Preemption: the property that separates a kernel from a runtime. Spawn two threads whose
-    // entire body is a tight loop, no yield, no syscall, not even a function call. Under any
-    // cooperative scheduler the first one owns the CPU forever. The S-mode timer fires every
-    // 10ms, riscv_trap_dispatch records the tick and defers a schedule() to the trap tail, and
-    // both threads make progress anyway. This is the RISC-V half of DECISIONS §5: an arbitrary
-    // binary that refuses to yield is preempted regardless. `STOP` lets them exit cleanly so
-    // nothing lingers past the demo. Interrupts have been unmasked since `interrupts_init`, in the
-    // shared bring-up.
-    {
-        use core::sync::atomic::{AtomicBool, AtomicU64, Ordering};
-        static A: AtomicU64 = AtomicU64::new(0);
-        static B: AtomicU64 = AtomicU64::new(0);
-        static STOP: AtomicBool = AtomicBool::new(false);
-
-        sched::spawn(|| {
-            while !STOP.load(Ordering::Relaxed) {
-                A.fetch_add(1, Ordering::Relaxed);
-            }
-        });
-        sched::spawn(|| {
-            while !STOP.load(Ordering::Relaxed) {
-                B.fetch_add(1, Ordering::Relaxed);
-            }
-        });
-
-        let p0 = sched::preemptions();
-        arch::timer::spin_for(arch::timer::frequency() / 5); // ~0.2s, doing nothing but be preemptible
-        STOP.store(true, Ordering::Relaxed);
-        // Let the two spinners observe STOP and exit, so they are gone before we halt.
-        for _ in 0..8 {
-            sched::yield_now();
-        }
-        // The claim only prints when the numbers back it: both spinners made progress and at
-        // least one preemption happened. The scheduler smoke line above earned the same
-        // honesty the hard way (an unconditional success claim over a raced count).
-        let (a, b, p) = (
-            A.load(Ordering::Relaxed),
-            B.load(Ordering::Relaxed),
-            sched::preemptions() - p0,
-        );
-        if a > 0 && b > 0 && p > 0 {
-            println!(
-                "  preemption  : two never-yield threads ran {a} and {b} iterations, {p} preemptions (a thread that refuses to yield is preempted anyway)",
-            );
-        } else {
-            println!(
-                "  preemption  : FAILED: {a} and {b} iterations, {p} preemptions (a never-yield thread did not run, or nothing was preempted)",
-            );
-        }
-    }
-    sched::note_boot_stage(6);
-}
-
 /// riscv64 phase 4: a device interrupt serviced by an unprivileged userspace driver.
 #[cfg(target_arch = "riscv64")]
 fn riscv64_device_interrupt() {
@@ -278,7 +67,6 @@ fn riscv64_device_interrupt() {
             ),
         }
     }
-    sched::note_boot_stage(7);
 }
 
 /// riscv64 phase 5: virtio-mmio and PCIe block device discovery.
@@ -297,7 +85,6 @@ fn riscv64_block_devices() {
             println!("  virtio      : no block device attached (pass NIFE_DISK to attach one)");
         }
     }
-    sched::note_boot_stage(8);
 
     // PCIe enumeration + virtio-pci bring-up (the PCIe transport, P1/P2). The disk QEMU
     // attaches as `virtio-blk-pci` arrives over the transport real hardware uses: found by
@@ -320,7 +107,6 @@ fn riscv64_block_devices() {
             println!("  pcie        : no virtio-blk on the bus (pass NIFE_DISK to attach one)");
         }
     }
-    sched::note_boot_stage(9);
 }
 
 // **The clock the `hw entropy` step is measured with**
@@ -407,7 +193,6 @@ fn riscv64_entropy() {
         None => riscv64_entropy_reference(entropy_step_start),
         Some(device) => riscv64_jh7110_entropy(device, entropy_step_start),
     }
-    sched::note_boot_stage(10);
 }
 
 /// riscv64 phase 6, on a machine with no TRNG: the virtio-rng reference draw, when there is one.
@@ -654,13 +439,13 @@ fn riscv64_clock_report(clock: Option<jh7110_clock_and_reset::Report>) {
     }
 }
 
-/// **riscv64's milestone tour**: the demonstrations between the self-test and the hand-over, the
-/// twin of aarch64's in `milestone_tour.rs`, called from the same place in `kernel_main`.
+/// **riscv64's milestone tour**: what is left of it until each of its device steps is a
+/// self-test check (calef's ruling of 2026-10-19 (UTC) on #2434). Called where aarch64's is.
 ///
-/// The two tours prove overlapping claims in different shapes, and this one is also the only
-/// proof this tree has of the boot's middle stages on real silicon (notes/visionfive2.md). Its
-/// steps and its last line are what `board_console` reads as `Stage::Tour` and what the hang
-/// watcher keys on, so it keeps every line it prints.
+/// Its preemption, user-program and address-space steps are `self_test::run`'s `preemption` and
+/// `userspace` checks, and its last line and boot stage are `kernel_main`'s, after the verdict.
+/// What remains needs a device the machine may not have: the UART's interrupt, a virtio disk, and
+/// the JH7110's TRNG and clock controller.
 // The `shell`, `bench` and test builds never call it. Allowed rather than `cfg`-ed out, so the tour
 // and the riscv64-only demonstrations beneath it still compile, and are linted, in every
 // configuration: code that only type-checks in the configurations that use it rots in the others.
@@ -669,20 +454,9 @@ fn riscv64_clock_report(clock: Option<jh7110_clock_and_reset::Report>) {
     allow(dead_code)
 )]
 pub(super) fn milestone_tour() {
-    // **The kernel mapping check and the context-switch check are `self_test::run`'s**
-    // (milestone 268 (every architecture boots the same way), item 2), as `mapping` and `scheduler`, measured the way this tour measured
-    // them on the VisionFive 2: the address computed from the machine's own RAM rather than a
-    // constant, the wait bounded by the clock rather than by a yield count.
-    riscv64_user_programs();
-    riscv64_preemption();
     riscv64_device_interrupt();
     riscv64_block_devices();
     riscv64_entropy();
-
-    println!("{}RISC-V.", boot_ladder::TOUR);
-    // 11, not 10: the hang watcher falls silent at "the tour has finished" and milestone 159
-    // added a stage after what used to be the last one. See `user.rs`'s `boot_stage() >= 11`.
-    sched::note_boot_stage(11);
 }
 
 /// **Counter ticks as microseconds** (design/roadmap/0306-time-the-hw-entropy-step.md), for

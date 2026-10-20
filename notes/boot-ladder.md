@@ -8,7 +8,7 @@ CI, and they are what a person reads off a photograph of a monitor when there is
 nife on aarch64 (EL1, MMU off: physical addresses until mmu::init)   <- the console works
 ...
 nife machine: aarch64, 4 processor(s), 256 MiB, 100 Hz               <- discovery finished
-nife self-test: 5 of 5 passed                                        <- the kernel works here
+nife self-test: 8 of 8 passed                                        <- the kernel works here
 ...
 nife capability shell. naming a resource in a command IS granting it. <- userspace is up
 $

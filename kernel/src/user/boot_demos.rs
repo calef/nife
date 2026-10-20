@@ -251,35 +251,6 @@ fn x86_userspace_round() -> Result<X86UserspaceReport, &'static str> {
     })
 }
 
-#[cfg(target_arch = "riscv64")]
-pub fn riscv_least_authority_demo(least_authority_demo: &[u8], n: u64) -> Result<u64, LoadError> {
-    // The kernel's real loader: parse, build the address space, map the W^X segments and a stack.
-    let (space, entry) = load(least_authority_demo, 0)?;
-    // `load` returns an owned AddressSpace; the TCB path binds one by registry name, so register it.
-    let aspace_name = readopt_user_address_space(space).expect("register the loaded address space");
-
-    // The least_authority_demo's one authority: WRITE on a report endpoint, which it will hold as slot 0.
-    let result = crate::sched::create_rendezvous();
-    let result_cap = crate::cap::rendezvous_cap(result, crate::cap::Rights::WRITE);
-
-    // Build the thread from parts: a TCB, the cap in slot 0, configure at the ELF's entry, start.
-    let thread_control_block_region = crate::memory_region::create(2).expect("no tcb region");
-    let tid =
-        crate::sched::create_thread_control_block(thread_control_block_region).expect("no tcb");
-    let slot =
-        crate::sched::thread_control_block_insert_cap(tid, result_cap, None).expect("cap insert");
-    assert_eq!(
-        slot, 0,
-        "the least_authority_demo's report cap must land in slot 0"
-    );
-    crate::sched::configure_thread_control_block(tid, entry, USER_STACK_TOP, aspace_name)
-        .expect("configure");
-    // The least_authority_demo reads its input from a1 (the second argument); a0 and a2 are unused.
-    crate::sched::start_thread_control_block(tid, [0, n, 0]).expect("start");
-
-    Ok(crate::sched::ipc_receive(result)[0])
-}
-
 /// **Start the interrupt-driven UART driver as an unprivileged userspace process** (milestone 20).
 ///
 /// The device-interrupt story's real form: a driver that owns the UART's interrupt by *capability*,

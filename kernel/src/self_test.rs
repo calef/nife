@@ -14,8 +14,8 @@
 //! and fails on a red one in CI.
 //!
 //! ```text
-//! nife self-test: 5 of 5 passed
-//! nife self-test: 4 of 5 passed, 1 FAILED: exceptions
+//! nife self-test: 8 of 8 passed
+//! nife self-test: 7 of 8 passed, 1 FAILED: exceptions
 //! ```
 //!
 //! - **The prefix is always present and identical on every architecture**: a missing marker looks
@@ -33,9 +33,14 @@
 //! - **Nothing here proves an architecture ran the right set.** The list is a compile-time fact,
 //!   and a check deleted from it takes its own evidence with it; the count is the partial defense,
 //!   and review guards the set.
-//! - **The set is cheap on purpose and therefore shallow.** Every check completes in microseconds
-//!   except [`fn@timer`], which waits about 20 ms for a tick. Nothing spawns a process, touches a
-//!   device, or exercises IPC, because this runs on every boot; the deep proofs are `script/test`'s.
+//! - **The checks cost time on every boot.** [`fn@timer`] waits about 20 ms for a tick and
+//!   [`preemption`] spends a fifth of a second; [`userspace`] and [`budget`] each spawn a process
+//!   from the archive and wait for it. They are the tours' claims (calef's ruling of 2026-10-19
+//!   (UTC) on #2434), made on every port rather than on one. The deep proofs are still
+//!   `script/test`'s.
+//! - **[`budget`]'s helper thread can be left parked.** A receive has no deadline, so the reports
+//!   are taken on a thread of their own; a process that never reports leaves that thread blocked,
+//!   and the check fails by its own deadline.
 //! - **A check can still hang the boot if the operation it measures never returns.** Both waits
 //!   read the counter through [`Counter`], which reports a stopped counter rather than waiting on
 //!   it, and [`fn@timer`] spins rather than sleeping. A `sched::yield_now` or `mmu::map_page` that
@@ -195,14 +200,31 @@ fn print_verdict_head(passed: usize, ran: usize, failures: usize) {
 pub fn run() {
     let mut tally = Tally::new();
 
-    exceptions(&mut tally);
-    mapping(&mut tally);
-    frames(&mut tally);
-    timer(&mut tally);
-    scheduler(&mut tally);
+    // Each check notes its boot stage before it runs, so a thread dump during a wedged check says
+    // which one (the breadcrumb `sched::dump_threads` repeats every couple of seconds survives a
+    // lossy serial log; notes/visionfive2.md, fifth stop). Stage 3 is the first check and the
+    // last is 2 plus the list's length; `TOUR_STAGE` follows the verdict.
+    let checks: [fn(&mut Tally); CHECKS] = [
+        exceptions, mapping, frames, timer, scheduler, preemption, userspace, budget,
+    ];
+    for (stage, check) in (FIRST_STAGE..).zip(checks) {
+        sched::note_boot_stage(stage);
+        check(&mut tally);
+    }
 
     tally.verdict();
 }
+
+/// The boot stage the first check notes. Stages below it are the bring-up's, which notes none
+/// today; the number is kept from the riscv64 tour this replaced so that a board log's stage reads
+/// the same way across the change.
+const FIRST_STAGE: u32 = 3;
+
+/// **The stage that means the self-test finished and the boot's middle stages ran to their end**,
+/// noted beside `boot_ladder::TOUR` in `kernel_main`. 11 because that is the number every board
+/// log since milestone 159 reads as "finished"; the checks fill 3 to 10.
+pub const TOUR_STAGE: u32 = 11;
+const _: () = assert!(FIRST_STAGE as usize + CHECKS <= TOUR_STAGE as usize);
 
 /// **A breakpoint is caught and stepped over.**
 ///
@@ -512,6 +534,229 @@ fn scheduler(tally: &mut Tally) {
             "scheduler",
             ok,
             format_args!("thread {tid:?} did not run within 2s (saw {saw:#x})"),
+        );
+    }
+}
+
+/// **Wait up to `seconds` for `done`, yielding between looks**, bounded by the counter as every wait
+/// here is, so a stopped counter ends the wait rather than making the deadline unreachable. `true`
+/// once `done` held.
+fn wait_until(seconds: u64, mut done: impl FnMut() -> bool) -> bool {
+    let mut counter = Counter::new();
+    let deadline = counter.last + seconds * timer::frequency();
+    loop {
+        if done() {
+            return true;
+        }
+        match counter.read() {
+            Some(now) if now < deadline => sched::yield_now(),
+            _ => return done(),
+        }
+    }
+}
+
+/// **Threads that never yield are taken off the CPU anyway, and none of them starves.**
+///
+/// The property that separates a kernel from a runtime (DECISIONS §5): a thread whose whole body is
+/// a loop, with no yield, no syscall and not even a function call, owns its core under any
+/// cooperative scheduler. These run inside the kernel and are still preempted, which is the stronger
+/// form of the claim; `system_tests`' `a_user_program_that_never_yields_is_preempted_anyway` makes
+/// it for a program at user level.
+///
+/// **One more spinner than there are cores online**, so at least one core runs two of them and the
+/// timer has to take the CPU from one to give it to the other. Two spinners on a four-core machine
+/// can each own a core and never be preempted, which proves nothing; that was the shape of the
+/// aarch64 and riscv64 tours this check replaces. Every spinner has to advance, and the global
+/// preemption count has to move.
+fn preemption(tally: &mut Tally) {
+    use core::sync::atomic::AtomicBool;
+
+    const MAX: usize = crate::cpu::MAX_CPUS + 1;
+    static PROGRESS: [AtomicU64; MAX] = [const { AtomicU64::new(0) }; MAX];
+    static STOP: AtomicBool = AtomicBool::new(false);
+
+    let spinners = (crate::smp::online_count() + 1).min(MAX);
+    STOP.store(false, Ordering::SeqCst);
+    let mut tids = [None; MAX];
+    for (i, slot) in tids.iter_mut().enumerate().take(spinners) {
+        PROGRESS[i].store(0, Ordering::Relaxed);
+        *slot = sched::spawn(move || {
+            while !STOP.load(Ordering::Relaxed) {
+                PROGRESS[i].fetch_add(1, Ordering::Relaxed);
+            }
+        });
+    }
+    if tids[..spinners].iter().any(Option::is_none) {
+        STOP.store(true, Ordering::SeqCst);
+        tally.record(
+            "preemption",
+            false,
+            format_args!("the kernel could not spawn {spinners} threads"),
+        );
+        return;
+    }
+
+    let p0 = sched::preemptions();
+    // A fifth of a second spent yielding, so the spinners share this core as well.
+    let start = timer::now();
+    wait_until(1, || {
+        timer::now().wrapping_sub(start) >= timer::frequency() / 5
+    });
+    STOP.store(true, Ordering::SeqCst);
+    let preempted = sched::preemptions() - p0;
+    let starved = PROGRESS[..spinners]
+        .iter()
+        .filter(|p| p.load(Ordering::Relaxed) == 0)
+        .count();
+    let gone = wait_until(2, || {
+        tids[..spinners]
+            .iter()
+            .flatten()
+            .all(|&t| !sched::is_thread_present(t))
+    });
+
+    let ok = starved == 0 && preempted > 0 && gone;
+    tally.record(
+        "preemption",
+        ok,
+        format_args!(
+            "{spinners} never-yield threads on {} core(s): {} starved, {preempted} preemptions{}",
+            crate::smp::online_count(),
+            starved,
+            if gone { "" } else { ", and they did not stop" },
+        ),
+    );
+}
+
+/// **A program runs at user level, reaches for a kernel address, and is killed; the kernel is
+/// not.**
+///
+/// The privilege boundary, both halves. `outlaw` is handed the address of the kernel's own fault
+/// counter, which is certainly mapped and certainly not the program's, so the fault it takes is a
+/// permission fault on a page that exists rather than a translation fault on one that does not. The
+/// program has to run at user level to take it, and the counter it reached for is the one that
+/// records it. The kernel then executes the next line, which is the other half.
+///
+/// Needs the archive, which every boot that can hand over has. A boot without one fails this check
+/// by name rather than passing it: no user program ran.
+fn userspace(tally: &mut Tally) {
+    use crate::arch::exceptions::{USER_FAULTS, last_user_fault};
+    use crate::user;
+
+    let Some(image) = user::program("outlaw") else {
+        tally.record(
+            "userspace",
+            false,
+            format_args!("the archive has no outlaw program, so no user program could run"),
+        );
+        return;
+    };
+    let kernel_addr = &raw const USER_FAULTS as u64;
+    let before = USER_FAULTS.load(Ordering::Acquire);
+    let tid = sched::spawn(move || {
+        user::run(
+            image,
+            user::Spawn {
+                arg0: user::OUTLAW_READ_KERNEL,
+                arg1: kernel_addr,
+                arg2: 0,
+                grants: &[],
+                maps: &[],
+            },
+        )
+    });
+    let faulted = tid.is_some() && wait_until(2, || USER_FAULTS.load(Ordering::Acquire) > before);
+    let at = last_user_fault().map(|(_, addr)| addr);
+
+    let ok = faulted && at == Some(kernel_addr);
+    tally.record(
+        "userspace",
+        ok,
+        format_args!(
+            "a program at user level read {kernel_addr:#x}: {}",
+            match (tid.is_some(), faulted) {
+                (false, _) => "it could not be spawned",
+                (true, false) => "it was not stopped within 2s",
+                (true, true) if ok => "killed, and the kernel survived",
+                (true, true) => "a fault was recorded at another address",
+            }
+        ),
+    );
+}
+
+/// **A process spends a budget it was handed, and the kernel allocates nothing for it.**
+///
+/// Milestone 11's claim, and the reason a process cannot exhaust the kernel: every page it maps
+/// comes out of the untyped region it holds, so the kernel's own used-frame count stands still
+/// while the process maps until the region is spent. `memory_region_depleter` reports once it is
+/// loaded (its ELF and stack are the kernel's, as any process's are) and again with how many pages
+/// it mapped; the count is read at both reports.
+///
+/// The process spins after its second report so the count it reports against holds still, so this
+/// ends it. The reports are received on a helper thread, because a receive has no deadline and
+/// this check's waits must all have one; a process that never reports leaves that helper parked,
+/// which is the failure path's whole cost.
+fn budget(tally: &mut Tally) {
+    use crate::user;
+
+    const PAGES: u64 = 24;
+    static READY_USED: AtomicU64 = AtomicU64::new(u64::MAX);
+    static DONE_USED: AtomicU64 = AtomicU64::new(u64::MAX);
+    static MAPPED: AtomicU64 = AtomicU64::new(u64::MAX);
+
+    let Some(image) = user::program("memory_region_depleter") else {
+        tally.record(
+            "budget",
+            false,
+            format_args!("the archive has no memory_region_depleter program"),
+        );
+        return;
+    };
+    let Some((region, report, demo)) = user::memory_region_service::start(image, PAGES) else {
+        tally.record(
+            "budget",
+            false,
+            format_args!("no {PAGES}-page untyped region could be carved"),
+        );
+        return;
+    };
+    for s in [&READY_USED, &DONE_USED, &MAPPED] {
+        s.store(u64::MAX, Ordering::SeqCst);
+    }
+    let used = || memory::stats().map_or(u64::MAX, |s| s.used as u64);
+    sched::spawn(move || {
+        sched::ipc_receive(report);
+        READY_USED.store(used(), Ordering::SeqCst);
+        let mapped = sched::ipc_receive(report)[0];
+        DONE_USED.store(used(), Ordering::SeqCst);
+        MAPPED.store(mapped, Ordering::SeqCst);
+    });
+    let reported = wait_until(2, || MAPPED.load(Ordering::SeqCst) != u64::MAX);
+    let (before, after, mapped) = (
+        READY_USED.load(Ordering::SeqCst),
+        DONE_USED.load(Ordering::SeqCst),
+        MAPPED.load(Ordering::SeqCst),
+    );
+    let ended = sched::kill_thread(demo) && wait_until(2, || !sched::is_thread_present(demo));
+    if ended {
+        crate::memory_region::destroy(region);
+    }
+
+    let ok = reported && mapped > 0 && before == after;
+    if reported {
+        tally.record(
+            "budget",
+            ok,
+            format_args!(
+                "a process mapped {mapped} pages of a {PAGES}-page untyped; kernel frames used {before} -> {after}{}",
+                if ended { "" } else { "; it outlived its kill" },
+            ),
+        );
+    } else {
+        tally.record(
+            "budget",
+            false,
+            format_args!("the process did not report within 2s"),
         );
     }
 }

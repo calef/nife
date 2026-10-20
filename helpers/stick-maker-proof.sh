@@ -79,12 +79,19 @@ fi
 echo "holiday.txt survived the copy"
 detach "$dev"
 
+# A green self-test verdict, `nife self-test: N of N passed` with nothing after it, whatever N the
+# kernel's list has (boot_ladder::SELF_TEST_CHECKS). awk rather than a grep backreference, which
+# POSIX ERE does not have.
+all_passed() {
+    awk '{ if (match($0, /nife self-test: [0-9]+ of [0-9]+ passed$/)) { split(substr($0, RSTART), f, " "); if (f[3] == f[5]) ok = 1 } } END { exit !ok }' "$1"
+}
+
 for image in blank fat; do
     for arch in x86_64 aarch64 riscv64; do
         log="$WORK/$image-$arch.log"
         NIFE_STICK_TIMEOUT="${NIFE_STICK_TIMEOUT:-120}" helpers/qemu-stick.sh "$arch" "$WORK/$image.img" < /dev/null > "$log" 2>&1 || true
         if grep -q "nife: handing the system to the userspace progenitor." "$log" \
-            && grep -q "nife self-test: 5 of 5 passed" "$log" \
+            && all_passed "$log" \
             && ! grep -q "\[PANIC\]" "$log"; then
             echo "$image.img on $arch: booted to the progenitor"
         else

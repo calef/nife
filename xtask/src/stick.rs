@@ -389,12 +389,16 @@ pub(super) fn stick_boot() -> bool {
     ok
 }
 
-/// The lines every stick boot must print, in [`stick_boot`]'s order and for its reasons.
+/// The lines every stick boot must print, in [`stick_boot`]'s order and for its reasons. The
+/// verdict's count is checked against `boot_ladder::SELF_TEST_CHECKS` below, so a check added to the
+/// list fails this file's build rather than every stick boot.
 const BOOTED: [&str; 3] = [
     "nife uefi_loader: milestone 87",
-    "nife self-test: 5 of 5 passed",
+    "nife self-test: 8 of 8 passed",
     "nife: handing the system to the userspace progenitor.",
 ];
+
+const _: () = assert!(boot_ladder::SELF_TEST_CHECKS.len() == 8);
 
 /// **The aarch64 stick, booted with ACPI and no device tree** (milestone 578 (an ACPI discovery path for aarch64)): the state every
 /// aarch64 cloud machine is in, since SBBR forbids it a tree, and the one the loader meets by

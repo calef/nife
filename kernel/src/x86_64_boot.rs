@@ -28,7 +28,6 @@ use super::*;
 )]
 pub(super) fn milestone_tour() {
     x86_64_image_and_entropy();
-    x86_64_kernel_task();
     x86_64_userspace();
     x86_64_handoff_report();
 }
@@ -55,39 +54,6 @@ fn x86_64_image_and_entropy() {
             println!("  entropy     : rdseed supported but stayed dry across every retry");
         }
         None => println!("  entropy     : rdseed not supported (cpuid leaf 7 ebx.18 clear)"),
-    }
-}
-
-/// A kernel thread, which is the cheapest proof that `kmem`, `untyped` and the context switch all
-/// work on this architecture: its stack came from the kernel's own budget and running it at all is
-/// one `switch_to` out and one back.
-fn x86_64_kernel_task() {
-    use core::sync::atomic::AtomicU64;
-    static SAW: AtomicU64 = AtomicU64::new(0);
-    let captured = 0x1610_0004u64;
-    match sched::spawn(move || SAW.store(captured, core::sync::atomic::Ordering::SeqCst)) {
-        Some(_) => {
-            // **Yield until it runs, with a bound, rather than yielding a fixed number
-            // of times and assuming that was enough.** The fixed count was 8, which held
-            // for a year under emulation and reported `0x0  FAILED` on xenon's second
-            // boot (2026-09-17): eight yields on four real 2.7 GHz cores is a far smaller
-            // window than eight under QEMU, and the thread had simply not been picked up
-            // yet. The count is printed because it is the diagnostic that tells a late
-            // thread apart from one that never ran: a thread that never runs still
-            // exhausts the bound and still reports FAILED, so this waits out a race
-            // without hiding a hang.
-            let mut spins = 0;
-            while SAW.load(core::sync::atomic::Ordering::SeqCst) != captured && spins < 10_000 {
-                sched::yield_now();
-                spins += 1;
-            }
-            let saw = SAW.load(core::sync::atomic::Ordering::SeqCst);
-            println!(
-                "  kernel task : a spawned thread ran and carried its captured state ({saw:#x}) after {spins} yield(s){}",
-                if saw == captured { "" } else { "  FAILED" },
-            );
-        }
-        None => println!("  kernel task : FAILED: could not spawn a kernel thread"),
     }
 }
 
