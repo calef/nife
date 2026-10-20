@@ -150,6 +150,30 @@ exactly that reason (riscv64_boot.rs, before this milestone), and the mask is go
 The order on `x86_64` changes the way riscv64's did: interrupts come on after the scheduler, the IO
 APIC after the fine map, and the PIT's window runs with the scheduler up and the tick not yet armed.
 
+## What was built: the tours' portable claims are self-test checks
+
+Every claim the three tours made, and where each one is now:
+
+| Claim | Tours that made it | Now |
+|---|---|---|
+| Never-yield threads are preempted | aarch64, riscv64 | `preemption`, all three: one spinner more than cores online, none starved |
+| A user-level program reaching a kernel address is killed; the kernel survives | aarch64 (outlaw), riscv64 (outlaw, address space) | `userspace`, all three |
+| A process spends its untyped and the kernel allocates nothing | aarch64 (memory region) | `budget`, all three; the process is now killed and its region destroyed |
+| A spawned kernel thread runs | `x86_64` (kernel task) | `scheduler`, which already made it |
+| A bare riscv64 ELF initrd runs | riscv64 (user ELF) | Gone with `riscv_least_authority_demo`: every boot carries an archive, and `userspace` runs a program from it |
+| The boot's middle stages finished (`boot_ladder::TOUR`, stage 11) | riscv64 | `kernel_main`, all three, after the tour and before the hand-over; the checks note stages 3 to 10 |
+| A virtio or PCIe disk driven by a user-level driver | aarch64; riscv64 (discovery only) | Still in the tours: needs a disk (the ask below) |
+| A device interrupt reaches a user-level driver | riscv64 (needs a keystroke); `x86_64`'s PIT is in `arch::irq::init` | Still in the tours: the ask below |
+| Entropy from the machine's source | riscv64 (JH7110 TRNG, virtio-rng reference), `x86_64` (RDSEED) | Still in the tours: the ask below |
+| JH7110 clock controller and TRNG timing | riscv64 | Still in the tour, radon only |
+| Two hand-built ring-3 processes leak no frames across two rounds | `x86_64` | Still in the tour |
+| Reports: image bounds, initial ramdisk, boot file | aarch64, `x86_64` | Still in the tours |
+| An idle console server | aarch64 | Still in the tour |
+
+`boot_ladder::SELF_TEST_CHECKS` has eight names. `SELF_TEST_CHECKS_EARLIER` (provisional) records
+the five-name list's length, so a captured log or an older image still reads green in
+`board_console`.
+
 ## The xenon boot that remains
 
 The shared bring-up holds under QEMU on q35 and under OVMF with two cores (`cargo xtask uefi-boot`
@@ -205,13 +229,10 @@ commit reverts alone, independent of the tail.
 
 - **Outstanding.** The radon boot below, of the PLIC and tail slices.
 - **Outstanding.** The xenon boot above, of the `x86_64` slice.
-- **Outstanding.** The tours become self-test checks, per calef's 2026-10-19 ruling. List every
-  claim each of the three tours makes (`milestone_tour.rs`, `riscv64_boot.rs`, `x86_64_boot.rs`);
-  several are made by more than one, such as preemption, a userspace program and entropy. Make each
-  a check in `self_test::run` that fails loudly on every port where it applies, and say which are
-  port-only and why. Give `board_console` and the hang watcher a new source for the `TOUR` line and
-  boot stage 11, proven by their host tests and a swish-check pass. Then delete the tours,
-  `milestone_tour.rs` and `riscv64_boot.rs`.
+- **Outstanding.** The tours' remaining claims (the table above, "Still in the tours") become
+  self-test checks, and the tours, `milestone_tour.rs` and `riscv64_boot.rs` go. Each needs a
+  device some machines lack, so how the verdict reports a machine without one is asked of calef on
+  the pull request that built the portable checks.
 - **Outstanding.** `x86_64`'s boot thread watches the progenitor after the shared hand-over
   (`watch_the_progenitor`), because `script/swish-check`'s `x86_64` leg and the install, rollback
   and confirm boots wait for the watch's report before typing. Retiring it means those wait for the
