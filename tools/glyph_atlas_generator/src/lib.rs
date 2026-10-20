@@ -10,14 +10,17 @@
 //!
 //! Three choices are §166 (the rasteriser dependency, and whether the glyph atlas ships one face or
 //! four)'s and the determinism appendix's, not this file's, and are not to be re-litigated here:
-//! `ttf-parser` plus `ab_glyph_rasterizer` 0.1.10; grayscale coverage, never subpixel; and coverage
+//! `skrifa` plus `ab_glyph_rasterizer` 0.1.10; grayscale coverage, never subpixel; and coverage
 //! quantized to `u8` at the boundary ([`quantize`]), never stored as `f32`.
 //!
 //! Name: provisional, for the crate and every item in it. calef names things.
 
 use ab_glyph_rasterizer::{Point, Rasterizer, point};
 use glyph_atlas::{ASCENT, CELL_H, CELL_W, FIRST, GLYPHS, LAST, PIXELS_PER_EM};
-use ttf_parser::{Face, GlyphId, OutlineBuilder};
+use skrifa::instance::{LocationRef, Size};
+use skrifa::outline::{DrawSettings, OutlinePen};
+use skrifa::raw::TableProvider;
+use skrifa::{FontRef, GlyphId, MetadataProvider};
 
 /// Each face: the vendored font it is drawn from, and the table it becomes. Paths are relative to
 /// the repository root. `crates/glyph_atlas/src/lib.rs` names the same four tables in its
@@ -55,23 +58,31 @@ pub const FACES: [(&str, &str); 4] = [
 ///
 /// Name: provisional.
 pub fn table(font: &[u8]) -> Vec<u8> {
-    let face = Face::parse(font, 0).expect("the vendored font parses");
-    let scale = PIXELS_PER_EM as f32 / face.units_per_em() as f32;
+    let face = FontRef::new(font).expect("the vendored font parses");
+    let units_per_em = face
+        .head()
+        .expect("the font has a head table")
+        .units_per_em();
+    let scale = PIXELS_PER_EM as f32 / units_per_em as f32;
+    let charmap = face.charmap();
+    let metrics = face.glyph_metrics(Size::unscaled(), LocationRef::default());
+    let outlines = face.outline_glyphs();
     let mut out = Vec::with_capacity(GLYPHS * (CELL_W * CELL_H) as usize);
     let glyphs = (FIRST..=LAST)
         .map(|cp| {
             let ch = char::from_u32(cp).expect("the repertoire is scalar values");
-            face.glyph_index(ch)
+            charmap
+                .map(ch)
                 .unwrap_or_else(|| panic!("the font has no glyph for {ch:?}"))
         })
-        .chain([GlyphId(0)]);
+        .chain([GlyphId::NOTDEF]);
     for id in glyphs {
-        let advance = face
-            .glyph_hor_advance(id)
+        let advance = metrics
+            .advance_width(id)
             .expect("every glyph has an advance");
         // Centered in the cell: the advance is 13.24 pixels at 22 per em, so each side gets the
         // same fraction of the 0.76 left over rather than all of it landing on the right.
-        let left = (CELL_W as f32 - advance as f32 * scale) / 2.0;
+        let left = (CELL_W as f32 - advance * scale) / 2.0;
         let mut pen = Pen {
             raster: Rasterizer::new(CELL_W as usize, CELL_H as usize),
             scale,
@@ -79,9 +90,17 @@ pub fn table(font: &[u8]) -> Vec<u8> {
             start: point(0.0, 0.0),
             last: point(0.0, 0.0),
         };
-        // A glyph with no outline (the space) is all background, which is what an untouched
-        // rasteriser yields.
-        face.outline_glyph(id, &mut pen);
+        // In font units and unhinted, so the scale and the centering above are the only
+        // transform, the same arithmetic whatever parser read the outline. A glyph with no
+        // outline (the space) is all background, which is what an untouched rasteriser yields.
+        if let Some(glyph) = outlines.get(id) {
+            glyph
+                .draw(
+                    DrawSettings::unhinted(Size::unscaled(), LocationRef::default()),
+                    &mut pen,
+                )
+                .expect("the vendored font's outline draws");
+        }
         let mut cell = vec![0u8; (CELL_W * CELL_H) as usize];
         pen.raster.for_each_pixel_2d(|x, y, a| {
             cell[(y * CELL_W + x) as usize] = quantize(a);
@@ -116,7 +135,7 @@ impl Pen {
     }
 }
 
-impl OutlineBuilder for Pen {
+impl OutlinePen for Pen {
     fn move_to(&mut self, x: f32, y: f32) {
         self.start = self.at(x, y);
         self.last = self.start;

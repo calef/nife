@@ -120,7 +120,8 @@ not: its x86-only SIMD path reorders float additions, and about one pixel in 150
 1/255. In a tree whose checker fails on a single pixel, that decides the crate. Three instructions
 follow, and increment three takes them as decided:
 
-- Use `ttf-parser` plus `ab_glyph_rasterizer`, pinned at 0.1.10 (0.1.4 through 0.1.8 panic).
+- Use `skrifa` (§166, 2026-10-20) plus `ab_glyph_rasterizer`, pinned at 0.1.10 (0.1.4 through 0.1.8
+  panic).
 - Quantize coverage to `u8` at the boundary and never persist raw `f32`. A patch bump (0.1.5)
   changed raw output, and the `u8` cast is what absorbs it.
 - Use grayscale anti-aliasing, not subpixel, because subpixel output depends on a panel QEMU cannot
@@ -135,9 +136,9 @@ are in [`determinism.md`](0142-a-text-display-worth-living-in/determinism.md).
 
 The atlas splits the work. The generator is not on the verification path; the table it produces is,
 checked by regenerating it. An outline parser is a whole subsystem this tree would never write, so
-take `ttf-parser`. `ab_glyph_rasterizer` has zero dependencies and is a thin primitive, so take it
-too. The pair has no transitive dependencies, and it built clean for aarch64 and riscv64 under
-`no_std` plus `alloc`. A build-time tool is still inside the supply-chain gate. The rasteriser is
+take one: `skrifa`, with `read-fonts`, `font-types` and `bytemuck` beneath it. `ab_glyph_rasterizer`
+has zero dependencies and is a thin primitive, so take it too. A build-time tool is still inside the
+supply-chain gate. The rasteriser is
 Apache-2.0 only, where the tree is mostly dual MIT or Apache-2.0, and the build-time atlas keeps it
 out of the shipped graph. §166 ruled this pair. The test, the table and the prior art are in
 [`dependency.md`](0142-a-text-display-worth-living-in/dependency.md).

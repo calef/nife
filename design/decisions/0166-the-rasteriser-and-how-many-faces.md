@@ -17,12 +17,15 @@ the half §104 did not take. *(Section number provisional until the merge queue 
 ## The ruling
 
 calef, 2026-10-05 UTC, on the faces: *"four faces, italic as oblique"*. Then on the rasteriser:
-*"rasteriser A"*.
+*"rasteriser A"*. On 2026-10-20 UTC, when `ttf-parser` was flagged unmaintained (RUSTSEC-2026-0192),
+on the parser: *"skrifa"*; and on the one crate that brought new to the tree, `bytemuck_derive`:
+*"Yes"*. Both are recorded on #2428.
 
-- The rasteriser is `ttf-parser` 0.25.1 plus `ab_glyph_rasterizer` 0.1.10: two crates, about 23.7k
-  lines (23,196 in `ttf-parser`'s `src/` and 555 in the rasteriser's, counted 2026-10-05 UTC),
-  Apache-2.0 for the rasteriser and MIT OR Apache-2.0 for the parser. It is a host-only build tool
-  and never enters the shipping graph.
+- The rasteriser is `skrifa` 0.44.0 for the outlines plus `ab_glyph_rasterizer` 0.1.10 to draw them.
+  `skrifa` brings `read-fonts` 0.41.0, `font-types` 0.12.7, `bytemuck` and `bytemuck_derive`, all
+  MIT OR Apache-2.0 or more permissive; the rasteriser is Apache-2.0. It is a host-only build tool,
+  in `tools/glyph_atlas_generator`'s own workspace, and never enters the shipping graph. Outlines are
+  drawn unhinted in font units, so the tables are byte for byte what option A's parser made.
 - The atlas ships four faces: regular, bold, italic and bold italic. DejaVu Sans Mono has no true
   italic, so italic means its Oblique face, and bold italic its Bold Oblique.
 - At the 14x26 cell and 479 glyphs the atlas is 174,356 B for one face and 697,424 B for four
