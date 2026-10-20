@@ -167,15 +167,11 @@ pub extern "C" fn kernel_main(boot_info_pointer: usize) -> ! {
         // because a machine you cannot log into is a machine you cannot fix.
         self_test::run();
 
-        #[cfg(not(feature = "shell"))]
-        milestone_tour();
-
         // **The boot's middle stages ran to their end** (`boot_ladder::TOUR`, which
         // `board_console` reads as `Stage::Tour`), and the stage `sched::dump_threads` reports as
-        // finished, on all three architectures: the self-test's checks are what the tours claimed
-        // (calef's ruling of 2026-10-19 (UTC) on #2434). After the tour rather than the verdict,
-        // because `board_console` stops treating silence as a hang at `Stage::Tour`, and only
-        // the hand-over should lie between this line and the prompt.
+        // finished, on all three architectures: the self-test's checks are the claims the per-port
+        // tours made (calef's ruling of 2026-10-19 (UTC) on #2434). Only the hand-over lies between
+        // this line and the prompt, because `board_console` stops treating silence as a hang here.
         println!("{}{}.", boot_ladder::TOUR, arch::NAME);
         sched::note_boot_stage(self_test::TOUR_STAGE);
 

@@ -53,7 +53,8 @@ pub const BANNER: &str = "nife on ";
 /// the claim a ladder rung should make. A header would only have meant the block started.
 pub const MACHINE: &str = "nife machine: ";
 
-/// **The self-test verdict: `nife self-test: 8 of 8 passed`, or `... , 1 FAILED: <names>`.**
+/// **The self-test verdict: `nife self-test: 13 of 13 passed`, `... , 2 absent: <names>`, or
+/// `... , 1 FAILED: <names>`.**
 ///
 /// Printed by `kernel/src/self_test.rs` after the description and before anything is handed to
 /// userspace. The counts are there on success as well as on failure, so that "ran nothing and
@@ -68,6 +69,18 @@ pub const SELF_TEST: &str = "nife self-test: ";
 /// one. It appears *inside* a [`SELF_TEST`] line; a matcher wanting a failed verdict must find
 /// both.
 pub const SELF_TEST_FAILED: &str = "FAILED: ";
+
+/// **What a verdict says before it names the checks this machine had nothing for** (calef's ruling
+/// of 2026-10-20 (UTC) on #2447): `nife self-test: 9 of 13 passed, 3 absent: blockdev clock trng`.
+///
+/// An absent check neither passed nor failed: the machine has no device for it to test, and the
+/// kernel's line for that check says which. The verdict stays green unless something says
+/// [`SELF_TEST_FAILED`], which always comes after this list when both are present. Whether an
+/// absence is acceptable is the board's fact, not the kernel's: `board_console`'s board profiles
+/// name the checks that may not be absent on each board, and read such an absence as a failure.
+///
+/// Name: provisional, minted 2026-10-20 (UTC) by lane `milestone/890-tours-to-self-test`.
+pub const SELF_TEST_ABSENT: &str = "absent: ";
 
 /// **The boot self-test's checks, by name, in the order they run** (milestone 268).
 ///
@@ -92,6 +105,11 @@ pub const SELF_TEST_CHECKS: &[&str] = &[
     "preemption",
     "userspace",
     "budget",
+    "blockdev",
+    "deviceirq",
+    "clock",
+    "trng",
+    "entropy",
 ];
 
 /// **The lengths [`SELF_TEST_CHECKS`] had before, for reading a log a kernel of that time

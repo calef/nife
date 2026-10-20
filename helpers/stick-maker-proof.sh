@@ -79,11 +79,11 @@ fi
 echo "holiday.txt survived the copy"
 detach "$dev"
 
-# A green self-test verdict, `nife self-test: N of N passed` with nothing after it, whatever N the
-# kernel's list has (boot_ladder::SELF_TEST_CHECKS). awk rather than a grep backreference, which
-# POSIX ERE does not have.
+# A green self-test verdict: a `nife self-test: ` line with no `FAILED: ` on it. What follows the
+# count depends on the machine (a check whose device it lacks is `absent: `), so the line is not
+# matched whole.
 all_passed() {
-    awk '{ if (match($0, /nife self-test: [0-9]+ of [0-9]+ passed$/)) { split(substr($0, RSTART), f, " "); if (f[3] == f[5]) ok = 1 } } END { exit !ok }' "$1"
+    awk '/nife self-test: / { seen = 1; if (index($0, "FAILED: ")) red = 1 } END { exit !(seen && !red) }' "$1"
 }
 
 for image in blank fat; do

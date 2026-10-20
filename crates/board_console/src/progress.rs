@@ -785,6 +785,18 @@ impl BootProgress {
             Some(Failure::SelfTestFailed(names.to_string()))
         } else if complete
             && let Some(at) = line.find(boot_ladder::SELF_TEST)
+            && let Some(name) = Self::verdict_absences(&line[at..])
+                .find(|name| self.board.must_not_be_absent.contains(name))
+        {
+            // **An absence this board does not allow** (calef's ruling of 2026-10-20 (UTC) on
+            // #2447). The kernel reports a check `absent` when the machine has nothing for it to
+            // test, and only the board's profile knows whether this machine should have had it.
+            Some(Failure::SelfTestFailed(format!(
+                "{name} (absent on {}, which has the device for it)",
+                self.board.name
+            )))
+        } else if complete
+            && let Some(at) = line.find(boot_ladder::SELF_TEST)
             && let Some(total) = Self::verdict_total(&line[at + boot_ladder::SELF_TEST.len()..])
             && total != boot_ladder::SELF_TEST_CHECKS.len()
             && !boot_ladder::SELF_TEST_CHECKS_EARLIER.contains(&total)
@@ -802,6 +814,19 @@ impl BootProgress {
         } else {
             None
         }
+    }
+
+    /// The names a verdict lists after `boot_ladder::SELF_TEST_ABSENT`, given the verdict line
+    /// from its `boot_ladder::SELF_TEST`. The list ends at the comma before a `FAILED:` count, or
+    /// at the end of the line.
+    fn verdict_absences(verdict: &str) -> impl Iterator<Item = &str> {
+        let names = verdict
+            .find(boot_ladder::SELF_TEST_ABSENT)
+            .map_or("", |at| {
+                let rest = &verdict[at + boot_ladder::SELF_TEST_ABSENT.len()..];
+                rest.split(',').next().unwrap_or("")
+            });
+        names.split_whitespace()
     }
 
     /// The `Y` in a verdict's `X of Y passed`, given the text after `boot_ladder::SELF_TEST`.
