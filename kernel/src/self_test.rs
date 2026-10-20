@@ -347,6 +347,13 @@ fn mapping(tally: &mut Tally) {
 /// in reads rather than in time for the obvious reason: time is the thing in doubt.
 const STALLED_READS: u32 = 1_000_000;
 
+/// **How many looks with a yield between them mean the counter has stopped.** A yield is a pass
+/// through the scheduler, and with [`preemption`]'s spinners runnable it can be a whole 10 ms tick
+/// before this thread runs again, so a healthy counter changes between every two looks by a wide
+/// margin. A hundred unchanged looks is a stopped counter, found within about a second even when
+/// every look waits a tick; [`STALLED_READS`]' million would be three hours.
+const STALLED_YIELDS: u32 = 100;
+
 /// **The free-running counter, read by something that notices when it stops.**
 ///
 /// The two waits below are bounded by the counter, which is right on a working machine (it makes
@@ -355,22 +362,30 @@ const STALLED_READS: u32 = 1_000_000;
 struct Counter {
     last: u64,
     unchanged: u32,
+    stalled_after: u32,
 }
 
 impl Counter {
     fn new() -> Self {
+        Self::stalled_after(STALLED_READS)
+    }
+
+    /// A counter that reports a stall after `reads` unchanged reads, for a wait that does more than
+    /// spin between them.
+    fn stalled_after(reads: u32) -> Self {
         Self {
             last: timer::now(),
             unchanged: 0,
+            stalled_after: reads,
         }
     }
 
-    /// The counter now, or `None` once it has read the same value [`STALLED_READS`] times running.
+    /// The counter now, or `None` once it has read the same value `stalled_after` times running.
     fn read(&mut self) -> Option<u64> {
         let now = timer::now();
         if now == self.last {
             self.unchanged += 1;
-            if self.unchanged >= STALLED_READS {
+            if self.unchanged >= self.stalled_after {
                 return None;
             }
         } else {
@@ -542,7 +557,7 @@ fn scheduler(tally: &mut Tally) {
 /// here is, so a stopped counter ends the wait rather than making the deadline unreachable. `true`
 /// once `done` held.
 fn wait_until(seconds: u64, mut done: impl FnMut() -> bool) -> bool {
-    let mut counter = Counter::new();
+    let mut counter = Counter::stalled_after(STALLED_YIELDS);
     let deadline = counter.last + seconds * timer::frequency();
     loop {
         if done() {
