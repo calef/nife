@@ -9,8 +9,7 @@ needs_person: yes
 ---
 # 940. radon's second Ethernet port: the driver brings up `ethernet@16040000` as well
 
-*(Number, title and slug provisional. The choice between the options below is calef's and is
-asked on the pull request that added this block.)*
+*(Number, title and slug provisional.)*
 
 calef asked for this on 2026-10-20 (UTC), at the bench: "Lets create a milestones to get jack #1
 also working." A writing-only lane wrote it the same day and built nothing.
@@ -73,35 +72,33 @@ sources this tree read.
 - The bench. `kernel/src/network_bench.rs` prints one port's account and says `gmac0
   interface` in its syscon line.
 
-## The fork: which port, or both, and how one is chosen
+## Which port the boot uses: the first to lease
 
-The driver half is the same in every option: a per-port table, both ports discoverable, either one
-able to come up. The options differ in what the system does with two.
+Ruled by calef on 2026-10-20 (UTC), on #2470: "Lets do a and create a milestones for b." The boot
+hands `net_stack` the port that gets a DHCP lease first, and `gmac0` when both would. A lease, not
+a link: a jack cabled to a switch with no DHCP server behind it links and must not win.
 
-| | what the boot does | what it costs beyond the driver |
-|---|---|---|
-| A. The port with a link (recommended) | both PHYs autonegotiate; the first to link within the existing 5 s gets the one `net_stack`, and `gmac0` wins a tie | nothing outside the driver and the bench; one DMA region still serves |
-| B. Both at once | two controllers and two DMA regions, under two `net_stack` processes or one stack with two interfaces | a second `Stack` in the progenitor and a socket contract that says which interface a socket uses; neither exists |
-| C. Chosen by configuration | a boot argument or the tree's `ethernet0`/`ethernet1` alias names the port | a person must know which jack the cable is in, which is the failure on 2026-10-20 |
+- Ports are tried in order, `gmac0` then `gmac1`, skipping one with no link after the existing
+  5 s. One `net_stack` and one DMA region serve at a time, so trying in order is what keeps this
+  inside one data plane, and it gives `gmac0` the tie.
+- A port that links and gets no lease within a bound is given up: its `net_stack` is ended, its
+  controller stopped, and the next port is tried. No such bound exists today. `net_stack` retries
+  DISCOVER for ever and the kernel blocks on its report (`kernel/src/network_bench.rs`'s BUGS), and
+  `designware_ethernet_service` refuses a second wiring while the first server lives. Both change
+  here. The bound's value is the lane's to choose and to state.
+- The cost is boot time when `gmac0` links to a network with no DHCP server: one bound's worth.
+  The console names the port chosen and why each other port lost (no link, or no lease).
 
-**Recommendation: A.** It is what "jack #1 also working" means at a desk: a cable in either jack
-gets a lease, with nothing to configure. B is how Linux and the BSDs present two ports (one
-interface each, policy in userspace; recalled, not read), and it is the right end state for a
-router or a machine on two networks. Its cost is not the driver. It is a contract question no
-workload on radon asks yet: which network a socket reaches. That question belongs to its own
-milestone with its own ruling, and A's per-port table is what B would build on. Would A still win
-at equal cost? Yes. B's extra part is an unsettled contract, not more code, and C fails the case
-that prompted this.
-
-If calef rules B, this block's exit criteria 4 and 5 become "both ports lease at once" and the
-milestone gains a dependency on a socket-contract decision that is unwritten. If C, criterion 5
-becomes "the named port is used, and the other is reported idle".
+Both ports at once, each its own `Stack`, is the milestone #2471 adds (a machine on two networks
+at once). It waits on a socket-contract decision and builds on this block's per-port table. A port
+named by configuration was refused: a person would have to know which jack the cable is in, which
+is the failure on 2026-10-20.
 
 Reuse: OpenBSD's `if_dwqe_fdt.c` (`dwqe_setup_jh7110`), already adapted for `gmac0`, picks the
 port by the controller's address, so its `gmac1` path is the one to adapt (its handling of the
 second port's syscon is to be read, not assumed). Linux's `dwmac-starfive.c` and mainline's device tree (GPL) are
-read for facts only, as milestone 53 does. No existing code chooses between two NICs by link in
-this tree; the policy is a loop over the two PHYs' status registers.
+read for facts only, as milestone 53 does. No existing code in this tree chooses between two NICs;
+the policy is a loop over the ports in order.
 
 ## Exit criteria
 
@@ -118,14 +115,17 @@ this tree; the policy is a loop over the two PHYs' status registers.
 4. The kernel maps and brings up both ports' control planes when the tree names both, with a
    report per port. The SYS syscon window is mapped whenever a JH7110 Ethernet port is described,
    not only when the PMIC plan exists.
-5. The boot does what calef rules. Under A: the port with a link within 5 s gets `net_stack`,
-   `gmac0` if both, and the console names which port was chosen and that the other had no link.
+5. The boot tries the ports in order and keeps the first to lease, under a stated bound on the DHCP
+   wait. A port that links without leasing has its `net_stack` ended and its controller stopped
+   before the next is tried. The console names the port chosen and, for each other port, whether
+   it had no link or no lease.
 6. `network_bench` prints one block of lines per port (`nic`, `syscon`, `phy`, `link`), the
    syscon line naming the port it read, and runs the coherence probe on the port it hands out.
 7. **On radon, with a person moving the cable.** With the cable in `gmac1`'s jack, the bench
    prints a `link` line and a `dhcp : leased` line for `0x16040000`. `verdict
    LEASED-AND-MEASURED` waits on 53's receive stall. With the cable in `gmac0`'s jack, the run
-   matches 53's. Both logs are committed under `bench/radon-<date>/`, each recording its port's
+   matches 53's. With `gmac0` cabled to a switch that serves no DHCP and `gmac1` to the LAN, the
+   boot gives `gmac0` up after the bound and leases on `gmac1`. Both logs are committed under `bench/radon-<date>/`, each recording its port's
    PHY id, I/O voltage and settings source.
 8. `notes/designware-ethernet.md` says the cable may go in either jack, its runbook covers both,
    and its BUGS loses "`gmac0` only".
@@ -135,7 +135,7 @@ this tree; the policy is a loop over the two PHYs' status registers.
 - **The TCP transfer stall on radon's receive side is milestone 53's**, seen on `gmac0`. This
   milestone does not fix it, and criterion 7 accepts a lease without a measured transfer for that
   reason.
-- **A cable moved after boot is not followed.** Under A the port is chosen once. Re-choosing on
+- **A cable moved after boot is not followed.** The port is chosen once. Re-choosing on
   link loss needs the interrupt-driven link state that 53's polled driver does not have.
 - **`gmac1`'s interface select in the vendor U-Boot is unread.** The offset and shift come from
   mainline alone; the bench's syscon line before and after is the check.
@@ -148,4 +148,4 @@ this tree; the policy is a loop over the two PHYs' status registers.
 radon has two Ethernet jacks and nife drives only `gmac0`'s, so a cable in the other one, `gmac1`
 at `0x1604_0000`, gets no network although the firmware links on it. Describe each port as data,
 give `gmac1` its SYS-domain clocks, SYS-syscon interface select and its own PHY delays, and have
-the boot hand `net_stack` the port that has a link.
+the boot hand `net_stack` the first port to get a DHCP lease, `gmac0` first.
