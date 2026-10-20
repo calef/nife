@@ -21,8 +21,17 @@
 //! [`ReapsDue`] is the other half of that message's use: which finished jobs the progenitor may
 //! wait for, when a pool is short, because their reap is on its way.
 //!
+//! **A bound window is unbound at its holder's reap, never at its reuse** (milestone 606 (a
+//! directory walk costs what it does on Linux), ruling D's "UNBIND at reap"). [`Windows::take`]
+//! skips a window whose bound bit is set, so the progenitor's `UNBIND`, at [`Windows::reaped`] or
+//! [`Windows::release`], has to have run before the window can go to anyone else.
+//!
 //! # BUGS
 //!
+//! - **A window whose `UNBIND` fails is never handed out again.** Its bound bit stays set and
+//!   [`Windows::take`] skips it for the life of the boot. The progenitor is the only caller allowed
+//!   `UNBIND` and it names a window it bound, so the file server has no reason to refuse it.
+//!   Leaking is the safe direction, as below.
 //! - **A window is only as free as the reaps that reach the progenitor.** A job that is never
 //!   reaped by `job_undertaker` keeps its window for the life of the boot. A screen-narrowed job
 //!   (DECISIONS §106 (the `terminal_sink_caretaker` narrowing)) is reaped by the shell, not the
@@ -75,19 +84,21 @@ impl Windows {
     }
 
     /// **The window job `label` gets**, recorded as its holder, or `None` when every window's
-    /// last holder is unreaped. Round robin from where the last take stopped, skipping held
-    /// windows, so reuse is spread over the pool rather than concentrated on the lowest free one.
+    /// last holder is unreaped or its badge is still bound. Round robin from where the last take
+    /// stopped, skipping held and bound windows, so reuse is spread over the pool rather than
+    /// concentrated on the lowest free one.
     pub fn take(&mut self, label: Label) -> Option<u64> {
         let n = self.end - self.first;
         let w = (0..n)
             .map(|i| self.first + (self.next - self.first + i) % n)
-            .find(|&w| self.holder[w as usize] == 0)?;
+            .find(|&w| self.holder[w as usize] == 0 && !self.is_bound(w))?;
         self.next = if w + 1 < self.end { w + 1 } else { self.first };
         self.holder[w as usize] = label;
         Some(w)
     }
 
-    /// **Job `label` was reaped**: the window it held, if any, is free. Returns that window.
+    /// **Job `label` was reaped**: the window it held, if any, is free once it is unbound. Returns
+    /// that window, which the caller unbinds now if [`Windows::is_bound`] says so.
     pub fn reaped(&mut self, label: Label) -> Option<u64> {
         if label == 0 {
             return None;
@@ -98,7 +109,7 @@ impl Windows {
     }
 
     /// **Window `w` was taken and no job came to hold it** (the build or the start failed), so it is
-    /// free now rather than at a reap that will never come.
+    /// free now rather than at a reap that will never come, once the caller has unbound it.
     pub fn release(&mut self, w: u64) {
         if (self.first..self.end).contains(&w) {
             self.holder[w as usize] = 0;
@@ -283,6 +294,38 @@ mod tests {
         p.set_bound(3, false);
         assert!(!p.is_bound(3));
         assert!(p.is_bound(5), "clearing window 3 cleared window 5");
+    }
+
+    /// **A bound window comes back only once it is unbound** (milestone 606, ruling D's "UNBIND at
+    /// reap"). Job 1's window is bound and job 1 is reaped: the next take must not hand that window
+    /// out, because the only `UNBIND` left would be one at reuse, after the window had a new
+    /// holder. Once the reap's `UNBIND` has cleared the bit, the window is free.
+    ///
+    /// Falsification: replayable `crates/grant_plan/falsifications/job_windows.tests.take_never_hands_out_a_bound_window.patch`
+    #[test]
+    fn take_never_hands_out_a_bound_window() {
+        let mut p = Windows::new(1, 2);
+        let w = p.take(1).unwrap();
+        p.set_bound(w, true);
+        assert_eq!(p.reaped(1), Some(w), "job 1's reap did not name its window");
+        assert!(
+            p.is_bound(w),
+            "the reap cleared the bound bit without an UNBIND"
+        );
+        assert_eq!(
+            p.take(2),
+            None,
+            "a bound window was handed out: the UNBIND would run at reuse, not at reap"
+        );
+        p.set_bound(w, false);
+        assert_eq!(p.take(2), Some(w), "the unbound window did not come back");
+        p.set_bound(w, true);
+        p.release(w);
+        assert_eq!(
+            p.take(3),
+            None,
+            "a released window was handed out still bound"
+        );
     }
 
     /// **A due reap is forgotten when it arrives, and only then.**

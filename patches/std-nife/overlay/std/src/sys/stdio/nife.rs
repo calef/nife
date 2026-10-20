@@ -9,8 +9,11 @@
 //! putting a different capability in this slot, and *that* is what redirection is here. See
 //! notes/sink-protocol.md.
 //!
-//! stdin is honest EOF: nothing grants a std program input yet. The sink contract is one-directional
-//! by construction, and a source contract is its own design.
+//! stdin is the console, for a program granted it, and end of input for every other (milestone 892
+//! (a std program at the prompt holds the network and a resolver)). The terminal endpoint, badged as
+//! standard input, sits at `rt::STDIN_SLOT`; each read `CALL`s it for up to eight bytes of the line
+//! being typed, which the terminal's own discipline echoes and edits. An empty slot answers an error
+//! word rather than a count, and that is end of input at once.
 //!
 //! stderr shares the endpoint, so out and err interleave by 16-byte chunk. Recorded as a caveat in
 //! notes/std.md; one endpoint is what the contract grants today.
@@ -32,6 +35,7 @@
 //!   when its reader exits, and it is milestone 50's "`SIGPIPE` becomes a return code".
 
 use crate::io;
+use crate::sync::atomic::{AtomicU64, Ordering};
 use crate::sys::pal::nife::{rt, sinkproto};
 
 pub struct Stdin;
@@ -81,9 +85,34 @@ impl Stdin {
     }
 }
 
+/// Bytes a read took from the terminal and a short buffer could not hold, kept for the next read:
+/// the count in the top byte and up to seven bytes below it, little-endian.
+static STDIN_AHEAD: AtomicU64 = AtomicU64::new(0);
+
 impl io::Read for Stdin {
-    fn read(&mut self, _buf: &mut [u8]) -> io::Result<usize> {
-        Ok(0)
+    fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
+        if buf.is_empty() {
+            return Ok(0);
+        }
+        let ahead = STDIN_AHEAD.swap(0, Ordering::Relaxed);
+        let (n, packed) = match (ahead >> 56) as usize {
+            0 => {
+                let (n, packed) = rt::call(rt::STDIN_SLOT, rt::STDIN_READ_REQUEST, 0);
+                // A count is 0 to 8; anything else is a refusal (an empty slot, a raw-mode
+                // terminal), and a refusal is end of input.
+                (if n > 8 { 0 } else { n as usize }, packed)
+            }
+            n => (n, ahead & ((1 << 56) - 1)),
+        };
+        let bytes = packed.to_le_bytes();
+        let took = n.min(buf.len());
+        buf[..took].copy_from_slice(&bytes[..took]);
+        if took < n {
+            let mut rest = [0u8; 8];
+            rest[..n - took].copy_from_slice(&bytes[took..n]);
+            STDIN_AHEAD.store(((n - took) as u64) << 56 | u64::from_le_bytes(rest), Ordering::Relaxed);
+        }
+        Ok(took)
     }
 }
 
@@ -114,7 +143,10 @@ impl io::Write for Stdout {
     }
 }
 
-pub const STDIN_BUF_SIZE: usize = 0;
+/// **The buffer `io::stdin()` reads through.** Zero would hand every read an empty buffer, which
+/// reads as end of input before the terminal is asked. A reply carries at most eight bytes, so a
+/// small buffer loses nothing.
+pub const STDIN_BUF_SIZE: usize = 64;
 
 /// **The seam that decides whether a failed print is fatal.** `io::stdio`'s `handle_ebadf` swallows
 /// an error this accepts and propagates everything else, and a propagated error makes `println!`

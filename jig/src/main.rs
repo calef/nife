@@ -67,6 +67,7 @@ capability_manifest_note::carry!(grant_plan::Manifest {
     catalog: false,
     indexes: grant_plan::IndexStoreDeclaration::Forbidden,
     activation_directory: false,
+    console_input: false,
     ..grant_plan::Program::Jig.manifest()
 });
 
@@ -358,9 +359,85 @@ fn ask(verb: Activation, staged: Option<&Staged>, name: Option<&str>) -> Reply {
     }
 }
 
+/// **What each program in a package asks the owner for**, listed before the package is sent
+/// (milestone 892 (a std program at the prompt holds the network and a resolver), "The network at
+/// install, ruled"): the network and each resolver zone its manifest note names, the root zone
+/// flagged apart in capitals, since it is any name at all. A program that asks for neither is not
+/// listed. Bytes this cannot read are left for the progenitor to refuse.
+///
+/// Whether anything was listed, which is whether the owner must be asked ([`owner_says_yes`]).
+fn say_asks(bytes: &[u8]) -> bool {
+    let Ok(package) = package_archive::Package::parse(bytes) else {
+        return false;
+    };
+    let mut any = false;
+    for index in 0..package.len() {
+        let (Some(name), Some(member)) = (
+            package_archive::program_name(&package, index),
+            package.member(index),
+        ) else {
+            continue;
+        };
+        let Ok(elf) = elf::Elf::parse(member) else {
+            continue;
+        };
+        let Ok(Some(d)) = elf.note(
+            capability_manifest_note::OWNER,
+            capability_manifest_note::MANIFEST,
+        ) else {
+            continue;
+        };
+        let (Ok(m), Ok(zones)) = (
+            capability_manifest_note::decode(d),
+            capability_manifest_note::zones(d),
+        ) else {
+            continue;
+        };
+        if !m.network && zones.is_empty() {
+            continue;
+        }
+        any = true;
+        println!("  {name} asks for:");
+        if m.network {
+            println!("    reaches the network (connects out)");
+        }
+        for zone in zones.iter().filter(|z| !z.is_empty()) {
+            println!("    looks up names in {}", String::from_utf8_lossy(zone));
+        }
+        if zones.has_root() {
+            println!("    LOOKS UP ANY NAME AT ALL (the root zone)");
+        }
+    }
+    any
+}
+
+/// **The owner's one yes for every grant listed** (milestone 892; calef's rulings on #2405: one
+/// confirmation, all or nothing, read from the console as standard input). `y` or `yes`, in any
+/// case, grants them; anything else, end of input included, grants nothing and installs nothing.
+/// A `jig` started with no console input (a script, a line that is not `install`) reads end of
+/// input at once, so it can never install a package that asks for something.
+fn owner_says_yes() -> bool {
+    use std::io::{BufRead, Write};
+    print!("  grant these and install? [y/N] ");
+    let _ = std::io::stdout().flush();
+    let mut answer = String::new();
+    if std::io::stdin().lock().read_line(&mut answer).is_err() {
+        return false;
+    }
+    if !answer.ends_with('\n') {
+        // End of input reached before a line: say so on its own line.
+        println!();
+    }
+    matches!(answer.trim().to_ascii_lowercase().as_str(), "y" | "yes")
+}
+
 /// **Send `staged` to the installer and say what came of it**, naming a refused program from these
 /// bytes, which are the ones the progenitor judged (milestone 919).
 fn send_install(staged: &mut Staged, fetched: bool) -> ExitCode {
+    if say_asks(staged.bytes()) && !owner_says_yes() {
+        println!("  not installed; nothing was granted");
+        return ExitCode::FAILURE;
+    }
     let reply = ask(Activation::Install, Some(staged), None);
     let program = reply.member.checked_sub(1).and_then(|index| {
         let package = package_archive::Package::parse(staged.bytes()).ok()?;

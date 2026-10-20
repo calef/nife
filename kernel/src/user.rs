@@ -128,9 +128,11 @@ pub mod x86_programs;
 /// shared page), spawns the console *server* as a user process that owns the UART, and returns
 /// what a client needs to reach it. The server binary and the client binary are the *same ELF*,
 /// told apart by the argument in `x0`.
-// The milestone tour is the only consumer, so this is dead in exactly the configurations that
-// have no tour: a test build, and the two alternate boot modes. The allow sits on the module
-// because the module is one wiring, not a bag of independent items.
+// aarch64's milestone tour is the only consumer, so this is dead in exactly the configurations
+// that have no tour: a test build, and the two alternate boot modes. The allow sits on the module
+// because the module is one wiring, not a bag of independent items. Not compiled on riscv64,
+// whose tour is its own and whose UART is no PL011.
+#[cfg(not(target_arch = "riscv64"))]
 #[cfg_attr(
     any(test, feature = "system_tests", feature = "shell", feature = "bench"),
     allow(dead_code)

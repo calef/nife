@@ -20,7 +20,7 @@ static S_CTX: [AtomicUsize; machine_discovery::plic::MAX_CONTEXT_HARTS] =
 const CTX_UNKNOWN: usize = usize::MAX;
 
 /// **Record the PLIC context layout out of the device tree.** Called once on the boot hart, before
-/// anything touches a PLIC context (the PLIC itself is initialized later on every path). A tree
+/// anything touches a PLIC context (the PLIC itself is brought up later, by [`init`]). A tree
 /// that does not state the layout (no PLIC node, no `interrupts-extended`) leaves the table empty
 /// and every lookup falls back to the QEMU formula, which is the behavior this kernel always had.
 ///
@@ -154,17 +154,28 @@ pub(crate) fn boot_s_context() -> usize {
     s_context_of(super::boot_hartid())
 }
 
-/// The boot hart's half of the shared `interrupts_init` (milestone 890 (riscv64 and `x86_64` join
-/// the shared boot path)): [`init_this_cpu`], the same unmasking each secondary does for itself in
-/// `secondary_main`. It is here rather than called by name in the boot because this is the step
-/// aarch64 fills with its GIC, and portable code names `arch::irq`, never a controller.
+/// The boot hart's half of the shared `interrupts_init`: bring the PLIC up, then unmask this hart.
+/// This is the step aarch64 fills with its GIC, and portable code names `arch::irq`, never a
+/// controller.
 ///
-/// **What it does not do yet is bring the PLIC up**, which is what the GIC half does. The PLIC's
-/// base is still stored by `drivers::plic::init` in three places in the riscv64 boot's own paths
-/// (the tour's device step, the test boot, the hand-over), from `memory::plic_region`. Moving that
-/// here opens the boot context's threshold before the other harts start, which changes the order
-/// on silicon this milestone could not run, so it is a later slice of the same milestone.
+/// The PLIC's base comes from `memory::plic_region`, which `memory::init` filled from the device
+/// tree, and the context opened is the boot hart's S context, which [`init_contexts`] read from the
+/// same tree. Opening that context's threshold here, before the other harts start, delivers nothing
+/// on its own: every source stays disabled until [`enable`] routes it. What it buys is that the base
+/// is stored before `sie.SEIE` is set, so an external interrupt can never be claimed through a zero
+/// base. A machine whose tree names no PLIC gets the unmasking alone, as before.
 pub fn init() {
+    if let Some((plic_phys, _)) = crate::memory::plic_region() {
+        // SAFETY: `mmu::init` mapped the PLIC device-typed in the direct map, and this is its
+        // virtual address there. The context is the boot hart's S context, derived rather than
+        // hardcoded because OpenSBI elects the boot hart by lottery (see `boot_s_context`).
+        unsafe {
+            crate::drivers::plic::init(
+                super::mmu::phys_to_virt(plic_phys) as usize,
+                boot_s_context(),
+            );
+        }
+    }
     init_this_cpu();
 }
 
@@ -178,10 +189,8 @@ pub(crate) fn init_this_cpu() {
     super::exceptions::enable_software_interrupts();
     // Unmask this hart's supervisor external interrupts (`sie.SEIE`) too, so IRQ affinity can route a
     // device source to any online hart and have it actually take the interrupt. Setting SEIE with no
-    // source enabled for this hart's context delivers nothing, so this is safe to do here, before the
-    // PLIC base is even stored (a secondary runs this as it comes online, ahead of `plic::init`); the
-    // context is opened and sources routed later, by the boot hart. The boot hart's own SEIE is set
-    // here too (the test path's later `enable_external` becomes a harmless repeat).
+    // source enabled for this hart's context delivers nothing, so this is safe before any source is
+    // routed; a secondary's context is opened, and sources routed to it, later and by the boot hart.
     super::exceptions::enable_external();
 }
 

@@ -249,7 +249,7 @@ Every name below is provisional.
 | 6 | `budget` in the `needs-maintainer` listing, the selftest, the briefs | met |
 | 7 | a week-notes bullet while an issue is open | met, through `sync` |
 | 8 | `verify.yml` joins the budget | met. To 2026-10-19 (UTC), `prove` shards ran 12 to 14 minutes, maximum 21.1 once in about 600 merge-group runs; re-falsify shards 8.5 to 10.8, maximum 18.3 |
-| 9 | milestone 663's deadline from the host pass's measured time | not yet. The record holds the host pass as `test-shard`, `host / host crates`, `phase`, `suite`; taking the deadline is milestone 663's work |
+| 9 | milestone 663's deadline from the host pass's measured time | not yet. Rows (`test-shard`, `host / host crates`, `phase`, `suite`) start 2026-10-19 20:40 (UTC). The week 2026-10-20 to 26 is recorded by the 2026-10-27 daily pass; the deadline is then milestone 663's work |
 
 ## BUGS
 
@@ -270,8 +270,7 @@ Every name below is provisional.
 
 ## Follow-on
 
-- **Outstanding.** Exit criterion 9, which needs a week of the host pass's daily rows and then
-  milestone 663's own lane.
+- **Outstanding.** Exit criterion 9, through milestone 663's lane from 2026-10-27 (UTC).
 
 ## Index row
 
