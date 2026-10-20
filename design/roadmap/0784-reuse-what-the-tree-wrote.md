@@ -100,9 +100,12 @@ device-facing code, with no proofs, driven by bytes a device or a hostile hyperv
 `virtio-drivers` covers block, net, GPU and input over MMIO and PCI ECAM, is active (last push
 2026-09-25), and its leading contributor by commits is `qwandor` (488 commits) *(from memory: of
 Google's Android virtualization work)*. Read, and the reason this is third rather than first:
-its README and source do not negotiate `VIRTIO_F_ACCESS_PLATFORM`, which `virtio_net_transport.rs`
-and `keyboard_driver.rs` accept today because they sit behind the IOMMU. So the first milestone is
-an upstream patch, and the plan fails if upstream refuses it, leaving a fork. Its `Hal` trait is
+release 0.13.0 (2026-03-03) does not negotiate `VIRTIO_F_ACCESS_PLATFORM`, which
+`virtio_net_transport.rs` and `keyboard_driver.rs` accept today because they sit behind the IOMMU.
+Upstream merged it after that release: rcore-os/virtio-drivers#232, "add support
+features(ACCESS_PLATFORM) for some device", on 2026-03-17. It adds an `access_platform` argument to
+the `Hal` trait's methods and touches `input.rs` and `net/mod.rs`, but "some device" leaves whether
+net and input negotiate it end to end unverified. No release carries it yet. Its `Hal` trait is
 static methods, so the DMA capability has to sit in a global. The kernel's DMA validation is
 untouched. New base-graph crates: `zerocopy`, `safe-mmio`, `thiserror`, `enumn`, `log`, `bitflags`.
 Measure throughput with `script/bench` before and after each device.
@@ -204,8 +207,8 @@ on the customer path.
    license (MPL-2.0, not in `deny.toml`). `goblin` and `xmas-elf` lost to our Kani-proved `elf`
    (`xmas-elf` has RUSTSEC-2025-0018, an out-of-bounds read on a malformed ELF).
 2. What the tree already does. `smoltcp` is taken whole and unpatched, and argon2 and RustCrypto
-   are ordinary dependencies; `httparse`, `vte` and `r-efi` fit that shape. `virtio-drivers` needs a
-   patch, which is RedoxFS's shape (§34).
+   are ordinary dependencies; `httparse`, `vte` and `r-efi` fit that shape. `virtio-drivers` will
+   too, once a release carries #232.
 3. Prior art. In the tables above.
 4. Is the premise true? Mostly. The kernel uses only `video_terminal`'s and `line_editor`'s
    constants (the surprise above), so its exemption does not cover their engines.
@@ -221,9 +224,12 @@ on the customer path.
 - (a) BUILT: `http_response` parses its head with `httparse`. Gate: existing host tests and fuzz target.
 - (b) Held for milestone 705 (full-screen programs)'s engine choice (calef, 2026-10-18 UTC): a full engine has its own
   parser. Else `video_terminal` parses with `vte`; gate: host tests, new fuzz target.
-- (c0) Upstream `VIRTIO_F_ACCESS_PLATFORM` to `virtio-drivers`. Then (c1) input, (c2) GPU,
-  (c3) block, (c4) net, each with a `script/bench` number before and after, on all three
-  architectures.
+- (c0) A crates.io release of `virtio-drivers` that contains #232 (`VIRTIO_F_ACCESS_PLATFORM`).
+  Then (c1) input, (c2) GPU, (c3) block, (c4) net, one device per milestone, each with a
+  `script/bench` number before and after, on all three architectures. No git pin and no fork
+  (calef, 2026-10-20 UTC): *"a′ but no releases since March isn't promising as a dependency"*, and
+  *"Treat the wait as part of the gate."* (c1) starts only once such a release exists; its first
+  check is that the release negotiates the feature for net and input.
 - (d) Measure `user_mode_heap` against `talc`; the ruling follows the data.
 - (e) `uefi_loader` binds UEFI through `r-efi`.
 - (f) `stick_maker` reads `diskutil` through `plist`.
@@ -247,6 +253,8 @@ It records that two rules of §46 disagree here and only an architect can say wh
 
 - **Done.** Item (a), 2026-10-18 (UTC), nifeos/nife#2289.
 - **Outstanding.** Items (b) to (h), 2026-10-18: none started, each waits on its own §46 ruling, (b) on 705 too. Checked: none of their crates is in `Cargo.lock`.
+- **Outstanding.** Item (c0) is a wait, not work: no `virtio-drivers` release contains #232
+  (checked 2026-10-20 UTC: latest 0.13.0, 2026-03-03). The wait is part of (c1)'s gate.
 
 ## Index row
 
