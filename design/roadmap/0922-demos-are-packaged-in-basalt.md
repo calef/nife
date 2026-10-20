@@ -12,7 +12,7 @@ needs_person: no
 **PARTIAL, 2026-10-14 (UTC).** basalt builds and publishes `demos`, and `jig` fetches it and
 accepts its digest on all three architectures. The installer then refuses it, because every image
 still carries `least_authority_demo`. Left: running an installed demo, which waits on milestone 909
-and on a program name of at most 16 bytes ("BUGS" below).
+and on a granted name longer than 16 bytes ("BUGS" below).
 
 *(Minted 2026-10-14 (UTC) by lane `milestone/922-demos-are-packaged-in-basalt`, under §297
 (software reaches a nife system as a package `jig` installs from basalt's index, the kernel
@@ -66,7 +66,9 @@ installed with `jig`)'s pins and publishing.
 - `least_authority_demo` is 20 bytes, and a path component at the prompt is at most 16 (`grant_plan`
   refuses it: *"that is not a name: one component, at most 16 bytes"*). An installed copy could
   not be run by its package path even if it installed. The image's copy runs because a catalog
-  name is not a path. A shorter name is an architect's call.
+  name is not a path. The name stays; it is ratified (calef, 2026-10-20 UTC: "B"). This waits on
+  lifting `filesystem_contract::grant::MAX_NAME`, which `grant_plan::MAX_FILE_NAME` mirrors (the
+  proposal below).
 - The package carries the program at basalt's pinned nife commit, so it lags nife's `main` until
   the pin moves.
 
@@ -74,8 +76,9 @@ installed with `jig`)'s pins and publishing.
 
 - **Milestone 909.** Milestone 909 takes the demos out of the shipped image, since only base
   packages compose it, and the installer then takes `demos`.
-- **Outstanding.** A name for `least_authority_demo` of at most 16 bytes, or a longer path
-  component: checked 2026-10-14 (UTC) by a local aarch64 boot, which refused the 20-byte name.
+- **Proposed.** A granted file name longer than 16 bytes:
+  `design/roadmap/proposals/a-granted-file-name-longer-than-sixteen-bytes.md`. Running the installed
+  `least_authority_demo` by its package path waits on it (calef, 2026-10-20 UTC, kept the name).
 
 ## Index row
 
