@@ -140,7 +140,7 @@ Exit checks, as run on 2026-10-19 (UTC) against `42836328b` plus this block's co
 
 calef, 2026-10-20 14:30 (UTC), on the fallback: "a". With the App absent, a workflow that has
 something to record measures, writes and pushes, ends green, and puts the compare link in its run
-summary; no repository is asked to let Actions open pull requests, and the exit is read as "the run
+summary. No repository is asked to let Actions open pull requests, and the exit is read as "the run
 completes through the push". All four workflows now call `helpers/pull-request-by-hand.sh`
 (provisional) after their push when no App token was minted. The fork's `main` was fast-forwarded
 to the branch carrying that change and two were dispatched again:
