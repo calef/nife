@@ -338,7 +338,7 @@ impl Vt {
 #[test]
 fn the_faces_the_underline_styles_and_a_cut_colon_carry_across() {
     let mut old = Vt::new(12, 3);
-    old.feed(b"\x1b[1;3;58;2;200;10;10;4:3mab\x1b[0m\x1b[4:");
+    old.feed(b"\x1b[1;3;58;2;200;10;10;4:3mab\x1b[4:5mz\x1b[0m\x1b[4:");
     let mut new = Vt::new(12, 3);
     new.absorb_handoff(&blob_of(&old))
         .expect("refused its own blob");
@@ -346,9 +346,14 @@ fn the_faces_the_underline_styles_and_a_cut_colon_carry_across() {
         t.feed(b"3mc");
     }
     assert_eq!(new.cell(0, 0), old.cell(0, 0));
-    assert_eq!(new.cell(2, 0), old.cell(2, 0));
+    assert_eq!(
+        new.cell(2, 0),
+        old.cell(2, 0),
+        "the dashed underline, the highest style"
+    );
+    assert_eq!(new.cell(3, 0), old.cell(3, 0));
     assert!(
-        !new.cell(2, 0).attr.is_italic(),
+        !new.cell(3, 0).attr.is_italic(),
         "the cut `4:` lost its colon"
     );
     assert_eq!(blob_of(&new), blob_of(&old));

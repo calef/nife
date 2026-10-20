@@ -1408,13 +1408,22 @@ fn each_underline_style_draws_its_own_line_in_its_own_colour() {
     let double = ink_rows(b"\x1b[21m  ");
     assert_eq!(double.len(), 56);
     assert!(double.iter().all(|&(_, y)| y == u || y == u + 2));
-    let curly = ink_rows(b"\x1b[4:3m  ");
-    assert_eq!(curly.len(), 28, "one pixel a column");
-    assert!(curly.iter().any(|&(_, y)| y == u) && curly.iter().any(|&(_, y)| y == u + 2));
-    let dotted = ink_rows(b"\x1b[4:4m  ");
-    assert_eq!(dotted.len(), 14);
-    let dashed = ink_rows(b"\x1b[4:5m  ");
-    assert!(dashed.len() > dotted.len() && dashed.len() < 28);
+    // Curly: one pixel a column, a wave eight pixels long, its depth rising and falling by rows.
+    let mut curly = ink_rows(b"\x1b[4:3m  ");
+    curly.sort();
+    let depths: Vec<u32> = curly.iter().map(|&(_, y)| y - u).collect();
+    let wave = [0, 0, 1, 1, 2, 1, 1, 0];
+    assert_eq!(depths, (0..28).map(|x| wave[x % 8]).collect::<Vec<u32>>());
+    // Dotted: two on, two off, counted from the screen's left edge.
+    let dotted: Vec<u32> = ink_rows(b"\x1b[4:4m  ").iter().map(|&(x, _)| x).collect();
+    assert_eq!(
+        dotted,
+        (0..28).filter(|x| x / 2 % 2 == 0).collect::<Vec<u32>>()
+    );
+    // Dashed: five on, three off.
+    let dashed: Vec<u32> = ink_rows(b"\x1b[4:5m  ").iter().map(|&(x, _)| x).collect();
+    assert_eq!(dashed.len(), 19);
+    assert_eq!(dashed, (0..28).filter(|x| x % 8 < 5).collect::<Vec<u32>>());
     // The color.
     let mut t = vt(1, 1);
     t.set_cursor_visible(false);
@@ -1422,4 +1431,7 @@ fn each_underline_style_draws_its_own_line_in_its_own_colour() {
     assert_eq!(t.pixel(0, u), 0x00fa_0000);
     t.feed(b"\r\x1b[59m ");
     assert_eq!(t.pixel(0, u), Attr::DEFAULT.colours().0);
+    // Concealed text hides its underline too, its own color included.
+    t.feed(b"\r\x1b[8;58;2;250;0;0m ");
+    assert_eq!(t.pixel(0, u), Attr::DEFAULT.colours().1);
 }

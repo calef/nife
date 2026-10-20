@@ -947,12 +947,20 @@ impl Vt {
     fn sgr(&mut self) {
         let n = self.nparams.max(1);
         let mut i = 0;
-        while i < n {
+        // Every pass consumes at least one parameter, so `MAX_PARAMS` passes always reach the end;
+        // a bound rather than `while i < n` so the walk ends by construction.
+        for _ in 0..MAX_PARAMS {
+            if i >= n {
+                break;
+            }
             let p = self.params[i];
             i += 1;
             // The sub-parameters that follow `p`, at `i..i + subs`.
             let mut subs = 0;
-            while i + subs < n && self.subs & 1 << (i + subs) != 0 {
+            for k in i..n {
+                if self.subs & 1 << k == 0 {
+                    break;
+                }
                 subs += 1;
             }
             let a = self.attr;
@@ -1026,7 +1034,7 @@ impl Vt {
                 _ => a,
             };
             // Whatever sub-parameters `p` had and did not consume are its own, not attributes.
-            if subs > 0 && !matches!(p, 38 | 48 | 58) {
+            if !matches!(p, 38 | 48 | 58) {
                 i += subs;
             }
         }
