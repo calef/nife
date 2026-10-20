@@ -90,13 +90,12 @@ pub(super) const INVISIBLE: u8 = 1 << 4;
 /// SGR 9, crossed out.
 pub(super) const STRIKETHROUGH: u8 = 1 << 5;
 
-/// The glyph row an underline is drawn on: the last, which carries only descenders and the
-/// underscore (`bitmap_font::GLYPH_H`'s doc), so an underline runs under the letters rather than
-/// through them and joins across cells.
-pub(super) const UNDERLINE_ROW: u32 = bitmap_font::GLYPH_H - 1;
-/// The glyph row a strikethrough is drawn on: the hyphen's row, which is also the crossbar of `e`,
-/// so a struck-out word is crossed at the middle of its lower-case letters.
-pub(super) const STRIKETHROUGH_ROW: u32 = 4;
+/// The glyph row an underline is drawn on: the font's own, one row under the baseline, so an
+/// underline runs under the letters rather than through them and joins across cells.
+pub(super) const UNDERLINE_ROW: u32 = glyph_atlas::UNDERLINE_ROW;
+/// The glyph row a strikethrough is drawn on: the font's strikeout, at the middle of the
+/// lower-case letters.
+pub(super) const STRIKETHROUGH_ROW: u32 = glyph_atlas::STRIKETHROUGH_ROW;
 
 impl Attr {
     /// The rendition a reset terminal writes with.
@@ -222,10 +221,9 @@ impl Default for Attr {
 pub struct Cell {
     /// The character, decoded from UTF-8 by the engine (milestone 142 increment 2). One `char`, not
     /// one byte: a multi-byte UTF-8 sequence occupies exactly one cell, the same as it occupies one
-    /// column, rather than one cell per encoded byte. `bitmap_font` still only has pictures for basic
-    /// latin (`bitmap_font::glyph`'s own doc), so a non-ASCII `char` here draws the missing-glyph
-    /// box; what changed is that it draws *one* box per character instead of a run of wrong pictures,
-    /// one per UTF-8 continuation byte.
+    /// column, rather than one cell per encoded byte. `glyph_atlas` has pictures for printable ASCII
+    /// only, so a non-ASCII `char` here draws the missing-glyph box: *one* box per character, not a
+    /// run of wrong pictures, one per UTF-8 continuation byte.
     pub ch: char,
     /// How to paint it.
     pub attr: Attr,

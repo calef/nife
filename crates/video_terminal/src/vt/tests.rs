@@ -28,16 +28,16 @@ fn sgr_2_is_dim() {
     assert!(vt.cell(2, 0).attr.is_bold());
 }
 
-/// An underline is drawn on the last glyph row of the cell, which is a pixel a blank cell
-/// otherwise leaves in the background colour.
+/// An underline is drawn on the font's underline row, which is a pixel a blank cell otherwise
+/// leaves in the background colour.
 #[test]
-fn an_underline_is_the_last_row_of_the_cell() {
+fn an_underline_is_drawn_on_the_underline_row() {
     let mut vt = Vt::new(10, 3);
     vt.feed(b"\x1b[4m ");
     let (fg, bg) = vt.cell(0, 0).attr.colours();
-    let last = bitmap_font::GLYPH_H - 1;
-    assert_eq!(vt.pixel(0, last), fg);
-    assert_eq!(vt.pixel(0, last - 1), bg);
+    assert_eq!(vt.pixel(0, UNDERLINE_ROW), fg);
+    assert_eq!(vt.pixel(0, UNDERLINE_ROW - 1), bg);
+    assert_eq!(vt.pixel(0, UNDERLINE_ROW + 1), bg);
     assert_eq!(vt.pixel(0, 0), bg);
 }
 
@@ -68,43 +68,45 @@ fn vt(cols: u32, rows: u32) -> Vt {
 }
 
 /// The grid's size in cells and in pixels, as numbers rather than as the expression that
-/// computes them. 6 by 3 because 6*7, 6+7 and 6/7 are three different answers.
+/// computes them. 6 by 3 because 6*14, 6+14 and 6/14 are three different answers.
 #[test]
 fn the_grid_reports_its_size_in_cells_and_in_pixels() {
     let t = Vt::new(6, 3);
     assert_eq!((t.cols(), t.rows()), (6, 3));
-    assert_eq!(t.width(), 42);
-    assert_eq!(t.height(), 24);
+    assert_eq!(t.width(), 84);
+    assert_eq!(t.height(), 78);
 }
 
 /// **The pixel is a pure function of the grid**, so it can be pinned exactly. `L` at cell
-/// (1, 1) in green, which starts at pixel (7, 8) because the cell is 7 by 8: its stem is the
-/// second column of the cell (the first is the font's gutter), its top row holds nothing else,
-/// and its foot reaches the last ink column on the baseline. Those four pixels separate every
-/// way the cell-versus-glyph coordinate split can go wrong (a mixed-up divide and remainder
-/// agree at cell (0, 0), which is where every other pixel assertion sits), and the two axes
-/// use different divisors so a single constant cannot satisfy both.
+/// (1, 1) in green, which starts at pixel (14, 26) because the cell is 14 by 26: its stem is the
+/// cell's fourth column, the column left of it is a partial pixel, its top half holds nothing
+/// right of the stem, and its foot reaches the twelfth column on the row above the baseline.
+/// Those pixels separate every way the cell-versus-glyph coordinate split can go wrong (a
+/// mixed-up divide and remainder agree at cell (0, 0), which is where every other pixel
+/// assertion sits), the two axes use different divisors so a single constant cannot satisfy
+/// both, and the partial pixel is the blend rather than either color.
 #[test]
 fn a_pixel_names_its_cell_and_its_place_inside_the_glyph() {
     let mut t = vt(4, 3);
     t.set_cursor_visible(false);
     t.feed(b"\x1b[2;2H\x1b[32mL");
     let (green, black) = (PALETTE[2], PALETTE[0]);
+    assert_eq!(t.pixel(15, 36), black, "the cell's second column is margin");
+    assert_eq!(t.pixel(17, 36), green, "the stem is its fourth");
     assert_eq!(
-        t.pixel(7, 8),
-        black,
-        "the cell's first column is the font's gutter"
-    );
-    assert_eq!(t.pixel(8, 8), green, "the stem is the column after it");
-    assert_eq!(
-        t.pixel(12, 8),
-        black,
-        "and the L's top row is stem and nothing else"
+        t.pixel(16, 36),
+        glyph_atlas::blend(green, black, 80),
+        "and the stem's left edge is a partial pixel, blended"
     );
     assert_eq!(
-        t.pixel(12, 14),
+        t.pixel(22, 36),
+        black,
+        "the L's upper half is stem and nothing else"
+    );
+    assert_eq!(
+        t.pixel(25, 26 + glyph_atlas::ASCENT - 1),
         green,
-        "its foot reaches the last ink column on the baseline"
+        "its foot reaches the twelfth column on the row above the baseline"
     );
 }
 
@@ -379,7 +381,7 @@ fn a_scroll_reports_the_row_the_drawn_cursor_lands_on() {
     assert_eq!(d.scrolled, 1);
     let (x, y, w, h) = d.rect.to_pixels();
     assert!(
-        y <= 2 * bitmap_font::GLYPH_H && y + h >= 3 * bitmap_font::GLYPH_H,
+        y <= 2 * crate::CELL_H && y + h >= 3 * crate::CELL_H,
         "the rect must cover the row the drawn block landed on (row 2), not just the bottom: \
          {w}x{h} at ({x},{y})"
     );
@@ -553,13 +555,13 @@ fn underline_and_strikethrough_draw_a_full_width_line_on_their_rows() {
     t.feed(b"\x1b[4m \x1b[9m \x1b[24m \x1b[29m ");
     let (fg, bg) = Attr::DEFAULT.colours();
     let row_of = |col: u32, gy: u32| -> std::vec::Vec<u32> {
-        (0..bitmap_font::GLYPH_W)
-            .map(|gx| t.pixel(col * bitmap_font::GLYPH_W + gx, gy))
+        (0..crate::CELL_W)
+            .map(|gx| t.pixel(col * crate::CELL_W + gx, gy))
             .collect()
     };
-    let full = std::vec![fg; bitmap_font::GLYPH_W as usize];
-    let none = std::vec![bg; bitmap_font::GLYPH_W as usize];
-    for gy in 0..bitmap_font::GLYPH_H {
+    let full = std::vec![fg; crate::CELL_W as usize];
+    let none = std::vec![bg; crate::CELL_W as usize];
+    for gy in 0..crate::CELL_H {
         let under = gy == UNDERLINE_ROW;
         let strike = gy == STRIKETHROUGH_ROW;
         assert_eq!(
@@ -609,9 +611,9 @@ fn dim_and_invisible_resolve_in_the_documented_order() {
     t.feed(b"\x1b[8mA\x1b[28mB\x1b[8m");
     let (fg, bg) = Attr::DEFAULT.colours();
     let ink_in = |col: u32| {
-        (0..bitmap_font::GLYPH_W * bitmap_font::GLYPH_H).any(|i| {
-            let (gx, gy) = (i % bitmap_font::GLYPH_W, i / bitmap_font::GLYPH_W);
-            t.pixel(col * bitmap_font::GLYPH_W + gx, gy) == fg
+        (0..crate::CELL_W * crate::CELL_H).any(|i| {
+            let (gx, gy) = (i % crate::CELL_W, i / crate::CELL_W);
+            t.pixel(col * crate::CELL_W + gx, gy) == fg
         })
     };
     assert!(!ink_in(0), "concealed text drew ink");
@@ -621,7 +623,7 @@ fn dim_and_invisible_resolve_in_the_documented_order() {
     assert_eq!(t.cursor(), (2, 0));
     t.feed(b" \x1b[D");
     assert_eq!(
-        t.pixel(2 * bitmap_font::GLYPH_W, 0),
+        t.pixel(2 * crate::CELL_W, 0),
         fg,
         "the cursor vanished on a concealed cell"
     );
@@ -677,11 +679,7 @@ fn the_cursor_is_painted_and_therefore_damages() {
     let (fg, bg) = Attr::DEFAULT.colours();
     // Under the cursor, a blank cell shows the *background* colour as its ink field.
     assert_eq!(t.pixel(0, 0), fg, "the block cursor should invert its cell");
-    assert_eq!(
-        t.pixel(bitmap_font::GLYPH_W, 0),
-        bg,
-        "and only its own cell"
-    );
+    assert_eq!(t.pixel(crate::CELL_W, 0), bg, "and only its own cell");
 
     t.take_damage();
     t.feed(b"\x1b[1;3H");
@@ -692,11 +690,7 @@ fn the_cursor_is_painted_and_therefore_damages() {
     );
 
     t.set_cursor_visible(false);
-    assert_eq!(
-        t.pixel(2 * bitmap_font::GLYPH_W, 0),
-        bg,
-        "hidden means not drawn"
-    );
+    assert_eq!(t.pixel(2 * crate::CELL_W, 0), bg, "hidden means not drawn");
 }
 
 /// Damage is the bounding box of what changed, and writing a cell the value it already holds is
@@ -731,7 +725,7 @@ fn damage_is_a_bounding_box_of_real_changes() {
         (0, 0, 8, 4),
         "two far-apart changes cost the box that contains both",
     );
-    assert_eq!(d.to_pixels(), (0, 0, 56, 32));
+    assert_eq!(d.to_pixels(), (0, 0, 112, 104));
 }
 
 /// `ESC c` is a reset and not an erase: it clears in the *default* rendition and homes the
@@ -1160,7 +1154,7 @@ fn moving_pixels_and_rendering_the_damage_reproduces_the_whole_picture() {
 }
 
 fn moving_pixels_with_k<const K: usize>() {
-    use bitmap_font::{GLYPH_H, GLYPH_W};
+    use crate::{CELL_H as GLYPH_H, CELL_W as GLYPH_W};
     let (cols, rows) = (3, 5);
     let (sw, sh) = (cols * GLYPH_W + 2, rows * GLYPH_H + 3);
     let mut t = Vt::new(cols, rows);
@@ -1244,7 +1238,7 @@ fn a_painter_that_moves_and_renders_what_damage_says_ends_with_the_engines_pictu
         ] {
             t.feed(feed);
             if let Some(d) = t.take_damage() {
-                let px = (d.scrolled * bitmap_font::GLYPH_H) as usize;
+                let px = (d.scrolled * crate::CELL_H) as usize;
                 screen.copy_within(px * w.., 0);
                 let (x0, y0, dw, dh) = d.rect.to_pixels();
                 for y in y0..y0 + dh {
@@ -1260,8 +1254,8 @@ fn a_painter_that_moves_and_renders_what_damage_says_ends_with_the_engines_pictu
                     t.pixel(x, y),
                     "cursor {cursor}, after {:?}: pixel ({x}, {y}), cell ({}, {})",
                     std::string::String::from_utf8_lossy(feed),
-                    x / bitmap_font::GLYPH_W,
-                    y / bitmap_font::GLYPH_H,
+                    x / crate::CELL_W,
+                    y / crate::CELL_H,
                 );
             }
         }

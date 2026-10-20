@@ -53,8 +53,8 @@ pub const MIN_COLUMNS: u32 = 120;
 /// It lives here rather than in the driver because a stride bug is only catchable on the host: this
 /// is a pure function of five numbers. It holds the surface's size clipped to the screen's, placed
 /// top-left, the screen's stride and byte order, and **the scale every surface pixel is drawn at**:
-/// [`ScreenConsole::scale_for`] of the screen's width, the kernel console's rule, so the shell
-/// after the handover is the boot tour's letter size. Clipping is in surface pixels against the
+/// [`ScreenConsole::scale_for_cell`] of the screen's width for the surface's cell, the kernel
+/// console's rule, so the shell after the handover has at most the boot tour's columns. Clipping is in surface pixels against the
 /// screen divided by the scale; a screen not a whole multiple of its scale leaves fewer than
 /// `scale` pixels uncovered at its right and bottom edges (see BUGS).
 ///
@@ -70,7 +70,7 @@ pub const MIN_COLUMNS: u32 = 120;
 /// // A 4x2 screen with four bytes of padding per row, and a 3x3 surface: the surface is clipped
 /// // to three columns and two rows. A screen this narrow draws at scale one.
 /// let screen = Framebuffer { base: 0, width: 4, height: 2, stride: 20, order: PixelOrder::Rgbx };
-/// let aperture = Aperture::new(&screen, 3, 3).expect("a screen and a surface both bigger than 0");
+/// let aperture = Aperture::new(&screen, 7, 3, 3).expect("a screen and a surface both bigger than 0");
 /// assert_eq!(aperture.size(), (3, 2));
 ///
 /// // Copy the whole visible part of a surface whose every pixel is pure red, 0x00ff0000.
@@ -97,12 +97,18 @@ pub struct Aperture {
 }
 
 impl Aperture {
-    /// The part of `screen` a `surface_width` by `surface_height` surface covers, or `None` when the
-    /// screen's own geometry does not close ([`Framebuffer::span`]) or either size is zero.
+    /// The part of `screen` a `surface_width` by `surface_height` surface covers, drawn at
+    /// [`ScreenConsole::scale_for_cell`]'s scale for the surface's `cell_w`-pixel cells, or `None`
+    /// when the screen's own geometry does not close ([`Framebuffer::span`]) or either size is zero.
     #[must_use]
-    pub fn new(screen: &Framebuffer, surface_width: u32, surface_height: u32) -> Option<Self> {
+    pub fn new(
+        screen: &Framebuffer,
+        cell_w: u32,
+        surface_width: u32,
+        surface_height: u32,
+    ) -> Option<Self> {
         screen.span()?;
-        let scale = ScreenConsole::scale_for(screen.width);
+        let scale = ScreenConsole::scale_for_cell(screen.width, cell_w);
         Self::checked(
             (screen.width / scale).min(surface_width),
             (screen.height / scale).min(surface_height),
@@ -572,7 +578,19 @@ impl ScreenConsole {
     /// (QEMU's 1280x800 OVMF screen among them) stays at one, as before.
     #[must_use]
     pub const fn scale_for(width: u32) -> u32 {
-        let s = width / (bitmap_font::GLYPH_W * MIN_COLUMNS);
+        Self::scale_for_cell(width, bitmap_font::GLYPH_W)
+    }
+
+    /// **[`Self::scale_for`]'s rule for a cell `cell_w` pixels wide**: the largest integer scale
+    /// that still leaves [`MIN_COLUMNS`] columns of such cells, never less than one. The one rule
+    /// both consoles draw by, so the shell's terminal (14-pixel cells from `glyph_atlas`) and this
+    /// console's 7-pixel bitmap give a screen of the same width the same columns at most: a
+    /// 1920-wide screen is 137 columns of either, at scale one for the terminal and two here.
+    ///
+    /// Name: provisional.
+    #[must_use]
+    pub const fn scale_for_cell(width: u32, cell_w: u32) -> u32 {
+        let s = width / (cell_w * MIN_COLUMNS);
         if s == 0 { 1 } else { s }
     }
 

@@ -381,14 +381,14 @@ fn a_damaged_composite_leaves_the_rest_of_the_screen_alone() {
     let mut screen = vec![POISON; SCREEN_PIXELS];
 
     let damage = damage_to_screen(&SCENE[1], SMALL_DAMAGE);
-    assert_eq!(damage, Rect::new(44, 29, 9, 7));
+    assert_eq!(damage, Rect::new(44, 55, 9, 7));
     assert!(
         damage.area() * 20 < Rect::screen().area(),
         "the 'small' damage rectangle is not small: this test proves nothing about cost",
     );
     composite(&mut screen, &refs, SCENE.len(), damage);
 
-    // 317,856 pixels, each with a call into `expected_screen_pixel`. Natively that is
+    // 698,880 pixels, each with a call into `expected_screen_pixel`. Natively that is
     // microseconds; under Miri's interpreter it measured **over 44 minutes and had not
     // finished**, which is more than the whole weekly job's budget for one test (milestone
     // 238). So it strides under `cfg(miri)`, the convention `glob` and `network_time_protocol` already use.
@@ -633,8 +633,8 @@ fn stride_and_max_surface_bytes_are_exact() {
         4,
         "one pixel is four bytes"
     );
-    // 64*32*4 = 8192, 48*24*4 = 4608, 40*40*4 = 6400: the first window is the largest.
-    assert_eq!(MAX_SURFACE_BYTES, 8192);
+    // 72*52*4 = 14,976, 71*56*4 = 15,904, 30*80*4 = 9,600: the second window is the largest.
+    assert_eq!(MAX_SURFACE_BYTES, 15_904);
     assert_eq!(
         MAX_SURFACE_BYTES,
         SCENE.iter().map(|w| w.w * w.h * 4).max().unwrap(),

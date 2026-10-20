@@ -445,6 +445,20 @@ const _: () = assert!(
         <= u32::MAX as u64
 );
 
+impl Object {
+    /// **How many page frames a holder of this object may map into itself**: a `PageFrame` run's
+    /// length, and zero for everything else. What `user::entry::run_with` sizes a new process's
+    /// region by, so the revocation log has room for every page it maps from a grant.
+    ///
+    /// Name: provisional.
+    pub const fn mappable_pages(&self) -> u64 {
+        match self {
+            Object::PageFrame(_, count) => count.get(),
+            _ => 0,
+        }
+    }
+}
+
 /// A capability naming an endpoint, with the given rights.
 ///
 /// **`WRITE` lets the holder `SEND`; `READ` lets it `RECEIVE`.** Hand the two ends of one endpoint

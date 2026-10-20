@@ -402,25 +402,28 @@ fn a_client_cannot_read_any_page_of_its_neighbours_it_can_name() {
     let before = w.client_surface_digest(VICTIM);
 
     // Page k past the end of the attacker's own surface is the victim's frame k: its control page,
-    // then its two pixel frames. Asserted, not assumed.
+    // then each of its pixel frames. Asserted, not assumed.
     let own_frames = compositor::SCENE[ATTACKER].page_frames() as u64;
     assert_eq!(
         w.client[VICTIM],
         w.client[ATTACKER] + (1 + own_frames) * FRAME_SIZE,
         "the clients are not adjacent, so these probes would prove nothing about a neighbour",
     );
-    assert_eq!(
-        compositor::SCENE[VICTIM].page_frames(),
-        2,
-        "the probe table assumes two frames"
+    let victim_frames = compositor::SCENE[VICTIM].page_frames() as u64;
+    assert!(
+        victim_frames >= 2,
+        "a one-frame victim has no first and last pixel page to tell apart"
     );
     let past_own_surface = w.neighbour_probe_va(ATTACKER) - FRAME_SIZE;
 
-    for (name, k) in [
-        ("control page", 0u64),
-        ("first pixel page", 1),
-        ("last pixel page", 2),
-    ] {
+    // Every page the victim owns, its control page and each pixel frame, is probed in turn.
+    for k in 0..=victim_frames {
+        let name = match k {
+            0 => "control page",
+            1 => "first pixel page",
+            _ if k == victim_frames => "last pixel page",
+            _ => "middle pixel page",
+        };
         let va = past_own_surface + k * FRAME_SIZE;
         let faults = USER_FAULTS.load(Ordering::Relaxed);
         w.spawn_client_probing(ATTACKER, ROLE_PROBE_NEIGHBOUR | ROLE_PROBE_READ, va);
@@ -823,8 +826,8 @@ fn focus_routes_a_keystroke_to_one_terminals_grid_and_not_its_neighbours() {
         assert_eq!(
             (cols, rows),
             (
-                SCENE[i].w / bitmap_font::GLYPH_W,
-                SCENE[i].h / bitmap_font::GLYPH_H
+                SCENE[i].w / video_terminal::CELL_W,
+                SCENE[i].h / video_terminal::CELL_H
             ),
             "terminal {i} sized itself to a grid its window cannot hold",
         );

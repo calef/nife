@@ -81,8 +81,8 @@ mapping is undone; the memory is not returned. A caller that retries a large run
 
 ## A run capability names more than its object, by up to one page
 
-`SURFACE_PAGE_FRAMES` is `SURFACE_BYTES.div_ceil(4096)`. At 924x344 the surface is 1,271,424 bytes
-in 311 frames, so the capability names 2,432 bytes past the end of the surface. Those bytes are
+`SURFACE_PAGE_FRAMES` is `SURFACE_BYTES.div_ceil(4096)`. At 1120x624 the surface is 2,795,520
+bytes in 683 frames, so the capability names 2,048 bytes past the end of the surface. Those bytes are
 inside the same contiguous allocation (the driver's DMA region), not another object's memory. And
 nothing addresses them: every consumer bounds-checks against `SURFACE_BYTES` rather than the frame
 count (`user_mode_runtime::mapped_window::MappedWindow`).

@@ -34,11 +34,6 @@ workspace = true
 # recorded there rather than by its absence.
 abi = { version = "0.1.0", path = "../crates/abi" }
 address_space_identifier = { version = "0.1.0", path = "../crates/address_space_identifier" }
-# The bitmap font and the VT engine (milestone 29's text increment). The kernel does not draw
-# anything; it *predicts*. Its display-terminal tests run the same engine over the same script the
-# terminal was sent and compare the framebuffer pixel for pixel, so no process grades its own
-# homework and the picture is a value rather than a screenshot somebody eyeballed once.
-bitmap_font = { version = "0.1.0", path = "../crates/bitmap_font" }
 # The corruption canary's arm/check/disarm serialization (2026-08-15), lifted out of `sched.rs`
 # after its hand-written two-flag protocol raced: the kernel calls the loom-searched gate rather
 # than keeping a copy of it, the third retrofit of work_steal_slot's move. See notes/interleaving.md.
@@ -60,7 +55,7 @@ capability = { version = "0.1.0", path = "../crates/capability" }
 # The shell's grant-expression logic (milestone 47's `rm -r`). The kernel plans nothing; its `rm`
 # test **starts the program the way the shell would**, so the option bits it packs come from the
 # manifest the prompt checks against rather than from a second copy of an ordering. Same rule as
-# `line_editor`, `bitmap_font` and `calendar` below: no party has its own copy of a shared definition.
+# `line_editor`, `video_terminal` and `calendar` below: no party has its own copy of a shared definition.
 grant_plan = { version = "0.1.0", path = "../crates/grant_plan" }
 # The wall-clock contract (milestone 51, DECISIONS §43). The kernel discovers the RTC by
 # `compatible` and names the binding with these constants, and its clock tests read the shared page
@@ -216,6 +211,12 @@ spin = { version = "0.12", default-features = false, features = ["spin_mutex"] }
 # `inter_process_communication` and `direct_memory_access_validator` made for Kani. See
 # notes/interleaving.md.
 work_steal_slot = { version = "0.1.0", path = "../crates/work_steal_slot" }
+# The VT engine, and through it the font (milestone 29 (a display terminal: framebuffer, virtio-gpu,
+# and a foreign component)'s text increment, milestone 142 (a text display good enough that people
+# use it instead of a GUI)'s atlas). The kernel does not draw anything; it *predicts*. Its
+# display-terminal tests run the same engine over the same script the terminal was sent and compare
+# the framebuffer pixel for pixel, so no process grades its own homework and the picture is a value
+# rather than a screenshot somebody eyeballed once.
 video_terminal = { version = "0.1.0", path = "../crates/video_terminal" }
 # The scheduler's block/wake handshake, so the kernel calls the loom-searched transitions rather
 # than keeping a copy of them: the second retrofit of work_steal_slot's move, asked for by the

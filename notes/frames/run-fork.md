@@ -12,10 +12,10 @@ capability for a multi-page region instead of one per page.
 
 The display driver's DMA region moved to this. So did the painting client's and display terminal's
 surface grant, and the compositor's screen (plus a capture client's read-only mirror of it). That is
-what makes the grown scanout fit a sixteen-slot capability table at all. It was 900 page frames at
-the 1280x720 this was first built and measured against. It is 311 frames at the 924x344 the scanout
-was retargeted to on 2026-08-27, and `crates/graphics_contract/src/lib.rs`'s `WIDTH` has the
-reasoning. At one capability per page neither size would have fit.
+what makes the grown scanout fit a sixteen-slot capability table at all. It is 683 page frames at
+1120x624 (900 at the 1280x720 this was first built and measured against), and
+`crates/graphics_contract/src/lib.rs`'s `WIDTH` has the reasoning. At one capability per page no
+size past 128x64 would have fit.
 
 `display_service::DRIVER_SLOT_DMA`'s `const` assertion (below, and the error it used to produce) is
 retired along with the pressure it guarded against. It was replaced rather than deleted. The

@@ -10,8 +10,8 @@
 //! expects:
 //!
 //! - Printable bytes, with **deferred wrap** at the right margin (see [`Vt::feed`]) and UTF-8: a
-//!   multi-byte sequence takes one cell, drawn as [`bitmap_font::glyph`]'s missing-glyph box past
-//!   basic latin.
+//!   multi-byte sequence takes one cell, drawn as `glyph_atlas`'s missing-glyph box past
+//!   printable ASCII.
 //! - `CR`, `LF` (scrolling into [`SCROLLBACK_ROWS`] of history), `BS`, `TAB`, `BEL` (ignored).
 //! - `CSI A/B/C/D` cursor motion, `CSI H` / `CSI f` absolute positioning.
 //! - `CSI J` erase in display, `CSI K` erase in line, both with all three modes.
@@ -58,6 +58,8 @@ mod test_support;
 
 pub use cell::{Attr, Cell, Colour};
 pub use damage::{CellRect, Damage};
-pub use geometry::{MAX_CELLS, MAX_COLS, MAX_ROWS, SCROLLBACK_CELLS, SCROLLBACK_ROWS};
+pub use geometry::{
+    CELL_H, CELL_W, MAX_CELLS, MAX_COLS, MAX_ROWS, SCROLLBACK_CELLS, SCROLLBACK_ROWS,
+};
 pub use palette::{DEFAULT_BG, DEFAULT_FG, PALETTE};
 pub use vt::Vt;

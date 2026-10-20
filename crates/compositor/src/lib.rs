@@ -270,14 +270,22 @@ impl Window {
 ///
 /// - three different sizes, so a compositor that assumed one geometry for all surfaces fails;
 /// - **overlap**: windows 1 and 2 each cover part of window 0, so stacking order is observable;
-/// - **clipping**: window 2 hangs off the left edge (negative origin) and off the bottom, so a
-///   compositor that clipped only against the surface, or only against the screen, produces a
-///   different picture. (The right and top edges are covered by the host tests with synthetic
-///   windows, so the live scene does not have to carry every case.)
+/// - **clipping**: window 2 hangs off the left edge (negative origin), so a compositor that
+///   clipped only against the surface, or only against the screen, produces a different picture.
+///   (The other edges are covered by the host tests with synthetic windows, so the live scene does
+///   not have to carry every case.)
+///
+/// Each window holds a terminal grid of a few `video_terminal` cells (14x26): 5x2, 5x2 and 2x3,
+/// each with a strip no cell covers. The two terminal windows are five columns because their
+/// scroller lines (`video_terminal::script::window_scroll_line`, `wN-MM`) are five characters: a
+/// narrower window wraps them and scrolls the window's own digit out of sight, and the two
+/// terminals then show the same picture. Each surface is at most four page frames, because the
+/// kernel maps a client's surface one `Spawn::maps` entry a page
+/// (`kernel/src/user/compositor_service.rs`'s `MAX_SURFACE_PAGES`, asserted at build time).
 pub const SCENE: &[Window] = &[
-    Window::new(8, 8, 64, 32),
-    Window::new(40, 24, 48, 24),
-    Window::new(-8, 30, 40, 40),
+    Window::new(16, 26, 72, 52),
+    Window::new(40, 50, 71, 56),
+    Window::new(-8, 60, 30, 80),
 ];
 
 // ================================================================================================
@@ -380,9 +388,9 @@ pub const fn background_pixel(x: u32, y: u32) -> u32 {
 /// }
 ///
 /// // Window 1 covers part of window 0, so the topmost one wins.
-/// assert_eq!(expected_screen_pixel(2, 45, 30), window_pixel(1, 5, 6));
-/// assert_eq!(expected_screen_pixel(1, 45, 30), window_pixel(0, 37, 22));
-/// assert_eq!(expected_screen_pixel(0, 45, 30), background_pixel(45, 30));
+/// assert_eq!(expected_screen_pixel(2, 45, 56), window_pixel(1, 5, 6));
+/// assert_eq!(expected_screen_pixel(1, 45, 56), window_pixel(0, 29, 30));
+/// assert_eq!(expected_screen_pixel(0, 45, 56), background_pixel(45, 56));
 /// ```
 pub fn expected_screen_pixel(n: usize, x: u32, y: u32) -> u32 {
     expected_screen_pixel_with(n, x, y, |i, sx, sy| window_pixel(i as u32, sx, sy))

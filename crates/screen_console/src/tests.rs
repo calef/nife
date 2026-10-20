@@ -604,7 +604,7 @@ fn an_aperture_copies_through_the_stride_and_never_touches_the_padding() {
     const PAD: u32 = 12;
     let (found, mut pixels) = screen(2, 1, PAD, PixelOrder::Bgrx);
     pixels.fill(0xa5);
-    let aperture = Aperture::new(&found, 1000, 1000).expect("a real screen");
+    let aperture = Aperture::new(&found, bitmap_font::GLYPH_W, 1000, 1000).expect("a real screen");
     assert_eq!(
         aperture.size(),
         (found.width, found.height),
@@ -643,7 +643,7 @@ fn an_aperture_is_the_smaller_of_screen_and_surface_and_refuses_what_leaves_it()
         stride: 1280 * 4,
         order: PixelOrder::Bgrx,
     };
-    let aperture = Aperture::new(&found, 924, 344).expect("a real screen");
+    let aperture = Aperture::new(&found, bitmap_font::GLYPH_W, 924, 344).expect("a real screen");
     assert_eq!(
         aperture.size(),
         (924, 344),
@@ -655,7 +655,7 @@ fn an_aperture_is_the_smaller_of_screen_and_surface_and_refuses_what_leaves_it()
         ..found
     };
     assert_eq!(
-        Aperture::new(&narrow, 924, 344)
+        Aperture::new(&narrow, bitmap_font::GLYPH_W, 924, 344)
             .expect("a real screen")
             .size(),
         (800, 344),
@@ -681,7 +681,10 @@ fn an_aperture_is_the_smaller_of_screen_and_surface_and_refuses_what_leaves_it()
             "({x},{y},{w},{h}) should have been refused"
         );
     }
-    assert!(Aperture::new(&found, 0, 344).is_none(), "an empty surface");
+    assert!(
+        Aperture::new(&found, bitmap_font::GLYPH_W, 0, 344).is_none(),
+        "an empty surface"
+    );
 }
 
 /// The words that carry an aperture across a spawn come back as the same aperture, both byte
@@ -698,7 +701,8 @@ fn an_aperture_survives_the_trip_through_two_words() {
             stride: 7680,
             order,
         };
-        let aperture = Aperture::new(&found, 924, 344).expect("a real screen");
+        let aperture =
+            Aperture::new(&found, bitmap_font::GLYPH_W, 924, 344).expect("a real screen");
         let (size, layout) = aperture.to_words();
         assert_eq!(Aperture::from_words(size, layout), Some(aperture));
     }
@@ -729,7 +733,7 @@ fn the_wide_copy_lands_the_same_bytes_for_every_rectangle_and_base_alignment() {
         stride: 44,
         order: PixelOrder::Bgrx,
     };
-    let aperture = Aperture::new(&found, 10, 3).expect("a real screen");
+    let aperture = Aperture::new(&found, bitmap_font::GLYPH_W, 10, 3).expect("a real screen");
     let (w, h) = aperture.size();
     // The surface refuses a read outside it, as `MappedWindow` does in the driver: a column
     // counted from the wrong origin is a panic here, not a quietly wrong pixel.
@@ -792,7 +796,7 @@ fn every_qword_store_is_eight_aligned_in_the_apertures_own_address_space() {
         stride: 44,
         order: PixelOrder::Bgrx,
     };
-    let aperture = Aperture::new(&found, 10, 3).expect("a real screen");
+    let aperture = Aperture::new(&found, bitmap_font::GLYPH_W, 10, 3).expect("a real screen");
     let (w, h) = aperture.size();
     for (x, y) in (0..w).flat_map(|x| (0..h).map(move |y| (x, y))) {
         for (rw, rh) in (1..=w - x).flat_map(|rw| (1..=h - y).map(move |rh| (rw, rh))) {
@@ -820,10 +824,10 @@ fn every_qword_store_is_eight_aligned_in_the_apertures_own_address_space() {
     }
 }
 
-/// **What the wide path permits, as a store count.** The scanout's own geometry (924x344,
-/// stride 3696, an even width on an 8-aligned stride) is the best case and the one the swish
-/// leg pays: one qword store per pixel pair, no head or tail words, 158,928 stores for a
-/// full-surface flush against 317,856 one-word stores. A run that starts misaligned earns at
+/// **What the wide path permits, as a store count.** The scanout's own geometry (1120x624,
+/// stride 4480, an even width on an 8-aligned stride) is the best case and the one the swish
+/// leg pays: one qword store per pixel pair, no head or tail words, 349,440 stores for a
+/// full-surface flush against 698,880 one-word stores. A run that starts misaligned earns at
 /// most one head word and one tail word, never a narrower pair.
 #[test]
 fn the_wide_copy_uses_one_qword_per_pair_and_never_more_than_two_edge_words() {
@@ -837,7 +841,8 @@ fn the_wide_copy_uses_one_qword_per_pair_and_never_more_than_two_edge_words() {
         stride: gfx::STRIDE,
         order: PixelOrder::Bgrx,
     };
-    let aperture = Aperture::new(&found, gfx::WIDTH, gfx::HEIGHT).expect("the scanout");
+    let aperture =
+        Aperture::new(&found, bitmap_font::GLYPH_W, gfx::WIDTH, gfx::HEIGHT).expect("the scanout");
     let (w, h) = aperture.size();
     let mut qwords = 0u32;
     let mut words = 0u32;
@@ -866,7 +871,7 @@ fn the_wide_copy_uses_one_qword_per_pair_and_never_more_than_two_edge_words() {
         stride: 24,
         order: PixelOrder::Bgrx,
     };
-    let aperture = Aperture::new(&odd, 5, 1).expect("a real screen");
+    let aperture = Aperture::new(&odd, bitmap_font::GLYPH_W, 5, 1).expect("a real screen");
     let mut qwords = 0u32;
     let mut words = 0u32;
     assert!(aperture.copy_wide(
@@ -895,7 +900,7 @@ fn a_staged_pair_keeps_the_earlier_pixel_low_in_the_screens_byte_order() {
         stride: 8,
         order: PixelOrder::Rgbx,
     };
-    let aperture = Aperture::new(&found, 2, 1).expect("a real screen");
+    let aperture = Aperture::new(&found, bitmap_font::GLYPH_W, 2, 1).expect("a real screen");
     let mut seen = [0u8; 8];
     assert!(aperture.copy_wide(
         0,
@@ -929,11 +934,10 @@ fn to_words_two_halves_share_no_bit_so_or_and_xor_agree() {
     assert_eq!(u32::MAX as u64 & (u32::MAX as u64) << 32, 0);
 }
 
-/// **xenon's screen, covered edge to edge at scale two** (the screen terminal lane,
-/// 2026-10-04). On 2026-10-04 the shell after the handover drew a fixed 924x344 surface at
-/// scale one into the top-left of this 1920x1080 monitor. The surface that fills it is
-/// 960x540, its grid is 137x67 (the boot console's exactly), and one full flush must write
-/// every byte of every visible pixel, each surface pixel as a 2x2 block.
+/// **xenon's screen, covered edge to edge at scale two.** A surface of 7-pixel cells on this
+/// 1920x1080 monitor is 960x540 at scale two, and one full flush must write every byte of every
+/// visible pixel, each surface pixel as a 2x2 block. The shell's terminal, at the atlas's 14-pixel
+/// cell, gets the same 137 columns at scale one: the rule gives both consoles the same width.
 #[test]
 fn a_1920x1080_screen_is_covered_entirely_at_scale_two() {
     use super::Aperture;
@@ -946,24 +950,25 @@ fn a_1920x1080_screen_is_covered_entirely_at_scale_two() {
     };
     // What the kernel asks for (`display_service::start_screen_terminal`): as much surface as
     // one terminal grid can cover, and the grid must fit a `Vt`.
-    let aperture = Aperture::new(
+    let terminal = Aperture::new(
         &found,
-        (video_terminal::MAX_COLS as u32) * bitmap_font::GLYPH_W,
+        video_terminal::CELL_W,
+        (video_terminal::MAX_COLS as u32) * video_terminal::CELL_W,
         u32::MAX,
     )
     .expect("xenon's screen");
-    let (w, h) = aperture.size();
-    assert_eq!((w, h), (960, 540));
-    let cells = (w / bitmap_font::GLYPH_W) as usize * (h / bitmap_font::GLYPH_H) as usize;
-    assert!(
-        cells <= video_terminal::MAX_CELLS,
-        "137x67 fits one terminal grid"
-    );
+    assert_eq!((terminal.size(), terminal.scale()), ((1920, 1080), 1));
+    let grid = (1920 / video_terminal::CELL_W, 1080 / video_terminal::CELL_H);
+    assert_eq!(grid, (137, 41));
+    assert!((grid.0 * grid.1) as usize <= video_terminal::MAX_CELLS);
     assert_eq!(
-        (w / bitmap_font::GLYPH_W, h / bitmap_font::GLYPH_H),
-        ScreenConsole::new(found).expect("xenon's screen").size(),
-        "the shell's grid is the boot console's grid"
+        grid.0,
+        ScreenConsole::new(found).expect("xenon's screen").size().0,
+        "the shell's columns are the boot console's"
     );
+
+    let aperture = Aperture::new(&found, bitmap_font::GLYPH_W, 2000, 2000).expect("xenon's screen");
+    let (w, h) = aperture.size();
     assert_eq!((aperture.size(), aperture.scale()), ((960, 540), 2));
     assert_eq!(
         aperture.span(),
@@ -1022,7 +1027,7 @@ fn the_scaled_wide_copy_lands_the_same_bytes_as_the_scaled_word_copy() {
         stride: 1683 * 4 + 4,
         order: PixelOrder::Rgbx,
     };
-    let aperture = Aperture::new(&found, 2000, 2000).expect("a real screen");
+    let aperture = Aperture::new(&found, bitmap_font::GLYPH_W, 2000, 2000).expect("a real screen");
     assert_eq!((aperture.size(), aperture.scale()), ((841, 4), 2));
     let surface = |x: u32, y: u32| (y << 16) | x;
     let span = found.span().expect("valid");
@@ -1057,7 +1062,7 @@ fn the_scaled_wide_copy_lands_the_same_bytes_as_the_scaled_word_copy() {
 fn an_aperture_stores_in_the_screens_byte_order() {
     use super::Aperture;
     let (found, mut pixels) = screen(1, 1, 0, PixelOrder::Rgbx);
-    let aperture = Aperture::new(&found, 1, 1).expect("one pixel");
+    let aperture = Aperture::new(&found, bitmap_font::GLYPH_W, 1, 1).expect("one pixel");
     assert!(aperture.copy(
         0,
         0,

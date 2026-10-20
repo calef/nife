@@ -209,15 +209,15 @@ fn paint(
 /// (`video_terminal::Damage`'s invariant; the paint lane, 2026-09-30).
 ///
 /// Every unchanged row of a scrolled screen is pixels this process already holds, so re-rendering
-/// them through `Vt::pixel` (a divide, a cell fetch and a glyph lookup per pixel, times 317,856
-/// pixels on the 924x344 scanout) bought nothing, and under TCG, where the `x86_64` swish leg paid
+/// them through `Vt::pixel` (a divide, a cell fetch, a glyph lookup and a blend per pixel, times
+/// 698,880 pixels on the 1120x624 scanout) bought nothing, and under TCG, where the `x86_64` swish leg paid
 /// ~3.5x per store, it was most of that leg's 321 s (`notes/benchmarks/icount-tick-scales.md`).
 /// A row-to-row move of words the surface already contains is the whole work.
 ///
 /// **Qwords when the stride allows, words when it does not.** A `u64` store halves the store
 /// count, and both sides of every copy stay 8-aligned exactly when the stride is a multiple of
 /// eight (both offsets are whole rows down); a stride that is merely 4-aligned would ask for
-/// unaligned volatile `u64`s, so that case keeps `u32`s. The scanout's stride (3696) takes the
+/// unaligned volatile `u64`s, so that case keeps `u32`s. The scanout's stride (4480) takes the
 /// wide path; an odd-cell window in [`MODE_WINDOW`] can land on the narrow one.
 fn scroll_surface(surface: &MappedWindow, stride: u32, w: u32, h: u32, px: u32) {
     // Destination rows run top-down and are always above their sources, so nothing is overwritten
@@ -312,7 +312,7 @@ impl Wiring {
                 self.stride,
                 self.surface.0,
                 self.surface.1,
-                damage.scrolled * bitmap_font::GLYPH_H,
+                damage.scrolled * video_terminal::CELL_H,
             );
             let (x, y, w, h) = damage.rect.to_pixels();
             paint(&self.window, x, y, w, h, self.stride);
@@ -562,14 +562,14 @@ pub extern "C" fn _start(mode: u64, control: u64, start: u64) -> ! {
     let (w, h, stride) = negotiate_geometry(mode);
 
     // A surface too small for one character has nothing to show and is refused. It does **not**
-    // have to be a whole number of cells: the font is 7 wide and the scanout is 128, so the normal
-    // case now has a two-pixel strip on the right that no cell covers. `present` paints it once
-    // with the background the engine says is there, which is why a partial cell is a defined
-    // picture rather than a strip of whatever the frames held at boot.
-    if w < bitmap_font::GLYPH_W || h < bitmap_font::GLYPH_H {
+    // have to be a whole number of cells: a compositor window or a firmware screen can leave a
+    // strip on the right or the bottom that no cell covers. `present` paints it once with the
+    // background the engine says is there, which is why a partial cell is a defined picture
+    // rather than a strip of whatever the frames held at boot.
+    if w < video_terminal::CELL_W || h < video_terminal::CELL_H {
         die(E_GEOMETRY);
     }
-    let (cols, rows) = (w / bitmap_font::GLYPH_W, h / bitmap_font::GLYPH_H);
+    let (cols, rows) = (w / video_terminal::CELL_W, h / video_terminal::CELL_H);
     if cols as usize > video_terminal::MAX_COLS
         || rows as usize > video_terminal::MAX_ROWS
         || cols as usize * rows as usize > video_terminal::MAX_CELLS
@@ -595,7 +595,7 @@ pub extern "C" fn _start(mode: u64, control: u64, start: u64) -> ! {
     // answers `INFO` with: `gfx::SURFACE_PAGE_FRAMES` on virtio-gpu (where `stride * h` is
     // `gfx::SURFACE_BYTES`), `width * height * 4` rounded up on a firmware screen
     // (`display_service::start_screen_terminal`). The grid check above also bounds `stride * h`
-    // under 8.2 MB, far short of `OUT_VA`, so even a driver that lied could only fault this
+    // under 28 MB, far short of `OUT_VA`, so even a driver that lied could only fault this
     // process, never write its output page. MODE_WINDOW's frames are mapped by the compositor's
     // `spawn_client_term` before `HELLO`'s reply arrived, sized to the same geometry (`stride`,
     // `h`) this process just read off the control page it validated above (milestone 139 (drive

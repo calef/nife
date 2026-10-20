@@ -5,12 +5,10 @@ use crate::cap::{Rights, memory_region_cap, page_frame_run_cap, rendezvous_cap};
 use crate::sched::RendezvousId;
 
 /// **The budget the compositor, and a capture client, draw their own screen mapping's page tables
-/// from** (DECISIONS §102, milestone 142). Same reasoning as `display_service::MAP_BUDGET_PAGES`,
-/// including that lane's caveat: at the 1280x720 scanout this was widened for, the screen alone
-/// spanned more than one 2 MiB window; at the 924x344 scanout the milestone was retargeted to on
-/// 2026-08-27 ([`SCREEN_PAGE_FRAMES`], 311 pages) it is back under one window, the same shape a
-/// smaller screen always had, and this constant is kept at the wider value rather than re-tuned
-/// down.
+/// from** (DECISIONS §102 (a Frame names a run of pages), milestone 142 (a text display good enough
+/// that people use it instead of a GUI)). Same reasoning as `display_service::MAP_BUDGET_PAGES`: at
+/// 1120x624 ([`SCREEN_PAGE_FRAMES`], 683 pages) the screen alone spans two 2 MiB windows, and this
+/// budget also carried the 900-page 1280x720 screen the path once booted with.
 const MAP_BUDGET_PAGES: u64 = 24;
 
 // The compositor's address space. Must match components/src/compositor.rs. `SCREEN_VA` is not here: the
@@ -476,11 +474,11 @@ impl Wiring {
             "a display terminal must be focusable: its input endpoint is the endpoint it serves",
         );
         // The window must hold at least one character cell. It need not be a whole number of
-        // them, for the reason the scanout is not: the font is 7 wide and no window here is a
-        // multiple of 7, so each leaves a strip on the right that its terminal paints as
-        // background on the first frame rather than leaving as whatever the frame held.
+        // them: no window here is a whole number of cells wide, so each leaves a strip on the
+        // right that its terminal paints as background on the first frame rather than leaving as
+        // whatever the frame held.
         assert!(
-            SCENE[i].w >= bitmap_font::GLYPH_W && SCENE[i].h >= bitmap_font::GLYPH_H,
+            SCENE[i].w >= video_terminal::CELL_W && SCENE[i].h >= video_terminal::CELL_H,
             "window {i} is too small for one character cell",
         );
 
@@ -570,11 +568,26 @@ impl TermClient {
 /// The most mappings a compositor can need: the list, the ring, and every client's control page
 /// and surface. The screen is **not** here since milestone 142 (§102): it is a `PageFrame` grant,
 /// not a `Spawn::maps` entry (see `start`'s own comment).
-const MAX_COMP_MAPS: usize = 2 + compositor::MAX_WINDOWS * 4;
+const MAX_COMP_MAPS: usize = 2 + compositor::MAX_WINDOWS * (1 + MAX_SURFACE_PAGES);
+/// The most page frames a client's surface may take: one `Mapping` each, beside its control page.
+/// The tables are sized from it, and they must fit the 1 KiB a spawn closure may capture
+/// (`kernel/src/thread.rs` asserts that), so a window too big for it is refused below, at build
+/// time, rather than as an index out of bounds when the compositor is wired.
+const MAX_SURFACE_PAGES: usize = 4;
+const _: () = {
+    let mut i = 0;
+    while i < compositor::SCENE.len() {
+        assert!(
+            compositor::SCENE[i].page_frames() as usize <= MAX_SURFACE_PAGES,
+            "a SCENE window's surface needs more page frames than MAX_SURFACE_PAGES",
+        );
+        i += 1;
+    }
+};
 /// The most a client can need: its control page, its surface, and (capture only) the window list.
 /// The screen is **not** here for the same reason as `MAX_COMP_MAPS`: a capture client maps it
 /// itself, out of the `SCREEN_FRAME`/`BUDGET` grants `fixtures/src/window.rs` holds.
-const MAX_CLIENT_MAPS: usize = 4 + 1;
+const MAX_CLIENT_MAPS: usize = 1 + MAX_SURFACE_PAGES + 1;
 /// Report, display, doorbell, the screen `PageFrame`, its map budget, then one input endpoint per
 /// focusable client starting at [`COMP_INPUT_BASE`].
 const MAX_COMP_GRANTS: usize = COMP_INPUT_BASE as usize + compositor::MAX_WINDOWS;
