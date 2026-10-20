@@ -5,10 +5,12 @@
 //! is not a contract. The plist is the machine-readable output Apple documents for scripts, so it
 //! is what this program reads.
 //!
-//! Written rather than taken (DECISIONS §46, rule 4): the XML plist grammar that `diskutil` emits is
-//! eight element types and five character entities, fully specified by Apple's DTD, and the whole
-//! of correctness is "does it read what `diskutil` wrote", which the fixtures captured from this
-//! machine answer. A plist crate would be a dependency for about two hundred lines.
+//! Reuse: write (§46), ruled by calef on 2026-10-20 (UTC), "Keep ours.", on milestone 784 (reuse
+//! what the tree wrote)'s item (f). The `plist` crate (1.10.1) would bring nine crates new to the
+//! tree, `serde` among them, to read the output of a trusted local `diskutil`, in a program that
+//! runs only on the host. The XML plist grammar `diskutil` emits is eight element types and five
+//! character entities, fully specified by Apple's DTD, and the whole of correctness is "does it
+//! read what `diskutil` wrote", which the fixtures captured from this machine answer.
 //!
 //! # BUGS
 //!

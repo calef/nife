@@ -29,3 +29,6 @@ landed wording.
   `process-tools` programs: Reuse: write. The ABI or a capability (rule 3); nothing upstream reads nife's ABI.
 - `redoxfs_server`, `tools/redoxfs_host`: Reuse: adapted. The adapter around vendored RedoxFS (§34).
 - `coremark`: Reuse: taken. A port of the upstream benchmark.
+- `stick_maker`'s `plist.rs`: Reuse: write. calef ruled "Keep ours." on 2026-10-20 (UTC). `plist`
+  1.10.1 would bring nine crates new to the tree (`serde`, `quick-xml`, `time` and its five helpers
+  and `base64`) to read trusted local `diskutil` output, in a host-only program.
