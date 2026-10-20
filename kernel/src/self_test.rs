@@ -935,8 +935,8 @@ fn deviceirq(tally: &mut Tally) {
 /// **The JH7110's clock controller ungates its TRNG, and the TRNG serves a client, timed.**
 ///
 /// Two checks from one wiring, because one bring-up produces both answers. `clock` is the
-/// clock-and-reset controller's own before-and-after (milestone 220 (the JH7110 TRNG's clock and
-/// reset)): the TRNG's clocks running and its reset released. `trng` is the TRNG, through its
+/// clock-and-reset controller's own before-and-after (milestone 220 (this kernel drives no clock
+/// or reset controller, and the first real device will need one)): the TRNG's clocks running and its reset released. `trng` is the TRNG, through its
 /// confined user-level driver, drawing two device generations that differ, with the bring-up and
 /// the draw timed, which is fatal risk 6's "at real speed" (milestone 306 (time the hw entropy
 /// step)). The kernel never reads a `RAND` register.

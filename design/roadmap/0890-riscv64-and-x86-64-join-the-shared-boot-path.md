@@ -247,8 +247,10 @@ commit reverts alone, independent of the tail.
 - **Outstanding.** The radon boot also runs `clock`, `trng` and `entropy` as checks for the first
   time; `board_console` with radon's profile fails the boot if any is absent.
 - **Proposed.** A portable check for a supervised death that reaches its supervisor, and one for
-  teardown returning every frame, measured the way `x86_64`'s demo did over two rounds (BUGS).
-- **Proposed.** Retire `serial_driver` from the drivers package, or give it a starter (BUGS).
+  teardown returning every frame (BUGS):
+  `design/roadmap/proposals/the-self-test-proves-supervision-and-teardown.md`.
+- **Proposed.** Retire `serial_driver` from the drivers package, or give it a starter (BUGS):
+  `design/roadmap/proposals/serial-driver-has-no-starter.md`.
 - **Outstanding.** `x86_64`'s boot thread watches the progenitor after the shared hand-over
   (`watch_the_progenitor`), because `script/swish-check`'s `x86_64` leg and the install, rollback
   and confirm boots wait for the watch's report before typing. Retiring it means those wait for the
