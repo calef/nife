@@ -3,9 +3,9 @@ status: PARTIAL
 raised: 2026-09-23
 milestone_dependencies: none
 decision_dependencies: none
-machine_requirements: none
+machine_requirements: aarch64 server firmware that presents ACPI to a booted image (an SBBR cloud instance)
 specific_machine: none
-needs_person: no
+needs_person: yes
 ---
 # 578. An ACPI discovery path for aarch64, because every server machine has one
 
