@@ -40,9 +40,15 @@ resets, so the reset lands 60 s after the last pet. The driver's header cites wh
 200-series datasheet volume 2, Linux's `iTCO_wdt`, `lpc_ich`, `i2c-i801` and `p2sb`, and QEMU's
 `ich9_tco`.
 
-`--features watchdog_soak_test` arms it from `kernel/src/soak.rs`. `--features wedge_soak_test` is
-test only: thirty seconds in, the supervisor masks interrupts on its core and spins. On any
-architecture but `x86_64` the feature is a `compile_error!`, so no build can quietly fail to arm.
+Every x86_64 `--features soak_test` build arms it from `kernel/src/soak.rs`, xenon's
+`cargo xtask uefi-image --features soak_test` stick included. `kernel/build.rs` sets the
+`soak_watchdog` cfg for it, because cargo features cannot differ by target, and a `compile_error!`
+in `kernel/src/soak.rs` refuses an x86_64 soak build without it. `--features unwatched_soak_test`
+(`script/soak-test --no-watchdog`) is the opt-out, for a run where a wedge must stay a wedge on the
+console. `--features watchdog_soak_test` insists on the watchdog, and naming it on any architecture
+but `x86_64` is a `compile_error!`, so no build can quietly fail to arm. aarch64 and riscv64 soaks
+arm no watchdog. `--features wedge_soak_test` is test only: thirty seconds in, the supervisor masks
+interrupts on its core and spins.
 
 Two checks in `script/soak-test` prove it under `q35`, both measured on patagonia on 2026-09-25:
 
@@ -110,11 +116,14 @@ SRST does not. That is untested, and the first watchdog boot on radon is the tes
 
 ## Follow-on
 
-- **Outstanding.** x86_64 soak builds include the watchdog by default, per calef's 2026-09-26
-  ruling. An explicit opt-out stays for the no-reset (wedge) check in `script/soak-test`. Checked on
-  this branch: `script/soak-test` and `xtask/src/soak.rs` still arm it only for `--watchdog` and
-  `--wedge`. It is not built here because it changes how every soak build picks its features, and
-  `watchdog_soak_test` is a `compile_error!` off x86_64.
+- **Done.** x86_64 soak builds include the watchdog by default, per calef's 2026-09-26 ruling, and
+  `unwatched_soak_test` (`script/soak-test --no-watchdog`) is the opt-out. See step 1.
+- **Outstanding.** xenon's first bench step, under that heading above. It needs a person at xenon
+  with the serial chain on the desk.
+- **Outstanding.** radon's JH7110 watchdog, the second row of Later steps. It has no QEMU model, so
+  its first test is a boot on radon.
+- **Outstanding.** argon's Tegra X1 watchdog, the third row of Later steps. It waits on argon's
+  first nife boot.
 - **Milestone 563.** A soak kernel could not reach xenon's stick. That gap was folded into milestone
   563 and built there.
 
@@ -122,5 +131,5 @@ SRST does not. That is untested, and the first watchdog boot on radon is the tes
 
 A soak arms the Intel TCO watchdog on x86_64 and pets it every beat, so a wedged kernel is reset by
 the chipset 60 s after its last pet. Proven under QEMU q35 both ways: a deliberate wedge resets and
-the second boot reads the chipset's own record of it, and a healthy soak survives 180 s. Off by
-default; xenon, radon and argon are bench steps.
+the second boot reads the chipset's own record of it, and a healthy soak survives 180 s. On in every
+x86_64 soak build, with `unwatched_soak_test` as the opt-out; xenon, radon and argon are bench steps.

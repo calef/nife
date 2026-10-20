@@ -34,11 +34,6 @@ workspace = true
 # recorded there rather than by its absence.
 abi = { version = "0.1.0", path = "../crates/abi" }
 address_space_identifier = { version = "0.1.0", path = "../crates/address_space_identifier" }
-# The bitmap font and the VT engine (milestone 29's text increment). The kernel does not draw
-# anything; it *predicts*. Its display-terminal tests run the same engine over the same script the
-# terminal was sent and compare the framebuffer pixel for pixel, so no process grades its own
-# homework and the picture is a value rather than a screenshot somebody eyeballed once.
-bitmap_font = { version = "0.1.0", path = "../crates/bitmap_font" }
 # The corruption canary's arm/check/disarm serialization (2026-08-15), lifted out of `sched.rs`
 # after its hand-written two-flag protocol raced: the kernel calls the loom-searched gate rather
 # than keeping a copy of it, the third retrofit of work_steal_slot's move. See notes/interleaving.md.
@@ -60,7 +55,7 @@ capability = { version = "0.1.0", path = "../crates/capability" }
 # The shell's grant-expression logic (milestone 47's `rm -r`). The kernel plans nothing; its `rm`
 # test **starts the program the way the shell would**, so the option bits it packs come from the
 # manifest the prompt checks against rather than from a second copy of an ordering. Same rule as
-# `line_editor`, `bitmap_font` and `calendar` below: no party has its own copy of a shared definition.
+# `line_editor`, `video_terminal` and `calendar` below: no party has its own copy of a shared definition.
 grant_plan = { version = "0.1.0", path = "../crates/grant_plan" }
 # The wall-clock contract (milestone 51, DECISIONS §43). The kernel discovers the RTC by
 # `compatible` and names the binding with these constants, and its clock tests read the shared page
@@ -216,6 +211,12 @@ spin = { version = "0.12", default-features = false, features = ["spin_mutex"] }
 # `inter_process_communication` and `direct_memory_access_validator` made for Kani. See
 # notes/interleaving.md.
 work_steal_slot = { version = "0.1.0", path = "../crates/work_steal_slot" }
+# The VT engine, and through it the font (milestone 29 (a display terminal: framebuffer, virtio-gpu,
+# and a foreign component)'s text increment, milestone 142 (a text display good enough that people
+# use it instead of a GUI)'s atlas). The kernel does not draw anything; it *predicts*. Its
+# display-terminal tests run the same engine over the same script the terminal was sent and compare
+# the framebuffer pixel for pixel, so no process grades its own homework and the picture is a value
+# rather than a screenshot somebody eyeballed once.
 video_terminal = { version = "0.1.0", path = "../crates/video_terminal" }
 # The scheduler's block/wake handshake, so the kernel calls the loom-searched transitions rather
 # than keeping a copy of them: the second retrofit of work_steal_slot's move, asked for by the
@@ -357,11 +358,18 @@ reboot_soak_test = ["soak_test"]
 # The watchdog soak (milestone 593 (a wedged kernel resets itself), provisional number): the soak
 # arms the chipset's watchdog when it starts and pets it from its beat, so a kernel that wedges is
 # reset by the hardware instead of waiting for a person. x86_64 only, the Intel TCO, and
-# `kernel/src/soak.rs` says so with a `compile_error!`. **Off unless this feature is named**:
-# whether a soak should reset itself over its own wedge at all is calef's call, so the mechanism is
-# a build choice an operator makes, not a default. Name provisional, and it follows
-# `reboot_soak_test`'s shape on purpose: the hazard word first.
+# `kernel/src/soak.rs` says so with a `compile_error!`. **On x86_64 every `soak_test` build has it
+# without naming this feature**, on calef's ruling of 2026-09-26 (UTC), "A soak should reset itself
+# when it freezes": `build.rs` sets the `soak_watchdog` cfg the code reads, and cargo features
+# cannot differ by target. Naming it is still how a build insists on it. Name provisional, and it
+# follows `reboot_soak_test`'s shape on purpose: the hazard word first.
 watchdog_soak_test = ["soak_test"]
+# **The opt-out**: an x86_64 soak that does not arm the watchdog, so a wedge stays a wedge on the
+# console instead of becoming a reset. `script/soak-test --no-watchdog` builds it. On aarch64 and
+# riscv64 it changes nothing, since no soak there arms a watchdog. It refuses to combine with
+# `watchdog_soak_test` (`kernel/src/soak.rs`). Name provisional: the hazard word first, like its
+# siblings, and the hazard is that nothing recovers the machine.
+unwatched_soak_test = ["soak_test"]
 # **Test only**: the watchdog soak with a deliberate wedge. Thirty seconds in, the supervisor masks
 # interrupts on its core and spins, so the beat stops and nothing pets the watchdog. Its only use is
 # `script/soak-test --wedge`, the QEMU proof that the watchdog resets a wedged kernel. Never put it

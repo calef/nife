@@ -178,6 +178,12 @@ cargo clippy --workspace --exclude kernel --exclude system_tests $bare_excludes 
 echo "==> clippy: redoxfs_host (its own workspace)"
 cargo clippy --manifest-path tools/redoxfs_host/Cargo.toml --all-targets -- -D warnings
 
+# The atlas generator is its own workspace so the font parser and the rasteriser stay out of the
+# graph any shipped program is built from (milestone 142 (a text display good enough that people use
+# it instead of a GUI)); lint it on its own for the same reason.
+echo "==> clippy: glyph_atlas_generator (its own workspace)"
+cargo clippy --manifest-path tools/glyph_atlas_generator/Cargo.toml --all-targets -- -D warnings
+
 # redoxfs_server is its own workspace too (it wraps the vendored RedoxFS engine, which we keep out of our
 # gates). Only the rustdoc pass reached it before milestone 41, so its own code was never clippy'd,
 # and there was a real `deref_addrof` sitting in `second_mount` when this line was added. `-D warnings`
@@ -350,7 +356,7 @@ cargo clippy -p kernel --features cycle_counter_grant --target x86_64-unknown-no
 # The five build-mode features that compile clean on x86_64 (see the note above the `bench` line).
 # Each on its own line rather than in the two-ISA loop above, because that loop's `--target` list is
 # aarch64/riscv64 and widening it would also drag `icount` and `fastpath_pad` in, which do not build.
-for feat in shell soak_test job_mix lock_wait board; do
+for feat in shell soak_test unwatched_soak_test job_mix lock_wait board; do
     echo "==> clippy: kernel --features $feat (x86_64, the binary only; see the note above)"
     cargo clippy -p kernel --features "$feat" --target x86_64-unknown-none -- \
         -D warnings -A dead_code -A clippy::reversed_empty_ranges
@@ -3269,7 +3275,8 @@ echo "==> the lint ratchet (clippy at -W, one more pass per configuration)"
 # directory, which is how the helper puts its workspace-relative paths back under the repository
 # root.
 lint_ratchet_dir="$(mktemp -d "${TMPDIR:-/tmp}/lint-ratchet.XXXXXX")"
-mkdir -p "$lint_ratchet_dir/redoxfs_server" "$lint_ratchet_dir/tools/redoxfs_host" "$lint_ratchet_dir/fuzz"
+mkdir -p "$lint_ratchet_dir/redoxfs_server" "$lint_ratchet_dir/tools/redoxfs_host" \
+    "$lint_ratchet_dir/tools/glyph_atlas_generator" "$lint_ratchet_dir/fuzz"
 lint_ratchet_flags="$(python3 helpers/lint_ratchet.py --flags)"
 # The host pass's exclusions are derived (helpers/host-excluded-crates.sh), as in the two passes
 # above; `components` and `fixtures` are this pass's own judgment, named after the derived flags.
@@ -3295,7 +3302,7 @@ cargo clippy --message-format=json -p kernel --target riscv64imac-unknown-none-e
 # shellcheck disable=SC2086
 cargo clippy --message-format=json -p kernel --target x86_64-unknown-none \
     -- $lint_ratchet_flags -A dead_code > "$lint_ratchet_dir/x86_64.json" 2>/dev/null
-for ws in redoxfs_server tools/redoxfs_host fuzz; do
+for ws in redoxfs_server tools/redoxfs_host tools/glyph_atlas_generator fuzz; do
     # shellcheck disable=SC2086
     cargo clippy --message-format=json --manifest-path "$ws/Cargo.toml" --all-targets \
         -- $lint_ratchet_flags > "$lint_ratchet_dir/$ws/clippy.json" 2>/dev/null
@@ -3448,6 +3455,10 @@ python3 helpers/mutation_inflow.py --selftest >/dev/null
 # strands its rows, and the weekly check files their survivors as unattributed instead of failing.
 echo "==> every mutation triage row names a package, through the rename table"
 python3 helpers/mutation_inflow.py orphans
+# The baseline every `script/mutation --report` diffs against names the census it holds, and holds
+# it row for row. Without the name, the reader dated the file by a literal that outlived its contents.
+echo "==> the mutation baseline is the recorded census it names"
+script/mutation-census --check-baseline >/dev/null
 # Milestone 924 (provisional): the diff gate (helpers/mutation_diff_gate.py), the rules a
 # per-pull-request survivor must meet to merge: equivalent or gap clears, killed never does (the
 # gate just watched the mutant live), a timeout is untriaged the same as a survivor, an
@@ -3865,7 +3876,8 @@ if ! command -v cargo-machete >/dev/null 2>&1; then
     echo "lint: cargo-machete not found; run script/bootstrap (it installs it)." >&2
     exit 1
 fi
-cargo machete crates kernel components fixtures xtask redoxfs_server tools/redoxfs_host >/dev/null
+cargo machete crates kernel components fixtures xtask redoxfs_server tools/redoxfs_host \
+    tools/glyph_atlas_generator >/dev/null
 echo "unused dependencies: none in our packages"
 
 # A `#[test]` inside a `#[cfg(kani)]` module never runs, and nothing says so. `cargo test` does not

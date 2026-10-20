@@ -107,6 +107,21 @@ fn main() {
 fn declare_initial_ramdisk_cfg(arch: &str) {
     // Declare it whatever the answer, so `unexpected_cfgs` stays a useful lint rather than being
     // silenced: a typo'd `#[cfg(initd)]` should still be caught.
+    // **Whether this soak arms the chipset's watchdog** (milestone 593 (a wedged kernel resets
+    // itself), provisional number). Every x86_64 `soak_test` build does, on calef's ruling of
+    // 2026-09-26 (UTC), unless it names `unwatched_soak_test`; naming `watchdog_soak_test` insists
+    // on it anywhere, and off x86_64 that is `kernel/src/soak.rs`'s `compile_error!`. A cfg rather
+    // than a feature because cargo features cannot differ by target, and `cargo xtask uefi-image
+    // --features soak_test` (xenon's stick) has to get the default too. `kernel/src/soak.rs`
+    // restates the rule as a `compile_error!`, so an edit here that drops it fails the x86_64
+    // `soak_test` build `script/lint` already makes. Name provisional.
+    println!("cargo::rustc-check-cfg=cfg(soak_watchdog)");
+    let feature = |name: &str| std::env::var_os(format!("CARGO_FEATURE_{name}")).is_some();
+    if feature("WATCHDOG_SOAK_TEST")
+        || (feature("SOAK_TEST") && arch == "x86_64" && !feature("UNWATCHED_SOAK_TEST"))
+    {
+        println!("cargo::rustc-cfg=soak_watchdog");
+    }
     println!("cargo::rustc-check-cfg=cfg(initial_ramdisk)");
     match arch {
         "aarch64" | "riscv64" | "x86_64" => println!("cargo::rustc-cfg=initial_ramdisk"),

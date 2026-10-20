@@ -247,12 +247,12 @@ impl Vt {
 
     /// The grid's width in pixels.
     pub const fn width(&self) -> u32 {
-        self.cols * bitmap_font::GLYPH_W
+        self.cols * crate::CELL_W
     }
 
     /// The grid's height in pixels.
     pub const fn height(&self) -> u32 {
-        self.rows * bitmap_font::GLYPH_H
+        self.rows * crate::CELL_H
     }
 
     /// Where the cursor is, as `(col, row)`.
@@ -326,7 +326,7 @@ impl Vt {
     /// comparison to `<=` cannot change which branch is taken. It stays written out because a reader
     /// should not have to chase that invariant to see the guard is safe.
     pub fn pixel(&self, x: u32, y: u32) -> u32 {
-        let (col, row) = (x / bitmap_font::GLYPH_W, y / bitmap_font::GLYPH_H);
+        let (col, row) = (x / crate::CELL_W, y / crate::CELL_H);
         let cell = self.cell(col, row);
         let mut attr = cell.attr;
         if self.view_offset == 0
@@ -338,17 +338,18 @@ impl Vt {
             attr = attr.with(REVERSE, !attr.reverse());
         }
         let (fg, bg) = attr.colours();
-        let (gx, gy) = (x % bitmap_font::GLYPH_W, y % bitmap_font::GLYPH_H);
+        let (gx, gy) = (x % crate::CELL_W, y % crate::CELL_H);
         // The two line renditions are ink across the **whole** cell width, gutters included, so an
         // underlined or struck-out word is one unbroken line rather than a dash per letter (unlike
         // the underscore glyph, whose ink stops at the gutters; see notes/glyphs.md).
         let line = (attr.is_underlined() && gy == UNDERLINE_ROW)
             || (attr.is_struck_through() && gy == STRIKETHROUGH_ROW);
-        if line || bitmap_font::is_ink(cell.ch, gx, gy) {
-            fg
+        let coverage = if line {
+            u8::MAX
         } else {
-            bg
-        }
+            glyph_atlas::REGULAR.coverage(cell.ch, gx, gy)
+        };
+        glyph_atlas::blend(fg, bg, coverage)
     }
 
     /// What has changed since the last [`Vt::take_damage`]: the scroll half as well as the box.

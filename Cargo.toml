@@ -11,6 +11,7 @@ members = [
     "crates/address_space_identifier",
     "crates/address_space_map",
     "crates/bitmap_font",
+    "crates/glyph_atlas",
     "crates/board_console",
     "crates/block_roster",
     "crates/boot_ladder",
@@ -312,6 +313,25 @@ opt-level = 2
 [profile.dev.package.screen_console]
 opt-level = 2
 [profile.dev.package.bitmap_font]
+opt-level = 2
+
+# The terminal's per-pixel path, optimised even in a debug build, for the screen console's reason
+# above and one of its own. The kernel's display tests run `Vt::pixel` for every one of the
+# 1120x624 scanout's 698,880 pixels per comparison, and unoptimised that took CI's riscv64
+# CPU-matrix shard past its 20-minute budget. And the display terminal in a compositor window runs
+# on one 4 KiB stack page, which the unoptimised `Vt::pixel` -> `glyph_atlas::blend` -> `to_srgb`
+# frames overflowed while a window scrolled (milestone 142 (a text display good enough that people
+# use it instead of a GUI), 2026-10-19).
+[profile.dev.package.glyph_atlas]
+opt-level = 2
+[profile.dev.package.video_terminal]
+opt-level = 2
+# The compositor's and the framebuffer contract's per-pixel functions, for the same reason: the
+# compositor tests compute `compositor::expected_screen_pixel` and the pattern tests
+# `graphics_contract::pixel` for every pixel of the scanout.
+[profile.dev.package.compositor]
+opt-level = 2
+[profile.dev.package.graphics_contract]
 opt-level = 2
 
 # Overflow checks in release, ruled by calef 2026-10-04 (UTC) (notes/overflow-checks.md, option A).

@@ -54,7 +54,7 @@ pub(crate) unsafe fn in8(port: u16) -> u8 {
 ///
 /// # Safety
 /// As [`out8`].
-#[cfg_attr(not(feature = "watchdog_soak_test"), allow(dead_code))]
+#[cfg_attr(not(soak_watchdog), allow(dead_code))]
 pub(crate) unsafe fn out16(port: u16, val: u16) {
     // SAFETY: as `out8`.
     unsafe { asm!("out dx, ax", in("dx") port, in("ax") val, options(nostack, preserves_flags)) };
@@ -64,7 +64,7 @@ pub(crate) unsafe fn out16(port: u16, val: u16) {
 ///
 /// # Safety
 /// As [`out8`].
-#[cfg_attr(not(feature = "watchdog_soak_test"), allow(dead_code))]
+#[cfg_attr(not(soak_watchdog), allow(dead_code))]
 pub(crate) unsafe fn in16(port: u16) -> u16 {
     let val: u16;
     // SAFETY: as `out8`.

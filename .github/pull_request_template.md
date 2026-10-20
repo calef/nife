@@ -1,4 +1,4 @@
-**Lane:** <branch or milestone>, written by an agent; calef's account is the author GitHub shows.
+**Lane:** <branch or milestone>, written by an agent; the author GitHub shows is the person running it.
 
 <!--
 Delete the line above only if a human wrote this pull request. AGENTS.md requires it first thing in

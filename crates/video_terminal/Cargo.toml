@@ -20,7 +20,7 @@ workspace = true
 
 [dependencies]
 address_space_map = { version = "0.1.0", path = "../address_space_map" }
-bitmap_font = { version = "0.1.0", path = "../bitmap_font" }
+glyph_atlas = { version = "0.1.0", path = "../glyph_atlas" }
 
 [dev-dependencies]
 # The interoperability test, and the reason it is a dev-dependency rather than a design coupling:

@@ -36,7 +36,7 @@ fn a_damage_box_contains_a_rectangle_it_already_covered() {
     };
     assert_eq!(big.union(inside), big);
     assert_eq!(inside.union(big), big);
-    // Cells are 7 by 8, so a rect at (1, 2) starts at (7, 16) and is 28 by 24. The two axes
+    // Cells are 14 by 26, so a rect at (1, 2) starts at (14, 52) and is 56 by 78. The two axes
     // differ on purpose: a single constant used for both would pass whatever it was.
-    assert_eq!(big.to_pixels(), (7, 16, 28, 24));
+    assert_eq!(big.to_pixels(), (14, 52, 56, 78));
 }

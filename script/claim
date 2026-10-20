@@ -274,17 +274,14 @@ echo "==> claim: empty commit, push, draft pull request"
 
 Co-Authored-By: ${NIFE_CLAIM_MODEL:-Claude Code} <noreply@anthropic.com>"
     git push -u origin HEAD
-    # The account is whoever `gh` is logged in as, read rather than spelled, because more than one
-    # architect can run a lane (ARCHITECTS.md) and the line exists to say whose name GitHub shows.
-    # A session on the App (milestone 128 (the automation gets its own identity),
-    # helpers/smelter-token) has no `/user` to read: GitHub answers 403 to an installation token
-    # there, so the helper names the byline instead.
+    # The line names no person: AGENTS.md is in the repository and anybody may run their agents on it
+    # (calef, 2026-10-20 UTC). A session on the App (milestone 128 (the automation gets its own
+    # identity), helpers/smelter-token) is authored by the bot, not a person, so it names the bot.
+    author="the author GitHub shows is the person running it."
     if [ "${NIFE_SMELTER_ACTIVE:-}" = 1 ]; then
-        account="$("$repo_root/helpers/smelter-token" identity 2>/dev/null || echo "the \`gh\` user")"
-    else
-        account="$(gh api user --jq .login 2>/dev/null || echo "the \`gh\` user")"
+        bot="$("$repo_root/helpers/smelter-token" identity 2>/dev/null)" && author="$bot is the author GitHub shows."
     fi
-    gh pr create --draft ${label:+--label "$label"} --title "$claim_text" --body "**Lane:** \`$branch\`, written by an agent; $account's account is the author GitHub shows.
+    gh pr create --draft ${label:+--label "$label"} --title "$claim_text" --body "**Lane:** \`$branch\`, written by an agent; $author
 
 Claim commit only so far. Classified at claim: \`${kind#--}\`."
 )

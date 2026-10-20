@@ -35,8 +35,10 @@
 //!   `memory::pci_regions()` answers `None`, and the boot takes the same path it takes on the
 //!   JH7110, which has no such node either. A bus that is there is invisible.
 //! - **No virtio-mmio, no `fw_cfg`, no ITS.** Same reason for the first two (QEMU describes them in
-//!   AML); the third is a node `machine_discovery::gic` does not read yet (milestone 317 (the
-//!   interrupt-remapping flags, and where MSI confinement actually lives)).
+//!   AML). The MADT's ITS entry is decoded and the loader prints it, but no node is written:
+//!   `machine_discovery::gic` reads none and the kernel drives no ITS (milestone 317 (the
+//!   interrupt-remapping flags, and where MSI confinement actually lives)). A node nothing reads
+//!   would be output no host test can check against a reader.
 //! - **The memory map is the UEFI one, merged.** Runtime-services and ACPI regions are excluded, so
 //!   the kernel will not hand out the tables it was described by, and conventional plus
 //!   boot-services plus loader memory is offered as RAM. That is the same set the firmware's own

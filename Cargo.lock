@@ -202,7 +202,6 @@ version = "0.1.0"
 dependencies = [
  "abi",
  "address_space_map",
- "bitmap_font",
  "block_roster",
  "boot_ladder",
  "boot_slot",
@@ -577,6 +576,10 @@ dependencies = [
 ]
 
 [[package]]
+name = "glyph_atlas"
+version = "0.1.0"
+
+[[package]]
 name = "grant_plan"
 version = "0.1.0"
 dependencies = [
@@ -701,7 +704,6 @@ dependencies = [
  "abi",
  "address_space_identifier",
  "address_space_map",
- "bitmap_font",
  "block_roster",
  "boot_ladder",
  "boot_slot",
@@ -1256,7 +1258,6 @@ version = "0.1.0"
 dependencies = [
  "abi",
  "address_space_map",
- "bitmap_font",
  "block_roster",
  "byte_sink_contract",
  "c_program_fixture",
@@ -1521,7 +1522,7 @@ name = "video_terminal"
 version = "0.1.0"
 dependencies = [
  "address_space_map",
- "bitmap_font",
+ "glyph_atlas",
  "line_editor",
 ]
 
@@ -1602,6 +1603,7 @@ dependencies = [
  "documentation",
  "filesystem_fixture",
  "globally_unique_identifier_partition_table",
+ "glyph_atlas",
  "grant_plan",
  "graphics_contract",
  "measured_boot",
@@ -1609,6 +1611,7 @@ dependencies = [
  "package_archive",
  "package_index",
  "portable_executable",
+ "screen_console",
  "sealed_pair",
  "test_times",
  "toml",

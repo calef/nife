@@ -506,6 +506,23 @@ fn host_tests() -> bool {
     ) {
         return false;
     }
+    // The atlas generator's regenerate-and-compare gate (milestone 142 (a text display good enough
+    // that people use it instead of a GUI)): the coverage tables the terminal draws with are
+    // exactly what the pinned rasteriser makes from vendor/dejavu, on this host. Its own workspace,
+    // so the `--workspace` pass above never reached it.
+    eprintln!();
+    eprintln!("--- glyph_atlas_generator: the checked-in atlas regenerates byte for byte ---");
+    if !run(
+        "cargo",
+        &[
+            "test",
+            "--locked",
+            "--manifest-path",
+            "tools/glyph_atlas_generator/Cargo.toml",
+        ],
+    ) {
+        return false;
+    }
     // The FS server's sans-IO core (redoxfs_server, its own workspace): open, read, write, close against
     // a real RedoxFS image in memory, in milliseconds. This proves the filesystem logic for BOTH the
     // read and write paths on the host, which the on-device test can only do for reads today.

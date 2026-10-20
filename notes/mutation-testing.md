@@ -106,8 +106,9 @@ were measured for the first time, and the worklist that reading opened is closed
 
 ## The baseline and its triage
 
-The baseline was one local run on 2026-08-03, and it is the fixed point
-`.cargo/mutants-baseline.txt` records ([baseline-2026-08-03](mutation-testing/baseline-2026-08-03.md)).
+The August baseline was one local run on 2026-08-03, the census record's 2026-08-03 row
+([baseline-2026-08-03](mutation-testing/baseline-2026-08-03.md)). `.cargo/mutants-baseline.txt` is
+the fixed point reports diff against, and its second line names the census it holds.
 Every one of its 391 missed and 96 timeouts was triaged, crate by crate, and none was deferred
 ([abi to ipc](mutation-testing/baseline-survivors-abi-to-ipc.md),
 [grant_plan to swish](mutation-testing/baseline-survivors-grant-plan-to-swish.md),
@@ -199,7 +200,7 @@ This is the note's `BUGS` section.
 - A survivor count is not a quality score across crates. Crates differ in how much of their surface
   a host test can assert. Compare a crate to its own last census, not to its neighbors.
 - `script/mutation --report`'s `(baseline missed)` column is not "last week". It is
-  `.cargo/mutants-baseline.txt`, one fixed run from 2026-08-03. Milestone 512 (the census blamed one
+  `.cargo/mutants-baseline.txt`, one fixed census, named on that file's second line. Milestone 512 (the census blamed one
   pull request for 55 survivors it did not write) recorded this on 2026-09-23, and the trap is also
   named in `script/mutation` beside the column. Read as a recent delta, it turns six weeks of growth
   into whatever days sit between the reader and the crate's last change. That happened once.

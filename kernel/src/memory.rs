@@ -35,7 +35,22 @@ static ALLOCATOR: IrqSafeMutex<Option<PageFrameAllocator<'static>>> =
 /// prerequisite for.
 const MAX_REGIONS: usize = 16;
 
+/// **Find out where RAM is and which devices the machine has, and bring the frame allocator up.**
+///
+/// One step on all three architectures, read from whatever this machine describes itself with: a
+/// device tree on aarch64 and riscv64, the PVH handoff and ACPI on `x86_64`
+/// (`arch::discovery::init`, milestone 890 (riscv64 and `x86_64` join the shared boot path)). Both
+/// front ends end in [`bring_up_page_frames`], the half that does not care where RAM came from.
 pub fn init() {
+    #[cfg(target_arch = "x86_64")]
+    crate::arch::discovery::init();
+    #[cfg(not(target_arch = "x86_64"))]
+    init_from_device_tree();
+}
+
+/// [`init`]'s device-tree front end.
+#[cfg(not(target_arch = "x86_64"))]
+fn init_from_device_tree() {
     // The blob's own physical address, which is claimed as forbidden below so the frame allocator
     // never hands out the tree it was built from.
     let dtb_phys = crate::DTB.load(core::sync::atomic::Ordering::Relaxed) as u64;
@@ -109,6 +124,7 @@ pub fn init() {
 }
 
 /// Find the interrupt controller in the tree: aarch64's GIC, or the RISC-V PLIC.
+#[cfg(not(target_arch = "x86_64"))] // the device-tree front end
 fn record_interrupt_controllers(dtb: &device_tree_blob::DeviceTreeBlob<'_>) {
     // The interrupt controller, aarch64's GIC, found by its BINDING (milestone 227). It used to be
     // found by the node-name prefix `intc@`, taking `reg[0]` and `reg[1]` as distributor and CPU
@@ -156,6 +172,7 @@ fn record_interrupt_controllers(dtb: &device_tree_blob::DeviceTreeBlob<'_>) {
 
 /// Record where the tree puts the devices the kernel drives or maps later: the JH7110's
 /// controllers, the SMMUv3, the real-time clock, the UART's interrupt line and the PCIe host bridge.
+#[cfg(not(target_arch = "x86_64"))] // the device-tree front end
 fn record_devices(dtb: &device_tree_blob::DeviceTreeBlob<'_>) {
     // The JH7110's STG clock and reset generator (milestone 220), which nothing else on any
     // machine this kernel boots has an analog of: every other device it drives came up already
@@ -249,6 +266,7 @@ fn record_devices(dtb: &device_tree_blob::DeviceTreeBlob<'_>) {
 /// the tree describes it, and nothing when the tree describes neither. Only on a machine
 /// `record_jh7110` has already found to be a JH7110. Its own frame for `record_jh7110`'s reason.
 #[inline(never)]
+#[cfg(not(target_arch = "x86_64"))] // the device-tree front end
 fn record_jh7110_storage(dtb: &device_tree_blob::DeviceTreeBlob<'_>) {
     if JH7110_CRG.lock().is_none() {
         return;
@@ -265,13 +283,14 @@ fn record_jh7110_storage(dtb: &device_tree_blob::DeviceTreeBlob<'_>) {
 }
 
 /// **Record the JH7110's clock-and-reset windows and the PMIC bus's plan** (milestones 220 and
-/// 592), under the guard `init`'s comment above the call describes.
+/// 592), under the guard the comment above the call describes.
 ///
-/// Its own frame, and `inline(never)` so it stays one: `init` is already close to the 4,096-byte
-/// guard page in an unoptimised build, and the two `Found`s and the `PmicBus` here pushed it over
-/// (`script/stack-frame-check`, 4,352 bytes on aarch64, 2026-09-25). A call keeps these locals off
-/// `init`'s frame instead of raising any ceiling.
+/// Its own frame, and `inline(never)` so it stays one: [`init_from_device_tree`] is already close
+/// to the 4,096-byte guard page in an unoptimised build, and the two `Found`s and the `PmicBus`
+/// here pushed it over (`script/stack-frame-check`, 4,352 bytes on aarch64, 2026-09-25). A call
+/// keeps these locals off its frame instead of raising any ceiling.
 #[inline(never)]
+#[cfg(not(target_arch = "x86_64"))] // the device-tree front end
 fn record_jh7110(dtb: &device_tree_blob::DeviceTreeBlob<'_>) {
     let crg = jh7110_clock_and_reset::discover(dtb).ok();
     let has_trng = matches!(jh7110_entropy::discover(dtb), Ok(Some(_)));
@@ -299,6 +318,7 @@ fn record_jh7110(dtb: &device_tree_blob::DeviceTreeBlob<'_>) {
 /// agree on each) and so are only read once that is established. QEMU's `virt` names neither, so
 /// nothing is recorded or mapped there. Its own frame for `record_jh7110`'s reason.
 #[inline(never)]
+#[cfg(not(target_arch = "x86_64"))] // the device-tree front end
 fn record_jh7110_ethernet(dtb: &device_tree_blob::DeviceTreeBlob<'_>) {
     let Ok(Some(port)) = designware_ethernet::jh7110::discover(dtb) else {
         return;

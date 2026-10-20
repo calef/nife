@@ -45,6 +45,9 @@ use core::arch::{asm, global_asm};
 pub mod amd_vi;
 pub mod ap_boot;
 pub mod context;
+// What the loader and ACPI describe, read once inside `memory::init` (milestone 890 (riscv64
+// and `x86_64` join the shared boot path)).
+pub mod discovery;
 pub mod exceptions;
 pub mod fp;
 mod instructions;
@@ -70,7 +73,7 @@ pub mod rtc;
 // the watchdog soak drives it, so only that build compiles it; see its own header.
 pub mod segments;
 pub mod semihosting;
-#[cfg(feature = "watchdog_soak_test")]
+#[cfg(soak_watchdog)]
 pub mod tco;
 pub mod thread_pointer;
 pub mod timer;

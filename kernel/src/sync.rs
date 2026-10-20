@@ -223,6 +223,13 @@ pub mod rank {
     /// but the ordering is stated rather than relied on to stay accidental.
     pub(crate) const ISA: u32 = 12;
 
+    /// The `x86_64` ACPI walk (milestone 890 (riscv64 and `x86_64` join the shared boot path)):
+    /// what the tables said, written once by `memory::init` and copied out by the bring-up steps
+    /// after it. A leaf for the ISA record's reason, and above the console because a reader may
+    /// print while it holds it.
+    #[cfg_attr(not(target_arch = "x86_64"), allow(dead_code))] // ACPI is x86_64's description
+    pub(crate) const ACPI: u32 = 13;
+
     pub const CONSOLE: u32 = 10;
 
     /// Holding nothing.
@@ -423,13 +430,13 @@ pub struct IrqSafeGuard<'a, T> {
 }
 
 impl<T> Drop for IrqSafeGuard<'_, T> {
-    /// `#[inline(always)]` on riscv64 because every IPC drops one of these on the hot path, and it
-    /// must land in `.text.hot` with its caller. LLVM inlined it by choice until the arch roots were
-    /// split into children (§282 (when a file is split, the parent becomes an index)) and the codegen
-    /// units moved: riscv64's CI build then outlined it as its own symbol outside `.text.hot`, and
-    /// `script/fastpath-footprint` refused it (2026-10-14 UTC). Forcing it on the other two would
-    /// only grow their closures; they still inline it on their own.
-    #[cfg_attr(target_arch = "riscv64", inline(always))]
+    /// `#[inline(always)]` because every IPC drops one of these on the hot path, and it must land in
+    /// `.text.hot` with its caller. Left to LLVM, whether it is inlined depends on how the crate
+    /// falls into codegen units, which unrelated changes move: riscv64's CI build outlined it on
+    /// 2026-10-14 (UTC) and aarch64's and `x86_64`'s on 2026-10-20, each time as its own symbol
+    /// outside `.text.hot`, and each time `script/fastpath-footprint` refused it. A macOS build of
+    /// the same commit can still inline it, so a local pass of that gate does not show the outlining.
+    #[inline(always)]
     fn drop(&mut self) {
         // ORDER: release the lock, THEN restore interrupts. Reversing these leaves a window
         // where an interrupt can fire while we still hold the lock. Same deadlock.

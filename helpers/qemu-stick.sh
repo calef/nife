@@ -73,8 +73,10 @@ aarch64)
     # device tree is the richer of the two descriptions this kernel can read (measured 2026-09-19;
     # notes/boot-stick.md). NIFE_ACPI=on is how the other description is exercised: it is the state
     # every aarch64 cloud machine is in, where SBBR forbids a device tree, and it exists so that
-    # path is bootable here for free rather than only on somebody's rented instance.
-    set -- -machine "virt,acpi=${NIFE_ACPI:-off}" -cpu cortex-a72 -m "${NIFE_MEM:-256M}" \
+    # path is bootable here for free rather than only on somebody's rented instance. NIFE_GIC=3 is
+    # the GIC a cloud machine has, and under TCG the only `virt` with an ITS; unset keeps QEMU's own
+    # default, as the kernel runner's NIFE_GIC does.
+    set -- -machine "virt,acpi=${NIFE_ACPI:-off}${NIFE_GIC:+,gic-version=$NIFE_GIC}" -cpu cortex-a72 -m "${NIFE_MEM:-256M}" \
         -drive "if=pflash,format=raw,readonly=on,file=$SHARE/edk2-aarch64-code.fd" \
         -drive "if=pflash,format=raw,file=$VARS" "$@"
     QEMU=qemu-system-aarch64

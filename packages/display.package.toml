@@ -7,8 +7,11 @@
 name = "display"
 kind = "optional"
 home = { repo = "display", status = "provisional" }
-interfaces = ["compositor", "video_terminal"]
-crates = ["usb", "extensible_host_controller_interface"]
+interfaces = ["compositor", "video_terminal", "glyph_atlas"]
+crates = ["usb", "extensible_host_controller_interface", "glyph_atlas_generator"]
+# The fonts the terminal's atlas is drawn from (milestone 142 (a text display good enough that
+# people use it instead of a GUI)).
+paths = ["vendor/dejavu/"]
 programs = [
     "compositor",
     "gpu_driver",

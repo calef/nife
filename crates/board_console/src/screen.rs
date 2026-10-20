@@ -14,11 +14,11 @@
 //! - Under QEMU, `cargo xtask uefi-boot` asks the emulator for a screendump and reads the tour off
 //!   it. That gates the whole framebuffer path on every run: the loader's `LocateProtocol`, the
 //!   byte order, the stride, the mapping surviving `mmu::init`, and the glyphs.
-//! - The same decoder, at the same time, is how the graphical `swish-check` leg reads the display
-//!   terminal's live, typed screen back (milestone 377 (two screendump decoders, in two crates,
-//!   reading the same font), which merged the decoder that leg used to carry in `xtask`). There is
-//!   no picture of a live session to predict, so the leg searches the rows this returns for what
-//!   it typed.
+//! - The graphical `swish-check` leg reads the display terminal's live, typed screen back with
+//!   [`decode_exact`], this module's parse and grid with the cell drawn by the caller's own font
+//!   (milestone 377 (two screendump decoders, in two crates, reading the same font) merged the
+//!   decoder that leg used to carry in `xtask`). There is no picture of a live session to predict,
+//!   so the leg searches the rows this returns for what it typed.
 //! - On a machine nobody can attach a cable to, a **photograph of the screen** is not this: it is
 //!   not pixel-aligned and it is not a screendump. Turning one into text is a different problem
 //!   this module does not solve, and `notes/serial-less-output.md` says so where a reader meets it.
@@ -175,11 +175,9 @@ pub struct Screendump {
 /// **Turn a screendump drawn in `ink` on `paper` back into its rows of text**, decoding each
 /// cell against `alphabet` at `scale`, and reading `?` where nothing in the alphabet matches.
 ///
-/// This is the one decoder in the tree (milestone 377): [`read`] is it with this crate's console
-/// scheme, the painter's own scale and every printable character, and the graphical
-/// `swish-check` leg is it with the display terminal's live screen, `video_terminal::Attr::DEFAULT`'s
-/// own colors, an explicit alphabet and a 1:1 scale. The two schemes stay the two crates' own
-/// choices, as data at the call.
+/// The bitmap-font decoder (milestone 377): [`read`] is it with this crate's console scheme, the
+/// painter's own scale and every printable character. The display terminal draws anti-aliased
+/// cells, which [`decode_exact`] reads instead.
 ///
 /// `scale` is how many screen pixels wide one font pixel was painted: `1` for a terminal that
 /// draws 1:1, and for [`read`] whatever `screen_console::ScreenConsole::scale_for` says the
@@ -253,6 +251,71 @@ fn decode_rows(
                 .collect()
         })
         .collect()
+}
+
+/// **Turn a screendump of `cell_w` by `cell_h` cells back into rows of text by exact match**: a
+/// cell reads as the first byte of `alphabet` whose `draw(ch, x, y)`, a `0x00RRGGBB` word for
+/// pixel `(x, y)` of the cell, equals every pixel the dump holds there, and as `?` otherwise.
+///
+/// For a picture whose glyphs are not monochrome, such as the display terminal's anti-aliased
+/// `glyph_atlas` cells, where [`decode`]'s ink-against-paper threshold has nothing to separate. The
+/// caller passes the drawing function the guest painted with, so a match is the guest's own
+/// pixels, not a resemblance. `scale` is [`decode`]'s: each cell pixel was painted as a
+/// scale-by-scale block, and its top-left screen pixel is the one compared.
+///
+/// # Errors
+///
+/// [`ReadError`] when the bytes are not a readable binary PPM.
+///
+/// # Examples
+///
+/// ```
+/// use board_console::screen;
+///
+/// // Two 2x1 cells: `a` is left-half ink, `b` right-half, on black.
+/// let draw = |ch: char, x: u32, _y: u32| match (ch, x) {
+///     ('a', 0) | ('b', 1) => 0x00ff_ffff,
+///     _ => 0,
+/// };
+/// let mut ppm = b"P6\n4 1\n255\n".to_vec();
+/// for x in 0..4u32 {
+///     let word = draw(if x < 2 { 'b' } else { 'a' }, x % 2, 0);
+///     ppm.extend_from_slice(&[(word >> 16) as u8, (word >> 8) as u8, word as u8]);
+/// }
+/// assert_eq!(screen::decode_exact(&ppm, 2, 1, 1, b"ab", draw).unwrap().rows, ["ba"]);
+/// ```
+///
+/// Name: provisional.
+pub fn decode_exact(
+    ppm: &[u8],
+    cell_w: u32,
+    cell_h: u32,
+    scale: u32,
+    alphabet: &[u8],
+    draw: impl Fn(char, u32, u32) -> u32,
+) -> Result<Screendump, ReadError> {
+    let (width, height, pixels) = parse_pixmap(ppm)?;
+    let (cw, ch, k) = (cell_w as usize, cell_h as usize, scale as usize);
+    let at = |col: usize, row: usize, x: usize, y: usize| {
+        let i = (((row * ch + y) * width + col * cw + x) * k) * 3;
+        (pixels[i] as u32) << 16 | (pixels[i + 1] as u32) << 8 | pixels[i + 2] as u32
+    };
+    let read = |col: usize, row: usize| {
+        alphabet
+            .iter()
+            .map(|&b| b as char)
+            .find(|&c| {
+                (0..ch).all(|y| (0..cw).all(|x| at(col, row, x, y) == draw(c, x as u32, y as u32)))
+            })
+            .unwrap_or('?')
+    };
+    Ok(Screendump {
+        width: u32::try_from(width).unwrap_or(u32::MAX),
+        height: u32::try_from(height).unwrap_or(u32::MAX),
+        rows: (0..height / (ch * k))
+            .map(|row| (0..width / (cw * k)).map(|col| read(col, row)).collect())
+            .collect(),
+    })
 }
 
 /// The character in one cell, or `?` when the cell matches nothing in `alphabet`.
@@ -353,7 +416,32 @@ mod tests {
     use machine_discovery::framebuffer::{Framebuffer, PixelOrder};
     use screen_console::{Cells, PixelSink, ScreenConsole};
 
-    use super::{INK, PAPER, ReadError, decode, read};
+    use super::{INK, PAPER, ReadError, decode, decode_exact, read};
+
+    /// **`decode_exact` reads a grid of cells at a scale, by every channel**: two rows of two
+    /// 3x2 cells drawn at scale two, each cell's own character a different color in each channel,
+    /// so a cell read from the wrong row, the wrong column, the wrong place in a block or with a
+    /// channel lost matches nothing and reads `?`.
+    #[test]
+    fn decode_exact_reads_each_cell_at_its_scale() {
+        let draw = |ch: char, x: u32, y: u32| -> u32 {
+            let k = ch as u32 - b'a' as u32 + 1;
+            ((k * 0x10 + x) << 16) | ((k * 0x20 + y) << 8) | (k * 0x30)
+        };
+        let screen = [['a', 'b'], ['c', 'd']];
+        let (w, h) = (2 * 3 * 2, 2 * 2 * 2);
+        let mut ppm = format!("P6\n{w} {h}\n255\n").into_bytes();
+        for sy in 0..h {
+            for sx in 0..w {
+                let (x, y) = (sx / 2, sy / 2);
+                let word = draw(screen[(y / 2) as usize][(x / 3) as usize], x % 3, y % 2);
+                ppm.extend_from_slice(&[(word >> 16) as u8, (word >> 8) as u8, word as u8]);
+            }
+        }
+        let read = decode_exact(&ppm, 3, 2, 2, b"abcd", draw).expect("a readable dump");
+        assert_eq!(read.rows, ["ab", "cd"]);
+        assert_eq!((read.width, read.height), (w, h));
+    }
 
     /// Paint `text` with the **kernel's own console** and hand back the screendump QEMU would have
     /// produced of it.

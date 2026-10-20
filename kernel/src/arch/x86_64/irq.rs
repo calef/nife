@@ -24,8 +24,6 @@
 //!   (`proofs::an_owned_gsi_routes_inside_the_io_apic_band`) and unit-tested, never booted.
 //! - Every entry targets the local APIC of the core that called [`enable`], in physical mode, and
 //!   every MSI the core that ran [`alloc_msi_vector`]; nothing is distributed.
-//! - Before `mmu::init`, the redirection table is written through the boot map's cacheable alias;
-//!   the MTRRs keep the MMIO hole uncacheable regardless.
 //! - Nothing masks a routed line on the way out: revoking a driver's `Irq` does not call
 //!   [`mask_gsi`], so a dead input driver's COM1 line stays armed into a rendezvous nobody waits on.
 //! - An MSI vector is never handed back ([`alloc_msi_vector`] bumps); a device brought up twice
@@ -721,17 +719,99 @@ pub(crate) fn isa_routing(irq: u32) -> IsaIrqRouting {
 // The portable arch contract's names.
 // ---------------------------------------------------------------------------------------------
 
-/// Bring up the interrupt controller.
+/// **The boot CPU's local APIC, at the address the MADT gave** (milestone 890 (riscv64 and
+/// `x86_64` join the shared boot path)): this architecture's half of the step riscv64 fills with its
+/// PLIC contexts, in the same window of `bring_up_machine`.
 ///
-/// # BUGS
-/// **Unimplemented, and it is the argument rather than the work.** The IO APIC's bring-up is
-/// [`init_io_apic`], which takes the address and global-interrupt base the ACPI MADT supplied; this
-/// name is the arch contract's no-argument one, written for two architectures that read those facts
-/// out of a device tree the shared `memory::init` had already parsed. Wiring it up is the device
-/// discovery seam (roadmap item 0), not this module.
-#[allow(dead_code)]
+/// It runs before `timer::init_frequency`, which calibrates the local APIC's own counter and panics
+/// if the APIC is not up, and before `mmu::init`, through the boot map that reaches the low 4 GiB.
+/// The fine map then maps the same page device-typed (`mmu::claims`, from the same MADT). The
+/// pointer argument is the arch contract's; this one reads the walk `memory::init` kept.
+pub(crate) fn init_contexts(boot_info_pointer: usize) {
+    let _ = boot_info_pointer;
+    let Some(apic) = super::discovery::local_apic_phys() else {
+        crate::println!("  apic        : skipped, the MADT did not say where the local apic is");
+        return;
+    };
+    // SAFETY: the address came from the machine's own ACPI MADT, and the boot map still covers it.
+    unsafe { init_local_apic(apic) };
+    crate::println!(
+        "  apic        : local apic {apic:#x} up, id {}, version {:#x}, 8259s masked",
+        local_apic_id(),
+        local_apic_version(),
+    );
+}
+
+/// **Bring up the interrupt controller**: the IO APIC the MADT names, its legacy routing, and one
+/// device interrupt through it, before the shared `interrupts_init` arms the tick and unmasks.
+///
+/// The local APIC timer and `RFLAGS.IF` prove the CPU takes an interrupt it did not ask for; the
+/// PIT's line proves one from outside the CPU reaches it, which is a different claim and needs a
+/// different device. The PIT is the right one twice over: `timer.rs` already drives it for
+/// calibration, and its legacy IRQ 0 is the line every PC rewires, arriving as GSI 2. Arming
+/// redirection entry 0 for "the timer" would arm the 8259 cascade and produce no interrupts and no
+/// error, so this line is the easiest device to reach and the strongest test of the override table.
+/// `cargo xtask uefi-boot` reads the `device irq` line on a machine with two local APICs.
+///
+/// Here rather than in a tour because every build reaches it, the test boot included, and because
+/// the window it needs (the scheduler up, the tick not yet armed) exists only here.
 pub fn init() {
-    unimplemented!("x86_64 irq::init: see init_io_apic, which takes the MADT's address")
+    let (io_apic, isa_irqs) = super::discovery::with_acpi(|a| (a.io_apic, a.isa_irqs));
+    let Some((io_id, io_addr, gsi_base)) = io_apic.filter(|_| is_local_apic_ready()) else {
+        crate::println!("  io apic     : skipped, the MADT did not describe one");
+        return;
+    };
+    // SAFETY: the address and global-interrupt base came from the machine's own ACPI MADT, and
+    // `mmu::init` mapped that page device-typed (`mmu::claims`, from the same table).
+    unsafe { init_io_apic(io_addr as u64, gsi_base) };
+    record_isa_routing(&isa_irqs);
+    let chip_id = io_apic_id();
+    crate::println!(
+        "  io apic     : id {chip_id} at {io_addr:#x} up, version {:#x}, {} redirection entries, gsi base {gsi_base}",
+        io_apic_version(),
+        io_apic_entries(),
+    );
+    if chip_id != io_id {
+        // Worth a line rather than an average: the MADT and the chip disagreeing about which IO
+        // APIC this is means one of the two is describing a different machine.
+        crate::println!(
+            "                the MADT calls it id {io_id}; the register above is the chip's own answer"
+        );
+    }
+    prove_a_device_line();
+}
+
+/// Route the PIT through the IO APIC, take its interrupts for about 0.2 s with nothing else
+/// unmasked, and print the count. See [`init`] for why this device.
+fn prove_a_device_line() {
+    use super::{exceptions, interrupts, timer};
+
+    // Masked so the count is the PIT's alone; `timer::init` rewrites the LVT unmasked right after.
+    mask_timer();
+    let pit = isa_routing(timer::PIT_IRQ);
+    let hz = timer::start_pit_ticking(timer::TICK_HZ);
+    enable(timer::PIT_IRQ);
+    // Read after `enable` rather than before, which is what makes the `expect` honest: `enable`
+    // has just routed this GSI and panics with a named reason if the IO APIC does not own it. It
+    // also makes the line's field the vector that was programmed, not one computed beside it.
+    let vector =
+        gsi_vector(pit.gsi).expect("enable routed this gsi a line ago, so the io apic owns it");
+
+    exceptions::enable_external();
+    interrupts::enable();
+    let start = timer::now();
+    while timer::now().wrapping_sub(start) < timer::frequency() / 5 {
+        super::wait_for_interrupt();
+    }
+    interrupts::disable();
+    mask_gsi(pit.gsi);
+
+    crate::println!(
+        "  device irq  : pit irq {} -> gsi {} on vector {vector:#x}: {} interrupts in ~0.2s at {hz} Hz",
+        timer::PIT_IRQ,
+        pit.gsi,
+        exceptions::DEVICE_IRQS.load(Ordering::Relaxed),
+    );
 }
 
 /// Bring up this CPU's local interrupt interface (milestone 161's SMP item): a secondary's own

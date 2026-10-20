@@ -27,6 +27,9 @@ doc-valid-idents = [
     "ChromeOS",
     "ChromiumOS",
     "CoreMark",
+    # The font project whose Sans Mono the terminal draws with (§104 (the rich-text font is DejaVu
+    # Sans Mono, and the palette is Solarized), crates/glyph_atlas).
+    "DejaVu",
     "OpenSBI",
     "VisionFive",
     "CodeQL",

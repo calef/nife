@@ -379,7 +379,7 @@ fn tree_from_acpi(
         ram_count,
     };
     let base = write_tree(services, &machine)?;
-    say_acpi_machine(table, &machine, entries.distributor);
+    say_acpi_machine(table, &machine, &entries);
     Ok(base as *const u8)
 }
 
@@ -392,6 +392,10 @@ struct Madt {
     per_cpu_redistributor: u64,
     cpus: [device_tree_from_acpi::Cpu; device_tree_from_acpi::MAX_CPUS],
     cpu_count: usize,
+    /// The first GIC ITS entry's frame, and how many the MADT states. Reported, not written into
+    /// the tree: see `device_tree_from_acpi`'s BUGS.
+    first_its: u64,
+    its_count: u32,
 }
 
 /// Walk the MADT's entries once, keeping the GIC's frames and up to `MAX_CPUS` cores.
@@ -403,6 +407,8 @@ fn read_madt(body: &[u8]) -> Madt {
     let mut per_cpu_redistributor = 0u64;
     let mut cpus = [device_tree_from_acpi::Cpu::default(); device_tree_from_acpi::MAX_CPUS];
     let mut cpu_count = 0usize;
+    let mut first_its = 0u64;
+    let mut its_count = 0u32;
     for entry in acpi::madt_entries(body) {
         match entry {
             acpi::MadtEntry::GenericDistributor {
@@ -444,6 +450,12 @@ fn read_madt(body: &[u8]) -> Madt {
                     cpu_count += 1;
                 }
             }
+            acpi::MadtEntry::GicIts { address, .. } => {
+                if its_count == 0 {
+                    first_its = address;
+                }
+                its_count = its_count.saturating_add(1);
+            }
             _ => {}
         }
     }
@@ -455,6 +467,8 @@ fn read_madt(body: &[u8]) -> Madt {
         per_cpu_redistributor,
         cpus,
         cpu_count,
+        first_its,
+        its_count,
     }
 }
 
@@ -554,11 +568,7 @@ fn write_tree(
 }
 
 /// Say what the ACPI tables described, and which optional pieces the kernel will do without.
-fn say_acpi_machine(
-    table: &SystemTable,
-    machine: &device_tree_from_acpi::Machine,
-    distributor: u64,
-) {
+fn say_acpi_machine(table: &SystemTable, machine: &device_tree_from_acpi::Machine, madt: &Madt) {
     say(
         table,
         "uefi_loader: no device tree; describing this machine from ACPI\r\n",
@@ -572,10 +582,25 @@ fn say_acpi_machine(
             Gic::V3 { .. } => " core(s), GICv3 at ",
         },
     );
-    say_hex(table, distributor);
+    say_hex(table, madt.distributor);
     say(table, ", ");
     say_decimal(table, machine.ram_count as u32);
     say(table, " RAM region(s)\r\n");
+    // **Said, so that a boot shows the MADT's ITS was read**, and said to be left out, so that
+    // nobody reads this line as the kernel having MSIs through it.
+    if madt.its_count != 0 {
+        say(table, "uefi_loader:   GIC ITS at ");
+        say_hex(table, madt.first_its);
+        if madt.its_count > 1 {
+            say(table, " and ");
+            say_decimal(table, madt.its_count - 1);
+            say(table, " more");
+        }
+        say(
+            table,
+            "; not described to the kernel, which drives no ITS\r\n",
+        );
+    }
     if machine.uart.is_none() {
         say(
             table,

@@ -48,10 +48,11 @@ See `notes/what-a-session-carries.md`.
   file already asks for elsewhere, and stop there. Do not invent an answer, or end the turn early
   because the next item looked harder than the last one.
 - Every pull request and comment an agent writes opens by saying so. One line, first thing in
-  the body: `**Lane:** <branch or milestone>, written by an agent; calef's account is the author
-  GitHub shows.` Milestone 128 (the automation gets its own identity) is PARTIAL: its App exists and
-  the scheduled workflows author as `nife-smelter[bot]`, but a lane opens its pull request with
-  calef's `gh` token. This is rung four and it is honest about being rung four: the mechanism is
+  the body: `**Lane:** <branch or milestone>, written by an agent; the author GitHub shows is the
+  person running it.` It names no one because `AGENTS.md` is in the repository and anybody may run
+  their agents on it (calef, 2026-10-20 UTC). Milestone 128 (the automation gets its own identity)
+  is PARTIAL: its App exists and the scheduled workflows author as `nife-smelter[bot]`, but a lane
+  opens its pull request with its runner's own `gh` token. This is rung four and it is honest about being rung four: the mechanism is
   128's App, and this is what the record says in the meantime. (calef, 2026-08-16: *"it looks like
   I'm talking to myself a lot and the record would be nice to clarify who is talking."*)
 - A lane's first act is a draft pull request, §90 (the claim is a draft pull request),

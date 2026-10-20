@@ -37,7 +37,7 @@
 # stack into the real interactive boot)'s boot half, made the graphical boot the same `--features
 # shell` UART system as every other boot, so the only differences are a virtio-gpu, typing
 # `graphical_terminal` at the prompt, and reading the screen back (a QEMU screendump decoded
-# against the same 7x8 font the guest drew from). A launch ends the boot it is typed into (the
+# against the same atlas the guest drew from). A launch ends the boot it is typed into (the
 # shell waits on the session), so each leg is three boots, and a fourth for the USB keyboard:
 #
 #   1. The full script, **no gpu**: its `graphical_terminal` line requires the refusal sentence,
