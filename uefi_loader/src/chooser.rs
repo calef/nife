@@ -653,7 +653,7 @@ struct Medium {
 /// declaration meeting a real firmware. It declares revision 3's fields after `last_block`, which a
 /// revision-1 firmware does not allocate, so a reference to the whole structure would claim bytes
 /// that may not be there. And it declares the five `BOOLEAN`s as Rust `bool`, which is undefined
-/// behaviour to read for any byte but 0 or 1, where UEFI's `BOOLEAN` is a byte the firmware writes.
+/// behavior to read for any byte but 0 or 1, where UEFI's `BOOLEAN` is a byte the firmware writes.
 /// So the flags are read as the bytes they are, and anything nonzero is true.
 ///
 /// # Safety

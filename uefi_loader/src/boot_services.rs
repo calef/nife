@@ -135,7 +135,7 @@ pub(crate) fn handle_protocol(
     let mut interface: *mut c_void = ptr::null_mut();
     // SAFETY: a boot service (see this module's header). The firmware reads the GUID, though the
     // signature says `*mut`, and writes only `interface`; a handle it does not know is an error
-    // status, not undefined behaviour.
+    // status, not undefined behavior.
     let status = unsafe { (services.handle_protocol)(handle, &mut guid, &mut interface) };
     (status == SUCCESS && !interface.is_null()).then_some(interface)
 }
