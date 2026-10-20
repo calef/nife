@@ -427,12 +427,14 @@ pub(crate) fn soak_test() -> ExitCode {
     //
     // Milestone 593 (a wedged kernel resets itself)'s two QEMU proofs (number provisional), x86_64
     // only: with `--watchdog` a healthy watchdog soak is never reset over a bounded window, and
-    // with `--wedge` a wedged one is. See [`watchdog_verdict`].
+    // with `--wedge` a wedged one is. See [`watchdog_verdict`]. A plain x86_64 soak arms the
+    // watchdog too, and `--no-watchdog` is the plain soak without it; see [`SoakKind::Unwatched`].
     let mut run = match RunArgs::parse(
         "soak-test",
-        &["--reboot", "--watchdog", "--wedge"],
+        &["--reboot", "--watchdog", "--wedge", "--no-watchdog"],
         "usage: cargo xtask soak-test [--arch aarch64|riscv64|x86_64] [--for <duration>] \
-         [--smp <n>] [--quiet-after <duration>] [--log <file>] [--reboot | --watchdog | --wedge]",
+         [--smp <n>] [--quiet-after <duration>] [--log <file>] \
+         [--reboot | --watchdog | --wedge | --no-watchdog]",
         policy,
     ) {
         Ok(run) => run,
@@ -471,7 +473,7 @@ pub(crate) fn soak_test() -> ExitCode {
     };
 
     let mut cmd = qemu_command(runner, target, &initial_ramdisk, &arch, run.smp.as_deref());
-    if kind != SoakKind::Plain {
+    if kind.expects_reset() {
         // The x86 runner passes `-no-reboot` so a triple fault exits instead of looping; this run
         // is the one where a reset must reset. The other two runners never pass it.
         cmd.env("NIFE_ALLOW_REBOOT", "1");
@@ -490,7 +492,7 @@ pub(crate) fn soak_test() -> ExitCode {
         return ExitCode::from(4);
     };
 
-    if kind != SoakKind::Plain {
+    if kind.expects_reset() {
         let verdict = if kind == SoakKind::Reboot {
             second_boot(stdout, &mut sink, run.policy.total)
         } else {
@@ -520,11 +522,16 @@ pub(crate) fn soak_test() -> ExitCode {
     soak_verdict(&session, run.policy.total, &log_path)
 }
 
-/// **Which run `soak-test` was asked for**: the plain soak, or one of the three that must see the
-/// machine reset (`--reboot`, `--watchdog`, `--wedge`).
+/// **Which run `soak-test` was asked for**: the plain soak, with or without the watchdog, or one of
+/// the three that must see the machine reset (`--reboot`, `--watchdog`, `--wedge`).
 #[derive(Clone, Copy, PartialEq, Eq)]
 enum SoakKind {
+    /// `--features soak_test`, which on x86_64 arms the watchdog (`kernel/build.rs`).
     Plain,
+    /// **`--no-watchdog`, the opt-out** (milestone 593 (a wedged kernel resets itself)): the plain
+    /// soak on x86_64 with nothing to reset it, so a wedge is seen as a wedge, a console gone
+    /// quiet, rather than as a reset. Name provisional.
+    Unwatched,
     Reboot,
     Watchdog,
     Wedge,
@@ -534,25 +541,30 @@ impl SoakKind {
     /// From the switches, refusing two at once and the watchdog runs off x86_64. `None` after
     /// saying why.
     fn from_run(run: &RunArgs) -> Option<Self> {
-        let (reboot, watchdog, wedge) = (
+        let (reboot, watchdog, wedge, unwatched) = (
             run.has("--reboot"),
             run.has("--watchdog"),
             run.has("--wedge"),
+            run.has("--no-watchdog"),
         );
-        if u8::from(reboot) + u8::from(watchdog) + u8::from(wedge) > 1 {
+        if u8::from(reboot) + u8::from(watchdog) + u8::from(wedge) + u8::from(unwatched) > 1 {
             eprintln!(
-                "soak-test: --reboot, --watchdog and --wedge are three different runs; pick one"
+                "soak-test: --reboot, --watchdog, --wedge and --no-watchdog are four different runs; \
+                 pick one"
             );
             return None;
         }
-        if (watchdog || wedge) && run.arch != "x86_64" {
+        if (watchdog || wedge || unwatched) && run.arch != "x86_64" {
             eprintln!(
-                "soak-test: --watchdog and --wedge are x86_64-only: the watchdog is the Intel TCO, which \
-                 QEMU's q35 emulates and neither virt board has (milestone 593's block)"
+                "soak-test: --watchdog, --wedge and --no-watchdog are x86_64-only: the watchdog is \
+                 the Intel TCO, which QEMU's q35 emulates and neither virt board has (milestone \
+                 593's block), so no other architecture's soak arms one"
             );
             return None;
         }
-        Some(if reboot {
+        Some(if unwatched {
+            Self::Unwatched
+        } else if reboot {
             Self::Reboot
         } else if wedge {
             Self::Wedge
@@ -570,7 +582,13 @@ impl SoakKind {
             Self::Wedge => "wedge_soak_test",
             Self::Watchdog => "watchdog_soak_test",
             Self::Plain => "soak_test",
+            Self::Unwatched => "unwatched_soak_test",
         }
+    }
+
+    /// Whether the run passes by seeing the machine reset, rather than by the plain soak's verdict.
+    fn expects_reset(self) -> bool {
+        !matches!(self, Self::Plain | Self::Unwatched)
     }
 
     /// How long the run lasts when `--for` did not say, where it differs from the plain soak's
@@ -586,7 +604,7 @@ impl SoakKind {
             // The healthy run's window is counted from the moment the watchdog is armed, and three
             // minutes is three full resets' worth of time.
             Self::Watchdog => 180,
-            Self::Plain => return None,
+            Self::Plain | Self::Unwatched => return None,
         };
         Some(std::time::Duration::from_secs(secs))
     }
