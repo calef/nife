@@ -24,7 +24,7 @@ has the same order in `kernel/src/syscall/object_methods.rs`. `ipc_reply` checks
 parked waiting for a reply, not that it is parked waiting for *this* reply
 (`kernel/src/sched/rendezvous.rs`).
 
-Since milestone 812, threads of one process share one capability table. So two server threads can
+Since milestone 812 (`std::thread::spawn` runs real threads in one address space), threads of one process share one capability table. So two server threads can
 both read the same Reply slot. One answers the client; the client wakes, calls an unrelated server
 and parks for that answer; the second thread's stale copy is then delivered as the unrelated
 server's reply. A compromised server can do this on purpose. `notes/suspend-and-resume.md` names

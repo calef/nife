@@ -11,7 +11,7 @@ the device's slot base and read through the kernel's direct map with no bound, s
 `Virtio` capability could read any physical address on the mmio transport: the kernel, and every
 other process. It predates this window (the same code stands at `996bb792a`), and no audit's lens
 crossed it because the method looked like "read a status register". It is fixed here. The other
-two kernel findings are races in the shared capability table that milestone 812 made possible, and
+two kernel findings are races in the shared capability table that milestone 812 (`std::thread::spawn` runs real threads in one address space) made possible, and
 both are minted rather than fixed, because each sits on a hot path and wants a measurement.
 
 ## Why this lens
@@ -32,7 +32,7 @@ lacked, so this audit takes it, with the atlas's packages as its third part.
 
 Distinct registry packages across every committed lockfile but `vendor/`, diffed between
 `f1504f19f` (the commit that landed the 2026-10-19 documentation report) and `dd50a277b`. Six
-added, none removed, all in `tools/glyph_atlas_generator/Cargo.lock`, arriving with milestone 142's
+added, none removed, all in `tools/glyph_atlas_generator/Cargo.lock`, arriving with milestone 142 (a text display good enough that people use it instead of a GUI)'s
 atlas (#2428):
 
 | Package | Version | Enters through | Ruled |
@@ -40,7 +40,7 @@ atlas (#2428):
 | `skrifa` | 0.44.0, pinned `=` | the generator's font parser | calef, 2026-10-20 (UTC), on #2428 |
 | `read-fonts`, `font-types` | 0.41.0, 0.12.7 | `skrifa`'s graph | with `skrifa` |
 | `bytemuck`, `bytemuck_derive` | 1.25.2, 1.12.1 | `font-types` | calef, 2026-10-20 (UTC), "Yes" to `bytemuck_derive` on #2428 |
-| `ab_glyph_rasterizer` | 0.1.10, pinned `=` | the generator's rasterizer | §166 (2026-10-05) |
+| `ab_glyph_rasterizer` | 0.1.10, pinned `=` | the generator's rasterizer | §166 (the rasterizer dependency, 2026-10-05) |
 
 ### The two uncountable triggers, answered
 
@@ -48,8 +48,8 @@ Has a new component taken device or network authority? **Yes, and it is this len
 2026-10-03: `designware_mobile_storage` and the DesignWare Ethernet transport on radon, the e1000e
 transport and the xHCI keyboard driver on PCs. Since 2026-10-19 alone: none.
 
-Has this booted on a new machine class? **No.** Milestone 890 moves x86_64 onto the shared boot
-path and milestone 578 boots QEMU's GICv3 with an ITS; neither is a new class.
+Has this booted on a new machine class? **No.** Milestone 890 (riscv64 and x86_64 join the shared boot path) moves x86_64 onto the shared boot
+path and milestone 578 (an ACPI discovery path for aarch64) boots QEMU's GICv3 with an ITS; neither is a new class.
 
 ## What was read, and what came back clean
 
@@ -64,7 +64,7 @@ controller anywhere, since the JH7110 has no IOMMU.
 `rx_verdict` bounds a device-written length to the room, `MAX_FRAME` and the buffer (Kani-proved);
 transmit refuses an empty or oversized frame; ring offsets wrap modulo the ring; every region access
 goes through a bounds-checked window. On a PC with no VT-d, e1000e runs confined only by its own
-arithmetic; that is milestone 261's stated position and its `BUGS`, the boot line and
+arithmetic; that is milestone 261 (the NVMe driver leaves the kernel)'s stated position and its `BUGS`, the boot line and
 `notes/e1000e.md` all say so.
 
 **The xHCI driver.** Every capability it holds is used, the MSI-X pages and scratchpads are
@@ -189,7 +189,7 @@ ruled on it by name.
 Yes, two, and both are fixed. Before finding 1, a `Virtio` capability was not confined to its
 device. `SECURITY.md`'s radon sentence (finding 5) claimed a confinement the board's own servers do
 not have. `Reboot` checks no
-rights by §251's ruling, so a copy narrowed to nothing still reboots; that is the ruled design, not
+rights by §251 (restarting the machine is a kernel object)'s ruling, so a copy narrowed to nothing still reboots; that is the ruled design, not
 a false claim.
 
 ## Fatal-risk implications

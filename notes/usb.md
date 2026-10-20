@@ -37,8 +37,8 @@ slot 27 and sends `WRITE` on the terminal endpoint through it once the line disc
 ## The confinement, in one sentence
 
 The driver holds every register page of its controller except the page its interrupt message is
-programmed through, and its controller can reach nothing but its own DMA region, plus any region
-the firmware reserved for it (an RMRR), which VT-d requires mapped. The first half is
+programmed through, and its controller can reach nothing but its own DMA region. VT-d also maps any
+region the firmware reserved for it (an RMRR). The first half is
 `register_window` (a Kani harness proves no withheld page is ever mapped). The second is the IOMMU.
 The kernel refuses to start the driver at all on a machine whose IOMMU does not confine the
 controller, because a process holding an xHCI register file names every physical address the
