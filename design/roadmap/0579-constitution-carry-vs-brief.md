@@ -1,6 +1,7 @@
 ---
-status: PARTIAL
+status: BUILT
 raised: 2026-09-23
+built: 2026-10-20
 promoted_from: constitution-carry-vs-brief
 milestone_dependencies: none
 decision_dependencies: unwritten
@@ -10,10 +11,10 @@ needs_person: no
 ---
 # 579. Which of the constitution must be carried, and which is a brief
 
-PARTIAL, ruled by calef on 2026-10-12 (UTC). Shipped: two of the five briefs, as files in `briefs/`
-(commit cc49c2acc), and three more passages carried by skills in `notes/skills/` rather than by
-briefs (pull request #1726). What remains is the one passage the table left `uncertain` that still
-sits in `AGENTS.md`, listed under Follow-on.
+BUILT, 2026-10-20 (UTC). Shipped: two of the five briefs, as files in `briefs/` (commit cc49c2acc),
+and three more passages carried by skills in `notes/skills/` rather than by briefs (pull request
+#1726). calef ruled that the last `uncertain` passage, the agent-attribution line, stays in
+`AGENTS.md` (Follow-on).
 
 *(Number minted at promotion.)* Promoted from the proposal `constitution-carry-vs-brief`, filed
 2026-09-23. calef's instruction of 2026-09-23 was to give the two unnumbered proposals on `main` a
@@ -228,16 +229,19 @@ tree later resolved this.
   `notes/skills/developer-lane/SKILL.md`, the leaked-QEMU recipe in `notes/skills/qemu-hygiene/SKILL.md`,
   and the seven questions in `notes/skills/decisions/SKILL.md` (commit 8f8aeddf1, pull request #1726).
   That also settles where the fifth belonged.
-- **Outstanding.** Of the three `uncertain` passages, the opening line every agent-written pull
-  request and comment carries is still in `AGENTS.md`, under "Pull requests and comments an agent
-  writes" (checked 2026-10-12, UTC). Whether it moves is calef's call, as the block said. The other
-  two left: work waiting on calef is in the `decisions` skill, and the documentation standard is in
-  `design/tenets/documentation-standard.md`.
+- **Done.** The three `uncertain` passages. Work waiting on calef is in the `decisions` skill, and
+  the documentation standard is in `design/tenets/documentation-standard.md`. The opening line every
+  agent-written pull request and comment carries stays in `AGENTS.md`, under "Pull requests and
+  comments an agent writes", and names no person. calef, 2026-10-20 (UTC): *"It shouldn't have my
+  name because AGENTS.md is checked into the repo. It could be used by anybody with their agents."*
+  On the line `**Lane:** <branch or milestone>, written by an agent; the author GitHub shows is the
+  person running it.`, the same day: *"Wording is fine."* Every writer of the line uses it:
+  `script/claim`, `script/record-ruling`, `script/preflight-queue`, the pull request template and
+  `toolchain-bump.yml`, and a session on the project's App names `nife-smelter[bot]` instead.
 
 ## Index row
 
 Classifies every passage of `AGENTS.md` by whether an agent must already be carrying it or can look
 it up when the task arrives, and finds five briefs' worth of prose that fails the carry test. It is
 the still-open "split" half of milestone 118 (CLAUDE.md has a budget, and the rules that get
-violated move up the ladder), run against a timing test rather than 118's duplication test. It is
-blocked on calef because neither `AGENTS.md` nor `briefs/` is a developer lane's to edit.
+violated move up the ladder), run against a timing test rather than 118's duplication test.
