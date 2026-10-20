@@ -326,6 +326,13 @@ opt-level = 2
 opt-level = 2
 [profile.dev.package.video_terminal]
 opt-level = 2
+# The compositor's and the framebuffer contract's per-pixel functions, for the same reason: the
+# compositor tests compute `compositor::expected_screen_pixel` and the pattern tests
+# `graphics_contract::pixel` for every pixel of the scanout.
+[profile.dev.package.compositor]
+opt-level = 2
+[profile.dev.package.graphics_contract]
+opt-level = 2
 
 # Overflow checks in release, ruled by calef 2026-10-04 (UTC) (notes/overflow-checks.md, option A).
 # The shipped build now means by `a + b` what every tested build means: an overflow halts rather
