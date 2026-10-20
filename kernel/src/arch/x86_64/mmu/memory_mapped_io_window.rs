@@ -4,7 +4,7 @@
 //!
 //! Cut out of `mmu.rs` unchanged by lane `maintainer/last-three-over-2000`, which left the
 //! parent an index (§282 (when a file is split, the parent becomes an index)) and under §266 (a
-//! Rust source file stays under 2,000 lines). `super::irq` and `super::machine` name the `x86_64`
+//! Rust source file stays under 2,000 lines). `super::discovery` and `super::machine` name the `x86_64`
 //! items the index imports, as in `mmu.rs`.
 //!
 //! Name: provisional (lane `maintainer/last-three-over-2000`, 2026-10-12 UTC), for the module and
@@ -237,10 +237,10 @@ pub fn memory_mapped_io_window(ecam: (u64, u64)) -> Result<(u64, u64), MemoryMap
     // have collided with the screen the panic would have been printed on.
     let window = window_in_hole(lo, hi, PCI_BAR_MAPPED, |avoid| {
         avoid(ecam.0, ecam.0 + ecam.1);
-        if let Some(apic) = super::irq::local_apic_phys() {
+        if let Some(apic) = super::discovery::local_apic_phys() {
             avoid(apic, apic + PAGE_SIZE);
         }
-        if let Some(io_apic) = super::irq::io_apic_phys() {
+        if let Some(io_apic) = super::discovery::io_apic_phys() {
             avoid(io_apic, io_apic + PAGE_SIZE);
         }
         for (base, size) in memory::vtd_regions().into_iter().flatten() {

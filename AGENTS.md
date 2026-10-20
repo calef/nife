@@ -154,10 +154,9 @@ answer, and decide the remediation separately, with the data in hand
 ## Pull requests and comments an agent writes
 
 - Every pull request and comment an agent writes opens by saying so. One line, first thing in the
-  body: `**Lane:** <branch or milestone>, written by an agent; calef's account is the author GitHub
-  shows.` Milestone 128 (the automation gets its own identity) is PARTIAL: its App exists and the
-  scheduled workflows author as `nife-smelter[bot]`, but a lane opens its pull request with calef's
-  `gh` token.
+  body: `**Lane:** <branch or milestone>, written by an agent; the author GitHub shows is the person
+  running it.` It names no one because anybody may run their agents on this file (calef,
+  2026-10-20 UTC). A workflow on the project's App says `nife-smelter[bot]` is the author instead.
 
 ## Measuring, pushing back, and correcting the record
 

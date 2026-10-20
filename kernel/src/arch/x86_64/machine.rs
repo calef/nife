@@ -6,18 +6,14 @@
 //! bytes this kernel can look at, through the direct map. That is the same division `console.rs`
 //! and `memory.rs` make with `crates/device_tree_blob` on the other two architectures.
 //!
+//! `memory::init` reaches this file through `arch::x86_64::discovery`, which owns the order: the
+//! handoff, the ACPI walk, the device windows, PCI, then [`bring_up_memory`].
+//!
 //! # BUGS
 //!
-//! - **Only RAM and reservations cross the seam** through [`crate::memory::bring_up_page_frames`].
-//!   The device *windows* the device-tree front end also discovers on the other two architectures
-//!   have their own, narrower seams instead of that one: the interrupt controller (IO APIC) is
-//!   reached directly by `arch::x86_64::irq` rather than through `memory.rs`'s statics (milestone
-//!   161 item 2), and PCI and the UART's interrupt line are wired into `memory.rs`'s own statics
-//!   from `main.rs`'s boot tour (`memory::record_pci_regions`, `memory::record_uart_irq`;
-//!   milestones 165 and 176). **The only device window with no seam at all is the CMOS RTC**: it
-//!   is not memory-mapped (two fixed I/O ports, not a page), so `memory::RTC_REGION`'s
-//!   `Option<(u64, u64, u64)>` shape has nowhere to put it. See notes/x86-port/acpi-and-pci.md and
-//!   `kernel/src/arch/x86_64/port.rs`'s own doc comment.
+//! - **The CMOS RTC crosses no seam**: it is not memory-mapped (two fixed I/O ports, not a page),
+//!   so `memory::RTC_REGION`'s `Option<(u64, u64, u64)>` shape has nowhere to put it. See
+//!   notes/x86-port/acpi-and-pci.md and `kernel/src/arch/x86_64/port.rs`'s own doc comment.
 
 use machine_discovery::framebuffer::Framebuffer;
 use machine_discovery::x86_64::{

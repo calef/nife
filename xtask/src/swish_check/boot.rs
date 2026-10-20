@@ -29,10 +29,11 @@ use super::*;
 /// - **The default kernel, not `--features shell`.** `x86_64` has no early hand-over: every boot
 ///   runs the tour and then hands over (milestone 268 (every architecture boots the same way)),
 ///   and `uefi_image` builds exactly that.
-/// - **The kernel's hand-over report lands after the prompt.** `x86_hand_over` watches the
-///   progenitor for ten seconds and then prints two lines, so the transcript does not end in `$ `
-///   until something is typed. The leg waits for that report and then presses Enter once, so the
-///   report cannot splice into a typed line's echo and the first line meets a fresh prompt.
+/// - **The kernel's hand-over report lands after the prompt.** `watch_the_progenitor`
+///   (`kernel/src/x86_64_boot.rs`) watches the progenitor for ten seconds and then prints two
+///   lines, so the transcript does not end in `$ ` until something is typed. The leg waits for that
+///   report and then presses Enter once, so the report cannot splice into a typed line's echo and
+///   the first line meets a fresh prompt.
 /// - **No virtio-rng, so `RDSEED`.** Every entropy device the kernel can find is virtio-mmio and
 ///   `q35` has no mmio bus, so the kernel builds the progenitor's entropy service on the CPU's seed
 ///   instruction instead (milestone 595 (provisional)), which the runner's `-cpu max` implements.
@@ -1041,7 +1042,7 @@ fn press_enter_after_hand_over(
     if !console.wait_after(0, X86_HAND_OVER_REPORT, SWISH_CHECK_BOOT_SECS) {
         failed.push(format!(
             "the kernel never printed its hand-over report ({X86_HAND_OVER_REPORT:?}), so \
-             the progenitor did not outlive `x86_hand_over`'s watch"
+             the progenitor did not outlive the kernel's watch"
         ));
         false
     } else if writeln!(stdin).is_err() || stdin.flush().is_err() {

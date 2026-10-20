@@ -415,8 +415,8 @@ jobs:
           RESTAMP: ${{ runner.temp }}/restamp
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
           # AGENTS.md requires every agent-written pull request to open by saying whose voice it is
-          # in. That sentence stops being true the day the App lands: the byline becomes
-          # `<app>[bot]` rather than calef. So the sentence is computed rather than spelled, and
+          # in. The App's byline is `<app>[bot]` rather than the person whose token runs the
+          # workflow otherwise. So the sentence is computed rather than spelled, and
           # this is the one place in the tree where the attribution line has to track the identity.
           APP_TOKEN: ${{ steps.app-token.outputs.token }}
         run: |
@@ -425,7 +425,7 @@ jobs:
           if [ -n "$APP_TOKEN" ]; then
             lane="**Lane:** $branch, opened by a scheduled workflow under the project's own automation identity."
           else
-            lane="**Lane:** $branch, opened by a scheduled workflow; calef's account is the author GitHub shows."
+            lane="**Lane:** $branch, opened by a scheduled workflow; the author GitHub shows is the person running it."
           fi
           git config user.name  "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
@@ -636,7 +636,7 @@ jobs:
           if [ -n "$APP_TOKEN" ]; then
             lane="**Lane:** $branch, opened by a scheduled workflow under the project's own automation identity."
           else
-            lane="**Lane:** $branch, opened by a scheduled workflow; calef's account is the author GitHub shows."
+            lane="**Lane:** $branch, opened by a scheduled workflow; the author GitHub shows is the person running it."
           fi
           git config user.name  "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"

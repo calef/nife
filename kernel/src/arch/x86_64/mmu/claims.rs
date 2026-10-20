@@ -3,7 +3,7 @@
 //!
 //! Cut out of `mmu.rs` unchanged by lane `maintainer/last-three-over-2000`, which left the
 //! parent an index (§282 (when a file is split, the parent becomes an index)) and under §266 (a
-//! Rust source file stays under 2,000 lines). `super::ap_boot`, `super::irq` and `super::machine`
+//! Rust source file stays under 2,000 lines). `super::ap_boot`, `super::discovery` and `super::machine`
 //! name the `x86_64` items the index imports, as in `mmu.rs`.
 //!
 //! Name: provisional (lane `maintainer/last-three-over-2000`, 2026-10-12 UTC), for the module and
@@ -108,7 +108,7 @@ pub(super) fn direct_map_claims(each: &mut dyn FnMut(Claim)) {
     //    back to the architectural reset default when it did not: `IA32_APIC_BASE` is relocatable,
     //    and mapping the constant while the hardware is somewhere else would be a page of nothing
     //    that reads as all-ones.
-    let apic = super::irq::local_apic_phys().unwrap_or(LOCAL_APIC_PHYS);
+    let apic = super::discovery::local_apic_phys().unwrap_or(LOCAL_APIC_PHYS);
     each(Claim {
         what: "local apic",
         lo: apic,
@@ -120,7 +120,7 @@ pub(super) fn direct_map_claims(each: &mut dyn FnMut(Claim)) {
     // The IO APIC's own page, from the MADT when ACPI answered and from the architectural default
     // when it did not, for the same reason the local APIC's is: the address is the machine's to
     // state, and a machine with two of them puts the second somewhere this constant does not name.
-    let io_apic = super::irq::io_apic_phys().unwrap_or(IO_APIC_PHYS);
+    let io_apic = super::discovery::io_apic_phys().unwrap_or(IO_APIC_PHYS);
     each(Claim {
         what: "io apic",
         lo: io_apic,
